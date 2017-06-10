@@ -329,7 +329,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                 return
             different_branch_token = token + 'xxx'
 
-            new_branch = branch.bzrdir.open_branch()
+            new_branch = branch.controldir.open_branch()
             # We only want to test the relocking abilities of branch, so use the
             # existing repository object which is already locked.
             new_branch.repository = branch.repository
@@ -355,7 +355,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             branch.unlock()
             # Calling lock_write on a new instance for the same lockable will
             # also succeed.
-            new_branch = branch.bzrdir.open_branch()
+            new_branch = branch.controldir.open_branch()
             # We only want to test the relocking abilities of branch, so use the
             # existing repository object which is already locked.
             new_branch.repository = branch.repository
@@ -374,7 +374,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                 # This test does not apply, because this lockable refuses
                 # tokens.
                 return
-            new_branch = branch.bzrdir.open_branch()
+            new_branch = branch.controldir.open_branch()
             # We only want to test the relocking abilities of branch, so use the
             # existing repository object which is already locked.
             new_branch.repository = branch.repository
@@ -413,7 +413,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             branch.unlock()
         # The lock should be unlocked on disk.  Verify that with a new lock
         # instance.
-        new_branch = branch.bzrdir.open_branch()
+        new_branch = branch.controldir.open_branch()
         # Calling lock_write now should work, rather than raise LockContention.
         new_branch.lock_write()
         new_branch.unlock()
@@ -469,7 +469,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             branch.unlock()
         # Reacquire the lock (with a different branch object) by using the
         # tokens.
-        new_branch = branch.bzrdir.open_branch()
+        new_branch = branch.controldir.open_branch()
         if repo_token is not None:
             # We have to explicitly lock the repository first.
             new_branch.repository.lock_write(token=repo_token)
@@ -501,7 +501,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def test_lock_write_locks_repo_too(self):
         branch = self.make_branch('b')
-        branch = branch.bzrdir.open_branch()
+        branch = branch.controldir.open_branch()
         branch.lock_write()
         try:
             # The branch should have asked the repository to lock.
@@ -512,7 +512,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                 return
             # Now the branch.repository is physically locked, so we can't lock
             # it with a new repository instance.
-            new_repo = branch.bzrdir.open_repository()
+            new_repo = branch.controldir.open_repository()
             self.assertRaises(errors.LockContention, new_repo.lock_write)
             # We can call lock_write on the original repository object though,
             # because it is already locked.

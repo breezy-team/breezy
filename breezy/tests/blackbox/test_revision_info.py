@@ -43,7 +43,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         wt.commit('Commit three', rev_id='a@r-0-2')
 
         # This is expected to work even if the working tree is removed
-        wt.bzrdir.destroy_workingtree()
+        wt.controldir.destroy_workingtree()
 
         # Expected return values
         values = {

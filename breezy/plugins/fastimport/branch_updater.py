@@ -100,7 +100,7 @@ class BranchUpdater(object):
         # Policy for locating branches
         def dir_under_current(name, ref_name):
             # Using the Bazaar name, get a directory under the current one
-            repo_base = self.repo.bzrdir.transport.base
+            repo_base = self.repo.controldir.transport.base
             return osutils.pathjoin(repo_base, "..", name)
         def dir_sister_branch(name, ref_name):
             # Using the Bazaar name, get a sister directory to the branch

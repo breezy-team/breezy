@@ -46,7 +46,7 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
             ['parent/', 'parent/path/', 'parent/path/to/',
              'child/', 'child/path/', 'child/path/to/'],
             transport=self.get_transport())
-        self.make_branch('parent/path/to/a').bzrdir.sprout(self.get_url('child/path/to/b'))
+        self.make_branch('parent/path/to/a').controldir.sprout(self.get_url('child/path/to/b'))
 
         # The child branch internally will have recorded that its parent is at
         # "../../../../parent/path/to/a" or similar.  So we move the child
@@ -67,12 +67,12 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
         # If clone can't determine the location of the parent of the branch
         # being cloned, then the new branch will have no parent set.
         branch_b = self.get_branch_with_invalid_parent()
-        branch_c = branch_b.bzrdir.clone('c').open_branch()
+        branch_c = branch_b.controldir.clone('c').open_branch()
         self.assertEqual(None, branch_c.get_parent())
 
     def test_sprout_invalid_parent(self):
         # A sprouted branch will have a parent of the branch it was sprouted
         # from, even if that branch has an invalid parent.
         branch_b = self.get_branch_with_invalid_parent()
-        branch_c = branch_b.bzrdir.sprout('c').open_branch()
+        branch_c = branch_b.controldir.sprout('c').open_branch()
         self.assertEqual(branch_b.base, branch_c.get_parent())

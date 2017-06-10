@@ -271,7 +271,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         """
         # make a branch in a shared repo
         self.make_repository('repo', shared=True)
-        branch = self.make_bzrdir('repo/branch').create_branch()
+        branch = self.make_controldir('repo/branch').create_branch()
         # serve the repo via bzr+http WSGI
         wsgi_app = wsgi.SmartWSGIApp(self.get_transport())
         # send a request to /repo/branch that will have to access /repo.

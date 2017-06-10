@@ -69,11 +69,11 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         grandparent_tree.add('file1')
         grandparent_tree.commit('initial commit', rev_id='rev1')
 
-        parent_bzrdir = grandparent_tree.bzrdir.sprout('parent')
+        parent_bzrdir = grandparent_tree.controldir.sprout('parent')
         parent_tree = parent_bzrdir.open_workingtree()
         parent_tree.commit('next commit', rev_id='rev2')
 
-        branch_tree = parent_tree.bzrdir.sprout('branch').open_workingtree()
+        branch_tree = parent_tree.controldir.sprout('branch').open_workingtree()
         self.build_tree_contents([('branch/file1', 'branch')])
         branch_tree.commit('last commit', rev_id='rev3')
 
@@ -280,7 +280,7 @@ class TestSendStrictMixin(TestSendMixin):
         self.parent_tree.add('file')
         self.parent_tree.commit('first commit', rev_id='parent')
         # Branch 'local' from parent and do a change
-        local_bzrdir = self.parent_tree.bzrdir.sprout('local')
+        local_bzrdir = self.parent_tree.controldir.sprout('local')
         self.local_tree = local_bzrdir.open_workingtree()
         self.build_tree_contents([('local/file', 'local')])
         self.local_tree.commit('second commit', rev_id='local')
@@ -385,7 +385,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
     def _pending_merges(self):
         self.make_parent_and_local_branches()
         # Create 'other' branch containing a new file
-        other_bzrdir = self.parent_tree.bzrdir.sprout('other')
+        other_bzrdir = self.parent_tree.controldir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
         self.build_tree_contents([('other/other-file', 'other')])
         other_tree.add('other-file')
@@ -451,7 +451,7 @@ class TestSmartServerSend(tests.TestCaseWithTransport):
         self.build_tree_contents([('branch/foo', 'thecontents')])
         t.add("foo")
         t.commit("message")
-        local = t.bzrdir.sprout('local-branch').open_workingtree()
+        local = t.controldir.sprout('local-branch').open_workingtree()
         self.build_tree_contents([('branch/foo', 'thenewcontents')])
         local.commit("anothermessage")
         self.reset_smart_call_log()

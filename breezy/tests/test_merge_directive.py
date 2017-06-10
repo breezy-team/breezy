@@ -359,8 +359,8 @@ class TestMergeDirectiveBranch(object):
                                   ('tree_a/file_2', 'content_x\rcontent_y\r')])
         tree_a.add(['file', 'file_2'])
         tree_a.commit('message', rev_id='rev1')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
-        branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
+        branch_c = tree_a.controldir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
         self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n'),
                                   ('tree_a/file_2', 'content_x\rcontent_z\r')])

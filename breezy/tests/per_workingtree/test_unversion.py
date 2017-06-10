@@ -67,7 +67,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.unlock()
         # the changes should have persisted to disk - reopen the workingtree
         # to be sure.
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         tree.lock_read()
         self.assertFalse(tree.has_id('a-id'))
         self.assertFalse(tree.has_id('b-id'))
@@ -166,7 +166,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         finally:
             tree_a.unlock()
 
-        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        tree_b = tree_a.controldir.sprout('B').open_workingtree()
         self.build_tree(['B/xyz/'])
         tree_b.add(['xyz'], ['xyz-id'])
         tree_b.rename_one('a/m', 'xyz/m')

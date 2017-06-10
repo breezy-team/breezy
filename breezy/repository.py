@@ -364,7 +364,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
-        self.bzrdir = controldir
+        self.controldir = controldir
         self.control_files = control_files
         # for tests
         self._write_group = None
@@ -373,7 +373,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     @property
     def user_transport(self):
-        return self.bzrdir.user_transport
+        return self.controldir.user_transport
 
     @property
     def control_transport(self):
@@ -546,7 +546,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            return self.bzrdir.list_branches()
+            return self.controldir.list_branches()
         class Evaluator(object):
 
             def __init__(self):
@@ -789,17 +789,17 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
-    def _create_sprouting_repo(self, a_bzrdir, shared):
-        if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
+    def _create_sprouting_repo(self, a_controldir, shared):
+        if not isinstance(a_controldir._format, self.controldir._format.__class__):
             # use target default format.
-            dest_repo = a_bzrdir.create_repository()
+            dest_repo = a_controldir.create_repository()
         else:
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(a_bzrdir, shared=shared)
+                dest_repo = self._format.initialize(a_controldir, shared=shared)
             except errors.UninitializableFormat:
-                dest_repo = a_bzrdir.open_repository()
+                dest_repo = a_controldir.open_repository()
         return dest_repo
 
     @needs_read_lock
@@ -1174,7 +1174,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return
             warning("Format %s for %s is deprecated -"
                     " please use 'brz upgrade' to get better performance"
-                    % (self._format, self.bzrdir.transport.base))
+                    % (self._format, self.controldir.transport.base))
         finally:
             _deprecation_warning_done = True
 
@@ -1203,7 +1203,7 @@ class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
 
     def get_default(self):
         """Return the current default format."""
-        return controldir.format_registry.make_bzrdir('default').repository_format
+        return controldir.format_registry.make_controldir('default').repository_format
 
 
 network_format_registry = registry.FormatRegistry()
@@ -1588,7 +1588,7 @@ class CopyConverter(object):
         # this is only useful with metadir layouts - separated repo content.
         # trigger an assertion if not such
         repo._format.get_format_string()
-        self.repo_dir = repo.bzrdir
+        self.repo_dir = repo.controldir
         pb.update(gettext('Moving repository to repository.backup'))
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')

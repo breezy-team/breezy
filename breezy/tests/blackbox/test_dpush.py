@@ -61,7 +61,7 @@ class TestDpush(tests.TestCaseWithTransport):
     def test_dpush(self):
         branch = self.make_dummy_builder('d').get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = branch.controldir.sprout('dc', force_new_repo=True)
         self.build_tree(("dc/foo", "blaaaa"))
         dc.open_workingtree().commit('msg')
 
@@ -76,7 +76,7 @@ class TestDpush(tests.TestCaseWithTransport):
     def test_dpush_new(self):
         b = self.make_dummy_builder('d').get_branch()
 
-        dc = b.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.controldir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
@@ -95,7 +95,7 @@ class TestDpush(tests.TestCaseWithTransport):
     def test_dpush_wt_diff(self):
         b = self.make_dummy_builder('d').get_branch()
 
-        dc = b.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.controldir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
@@ -122,7 +122,7 @@ class TestDpush(tests.TestCaseWithTransport):
 
         b = builder.get_branch()
 
-        dc = b.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.controldir.sprout('dc', force_new_repo=True)
         dc_tree = dc.open_workingtree()
 
         self.build_tree_contents([("dc/foo", "bar")])

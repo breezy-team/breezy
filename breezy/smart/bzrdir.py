@@ -530,7 +530,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             rich_root, tree_ref, external_lookup = self._format_to_capabilities(
                 repo._format)
             repo_name = repo._format.network_name()
-            repo_bzrdir_name = repo.bzrdir._format.network_name()
+            repo_bzrdir_name = repo.controldir._format.network_name()
             final_stack = repository_policy._stack_on
             final_stack_pwd = repository_policy._stack_on_pwd
             # It is returned locked, but we need to do the lock to get the lock

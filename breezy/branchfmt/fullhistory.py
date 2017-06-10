@@ -90,7 +90,7 @@ class FullHistoryBzrBranch(BzrBranch):
         It is intended to be called by set_revision_history."""
         self._transport.put_bytes(
             'revision-history', '\n'.join(history),
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
     def _gen_revision_history(self):
         history = self._transport.get_bytes('revision-history').split('\n')
@@ -163,15 +163,15 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 5"
 
-    def initialize(self, a_bzrdir, name=None, repository=None,
+    def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
-        """Create a branch of this format in a_bzrdir."""
+        """Create a branch of this format in a_controldir."""
         if append_revisions_only:
-            raise errors.UpgradeRequired(a_bzrdir.user_url)
+            raise errors.UpgradeRequired(a_controldir.user_url)
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
+        return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
     def supports_tags(self):
         return False

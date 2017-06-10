@@ -34,63 +34,63 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual('Empty control directory', info.describe_layout())
         self.assertEqual(
             'Unshared repository with trees and colocated branches',
-            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
+            info.describe_layout(tree.branch.repository, control=tree.controldir))
         tree.branch.repository.set_make_working_trees(False)
         self.assertEqual('Unshared repository with colocated branches',
-            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
+            info.describe_layout(tree.branch.repository, control=tree.controldir))
         self.assertEqual('Standalone branch',
             info.describe_layout(tree.branch.repository, tree.branch,
-                control=tree.bzrdir))
+                control=tree.controldir))
         self.assertEqual('Standalone branchless tree',
             info.describe_layout(tree.branch.repository, None, tree,
-                control=tree.bzrdir))
+                control=tree.controldir))
         self.assertEqual('Standalone tree',
             info.describe_layout(tree.branch.repository, tree.branch, tree,
-                control=tree.bzrdir))
+                control=tree.controldir))
         tree.branch.bind(tree.branch)
         self.assertEqual('Bound branch',
             info.describe_layout(tree.branch.repository, tree.branch,
-                control=tree.bzrdir))
+                control=tree.controldir))
         self.assertEqual('Checkout',
             info.describe_layout(tree.branch.repository, tree.branch, tree,
-                control=tree.bzrdir))
+                control=tree.controldir))
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.assertEqual('Lightweight checkout',
             info.describe_layout(checkout.branch.repository, checkout.branch,
-                                 checkout, control=tree.bzrdir))
+                                 checkout, control=tree.controldir))
 
     def test_describe_repository_layout(self):
         repository = self.make_repository('.', shared=True)
         tree = controldir.ControlDir.create_branch_convenience('tree',
-            force_new_tree=True).bzrdir.open_workingtree()
+            force_new_tree=True).controldir.open_workingtree()
         self.assertEqual('Shared repository with trees and colocated branches',
-            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
+            info.describe_layout(tree.branch.repository, control=tree.controldir))
         repository.set_make_working_trees(False)
         self.assertEqual('Shared repository with colocated branches',
-            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
+            info.describe_layout(tree.branch.repository, control=tree.controldir))
         self.assertEqual('Repository branch',
             info.describe_layout(tree.branch.repository, tree.branch,
-                control=tree.bzrdir))
+                control=tree.controldir))
         self.assertEqual('Repository branchless tree',
             info.describe_layout(tree.branch.repository, None, tree,
-                control=tree.bzrdir))
+                control=tree.controldir))
         self.assertEqual('Repository tree',
             info.describe_layout(tree.branch.repository, tree.branch, tree,
-                control=tree.bzrdir))
+                control=tree.controldir))
         tree.branch.bind(tree.branch)
         self.assertEqual('Repository checkout',
             info.describe_layout(tree.branch.repository, tree.branch, tree,
-                control=tree.bzrdir))
+                control=tree.controldir))
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.assertEqual('Lightweight checkout',
             info.describe_layout(checkout.branch.repository, checkout.branch,
-                                 checkout, control=tree.bzrdir))
+                                 checkout, control=tree.controldir))
 
     def assertTreeDescription(self, format):
         """Assert a tree's format description matches expectations"""
         self.make_branch_and_tree('%s_tree' % format, format=format)
         tree = workingtree.WorkingTree.open('%s_tree' % format)
-        self.assertEqual(format, info.describe_format(tree.bzrdir,
+        self.assertEqual(format, info.describe_format(tree.controldir,
             tree.branch.repository, tree.branch, tree))
 
     def assertCheckoutDescription(self, format, expected=None):
@@ -100,15 +100,15 @@ class TestInfo(tests.TestCaseWithTransport):
         branch = self.make_branch('%s_cobranch' % format, format=format)
         # this ought to be easier...
         branch.create_checkout('%s_co' % format,
-            lightweight=True).bzrdir.destroy_workingtree()
+            lightweight=True).controldir.destroy_workingtree()
         control = controldir.ControlDir.open('%s_co' % format)
         old_format = control._format.workingtree_format
         try:
             control._format.workingtree_format = \
-                controldir.format_registry.make_bzrdir(format).workingtree_format
+                controldir.format_registry.make_controldir(format).workingtree_format
             control.create_workingtree()
             tree = workingtree.WorkingTree.open('%s_co' % format)
-            format_description = info.describe_format(tree.bzrdir,
+            format_description = info.describe_format(tree.controldir,
                     tree.branch.repository, tree.branch, tree)
             self.assertEqual(expected, format_description,
                 "checkout of format called %r was described as %r" %
@@ -122,7 +122,7 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = format
         self.make_branch('%s_branch' % format, format=format)
         branch = _mod_branch.Branch.open('%s_branch' % format)
-        self.assertEqual(expected, info.describe_format(branch.bzrdir,
+        self.assertEqual(expected, info.describe_format(branch.controldir,
             branch.repository, branch, None))
 
     def assertRepoDescription(self, format, expected=None):
@@ -131,7 +131,7 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = format
         self.make_repository('%s_repo' % format, format=format)
         repo = _mod_repository.Repository.open('%s_repo' % format)
-        self.assertEqual(expected, info.describe_format(repo.bzrdir,
+        self.assertEqual(expected, info.describe_format(repo.controldir,
             repo, None, None))
 
     def test_describe_tree_format(self):
@@ -197,70 +197,70 @@ class TestInfo(tests.TestCaseWithTransport):
                 expected = '1.14-rich-root'
             self.assertRepoDescription(key, expected)
 
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         format.set_branch_format(_mod_bzrbranch.BzrBranchFormat6())
         tree = self.make_branch_and_tree('unknown', format=format)
-        self.assertEqual('unnamed', info.describe_format(tree.bzrdir,
+        self.assertEqual('unnamed', info.describe_format(tree.controldir,
             tree.branch.repository, tree.branch, tree))
 
     def test_gather_location_controldir_only(self):
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         self.assertEqual([('control directory', bzrdir.user_url)],
             info.gather_location_info(control=bzrdir))
 
     def test_gather_location_standalone(self):
         tree = self.make_branch_and_tree('tree')
-        self.assertEqual([('branch root', tree.bzrdir.root_transport.base)],
+        self.assertEqual([('branch root', tree.controldir.root_transport.base)],
             info.gather_location_info(
-                tree.branch.repository, tree.branch, tree, control=tree.bzrdir))
-        self.assertEqual([('branch root', tree.bzrdir.root_transport.base)],
+                tree.branch.repository, tree.branch, tree, control=tree.controldir))
+        self.assertEqual([('branch root', tree.controldir.root_transport.base)],
             info.gather_location_info(
-                tree.branch.repository, tree.branch, control=tree.bzrdir))
+                tree.branch.repository, tree.branch, control=tree.controldir))
         return tree
 
     def test_gather_location_repo(self):
         srepo = self.make_repository('shared', shared=True)
         self.assertEqual(
-            [('shared repository', srepo.bzrdir.root_transport.base)],
-            info.gather_location_info(srepo, control=srepo.bzrdir))
+            [('shared repository', srepo.controldir.root_transport.base)],
+            info.gather_location_info(srepo, control=srepo.controldir))
         urepo = self.make_repository('unshared')
         self.assertEqual(
-            [('repository', urepo.bzrdir.root_transport.base)],
-            info.gather_location_info(urepo, control=urepo.bzrdir))
+            [('repository', urepo.controldir.root_transport.base)],
+            info.gather_location_info(urepo, control=urepo.controldir))
 
     def test_gather_location_repo_branch(self):
         srepo = self.make_repository('shared', shared=True)
         self.assertEqual(
-            [('shared repository', srepo.bzrdir.root_transport.base)],
-            info.gather_location_info(srepo, control=srepo.bzrdir))
+            [('shared repository', srepo.controldir.root_transport.base)],
+            info.gather_location_info(srepo, control=srepo.controldir))
         tree = self.make_branch_and_tree('shared/tree')
         self.assertEqual(
-            [('shared repository', srepo.bzrdir.root_transport.base),
+            [('shared repository', srepo.controldir.root_transport.base),
              ('repository branch', tree.branch.base)],
-            info.gather_location_info(srepo, tree.branch, tree, srepo.bzrdir))
+            info.gather_location_info(srepo, tree.branch, tree, srepo.controldir))
 
     def test_gather_location_light_checkout(self):
         tree = self.make_branch_and_tree('tree')
         lcheckout = tree.branch.create_checkout('lcheckout', lightweight=True)
         self.assertEqual(
-            [('light checkout root', lcheckout.bzrdir.root_transport.base),
-             ('checkout of branch', tree.bzrdir.root_transport.base)],
+            [('light checkout root', lcheckout.controldir.root_transport.base),
+             ('checkout of branch', tree.controldir.root_transport.base)],
             self.gather_tree_location_info(lcheckout))
 
     def test_gather_location_heavy_checkout(self):
         tree = self.make_branch_and_tree('tree')
         checkout = tree.branch.create_checkout('checkout')
         self.assertEqual(
-            [('checkout root', checkout.bzrdir.root_transport.base),
-             ('checkout of branch', tree.bzrdir.root_transport.base)],
+            [('checkout root', checkout.controldir.root_transport.base),
+             ('checkout of branch', tree.controldir.root_transport.base)],
             self.gather_tree_location_info(checkout))
         light_checkout = checkout.branch.create_checkout('light_checkout',
                                                          lightweight=True)
         self.assertEqual(
             [('light checkout root',
-              light_checkout.bzrdir.root_transport.base),
-             ('checkout root', checkout.bzrdir.root_transport.base),
-             ('checkout of branch', tree.bzrdir.root_transport.base)],
+              light_checkout.controldir.root_transport.base),
+             ('checkout root', checkout.controldir.root_transport.base),
+             ('checkout of branch', tree.controldir.root_transport.base)],
              self.gather_tree_location_info(light_checkout)
              )
 
@@ -270,24 +270,24 @@ class TestInfo(tests.TestCaseWithTransport):
         shared_checkout = tree.branch.create_checkout('shared/checkout')
         self.assertEqual(
             [('repository checkout root',
-              shared_checkout.bzrdir.root_transport.base),
-             ('checkout of branch', tree.bzrdir.root_transport.base),
-             ('shared repository', srepo.bzrdir.root_transport.base)],
+              shared_checkout.controldir.root_transport.base),
+             ('checkout of branch', tree.controldir.root_transport.base),
+             ('shared repository', srepo.controldir.root_transport.base)],
              self.gather_tree_location_info(shared_checkout))
 
     def gather_tree_location_info(self, tree):
         return info.gather_location_info(
-            tree.branch.repository, tree.branch, tree, tree.bzrdir)
+            tree.branch.repository, tree.branch, tree, tree.controldir)
 
     def test_gather_location_bound(self):
         branch = self.make_branch('branch')
         bound_branch = self.make_branch('bound_branch')
         bound_branch.bind(branch)
         self.assertEqual(
-            [('branch root', bound_branch.bzrdir.root_transport.base),
-             ('bound to branch', branch.bzrdir.root_transport.base)],
+            [('branch root', bound_branch.controldir.root_transport.base),
+             ('bound to branch', branch.controldir.root_transport.base)],
             info.gather_location_info(
-                bound_branch.repository, bound_branch, control=bound_branch.bzrdir)
+                bound_branch.repository, bound_branch, control=bound_branch.controldir)
         )
 
     def test_gather_location_bound_in_repository(self):
@@ -298,9 +298,9 @@ class TestInfo(tests.TestCaseWithTransport):
             'repo/bound_branch')
         bound_branch.bind(branch)
         self.assertEqual(
-            [('shared repository', bound_branch.repository.bzrdir.user_url),
-             ('repository branch', bound_branch.bzrdir.user_url),
-             ('bound to branch', branch.bzrdir.user_url)],
+            [('shared repository', bound_branch.repository.controldir.user_url),
+             ('repository branch', bound_branch.controldir.user_url),
+             ('bound to branch', branch.controldir.user_url)],
             info.gather_location_info(bound_branch.repository, bound_branch)
         )
 

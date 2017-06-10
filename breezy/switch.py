@@ -131,11 +131,11 @@ def _set_branch_location(control, to_branch, force=False):
             b.lock_read()
             try:
                 graph = b.repository.get_graph(to_branch.repository)
-                if (b.bzrdir._format.colocated_branches and
+                if (b.controldir._format.colocated_branches and
                      (force or graph.is_ancestor(b.last_revision(),
                         to_branch.last_revision()))):
-                    b.bzrdir.destroy_branch()
-                    b.bzrdir.set_branch_reference(to_branch, name="")
+                    b.controldir.destroy_branch()
+                    b.controldir.set_branch_reference(to_branch, name="")
                 else:
                     raise errors.BzrCommandError(gettext('Cannot switch a branch, '
                         'only a checkout.'))

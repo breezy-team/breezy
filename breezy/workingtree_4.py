@@ -102,7 +102,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         would be meaningless).
         """
         self._format = _format
-        self.bzrdir = _bzrdir
+        self.controldir = _bzrdir
         basedir = safe_unicode(basedir)
         trace.mutter("opening working tree %r", basedir)
         self._branch = branch
@@ -239,7 +239,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """
         if self._dirstate is not None:
             return self._dirstate
-        local_path = self.bzrdir.get_workingtree_transport(None
+        local_path = self.controldir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
             self._sha1_provider(), self._worth_saving_limit())
@@ -1451,12 +1451,12 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
     _lock_class = LockDir
     _lock_file_name = 'lock'
 
-    def _open_control_files(self, a_bzrdir):
-        transport = a_bzrdir.get_workingtree_transport(None)
+    def _open_control_files(self, a_controldir):
+        transport = a_controldir.get_workingtree_transport(None)
         return LockableFiles(transport, self._lock_file_name,
                              self._lock_class)
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
 
@@ -1472,18 +1472,18 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
         """
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        transport = a_bzrdir.get_workingtree_transport(self)
-        control_files = self._open_control_files(a_bzrdir)
+        if not isinstance(a_controldir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_controldir.transport.base)
+        transport = a_controldir.get_workingtree_transport(self)
+        control_files = self._open_control_files(a_controldir)
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.as_string(),
-            mode=a_bzrdir._get_file_mode())
+            mode=a_controldir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
-            branch = a_bzrdir.open_branch()
+            branch = a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')
@@ -1491,10 +1491,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         state = dirstate.DirState.initialize(local_path)
         state.unlock()
         del state
-        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
+        wt = self._tree_class(a_controldir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
-                         _bzrdir=a_bzrdir,
+                         _bzrdir=a_controldir,
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
@@ -1562,8 +1562,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         :param wt: the WorkingTree object
         """
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the WorkingTree object for a_bzrdir
+    def open(self, a_controldir, _found=False):
+        """Return the WorkingTree object for a_controldir
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.
@@ -1571,21 +1571,21 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        wt = self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        if not isinstance(a_controldir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_controldir.transport.base)
+        wt = self._open(a_controldir, self._open_control_files(a_controldir))
         return wt
 
-    def _open(self, a_bzrdir, control_files):
+    def _open(self, a_controldir, control_files):
         """Open the tree itself.
 
-        :param a_bzrdir: the dir for the tree.
+        :param a_controldir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
-        return self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
-                           branch=a_bzrdir.open_branch(),
+        return self._tree_class(a_controldir.root_transport.local_abspath('.'),
+                           branch=a_controldir.open_branch(),
                            _format=self,
-                           _bzrdir=a_bzrdir,
+                           _bzrdir=a_controldir,
                            _control_files=control_files)
 
     def __get_matchingbzrdir(self):
@@ -1594,7 +1594,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
     def _get_matchingbzrdir(self):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'development-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
@@ -1666,7 +1666,8 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
     def _init_custom_control_files(self, wt):
         """Subclasses with custom control files should override this method."""
-        wt._transport.put_bytes('views', b'', mode=wt.bzrdir._get_file_mode())
+        wt._transport.put_bytes('views', b'',
+            mode=wt.controldir._get_file_mode())
 
     def supports_content_filtering(self):
         return True
@@ -1678,7 +1679,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
         """Overrideable method to get a bzrdir for testing."""
         # We use 'development-subtree' instead of '2a', because we have a
         # few tests that want to test tree references
-        return controldir.format_registry.make_bzrdir('development-subtree')
+        return controldir.format_registry.make_controldir('development-subtree')
 
 
 class DirStateRevisionTree(InventoryTree):
@@ -2268,7 +2269,7 @@ class Converter3to4(object):
 
     def create_dirstate_data(self, tree):
         """Create the dirstate based data for tree."""
-        local_path = tree.bzrdir.get_workingtree_transport(None
+        local_path = tree.controldir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         state = dirstate.DirState.from_tree(tree, local_path)
         state.save()
@@ -2276,7 +2277,7 @@ class Converter3to4(object):
 
     def remove_xml_files(self, tree):
         """Remove the oldformat 3 data."""
-        transport = tree.bzrdir.get_workingtree_transport(None)
+        transport = tree.controldir.get_workingtree_transport(None)
         for path in ['basis-inventory-cache', 'inventory', 'last-revision',
             'pending-merges', 'stat-cache']:
             try:
@@ -2289,7 +2290,7 @@ class Converter3to4(object):
         """Change the format marker."""
         tree._transport.put_bytes('format',
             self.target_format.as_string(),
-            mode=tree.bzrdir._get_file_mode())
+            mode=tree.controldir._get_file_mode())
 
 
 class Converter4to5(object):
@@ -2312,7 +2313,7 @@ class Converter4to5(object):
         """Change the format marker."""
         tree._transport.put_bytes('format',
             self.target_format.as_string(),
-            mode=tree.bzrdir._get_file_mode())
+            mode=tree.controldir._get_file_mode())
 
 
 class Converter4or5to6(object):
@@ -2335,10 +2336,10 @@ class Converter4or5to6(object):
     def init_custom_control_files(self, tree):
         """Initialize custom control files."""
         tree._transport.put_bytes('views', b'',
-            mode=tree.bzrdir._get_file_mode())
+            mode=tree.controldir._get_file_mode())
 
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
             self.target_format.as_string(),
-            mode=tree.bzrdir._get_file_mode())
+            mode=tree.controldir._get_file_mode())

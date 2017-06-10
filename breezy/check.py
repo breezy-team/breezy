@@ -416,7 +416,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 for branch in branches:
                     if do_tree:
                         try:
-                            tree = branch.bzrdir.open_workingtree()
+                            tree = branch.controldir.open_workingtree()
                             saw_tree = True
                         except (errors.NotLocalUrl, errors.NoWorkingTree):
                             pass

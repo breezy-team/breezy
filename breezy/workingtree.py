@@ -153,7 +153,7 @@ class WorkingTree(mutabletree.MutableTree,
         :param branch: A branch to override probing for the branch.
         """
         self._format = _format
-        self.bzrdir = _bzrdir
+        self.controldir = _bzrdir
         if not _internal:
             raise errors.BzrError("Please use bzrdir.open_workingtree or "
                 "WorkingTree.open() to obtain a WorkingTree.")
@@ -162,7 +162,7 @@ class WorkingTree(mutabletree.MutableTree,
         if branch is not None:
             self._branch = branch
         else:
-            self._branch = self.bzrdir.open_branch()
+            self._branch = self.controldir.open_branch()
         self.basedir = osutils.realpath(basedir)
         self._transport = _transport
         self._rules_searcher = None
@@ -170,7 +170,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     @property
     def user_transport(self):
-        return self.bzrdir.user_transport
+        return self.controldir.user_transport
 
     @property
     def control_transport(self):
@@ -186,7 +186,7 @@ class WorkingTree(mutabletree.MutableTree,
         that bzr controls in this tree. I.E. a random .bzr directory placed
         on disk will not be a control file for this tree.
         """
-        return self.bzrdir.is_control_filename(filename)
+        return self.controldir.is_control_filename(filename)
 
     branch = property(
         fget=lambda self: self._branch,
@@ -641,7 +641,7 @@ class WorkingTree(mutabletree.MutableTree,
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
         """Check that all merged revisions are proper 'heads'.
@@ -1214,7 +1214,7 @@ class WorkingTree(mutabletree.MutableTree,
                     files_to_backup.append(path[1])
 
         def backup(file_to_backup):
-            backup_name = self.bzrdir._available_backup_name(file_to_backup)
+            backup_name = self.controldir._available_backup_name(file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
             return "removed %s (but kept a copy: %s)" % (file_to_backup,
                                                          backup_name)
@@ -1560,7 +1560,7 @@ class WorkingTree(mutabletree.MutableTree,
                     bzrdir_loc = bisect_left(cur_disk_dir_content,
                         ('.bzr', '.bzr'))
                     if (bzrdir_loc < len(cur_disk_dir_content)
-                        and self.bzrdir.is_control_filename(
+                        and self.controldir.is_control_filename(
                             cur_disk_dir_content[bzrdir_loc][0])):
                         # we dont yield the contents of, or, .bzr itself.
                         del cur_disk_dir_content[bzrdir_loc]

@@ -323,7 +323,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     def setUp(self):
         super(TestCaseWithComplexRepository, self).setUp()
         tree_a = self.make_branch_and_tree('a')
-        self.bzrdir = tree_a.branch.bzrdir
+        self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
         tree_a.lock_write()
@@ -357,7 +357,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_revision_trees(self):
         revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
-        repository = self.bzrdir.open_repository()
+        repository = self.controldir.open_repository()
         repository.lock_read()
         self.addCleanup(repository.unlock)
         trees1 = list(repository.revision_trees(revision_ids))
@@ -367,7 +367,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
             self.assertFalse(tree2.changes_from(tree1).has_changed())
 
     def test_get_deltas_for_revisions(self):
-        repository = self.bzrdir.open_repository()
+        repository = self.controldir.open_repository()
         repository.lock_read()
         self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in
@@ -380,7 +380,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
         self.assertEqual({'rev1', 'rev2', 'rev3', 'rev4'},
-            set(self.bzrdir.open_repository().all_revision_ids()))
+            set(self.controldir.open_repository().all_revision_ids()))
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')

@@ -98,6 +98,11 @@ API Changes
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
 
+ * ``Branch.bzrdir``, ``Repository.bzrdir`` and ``WorkingTree.bzrdir``
+   have been renamed to ``Branch.controldir``, ``Repository.controldir``
+   and ``WorkingTree.controldir``, respectively.
+   (Jelmer Vernooĳ, #1695774)
+
  * ``BzrBranch`` and the various bzr branch format implementations
    have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
 

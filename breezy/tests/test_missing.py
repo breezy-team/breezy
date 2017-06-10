@@ -68,7 +68,7 @@ class TestMissing(TestCaseWithTransport):
         base_tree.add(['a'], ['a-id'])
         base_tree.commit('add a', rev_id='b-1')
 
-        child_tree = base_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree = base_tree.controldir.sprout('child').open_workingtree()
 
         self.build_tree(['child/b'])
         child_tree.add(['b'], ['b-id'])
@@ -157,7 +157,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
     def test_one_ahead(self):
         tree = self.make_branch_and_tree('tree')
         rev1 = tree.commit('one')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         rev2 = tree2.commit('two')
         self.assertUnmerged([], [('2', rev2)], tree.branch, tree2.branch)
         self.assertUnmerged([('2', rev2)], [], tree2.branch, tree.branch)
@@ -165,7 +165,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
     def test_restrict(self):
         tree = self.make_branch_and_tree('tree')
         rev1 = tree.commit('one')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         rev2 = tree2.commit('two')
         self.assertUnmerged([], [('2', rev2)], tree.branch, tree2.branch)
         self.assertUnmerged([], None, tree.branch, tree2.branch, 'local')
@@ -175,7 +175,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
     def test_merged(self):
         tree = self.make_branch_and_tree('tree')
         rev1 = tree.commit('one')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         rev2 = tree2.commit('two')
         rev3 = tree2.commit('three')
         tree.merge_from_branch(tree2.branch)
@@ -191,11 +191,11 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         rev1 = tree.commit('one', rev_id='rev1')
 
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         rev2 = tree2.commit('two', rev_id='rev2')
         rev3 = tree2.commit('three', rev_id='rev3')
 
-        tree3 = tree2.bzrdir.sprout('tree3').open_workingtree()
+        tree3 = tree2.controldir.sprout('tree3').open_workingtree()
         rev4 = tree3.commit('four', rev_id='rev4')
         rev5 = tree3.commit('five', rev_id='rev5')
 
@@ -232,7 +232,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
     def test_revision_range(self):
         local = self.make_branch_and_tree('local')
         lrevid1 = local.commit('one')
-        remote = local.bzrdir.sprout('remote').open_workingtree()
+        remote = local.controldir.sprout('remote').open_workingtree()
         rrevid2 = remote.commit('two')
         rrevid3 = remote.commit('three')
         rrevid4 = remote.commit('four')

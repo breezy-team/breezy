@@ -96,7 +96,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
-        d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
+        d2 = repo.controldir.clone(urlutils.local_path_to_url('target'))
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 

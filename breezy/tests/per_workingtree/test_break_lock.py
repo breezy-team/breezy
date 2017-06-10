@@ -28,7 +28,7 @@ class TestBreakLock(TestCaseWithWorkingTree):
     def setUp(self):
         super(TestBreakLock, self).setUp()
         self.unused_workingtree = self.make_branch_and_tree('.')
-        self.workingtree = self.unused_workingtree.bzrdir.open_workingtree()
+        self.workingtree = self.unused_workingtree.controldir.open_workingtree()
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return

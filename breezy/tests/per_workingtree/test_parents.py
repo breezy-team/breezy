@@ -479,8 +479,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # If tree.branch is remote
         if tree.user_url != tree.branch.user_url:
             # We have a lightweight checkout, delete both locations
-            tree.branch.bzrdir.root_transport.delete_tree('.')
-        tree.bzrdir.root_transport.delete_tree('.')
+            tree.branch.controldir.root_transport.delete_tree('.')
+        tree.controldir.root_transport.delete_tree('.')
 
     def test_no_parents_just_root(self):
         """Test doing an empty commit - no parent, set a root only."""

@@ -71,7 +71,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.wt.commit('adding a,b', rev_id='r1')
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
-        dir2 = self.wt.branch.bzrdir.sprout('b2', revision_id='r1')
+        dir2 = self.wt.branch.controldir.sprout('b2', revision_id='r1')
         wt2 = dir2.open_workingtree()
         self.assertEqual(['r1'], wt2.get_parent_ids())
         self.assertEqual('r1', wt2.branch.last_revision())
@@ -83,7 +83,7 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def test_02_stays_executable(self):
         """reopen the tree and ensure it stuck."""
-        self.wt = self.wt.bzrdir.open_workingtree()
+        self.wt = self.wt.controldir.open_workingtree()
         self.check_exist(self.wt)
 
     def test_03_after_commit(self):

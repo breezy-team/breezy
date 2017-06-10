@@ -54,10 +54,10 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        wt_trans = self.controldir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-            self.bzrdir._get_file_mode(),
+            self.controldir._get_file_mode(),
             self._content_filter_stack_provider())
         hc = self._hashcache
         hc.read()
@@ -117,7 +117,7 @@ class WorkingTree3(PreDirStateWorkingTree):
             return False
         else:
             self._transport.put_bytes('last-revision', revision_id,
-                mode=self.bzrdir._get_file_mode())
+                mode=self.controldir._get_file_mode())
             return True
 
     def _get_check_refs(self):
@@ -173,11 +173,11 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
-    def _open_control_files(self, a_bzrdir):
-        transport = a_bzrdir.get_workingtree_transport(None)
+    def _open_control_files(self, a_controldir):
+        transport = a_controldir.get_workingtree_transport(None)
         return LockableFiles(transport, 'lock', LockDir)
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
 
@@ -190,18 +190,18 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
         """
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        transport = a_bzrdir.get_workingtree_transport(self)
-        control_files = self._open_control_files(a_bzrdir)
+        if not isinstance(a_controldir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_controldir.transport.base)
+        transport = a_controldir.get_workingtree_transport(self)
+        control_files = self._open_control_files(a_controldir)
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.as_string(),
-            mode=a_bzrdir._get_file_mode())
+            mode=a_controldir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
-            branch = a_bzrdir.open_branch()
+            branch = a_controldir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
         # WorkingTree3 can handle an inventory which has a unique root id.
@@ -210,12 +210,12 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         # are maintaining compatibility with older clients.
         # inv = Inventory(root_id=gen_root_id())
         inv = self._initial_inventory()
-        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
+        wt = self._tree_class(a_controldir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
                          _format=self,
-                         _bzrdir=a_bzrdir,
+                         _bzrdir=a_controldir,
                          _control_files=control_files)
         wt.lock_tree_write()
         try:
@@ -240,8 +240,8 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
     def _initial_inventory(self):
         return inventory.Inventory()
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the WorkingTree object for a_bzrdir
+    def open(self, a_controldir, _found=False):
+        """Return the WorkingTree object for a_controldir
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.
@@ -249,19 +249,19 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        wt = self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        if not isinstance(a_controldir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_controldir.transport.base)
+        wt = self._open(a_controldir, self._open_control_files(a_controldir))
         return wt
 
-    def _open(self, a_bzrdir, control_files):
+    def _open(self, a_controldir, control_files):
         """Open the tree itself.
 
-        :param a_bzrdir: the dir for the tree.
+        :param a_controldir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
-        return self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
+        return self._tree_class(a_controldir.root_transport.local_abspath('.'),
                                 _internal=True,
                                 _format=self,
-                                _bzrdir=a_bzrdir,
+                                _bzrdir=a_controldir,
                                 _control_files=control_files)

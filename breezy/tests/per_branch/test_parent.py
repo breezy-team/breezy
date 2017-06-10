@@ -96,7 +96,7 @@ class TestParent(TestCaseWithTransport):
         if sys.platform != 'win32':
             raise TestSkipped('windows-specific test')
         b = self.make_branch('.')
-        base_url = b.bzrdir.transport.abspath('.')
+        base_url = b.controldir.transport.abspath('.')
         if not base_url.startswith('file:///'):
             raise TestNotApplicable('this test should be run with local base')
         base = urlutils.local_path_from_url(base_url)

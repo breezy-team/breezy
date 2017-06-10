@@ -174,7 +174,7 @@ class TestDiff(DiffBase):
         branch1_tree.add('file')
         branch1_tree.add('file2')
         branch1_tree.commit(message='add file and file2')
-        branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
+        branch2_tree = branch1_tree.controldir.sprout('branch2').open_workingtree()
         self.build_tree_contents([('branch2/file', 'new content\n')])
         branch2_tree.commit(message='update file')
         return branch1_tree, branch2_tree
@@ -229,7 +229,7 @@ class TestDiff(DiffBase):
     def test_diff_branches_no_working_trees(self):
         branch1_tree, branch2_tree = self.example_branches()
         # Compare a working tree to a branch without a WT
-        dir1 = branch1_tree.bzrdir
+        dir1 = branch1_tree.controldir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
         self.check_b2_vs_b1('diff --old branch2 --new branch1')
@@ -240,7 +240,7 @@ class TestDiff(DiffBase):
         self.check_b1_vs_b2('diff --old branch1 branch2')
         self.check_b1_vs_b2('diff branch1 --new branch2')
         # Compare a branch with a WT against another without a WT
-        dir2 = branch2_tree.bzrdir
+        dir2 = branch2_tree.controldir
         dir2.destroy_workingtree()
         self.assertFalse(dir2.has_workingtree())
         self.check_b1_vs_b2('diff --old branch1 --new branch2')
@@ -301,7 +301,7 @@ class TestDiff(DiffBase):
 
     def test_diff_to_branch_no_working_tree(self):
         branch1_tree = self.example_branch2()
-        dir1 = branch1_tree.bzrdir
+        dir1 = branch1_tree.controldir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
