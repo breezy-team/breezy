@@ -41,8 +41,8 @@ def create_bundle_file(test_case):
 
     bzrdir = format.initialize('tree')
     repo = bzrdir.create_repository()
-    branch = repo.bzrdir.create_branch()
-    wt = branch.bzrdir.create_workingtree()
+    branch = repo.controldir.create_branch()
+    wt = branch.controldir.create_workingtree()
 
     wt.add(['a', 'subdir/'])
     wt.commit('new project', rev_id='commit-1')

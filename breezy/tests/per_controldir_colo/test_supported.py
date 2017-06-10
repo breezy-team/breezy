@@ -34,7 +34,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
 
     def test_destroy_colocated_branch(self):
         branch = self.make_branch('branch')
-        bzrdir = branch.bzrdir
+        bzrdir = branch.controldir
         colo_branch = bzrdir.create_branch('colo')
         try:
             bzrdir.destroy_branch("colo")
@@ -60,7 +60,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         made_branch = made_control.create_branch("colo")
         self.assertIsInstance(made_branch, Branch)
         self.assertEqual("colo", made_branch.name)
-        self.assertEqual(made_control, made_branch.bzrdir)
+        self.assertEqual(made_control, made_branch.controldir)
 
     def test_open_by_url(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -79,7 +79,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         made_branch = made_control.create_branch(name="colo")
         other_branch = made_control.create_branch(name="othercolo")
         self.assertIsInstance(made_branch, Branch)
-        self.assertEqual(made_control, made_branch.bzrdir)
+        self.assertEqual(made_control, made_branch.controldir)
         self.assertNotEqual(made_branch.user_url, other_branch.user_url)
         self.assertNotEqual(made_branch.control_url, other_branch.control_url)
         re_made_branch = Branch.open(made_branch.user_url)
@@ -101,9 +101,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable(
                 'Control dir does not support creating new branches.')
-        to_dir = from_tree.bzrdir.sprout(
+        to_dir = from_tree.controldir.sprout(
             urlutils.join_segment_parameters(
-                other_branch.bzrdir.user_url, {"branch": "target"}))
+                other_branch.controldir.user_url, {"branch": "target"}))
         to_branch = to_dir.open_branch(name="target")
         self.assertEqual(revid, to_branch.last_revision())
 
@@ -130,29 +130,29 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
 
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
-        target_branch = repo.bzrdir.create_branch(name='foo')
-        self.assertEqual(['foo'], list(repo.bzrdir.get_branches()))
+        target_branch = repo.controldir.create_branch(name='foo')
+        self.assertEqual(['foo'], list(repo.controldir.get_branches()))
         self.assertEqual(target_branch.base,
-                         repo.bzrdir.get_branches()['foo'].base)
+                         repo.controldir.get_branches()['foo'].base)
 
     def test_branch_name_with_slash(self):
         repo = self.make_repository('branch-1')
         try:
-            target_branch = repo.bzrdir.create_branch(name='foo/bar')
+            target_branch = repo.controldir.create_branch(name='foo/bar')
         except errors.InvalidBranchName:
             raise tests.TestNotApplicable(
                 "format does not support branches with / in their name")
-        self.assertEqual(['foo/bar'], list(repo.bzrdir.get_branches()))
+        self.assertEqual(['foo/bar'], list(repo.controldir.get_branches()))
         self.assertEqual(
-            target_branch.base, repo.bzrdir.open_branch(name='foo/bar').base)
+            target_branch.base, repo.controldir.open_branch(name='foo/bar').base)
 
     def test_branch_reference(self):
         referenced = self.make_branch('referenced')
         repo = self.make_repository('repo')
         try:
-            repo.bzrdir.set_branch_reference(referenced, name='foo')
+            repo.controldir.set_branch_reference(referenced, name='foo')
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable(
                 'Control dir does not support creating branch references.')
         self.assertEqual(referenced.base,
-            repo.bzrdir.get_branch_reference('foo'))
+            repo.controldir.get_branch_reference('foo'))

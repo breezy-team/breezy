@@ -199,7 +199,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
         wt1.commit(message='rev 1-1', rev_id='1-1')
-        dir_2 = br1.bzrdir.sprout('br2')
+        dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
         wt1.commit(message='rev 1-2', rev_id='1-2')
         wt2 = dir_2.open_workingtree()
@@ -224,7 +224,7 @@ class TestMergeFileHistory(TestCaseWithTransport):
         self.build_tree_contents([('br1/file', 'original contents\n')])
         wt1.add('file', 'this-file-id')
         wt1.commit(message='rev 1-1', rev_id='1-1')
-        dir_2 = br1.bzrdir.sprout('br2')
+        dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
         wt2 = dir_2.open_workingtree()
         self.build_tree_contents([('br1/file', 'original from 1\n')])
@@ -413,7 +413,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         builder.build_snapshot('F', ['E', 'B'], [])
         builder.finish_series()
         source_branch = builder.get_branch()
-        source_branch.bzrdir.sprout('base', revision_id='B')
+        source_branch.controldir.sprout('base', revision_id='B')
         target_branch = self.make_branch('target', format='1.6')
         target_branch.set_stacked_on_url('../base')
         source = source_branch.repository
@@ -487,7 +487,7 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.make_tree_and_repo()
         self.tree.commit('first commit', rev_id='left-parent')
         self.tree.add_parent_tree_id('ghost-parent')
-        fork = self.tree.bzrdir.sprout('fork', 'null:').open_workingtree()
+        fork = self.tree.controldir.sprout('fork', 'null:').open_workingtree()
         fork.commit('not a ghost', rev_id='not-ghost-parent')
         self.tree.branch.repository.fetch(fork.branch.repository,
                                      'not-ghost-parent')

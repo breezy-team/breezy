@@ -256,7 +256,7 @@ with no feedback::
   from bzrlib import branch
 
   b = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
-  nb = b.bzrdir.sprout('/tmp/newBzrBranch').open_branch()
+  nb = b.controldir.sprout('/tmp/newBzrBranch').open_branch()
 
 
 This provides no feedback, since Bazaar automatically uses the 'silent' UI.

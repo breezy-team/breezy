@@ -90,6 +90,7 @@ except ImportError:
     pass
 from ..sixish import (
     BytesIO,
+    PY3,
     string_types,
     text_type,
     )
@@ -1534,11 +1535,8 @@ class TestCase(testtools.TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
-        f = file(path, 'rb')
-        try:
+        with open(path, 'rb') as f:
             s = f.read()
-        finally:
-            f.close()
         self.assertEqualDiff(content, s)
 
     def assertDocstring(self, expected_docstring, obj):
@@ -1551,7 +1549,7 @@ class TestCase(testtools.TestCase):
 
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertPathExists(p)
         else:
@@ -2643,8 +2641,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False,
-                                         name=name)
+        return repo.controldir.create_branch(append_revisions_only=False, name=name)
 
     def get_default_format(self):
         return 'default'
@@ -2661,11 +2658,11 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         if format is None:
             format = self.get_default_format()
-        if isinstance(format, basestring):
-            format = controldir.format_registry.make_bzrdir(format)
+        if isinstance(format, str):
+            format = controldir.format_registry.make_controldir(format)
         return format
 
-    def make_bzrdir(self, relpath, format=None):
+    def make_controldir(self, relpath, format=None):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
@@ -2687,7 +2684,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # real format, which is incorrect.  Actually we should make sure that
         # RemoteBzrDir returns a RemoteRepository.
         # maybe  mbp 20070410
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
     def make_smart_server(self, path, backing_server=None):
@@ -2710,7 +2707,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         test_home_dir = self.test_home_dir
-        if isinstance(test_home_dir, text_type):
+        if not PY3 and isinstance(test_home_dir, text_type):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BRZ_HOME', test_home_dir)
@@ -2769,11 +2766,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        f = file(filename)
-        try:
+        with open(filename) as f:
             contents = f.read()
-        finally:
-            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
@@ -2820,11 +2814,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         # put name of test inside
-        f = file(self.test_base_dir + '/name', 'w')
-        try:
+        with open(self.test_base_dir + '/name', 'w') as f:
             f.write(self.id())
-        finally:
-            f.close()
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
@@ -2954,7 +2945,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
-            return b.bzrdir.create_workingtree()
+            return b.controldir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
@@ -3902,9 +3893,9 @@ def _test_suite_testmod_names():
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
-        'breezy.tests.test_api',
         'breezy.tests.test_atomicfile',
         'breezy.tests.test_bad_files',
+        'breezy.tests.test_bisect',
         'breezy.tests.test_bisect_multi',
         'breezy.tests.test_branch',
         'breezy.tests.test_branchbuilder',
@@ -4375,9 +4366,9 @@ def _rmtree_temp_dir(dirname, test_id=None):
     # except on win32, where rmtree(str) will fail
     # since it doesn't have the property of byte-stream paths
     # (they are either ascii or mbcs)
-    if sys.platform == 'win32':
+    if sys.platform == 'win32' and isinstance(dirname, bytes):
         # make sure we are using the unicode win32 api
-        dirname = text_type(dirname)
+        dirname = dirname.decode('mbcs')
     else:
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:

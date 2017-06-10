@@ -114,6 +114,7 @@ from . import (
 from .sixish import (
     binary_type,
     BytesIO,
+    PY3,
     text_type,
     string_types,
     )
@@ -476,10 +477,10 @@ class Config(object):
         If no username can be found, errors.NoWhoami exception is raised.
         """
         v = os.environ.get('BRZ_EMAIL')
-        if v:
+        if v and not PY3:
             return v.decode(osutils.get_user_encoding())
         v = self._get_user_id()
-        if v:
+        if v and not PY3:
             return v
         return default_email()
 
@@ -1496,10 +1497,10 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
 
 def default_email():
     v = os.environ.get('BRZ_EMAIL')
-    if v:
+    if v and not PY3:
         return v.decode(osutils.get_user_encoding())
     v = os.environ.get('EMAIL')
-    if v:
+    if v and not PY3:
         return v.decode(osutils.get_user_encoding())
     name, email = _auto_user_id()
     if name and email:
@@ -3264,7 +3265,8 @@ class TransportIniFileStore(IniFileStore):
         # The following will do in the interim but maybe we don't want to
         # expose a path here but rather a config ID and its associated
         # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name.encode("ascii"))
+        return urlutils.join(
+            self.transport.external_url(), urlutils.escape(self.file_name))
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -3780,7 +3782,7 @@ class Stack(object):
             global _shared_stores_at_exit_installed
             stores = _shared_stores
             def save_config_changes():
-                for k, store in stores.iteritems():
+                for k, store in stores.items():
                     store.save_changes()
             if not _shared_stores_at_exit_installed:
                 # FIXME: Ugly hack waiting for library_state to always be
@@ -3968,7 +3970,7 @@ class RemoteControlStack(Stack):
         super(RemoteControlStack, self).__init__(
             [NameMatcher(cstore, None).get_sections],
             cstore)
-        self.bzrdir = bzrdir
+        self.controldir = bzrdir
 
 
 class BranchOnlyStack(Stack):

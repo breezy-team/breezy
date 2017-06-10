@@ -94,7 +94,7 @@ def _bisect_path_left(paths, path):
         mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if _cmp_path_by_dirblock(cur, path) < 0:
+        if _lt_path_by_dirblock(cur, path):
             lo = mid + 1
         else:
             hi = mid
@@ -125,7 +125,7 @@ def _bisect_path_right(paths, path):
         mid = (lo+hi)//2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if _cmp_path_by_dirblock(path, cur) < 0:
+        if _lt_path_by_dirblock(path, cur):
             hi = mid
         else:
             lo = mid + 1
@@ -147,7 +147,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     try:
         dirname_split = cache[dirname]
     except KeyError:
-        dirname_split = dirname.split('/')
+        dirname_split = dirname.split(b'/')
         cache[dirname] = dirname_split
     while lo < hi:
         mid = (lo + hi) // 2
@@ -156,40 +156,38 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         try:
             cur_split = cache[cur]
         except KeyError:
-            cur_split = cur.split('/')
+            cur_split = cur.split(b'/')
             cache[cur] = cur_split
         if cur_split < dirname_split: lo = mid + 1
         else: hi = mid
     return lo
 
 
-def cmp_by_dirs(path1, path2):
+def lt_by_dirs(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
 
-       cmp(path1.split('/'), path2.split('/'))
+       operator.lt(path1.split('/'), path2.split('/'))
 
     The idea is that you should compare path components separately. This
-    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
-    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
+    "a-b" comes after "a" but would come before "a/b" lexically.
 
     :param path1: first path
     :param path2: second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal,
-        and positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False
     """
-    if not isinstance(path1, str):
+    if not isinstance(path1, bytes):
         raise TypeError("'path1' must be a plain string, not %s: %r"
                         % (type(path1), path1))
-    if not isinstance(path2, str):
+    if not isinstance(path2, bytes):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return cmp(path1.split('/'), path2.split('/'))
+    return path1.split('/') < path2.split('/')
 
 
-def _cmp_path_by_dirblock(path1, path2):
+def _lt_path_by_dirblock(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
@@ -198,21 +196,19 @@ def _cmp_path_by_dirblock(path1, path2):
 
     :param path1: first path
     :param path2: the second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal
-        and a positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False
     """
-    if not isinstance(path1, str):
+    if not isinstance(path1, bytes):
         raise TypeError("'path1' must be a plain string, not %s: %r"
                         % (type(path1), path1))
-    if not isinstance(path2, str):
+    if not isinstance(path2, bytes):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
     dirname1, basename1 = os.path.split(path1)
-    key1 = (dirname1.split('/'), basename1)
+    key1 = (dirname1.split(b'/'), basename1)
     dirname2, basename2 = os.path.split(path2)
     key2 = (dirname2.split('/'), basename2)
-    return cmp(key1, key2)
+    return key1 < key2
 
 
 def _read_dirblocks(state):
@@ -229,10 +225,10 @@ def _read_dirblocks(state):
     text = state._state_file.read()
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
-    fields = text.split('\0')
+    fields = text.split(b'\0')
     # Remove the last blank entry
     trailing = fields.pop()
-    if trailing != '':
+    if trailing != b'':
         raise errors.DirstateCorrupt(state,
             'trailing garbage: %r' % (trailing,))
     # consider turning fields into a tuple.
@@ -296,14 +292,14 @@ def _read_dirblocks(state):
                          next(),                # minikind
                          next(),                # fingerprint
                          _int(next()),          # size
-                         next() == 'y',         # executable
+                         next() == b'y',        # executable
                          next(),                # packed_stat or revision_id
                      ),
                      ( # Parent 1
                          next(),                # minikind
                          next(),                # fingerprint
                          _int(next()),          # size
-                         next() == 'y',         # executable
+                         next() == b'y',        # executable
                          next(),                # packed_stat or revision_id
                      ),
                      ])

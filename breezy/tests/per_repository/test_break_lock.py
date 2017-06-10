@@ -28,7 +28,7 @@ class TestBreakLock(per_repository.TestCaseWithRepository):
     def setUp(self):
         super(TestBreakLock, self).setUp()
         self.unused_repo = self.make_repository('.')
-        self.repo = self.unused_repo.bzrdir.open_repository()
+        self.repo = self.unused_repo.controldir.open_repository()
         ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_unlocked(self):

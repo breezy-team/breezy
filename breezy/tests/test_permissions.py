@@ -100,8 +100,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0o755, b.control_files._dir_mode)
         self.assertEqualMode(0o644, b.control_files._file_mode)
-        self.assertEqualMode(0o755, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o644, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o755, b.controldir._get_dir_mode())
+        self.assertEqualMode(0o644, b.controldir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
         with open('a', 'wb') as f: f.write('foo2\n')
@@ -122,8 +122,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0o775, b.control_files._dir_mode)
         self.assertEqualMode(0o664, b.control_files._file_mode)
-        self.assertEqualMode(0o775, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o664, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o775, b.controldir._get_dir_mode())
+        self.assertEqualMode(0o664, b.controldir._get_file_mode())
 
         with open('a', 'wb') as f: f.write('foo3\n')
         t.commit('foo3')
@@ -154,8 +154,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0o2775, b.control_files._dir_mode)
         self.assertEqualMode(0o664, b.control_files._file_mode)
-        self.assertEqualMode(0o2775, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o664, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o2775, b.controldir._get_dir_mode())
+        self.assertEqualMode(0o664, b.controldir._get_file_mode())
 
         with open('a', 'wb') as f: f.write('foo4\n')
         t.commit('foo4')
@@ -194,8 +194,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_local = t.branch
         self.assertEqualMode(0o755, b_local.control_files._dir_mode)
         self.assertEqualMode(0o644, b_local.control_files._file_mode)
-        self.assertEqualMode(0o755, b_local.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o644, b_local.bzrdir._get_file_mode())
+        self.assertEqualMode(0o755, b_local.controldir._get_dir_mode())
+        self.assertEqualMode(0o644, b_local.controldir._get_file_mode())
 
         os.mkdir('sftp')
         sftp_url = self.get_url('sftp')
@@ -209,8 +209,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0o755, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0o644, b_sftp.control_files._file_mode)
-        self.assertEqualMode(0o755, b_sftp.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o644, b_sftp.bzrdir._get_file_mode())
+        self.assertEqualMode(0o755, b_sftp.controldir._get_dir_mode())
+        self.assertEqualMode(0o644, b_sftp.controldir._get_file_mode())
 
         with open('local/a', 'wb') as f: f.write('foo2\n')
         t_local.commit('foo2')
@@ -232,8 +232,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0o775, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0o664, b_sftp.control_files._file_mode)
-        self.assertEqualMode(0o775, b_sftp.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o664, b_sftp.bzrdir._get_file_mode())
+        self.assertEqualMode(0o775, b_sftp.controldir._get_dir_mode())
+        self.assertEqualMode(0o664, b_sftp.controldir._get_file_mode())
 
         with open('local/a', 'wb') as f: f.write('foo3\n')
         t_local.commit('foo3')

@@ -727,7 +727,7 @@ class Packer(object):
         """Open a pack for the pack we are creating."""
         new_pack = self._pack_collection.pack_factory(self._pack_collection,
                 upload_suffix=self.suffix,
-                file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
+                file_mode=self._pack_collection.repo.controldir._get_file_mode())
         # We know that we will process all nodes in order, and don't need to
         # query, so don't combine any indices spilled to disk until we are done
         new_pack.revision_index.set_optimize(combine_backing_indices=False)
@@ -1433,7 +1433,7 @@ class RepositoryPackCollection(object):
             for key, value in disk_nodes:
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.bzrdir._get_file_mode())
+                mode=self.repo.controldir._get_file_mode())
             self._packs_at_load = disk_nodes
             if clear_obsolete_packs:
                 to_preserve = None
@@ -1533,7 +1533,7 @@ class RepositoryPackCollection(object):
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = self.pack_factory(self, upload_suffix='.pack',
-            file_mode=self.repo.bzrdir._get_file_mode())
+            file_mode=self.repo.controldir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1690,9 +1690,9 @@ class PackRepository(MetaDirVersionedFileRepository):
     _commit_builder_class = None
     _serializer = None
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
-        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files)
+        MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
@@ -1900,26 +1900,27 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     supports_funky_characters = True
     revision_graph_can_have_wrong_parents = True
 
-    def initialize(self, a_bzrdir, shared=False):
+    def initialize(self, a_controldir, shared=False):
         """Create a pack based repository.
 
-        :param a_bzrdir: bzrdir to contain the new repository; must already
+        :param a_controldir: bzrdir to contain the new repository; must already
             be initialized.
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        mutter('creating repository in %s.', a_controldir.transport.base)
         dirs = ['indices', 'obsolete_packs', 'packs', 'upload']
         builder = self.index_builder_class()
         files = [('pack-names', builder.finish())]
-        utf8_files = [('format', self.get_format_string())]
+        # GZ 2017-06-09: Where should format strings get decoded...
+        utf8_files = [('format', self.get_format_string().encode('ascii'))]
 
-        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        repository = self.open(a_bzrdir=a_bzrdir, _found=True)
-        self._run_post_repo_init_hooks(repository, a_bzrdir, shared)
+        self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
+        repository = self.open(a_controldir=a_controldir, _found=True)
+        self._run_post_repo_init_hooks(repository, a_controldir, shared)
         return repository
 
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
+    def open(self, a_controldir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
 
         :param _override_transport: INTERNAL USE ONLY. Allows opening the
@@ -1927,15 +1928,15 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
+            repo_transport = a_controldir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
                                 'lock', lockdir.LockDir)
         return self.repository_class(_format=self,
-                              a_bzrdir=a_bzrdir,
+                              a_controldir=a_controldir,
                               control_files=control_files,
                               _commit_builder_class=self._commit_builder_class,
                               _serializer=self._serializer)

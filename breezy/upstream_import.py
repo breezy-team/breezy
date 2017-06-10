@@ -311,7 +311,7 @@ def do_import(source, tree_directory=None):
             if not os.path.exists(tree_directory):
                 os.mkdir(tree_directory)
             branch = ControlDir.create_branch_convenience(tree_directory)
-            tree = branch.bzrdir.open_workingtree()
+            tree = branch.controldir.open_workingtree()
     else:
         tree = WorkingTree.open_containing('.')[0]
     tree.lock_write()

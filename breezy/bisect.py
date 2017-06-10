@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """bisect command implementations."""
 
@@ -20,12 +20,12 @@ from __future__ import absolute_import
 
 import sys
 import os
-from ...controldir import ControlDir
-from ... import revision as _mod_revision
-from ...commands import Command
-from ...errors import BzrCommandError
-from ...option import Option
-from ...trace import note
+from .controldir import ControlDir
+from . import revision as _mod_revision
+from .commands import Command
+from .errors import BzrCommandError
+from .option import Option
+from .trace import note
 
 bisect_info_path = ".bzr/bisect"
 bisect_rev_path = ".bzr/bisect_revid"
@@ -34,7 +34,7 @@ bisect_rev_path = ".bzr/bisect_revid"
 class BisectCurrent(object):
     """Bisect class for managing the current revision."""
 
-    def __init__(self, filename = bisect_rev_path):
+    def __init__(self, filename=bisect_rev_path):
         self._filename = filename
         self._bzrdir = ControlDir.open_containing(".")[0]
         self._bzrbranch = self._bzrdir.open_branch()
@@ -288,34 +288,34 @@ class cmd_bisect(Command):
     of which changes the state of the bisection.  The
     subcommands are:
 
-    bzr bisect start
+    brz bisect start
         Start a bisect, possibly clearing out a previous bisect.
 
-    bzr bisect yes [-r rev]
+    brz bisect yes [-r rev]
         The specified revision (or the current revision, if not given)
         has the characteristic we're looking for,
 
-    bzr bisect no [-r rev]
+    brz bisect no [-r rev]
         The specified revision (or the current revision, if not given)
         does not have the characteristic we're looking for,
 
-    bzr bisect move -r rev
+    brz bisect move -r rev
         Switch to a different revision manually.  Use if the bisect
         algorithm chooses a revision that is not suitable.  Try to
         move as little as possible.
 
-    bzr bisect reset
+    brz bisect reset
         Clear out a bisection in progress.
 
-    bzr bisect log [-o file]
+    brz bisect log [-o file]
         Output a log of the current bisection to standard output, or
         to the specified file.
 
-    bzr bisect replay <logfile>
+    brz bisect replay <logfile>
         Replay a previously-saved bisect log, forgetting any bisection
         that might be in progress.
 
-    bzr bisect run <script>
+    brz bisect run <script>
         Bisect automatically using <script> to determine 'yes' or 'no'.
         <script> should exit with:
            0 for yes

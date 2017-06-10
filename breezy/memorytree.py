@@ -47,7 +47,7 @@ class MemoryTree(MutableInventoryTree):
     def __init__(self, branch, revision_id):
         """Construct a MemoryTree for branch using revision_id."""
         self.branch = branch
-        self.bzrdir = branch.bzrdir
+        self.controldir = branch.controldir
         self._branch_revision_id = revision_id
         self._locks = 0
         self._lock_mode = None

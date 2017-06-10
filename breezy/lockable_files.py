@@ -102,11 +102,9 @@ class LockableFiles(object):
 
     def _escape(self, file_or_path):
         """DEPRECATED: Do not use outside this class"""
-        if not isinstance(file_or_path, basestring):
-            file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return urlutils.escape(osutils.safe_unicode(file_or_path))
+        return urlutils.escape(file_or_path)
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories.
@@ -203,7 +201,8 @@ class LockableFiles(object):
             try:
                 self._lock.unlock()
             finally:
-                self._lock_mode = self._lock_count = None
+                self._lock_count = 0
+                self._lock_mode = None
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""

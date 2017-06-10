@@ -36,11 +36,16 @@ FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
 
 class InventoryDeltaError(errors.BzrError):
     """An error when serializing or deserializing an inventory delta."""
-    
+
     # Most errors when serializing and deserializing are due to bugs, although
     # damaged input (i.e. a bug in a different process) could cause
     # deserialization errors too.
     internal_error = True
+
+    def __init__(self, format_string, **kwargs):
+        # Let each error supply a custom format string and arguments.
+        self._fmt = format_string
+        super(InventoryDeltaError, self).__init__(**kwargs)
 
 
 class IncompatibleInventoryDelta(errors.BzrError):
@@ -70,7 +75,8 @@ def _file_content(entry):
         exec_bytes = ''
     size_exec_sha = (entry.text_size, exec_bytes, entry.text_sha1)
     if None in size_exec_sha:
-        raise InventoryDeltaError('Missing size or sha for %s' % entry.file_id)
+        raise InventoryDeltaError(
+            'Missing size or sha for %(fileid)r', fileid=entry.file_id)
     return "file\x00%d\x00%s\x00%s" % size_exec_sha
 
 
@@ -81,7 +87,8 @@ def _link_content(entry):
     """
     target = entry.symlink_target
     if target is None:
-        raise InventoryDeltaError('Missing target for %s' % entry.file_id)
+        raise InventoryDeltaError(
+            'Missing target for %(fileid)r', fileid=entry.file_id)
     return "link\x00%s" % target.encode('utf8')
 
 
@@ -93,7 +100,7 @@ def _reference_content(entry):
     tree_revision = entry.reference_revision
     if tree_revision is None:
         raise InventoryDeltaError(
-            'Missing reference revision for %s' % entry.file_id)
+            'Missing reference revision for %(fileid)r', fileid=entry.file_id)
     return "tree\x00%s" % tree_revision
 
 
@@ -180,9 +187,10 @@ class InventoryDeltaSerializer(object):
         to_line = self._delta_item_to_line
         for delta_item in delta_to_new:
             line = to_line(delta_item, new_name)
-            if line.__class__ != str:
+            # GZ 2017-06-09: Not really worth asserting this here
+            if line.__class__ != bytes:
                 raise InventoryDeltaError(
-                    'to_line generated non-str output %r' % lines[-1])
+                    'to_line gave non-bytes output %(line)r', line=lines[-1])
             lines.append(line)
         lines.sort()
         lines[0] = "format: %s\n" % FORMAT_1
@@ -236,10 +244,12 @@ class InventoryDeltaSerializer(object):
                 # xml5 serializer.
                 if last_modified != new_version:
                     raise InventoryDeltaError(
-                        'Version present for / in %s (%s != %s)'
-                        % (file_id, last_modified, new_version))
+                        'Version present for / in %(fileid)r'
+                        ' (%(last)r != %(new)r)',
+                        fileid=file_id, last=last_modified, new=new_version)
             if last_modified is None:
-                raise InventoryDeltaError("no version for fileid %s" % file_id)
+                raise InventoryDeltaError(
+                    "no version for fileid %(fileid)r", fileid=file_id)
             content = self._entry_to_content[entry.kind](entry)
         return ("%s\x00%s\x00%s\x00%s\x00%s\x00%s\n" %
             (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
@@ -265,7 +275,7 @@ class InventoryDeltaDeserializer(object):
         elif value == "false":
             return False
         else:
-            raise InventoryDeltaError("value %r is not a bool" % (value,))
+            raise InventoryDeltaError("value %(val)r is not a bool", val=value)
 
     def parse_text_bytes(self, bytes):
         """Parse the text bytes of a serialized inventory delta.
@@ -281,10 +291,12 @@ class InventoryDeltaDeserializer(object):
         """
         if bytes[-1:] != '\n':
             last_line = bytes.rsplit('\n', 1)[-1]
-            raise InventoryDeltaError('last line not empty: %r' % (last_line,))
+            raise InventoryDeltaError(
+                'last line not empty: %(line)r', line=last_line)
         lines = bytes.split('\n')[:-1] # discard the last empty line
         if not lines or lines[0] != 'format: %s' % FORMAT_1:
-            raise InventoryDeltaError('unknown format %r' % lines[0:1])
+            raise InventoryDeltaError(
+                'unknown format %(line)r', line=lines[0:1])
         if len(lines) < 2 or not lines[1].startswith('parent: '):
             raise InventoryDeltaError('missing parent: marker')
         delta_parent_id = lines[1][8:]
@@ -310,22 +322,24 @@ class InventoryDeltaDeserializer(object):
             parent_id = parent_id or None
             if file_id in seen_ids:
                 raise InventoryDeltaError(
-                    "duplicate file id in inventory delta %r" % lines)
+                    "duplicate file id %(fileid)r", fileid=file_id)
             seen_ids.add(file_id)
             if (newpath_utf8 == '/' and not delta_versioned_root and
                 last_modified != delta_version_id):
                     # Delta claims to be not have a versioned root, yet here's
                     # a root entry with a non-default version.
-                    raise InventoryDeltaError("Versioned root found: %r" % line)
+                    raise InventoryDeltaError(
+                        "Versioned root found: %(line)r", line=line)
             elif newpath_utf8 != 'None' and last_modified[-1] == ':':
                 # Deletes have a last_modified of null:, but otherwise special
                 # revision ids should not occur.
-                raise InventoryDeltaError('special revisionid found: %r' % line)
+                raise InventoryDeltaError(
+                    'special revisionid found: %(line)r', line=line)
             if content.startswith('tree\x00'):
                 if delta_tree_references is False:
                     raise InventoryDeltaError(
                             "Tree reference found (but header said "
-                            "tree_references: false): %r" % line)
+                            "tree_references: false): %(line)r", line=line)
                 elif not self._allow_tree_references:
                     raise IncompatibleInventoryDelta(
                         "Tree reference not allowed")
@@ -333,8 +347,8 @@ class InventoryDeltaDeserializer(object):
                 oldpath = None
             elif oldpath_utf8[:1] != '/':
                 raise InventoryDeltaError(
-                    "oldpath invalid (does not start with /): %r"
-                    % (oldpath_utf8,))
+                    "oldpath invalid (does not start with /): %(path)r",
+                    path=oldpath_utf8)
             else:
                 oldpath_utf8 = oldpath_utf8[1:]
                 oldpath = oldpath_utf8.decode('utf8')
@@ -342,8 +356,8 @@ class InventoryDeltaDeserializer(object):
                 newpath = None
             elif newpath_utf8[:1] != '/':
                 raise InventoryDeltaError(
-                    "newpath invalid (does not start with /): %r"
-                    % (newpath_utf8,))
+                    "newpath invalid (does not start with /): %(path)r",
+                    path=newpath_utf8)
             else:
                 # Trim leading slash
                 newpath_utf8 = newpath_utf8[1:]

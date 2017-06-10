@@ -295,7 +295,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.build_tree_contents([('empty', '')])
         tree.add('empty')
         tree.commit('add empty file')
-        bzrdir = tree.branch.bzrdir
+        bzrdir = tree.branch.controldir
         bzrdir.destroy_workingtree()
         self.assertFalse(bzrdir.has_workingtree())
         out, err = self.run_bzr(['annotate', 'empty'])

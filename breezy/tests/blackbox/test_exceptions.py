@@ -121,7 +121,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def make_obsolete_repo(self, path):
         # We don't want the deprecation raising during the repo creation
-        format = controldir.format_registry.make_bzrdir("testobsolete")
+        format = controldir.format_registry.make_controldir("testobsolete")
         tree = self.make_branch_and_tree(path, format=format)
         return tree
 

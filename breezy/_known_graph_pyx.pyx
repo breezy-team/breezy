@@ -17,6 +17,8 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
+from __future__ import absolute_import
+
 cdef extern from "python-compat.h":
     pass
 
@@ -54,7 +56,7 @@ cdef extern from "Python.h":
 from collections import deque
 import gc
 
-from breezy import errors, revision
+from . import errors, revision
 
 cdef object NULL_REVISION
 NULL_REVISION = revision.NULL_REVISION

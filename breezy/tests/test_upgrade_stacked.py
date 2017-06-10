@@ -66,12 +66,12 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
         self.build_tree(['base/foo'])
         base.commit('base commit')
         # make another one stacked
-        stacked = base.bzrdir.sprout('stacked', stacked=True)
+        stacked = base.controldir.sprout('stacked', stacked=True)
         # this must really be stacked (or get_stacked_on_url raises an error)
         self.assertTrue(stacked.open_branch().get_stacked_on_url())
         # now we'll upgrade the underlying branch, then upgrade the stacked
         # branch, and this should still work.
-        new_format = controldir.format_registry.make_bzrdir(
+        new_format = controldir.format_registry.make_controldir(
             self.scenario_new_format)
         upgrade('base', new_format)
         # in some cases you'll get an error if the underlying model has

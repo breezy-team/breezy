@@ -456,7 +456,7 @@ class BzrDir(controldir.ControlDir):
             for path, file_id in subtrees:
                 target = urlutils.join(url, urlutils.escape(path))
                 sublocation = source_branch.reference_parent(file_id, path)
-                sublocation.bzrdir.sprout(target,
+                sublocation.controldir.sprout(target,
                     basis.get_reference_revision(file_id, path),
                     force_new_repo=force_new_repo, recurse=recurse,
                     stacked=stacked)
@@ -882,7 +882,7 @@ class BzrDirMeta1(BzrDir):
             self.transport.delete_tree(path)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=urlutils.join(self.transport.base,
-                path), bzrdir=self)
+                path), controldir=self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1180,7 +1180,8 @@ class BzrFormat(object):
         lines = [self.get_format_string()]
         lines.extend([("%s %s\n" % (item[1], item[0])) for item in
             self.features.items()])
-        return "".join(lines)
+        # GZ 2016-07-09: Should push byte-ness up a level perhaps?
+        return "".join(lines).encode('ascii')
 
     @classmethod
     def _find_format(klass, registry, kind, format_string):
@@ -1231,17 +1232,19 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
+            # GZ 2017-06-09: Where should format strings get decoded...
+            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            first_line = format_string[:format_string.index("\n")+1]
+            first_line = format_text[:format_text.index("\n")+1]
         except ValueError:
-            first_line = format_string
+            first_line = format_text
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
             raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
-        return cls.from_string(format_string)
+        return cls.from_string(format_text)
 
     @classmethod
     def known_formats(cls):
@@ -1447,9 +1450,9 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         del temp_control
         bzrdir_transport = transport.clone('.bzr')
         utf8_files = [('README',
-                       "This is a Bazaar control directory.\n"
-                       "Do not change any files in this directory.\n"
-                       "See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
+                       b"This is a Bazaar control directory.\n"
+                       b"Do not change any files in this directory.\n"
+                       b"See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
                       ('branch-format', self.as_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
@@ -1786,13 +1789,13 @@ class ConvertMetaToMeta(controldir.Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        self.bzrdir = to_convert
+        self.controldir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 1
         self.step('checking repository format')
         try:
-            repo = self.bzrdir.open_repository()
+            repo = self.controldir.open_repository()
         except errors.NoRepositoryPresent:
             pass
         else:
@@ -1801,7 +1804,7 @@ class ConvertMetaToMeta(controldir.Converter):
                 ui.ui_factory.note(gettext('starting repository conversion'))
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
-        for branch in self.bzrdir.list_branches():
+        for branch in self.controldir.list_branches():
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
@@ -1824,10 +1827,10 @@ class ConvertMetaToMeta(controldir.Converter):
                     raise errors.BadConversionTarget("No converter", new,
                         branch._format)
                 branch_converter.convert(branch)
-                branch = self.bzrdir.open_branch()
+                branch = self.controldir.open_branch()
                 old = branch._format.__class__
         try:
-            tree = self.bzrdir.open_workingtree(recommend_upgrade=False)
+            tree = self.controldir.open_workingtree(recommend_upgrade=False)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         else:
@@ -2055,7 +2058,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
             possible_transports = []
         else:
             possible_transports = list(possible_transports)
-        possible_transports.append(self._repository.bzrdir.transport)
+        possible_transports.append(self._repository.controldir.transport)
         self._add_fallback(self._repository,
                        possible_transports=possible_transports)
         return self._repository, False

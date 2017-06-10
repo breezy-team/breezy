@@ -805,10 +805,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 class CHKInventoryRepository(PackRepository):
     """subclass of PackRepository that uses CHK based inventories."""
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir,
+        super(CHKInventoryRepository, self).__init__(_format, a_controldir,
             control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
@@ -1389,7 +1389,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     pack_compresses = True
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('2a')
+        return controldir.format_registry.make_controldir('2a')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1412,7 +1412,7 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     """
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('development-subtree')
+        return controldir.format_registry.make_controldir('development-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass

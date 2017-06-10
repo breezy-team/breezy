@@ -23,7 +23,7 @@ class IterableFileBase(object):
     def __init__(self, iterable):
         object.__init__(self)
         self._iter = iterable.__iter__()
-        self._buffer = ""
+        self._buffer = b""
         self.done = False
 
     def read_n(self, length):
@@ -70,7 +70,7 @@ class IterableFileBase(object):
                 result += next(self._iter)
             except StopIteration:
                 self.done = True
-                self._buffer = ""
+                self._buffer = b""
                 return result
         output_length = result_length(result)
         self._buffer = result[output_length:]
@@ -110,8 +110,8 @@ class IterableFile(object):
     def _make_iterator(self):
         while not self._file_base.done:
             self._check_closed()
-            result = self._file_base.read_to('\n')
-            if result != '':
+            result = self._file_base.read_to(b'\n')
+            if result != b'':
                 yield result
 
     def _check_closed(self):
@@ -227,7 +227,7 @@ class IterableFile(object):
         Traceback (most recent call last):
         ValueError: File is closed.
         """
-        return self.read_to('\n', size)
+        return self.read_to(b'\n', size)
 
     def readlines(self, sizehint=None):
         """
@@ -243,7 +243,7 @@ class IterableFile(object):
         lines = []
         while True:
             line = self.readline()
-            if line == "":
+            if line == b"":
                 return lines
             if sizehint is None:
                 lines.append(line)

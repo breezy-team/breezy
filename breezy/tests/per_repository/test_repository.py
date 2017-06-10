@@ -127,7 +127,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        bzrdirb = self.make_bzrdir('b')
+        bzrdirb = self.make_controldir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
         tree_b.lock_read()
@@ -162,13 +162,13 @@ class TestRepository(per_repository.TestCaseWithRepository):
         readonly_t = self.get_readonly_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = self.repository_format.initialize(made_control)
-        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertEqual(made_control, made_repo.controldir)
 
         # find it via controldir opening:
         opened_control = controldir.ControlDir.open(readonly_t.base)
         direct_opened_repo = opened_control.open_repository()
         self.assertEqual(direct_opened_repo.__class__, made_repo.__class__)
-        self.assertEqual(opened_control, direct_opened_repo.bzrdir)
+        self.assertEqual(opened_control, direct_opened_repo.controldir)
 
         self.assertIsInstance(direct_opened_repo._format,
                               self.repository_format.__class__)
@@ -223,7 +223,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
         made_repo.has_revision('foo')
-        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertEqual(made_control, made_repo.controldir)
 
     def test_create_repository_shared(self):
         # bzrdir can construct a shared repository.
@@ -242,7 +242,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         # Check that we have a repository object.
         made_repo.has_revision('foo')
-        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(made_repo.is_shared())
 
     def test_revision_tree(self):
@@ -297,7 +297,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_clone_shared_no_tree(self):
         # cloning a shared repository keeps it shared
         # and preserves the make_working_tree setting.
-        made_control = self.make_bzrdir('source')
+        made_control = self.make_controldir('source')
         try:
             made_repo = made_control.create_repository(shared=True)
         except errors.IncompatibleFormat:
@@ -314,7 +314,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # Check that we have a repository object.
         made_repo.has_revision('foo')
 
-        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
 
@@ -339,9 +339,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
             old_format = controldir.ControlDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
-            format = controldir.format_registry.make_bzrdir(
+            format = controldir.format_registry.make_controldir(
                 'development-subtree')
-            upgrade.upgrade(repo.bzrdir.root_transport.base, format=format)
+            upgrade.upgrade(repo.controldir.root_transport.base, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
@@ -501,7 +501,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # |/
         # C
         tree.commit('initial commit', rev_id='A')
-        tree_other = tree.bzrdir.sprout('there').open_workingtree()
+        tree_other = tree.controldir.sprout('there').open_workingtree()
         tree_other.commit('another', rev_id='B')
         tree.merge_from_branch(tree_other.branch)
         tree.commit('another', rev_id='C')
@@ -571,7 +571,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.start_server(smart_server, self.get_server())
         remote_transport = transport.get_transport_from_url(
             smart_server.get_url()).clone(path)
-        if not repo.bzrdir._format.supports_transport(remote_transport):
+        if not repo.controldir._format.supports_transport(remote_transport):
             raise tests.TestNotApplicable(
                 "format does not support transport")
         remote_bzrdir = controldir.ControlDir.open_from_transport(
@@ -582,7 +582,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
         remote_repo = self.make_remote_repository('remote')
-        local_bzrdir = self.make_bzrdir('local')
+        local_bzrdir = self.make_controldir('local')
         try:
             local_repo = remote_repo.sprout(local_bzrdir)
         except errors.TransportNotPossible:
@@ -601,9 +601,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "Format can not be used over HPSS")
         remote_repo = self.make_remote_repository('remote')
-        remote_branch = remote_repo.bzrdir.create_branch()
+        remote_branch = remote_repo.controldir.create_branch()
         try:
-            local_bzrdir = remote_branch.bzrdir.sprout('local')
+            local_bzrdir = remote_branch.controldir.sprout('local')
         except errors.TransportNotPossible:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS.")
@@ -626,15 +626,15 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # Make a branch in that repo in an old format that isn't the default
         # branch format for the repo.
         from breezy.branchfmt.fullhistory import BzrBranchFormat5
-        format = remote_backing_repo.bzrdir.cloning_metadir()
+        format = remote_backing_repo.controldir.cloning_metadir()
         format._branch_format = BzrBranchFormat5()
-        remote_transport = remote_repo.bzrdir.root_transport.clone('branch')
+        remote_transport = remote_repo.controldir.root_transport.clone('branch')
         controldir.ControlDir.create_branch_convenience(
             remote_transport.base, force_new_repo=False, format=format)
         remote_branch = controldir.ControlDir.open_from_transport(
             remote_transport).open_branch()
         try:
-            local_bzrdir = remote_branch.bzrdir.sprout('local')
+            local_bzrdir = remote_branch.controldir.sprout('local')
         except errors.TransportNotPossible:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS.")
@@ -661,7 +661,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
-        if repo.bzrdir._format.fixed_components:
+        if repo.controldir._format.fixed_components:
             self.knownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
@@ -681,7 +681,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             info_repo = repo._real_repository
         else:
             info_repo = repo
-        format_description = info.describe_format(info_repo.bzrdir,
+        format_description = info.describe_format(info_repo.controldir,
             info_repo, None, None)
         formats = format_description.split(' or ')
         stack_on_format = formats[0]
@@ -693,8 +693,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # formats not tested for above are already stackable, so we can use the
         # format as-is.
         stack_on = self.make_branch('stack-on-me', format=stack_on_format)
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
-        target = branch.bzrdir.clone(self.get_url('target'))
+        self.make_controldir('.').get_config().set_default_stack_on('stack-on-me')
+        target = branch.controldir.clone(self.get_url('target'))
         # The target branch supports stacking.
         self.assertTrue(target.open_branch()._format.supports_stacking())
         if isinstance(repo, remote.RemoteRepository):
@@ -719,7 +719,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo._make_parents_provider().get_parent_map
 
     def make_repository_and_foo_bar(self, shared=None):
-        made_control = self.make_bzrdir('repository')
+        made_control = self.make_controldir('repository')
         repo = made_control.create_repository(shared=shared)
         if not repo._format.supports_nesting_repositories:
             raise tests.TestNotApplicable("repository does not support "
@@ -728,7 +728,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.get_url('repository/foo'), force_new_repo=False)
         controldir.ControlDir.create_branch_convenience(
             self.get_url('repository/bar'), force_new_repo=True)
-        baz = self.make_bzrdir('repository/baz')
+        baz = self.make_controldir('repository/baz')
         qux = self.make_branch('repository/baz/qux')
         quxx = self.make_branch('repository/baz/qux/quxx')
         return repo
@@ -780,11 +780,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable("format does not support standalone "
                 "repositories")
         try:
-            repo.bzrdir.open_branch()
+            repo.controldir.open_branch()
         except errors.NotBranchError:
             self.assertEqual([], repo.find_branches(using=True))
         else:
-            self.assertEqual([repo.bzrdir.root_transport.base],
+            self.assertEqual([repo.controldir.root_transport.base],
                              [b.base for b in repo.find_branches(using=True)])
 
     def test_set_get_make_working_trees_true(self):
@@ -847,7 +847,7 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
             repo.unlock()
         # Reacquire the lock (with a different repository object) by using the
         # token.
-        new_repo = repo.bzrdir.open_repository()
+        new_repo = repo.controldir.open_repository()
         new_repo.lock_write(token=token)
         # Call dont_leave_lock_in_place, so that the lock will be released by
         # this instance, even though the lock wasn't originally acquired by it.

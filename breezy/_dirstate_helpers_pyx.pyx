@@ -19,6 +19,8 @@
 This is the python implementation for DirState functions.
 """
 
+from __future__ import absolute_import
+
 import binascii
 import bisect
 import errno
@@ -26,9 +28,9 @@ import os
 import stat
 import sys
 
-from breezy import cache_utf8, errors, osutils
-from breezy.dirstate import DirState
-from breezy.osutils import parent_directories, pathjoin, splitpath
+from . import cache_utf8, errors, osutils
+from .dirstate import DirState
+from .osutils import parent_directories, pathjoin, splitpath
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -40,7 +42,6 @@ ERROR_PATH_NOT_FOUND = 3
 cdef int ERROR_DIRECTORY
 ERROR_DIRECTORY = 267
 
-#python2.4 support, and other platform-dependent includes
 cdef extern from "python-compat.h":
     unsigned long htonl(unsigned long)
 
@@ -120,7 +121,7 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t len)
 
 # cimport all of the definitions we will need to access
-from _static_tuple_c cimport import_static_tuple_c, StaticTuple, \
+from ._static_tuple_c cimport import_static_tuple_c, StaticTuple, \
     StaticTuple_New, StaticTuple_SET_ITEM
 
 import_static_tuple_c()
@@ -243,22 +244,20 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_
     return 0
 
 
-def cmp_by_dirs(path1, path2):
+def lt_by_dirs(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
 
-       cmp(path1.split('/'), path2.split('/'))
+       operator.lt(path1.split('/'), path2.split('/'))
 
     The idea is that you should compare path components separately. This
-    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
-    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
+    "a-b" comes after "a" but would come before "a/b" lexically.
 
     :param path1: first path
     :param path2: second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal,
-        and positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False
     """
     if not PyString_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -266,13 +265,13 @@ def cmp_by_dirs(path1, path2):
     if not PyString_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return _cmp_by_dirs(PyString_AsString(path1),
-                        PyString_Size(path1),
-                        PyString_AsString(path2),
-                        PyString_Size(path2))
+    return -1 == _cmp_by_dirs(PyString_AsString(path1),
+                              PyString_Size(path1),
+                              PyString_AsString(path2),
+                              PyString_Size(path2))
 
 
-def _cmp_path_by_dirblock(path1, path2):
+def _lt_path_by_dirblock(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
@@ -284,9 +283,7 @@ def _cmp_path_by_dirblock(path1, path2):
 
     :param path1: first path
     :param path2: the second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal
-        and a positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False.
     """
     if not PyString_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -294,10 +291,11 @@ def _cmp_path_by_dirblock(path1, path2):
     if not PyString_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return _cmp_path_by_dirblock_intern(PyString_AsString(path1),
-                                        PyString_Size(path1),
-                                        PyString_AsString(path2),
-                                        PyString_Size(path2))
+    # GZ 2017-06-09: This internal function really only needs lt as well.
+    return (_cmp_path_by_dirblock_intern(PyString_AsString(path1),
+                                         PyString_Size(path1),
+                                         PyString_AsString(path2),
+                                         PyString_Size(path2)) < 0)
 
 
 cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,

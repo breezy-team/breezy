@@ -34,6 +34,9 @@ External Compatibility Breaks
    (https://help.launchpad.net/VcsImports).
    (Colin Watson, #254567, #483689)
 
+ * brz no longer supports building the C extensions using Pyrex.
+   Only Cython is supported. (Jelmer Vernooĳ)
+
  * Support for HTTP support using "pycurl" and the associated
    URL schemes "http+pycurl://" and "https+pycurl://" has been dropped.
    (Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)
@@ -95,6 +98,11 @@ API Changes
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
 
+ * ``Branch.bzrdir``, ``Repository.bzrdir`` and ``WorkingTree.bzrdir``
+   have been renamed to ``Branch.controldir``, ``Repository.controldir``
+   and ``WorkingTree.controldir``, respectively.
+   (Jelmer Vernooĳ, #1695774)
+
  * ``BzrBranch`` and the various bzr branch format implementations
    have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
 
@@ -104,7 +112,9 @@ API Changes
 
  * ``breezy.bzrdir.format_registry`` has been removed; use
    ``breezy.controldir.format_registry`` instead.
-   (Jelmer Vernooij)
+   (Jelmer Vernooĳ)
+
+ * ``breezy.api`` has been removed.  (Jelmer Vernooĳ, #742192)
 
 Internals
 *********

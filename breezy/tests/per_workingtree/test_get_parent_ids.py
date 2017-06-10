@@ -27,7 +27,7 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         self.assertEqual([], t.get_parent_ids())
         rev1_id = t.commit('foo', allow_pointless=True)
         self.assertEqual([rev1_id], t.get_parent_ids())
-        t2 = t.bzrdir.sprout('t2').open_workingtree()
+        t2 = t.controldir.sprout('t2').open_workingtree()
         rev2_id = t2.commit('foo', allow_pointless=True)
         self.assertEqual([rev2_id], t2.get_parent_ids())
         t.merge_from_branch(t2.branch)

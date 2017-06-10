@@ -278,7 +278,7 @@ class cmd_fast_import(Command):
                             help='Specify a format for the created repository. See'
                                  ' "bzr help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
-                            converter=lambda name: controldir.format_registry.make_bzrdir(name),
+                            converter=lambda name: controldir.format_registry.make_controldir(name),
                             value_switches=False, title='Repository format'),
                      ]
     def run(self, source, destination='.', verbose=False, info=None,

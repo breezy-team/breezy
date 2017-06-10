@@ -37,7 +37,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         # become the revision-history.
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
-        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine = parent.controldir.sprout('mine').open_workingtree()
         mine.commit('my change', rev_id='M1', allow_pointless=True)
         parent.merge_from_branch(mine.branch)
         parent.commit('merge my change', rev_id='P2')
@@ -51,9 +51,9 @@ class TestPull(per_branch.TestCaseWithBranch):
         # directly accessible.
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
-        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine = parent.controldir.sprout('mine').open_workingtree()
         mine.commit('my change', rev_id='M1', allow_pointless=True)
-        other = parent.bzrdir.sprout('other').open_workingtree()
+        other = parent.controldir.sprout('other').open_workingtree()
         other.merge_from_branch(mine.branch)
         other.commit('merge my change', rev_id='O2')
         parent.merge_from_branch(other.branch)
@@ -67,7 +67,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev1 = master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
 
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout('other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
@@ -81,7 +81,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev1 = master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
 
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout('other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull local, which should update checkout but not master.
         checkout.branch.pull(other.branch, local = True)
@@ -93,7 +93,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         master_tree = self.make_branch_and_tree('branch')
         rev1 = master_tree.commit('master')
 
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout('other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull --local, which should raise LocalRequiresBoundBranch error.
         self.assertRaises(errors.LocalRequiresBoundBranch,
@@ -103,7 +103,7 @@ class TestPull(per_branch.TestCaseWithBranch):
     def test_pull_returns_result(self):
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1')
-        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine = parent.controldir.sprout('mine').open_workingtree()
         mine.commit('my change', rev_id='M1')
         result = parent.branch.pull(mine.branch)
         self.assertIsNot(None, result)
@@ -120,7 +120,7 @@ class TestPull(per_branch.TestCaseWithBranch):
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         tree_a.commit('message 2', rev_id='rev2a')
         tree_b.commit('message 2', rev_id='rev2b')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
@@ -148,7 +148,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        target = source.bzrdir.sprout('target').open_branch()
+        target = source.controldir.sprout('target').open_branch()
         # Add a tag to the source, then pull from source
         try:
             source.tags.set_tag('tag-a', 'rev-2')
@@ -169,7 +169,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        target = source.bzrdir.sprout('target').open_branch()
+        target = source.controldir.sprout('target').open_branch()
         # Add a new commit to the ancestry
         builder.build_commit(message="Rev 2 again", rev_id='rev-2-again')
         # Add a tag to the source, then pull rev-2-again from source
@@ -259,7 +259,7 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.controldir.clone(self.get_url('source'))
         source = memorytree.MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(

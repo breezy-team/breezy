@@ -77,7 +77,7 @@ class Branch(controldir.ControlComponent):
 
     @property
     def user_transport(self):
-        return self.bzrdir.user_transport
+        return self.controldir.user_transport
 
     def __init__(self, possible_transports=None):
         self.tags = self._format.make_tags(self)
@@ -828,7 +828,7 @@ class Branch(controldir.ControlComponent):
             self._unstack()
         else:
             self._activate_fallback_location(url,
-                possible_transports=[self.bzrdir.root_transport])
+                possible_transports=[self.controldir.root_transport])
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -861,7 +861,7 @@ class Branch(controldir.ControlComponent):
             # separate SSH connection setup, but unstacking is not a
             # common operation so it's tolerable.
             new_bzrdir = controldir.ControlDir.open(
-                self.bzrdir.root_transport.base)
+                self.controldir.root_transport.base)
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
                 raise AssertionError("didn't expect %r to have "
@@ -1227,8 +1227,8 @@ class Branch(controldir.ControlComponent):
             raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None, repository_policy=None):
-        """Clone this branch into to_bzrdir preserving all semantic values.
+    def clone(self, to_controldir, revision_id=None, repository_policy=None):
+        """Clone this branch into to_controldir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
         new bzrdir and branch on the fly.
@@ -1236,7 +1236,7 @@ class Branch(controldir.ControlComponent):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = to_bzrdir.create_branch()
+        result = to_controldir.create_branch()
         result.lock_write()
         try:
             if repository_policy is not None:
@@ -1247,19 +1247,19 @@ class Branch(controldir.ControlComponent):
         return result
 
     @needs_read_lock
-    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None,
+    def sprout(self, to_controldir, revision_id=None, repository_policy=None,
             repository=None):
-        """Create a new line of development from the branch, into to_bzrdir.
+        """Create a new line of development from the branch, into to_controldir.
 
-        to_bzrdir controls the branch format.
+        to_controldir controls the branch format.
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
         if (repository_policy is not None and
             repository_policy.requires_stacking()):
-            to_bzrdir._format.require_stacking(_skip_repo=True)
-        result = to_bzrdir.create_branch(repository=repository)
+            to_controldir._format.require_stacking(_skip_repo=True)
+        result = to_controldir.create_branch(repository=repository)
         result.lock_write()
         try:
             if repository_policy is not None:
@@ -1267,7 +1267,7 @@ class Branch(controldir.ControlComponent):
             self.copy_content_into(result, revision_id=revision_id)
             master_url = self.get_bound_location()
             if master_url is None:
-                result.set_parent(self.bzrdir.root_transport.base)
+                result.set_parent(self.controldir.root_transport.base)
             else:
                 result.set_parent(master_url)
         finally:
@@ -1356,7 +1356,7 @@ class Branch(controldir.ControlComponent):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        format = self.repository.bzrdir.checkout_metadir()
+        format = self.repository.controldir.checkout_metadir()
         format.set_branch_format(self._format)
         return format
 
@@ -1379,7 +1379,7 @@ class Branch(controldir.ControlComponent):
         # rather than just the default branch? 20100319 JRV
         if revision_id is None:
             revision_id = self.last_revision()
-        dir_to = self.bzrdir.clone_on_transport(to_transport,
+        dir_to = self.controldir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on,
             create_prefix=create_prefix, use_existing_dir=use_existing_dir,
             no_tree=no_tree)
@@ -1417,7 +1417,7 @@ class Branch(controldir.ControlComponent):
                 pass
             else:
                 raise errors.AlreadyControlDirError(t.base)
-            if checkout.control_transport.base == self.bzrdir.control_transport.base:
+            if checkout.control_transport.base == self.controldir.control_transport.base:
                 # When checking out to the same control directory,
                 # always create a lightweight checkout
                 lightweight = True
@@ -1465,7 +1465,7 @@ class Branch(controldir.ControlComponent):
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return Branch.open(self.bzrdir.root_transport.clone(path).base,
+        return Branch.open(self.controldir.root_transport.clone(path).base,
                            possible_transports=possible_transports)
 
     def supports_tags(self):
@@ -1844,7 +1844,7 @@ class BranchInitHookParams(object):
         in branch, which refer to the original branch.
         """
         self.format = format
-        self.bzrdir = controldir
+        self.controldir = controldir
         self.name = name
         self.branch = branch
 

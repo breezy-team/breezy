@@ -55,7 +55,7 @@ class TestUncommit(tests.TestCaseWithTransport):
 
     def test_uncommit_bound(self):
         tree, history = self.make_linear_tree()
-        child = tree.bzrdir.sprout('child').open_workingtree()
+        child = tree.controldir.sprout('child').open_workingtree()
         child.branch.bind(tree.branch)
 
         self.assertEqual(history[1], tree.last_revision())
@@ -74,7 +74,7 @@ class TestUncommit(tests.TestCaseWithTransport):
 
     def test_uncommit_bound_local(self):
         tree, history = self.make_linear_tree()
-        child = tree.bzrdir.sprout('child').open_workingtree()
+        child = tree.controldir.sprout('child').open_workingtree()
         child.branch.bind(tree.branch)
 
         self.assertEqual(history[1], tree.last_revision())
@@ -112,7 +112,7 @@ class TestUncommit(tests.TestCaseWithTransport):
 
     def test_uncommit_remove_tags_keeps_pending_merges(self):
         tree, history = self.make_linear_tree()
-        copy = tree.bzrdir.sprout('copyoftree').open_workingtree()
+        copy = tree.controldir.sprout('copyoftree').open_workingtree()
         copy.commit(message='merged', rev_id='merged')
         tree.merge_from_branch(copy.branch)
         tree.branch.tags.set_tag('pointsatmerged', 'merged')

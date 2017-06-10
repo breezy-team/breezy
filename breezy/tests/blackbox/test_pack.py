@@ -71,7 +71,7 @@ class TestPack(tests.TestCaseWithTransport):
         """Ensure --clean-obsolete-packs removes obsolete pack files
         """
         wt = self.make_branch_and_tree('.')
-        t = wt.branch.repository.bzrdir.transport
+        t = wt.branch.repository.controldir.transport
 
         # do multiple commits to ensure that obsolete packs are created
         # by 'brz pack'
