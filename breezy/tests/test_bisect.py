@@ -22,7 +22,7 @@ from cStringIO import StringIO
 import os
 import shutil
 
-from ..bzrdir import BzrDir
+from .controldir import ControlDir
 from .. import bisect
 from . import (
     TestCaseWithTransport,
@@ -40,10 +40,10 @@ class BisectTestCase(TestCaseWithTransport):
                         1.3: "one dot three", 2: "two", 3: "three",
                         4: "four", 5: "five"}
 
-        test_file = open("test_file")
-        content = test_file.read().strip()
+        with open("test_file") as f:
+            content = f.read().strip()
         if content != rev_contents[rev]:
-            rev_ids = dict((rev_contents[k], k) for k in rev_contents.keys())
+            rev_ids = dict((rev_contents[k], k) for k in rev_contents)
             found_rev = rev_ids[content]
             raise AssertionError("expected rev %0.1f, found rev %0.1f"
                                  % (rev, found_rev))
@@ -71,8 +71,8 @@ class BisectTestCase(TestCaseWithTransport):
                                                      'test_file_append')))
         self.tree.commit(message = "add test files")
 
-        BzrDir.open(".").sprout("../temp-clone")
-        clone_bzrdir = BzrDir.open("../temp-clone")
+        ControlDir.open(".").sprout("../temp-clone")
+        clone_bzrdir = ControlDir.open("../temp-clone")
         clone_tree = clone_bzrdir.open_workingtree()
         for content in ["one dot one", "one dot two", "one dot three"]:
             test_file = open("../temp-clone/test_file", "w")

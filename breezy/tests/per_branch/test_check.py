@@ -96,7 +96,7 @@ class TestBranchCheck(TestCaseWithBranch):
                     'unknown ref kind for ref %s' % ref)
         node_distances = branch.repository.get_graph().find_lefthand_distances(
             distances)
-        for key, distance in node_distances.iteritems():
+        for key, distance in node_distances.items():
             refs[('lefthand-distance', key)] = distance
             if key in existences and distance > 0:
                 refs[('revision-existence', key)] = True

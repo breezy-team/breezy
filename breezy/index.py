@@ -45,6 +45,7 @@ from . import (
 from .sixish import (
     BytesIO,
     viewvalues,
+    viewitems,
     )
 from .static_tuple import StaticTuple
 
@@ -144,7 +145,7 @@ class GraphIndexBuilder(object):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (absent, references, value) in self._nodes.iteritems():
+                for key, (absent, references, value) in viewitems(self._nodes):
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -152,7 +153,7 @@ class GraphIndexBuilder(object):
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (absent, references, value) in self._nodes.iteritems():
+                for key, (absent, references, value) in viewitems(self._nodes):
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -276,7 +277,7 @@ class GraphIndexBuilder(object):
         # forward sorted by key. In future we may consider topological sorting,
         # at the cost of table scans for direct lookup, or a second index for
         # direct lookup
-        nodes = sorted(self._nodes.items())
+        nodes = sorted(viewitems(self._nodes))
         # if we do not prepass, we don't know how long it will be up front.
         expected_bytes = None
         # we only need to pre-pass if we have reference lists at all.
@@ -479,7 +480,7 @@ class GraphIndex(object):
         stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
-        for key, absent, references, value in self._keys_by_offset.itervalues():
+        for key, absent, references, value in viewvalues(self._keys_by_offset):
             if absent:
                 continue
             # resolve references:
@@ -510,7 +511,7 @@ class GraphIndex(object):
                 % (ref_list_num, self.node_ref_lists))
         refs = set()
         nodes = self._nodes
-        for key, (value, ref_lists) in nodes.iteritems():
+        for key, (value, ref_lists) in viewitems(nodes):
             ref_list = ref_lists[ref_list_num]
             refs.update([ref for ref in ref_list if ref not in nodes])
         return refs
@@ -519,13 +520,13 @@ class GraphIndex(object):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.node_ref_lists:
-                for key, (value, references) in self._nodes.iteritems():
+                for key, (value, references) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, value in self._nodes.iteritems():
+                for key, value in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -548,10 +549,10 @@ class GraphIndex(object):
         if self._nodes is None:
             self._buffer_all()
         if self.node_ref_lists:
-            for key, (value, node_ref_lists) in self._nodes.iteritems():
+            for key, (value, node_ref_lists) in viewitems(self._nodes):
                 yield self, key, value, node_ref_lists
         else:
-            for key, value in self._nodes.iteritems():
+            for key, value in viewitems(self._nodes):
                 yield self, key, value
 
     def _read_prefix(self, stream):
@@ -1599,11 +1600,11 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             trace.mutter_callsite(3,
                 "iter_all_entries scales with size of history.")
         if self.reference_lists:
-            for key, (absent, references, value) in self._nodes.iteritems():
+            for key, (absent, references, value) in viewitems(self._nodes):
                 if not absent:
                     yield self, key, value, references
         else:
-            for key, (absent, references, value) in self._nodes.iteritems():
+            for key, (absent, references, value) in viewitems(self._nodes):
                 if not absent:
                     yield self, key, value
 

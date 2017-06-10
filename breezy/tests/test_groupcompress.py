@@ -304,7 +304,7 @@ class TestGroupCompressBlock(tests.TestCase):
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
         locs = dict((key, (start, end)) for key, (start, _, end, _)
-                    in compressor.labels_deltas.iteritems())
+                    in compressor.labels_deltas.items())
         block = compressor.flush()
         raw_bytes = block.to_bytes()
         # Go through from_bytes(to_bytes()) so that we start with a compressed
@@ -961,7 +961,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
         locs = dict((key, (start, end)) for key, (start, _, end, _)
-                    in compressor.labels_deltas.iteritems())
+                    in compressor.labels_deltas.items())
         block = compressor.flush()
         raw_bytes = block.to_bytes()
         return locs, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)

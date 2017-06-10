@@ -34,6 +34,10 @@ External Compatibility Breaks
    (https://help.launchpad.net/VcsImports).
    (Colin Watson, #254567, #483689)
 
+ * Support for HTTP support using "pycurl" and the associated
+   URL schemes "http+pycurl://" and "https+pycurl://" has been dropped.
+   (Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)
+
 New Features
 ************
 
@@ -46,6 +50,9 @@ New Features
    (Jelmer Vernooĳ)
 
  * The 'upload' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'email' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
  * The 'import' command is now bundled with brz.
@@ -88,6 +95,17 @@ API Changes
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
 
+ * ``BzrBranch`` and the various bzr branch format implementations
+   have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
+
+ * ``MetaDirBranchFormatFactory`` has been removed.
+   Use lazy registration on ``breezy.branch.format_registry``
+   instead. (Jelmer Vernooĳ)
+
+ * ``breezy.bzrdir.format_registry`` has been removed; use
+   ``breezy.controldir.format_registry`` instead.
+   (Jelmer Vernooij)
+
 Internals
 *********
 
@@ -97,10 +115,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to brz's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+ * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
+   which caused ``output_encoding = iso-8859-1`` to be added to the
+   users' bazaar.conf. (Jelmer Vernooĳ)
 
 ..
    vim: tw=74 ft=rst ff=unix

@@ -194,7 +194,7 @@ def get_most_recent_tag(tag_dict, the_branch):
     # Note: this assumes that a given rev won't get tagged multiple times. But
     #       it should be valid for the package importer branches that we care
     #       about
-    reverse_dict = dict((rev, tag) for tag, rev in tag_dict.iteritems())
+    reverse_dict = dict((rev, tag) for tag, rev in tag_dict.items())
     the_branch.lock_read()
     try:
         last_rev = the_branch.last_revision()

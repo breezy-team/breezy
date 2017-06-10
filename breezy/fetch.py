@@ -40,6 +40,9 @@ from . import (
     )
 from .i18n import gettext
 from .revision import NULL_REVISION
+from .sixish import (
+    viewvalues,
+    )
 from .trace import mutter
 
 
@@ -215,12 +218,11 @@ class Inter1and2Helper(object):
             revision_id = tree.get_file_revision(root_id, u"")
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
-        parents = set()
-        for revision_parents in parent_map.itervalues():
-            parents.update(revision_parents)
-        parents.difference_update(revision_root.keys() + [NULL_REVISION])
+        parents = set(viewvalues(parent_map))
+        parents.difference_update(revision_root)
+        parents.discard(NULL_REVISION)
         # Limit to revisions present in the versionedfile
-        parents = graph.get_parent_map(parents).keys()
+        parents = graph.get_parent_map(parents)
         for tree in self.iter_rev_trees(parents):
             root_id = tree.get_root_id()
             revision_root[tree.get_revision_id()] = root_id

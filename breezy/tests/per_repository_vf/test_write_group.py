@@ -20,6 +20,7 @@ import sys
 
 from breezy import (
     branch,
+    bzrbranch,
     controldir,
     errors,
     memorytree,
@@ -93,7 +94,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             repo = self.make_repository(relpath)
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format not stackable')
-        repo.bzrdir._format.set_branch_format(branch.BzrBranchFormat7())
+        repo.bzrdir._format.set_branch_format(bzrbranch.BzrBranchFormat7())
         return repo
 
     def reopen_repo_and_resume_write_group(self, repo):

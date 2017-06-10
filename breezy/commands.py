@@ -169,18 +169,16 @@ def _register_builtin_commands():
         # only load once
         return
     import breezy.builtins
-    for cmd_class in _scan_module_for_commands(breezy.builtins).values():
+    for cmd_class in _scan_module_for_commands(breezy.builtins):
         builtin_command_registry.register(cmd_class)
     breezy.builtins._register_lazy_builtins()
 
 
 def _scan_module_for_commands(module):
-    r = {}
-    for name, obj in module.__dict__.items():
+    module_dict = module.__dict__
+    for name in module_dict:
         if name.startswith("cmd_"):
-            real_name = _unsquish_command_name(name)
-            r[real_name] = obj
-    return r
+            yield module_dict[name]
 
 
 def _list_bzr_commands(names):
@@ -628,7 +626,7 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = Option.STD_OPTIONS.copy()
-        std_names = r.keys()
+        std_names = set(r)
         for o in self.takes_options:
             if isinstance(o, string_types):
                 o = option.Option.OPTIONS[o]
@@ -824,8 +822,8 @@ def parse_args(command, argv, alias_argv=None):
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
-    opts = dict([(k, v) for k, v in options.__dict__.items() if
-                 v is not option.OptionParser.DEFAULT_VALUE])
+    opts = dict((k, v) for k, v in options.__dict__.items() if
+                v is not option.OptionParser.DEFAULT_VALUE)
     return args, opts
 
 

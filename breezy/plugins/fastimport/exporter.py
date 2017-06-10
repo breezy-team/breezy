@@ -292,7 +292,7 @@ class BzrFastExporter(object):
         if self.export_marks_file:
             revision_ids = dict((m, r) for r, m in self.revid_to_mark.items())
             marks_file.export_marks(self.export_marks_file, revision_ids)
- 
+
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
         if path_id is None:

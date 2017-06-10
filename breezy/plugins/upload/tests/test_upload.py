@@ -21,6 +21,7 @@ import sys
 from .... import (
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     revisionspec,
@@ -118,9 +119,9 @@ class UploadUtilsMixin(object):
     def make_branch_and_working_tree(self):
         t = transport.get_transport(self.branch_dir)
         t.ensure_base()
-        branch = bzrdir.BzrDir.create_branch_convenience(
+        branch = controldir.ControlDir.create_branch_convenience(
             t.base,
-            format=bzrdir.format_registry.make_bzrdir('default'),
+            format=controldir.format_registry.make_bzrdir('default'),
             force_new_tree=False)
         self.tree = branch.bzrdir.create_workingtree()
         self.tree.commit('initial empty tree')
@@ -452,7 +453,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def get_upload_auto(self):
         # We need a fresh branch to check what has been saved on disk
-        b = bzrdir.BzrDir.open(self.tree.basedir).open_branch()
+        b = controldir.ControlDir.open(self.tree.basedir).open_branch()
         return b.get_config_stack().get('upload_auto')
 
     def test_upload_auto(self):

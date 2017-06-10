@@ -77,7 +77,7 @@ class BranchUpdater(object):
         """
         branch_tips = []
         lost_heads = []
-        ref_names = self.heads_by_ref.keys()
+        ref_names = list(self.heads_by_ref)
         if self.branch is not None:
             trunk = self.select_trunk(ref_names)
             default_tip = self.heads_by_ref[trunk][0]
@@ -141,9 +141,10 @@ class BranchUpdater(object):
         to_transport = transport.get_transport(location)
         to_transport.create_prefix()
         try:
-            return bzrdir.BzrDir.open(location).open_branch()
+            return controldir.ControlDir.open(location).open_branch()
         except errors.NotBranchError, ex:
-            return bzrdir.BzrDir.create_branch_convenience(location,
+            return controldir.ControlDir.create_branch_convenience(
+                location,
                 format=self._branch_format,
                 possible_transports=[to_transport])
 

@@ -41,7 +41,7 @@ from .sixish import (
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
     # Cast the utf8 properties into Unicode 'in place'
-    for key, value in props.iteritems():
+    for key, value in props.items():
         props[key] = _decode(value)[0]
     return props
 
@@ -90,7 +90,7 @@ class BEncodeRevisionSerializer1(object):
         # For bzr revisions, the most common property is just 'branch-nick'
         # which changes infrequently.
         revprops = {}
-        for key, value in rev.properties.iteritems():
+        for key, value in rev.properties.items():
             revprops[key] = encode_utf8(value)[0]
         ret.append(('properties', revprops))
         ret.extend([
@@ -131,7 +131,7 @@ class BEncodeRevisionSerializer1(object):
                 value = validator(value)
             bits[var_name] = value
         if len(bits) != len(schema):
-            missing = [key for key, (var_name, _, _) in schema.iteritems()
+            missing = [key for key, (var_name, _, _) in schema.items()
                        if var_name not in bits]
             raise ValueError('Revision text was missing expected keys %s.'
                              ' text %r' % (missing, text))

@@ -51,6 +51,8 @@ from ... import (
 from ...decorators import needs_read_lock, needs_write_lock
 from ...repository import (
     InterRepository,
+    )
+from ...bzrrepository import (
     RepositoryFormatMetaDir,
     )
 from ...sixish import (

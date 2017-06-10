@@ -20,6 +20,7 @@
 
 from .. import (
     branch,
+    bzrbranch,
     bzrdir,
     controldir,
     errors,
@@ -88,7 +89,7 @@ class DummyForeignVcs(foreign.ForeignVcs):
         return "%s|%s|%s" % foreign_revid
 
 
-class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
+class DummyForeignVcsBranch(bzrbranch.BzrBranch6,foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
     @property
@@ -102,7 +103,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         self.bzrdir = a_bzrdir
         foreign.ForeignBranch.__init__(self,
             DummyForeignVcsMapping(DummyForeignVcs()))
-        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
+        bzrbranch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
             *args, **kwargs)
 
     def _get_checkout_format(self, lightweight=False):
@@ -230,7 +231,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
         return result
 
 
-class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
+class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
 
     @classmethod
     def get_format_string(cls):
