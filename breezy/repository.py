@@ -1386,25 +1386,25 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're
-# all in breezy.repofmt.knitreponow.  When an instance of one of these is
+# all in breezy.bzr.knitreponow.  When an instance of one of these is
 # needed, it's constructed directly by the ControlDir.  Non-native formats where
 # the repository is not separately opened are similar.
 
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
-    'breezy.repofmt.knitrepo',
+    'breezy.bzr.knitrepo',
     'RepositoryFormatKnit1',
     )
 
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
-    'breezy.repofmt.knitrepo',
+    'breezy.bzr.knitrepo',
     'RepositoryFormatKnit3',
     )
 
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
-    'breezy.repofmt.knitrepo',
+    'breezy.bzr.knitrepo',
     'RepositoryFormatKnit4',
     )
 
@@ -1413,47 +1413,47 @@ format_registry.register_lazy(
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
     'Bazaar pack repository format 1 (needs bzr 0.92)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
     'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
-    'breezy.repofmt.groupcompress_repo',
+    'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2a',
     )
 
@@ -1462,12 +1462,12 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     ("Bazaar development format 2 with subtree support "
         "(needs bzr.dev from before 1.8)\n"),
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(
     'Bazaar development format 8\n',
-    'breezy.repofmt.groupcompress_repo',
+    'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2aSubtree',
     )
 

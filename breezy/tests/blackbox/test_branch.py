@@ -29,7 +29,7 @@ from breezy import (
 from breezy.bzr import (
     bzrdir,
     )
-from breezy.repofmt.knitrepo import RepositoryFormatKnit1
+from breezy.bzr.knitrepo import RepositoryFormatKnit1
 from breezy.tests import (
     fixtures,
     test_server,

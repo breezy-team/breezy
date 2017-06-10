@@ -76,7 +76,7 @@ from breezy.bzr import (
     pack,
     )
 
-from breezy.repofmt import pack_repo
+from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
 from .. import (
@@ -875,7 +875,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             stored during insertion.
         :param reload_func: An function that can be called if we think we need
             to reload the pack listing and try again. See
-            'breezy.repofmt.pack_repo.AggregateIndex' for the signature.
+            'breezy.bzr.pack_repo.AggregateIndex' for the signature.
         """
         self._index = index
         self._access = data_access

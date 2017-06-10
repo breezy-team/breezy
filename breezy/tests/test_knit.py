@@ -47,7 +47,7 @@ from ..bzr.knit import (
     make_file_factory,
     )
 from ..patiencediff import PatienceSequenceMatcher
-from ..repofmt import (
+from ..bzr import (
     knitpack_repo,
     pack_repo,
     )

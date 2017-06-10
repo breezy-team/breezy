@@ -38,7 +38,7 @@ from breezy.bzr import (
     pack,
     )
 
-from breezy.repofmt import pack_repo
+from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
 

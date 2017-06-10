@@ -27,10 +27,10 @@ from breezy import (
     repository,
     remote,
     )
-from breezy.repofmt.knitpack_repo import (
+from breezy.bzr.knitpack_repo import (
     RepositoryFormatKnitPack5,
     )
-from breezy.repofmt.groupcompress_repo import (
+from breezy.bzr.groupcompress_repo import (
     RepositoryFormat2a,
     )
 from breezy.tests import (

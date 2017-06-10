@@ -23,7 +23,7 @@ from ... import (
 from ...bzr import (
     inventory,
     )
-from ...repofmt.knitrepo import RepositoryFormatKnit
+from ...bzr.knitrepo import RepositoryFormatKnit
 from ..per_repository import TestCaseWithRepository
 from .. import TestNotApplicable
 

@@ -36,7 +36,7 @@ from ..bzr import (
     vf_repository,
     )
 
-from ..repofmt import groupcompress_repo
+from ..bzr import groupcompress_repo
 
 # This is the dummy foreign revision control system, used 
 # mainly here in the testsuite to test the foreign VCS infrastructure.

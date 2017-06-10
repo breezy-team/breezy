@@ -42,7 +42,7 @@ from ..bundle.serializer import write_bundle, read_bundle, v09, v4
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
 from ..bundle.serializer.v4 import BundleSerializerV4
-from ..repofmt import knitrepo
+from ..bzr import knitrepo
 from ..sixish import (
     BytesIO,
     )

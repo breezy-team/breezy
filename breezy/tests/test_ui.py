@@ -247,8 +247,8 @@ class TestTextUIFactory(tests.TestCase):
             _mod_ui_text.NullProgressView)
 
     def test_text_ui_show_user_warning(self):
-        from ..repofmt.groupcompress_repo import RepositoryFormat2a
-        from ..repofmt.knitpack_repo import RepositoryFormatKnitPack5
+        from ..bzr.groupcompress_repo import RepositoryFormat2a
+        from ..bzr.knitpack_repo import RepositoryFormatKnitPack5
         ui = ui_testing.TextUIFactory()
         remote_fmt = remote.RemoteRepositoryFormat()
         remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()

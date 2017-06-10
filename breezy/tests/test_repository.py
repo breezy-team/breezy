@@ -58,7 +58,7 @@ from breezy import (
     upgrade,
     workingtree,
     )
-from breezy.repofmt import (
+from breezy.bzr import (
     groupcompress_repo,
     knitrepo,
     knitpack_repo,

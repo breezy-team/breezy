@@ -33,7 +33,7 @@ from breezy import (
 from breezy.bzr import (
     bzrdir,
     )
-from breezy.repofmt import knitrepo
+from breezy.bzr import knitrepo
 from breezy.tests import (
     http_server,
     scenarios,

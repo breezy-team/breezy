@@ -36,7 +36,7 @@ from .. import (
 from ..bzr import (
     inventory,
     )
-from ..repofmt.groupcompress_repo import RepositoryFormat2a
+from ..bzr.groupcompress_repo import RepositoryFormat2a
 from ..smart import (
     client,
     )

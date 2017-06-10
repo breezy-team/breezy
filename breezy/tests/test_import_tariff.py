@@ -34,8 +34,8 @@ from . import (
     )
 
 old_format_modules = [
-    'breezy.repofmt.knitrepo',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitrepo',
+    'breezy.bzr.knitpack_repo',
     'breezy.plugins.weave_fmt.branch',
     'breezy.plugins.weave_fmt.bzrdir',
     'breezy.plugins.weave_fmt.repository',

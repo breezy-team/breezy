@@ -873,6 +873,6 @@ InterRepository.register_optimiser(InterWeaveRepo)
 
 
 def get_extra_interrepo_test_combinations():
-    from ...repofmt import knitrepo
+    from ...bzr import knitrepo
     return [(InterRepository, RepositoryFormat5(),
         knitrepo.RepositoryFormatKnit3())]

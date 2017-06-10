@@ -16,8 +16,8 @@
 
 
 from breezy import tests, workingtree
-from breezy.repofmt.knitrepo import RepositoryFormatKnit4
-from breezy.repofmt.knitpack_repo import RepositoryFormatKnitPack4
+from breezy.bzr.knitrepo import RepositoryFormatKnit4
+from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack4
 
 
 

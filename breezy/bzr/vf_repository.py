@@ -3084,7 +3084,7 @@ class InterSameDataRepository(InterVersionedFileRepository):
         InterSameData can pull from subtree to subtree and from non-subtree to
         non-subtree, so we test this with the richest repository format.
         """
-        from breezy.repofmt import knitrepo
+        from breezy.bzr import knitrepo
         return knitrepo.RepositoryFormatKnit3()
 
     @staticmethod

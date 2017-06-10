@@ -38,7 +38,7 @@ from ...bzr import (
     inventory,
     repository as bzrrepository,
     )
-from ...repofmt import (
+from ...bzr import (
     knitpack_repo,
     )
 from ...sixish import (

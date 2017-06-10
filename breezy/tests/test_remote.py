@@ -60,7 +60,7 @@ from ..remote import (
     RemoteRepository,
     RemoteRepositoryFormat,
     )
-from ..repofmt import groupcompress_repo, knitpack_repo
+from ..bzr import groupcompress_repo, knitpack_repo
 from ..revision import (
     NULL_REVISION,
     Revision,

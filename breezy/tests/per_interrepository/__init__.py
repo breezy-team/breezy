@@ -73,7 +73,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from breezy.repofmt import (
+    from breezy.bzr import (
         groupcompress_repo,
         knitrepo,
         knitpack_repo,

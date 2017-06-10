@@ -255,7 +255,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
         # is a format 5/6/7 branch
-        from ...repofmt import knitrepo
+        from ...bzr import knitrepo
         formats = [RepositoryFormat5(),
                    RepositoryFormat6(),
                    RepositoryFormat7()]

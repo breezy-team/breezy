@@ -70,7 +70,7 @@ from ..transport import (
 from ..transport.http._urllib import HttpTransport_urllib
 from ..transport.nosmart import NoSmartTransportDecorator
 from ..transport.readonly import ReadonlyTransportDecorator
-from ..repofmt import knitrepo, knitpack_repo
+from ..bzr import knitrepo, knitpack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -104,19 +104,19 @@ class TestFormatRegistry(TestCase):
             'DeprecatedBzrDirFormat', 'Format registered lazily',
             deprecated=True)
         bzrdir.register_metadir(my_format_registry, 'knit',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit1',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
         bzrdir.register_metadir(my_format_registry,
             'branch6',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit3',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='breezy.bzr.branch.BzrBranchFormat6',
             experimental=True)
         bzrdir.register_metadir(my_format_registry,
             'hidden format',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit3',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='breezy.bzr.branch.BzrBranchFormat6', hidden=True)
         my_format_registry.register('hiddendeprecated', DeprecatedBzrDirFormat,

@@ -30,7 +30,7 @@ from breezy import (
 from breezy.bzr import (
     bzrdir,
     )
-from breezy.repofmt.groupcompress_repo import RepositoryFormat2a
+from breezy.bzr.groupcompress_repo import RepositoryFormat2a
 
 
 class TestExceptionReporting(tests.TestCaseInTempDir):

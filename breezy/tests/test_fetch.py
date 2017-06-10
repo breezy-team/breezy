@@ -24,7 +24,7 @@ from ..bzr import (
     versionedfile,
     )
 from ..branch import Branch
-from ..repofmt import knitrepo
+from ..bzr import knitrepo
 from . import TestCaseWithTransport
 from .test_revision import make_branches
 from ..upgrade import Convert

@@ -59,7 +59,7 @@ from ..bzr import (
     workingtree_3,
     workingtree_4,
     )
-from ..repofmt import (
+from ..bzr import (
     groupcompress_repo,
     )
 from ..sixish import (

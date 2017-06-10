@@ -32,7 +32,7 @@ from breezy.tests import (
     TestCaseWithTransport,
     )
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.repofmt.knitpack_repo import RepositoryFormatKnitPack1
+from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack1
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):
