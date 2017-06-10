@@ -224,7 +224,7 @@ class TestPush(TestCaseWithInterBranch):
         trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
-        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)

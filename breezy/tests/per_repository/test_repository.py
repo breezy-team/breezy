@@ -127,7 +127,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        bzrdirb = self.make_bzrdir('b')
+        bzrdirb = self.make_controldir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
         tree_b.lock_read()
@@ -297,7 +297,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_clone_shared_no_tree(self):
         # cloning a shared repository keeps it shared
         # and preserves the make_working_tree setting.
-        made_control = self.make_bzrdir('source')
+        made_control = self.make_controldir('source')
         try:
             made_repo = made_control.create_repository(shared=True)
         except errors.IncompatibleFormat:
@@ -339,7 +339,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             old_format = controldir.ControlDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
-            format = controldir.format_registry.make_bzrdir(
+            format = controldir.format_registry.make_controldir(
                 'development-subtree')
             upgrade.upgrade(repo.controldir.root_transport.base, format=format)
         except errors.UpToDateFormat:
@@ -582,7 +582,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
         remote_repo = self.make_remote_repository('remote')
-        local_bzrdir = self.make_bzrdir('local')
+        local_bzrdir = self.make_controldir('local')
         try:
             local_repo = remote_repo.sprout(local_bzrdir)
         except errors.TransportNotPossible:
@@ -693,7 +693,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # formats not tested for above are already stackable, so we can use the
         # format as-is.
         stack_on = self.make_branch('stack-on-me', format=stack_on_format)
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
+        self.make_controldir('.').get_config().set_default_stack_on('stack-on-me')
         target = branch.controldir.clone(self.get_url('target'))
         # The target branch supports stacking.
         self.assertTrue(target.open_branch()._format.supports_stacking())
@@ -719,7 +719,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo._make_parents_provider().get_parent_map
 
     def make_repository_and_foo_bar(self, shared=None):
-        made_control = self.make_bzrdir('repository')
+        made_control = self.make_controldir('repository')
         repo = made_control.create_repository(shared=shared)
         if not repo._format.supports_nesting_repositories:
             raise tests.TestNotApplicable("repository does not support "
@@ -728,7 +728,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.get_url('repository/foo'), force_new_repo=False)
         controldir.ControlDir.create_branch_convenience(
             self.get_url('repository/bar'), force_new_repo=True)
-        baz = self.make_bzrdir('repository/baz')
+        baz = self.make_controldir('repository/baz')
         qux = self.make_branch('repository/baz/qux')
         quxx = self.make_branch('repository/baz/qux/quxx')
         return repo

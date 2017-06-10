@@ -126,17 +126,17 @@ class TestFormatRegistry(TestCase):
 
     def test_format_registry(self):
         my_format_registry = self.make_format_registry()
-        my_bzrdir = my_format_registry.make_bzrdir('lazy')
+        my_bzrdir = my_format_registry.make_controldir('lazy')
         self.assertIsInstance(my_bzrdir, DeprecatedBzrDirFormat)
-        my_bzrdir = my_format_registry.make_bzrdir('deprecated')
+        my_bzrdir = my_format_registry.make_controldir('deprecated')
         self.assertIsInstance(my_bzrdir, DeprecatedBzrDirFormat)
-        my_bzrdir = my_format_registry.make_bzrdir('default')
+        my_bzrdir = my_format_registry.make_controldir('default')
         self.assertIsInstance(my_bzrdir.repository_format,
             knitrepo.RepositoryFormatKnit1)
-        my_bzrdir = my_format_registry.make_bzrdir('knit')
+        my_bzrdir = my_format_registry.make_controldir('knit')
         self.assertIsInstance(my_bzrdir.repository_format,
             knitrepo.RepositoryFormatKnit1)
-        my_bzrdir = my_format_registry.make_bzrdir('branch6')
+        my_bzrdir = my_format_registry.make_controldir('branch6')
         self.assertIsInstance(my_bzrdir.get_branch_format(),
                               breezy.bzrbranch.BzrBranchFormat6)
 
@@ -338,7 +338,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_and_repo_under_shared(self):
         # creating a branch and repo in a shared repo uses the
         # shared repository
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_and_repo(
             self.get_url('child'), format=format)
@@ -348,7 +348,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_and_repo_under_shared_force_new(self):
         # creating a branch and repo in a shared repo can be forced to
         # make a new repo
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url('child'),
                                                       force_new_repo=True,
@@ -368,7 +368,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_standalone_working_tree_under_shared_repo(self):
         # create standalone working tree always makes a repo.
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.make_repository('.', shared=True, format=format)
         # note this is deliberately readonly, as this failure should
         # occur before any writes.
@@ -381,14 +381,14 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('.', format=format)
         branch.controldir.open_workingtree()
         branch.controldir.open_repository()
 
     def test_create_branch_convenience_possible_transports(self):
         """Check that the optional 'possible_transports' is recognized"""
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         t = self.get_transport()
         branch = bzrdir.BzrDir.create_branch_convenience(
             '.', format=format, possible_transports=[t])
@@ -399,7 +399,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         """Creating a branch at the root of a fs should work."""
         self.vfs_transport_factory = memory.MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(self.get_url(),
                                                          format=format)
         self.assertRaises(errors.NoWorkingTree,
@@ -409,7 +409,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
             format=format)
@@ -420,7 +420,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_force_no_tree(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy but we can override that
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
             force_new_tree=False, format=format)
@@ -432,7 +432,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_no_tree_policy(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
@@ -445,7 +445,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_no_tree_policy_force_tree(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy but we can override that
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
@@ -457,7 +457,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_force_new_repo(self):
         # inside a repo the default convenience output is overridable to give
         # repo+branch+tree
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
             force_new_repo=True, format=format)
@@ -469,7 +469,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
 
     def test_acquire_repository_standalone(self):
         """The default acquisition policy should create a standalone branch."""
-        my_bzrdir = self.make_bzrdir('.')
+        my_bzrdir = self.make_controldir('.')
         repo_policy = my_bzrdir.determine_repository_policy()
         repo, is_new = repo_policy.acquire_repository()
         self.assertEqual(repo.controldir.root_transport.base,
@@ -477,15 +477,15 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertFalse(repo.is_shared())
 
     def test_determine_stacking_policy(self):
-        parent_bzrdir = self.make_bzrdir('.')
-        child_bzrdir = self.make_bzrdir('child')
+        parent_bzrdir = self.make_controldir('.')
+        child_bzrdir = self.make_controldir('child')
         parent_bzrdir.get_config().set_default_stack_on('http://example.org')
         repo_policy = child_bzrdir.determine_repository_policy()
         self.assertEqual('http://example.org', repo_policy._stack_on)
 
     def test_determine_stacking_policy_relative(self):
-        parent_bzrdir = self.make_bzrdir('.')
-        child_bzrdir = self.make_bzrdir('child')
+        parent_bzrdir = self.make_controldir('.')
+        child_bzrdir = self.make_controldir('child')
         parent_bzrdir.get_config().set_default_stack_on('child2')
         repo_policy = child_bzrdir.determine_repository_policy()
         self.assertEqual('child2', repo_policy._stack_on)
@@ -493,7 +493,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
                          repo_policy._stack_on_pwd)
 
     def prepare_default_stacking(self, child_format='1.6'):
-        parent_bzrdir = self.make_bzrdir('.')
+        parent_bzrdir = self.make_controldir('.')
         child_branch = self.make_branch('child', format=child_format)
         parent_bzrdir.get_config().set_default_stack_on(child_branch.base)
         new_child_transport = parent_bzrdir.transport.clone('child2')
@@ -507,12 +507,12 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
 
     def test_default_stacking_with_stackable_branch_unstackable_repo(self):
         # Make stackable source branch with an unstackable repo format.
-        source_bzrdir = self.make_bzrdir('source')
+        source_bzrdir = self.make_controldir('source')
         knitpack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
         source_branch = breezy.bzrbranch.BzrBranchFormat7().initialize(
             source_bzrdir)
         # Make a directory with a default stacking policy
-        parent_bzrdir = self.make_bzrdir('parent')
+        parent_bzrdir = self.make_controldir('parent')
         stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')
         parent_bzrdir.get_config().set_default_stack_on(stacked_on.base)
         # Clone source into directory
@@ -524,7 +524,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # general case.
         trunk = self.make_branch('trunk', format='1.9')
         t = self.get_transport('stacked')
-        old_fmt = controldir.format_registry.make_bzrdir('pack-0.92')
+        old_fmt = controldir.format_registry.make_controldir('pack-0.92')
         repo_name = old_fmt.repository_format.network_name()
         # Should end up with a 1.9 format (stackable)
         repo, control, require_stacking, repo_policy = \
@@ -841,7 +841,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
-        bzrdir = self.make_bzrdir('bzrdir')
+        bzrdir = self.make_controldir('bzrdir')
         bzrdir.cloning_metadir()
         branch = self.make_branch('branch', format='knit')
         format = branch.controldir.cloning_metadir()
@@ -956,7 +956,7 @@ class ChrootedTests(TestCaseWithTransport):
     def test_find_branches(self):
         root = self.make_repository('', shared=True)
         foo, bar, baz = self.make_foo_bar_baz()
-        qux = self.make_bzrdir('foo/qux')
+        qux = self.make_controldir('foo/qux')
         t = self.get_transport()
         branches = bzrdir.BzrDir.find_branches(t)
         self.assertEqual(baz.root_transport.base, branches[0].base)
@@ -1016,13 +1016,13 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         Metadirs should compare equal iff they have the same repo, branch and
         tree formats.
         """
-        mydir = controldir.format_registry.make_bzrdir('knit')
+        mydir = controldir.format_registry.make_controldir('knit')
         self.assertEqual(mydir, mydir)
         self.assertFalse(mydir != mydir)
-        otherdir = controldir.format_registry.make_bzrdir('knit')
+        otherdir = controldir.format_registry.make_controldir('knit')
         self.assertEqual(otherdir, mydir)
         self.assertFalse(otherdir != mydir)
-        otherdir2 = controldir.format_registry.make_bzrdir('development-subtree')
+        otherdir2 = controldir.format_registry.make_controldir('development-subtree')
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
@@ -1040,14 +1040,14 @@ class TestMeta1DirFormat(TestCaseWithTransport):
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
-        new_format = controldir.format_registry.make_bzrdir('dirstate')
+        new_format = controldir.format_registry.make_controldir('dirstate')
         tree = self.make_branch_and_tree('tree', format='knit')
         self.assertTrue(tree.controldir.needs_format_conversion(
             new_format))
 
     def test_initialize_on_format_uses_smart_transport(self):
         self.setup_smart_server_with_call_log()
-        new_format = controldir.format_registry.make_bzrdir('dirstate')
+        new_format = controldir.format_registry.make_controldir('dirstate')
         transport = self.get_transport('target')
         transport.ensure_base()
         self.reset_smart_call_log()
@@ -1071,7 +1071,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(
             self.get_url('foo'), format=format)
         self.assertRaises(errors.NoWorkingTree,
@@ -1080,7 +1080,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def test_create_branch_convenience_force_tree_not_local_fails(self):
         # outside a repo the default convenience output is a repo+branch_tree
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         self.assertRaises(errors.NotLocalUrl,
             bzrdir.BzrDir.create_branch_convenience,
             self.get_url('foo'),
@@ -1091,7 +1091,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def test_clone(self):
         # clone into a nonlocal path works
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('local',
                                                          format=format)
         branch.controldir.open_workingtree()

@@ -101,7 +101,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath):
         bzrdir_format = self.workingtree_format.get_controldir_for_branch()
-        made_control = self.make_bzrdir(relpath, format=bzrdir_format)
+        made_control = self.make_controldir(relpath, format=bzrdir_format)
         made_control.create_repository()
         b = made_control.create_branch()
         if getattr(self, 'repo_is_remote', False):

@@ -105,7 +105,7 @@ class TestInfo(tests.TestCaseWithTransport):
         old_format = control._format.workingtree_format
         try:
             control._format.workingtree_format = \
-                controldir.format_registry.make_bzrdir(format).workingtree_format
+                controldir.format_registry.make_controldir(format).workingtree_format
             control.create_workingtree()
             tree = workingtree.WorkingTree.open('%s_co' % format)
             format_description = info.describe_format(tree.controldir,
@@ -197,14 +197,14 @@ class TestInfo(tests.TestCaseWithTransport):
                 expected = '1.14-rich-root'
             self.assertRepoDescription(key, expected)
 
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         format.set_branch_format(_mod_bzrbranch.BzrBranchFormat6())
         tree = self.make_branch_and_tree('unknown', format=format)
         self.assertEqual('unnamed', info.describe_format(tree.controldir,
             tree.branch.repository, tree.branch, tree))
 
     def test_gather_location_controldir_only(self):
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         self.assertEqual([('control directory', bzrdir.user_url)],
             info.gather_location_info(control=bzrdir))
 

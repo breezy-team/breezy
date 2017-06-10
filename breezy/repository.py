@@ -1203,7 +1203,7 @@ class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
 
     def get_default(self):
         """Return the current default format."""
-        return controldir.format_registry.make_bzrdir('default').repository_format
+        return controldir.format_registry.make_controldir('default').repository_format
 
 
 network_format_registry = registry.FormatRegistry()

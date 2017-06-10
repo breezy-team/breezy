@@ -135,7 +135,7 @@ class ForeignBranchFormatTests(TestCaseWithTransport):
         Remote branches may be initializable on their own, but none currently
         support living in .bzr/branch.
         """
-        bzrdir = self.make_bzrdir('dir')
+        bzrdir = self.make_controldir('dir')
         self.assertRaises(IncompatibleFormat, self.branch_format.initialize, bzrdir)
 
     def test_get_format_description_type(self):

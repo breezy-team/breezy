@@ -59,7 +59,7 @@ class TestPackRepository(TestCaseWithTransport):
     """
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def test_attribute__fetch_order(self):
         """Packs do not need ordered data retrieval."""
@@ -870,7 +870,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         super(TestPackRepositoryStacking, self).setUp()
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def test_stack_checks_rich_root_compatibility(self):
         # early versions of the packing code relied on pack internals to
@@ -1001,7 +1001,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 class TestKeyDependencies(TestCaseWithTransport):
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def create_source_and_target(self):
         builder = self.make_branch_builder('source', format=self.get_format())
@@ -1086,7 +1086,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls.append(params.method)
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
         # Make local and remote repos

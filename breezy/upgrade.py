@@ -91,7 +91,7 @@ class Convert(object):
                 format_name = "default-rich-root"
             else:
                 format_name = "default"
-            format = format_registry.make_bzrdir(format_name)
+            format = format_registry.make_controldir(format_name)
         else:
             format = self.format
         if not self.controldir.needs_format_conversion(format):

@@ -64,7 +64,7 @@ class TestCaseWithControlDir(TestCaseWithTransport):
 
     def get_bzrdir(self):
         if self.controldir is None:
-            self.controldir = self.make_bzrdir(None)
+            self.controldir = self.make_controldir(None)
         return self.controldir
 
     def get_default_format(self):

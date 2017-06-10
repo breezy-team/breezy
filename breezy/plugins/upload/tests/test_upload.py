@@ -121,7 +121,7 @@ class UploadUtilsMixin(object):
         t.ensure_base()
         branch = controldir.ControlDir.create_branch_convenience(
             t.base,
-            format=controldir.format_registry.make_bzrdir('default'),
+            format=controldir.format_registry.make_controldir('default'),
             force_new_tree=False)
         self.tree = branch.controldir.create_workingtree()
         self.tree.commit('initial empty tree')

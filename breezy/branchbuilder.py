@@ -87,7 +87,7 @@ class BranchBuilder(object):
             if format is None:
                 format = 'default'
             if isinstance(format, str):
-                format = controldir.format_registry.make_bzrdir(format)
+                format = controldir.format_registry.make_controldir(format)
             self._branch = controldir.ControlDir.create_branch_convenience(
                 transport.base, format=format, force_new_tree=False)
         self._tree = None

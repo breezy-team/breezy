@@ -158,7 +158,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             return
         # This is a little bit trickier because make_branch_and_tree will not
         # re-use a shared repository.
-        a_controldir = self.make_bzrdir('repo/tree')
+        a_controldir = self.make_controldir('repo/tree')
         try:
             a_branch = self.branch_format.initialize(a_controldir)
         except (errors.UninitializableFormat):
@@ -179,7 +179,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         tree.add(['a'])
         tree.commit('a')
 
-        to_bzrdir = self.make_bzrdir('repo/branch')
+        to_bzrdir = self.make_controldir('repo/branch')
         to_branch = self.branch_format.initialize(to_bzrdir)
         tree.branch.push(to_branch)
 
@@ -287,7 +287,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
-        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)

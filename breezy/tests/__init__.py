@@ -2661,10 +2661,10 @@ class TestCaseWithMemoryTransport(TestCase):
         if format is None:
             format = self.get_default_format()
         if isinstance(format, basestring):
-            format = controldir.format_registry.make_bzrdir(format)
+            format = controldir.format_registry.make_controldir(format)
         return format
 
-    def make_bzrdir(self, relpath, format=None):
+    def make_controldir(self, relpath, format=None):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
@@ -2686,7 +2686,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # real format, which is incorrect.  Actually we should make sure that
         # RemoteBzrDir returns a RemoteRepository.
         # maybe  mbp 20070410
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
     def make_smart_server(self, path, backing_server=None):

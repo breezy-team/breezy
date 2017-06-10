@@ -745,7 +745,7 @@ class BzrDirPreSplitOut(BzrDir):
     def cloning_metadir(self, require_stacking=False):
         """Produce a metadir suitable for cloning with."""
         if require_stacking:
-            return format_registry.make_bzrdir('1.6')
+            return format_registry.make_controldir('1.6')
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,

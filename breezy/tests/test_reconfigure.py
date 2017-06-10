@@ -446,7 +446,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
             r"Requested reconfiguration of '.*' is not supported.")
 
     def test_lightweight_checkout_to_tree_preserves_reference_locations(self):
-        format = controldir.format_registry.make_bzrdir('1.9')
+        format = controldir.format_registry.make_controldir('1.9')
         format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         tree = self.make_branch_and_tree('tree', format=format)
         tree.branch.set_reference_info('file_id', 'path', '../location')

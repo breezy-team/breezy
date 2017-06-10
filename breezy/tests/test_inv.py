@@ -105,7 +105,7 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = self.make_bzrdir('tree', format=self.format._matchingbzrdir)
+    control = self.make_controldir('tree', format=self.format._matchingbzrdir)
     control.create_repository()
     control.create_branch()
     tree = self.format.initialize(control)
@@ -196,7 +196,7 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = test.make_bzrdir('tree', format=test.format._matchingbzrdir)
+    control = test.make_controldir('tree', format=test.format._matchingbzrdir)
     control.create_repository()
     control.create_branch()
     tree = test.format.initialize(control)
@@ -243,7 +243,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     :return: An inventory resulting from the application.
     """
     format = self.format()
-    control = self.make_bzrdir('tree', format=format._matchingbzrdir)
+    control = self.make_controldir('tree', format=format._matchingbzrdir)
     repo = format.initialize(control)
     repo.lock_write()
     try:

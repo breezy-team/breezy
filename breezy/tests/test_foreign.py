@@ -331,7 +331,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
-        return controldir.format_registry.make_bzrdir("default")
+        return controldir.format_registry.make_controldir("default")
 
     def checkout_metadir(self):
         return self.cloning_metadir()

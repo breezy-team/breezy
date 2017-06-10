@@ -498,7 +498,7 @@ def describe_format(control, repository, branch, tree):
     non_aliases = set(controldir.format_registry.keys())
     non_aliases.difference_update(controldir.format_registry.aliases())
     for key in non_aliases:
-        format = controldir.format_registry.make_bzrdir(key)
+        format = controldir.format_registry.make_controldir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
             if (tree and format.workingtree_format !=
                 tree._format):

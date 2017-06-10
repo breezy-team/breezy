@@ -153,12 +153,12 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def test_remote_repo_format_supports_external_references(self):
         t = self.transport
-        bd = self.make_bzrdir('unstackable', format='pack-0.92')
+        bd = self.make_controldir('unstackable', format='pack-0.92')
         r = bd.create_repository()
         self.assertFalse(r._format.supports_external_lookups)
         r = BzrDir.open_from_transport(t.clone('unstackable')).open_repository()
         self.assertFalse(r._format.supports_external_lookups)
-        bd = self.make_bzrdir('stackable', format='1.9')
+        bd = self.make_controldir('stackable', format='1.9')
         r = bd.create_repository()
         self.assertTrue(r._format.supports_external_lookups)
         r = BzrDir.open_from_transport(t.clone('stackable')).open_repository()
@@ -433,7 +433,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
 
     def test_backwards_compat(self):
         self.setup_smart_server_with_call_log()
-        a_dir = self.make_bzrdir('.')
+        a_dir = self.make_controldir('.')
         self.reset_smart_call_log()
         verb = 'BzrDir.cloning_metadir'
         self.disable_verb(verb)
@@ -465,7 +465,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
     def test_current_server(self):
         transport = self.get_transport('.')
         transport = transport.clone('quack')
-        self.make_bzrdir('quack')
+        self.make_controldir('quack')
         client = FakeClient(transport.base)
         reference_bzrdir_format = controldir.format_registry.get('default')()
         control_name = reference_bzrdir_format.network_name()
@@ -897,7 +897,7 @@ class TestBzrDirCreateRepository(TestRemote):
 
     def test_backwards_compat(self):
         self.setup_smart_server_with_call_log()
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         self.reset_smart_call_log()
         self.disable_verb('BzrDir.create_repository')
         repo = bzrdir.create_repository()
@@ -908,7 +908,7 @@ class TestBzrDirCreateRepository(TestRemote):
     def test_current_server(self):
         transport = self.get_transport('.')
         transport = transport.clone('quack')
-        self.make_bzrdir('quack')
+        self.make_controldir('quack')
         client = FakeClient(transport.base)
         reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.repository_format
@@ -2175,7 +2175,7 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
     def test_set_option_uses_vfs(self):
         self.setup_smart_server_with_call_log()
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         self.reset_smart_call_log()
         config = bzrdir.get_config()
         config.set_default_stack_on('/')
@@ -2183,7 +2183,7 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
     def test_backwards_compat_get_option(self):
         self.setup_smart_server_with_call_log()
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         verb = 'BzrDir.get_config_file'
         self.disable_verb(verb)
         self.reset_smart_call_log()
@@ -3665,13 +3665,13 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         self.assertEqual(expected_error, translated_error)
 
     def test_nobranch(self):
-        bzrdir = self.make_bzrdir('')
+        bzrdir = self.make_controldir('')
         translated_error = self.translateTuple(('nobranch',), bzrdir=bzrdir)
         expected_error = errors.NotBranchError(path=bzrdir.root_transport.base)
         self.assertEqual(expected_error, translated_error)
 
     def test_nobranch_one_arg(self):
-        bzrdir = self.make_bzrdir('')
+        bzrdir = self.make_controldir('')
         translated_error = self.translateTuple(
             ('nobranch', 'extra detail'), bzrdir=bzrdir)
         expected_error = errors.NotBranchError(
@@ -3680,7 +3680,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         self.assertEqual(expected_error, translated_error)
 
     def test_norepository(self):
-        bzrdir = self.make_bzrdir('')
+        bzrdir = self.make_controldir('')
         translated_error = self.translateTuple(('norepository',),
             bzrdir=bzrdir)
         expected_error = errors.NoRepositoryPresent(bzrdir)
@@ -3692,7 +3692,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         self.assertEqual(expected_error, translated_error)
 
     def test_UnlockableTransport(self):
-        bzrdir = self.make_bzrdir('')
+        bzrdir = self.make_controldir('')
         translated_error = self.translateTuple(
             ('UnlockableTransport',), bzrdir=bzrdir)
         expected_error = errors.UnlockableTransport(bzrdir.root_transport)

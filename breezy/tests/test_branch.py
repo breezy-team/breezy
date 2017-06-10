@@ -416,7 +416,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def make_branch(self, location, format=None):
         if format is None:
-            format = controldir.format_registry.make_bzrdir('1.9')
+            format = controldir.format_registry.make_controldir('1.9')
             format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         return tests.TestCaseWithTransport.make_branch(
             self, location, format=format)

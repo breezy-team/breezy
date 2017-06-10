@@ -167,7 +167,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_into_empty_dir(self):
         t = self.example_branch('source')
-        self.make_bzrdir('target')
+        self.make_controldir('target')
         self.run_bzr("branch source target")
         self.assertEqual(2, len(t.branch.repository.all_revision_ids()))
 

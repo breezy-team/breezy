@@ -58,7 +58,7 @@ class TestSprout(TestCaseWithBranch):
         # We call the super class to allow overriding the format of creation)
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
                                                          format='knit')
-        target_bzrdir = self.make_bzrdir('target')
+        target_bzrdir = self.make_controldir('target')
         target_bzrdir.create_repository()
         result_format = self.branch_format
         if isinstance(target_bzrdir, remote.RemoteBzrDir):

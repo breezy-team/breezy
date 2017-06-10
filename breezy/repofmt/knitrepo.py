@@ -406,7 +406,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('dirstate-with-subtree')
+        return controldir.format_registry.make_controldir('dirstate-with-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -448,7 +448,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('rich-root')
+        return controldir.format_registry.make_controldir('rich-root')
 
     def _ignore_setting_bzrdir(self, format):
         pass

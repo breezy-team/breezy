@@ -738,12 +738,12 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
             'Not a branch: "path": location is a repository.', str(err))
 
     def test_not_branch_bzrdir_without_repo(self):
-        bzrdir = self.make_bzrdir('bzrdir')
+        bzrdir = self.make_controldir('bzrdir')
         err = errors.NotBranchError('path', bzrdir=bzrdir)
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_laziness(self):
-        real_bzrdir = self.make_bzrdir('path')
+        real_bzrdir = self.make_controldir('path')
         class FakeBzrDir(object):
             def __init__(self):
                 self.calls = []

@@ -1654,7 +1654,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
     def test_set_unset_default_stack_on(self):
-        my_dir = self.make_bzrdir('.')
+        my_dir = self.make_controldir('.')
         bzrdir_config = config.BzrDirConfig(my_dir)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on('Foo')

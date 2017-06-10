@@ -238,7 +238,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
@@ -276,7 +276,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             tree.branch.repository, target.open_repository())
 
     def test_clone_on_transport(self):
-        a_dir = self.make_bzrdir('source')
+        a_dir = self.make_controldir('source')
         target_transport = a_dir.root_transport.clone('..').clone('target')
         target = a_dir.clone_on_transport(target_transport)
         self.assertNotEqual(a_dir.transport.base, target.transport.base)
@@ -284,7 +284,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                     ['./.bzr/merge-hashes'])
 
     def test_clone_bzrdir_empty(self):
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -293,7 +293,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_clone_bzrdir_empty_force_new_ignored(self):
         # the force_new_repo parameter should have no effect on an empty
         # bzrdir's clone logic
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         target = dir.clone(self.get_url('target'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -304,7 +304,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
@@ -374,7 +374,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # a tree with a branch reference (aka a checkout)
         # should stay a checkout on clone.
         referenced_branch = self.make_branch('referencced')
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         try:
             dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
@@ -417,7 +417,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_clone_bzrdir_branch_reference(self):
         # cloning should preserve the reference status of the branch in a bzrdir
         referenced_branch = self.make_branch('referencced')
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         try:
             dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
@@ -432,7 +432,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        dir = self.make_bzrdir('source')
+        dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
@@ -520,7 +520,7 @@ class TestBzrDir(TestCaseWithBzrDir):
 
 
     def test_retire_bzrdir(self):
-        bd = self.make_bzrdir('.')
+        bd = self.make_controldir('.')
         transport = bd.root_transport
         # must not overwrite existing directories
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
@@ -531,7 +531,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(transport.has('.bzr.retired.1'))
 
     def test_retire_bzrdir_limited(self):
-        bd = self.make_bzrdir('.')
+        bd = self.make_controldir('.')
         transport = bd.root_transport
         # must not overwrite existing directories
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
@@ -541,7 +541,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             bd.retire_bzrdir, limit=0)
 
     def test_get_branch_transport(self):
-        dir = self.make_bzrdir('.')
+        dir = self.make_controldir('.')
         # without a format, get_branch_transport gives use a transport
         # which -may- point to an existing dir.
         self.assertTrue(isinstance(dir.get_branch_transport(None),
@@ -562,7 +562,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         found_transport.list_dir('.')
 
     def test_get_repository_transport(self):
-        dir = self.make_bzrdir('.')
+        dir = self.make_controldir('.')
         # without a format, get_repository_transport gives use a transport
         # which -may- point to an existing dir.
         self.assertTrue(isinstance(dir.get_repository_transport(None),
@@ -583,7 +583,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         found_transport.list_dir('.')
 
     def test_get_workingtree_transport(self):
-        dir = self.make_bzrdir('.')
+        dir = self.make_controldir('.')
         # without a format, get_workingtree_transport gives use a transport
         # which -may- point to an existing dir.
         self.assertTrue(isinstance(dir.get_workingtree_transport(None),
@@ -643,21 +643,21 @@ class TestBzrDir(TestCaseWithBzrDir):
         # a stacking policy on the target, the location of the fallback
         # repository is the same as the external location of the stacked-on
         # branch.
-        balloon = self.make_bzrdir('balloon')
+        balloon = self.make_controldir('balloon')
         if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
         if not stack_on.repository._format.supports_nesting_repositories:
             raise TestNotApplicable("requires nesting repositories")
-        config = self.make_bzrdir('.').get_config()
+        config = self.make_controldir('.').get_config()
         try:
             config.set_default_stack_on('stack-on')
         except errors.BzrError:
             raise TestNotApplicable('Only relevant for stackable formats.')
         # Initialize a bzrdir subject to the policy.
         t = self.get_transport('stacked')
-        repo_fmt = controldir.format_registry.make_bzrdir('1.9')
+        repo_fmt = controldir.format_registry.make_controldir('1.9')
         repo_name = repo_fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)

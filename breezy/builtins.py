@@ -2070,7 +2070,7 @@ class cmd_init(Command):
                 help='Specify a format for this branch. '
                 'See "help formats".',
                 lazy_registry=('breezy.controldir', 'format_registry'),
-                converter=lambda name: controldir.format_registry.make_bzrdir(name),
+                converter=lambda name: controldir.format_registry.make_controldir(name),
                 value_switches=True,
                 title="Branch format",
                 ),
@@ -2083,7 +2083,7 @@ class cmd_init(Command):
     def run(self, location=None, format=None, append_revisions_only=False,
             create_prefix=False, no_tree=False):
         if format is None:
-            format = controldir.format_registry.make_bzrdir('default')
+            format = controldir.format_registry.make_controldir('default')
         if location is None:
             location = u'.'
 
@@ -2189,7 +2189,7 @@ class cmd_init_repository(Command):
                             help='Specify a format for this repository. See'
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
-                            converter=lambda name: controldir.format_registry.make_bzrdir(name),
+                            converter=lambda name: controldir.format_registry.make_controldir(name),
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
@@ -2199,7 +2199,7 @@ class cmd_init_repository(Command):
 
     def run(self, location, format=None, no_trees=False):
         if format is None:
-            format = controldir.format_registry.make_bzrdir('default')
+            format = controldir.format_registry.make_controldir('default')
 
         if location is None:
             location = '.'
@@ -3803,7 +3803,7 @@ class cmd_upgrade(Command):
             help='Upgrade to a specific format.  See "brz help'
                  ' formats" for details.',
             lazy_registry=('breezy.controldir', 'format_registry'),
-            converter=lambda name: controldir.format_registry.make_bzrdir(name),
+            converter=lambda name: controldir.format_registry.make_controldir(name),
             value_switches=True, title='Branch format'),
         Option('clean',
             help='Remove the backup.bzr directory if successful.'),

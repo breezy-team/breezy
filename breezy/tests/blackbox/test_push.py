@@ -338,7 +338,7 @@ class TestPush(tests.TestCaseWithTransport):
         # stacked_on_url is that exact path segment. Added to nail bug 385132.
         self.setup_smart_server_with_call_log()
         self.make_branch('stack-on', format='1.9')
-        self.make_bzrdir('.').get_config().set_default_stack_on(
+        self.make_controldir('.').get_config().set_default_stack_on(
             '/stack-on')
         self.make_branch('from', format='1.9')
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
@@ -351,7 +351,7 @@ class TestPush(tests.TestCaseWithTransport):
         # stacked_on_url is a relative path. Added to nail bug 385132.
         self.setup_smart_server_with_call_log()
         self.make_branch('stack-on', format='1.9')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack-on')
         self.make_branch('from', format='1.9')
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
         b = branch.Branch.open(self.get_url('to'))
@@ -433,7 +433,7 @@ class TestPush(tests.TestCaseWithTransport):
         # TODO: jam 20070109 Maybe it would be better to create the repository
         #       if at this point
         tree = self.create_simple_tree()
-        a_controldir = self.make_bzrdir('dir')
+        a_controldir = self.make_controldir('dir')
 
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                 'push ../dir',
@@ -539,7 +539,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_notifies_default_stacking(self):
         self.make_branch('stack_on', format='1.6')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='1.6')
         out, err = self.run_bzr('push -d from to')
         self.assertContainsRe(err,
@@ -547,7 +547,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_stacks_with_default_stacking_if_target_is_stackable(self):
         self.make_branch('stack_on', format='1.6')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
         b = branch.Branch.open('to')
@@ -555,7 +555,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_does_not_change_format_with_default_if_target_cannot(self):
         self.make_branch('stack_on', format='pack-0.92')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
         b = branch.Branch.open('to')
@@ -584,7 +584,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr('push -d repo/local trunk -r 1')
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
-        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         out, err = self.run_bzr('push -d repo/local remote -r 2')
         self.assertContainsRe(

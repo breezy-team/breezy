@@ -335,7 +335,7 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
-        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir = self.make_controldir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
         target = source.controldir.sprout('target').open_branch()
         # When we sprout we upgrade the branch when there is a default stack_on
@@ -352,7 +352,7 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
-        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir = self.make_controldir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
         target = source.controldir.clone('target').open_branch()
         # When we clone we upgrade the branch when there is a default stack_on
@@ -369,7 +369,7 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable('Branch format is not usable via HPSS.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
-        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir = self.make_controldir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
         url = self.make_smart_server('target').base
         target = source.controldir.sprout(url).open_branch()
@@ -518,7 +518,7 @@ class TestStacking(TestCaseWithBranch):
         if not repo._format.supports_nesting_repositories:
             raise TestNotApplicable()
         # Avoid make_branch, which produces standalone branches.
-        bzrdir = self.make_bzrdir('repo/stack-on')
+        bzrdir = self.make_controldir('repo/stack-on')
         try:
             b = bzrdir.create_branch()
         except errors.UninitializableFormat:

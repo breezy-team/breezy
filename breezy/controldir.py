@@ -1344,7 +1344,7 @@ class ControlDirFormatRegistry(registry.Registry):
         self.set_default(key)
         format = self.get('default')()
 
-    def make_bzrdir(self, key):
+    def make_controldir(self, key):
         return self.get(key)()
 
     def help_topic(self, topic):

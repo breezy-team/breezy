@@ -1389,7 +1389,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     pack_compresses = True
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('2a')
+        return controldir.format_registry.make_controldir('2a')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1412,7 +1412,7 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     """
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('development-subtree')
+        return controldir.format_registry.make_controldir('development-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass

@@ -976,7 +976,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir('pack-0.92')
+        return controldir.format_registry.make_controldir('pack-0.92')
 
     def get_packs(self):
         format = self.get_format()

@@ -78,7 +78,7 @@ class TestCheckout(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_into_empty_dir(self):
-        self.make_bzrdir('checkout')
+        self.make_controldir('checkout')
         out, err = self.run_bzr(['checkout', 'branch', 'checkout'])
         result = controldir.ControlDir.open('checkout')
         tree = result.open_workingtree()

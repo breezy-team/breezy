@@ -1594,7 +1594,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
     def _get_matchingbzrdir(self):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'development-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
@@ -1678,7 +1678,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
         """Overrideable method to get a bzrdir for testing."""
         # We use 'development-subtree' instead of '2a', because we have a
         # few tests that want to test tree references
-        return controldir.format_registry.make_bzrdir('development-subtree')
+        return controldir.format_registry.make_controldir('development-subtree')
 
 
 class DirStateRevisionTree(InventoryTree):
