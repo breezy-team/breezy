@@ -410,8 +410,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
         lines.append(b'%s%d\n' % (_OPTION_KEY_ELEMENTS, self._key_length))
         lines.append(b'%s%d\n' % (_OPTION_LEN, key_count))
         row_lengths = [row.nodes for row in rows]
-        lines.append(_OPTION_ROW_LENGTHS + b','.join(
-            map(bytes, row_lengths)) + b'\n')
+        lines.append(_OPTION_ROW_LENGTHS + ','.join(
+            map(str, row_lengths)).encode('ascii') + b'\n')
         if row_lengths and row_lengths[-1] > 1:
             result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         else:
