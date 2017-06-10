@@ -38,73 +38,73 @@ class TestBencodeDecode(tests.TestCase):
         self.assertRaises(exc, self.module.bdecode, bad)
 
     def test_int(self):
-        self._check(0, 'i0e')
-        self._check(4, 'i4e')
-        self._check(123456789, 'i123456789e')
-        self._check(-10, 'i-10e')
-        self._check(int('1' * 1000), 'i' + ('1' * 1000) + 'e')
+        self._check(0, b'i0e')
+        self._check(4, b'i4e')
+        self._check(123456789, b'i123456789e')
+        self._check(-10, b'i-10e')
+        self._check(int('1' * 1000), b'i' + (b'1' * 1000) + b'e')
 
     def test_long(self):
-        self._check(12345678901234567890, 'i12345678901234567890e')
-        self._check(-12345678901234567890, 'i-12345678901234567890e')
+        self._check(12345678901234567890, b'i12345678901234567890e')
+        self._check(-12345678901234567890, b'i-12345678901234567890e')
 
     def test_malformed_int(self):
-        self._run_check_error(ValueError, 'ie')
-        self._run_check_error(ValueError, 'i-e')
-        self._run_check_error(ValueError, 'i-010e')
-        self._run_check_error(ValueError, 'i-0e')
-        self._run_check_error(ValueError, 'i00e')
-        self._run_check_error(ValueError, 'i01e')
-        self._run_check_error(ValueError, 'i-03e')
-        self._run_check_error(ValueError, 'i')
-        self._run_check_error(ValueError, 'i123')
-        self._run_check_error(ValueError, 'i341foo382e')
+        self._run_check_error(ValueError, b'ie')
+        self._run_check_error(ValueError, b'i-e')
+        self._run_check_error(ValueError, b'i-010e')
+        self._run_check_error(ValueError, b'i-0e')
+        self._run_check_error(ValueError, b'i00e')
+        self._run_check_error(ValueError, b'i01e')
+        self._run_check_error(ValueError, b'i-03e')
+        self._run_check_error(ValueError, b'i')
+        self._run_check_error(ValueError, b'i123')
+        self._run_check_error(ValueError, b'i341foo382e')
 
     def test_string(self):
-        self._check('', '0:')
-        self._check('abc', '3:abc')
-        self._check('1234567890', '10:1234567890')
+        self._check(b'', b'0:')
+        self._check(b'abc', b'3:abc')
+        self._check(b'1234567890', b'10:1234567890')
 
     def test_large_string(self):
-        self.assertRaises(ValueError, self.module.bdecode, "2147483639:foo")
+        self.assertRaises(ValueError, self.module.bdecode, b"2147483639:foo")
 
     def test_malformed_string(self):
-        self._run_check_error(ValueError, '10:x')
-        self._run_check_error(ValueError, '10:')
-        self._run_check_error(ValueError, '10')
-        self._run_check_error(ValueError, '01:x')
-        self._run_check_error(ValueError, '00:')
-        self._run_check_error(ValueError, '35208734823ljdahflajhdf')
-        self._run_check_error(ValueError, '432432432432432:foo')
-        self._run_check_error(ValueError, ' 1:x') # leading whitespace
-        self._run_check_error(ValueError, '-1:x') # negative
-        self._run_check_error(ValueError, '1 x') # space vs colon
-        self._run_check_error(ValueError, '1x') # missing colon
-        self._run_check_error(ValueError, ('1' * 1000) + ':')
+        self._run_check_error(ValueError, b'10:x')
+        self._run_check_error(ValueError, b'10:')
+        self._run_check_error(ValueError, b'10')
+        self._run_check_error(ValueError, b'01:x')
+        self._run_check_error(ValueError, b'00:')
+        self._run_check_error(ValueError, b'35208734823ljdahflajhdf')
+        self._run_check_error(ValueError, b'432432432432432:foo')
+        self._run_check_error(ValueError, b' 1:x') # leading whitespace
+        self._run_check_error(ValueError, b'-1:x') # negative
+        self._run_check_error(ValueError, b'1 x') # space vs colon
+        self._run_check_error(ValueError, b'1x') # missing colon
+        self._run_check_error(ValueError, (b'1' * 1000) + b':')
 
     def test_list(self):
-        self._check([], 'le')
-        self._check(['', '', ''], 'l0:0:0:e')
-        self._check([1, 2, 3], 'li1ei2ei3ee')
-        self._check(['asd', 'xy'], 'l3:asd2:xye')
-        self._check([['Alice', 'Bob'], [2, 3]], 'll5:Alice3:Bobeli2ei3eee')
+        self._check([], b'le')
+        self._check([b'', b'', b''], b'l0:0:0:e')
+        self._check([1, 2, 3], b'li1ei2ei3ee')
+        self._check([b'asd', b'xy'], b'l3:asd2:xye')
+        self._check([[b'Alice', b'Bob'], [2, 3]], b'll5:Alice3:Bobeli2ei3eee')
 
     def test_list_deepnested(self):
-        self._run_check_error(RuntimeError, ("l" * 10000) + ("e" * 10000))
+        self._run_check_error(RuntimeError, (b"l" * 10000) + (b"e" * 10000))
 
     def test_malformed_list(self):
-        self._run_check_error(ValueError, 'l')
-        self._run_check_error(ValueError, 'l01:ae')
-        self._run_check_error(ValueError, 'l0:')
-        self._run_check_error(ValueError, 'li1e')
-        self._run_check_error(ValueError, 'l-3:e')
+        self._run_check_error(ValueError, b'l')
+        self._run_check_error(ValueError, b'l01:ae')
+        self._run_check_error(ValueError, b'l0:')
+        self._run_check_error(ValueError, b'li1e')
+        self._run_check_error(ValueError, b'l-3:e')
 
     def test_dict(self):
-        self._check({}, 'de')
-        self._check({'':3}, 'd0:i3ee')
-        self._check({'age': 25, 'eyes': 'blue'}, 'd3:agei25e4:eyes4:bluee')
-        self._check({'spam.mp3': {'author': 'Alice', 'length': 100000}},
-                            'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
+        self._check({}, b'de')
+        self._check({b'':3}, b'd0:i3ee')
+        self._check({b'age': 25, b'eyes': b'blue'}, b'd3:agei25e4:eyes4:bluee')
+        self._check({b'spam.mp3': {b'author': b'Alice', b'length': 100000}},
+            b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
 
     def test_dict_deepnested(self):
         # The recursion here provokes CPython into emitting a warning on
@@ -114,30 +114,30 @@ class TestBencodeDecode(tests.TestCase):
         # avoid distracting noise in the test output.
         self.overrideAttr(sys, 'stderr', self._log_file)
         self._run_check_error(
-            RuntimeError, ("d0:" * 10000) + 'i1e' + ("e" * 10000))
+            RuntimeError, (b"d0:" * 10000) + b'i1e' + (b"e" * 10000))
 
     def test_malformed_dict(self):
-        self._run_check_error(ValueError, 'd')
-        self._run_check_error(ValueError, 'defoobar')
-        self._run_check_error(ValueError, 'd3:fooe')
-        self._run_check_error(ValueError, 'di1e0:e')
-        self._run_check_error(ValueError, 'd1:b0:1:a0:e')
-        self._run_check_error(ValueError, 'd1:a0:1:a0:e')
-        self._run_check_error(ValueError, 'd0:0:')
-        self._run_check_error(ValueError, 'd0:')
-        self._run_check_error(ValueError, 'd432432432432432432:e')
+        self._run_check_error(ValueError, b'd')
+        self._run_check_error(ValueError, b'defoobar')
+        self._run_check_error(ValueError, b'd3:fooe')
+        self._run_check_error(ValueError, b'di1e0:e')
+        self._run_check_error(ValueError, b'd1:b0:1:a0:e')
+        self._run_check_error(ValueError, b'd1:a0:1:a0:e')
+        self._run_check_error(ValueError, b'd0:0:')
+        self._run_check_error(ValueError, b'd0:')
+        self._run_check_error(ValueError, b'd432432432432432432:e')
 
     def test_empty_string(self):
-        self.assertRaises(ValueError, self.module.bdecode, '')
+        self.assertRaises(ValueError, self.module.bdecode, b'')
 
     def test_junk(self):
-        self._run_check_error(ValueError, 'i6easd')
-        self._run_check_error(ValueError, '2:abfdjslhfld')
-        self._run_check_error(ValueError, '0:0:')
-        self._run_check_error(ValueError, 'leanfdldjfh')
+        self._run_check_error(ValueError, b'i6easd')
+        self._run_check_error(ValueError, b'2:abfdjslhfld')
+        self._run_check_error(ValueError, b'0:0:')
+        self._run_check_error(ValueError, b'leanfdldjfh')
 
     def test_unknown_object(self):
-        self.assertRaises(ValueError, self.module.bdecode, 'relwjhrlewjh')
+        self.assertRaises(ValueError, self.module.bdecode, b'relwjhrlewjh')
 
     def test_unsupported_type(self):
         self._run_check_error(TypeError, float(1.5))
@@ -158,28 +158,28 @@ class TestBencodeEncode(tests.TestCase):
         self.assertEqual(expected, self.module.bencode(source))
 
     def test_int(self):
-        self._check('i4e', 4)
-        self._check('i0e', 0)
-        self._check('i-10e', -10)
+        self._check(b'i4e', 4)
+        self._check(b'i0e', 0)
+        self._check(b'i-10e', -10)
 
     def test_long(self):
-        self._check('i12345678901234567890e', 12345678901234567890)
-        self._check('i-12345678901234567890e', -12345678901234567890)
+        self._check(b'i12345678901234567890e', 12345678901234567890)
+        self._check(b'i-12345678901234567890e', -12345678901234567890)
 
     def test_string(self):
-        self._check('0:', '')
-        self._check('3:abc', 'abc')
-        self._check('10:1234567890', '1234567890')
+        self._check(b'0:', b'')
+        self._check(b'3:abc', b'abc')
+        self._check(b'10:1234567890', b'1234567890')
 
     def test_list(self):
-        self._check('le', [])
-        self._check('li1ei2ei3ee', [1, 2, 3])
-        self._check('ll5:Alice3:Bobeli2ei3eee', [['Alice', 'Bob'], [2, 3]])
+        self._check(b'le', [])
+        self._check(b'li1ei2ei3ee', [1, 2, 3])
+        self._check(b'll5:Alice3:Bobeli2ei3eee', [[b'Alice', b'Bob'], [2, 3]])
 
     def test_list_as_tuple(self):
-        self._check('le', ())
-        self._check('li1ei2ei3ee', (1, 2, 3))
-        self._check('ll5:Alice3:Bobeli2ei3eee', (('Alice', 'Bob'), (2, 3)))
+        self._check(b'le', ())
+        self._check(b'li1ei2ei3ee', (1, 2, 3))
+        self._check(b'll5:Alice3:Bobeli2ei3eee', ((b'Alice', b'Bob'), (2, 3)))
 
     def test_list_deep_nested(self):
         top = []
@@ -187,31 +187,28 @@ class TestBencodeEncode(tests.TestCase):
         for i in range(10000):
             l.append([])
             l = l[0]
-        self.assertRaises(RuntimeError, self.module.bencode, 
-            top)
+        self.assertRaises(RuntimeError, self.module.bencode, top)
 
     def test_dict(self):
-        self._check('de', {})
-        self._check('d3:agei25e4:eyes4:bluee', {'age': 25, 'eyes': 'blue'})
-        self._check('d8:spam.mp3d6:author5:Alice6:lengthi100000eee',
-                            {'spam.mp3': {'author': 'Alice',
-                                          'length': 100000}})
+        self._check(b'de', {})
+        self._check(b'd3:agei25e4:eyes4:bluee', {b'age': 25, b'eyes': b'blue'})
+        self._check(b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee',
+            {b'spam.mp3': {b'author': b'Alice', b'length': 100000}})
 
     def test_dict_deep_nested(self):
         d = top = {}
         for i in range(10000):
-            d[''] = {}
-            d = d['']
-        self.assertRaises(RuntimeError, self.module.bencode, 
-            top)
+            d[b''] = {}
+            d = d[b'']
+        self.assertRaises(RuntimeError, self.module.bencode, top)
 
     def test_bencached(self):
-        self._check('i3e', self.module.Bencached(self.module.bencode(3)))
+        self._check(b'i3e', self.module.Bencached(self.module.bencode(3)))
 
     def test_invalid_dict(self):
-        self.assertRaises(TypeError, self.module.bencode, {1:"foo"})
+        self.assertRaises(TypeError, self.module.bencode, {1: b"foo"})
 
     def test_bool(self):
-        self._check('i1e', True)
-        self._check('i0e', False)
+        self._check(b'i1e', True)
+        self._check(b'i0e', False)
 
