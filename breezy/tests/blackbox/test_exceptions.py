@@ -40,8 +40,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             universal_newlines=True,
             retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
-        self.assertContainsRe(err,
-                r'exceptions\.AssertionError: always fails\n')
+        self.assertContainsRe(err, r'\nAssertionError: always fails\n')
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
 
     def test_undecodable_argv(self):
