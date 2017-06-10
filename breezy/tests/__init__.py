@@ -3902,7 +3902,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
-        'breezy.tests.test_api',
         'breezy.tests.test_atomicfile',
         'breezy.tests.test_bad_files',
         'breezy.tests.test_bisect_multi',
