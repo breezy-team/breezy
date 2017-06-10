@@ -25,7 +25,7 @@ from __future__ import absolute_import
 from stat import S_ISDIR
 import sys
 
-from ...bzrdir import (
+from ...bzr.bzrdir import (
     BzrDirMetaFormat1,
     )
 from ...errors import (

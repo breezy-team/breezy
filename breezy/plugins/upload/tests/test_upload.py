@@ -19,7 +19,6 @@ import sys
 
 
 from .... import (
-    bzrdir,
     config,
     controldir,
     errors,
