@@ -279,8 +279,10 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
         else:
             source = [c_name]
     source.extend(extra_source)
+    include_dirs = ['breezy']
     ext_modules.append(Extension(module_name, source,
-        define_macros=define_macros, libraries=libraries))
+        define_macros=define_macros, libraries=libraries,
+        include_dirs=include_dirs))
 
 
 add_cython_extension('breezy._annotator_pyx')

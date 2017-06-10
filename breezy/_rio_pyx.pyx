@@ -28,7 +28,6 @@ cdef extern from "stdlib.h":
     void free(void *)
 
 cdef extern from "Python.h":
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef int Py_UNICODE
     char *PyString_AS_STRING(object s)
     Py_ssize_t PyString_GET_SIZE(object t) except -1

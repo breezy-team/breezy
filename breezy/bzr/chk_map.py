@@ -42,12 +42,6 @@ from __future__ import absolute_import
 import heapq
 import threading
 
-from .. import lazy_import
-lazy_import.lazy_import(globals(), """
-from breezy import (
-    errors,
-    )
-""")
 from .. import (
     errors,
     lru_cache,

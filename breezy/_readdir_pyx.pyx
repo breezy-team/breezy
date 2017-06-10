@@ -81,7 +81,6 @@ cdef extern from 'fcntl.h':
 cdef extern from 'Python.h':
     int PyErr_CheckSignals() except -1
     char * PyString_AS_STRING(object)
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
         pass
     Py_ssize_t PyString_Size(object s)

@@ -30,6 +30,8 @@ from .. import (
     cache_utf8,
     errors,
     revision as _mod_revision,
+    )
+from . import (
     serializer,
     )
 from ..sixish import (

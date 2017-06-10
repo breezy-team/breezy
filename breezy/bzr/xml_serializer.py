@@ -46,10 +46,10 @@ from .. import (
     cache_utf8,
     errors,
     lazy_regex,
-    serializer,
     )
 from . import (
     inventory,
+    serializer,
     )
 
 

@@ -31,7 +31,6 @@ cdef extern from *:
     void sprintf(char *, char *, ...)
 
 cdef extern from "Python.h":
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
         pass
     int PyTuple_CheckExact(object p)
@@ -51,7 +50,7 @@ cdef extern from "Python.h":
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
 # cimport all of the definitions we will need to access
-from ._static_tuple_c cimport StaticTuple,\
+from .._static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE

@@ -26,7 +26,6 @@ cdef extern from "python-compat.h":
 cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     int PyString_CheckExact(object)
     char * PyString_AS_STRING(object)
     Py_ssize_t PyString_GET_SIZE(object)

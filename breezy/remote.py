@@ -64,7 +64,7 @@ from .smart.client import _SmartClient
 from .revision import NULL_REVISION
 from .revisiontree import InventoryRevisionTree
 from .repository import RepositoryWriteLockResult, _LazyListJoin
-from .serializer import format_registry as serializer_format_registry
+from .bzr.serializer import format_registry as serializer_format_registry
 from .trace import mutter, note, warning, log_exception_quietly
 from .bzr.versionedfile import FulltextContentFactory
 

@@ -27,7 +27,6 @@ cdef extern from "stdlib.h":
     ctypedef unsigned size_t
 
 cdef extern from "Python.h":
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
         pass
     int PyList_Append(object lst, object item) except -1
@@ -69,7 +68,7 @@ cdef extern from "string.h":
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
-from ._static_tuple_c cimport StaticTuple, \
+from .._static_tuple_c cimport StaticTuple, \
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE, StaticTuple_GET_ITEM
