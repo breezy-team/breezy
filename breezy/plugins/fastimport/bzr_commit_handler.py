@@ -23,10 +23,10 @@ from ... import (
     generate_ids,
     osutils,
     revision,
-    serializer,
     )
 from ...bzr import (
     inventory,
+    serializer,
     )
 from ...trace import (
     mutter,

@@ -28,9 +28,9 @@ import os
 import stat
 import sys
 
-from . import cache_utf8, errors, osutils
+from .. import cache_utf8, errors, osutils
 from .dirstate import DirState
-from .osutils import parent_directories, pathjoin, splitpath
+from ..osutils import parent_directories, pathjoin, splitpath
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -835,24 +835,7 @@ def pack_stat(stat_value):
     return _pack_stat(stat_value)
 
 
-def update_entry(self, entry, abspath, stat_value):
-    """Update the entry based on what is actually on disk.
-
-    This function only calculates the sha if it needs to - if the entry is
-    uncachable, or clearly different to the first parent's entry, no sha
-    is calculated, and None is returned.
-
-    :param entry: This is the dirblock entry for the file in question.
-    :param abspath: The path on disk for this file.
-    :param stat_value: (optional) if we already have done a stat on the
-        file, re-use it.
-    :return: None, or The sha1 hexdigest of the file (40 bytes) or link
-        target of a symlink.
-    """
-    return _update_entry(self, entry, abspath, stat_value)
-
-
-cdef _update_entry(self, entry, abspath, stat_value):
+cpdef update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 
     This function only calculates the sha if it needs to - if the entry is
@@ -1157,7 +1140,7 @@ cdef class ProcessEntryC:
             if self.target_index != 0:
                 raise AssertionError("Unsupported target index %d" %
                                      self.target_index)
-            link_or_sha1 = _update_entry(self.state, entry, path_info[4], path_info[3])
+            link_or_sha1 = update_entry(self.state, entry, path_info[4], path_info[3])
             # The entry may have been modified by update_entry
             target_details = details_list[self.target_index]
             target_minikind = _minikind_from_string(target_details[0])

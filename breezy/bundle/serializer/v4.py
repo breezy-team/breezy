@@ -27,12 +27,12 @@ from ... import (
     multiparent,
     osutils,
     revision as _mod_revision,
-    serializer,
     trace,
     ui,
     )
 from ...bzr import (
     pack,
+    serializer,
     versionedfile as _mod_versionedfile,
     )
 from ...bundle import bundle_data, serializer as bundle_serializer

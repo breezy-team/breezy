@@ -28,8 +28,10 @@ from ... import (
     branch as _mod_branch,
     controldir,
     repository as _mod_repository,
-    serializer,
     workingtree as _mod_workingtree,
+    )
+from ...bzr import (
+    serializer,
     )
 from ...bzr.bzrdir import (
     BzrProber,

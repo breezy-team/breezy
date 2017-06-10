@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from ...xml_serializer import (
+from ...bzr.xml_serializer import (
     Element,
     SubElement,
     XMLSerializer,
