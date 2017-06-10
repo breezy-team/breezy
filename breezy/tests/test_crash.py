@@ -19,6 +19,7 @@ import doctest
 import os
 import sys
 
+import breezy
 from .. import (
     config,
     crash,
@@ -27,7 +28,7 @@ from .. import (
     tests,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 from . import features
 
@@ -43,29 +44,23 @@ class TestApportReporting(tests.TestCaseInTempDir):
         self.assertEqual(crash_dir, config.crash_dir())
 
         self.overrideAttr(
-            plugin,
+            breezy.global_state,
             'plugin_warnings',
             {'example': ['Failed to load plugin foo']})
 
-        stderr = BytesIO()
+        stderr = StringIO()
 
         try:
             raise AssertionError("my error")
         except AssertionError as e:
-            pass
-
-        crash_filename = crash.report_bug_to_apport(sys.exc_info(),
-            stderr)
+            crash_filename = crash.report_bug_to_apport(sys.exc_info(), stderr)
 
         # message explaining the crash
         self.assertContainsRe(stderr.getvalue(),
             "    apport-bug %s" % crash_filename)
 
-        crash_file = open(crash_filename)
-        try:
+        with open(crash_filename) as crash_file:
             report = crash_file.read()
-        finally:
-            crash_file.close()
 
         self.assertContainsRe(report,
             '(?m)^BzrVersion:') # should be in the traceback
@@ -83,31 +78,27 @@ class TestApportReporting(tests.TestCaseInTempDir):
 
 class TestNonApportReporting(tests.TestCase):
     """Reporting of crash-type bugs without apport.
-    
+
     This should work in all environments.
     """
 
     def setup_fake_plugins(self):
-        def fake_plugins():
-            fake = plugin.PlugIn('fake_plugin', plugin)
-            fake.version_info = lambda: (1, 2, 3)
-            return {"fake_plugin": fake}
-        self.overrideAttr(plugin, 'plugins', fake_plugins)
+        fake = plugin.PlugIn('fake_plugin', plugin)
+        fake.version_info = lambda: (1, 2, 3)
+        fake_plugins = {"fake_plugin": fake}
+        self.overrideAttr(breezy.global_state, 'plugins', fake_plugins)
 
     def test_report_bug_legacy(self):
         self.setup_fake_plugins()
-        err_file = BytesIO()
+        err_file = StringIO()
         try:
             raise AssertionError("my error")
         except AssertionError as e:
-            pass
-        crash.report_bug_legacy(sys.exc_info(), err_file)
+            crash.report_bug_legacy(sys.exc_info(), err_file)
         report = err_file.getvalue()
         for needle in [
-            "brz: ERROR: exceptions.AssertionError: my error",
+            "brz: ERROR: AssertionError: my error",
             r"Traceback \(most recent call last\):",
             r"plugins: fake_plugin\[1\.2\.3\]",
             ]:
-            self.assertContainsRe(
-                    report,
-                    needle)
+            self.assertContainsRe(report, needle)

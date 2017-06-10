@@ -49,7 +49,6 @@ from breezy import (
     conflicts as _mod_conflicts,
     errors,
     graph as _mod_graph,
-    mutabletree,
     osutils,
     revision as _mod_revision,
     revisiontree,
@@ -66,6 +65,7 @@ from breezy.bzr import (
 from ..decorators import needs_write_lock, needs_read_lock
 from ..lock import _RelockDebugMixin, LogicalLockResult
 from ..mutabletree import needs_tree_write_lock
+from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..sixish import (
     BytesIO,
     )
@@ -87,8 +87,7 @@ MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 
-class InventoryWorkingTree(WorkingTree,
-        mutabletree.MutableInventoryTree):
+class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
     """Base class for working trees that are inventory-oriented.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -593,7 +592,7 @@ class InventoryWorkingTree(WorkingTree,
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
-                        return revisiontree.InventoryRevisionTree(
+                        return InventoryRevisionTree(
                             self.branch.repository, inv, revision_id)
                 except errors.BadInventoryFormat:
                     pass

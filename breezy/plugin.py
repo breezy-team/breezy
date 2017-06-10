@@ -403,12 +403,11 @@ def _load_plugin_module(name, dir):
         return
     try:
         __import__(_MODULE_PREFIX + name)
-    except errors.IncompatibleAPI as e:
+    except errors.IncompatibleVersion as e:
         warning_message = (
-            "Unable to load plugin %r. It requested API version "
-            "%s of module %s but the minimum exported version is %s, and "
-            "the maximum is %s" %
-            (name, e.wanted, e.api, e.minimum, e.current))
+            "Unable to load plugin %r. It supports %s "
+            "versions %r but the current version is %s" %
+            (name, e.api.__name__, e.wanted, e.current))
         return record_plugin_warning(warning_message)
     except Exception as e:
         trace.log_exception_quietly()
@@ -442,11 +441,13 @@ def plugins():
     return result
 
 
-def format_concise_plugin_list():
+def format_concise_plugin_list(state=None):
     """Return a string holding a concise list of plugins and their version.
     """
+    if state is None:
+        state = breezy.global_state
     items = []
-    for name, a_plugin in sorted(plugins().items()):
+    for name, a_plugin in sorted(state.plugins.items()):
         items.append("%s[%s]" %
             (name, a_plugin.__version__))
     return ', '.join(items)

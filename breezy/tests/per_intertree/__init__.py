@@ -24,6 +24,7 @@ Specific tests for individual variations are in other places such as:
 
 import breezy
 from breezy import (
+    inventorytree,
     revisiontree,
     tests,
     )
@@ -130,7 +131,7 @@ def load_tests(loader, standard_tests, pattern):
          default_tree_format, default_tree_format,
          return_provided_trees)]
     for optimiser in InterTree._optimisers:
-        if optimiser is revisiontree.InterCHKRevisionTree:
+        if optimiser is inventorytree.InterCHKRevisionTree:
             # XXX: we shouldn't use an Intertree object to detect inventories
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()

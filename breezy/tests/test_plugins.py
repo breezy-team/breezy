@@ -296,15 +296,16 @@ class TestLoadingPlugins(BaseTestPlugins):
         """
         name = 'wants100.py'
         with open(name, 'w') as f:
-            f.write("import breezy.api\n"
-                "breezy.api.require_any_api(breezy, [(1, 0, 0)])\n")
+            f.write("import breezy\n"
+                "from breezy.errors import IncompatibleVersion\n"
+                "raise IncompatibleVersion(breezy, [(1, 0, 0)], (0, 0, 5))\n")
         log = self.load_and_capture(name)
         self.assertNotContainsRe(log,
-            r"It requested API version")
+            r"It supports breezy version")
         self.assertEqual({'wants100'}, viewkeys(self.plugin_warnings))
         self.assertContainsRe(
             self.plugin_warnings['wants100'][0],
-            r"It requested API version")
+            r"It supports breezy version")
 
     def test_plugin_with_bad_name_does_not_load(self):
         # The file name here invalid for a python module.

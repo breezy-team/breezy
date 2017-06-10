@@ -22,6 +22,7 @@ import tempfile
 from .. import (
     controldir,
     errors,
+    inventorytree,
     memorytree,
     osutils,
     revision as _mod_revision,
@@ -2494,7 +2495,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 dir_ids[''] = file_id
                 continue
             inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
-        return revisiontree.InventoryRevisionTree(_Repo(), inv, rev_id)
+        return inventorytree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):
         fd, path = tempfile.mkstemp(prefix='bzr-dirstate')

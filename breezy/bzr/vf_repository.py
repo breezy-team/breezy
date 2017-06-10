@@ -46,7 +46,7 @@ from breezy.bzr import (
     )
 
 from breezy.recordcounter import RecordCounter
-from breezy.revisiontree import InventoryRevisionTree
+from breezy.inventorytree import InventoryRevisionTree
 from breezy.testament import Testament
 from breezy.i18n import gettext
 """)
