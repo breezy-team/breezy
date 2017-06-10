@@ -23,14 +23,14 @@ import os
 import re
 
 from . import (
-    controldir,
     errors,
-    inventory as _mod_inventory,
     lazy_import,
-    mutabletree,
     osutils,
     revision,
-    trace,
+    )
+from .mutabletree import (
+    MutableTree,
+    needs_tree_write_lock,
     )
 from .revisiontree import (
     RevisionTree,
@@ -38,6 +38,9 @@ from .revisiontree import (
 lazy_import.lazy_import(globals(), """
 from breezy import (
     add,
+    controldir,
+    inventory as _mod_inventory,
+    trace,
     transport as _mod_transport,
     )
 """)
@@ -240,9 +243,9 @@ class InventoryTree(Tree):
             yield child.file_id
 
 
-class MutableInventoryTree(mutabletree.MutableTree, InventoryTree):
+class MutableInventoryTree(MutableTree, InventoryTree):
 
-    @mutabletree.needs_tree_write_lock
+    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -262,7 +265,7 @@ class MutableInventoryTree(mutabletree.MutableTree, InventoryTree):
             path = self.get_canonical_inventory_path(path)
         return path
 
-    @mutabletree.needs_tree_write_lock
+    @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         """Version file_list, optionally recursing into directories.
 
