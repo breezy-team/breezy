@@ -104,7 +104,9 @@ API Changes
 
  * ``breezy.bzrdir.format_registry`` has been removed; use
    ``breezy.controldir.format_registry`` instead.
-   (Jelmer Vernooij)
+   (Jelmer Vernooĳ)
+
+ * ``breezy.api`` has been removed.  (Jelmer Vernooĳ, #742192)
 
 Internals
 *********

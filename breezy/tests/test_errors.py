@@ -103,11 +103,13 @@ class TestErrors(TestCaseWithTransport):
                              " its ancestry shows a ghost at {ghost_rev}",
                              str(error))
 
-    def test_incompatibleAPI(self):
-        error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
+    def test_incompatibleVersion(self):
+        error = errors.IncompatibleVersion("module", [(4, 5, 6), (7, 8, 9)],
+                (1, 2, 3))
         self.assertEqualDiff(
-            'The API for "module" is not compatible with "(1, 2, 3)". '
-            'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
+            'API module is not compatible; one of versions '
+            '[(4, 5, 6), (7, 8, 9)] is required, but current version is '
+            '(1, 2, 3).',
             str(error))
 
     def test_inconsistent_delta(self):
