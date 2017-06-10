@@ -30,12 +30,13 @@ from . import (
     )
 from .decorators import needs_read_lock
 from .inventory import Inventory
+from .inventorytree import MutableInventoryTree
 from .osutils import sha_file
 from .mutabletree import needs_tree_write_lock
 from .transport.memory import MemoryTransport
 
 
-class MemoryTree(mutabletree.MutableInventoryTree):
+class MemoryTree(MutableInventoryTree):
     """A MemoryTree is a specialisation of MutableTree.
 
     It maintains nearly no state outside of read_lock and write_lock
