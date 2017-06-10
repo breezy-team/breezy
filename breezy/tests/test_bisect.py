@@ -22,7 +22,7 @@ from cStringIO import StringIO
 import os
 import shutil
 
-from .controldir import ControlDir
+from ..controldir import ControlDir
 from .. import bisect
 from . import (
     TestCaseWithTransport,
