@@ -19,6 +19,10 @@
 
 from __future__ import absolute_import
 
+from .sixish import (
+    PY3,
+    )
+
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
 # to me.
@@ -87,6 +91,7 @@ class BzrError(Exception):
         if s is not None:
             # contains a preformatted message
             return s
+        err = None
         try:
             fmt = self._get_format_string()
             if fmt:
@@ -96,34 +101,20 @@ class BzrError(Exception):
                 # never a 'unicode' object.
                 return s
         except Exception as e:
-            pass # just bind to 'e' for formatting below
-        else:
-            e = None
+            err = e
         return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
             % (self.__class__.__name__,
                self.__dict__,
                getattr(self, '_fmt', None),
-               e)
+               err)
 
-    def __unicode__(self):
-        u = self._format()
-        if isinstance(u, str):
-            # Try decoding the str using the default encoding.
-            u = unicode(u)
-        elif not isinstance(u, unicode):
-            # Try to make a unicode object from it, because __unicode__ must
-            # return a unicode object.
-            u = unicode(u)
-        return u
+    if PY3:
+        __str__ = _format
+    else:
+        def __str__(self):
+            return self._format().encode('utf-8')
 
-    def __str__(self):
-        s = self._format()
-        if isinstance(s, unicode):
-            s = s.encode('utf8')
-        else:
-            # __str__ must return a str.
-            s = str(s)
-        return s
+        __unicode__ = _format
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, str(self))
@@ -133,12 +124,15 @@ class BzrError(Exception):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             from breezy.i18n import gettext
-            return gettext(unicode(fmt)) # _fmt strings should be ascii
+            return gettext(fmt) # _fmt strings should be ascii
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
             return NotImplemented
         return self.__dict__ == other.__dict__
+
+    def __hash__(self):
+        return id(self)
 
 
 class InternalBzrError(BzrError):
@@ -665,30 +659,30 @@ class NotBranchError(PathError):
     def __repr__(self):
         return '<%s %r>' % (self.__class__.__name__, self.__dict__)
 
-    def _format(self):
-        # XXX: Ideally self.detail would be a property, but Exceptions in
-        # Python 2.4 have to be old-style classes so properties don't work.
-        # Instead we override _format.
+    def _get_format_string(self):
+        # GZ 2017-06-08: Not the best place to lazy fill detail in.
         if self.detail is None:
-            if self.bzrdir is not None:
-                try:
-                    self.bzrdir.open_repository()
-                except NoRepositoryPresent:
-                    self.detail = ''
-                except Exception:
-                    # Just ignore unexpected errors.  Raising arbitrary errors
-                    # during str(err) can provoke strange bugs.  Concretely
-                    # Launchpad's codehosting managed to raise NotBranchError
-                    # here, and then get stuck in an infinite loop/recursion
-                    # trying to str() that error.  All this error really cares
-                    # about that there's no working repository there, and if
-                    # open_repository() fails, there probably isn't.
-                    self.detail = ''
-                else:
-                    self.detail = ': location is a repository'
+           self.detail = self._get_detail()
+        return super(NotBranchError, self)._get_format_string()
+
+    def _get_detail(self):
+        if self.bzrdir is not None:
+            try:
+                self.bzrdir.open_repository()
+            except NoRepositoryPresent:
+                return ''
+            except Exception as e:
+                # Just ignore unexpected errors.  Raising arbitrary errors
+                # during str(err) can provoke strange bugs.  Concretely
+                # Launchpad's codehosting managed to raise NotBranchError
+                # here, and then get stuck in an infinite loop/recursion
+                # trying to str() that error.  All this error really cares
+                # about that there's no working repository there, and if
+                # open_repository() fails, there probably isn't.
+                return ': ' + e.__class__.__name__
             else:
-                self.detail = ''
-        return PathError._format(self)
+                return ': location is a repository'
+        return ''
 
 
 class NoSubmitBranch(PathError):

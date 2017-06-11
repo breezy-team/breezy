@@ -1,10 +1,11 @@
-breezy (3.0.0~bzr6670-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6674-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
   * Drop patch 17_reproducible_makefile, applied upstream.
   * Drop patch 22_test_copy_to, applied upstream.
+  * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Jun 2017 10:59:30 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 10 Jun 2017 00:30:05 +0000
 
 breezy (3.0.0~bzr6644-1) experimental; urgency=medium
 

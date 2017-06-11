@@ -16,6 +16,7 @@
 
 """Helper functions for Walkdirs on win32."""
 
+from __future__ import absolute_import
 
 cdef extern from "python-compat.h":
     struct _HANDLE:
@@ -72,7 +73,7 @@ import operator
 import os
 import stat
 
-from breezy import _readdir_py
+from . import _readdir_py
 
 cdef object osutils
 osutils = None
