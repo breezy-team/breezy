@@ -20,7 +20,7 @@ from .. import tests
 from ..sixish import (
     BytesIO,
     )
-from ..smart import medium, protocol
+from ..bzr.smart import medium, protocol
 from ..transport.http import wsgi
 from ..transport import chroot, memory
 

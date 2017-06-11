@@ -25,16 +25,16 @@ import sys
 import time
 import threading
 
-from ..hooks import Hooks
-from .. import (
+from ...hooks import Hooks
+from ... import (
     errors,
     trace,
     transport as _mod_transport,
 )
-from ..i18n import gettext
-from ..lazy_import import lazy_import
+from ...i18n import gettext
+from ...lazy_import import lazy_import
 lazy_import(globals(), """
-from breezy.smart import (
+from breezy.bzr.smart import (
     medium,
     signals,
     )
@@ -329,7 +329,7 @@ class SmartServerHooks(Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self, "breezy.smart.server", "SmartTCPServer.hooks")
+        Hooks.__init__(self, "breezy.bzr.smart.server", "SmartTCPServer.hooks")
         self.add_hook('server_started',
             "Called by the bzr server when it starts serving a directory. "
             "server_started is called with (backing urls, public url), "

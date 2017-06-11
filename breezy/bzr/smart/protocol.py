@@ -30,18 +30,18 @@ except ImportError:
 import time
 
 import breezy
-from .. import (
+from ... import (
     debug,
     errors,
     osutils,
     )
-from ..sixish import (
+from ...sixish import (
     BytesIO,
     reraise,
 )
 from . import message, request
-from ..trace import log_exception_quietly, mutter
-from ..bencode import bdecode_as_tuple, bencode
+from ...trace import log_exception_quietly, mutter
+from ...bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and

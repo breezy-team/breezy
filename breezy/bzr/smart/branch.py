@@ -18,12 +18,12 @@
 
 from __future__ import absolute_import
 
-from .. import (
+from ... import (
     bencode,
     errors,
     revision as _mod_revision,
     )
-from ..controldir import ControlDir
+from ...controldir import ControlDir
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,

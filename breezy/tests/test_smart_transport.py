@@ -44,7 +44,7 @@ from ..bzr import (
 from ..sixish import (
     BytesIO,
     )
-from ..smart import (
+from ..bzr.smart import (
     client,
     medium,
     message,
@@ -1937,7 +1937,7 @@ class TestSmartProtocol(tests.TestCase):
         :returns: a Request
         """
         # This is very similar to
-        # breezy.smart.client._SmartClient._build_client_protocol
+        # breezy.bzr.smart.client._SmartClient._build_client_protocol
         # XXX: make this use _SmartClient!
         if input_bytes is None:
             input = BytesIO()
@@ -2902,7 +2902,7 @@ class TestProtocolThree(TestSmartProtocol):
 class TestConventionalResponseHandlerBodyStream(tests.TestCase):
 
     def make_response_handler(self, response_bytes):
-        from breezy.smart.message import ConventionalResponseHandler
+        from breezy.bzr.smart.message import ConventionalResponseHandler
         response_handler = ConventionalResponseHandler()
         protocol_decoder = protocol.ProtocolThreeDecoder(response_handler)
         # put decoder in desired state (waiting for message parts)
@@ -2977,7 +2977,7 @@ class TestConventionalRequestHandlerBodyStream(tests.TestCase):
         """Make a ConventionalRequestHandler for the given bytes using test
         doubles for the request_handler and the responder.
         """
-        from breezy.smart.message import ConventionalRequestHandler
+        from breezy.bzr.smart.message import ConventionalRequestHandler
         request_handler = InstrumentedRequestHandler()
         request_handler.response = _mod_request.SuccessfulSmartServerResponse(('arg', 'arg'))
         responder = FakeResponder()

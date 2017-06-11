@@ -36,7 +36,7 @@ from ...bzr import (
 from ...sixish import (
     BytesIO,
     )
-from ...smart import (
+from ...bzr.smart import (
     client,
     )
 from .. import (

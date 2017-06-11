@@ -60,8 +60,8 @@ from ..sixish import (
     viewitems,
     viewvalues,
     )
-from ..smart import client, vfs, repository as smart_repo
-from ..smart.client import _SmartClient
+from .smart import client, vfs, repository as smart_repo
+from .smart.client import _SmartClient
 from ..revision import NULL_REVISION
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from .serializer import format_registry as serializer_format_registry

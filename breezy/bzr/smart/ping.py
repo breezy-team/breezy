@@ -18,12 +18,12 @@
 
 from __future__ import absolute_import
 
-from ..commands import Command
-from ..lazy_import import lazy_import
+from ...commands import Command
+from ...lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import errors
-from breezy.smart.client import _SmartClient
+from breezy.bzr.smart.client import _SmartClient
 from breezy.transport import get_transport
 """)
 

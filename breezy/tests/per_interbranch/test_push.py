@@ -40,7 +40,7 @@ from ...revision import NULL_REVISION
 from ...sixish import (
     BytesIO,
     )
-from ...smart.repository import SmartServerRepositoryGetParentMap
+from ...bzr.smart.repository import SmartServerRepositoryGetParentMap
 from . import (
     TestCaseWithInterBranch,
     )

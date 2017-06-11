@@ -96,7 +96,7 @@ from ..sixish import (
     string_types,
     text_type,
     )
-from ..smart import client, request
+from ..bzr.smart import client, request
 from ..transport import (
     memory,
     pathfilter,
@@ -2333,7 +2333,7 @@ class TestCase(testtools.TestCase):
 
     def disable_verb(self, verb):
         """Disable a smart server verb for one test."""
-        from breezy.smart import request
+        from breezy.bzr.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         orig_info = request_handlers.get_info(verb)

@@ -16,14 +16,14 @@
 
 from __future__ import absolute_import
 
-from .. import lazy_import
+from ... import lazy_import
 lazy_import.lazy_import(globals(), """
-from breezy.smart import request as _mod_request
+from breezy.bzr.smart import request as _mod_request
 """)
 
 import breezy
 from . import message, protocol
-from .. import (
+from ... import (
     debug,
     errors,
     hooks,
@@ -318,10 +318,10 @@ class _SmartClientRequest(object):
 class SmartClientHooks(hooks.Hooks):
 
     def __init__(self):
-        hooks.Hooks.__init__(self, "breezy.smart.client", "_SmartClient.hooks")
+        hooks.Hooks.__init__(self, "breezy.bzr.smart.client", "_SmartClient.hooks")
         self.add_hook('call',
             "Called when the smart client is submitting a request to the "
-            "smart server. Called with a breezy.smart.client.CallHookParams "
+            "smart server. Called with a breezy.bzr.smart.client.CallHookParams "
             "object. Streaming request bodies, and responses, are not "
             "accessible.", None)
 

@@ -18,19 +18,19 @@
 
 from __future__ import absolute_import
 
-from .. import (
+from ... import (
     bencode,
     branch,
     errors,
     repository,
     urlutils,
     )
-from ..bzr.bzrdir import (
+from ..bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrProber,
     )
-from ..controldir import (
+from ...controldir import (
     network_format_registry,
     )
 from .request import (

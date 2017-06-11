@@ -18,14 +18,14 @@ from __future__ import absolute_import
 
 import collections
 
-from .. import (
+from ... import (
     debug,
     errors,
     )
-from ..sixish import (
+from ...sixish import (
     BytesIO,
     )
-from ..trace import mutter
+from ...trace import mutter
 
 
 class MessageHandler(object):

@@ -36,7 +36,7 @@ from breezy.transport import (
     chroot,
     pathfilter,
     )
-from breezy.smart import (
+from breezy.bzr.smart import (
     medium,
     server,
     )

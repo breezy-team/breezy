@@ -26,7 +26,7 @@ from .. import (
     trace,
     )
 from ..controldir import ControlDir
-from ..smart import medium
+from ..bzr.smart import medium
 from ..transport import remote
 
 from . import (
@@ -175,10 +175,10 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.bzr.remote',
             'breezy.rules',
             'breezy.sign_my_commits',
-            'breezy.smart',
-            'breezy.smart.client',
-            'breezy.smart.medium',
-            'breezy.smart.server',
+            'breezy.bzr.smart',
+            'breezy.bzr.smart.client',
+            'breezy.bzr.smart.medium',
+            'breezy.bzr.smart.server',
             'breezy.transform',
             'breezy.version_info_formats.format_rio',
             'breezy.bzr.xml_serializer',
@@ -251,7 +251,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.bzr.remote',
             'breezy.rules',
             'breezy.sign_my_commits',
-            'breezy.smart.client',
+            'breezy.bzr.smart.client',
             'breezy.transform',
             'breezy.version_info_formats.format_rio',
             'breezy.bzr.workingtree_4',

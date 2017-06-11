@@ -30,7 +30,7 @@ import tempfile
 import threading
 import zlib
 
-from .. import (
+from ... import (
     bencode,
     errors,
     estimate_compressed_size,
@@ -38,14 +38,14 @@ from .. import (
     trace,
     ui,
     )
-from ..bzr import (
+from .. import (
     inventory as _mod_inventory,
     inventory_delta,
     pack,
     vf_search,
     )
-from ..bzr.bzrdir import BzrDir
-from ..sixish import (
+from ..bzrdir import BzrDir
+from ...sixish import (
     reraise,
 )
 from .request import (
@@ -53,9 +53,9 @@ from .request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from ..repository import _strip_NULL_ghosts, network_format_registry
-from .. import revision as _mod_revision
-from ..bzr.versionedfile import (
+from ...repository import _strip_NULL_ghosts, network_format_registry
+from ... import revision as _mod_revision
+from ..versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,

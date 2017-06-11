@@ -68,9 +68,9 @@ from ..revision import (
 from ..sixish import (
     BytesIO,
     )
-from ..smart import medium, request
-from ..smart.client import _SmartClient
-from ..smart.repository import (
+from ..bzr.smart import medium, request
+from ..bzr.smart.client import _SmartClient
+from ..bzr.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
     _stream_to_byte_stream,

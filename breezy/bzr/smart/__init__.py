@@ -20,7 +20,7 @@ This code is fairly complex, so it has been split up into a package of modules,
 rather than being a single large module.  Refer to the individual module
 docstrings for details.
 
-Server-side request handlers are registered in the `breezy.smart.request`
+Server-side request handlers are registered in the `breezy.bzr.smart.request`
 module.
 
 The domain logic is in `breezy.bzr.remote`: `RemoteBzrDir`, `RemoteBranch`,

@@ -21,7 +21,7 @@ from __future__ import absolute_import
 import signal
 import weakref
 
-from .. import trace
+from ... import trace
 
 
 # I'm pretty sure this has to be global, since signal handling is per-process.

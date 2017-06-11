@@ -1457,8 +1457,8 @@ class TestTestCase(tests.TestCase):
         # useful warning in that case.
         self.assertEqual(breezy.branch.BranchHooks(), breezy.branch.Branch.hooks)
         self.assertEqual(
-            breezy.smart.server.SmartServerHooks(),
-            breezy.smart.server.SmartTCPServer.hooks)
+            breezy.bzr.smart.server.SmartServerHooks(),
+            breezy.bzr.smart.server.SmartTCPServer.hooks)
         self.assertEqual(
             breezy.commands.CommandHooks(), breezy.commands.Command.hooks)
 

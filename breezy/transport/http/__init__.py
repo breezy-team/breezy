@@ -33,7 +33,7 @@ from ... import (
     ui,
     urlutils,
     )
-from ...smart import medium
+from ...bzr.smart import medium
 from ...trace import mutter
 from ...transport import (
     ConnectedTransport,

@@ -32,7 +32,7 @@ import sys
 import time
 
 import breezy
-from ..lazy_import import lazy_import
+from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import select
 import socket
@@ -48,10 +48,10 @@ from breezy import (
     urlutils,
     )
 from breezy.i18n import gettext
-from breezy.smart import client, protocol, request, signals, vfs
+from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
 """)
-from .. import osutils
+from ... import osutils
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
