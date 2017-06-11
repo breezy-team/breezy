@@ -18,12 +18,14 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.config import (
+from __future__ import absolute_import
+
+from ...config import (
   configobj,
   ConfigObj,
   TreeConfig,
   )
-from bzrlib.trace import mutter, warning
+from ...trace import mutter, warning
 
 
 BUILD_TYPE_NORMAL = "normal"
@@ -120,7 +122,7 @@ class DebBuildConfig(object):
     if tree is not None:
       try:
         # Imported here, since not everybody will have bzr-svn installed
-        from bzrlib.plugins.svn.config import SubversionBuildPackageConfig, NoSubversionBuildPackageConfig
+        from ..svn.config import SubversionBuildPackageConfig, NoSubversionBuildPackageConfig
         try:
           self._tree_config = SvnBuildPackageMappedConfig(SubversionBuildPackageConfig(tree))
         except NoSubversionBuildPackageConfig:

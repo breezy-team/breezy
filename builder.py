@@ -18,18 +18,20 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import shutil
 import subprocess
 import os
 
-from bzrlib.trace import note
+from ...trace import note
 
-from bzrlib.plugins.builddeb.errors import (
-                    NoSourceDirError,
-                    BuildFailedError,
-                    )
-from bzrlib.plugins.builddeb.quilt import quilt_push_all
-from bzrlib.plugins.builddeb.util import (
+from .errors import (
+    NoSourceDirError,
+    BuildFailedError,
+    )
+from .quilt import quilt_push_all
+from .util import (
     get_parent_dir,
     subprocess_setup,
     FORMAT_3_0_QUILT,

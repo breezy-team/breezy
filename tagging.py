@@ -19,6 +19,8 @@
 
 """Tagging related functions for bzr-builddeb."""
 
+from __future__ import absolute_import
+
 try:
     from debian.changelog import Version
 except ImportError:

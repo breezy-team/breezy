@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import gzip
 import os
 from StringIO import StringIO
@@ -35,14 +37,14 @@ import shutil
 import time
 import zipfile
 
-from bzrlib.errors import (
+from ...errors import (
     DependencyNotPresent,
     FileExists,
     )
-from bzrlib.transport import get_transport
+from ...transport import get_transport
 
-from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
-from bzrlib.plugins.builddeb.util import open_file, open_file_via_transport
+from .errors import UnsupportedRepackFormat
+from .util import open_file, open_file_via_transport
 
 
 class TgzRepacker(object):

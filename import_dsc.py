@@ -25,6 +25,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
 
 import calendar
 import os
@@ -41,32 +42,32 @@ except ImportError:
     from debian_bundle import deb822
     from debian_bundle.changelog import Version, Changelog, VersionError
 
-from bzrlib import (
-                    bzrdir,
-                    osutils,
-                    )
-from bzrlib.config import ConfigObj
-from bzrlib.errors import (
-        AlreadyBranchError,
-        BzrCommandError,
-        NotBranchError,
-        NoWorkingTree,
-        UnrelatedBranches,
-        )
-from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import warning, mutter
-from bzrlib.transport import (
+from ... import (
+    bzrdir,
+    osutils,
+    )
+from ...config import ConfigObj
+from ...errors import (
+    AlreadyBranchError,
+    BzrCommandError,
+    NotBranchError,
+    NoWorkingTree,
+    UnrelatedBranches,
+    )
+from ...revision import NULL_REVISION
+from ...trace import warning, mutter
+from ...transport import (
     get_transport,
     )
 
-from bzrlib.plugins.builddeb.bzrtools_import import import_dir
-from bzrlib.plugins.builddeb.errors import (
+from .bzrtools_import import import_dir
+from .errors import (
     MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
     )
-from bzrlib.plugins.builddeb.util import (
+from .util import (
     FORMAT_1_0,
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
@@ -80,7 +81,7 @@ from bzrlib.plugins.builddeb.util import (
     safe_decode,
     subprocess_setup,
     )
-from bzrlib.plugins.builddeb.upstream.pristinetar import (
+from .upstream.pristinetar import (
     PristineTarSource,
     )
 

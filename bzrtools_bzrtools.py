@@ -18,8 +18,10 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import urlutils
-from bzrlib.transport import get_transport
+from __future__ import absolute_import
+
+from ... import urlutils
+from ...transport import get_transport
 
 
 def open_from_url(location):

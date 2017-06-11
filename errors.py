@@ -18,7 +18,9 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.errors import BzrError
+from __future__ import absolute_import
+
+from ...errors import BzrError
 
 
 class DebianError(BzrError):

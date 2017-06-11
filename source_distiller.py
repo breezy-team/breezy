@@ -17,14 +17,16 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import absolute_import
+
 import glob
 import os
 import shutil
 import tempfile
 
-from bzrlib import errors as bzr_errors
+from ... import errors as bzr_errors
 
-from bzrlib.plugins.builddeb.util import (
+from .util import (
     export,
     extract_orig_tarballs,
     get_parent_dir,

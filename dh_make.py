@@ -1,17 +1,19 @@
+from __future__ import absolute_import
+
 import os
 import sys
 import subprocess
 
-from bzrlib import (
+from ... import (
     bzrdir,
     revision as mod_revision,
     trace,
     transport,
     workingtree,
     )
-from bzrlib import errors as bzr_errors
+from ... import errors as bzr_errors
 
-from bzrlib.plugins.builddeb import (
+from . import (
     default_orig_dir,
     errors,
     import_dsc,
@@ -52,7 +54,7 @@ def _get_tree(package_name):
 
 
 def _get_tarballs(tree, tarball, package_name, version):
-    from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+    from .repack_tarball import repack_tarball
     config = util.debuild_config(tree, tree)
     orig_dir = config.orig_dir or default_orig_dir
     orig_dir = os.path.join(tree.basedir, orig_dir)

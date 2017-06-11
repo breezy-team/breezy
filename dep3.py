@@ -20,7 +20,9 @@
 
 """DEP-3 style patch formatting."""
 
-from bzrlib import diff
+from __future__ import absolute_import
+
+from ... import diff
 
 import time
 

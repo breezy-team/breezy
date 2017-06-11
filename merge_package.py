@@ -20,7 +20,9 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib import version_info as bzrlib_version
+from __future__ import absolute_import
+
+from ... import version_info as bzrlib_version
 
 import os
 import shutil
@@ -32,12 +34,12 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.plugins.builddeb.errors import (
+from .errors import (
     MultipleUpstreamTarballsNotSupported,
     SharedUpstreamConflictsWithTargetPackaging,
     )
-from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
-from bzrlib.plugins.builddeb.util import find_changelog
+from .import_dsc import DistributionBranch
+from .util import find_changelog
 
 
 def _upstream_version_data(branch, revid):

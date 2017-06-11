@@ -21,39 +21,41 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 import shutil
 import tempfile
 
-from bzrlib import (
+from ... import (
     urlutils,
     version_info as bzrlib_version,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.commands import Command
-from bzrlib.errors import (
+from ...branch import Branch
+from ...bzrdir import BzrDir
+from ...commands import Command
+from ...errors import (
     BzrCommandError,
     FileExists,
     NotBranchError,
     NoWorkingTree,
     )
-from bzrlib.option import Option
-from bzrlib.trace import note, warning
-from bzrlib.workingtree import WorkingTree
+from ...option import Option
+from ...trace import note, warning
+from ...workingtree import WorkingTree
 
-from bzrlib.plugins.builddeb import (
+from . import (
     default_build_dir,
     default_orig_dir,
     default_result_dir,
     gettext,
     )
-from bzrlib.plugins.builddeb.config import (
+from .config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_SPLIT,
     )
-from bzrlib.plugins.builddeb.util import (
+from .util import (
     debuild_config,
     )
 
@@ -86,12 +88,12 @@ export_upstream_revision_opt = Option('export-upstream-revision',
 
 
 def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
-    from bzrlib.plugins.builddeb.util import (
+    from .util import (
         find_changelog,
         find_last_distribution,
         lookup_distribution,
         )
-    from bzrlib.plugins.builddeb.errors import (
+    from .errors import (
         MissingChangelogError,
         )
     DEFAULT_FALLBACK_DISTRIBUTION = "debian"
@@ -296,7 +298,7 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, export_upstream, export_upstream_revision,
             config, version):
-        from bzrlib.plugins.builddeb.upstream.branch import (
+        from .upstream.branch import (
             LazyUpstreamBranchSource,
             )
         upstream_source = LazyUpstreamBranchSource(export_upstream,
@@ -315,31 +317,31 @@ class cmd_builddeb(Command):
             source=False, revision=None, result=None, package_merge=None,
             strict=False):
         import commands
-        from bzrlib.plugins.builddeb.source_distiller import (
+        from .source_distiller import (
                 FullSourceDistiller,
                 MergeModeDistiller,
                 NativeSourceDistiller,
                 )
-        from bzrlib.plugins.builddeb.builder import DebBuild
-        from bzrlib.plugins.builddeb.errors import (
+        from .builder import DebBuild
+        from .errors import (
             NoPreviousUpload,
             StrictBuildFailed
             )
-        from bzrlib.plugins.builddeb.hooks import run_hook
-        from bzrlib.plugins.builddeb.upstream.branch import (
+        from .hooks import run_hook
+        from .upstream.branch import (
             LazyUpstreamBranchSource,
             )
-        from bzrlib.plugins.builddeb.upstream import (
+        from .upstream import (
             AptSource,
             DebianRulesSource,
             SelfSplitSource,
             UScanSource,
             UpstreamProvider,
             )
-        from bzrlib.plugins.builddeb.upstream.pristinetar import (
+        from .upstream.pristinetar import (
             PristineTarSource,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             dget_changes,
             find_changelog,
             find_previous_upload,
@@ -496,16 +498,16 @@ class cmd_get_orig_source(Command):
     takes_args = ["version?"]
 
     def run(self, directory='.', version=None):
-        from bzrlib.plugins.builddeb.upstream import (
+        from .upstream import (
             AptSource,
             DebianRulesSource,
             UScanSource,
             UpstreamProvider,
             )
-        from bzrlib.plugins.builddeb.upstream.pristinetar import (
+        from .upstream.pristinetar import (
             PristineTarSource,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             find_changelog,
             )
         tree = WorkingTree.open_containing(directory)[0]
@@ -612,9 +614,9 @@ class cmd_merge_upstream(Command):
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
             changelog):
-        from bzrlib.plugins.builddeb.merge_upstream import (
+        from .merge_upstream import (
             changelog_add_new_version)
-        from bzrlib.plugins.builddeb.errors import (
+        from .errors import (
             DchError,
             )
         try:
@@ -629,11 +631,11 @@ class cmd_merge_upstream(Command):
     def _do_merge(self, tree, tarball_filenames, package, version,
             current_version, upstream_branch, upstream_revisions, merge_type,
             force):
-        from bzrlib.plugins.builddeb.import_dsc import (
+        from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             component_from_orig_tarball,
             )
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
@@ -648,8 +650,8 @@ class cmd_merge_upstream(Command):
         return conflicts
 
     def _fetch_tarball(self, package, version, orig_dir, locations, v3):
-        from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.util import tarball_name
+        from .repack_tarball import repack_tarball
+        from .util import tarball_name
         ret = []
         format = None
         for location in locations:
@@ -690,16 +692,16 @@ class cmd_merge_upstream(Command):
             # Prior to 0.1.15 the debian module was called debian_bundle
             from debian_bundle.changelog import Version
 
-        from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
-        from bzrlib.plugins.builddeb.hooks import run_hook
-        from bzrlib.plugins.builddeb.upstream import (
+        from .errors import PackageVersionNotPresent
+        from .hooks import run_hook
+        from .upstream import (
             TarfileSource,
             UScanSource,
             )
-        from bzrlib.plugins.builddeb.upstream.branch import (
+        from .upstream.branch import (
             UpstreamBranchSource,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             FORMAT_3_0_QUILT,
             FORMAT_3_0_NATIVE,
             tree_get_source_format,
@@ -740,7 +742,7 @@ class cmd_merge_upstream(Command):
                         "is not supported."))
 
             if launchpad:
-                from bzrlib.plugins.builddeb.launchpad import (
+                from .launchpad import (
                     get_upstream_branch_url as lp_get_upstream_branch_url,
                     )
                 upstream_branch = lp_get_upstream_branch_url(package,
@@ -900,11 +902,11 @@ class cmd_import_dsc(Command):
     takes_options = [filename_opt]
 
     def import_many(self, db, files_list, orig_target):
-        from bzrlib.plugins.builddeb.import_dsc import (
+        from .import_dsc import (
             DscCache,
             DscComp,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             open_file_via_transport,
             )
         cache = DscCache()
@@ -930,14 +932,14 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
-        from bzrlib.plugins.builddeb.errors import (
+        from .errors import (
             MissingChangelogError,
             )
-        from bzrlib.plugins.builddeb.import_dsc import (
+        from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             find_changelog,
             open_file,
             )
@@ -1052,11 +1054,11 @@ class cmd_import_upstream(Command):
         except ImportError:
             # Prior to 0.1.15 the debian module was called debian_bundle
             from debian_bundle.changelog import Version
-        from bzrlib.plugins.builddeb.import_dsc import (
+        from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             md5sum_filename,
             )
         # TODO: search for similarity etc.
@@ -1152,26 +1154,26 @@ class cmd_builddeb_do(Command):
 
     def run(self, command_list=None):
         import subprocess
-        from bzrlib.plugins.builddeb.errors import (
+        from .errors import (
             BuildFailedError,
             )
-        from bzrlib.plugins.builddeb.source_distiller import (
+        from .source_distiller import (
             MergeModeDistiller,
             )
-        from bzrlib.plugins.builddeb.builder import (
+        from .builder import (
             DebBuild,
             )
-        from bzrlib.plugins.builddeb.upstream import (
+        from .upstream import (
             AptSource,
             DebianRulesSource,
             UScanSource,
             UpstreamProvider,
             )
-        from bzrlib.plugins.builddeb.upstream.pristinetar import (
+        from .upstream.pristinetar import (
             PristineTarSource,
             )
-        from bzrlib.plugins.builddeb.hooks import run_hook
-        from bzrlib.plugins.builddeb.util import (
+        from .hooks import run_hook
+        from .util import (
             find_changelog,
             guess_build_type,
             tree_contains_upstream_source,
@@ -1271,11 +1273,11 @@ class cmd_mark_uploaded(Command):
     takes_options = [merge_opt, force]
 
     def run(self, merge=None, force=None):
-        from bzrlib.plugins.builddeb.import_dsc import (
+        from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
             )
-        from bzrlib.plugins.builddeb.util import (
+        from .util import (
             find_changelog,
             )
         t = WorkingTree.open_containing('.')[0]
@@ -1329,10 +1331,10 @@ class cmd_merge_package(Command):
         hidden = True
 
     def run(self, source, revision=None):
-        from bzrlib import ui
-        from bzrlib.merge import Merger
-        from bzrlib.tag import _merge_tags_if_possible
-        from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
+        from ... import ui
+        from ...merge import Merger
+        from ...tag import _merge_tags_if_possible
+        from .merge_package import fix_ancestry_as_needed
         if 'pre_merge' in Merger.hooks:
             ui.ui_factory.show_warning(
                 "The merge-package command is deprecated. Use 'bzr merge' "
@@ -1416,7 +1418,7 @@ class cmd_dh_make(Command):
     takes_options = [bzr_only_opt, v3_opt]
 
     def run(self, package_name, version, tarball, bzr_only=None, v3=None):
-        from bzrlib.plugins.builddeb import dh_make
+        from . import dh_make
         if v3:
             warning(gettext('The --v3 option has been deprecated. dh_make now '
                             'creates format v3 packages by default.'))
@@ -1466,7 +1468,7 @@ class cmd_dep3_patch(Command):
 
     def run(self, location=".", directory=".", revision=None,
             no_upstream_check=False):
-        from bzrlib.plugins.builddeb.dep3 import (
+        from .dep3 import (
             determine_applied_upstream,
             determine_forwarded,
             describe_origin,

@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 try:
     import hashlib as md5
 except ImportError:
@@ -29,7 +31,7 @@ import tempfile
 import os
 import re
 
-from bzrlib.trace import mutter
+from ...trace import mutter
 
 try:
     from debian import deb822
@@ -39,32 +41,32 @@ except ImportError:
     from debian_bundle import deb822
     from debian_bundle.changelog import Changelog, ChangelogParseError
 
-from bzrlib import (
+from ... import (
     bugtracker,
     errors,
     urlutils,
     version_info as bzr_version_info,
     )
-from bzrlib.export import export as bzr_export
-from bzrlib.trace import warning
-from bzrlib.transport import (
+from ...export import export as bzr_export
+from ...trace import warning
+from ...transport import (
     do_catching_redirections,
     get_transport,
     )
-from bzrlib.plugins.builddeb import (
+from . import (
     default_conf,
     local_conf,
     global_conf,
     new_conf,
     new_local_conf,
     )
-from bzrlib.plugins.builddeb.config import (
+from .config import (
     DebBuildConfig,
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
     )
-from bzrlib.plugins.builddeb.errors import (
+from .errors import (
     MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
@@ -435,7 +437,7 @@ def find_bugs_fixed(changes, branch, _lplib=None):
         property.
     """
     if _lplib is None:
-        from bzrlib.plugins.builddeb import launchpad as _lplib
+        from . import launchpad as _lplib
     bugs = []
     for change in changes:
         for match in re.finditer("closes:\s*(?:bug)?\#?\s?\d+"

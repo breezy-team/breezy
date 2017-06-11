@@ -18,14 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib import version_info as bzrlib_version
-from bzrlib.errors import (
+from __future__ import absolute_import
+
+from ... import version_info as bzrlib_version
+from ...errors import (
     InvalidRevisionSpec,
     NoSuchTag,
     )
-from bzrlib.revisionspec import RevisionSpec, RevisionInfo
+from ...revisionspec import RevisionSpec, RevisionInfo
 
-from bzrlib.plugins.builddeb.errors import (
+from .errors import (
     MissingChangelogError,
     UnknownVersion,
     VersionNotSpecified,

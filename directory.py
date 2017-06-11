@@ -18,8 +18,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib import errors
-from bzrlib.trace import note
+from __future__ import absolute_import
+
+from ... import errors
+from ...trace import note
 
 import apt_pkg
 
@@ -78,7 +80,7 @@ class VcsDirectory(object):
 
         if "Svn" in urls[version]:
             try:
-                import bzrlib.plugins.svn
+                from .. import svn
             except ImportError:
                 note("This package uses subversion. If you would like to "
                         "access it with bzr then please install bzr-svn "
@@ -88,7 +90,7 @@ class VcsDirectory(object):
 
         if "Git" in urls[version]:
             try:
-                import bzrlib.plugins.git
+                from .. import git
             except ImportError:
                 note("This package uses git. If you would like to "
                         "access it with bzr then please install bzr-git "
@@ -98,7 +100,7 @@ class VcsDirectory(object):
 
         if "Hg" in urls[version]:
             try:
-                import bzrlib.plugins.hg
+                from .. import hg
             except ImportError:
                 note("This package uses hg. If you would like to "
                         "access it with bzr then please install bzr-hg"
@@ -111,8 +113,8 @@ class VcsDirectory(object):
 
 
 def upstream_branch_alias(b):
-    from bzrlib.directory_service import directories
-    from bzrlib.plugins.builddeb.util import debuild_config
+    from ...directory_service import directories
+    from .util import debuild_config
     b.lock_read()
     try:
         tree = b.basis_tree()

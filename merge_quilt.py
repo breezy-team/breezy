@@ -24,16 +24,16 @@ from __future__ import absolute_import
 
 import shutil
 import tempfile
-from bzrlib.mutabletree import MutableTree
-from bzrlib.revisiontree import RevisionTree
-from bzrlib import (
+from ...mutabletree import MutableTree
+from ...revisiontree import RevisionTree
+from ... import (
     errors,
     merge as _mod_merge,
     trace,
     )
 
-from bzrlib.plugins.builddeb import gettext
-from bzrlib.plugins.builddeb.quilt import (
+from . import gettext
+from .quilt import (
     quilt_applied,
     quilt_unapplied,
     quilt_pop,
@@ -42,7 +42,7 @@ from bzrlib.plugins.builddeb.quilt import (
     quilt_push_all,
     quilt_series,
     )
-from bzrlib.plugins.builddeb.util import debuild_config
+from .util import debuild_config
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):

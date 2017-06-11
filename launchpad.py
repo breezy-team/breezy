@@ -18,10 +18,12 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 
-from bzrlib.config import config_dir
-from bzrlib.trace import (
+from ...config import config_dir
+from ...trace import (
     mutter,
     note,
     )

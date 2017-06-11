@@ -26,7 +26,7 @@ import errno
 import os
 import signal
 import subprocess
-from bzrlib import (
+from ... import (
     errors,
     trace,
     )

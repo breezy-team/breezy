@@ -3,6 +3,8 @@
 
 """Import upstream source into a branch"""
 
+from __future__ import absolute_import
+
 import errno
 import os
 from StringIO import StringIO
@@ -10,16 +12,16 @@ import stat
 import tarfile
 import zipfile
 
-from bzrlib import generate_ids
-from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, BzrCommandError, NotBranchError
-from bzrlib.osutils import (pathjoin, isdir, file_iterator, basename,
-                            file_kind, splitpath, normpath, walkdirs)
-from bzrlib.trace import warning
-from bzrlib.transform import TreeTransform, resolve_conflicts, cook_conflicts
-from bzrlib.workingtree import WorkingTree
-from bzrlib.plugins.builddeb.bzrtools_bzrtools import open_from_url
-from bzrlib.plugins.builddeb.errors import UnknownType
+from ... import generate_ids
+from ...bzrdir import BzrDir
+from ...errors import NoSuchFile, BzrCommandError, NotBranchError
+from ...osutils import (pathjoin, isdir, file_iterator, basename,
+                        file_kind, splitpath, normpath, walkdirs)
+from ...trace import warning
+from ...transform import TreeTransform, resolve_conflicts, cook_conflicts
+from ...workingtree import WorkingTree
+from .bzrtools_bzrtools import open_from_url
+from .errors import UnknownType
 
 class ZipFileWrapper(object):
 

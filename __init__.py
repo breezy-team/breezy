@@ -28,15 +28,15 @@ from __future__ import absolute_import
 import os
 
 import bzrlib
-from bzrlib.commands import plugin_cmds
+from ...commands import plugin_cmds
 
-from bzrlib.plugins.builddeb.info import (
+from .info import (
     bzr_plugin_version as version_info,
     )
 
 
 try:
-    from bzrlib.i18n import load_plugin_translations
+    from ...i18n import load_plugin_translations
 except ImportError: # No translations for bzr < 2.5
     gettext = lambda x: x
 else:
@@ -63,7 +63,7 @@ for command, aliases in commands.iteritems():
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
 def global_conf():
-    from bzrlib.config import config_dir
+    from ...config import config_dir
     return os.path.join(config_dir(), 'builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 new_local_conf = 'debian/local.conf.local'
@@ -75,9 +75,9 @@ default_result_dir = '..'
 
 
 try:
-    from bzrlib.registry import register_lazy
+    from ...registry import register_lazy
 except ImportError:
-    from bzrlib.directory_service import (
+    from ...directory_service import (
         AliasDirectory,
         directories,
         )
@@ -93,7 +93,7 @@ except ImportError:
                 help="upstream branch (for packaging branches)")
 
     try:
-        from bzrlib.tag import tag_sort_methods
+        from ...tag import tag_sort_methods
     except ImportError:
         pass # bzr tags --sort= can not be extended
     else:
@@ -102,14 +102,14 @@ except ImportError:
             "Sort like Debian versions.")
 
     try:
-        from bzrlib.revisionspec import revspec_registry
+        from ...revisionspec import revspec_registry
         revspec_registry.register_lazy("package:",
             "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
         revspec_registry.register_lazy("upstream:",
             "bzrlib.plugins.builddeb.revspec", "RevisionSpec_upstream")
     except ImportError:
-        from bzrlib.revisionspec import SPEC_TYPES
-        from bzrlib.plugins.builddeb.revspec import (
+        from ...revisionspec import SPEC_TYPES
+        from .revspec import (
             RevisionSpec_package,
             RevisionSpec_upstream,
             )
@@ -177,7 +177,7 @@ def debian_changelog_commit(commit, start_message):
     """hooked into bzrlib.msgeditor set_commit_message.
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
-    from bzrlib.plugins.builddeb.util import (
+    from .util import (
         debuild_config, find_bugs_fixed)
 
     t = commit.work_tree
@@ -197,16 +197,16 @@ def debian_changelog_commit(commit, start_message):
 
 
 def changelog_merge_hook_factory(merger):
-    from bzrlib.plugins.builddeb import merge_changelog
+    from . import merge_changelog
     return merge_changelog.ChangeLogFileMerge(merger)
 
 
 def debian_tag_name(branch, revid):
-    from bzrlib.plugins.builddeb.config import BUILD_TYPE_MERGE
-    from bzrlib.plugins.builddeb.errors import MissingChangelogError
-    from bzrlib.plugins.builddeb.import_dsc import (DistributionBranch,
+    from .config import BUILD_TYPE_MERGE
+    from .errors import MissingChangelogError
+    from .import_dsc import (DistributionBranch,
         DistributionBranchSet)
-    from bzrlib.plugins.builddeb.util import debuild_config, find_changelog
+    from .util import debuild_config, find_changelog
     t = branch.repository.revision_tree(revid)
     config = debuild_config(t, False)
     try:
@@ -230,7 +230,7 @@ def start_commit_check_quilt(tree):
     if tree.path2id("debian/patches") is None:
         # No patches to worry about
         return
-    from bzrlib.plugins.builddeb.merge_quilt import start_commit_quilt_patches
+    from .merge_quilt import start_commit_quilt_patches
     start_commit_quilt_patches(tree)
 
 
@@ -248,8 +248,8 @@ def pre_merge_quilt(merger):
         merger.working_tree.path2id("debian/patches/series") is None):
         return
 
-    from bzrlib import trace
-    from bzrlib.plugins.builddeb.util import debuild_config
+    from ... import trace
+    from .util import debuild_config
     config = debuild_config(merger.working_tree, merger.working_tree)
     merger.debuild_config = config
     if not config.quilt_smart_merge:
@@ -261,9 +261,9 @@ def pre_merge_quilt(merger):
         merger.working_tree.path2id(".pc/applied-patches") is None):
         return
 
-    from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
-    from bzrlib.plugins.builddeb.quilt import quilt_pop_all, quilt_series, QuiltError
-    from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
+    from .errors import QuiltUnapplyError
+    from .quilt import quilt_pop_all, quilt_series, QuiltError
+    from .merge_quilt import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
     merger._old_quilt_series = quilt_series(merger.working_tree)
@@ -309,27 +309,27 @@ def post_merge_quilt_cleanup(merger):
     policy = config.quilt_tree_policy
     if policy is None:
         return
-    from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
+    from .merge_quilt import post_process_quilt_patches
     post_process_quilt_patches(
         merger.working_tree,
         getattr(merger, "_old_quilt_series", []), policy)
 
 
 def post_build_tree_quilt(tree):
-    from bzrlib.plugins.builddeb.util import debuild_config
+    from .util import debuild_config
     config = debuild_config(tree, tree)
     policy = config.quilt_tree_policy
     if policy is None:
         return
-    from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
+    from .merge_quilt import post_process_quilt_patches
     post_process_quilt_patches(tree, [], policy)
 
 
 def pre_merge_fix_ancestry(merger):
-    from bzrlib.plugins.builddeb.config import BUILD_TYPE_NATIVE
-    from bzrlib.plugins.builddeb.util import debuild_config
-    from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
-    from bzrlib.workingtree import WorkingTree
+    from .config import BUILD_TYPE_NATIVE
+    from .util import debuild_config
+    from .merge_package import fix_ancestry_as_needed
+    from ...workingtree import WorkingTree
     if not isinstance(merger.this_tree, WorkingTree):
         return
     if getattr(merger, "other_branch", None) is None:
@@ -341,8 +341,8 @@ def pre_merge_fix_ancestry(merger):
     other_config = debuild_config(merger.other_tree, merger.other_tree)
     if not (this_config.build_type == BUILD_TYPE_NATIVE or
             other_config.build_type == BUILD_TYPE_NATIVE):
-        from bzrlib import trace
-        from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
+        from ... import trace
+        from .errors import PackageVersionNotPresent
         try:
             fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
                 source_revid=merger.other_tree.get_revision_id())
@@ -353,9 +353,9 @@ def pre_merge_fix_ancestry(merger):
 
 
 try:
-    from bzrlib.hooks import install_lazy_named_hook
+    from ...hooks import install_lazy_named_hook
 except ImportError: # Compatibility with bzr < 2.4
-    from bzrlib import (
+    from ... import (
         branch as _mod_branch,
         errors,
         merge,
