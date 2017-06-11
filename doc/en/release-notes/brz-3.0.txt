@@ -138,5 +138,8 @@ Testing
    which caused ``output_encoding = iso-8859-1`` to be added to the
    users' bazaar.conf. (Jelmer Vernooĳ)
 
+ * Newer versions of ``pyftpdlib`` are now supported for running FTP tests.
+   (Jelmer Vernooĳ)
+
 ..
    vim: tw=74 ft=rst ff=unix

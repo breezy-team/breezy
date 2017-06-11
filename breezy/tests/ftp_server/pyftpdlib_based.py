@@ -20,8 +20,10 @@ Based on pyftpdlib: http://code.google.com/p/pyftpdlib/
 """
 
 import errno
+import logging
 import os
 import pyftpdlib
+import sys
 from pyftpdlib.authorizers import (
     AuthorizerError,
     DummyAuthorizer,
@@ -42,6 +44,15 @@ from breezy import (
     trace,
     )
 from breezy.tests import test_server
+
+
+class NullHandler(logging.Handler):
+
+    def emit(self, record):
+        pass
+
+# Shut up very verbose pyftpdlib
+logging.getLogger('pyftpdlib').addHandler(NullHandler())
 
 
 # Convert the pyftplib string version into a tuple to avoid traps in string
@@ -75,6 +86,7 @@ class BzrConformingFS(AbstractedFS):
     def ftp2fs(self, ftppath):
         p = osutils.safe_unicode(ftppath)
         return AbstractedFS.ftp2fs(self, p)
+
 
 class BzrConformingFTPHandler(FTPHandler):
 
