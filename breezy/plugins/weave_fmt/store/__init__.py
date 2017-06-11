@@ -28,12 +28,12 @@ from __future__ import absolute_import
 
 import os
 
-from .. import (
+from .... import (
     errors,
     versionedfile,
     )
-from ..errors import BzrError, UnlistableStore
-from ..trace import mutter
+from ....errors import BzrError, UnlistableStore
+from ....trace import mutter
 
 ######################################################################
 # stores

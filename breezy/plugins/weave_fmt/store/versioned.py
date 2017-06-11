@@ -23,13 +23,13 @@ from __future__ import absolute_import
 import os
 from warnings import warn
 
-from breezy import (
+from .... import (
     errors,
     osutils,
+    ui,
     )
-from breezy.store import TransportStore
-from breezy.trace import mutter
-import breezy.ui
+from . import TransportStore
+from ....trace import mutter
 
 
 class VersionedFileStore(TransportStore):
@@ -206,7 +206,7 @@ class VersionedFileStore(TransportStore):
 
         :param from_transaction: required current transaction in from_store.
         """
-        from breezy.transactions import PassThroughTransaction
+        from ....transactions import PassThroughTransaction
         if from_transaction is None:
             warn("VersionedFileStore.copy_multi without a from_transaction parameter "
                  "is deprecated. Please provide a from_transaction.",
@@ -222,7 +222,7 @@ class VersionedFileStore(TransportStore):
             # we are copying single objects, and there may be open transactions
             # so again with the passthrough
             to_transaction = PassThroughTransaction()
-        pb = breezy.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             for count, f in enumerate(file_ids):
                 mutter("copy weave {%s} into %s", f, self)

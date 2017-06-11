@@ -19,19 +19,19 @@
 import os
 import gzip
 
-from .. import errors as errors
-from ..errors import BzrError
-from ..sixish import (
+from ... import errors as errors
+from ...errors import BzrError
+from ...sixish import (
     BytesIO,
     )
-from ..store import TransportStore
-from ..store.text import TextStore
-from ..store.versioned import VersionedFileStore
-from . import TestCase, TestCaseInTempDir, TestCaseWithTransport
-from .. import transactions as transactions
-from .. import transport as transport
-from ..transport.memory import MemoryTransport
-from ..weave import WeaveFile
+from .store import TransportStore
+from .store.text import TextStore
+from .store.versioned import VersionedFileStore
+from ...tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from ... import transactions
+from ... import transport
+from ...transport.memory import MemoryTransport
+from ...weave import WeaveFile
 
 
 class TestStores(object):

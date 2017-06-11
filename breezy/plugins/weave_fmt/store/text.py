@@ -25,13 +25,13 @@ from __future__ import absolute_import
 import gzip
 import os
 
-from .. import osutils
-from ..errors import BzrError, NoSuchFile, FileExists
-from ..sixish import (
+from .... import osutils
+from ....errors import BzrError, NoSuchFile, FileExists
+from ....sixish import (
     BytesIO,
     )
 from . import TransportStore
-from ..trace import mutter
+from ....trace import mutter
 
 
 
@@ -46,8 +46,6 @@ class TextStore(TransportStore):
     """
 
     def _add_compressed(self, fn, f):
-        from ..osutils import pumpfile
-
         if isinstance(f, bytes):
             f = BytesIO(f)
 
@@ -55,7 +53,7 @@ class TextStore(TransportStore):
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,
         # so will this function
-        pumpfile(f, gf)
+        osutils.pumpfile(f, gf)
         gf.close()
         sio.seek(0)
         self._try_put(fn, sio)
