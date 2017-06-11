@@ -27,19 +27,6 @@ from breezy.tests import (
 
 
 try:
-    from breezy.tests.ftp_server import medusa_based
-    # medusa is bogus starting with python2.6, since we don't support earlier
-    # pythons anymore, it's currently useless. There is hope though that the
-    # unicode bugs get fixed in the future so we leave it disabled until
-    # then. Keeping the framework in place means that only the following line
-    # will need to be changed.  The last tests were conducted with medusa-2.0
-    # -- vila 20110607
-    medusa_available = False
-except ImportError:
-    medusa_available = False
-
-
-try:
     from breezy.tests.ftp_server import pyftpdlib_based
     if pyftpdlib_based.pyftplib_version >= (0, 7, 0):
         pyftpdlib_available = True
@@ -56,12 +43,11 @@ class _FTPServerFeature(features.Feature):
     Right now, the only way this is available is if one of the following is
     installed:
 
-    - 'medusa': http://www.amk.ca/python/code/medusa.html
     - 'pyftpdlib': http://code.google.com/p/pyftpdlib/
     """
 
     def _probe(self):
-        return medusa_available or pyftpdlib_available
+        return pyftpdlib_available
 
     def feature_name(self):
         return 'FTPServer'
@@ -92,9 +78,7 @@ class UnavailableFTPTestServer(object):
         raise tests.UnavailableFeature(FTPServerFeature)
 
 
-if medusa_available:
-    FTPTestServer = medusa_based.FTPTestServer
-elif pyftpdlib_available:
+if pyftpdlib_available:
     FTPTestServer = pyftpdlib_based.FTPTestServer
 else:
     FTPTestServer = UnavailableFTPTestServer

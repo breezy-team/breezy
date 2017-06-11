@@ -587,7 +587,6 @@ elif 'py2exe' in sys.argv:
     excludes = """Tkinter psyco ElementPath r_hmac
                   ImaginaryModule cElementTree elementtree.ElementTree
                   Crypto.PublicKey._fastmath
-                  medusa medusa.filesys medusa.ftp_server
                   tools
                   resource validate""".split()
     dll_excludes = []
