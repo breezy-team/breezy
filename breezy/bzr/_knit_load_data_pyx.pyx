@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 import sys
 
-from . import errors
+from .. import errors
 
 
 cdef extern from "stdlib.h":
@@ -300,7 +300,7 @@ cdef class KnitIndexReader:
             self.process_next_record()
 
 
-def _load_data_c(kndx, fp):
+cpdef _load_data_c(kndx, fp):
     """Load the knit index file into memory."""
     reader = KnitIndexReader(kndx, fp)
     reader.read()

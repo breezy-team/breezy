@@ -26,7 +26,6 @@ from breezy import (
     config as _mod_config,
     debug,
     fetch,
-    remote,
     repository,
     revision as _mod_revision,
     tag as _mod_tag,
@@ -35,6 +34,7 @@ from breezy import (
     urlutils,
     )
 from breezy.bzr import (
+    remote,
     vf_search,
     )
 from breezy.i18n import gettext, ngettext

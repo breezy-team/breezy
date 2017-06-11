@@ -21,7 +21,6 @@ import os
 
 from ... import (
     branch,
-    bzrdir,
     config,
     controldir,
     errors,
@@ -30,6 +29,9 @@ from ... import (
     tests,
     trace,
     urlutils,
+    )
+from...bzr import (
+    bzrdir,
     )
 from ...errors import (
     UnsupportedOperation,
