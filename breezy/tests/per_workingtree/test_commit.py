@@ -94,7 +94,7 @@ class TestCommit(TestCaseWithWorkingTree):
         finally:
             tree_a.unlock()
 
-        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        tree_b = tree_a.controldir.sprout('B').open_workingtree()
         self.build_tree(['B/xyz/'])
         tree_b.add(['xyz'], ['xyz-id'])
         tree_b.rename_one('a/m', 'xyz/m')
@@ -145,7 +145,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['foo'])
         wt.add('foo')
         wt.commit('commit one')
-        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2 = wt.controldir.sprout('to').open_workingtree()
         wt2.commit('change_right')
         wt.merge_from_branch(wt2.branch)
         try:
@@ -233,7 +233,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['a'])
         wt.add(['a'])
         wt.commit('commit one')
-        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2 = wt.controldir.sprout('to').open_workingtree()
         os.remove('a')
         os.mkdir('a')
         wt.commit('changed kind')
@@ -261,7 +261,7 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.bzrdir.transport.put_bytes('branch-format', 'garbage')
+        master.controldir.transport.put_bytes('branch-format', 'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
@@ -317,7 +317,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.lock_write()
         self.build_tree(['a', 'b/', 'b/c', 'd'])
         wt.add(['a', 'b', 'b/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
-        this_dir = wt.bzrdir.root_transport
+        this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         this_dir.delete('d')
         # now we have a tree with a through d in the inventory, but only
@@ -335,7 +335,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.unlock()
         # the changes should have persisted to disk - reopen the workingtree
         # to be sure.
-        wt = wt.bzrdir.open_workingtree()
+        wt = wt.controldir.open_workingtree()
         wt.lock_read()
         self.assertTrue(wt.has_id('a-id'))
         self.assertFalse(wt.has_or_had_id('b-id'))
@@ -353,7 +353,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         wt.commit('first')
         wt.remove('b/c')
-        this_dir = wt.bzrdir.root_transport
+        this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
@@ -368,7 +368,7 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_move_new(self):
         wt = self.make_branch_and_tree('first')
         wt.commit('first')
-        wt2 = wt.bzrdir.sprout('second').open_workingtree()
+        wt2 = wt.controldir.sprout('second').open_workingtree()
         self.build_tree(['second/name1'])
         wt2.add('name1', 'name1-id')
         wt2.commit('second')

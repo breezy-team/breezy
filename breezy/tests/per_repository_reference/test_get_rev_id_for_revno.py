@@ -28,7 +28,7 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
         base = tree.branch.repository
         revid = tree.commit('one')
         revid2 = tree.commit('two')
-        spare_tree = tree.bzrdir.sprout('spare').open_workingtree()
+        spare_tree = tree.controldir.sprout('spare').open_workingtree()
         revid3 = spare_tree.commit('three')
         branch = spare_tree.branch.create_clone_on_transport(
             self.get_transport('referring'),
@@ -36,9 +36,9 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
         repo = branch.repository
         # Sanity check: now repo has 'revid3', and base has 'revid' + 'revid2'
         self.assertEqual({revid3},
-                set(repo.bzrdir.open_repository().all_revision_ids()))
+                set(repo.controldir.open_repository().all_revision_ids()))
         self.assertEqual({revid2, revid},
-                set(base.bzrdir.open_repository().all_revision_ids()))
+                set(base.controldir.open_repository().all_revision_ids()))
         # get_rev_id_for_revno will find revno 1 == 'revid', even though
         # that revision can only be found in the fallback.
         repo.lock_read()

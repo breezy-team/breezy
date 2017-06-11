@@ -29,36 +29,8 @@ import sys
 
 from breezy import (
     cmdline,
-    symbol_versioning,
     )
 from breezy.i18n import gettext
-
-# Windows version
-if sys.platform == 'win32':
-    _major,_minor,_build,_platform,_text = sys.getwindowsversion()
-    # from MSDN:
-    # dwPlatformId
-    #   The operating system platform.
-    #   This member can be one of the following values.
-    #   ==========================  ======================================
-    #   Value                       Meaning
-    #   --------------------------  --------------------------------------
-    #   VER_PLATFORM_WIN32_NT       The operating system is Windows Vista,
-    #   2                           Windows Server "Longhorn",
-    #                               Windows Server 2003, Windows XP,
-    #                               Windows 2000, or Windows NT.
-    #
-    #   VER_PLATFORM_WIN32_WINDOWS  The operating system is Windows Me,
-    #   1                           Windows 98, or Windows 95.
-    #   ==========================  ======================================
-    if _platform == 2:
-        winver = 'Windows NT'
-    else:
-        # don't care about real Windows name, just to force safe operations
-        winver = 'Windows 98'
-else:
-    winver = None
-
 
 # We can cope without it; use a separate variable to help pyflakes
 try:
@@ -67,15 +39,9 @@ try:
 except ImportError:
     has_ctypes = False
 else:
-    if winver == 'Windows 98':
-        create_buffer = ctypes.create_string_buffer
-        def extract_buffer(buf):
-            return buf.value.decode("mbcs")
-        suffix = 'A'
-    else:
-        create_buffer = ctypes.create_unicode_buffer
-        extract_buffer = operator.attrgetter("value")
-        suffix = 'W'
+    create_buffer = ctypes.create_unicode_buffer
+    extract_buffer = operator.attrgetter("value")
+    suffix = 'W'
 try:
     import pywintypes
     has_pywintypes = True
@@ -372,28 +338,6 @@ def get_host_name():
     return get_environ_unicode('COMPUTERNAME')
 
 
-@symbol_versioning.deprecated_function(
-    symbol_versioning.deprecated_in((2, 5, 0)))
-def _ensure_unicode(s):
-    if s and not isinstance(s, unicode):
-        from . import osutils
-        s = s.decode(osutils.get_user_encoding())
-    return s
-
-
-get_appdata_location_unicode = symbol_versioning.deprecated_function(
-    symbol_versioning.deprecated_in((2, 5, 0)))(get_appdata_location)
-
-get_home_location_unicode = symbol_versioning.deprecated_function(
-    symbol_versioning.deprecated_in((2, 5, 0)))(get_home_location)
-
-get_user_name_unicode = symbol_versioning.deprecated_function(
-    symbol_versioning.deprecated_in((2, 5, 0)))(get_user_name)
-
-get_host_name_unicode = symbol_versioning.deprecated_function(
-    symbol_versioning.deprecated_in((2, 5, 0)))(get_host_name)
-
-
 def _ensure_with_dir(path):
     if (not os.path.split(path)[0] or path.startswith(u'*')
         or path.startswith(u'?')):
@@ -491,10 +435,7 @@ def get_app_path(appname):
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     if has_win32file:
-        if winver != 'Windows 98':
-            SetFileAttributes = win32file.SetFileAttributesW
-        else:
-            SetFileAttributes = win32file.SetFileAttributes
+        SetFileAttributes = win32file.SetFileAttributesW
         try:
             SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
         except pywintypes.error as e:
@@ -543,7 +484,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-if has_ctypes and winver == 'Windows NT':
+if has_ctypes:
     def get_unicode_argv():
         prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
         GetCommandLineW = prototype(("GetCommandLineW",
@@ -554,7 +495,7 @@ if has_ctypes and winver == 'Windows NT':
         # Skip the first argument, since we only care about parameters
         argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
-    
+
 
     def get_environ_unicode(key, default=None):
         """Get `key` from environment as unicode or `default` if unset
@@ -587,18 +528,6 @@ if has_ctypes and winver == 'Windows NT':
             if buffer_size > length:
                 return buffer[:length]
             buffer_size = length
-else:
-    get_unicode_argv = None
-    def get_environ_unicode(key, default=None):
-        """Get `key` from environment as unicode or `default` if unset
-
-        Fallback version that should basically never be needed.
-        """
-        from breezy import osutils
-        try:
-            return os.environ[key].decode(osutils.get_user_encoding())
-        except KeyError:
-            return default
 
 
 if has_win32api:

@@ -45,7 +45,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
             create_prefix=True)
         self.assertEqual(source.last_revision(), result.last_revision())
         self.assertEqual(target_transport.base,
-            result.bzrdir.root_transport.base)
+            result.controldir.root_transport.base)
 
     def test_create_clone_on_transport_use_existing_dir_false(self):
         tree = self.make_branch_and_tree('source')
@@ -120,7 +120,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         builder.build_snapshot('rev3', ['rev2', 'other'], [])
         builder.finish_series()
         local = builder.get_branch()
-        local.bzrdir.clone(self.get_url('remote'), revision_id='rev3')
+        local.controldir.clone(self.get_url('remote'), revision_id='rev3')
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.

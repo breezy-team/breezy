@@ -54,7 +54,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         tree.add('a', 'b')
         tree.commit(message='init')
 
-        tree.bzrdir.sprout('child')
+        tree.controldir.sprout('child')
 
         self.run_bzr('bind ../base', working_dir='child')
 
@@ -126,7 +126,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_double_binding(self):
         child_tree = self.create_branches()[1]
-        child_tree.bzrdir.sprout('child2')
+        child_tree.controldir.sprout('child2')
 
         # Double binding succeeds, but committing to child2 should fail
         self.run_bzr('bind ../child', working_dir='child2')
@@ -151,7 +151,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.check_revno(1, 'child')
         self.run_bzr('unbind', working_dir='child')
         # Refresh the child tree/branch objects as 'unbind' modified them
-        child_tree = child_tree.bzrdir.open_workingtree()
+        child_tree = child_tree.controldir.open_workingtree()
         child_tree.commit(message='child')
         self.check_revno(2, 'child')
 
@@ -159,7 +159,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # It is not possible to commit to a branch
         # which is bound to a branch which is bound
         base_tree, child_tree = self.create_branches()
-        base_tree.bzrdir.sprout('newbase')
+        base_tree.controldir.sprout('newbase')
 
         # There is no way to know that B has already
         # been bound by someone else, otherwise it
@@ -171,7 +171,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_pull_updates_both(self):
         base_tree = self.create_branches()[0]
-        newchild_tree = base_tree.bzrdir.sprout('newchild').open_workingtree()
+        newchild_tree = base_tree.controldir.sprout('newchild').open_workingtree()
         self.build_tree_contents([('newchild/b', 'newchild b contents\n')])
         newchild_tree.commit(message='newchild')
         self.check_revno(2, 'newchild')
@@ -184,7 +184,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_pull_local_updates_local(self):
         base_tree = self.create_branches()[0]
-        newchild_tree = base_tree.bzrdir.sprout('newchild').open_workingtree()
+        newchild_tree = base_tree.controldir.sprout('newchild').open_workingtree()
         self.build_tree_contents([('newchild/b', 'newchild b contents\n')])
         newchild_tree.commit(message='newchild')
         self.check_revno(2, 'newchild')
@@ -203,7 +203,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.run_bzr('unbind', working_dir='child')
 
         # Refresh the child tree/branch objects as 'unbind' modified them
-        child_tree = child_tree.bzrdir.open_workingtree()
+        child_tree = child_tree.controldir.open_workingtree()
         child_tree.commit(message='child', allow_pointless=True)
         self.check_revno(2, 'child')
 
@@ -215,7 +215,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.run_bzr('bind ../base', working_dir='child')
 
         # Refresh the child tree/branch objects as 'bind' modified them
-        child_tree = child_tree.bzrdir.open_workingtree()
+        child_tree = child_tree.controldir.open_workingtree()
         # This should turn the local commit into a merge
         child_tree.update()
         child_tree.commit(message='merged')
@@ -255,7 +255,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         self.run_bzr('unbind', working_dir='child')
         # Refresh the child tree/branch objects as 'bind' modified them
-        child_tree = child_tree.bzrdir.open_workingtree()
+        child_tree = child_tree.controldir.open_workingtree()
         child_tree.commit(message='child', allow_pointless=True)
         self.check_revno(2, 'child')
         self.check_revno(1, 'base')
@@ -290,7 +290,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # operation, because it can be without violating
         # the binding invariants.
         # But we can't fail afterwards
-        other_tree = child_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = child_tree.controldir.sprout('other').open_workingtree()
         other_branch = other_tree.branch
 
         self.build_tree_contents([('other/c', 'file c\n')])
@@ -320,7 +320,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # XXX: This test should be moved to branch-implemenations/test_pull
         child_tree = self.create_branches()[1]
 
-        other_tree = child_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = child_tree.controldir.sprout('other').open_workingtree()
 
         self.build_tree_contents([('other/a', 'new contents\n')])
         other_tree.commit(message='changed a')
@@ -353,7 +353,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         tree.add('a', 'b')
         tree.commit(message='init')
         branch = tree.branch
-        tree.bzrdir.sprout('child')
+        tree.controldir.sprout('child')
         self.run_bzr('bind --directory=child base')
         d = controldir.ControlDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())

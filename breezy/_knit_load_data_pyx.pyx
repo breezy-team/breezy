@@ -16,9 +16,11 @@
 
 """Pyrex extensions to knit parsing."""
 
+from __future__ import absolute_import
+
 import sys
 
-from breezy import errors
+from . import errors
 
 
 cdef extern from "stdlib.h":

@@ -340,12 +340,12 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # defeat the purpose. We test the protocol implementation separately
         # in test_remote and test_smart as usual.
         b = self.make_branch('foo')
-        self.addCleanup(b.bzrdir.transport.disconnect)
+        self.addCleanup(b.controldir.transport.disconnect)
         self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
 
     def get_lockable(self):
         # getting a new lockable involves opening a new instance of the branch
         branch = breezy.branch.Branch.open(self.get_url('foo'))
-        self.addCleanup(branch.bzrdir.transport.disconnect)
+        self.addCleanup(branch.controldir.transport.disconnect)
         return branch.control_files

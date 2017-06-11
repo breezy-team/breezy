@@ -19,6 +19,8 @@
 from .. import urlutils
 from ..branch import (
     Branch,
+    )
+from ..bzrbranch import (
     BranchReferenceFormat,
     )
 from ..bzrdir import (
@@ -293,7 +295,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
     def test_custom_opener_with_branch_reference(self):
         # A custom function for opening a control dir can be specified.
         a = self.make_branch('a', format='2a')
-        b_dir = self.make_bzrdir('b')
+        b_dir = self.make_controldir('b')
         b = BranchReferenceFormat().initialize(b_dir, target_branch=a)
         TrackingProber.seen_urls = []
         opener = self.make_branch_opener(

@@ -22,6 +22,25 @@ External Compatibility Breaks
    clashes with upstream Bazaar.
    (Martin Packman, Jelmer Vernooĳ)
 
+ * The --prefix/-p argument for ``bzr diff`` now defaults to -p1 rather
+   than -p0. (Jelmer Vernooĳ, #1695126)
+
+ * The ``brz register-branch`` command from the Launchpad plugin has been
+   removed, because it has not worked for at least five years: it relies on
+   password authentication rather than SSO, the relevant systems no longer
+   have firewall-level access to the outside world, and in general the
+   Mirrored branch type is deprecated.  Either just push the branch to
+   Launchpad or use code imports instead
+   (https://help.launchpad.net/VcsImports).
+   (Colin Watson, #254567, #483689)
+
+ * brz no longer supports building the C extensions using Pyrex.
+   Only Cython is supported. (Jelmer Vernooĳ)
+
+ * Support for HTTP support using "pycurl" and the associated
+   URL schemes "http+pycurl://" and "https+pycurl://" has been dropped.
+   (Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)
+
 New Features
 ************
 
@@ -30,8 +49,20 @@ New Features
  * The 'fastimport' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
+ * The 'stats' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'upload' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'email' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
  * The 'import' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)
+
+ * The 'fetch-ghosts' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -43,8 +74,12 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where brz would previously crash or give incorrect
-   or undesirable results.
+* Support Server Name Indication (SNI) when talking to https servers.
+  Cherry-picked from lp:~vila/bzr/1089352-sni-support
+  (Vincent Ladeuil, #1089352)
+
+* The ``bisect`` command now works in non-``.bzr`` directories.
+  (Jelmer Vernooĳ)
 
 Documentation
 *************
@@ -66,6 +101,27 @@ API Changes
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
 
+ * ``Branch.bzrdir``, ``Repository.bzrdir`` and ``WorkingTree.bzrdir``
+   have been renamed to ``Branch.controldir``, ``Repository.controldir``
+   and ``WorkingTree.controldir``, respectively.
+   (Jelmer Vernooĳ, #1695774)
+
+ * ``BzrBranch`` and the various bzr branch format implementations
+   have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
+
+ * ``MetaDirBranchFormatFactory`` has been removed.
+   Use lazy registration on ``breezy.branch.format_registry``
+   instead. (Jelmer Vernooĳ)
+
+ * ``breezy.bzrdir.format_registry`` has been removed; use
+   ``breezy.controldir.format_registry`` instead.
+   (Jelmer Vernooĳ)
+
+ * ``breezy.api`` has been removed.  (Jelmer Vernooĳ, #742192)
+
+ * ``ControlDir.find_bzrdirs`` has been renamed to
+   ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
+
 Internals
 *********
 
@@ -75,10 +131,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to brz's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+ * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
+   which caused ``output_encoding = iso-8859-1`` to be added to the
+   users' bazaar.conf. (Jelmer Vernooĳ)
 
 ..
    vim: tw=74 ft=rst ff=unix

@@ -34,7 +34,7 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
     this_tree.add(prefix+'_other_file')
     this_tree.add(prefix+'dir')
     this_tree.commit(message="new")
-    other_tree = this_tree.bzrdir.sprout(other_path).open_workingtree()
+    other_tree = this_tree.controldir.sprout(other_path).open_workingtree()
     test.build_tree_contents([
         ('%s/%sfile' % (other_path, prefix), 'contentsb\n'),
         ('%s/%s_other_file' % (other_path, prefix), 'contentsb\n'),

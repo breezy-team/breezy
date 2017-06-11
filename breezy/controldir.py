@@ -108,7 +108,7 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
-        return self.get_branches().values()
+        return list(self.get_branches().values())
 
     def get_branches(self):
         """Get all branches in this control directory, as a dictionary.
@@ -515,7 +515,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.clone_on_transport)
 
     @classmethod
-    def find_bzrdirs(klass, transport, evaluate=None, list_current=None):
+    def find_controldirs(klass, transport, evaluate=None, list_current=None):
         """Find control dirs recursively from current location.
 
         This is intended primarily as a building block for more sophisticated
@@ -576,7 +576,7 @@ class ControlDir(ControlComponent):
                 return False, ([], repository)
             return True, (controldir.list_branches(), None)
         ret = []
-        for branches, repo in klass.find_bzrdirs(
+        for branches, repo in klass.find_controldirs(
                 transport, evaluate=evaluate):
             if repo is not None:
                 ret.extend(repo.find_branches())
@@ -669,7 +669,7 @@ class ControlDir(ControlComponent):
             raise errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(base,
                                                force_new_repo=True,
-                                               format=format).bzrdir
+                                               format=format).controldir
         return controldir.create_workingtree()
 
     @classmethod
@@ -1344,7 +1344,7 @@ class ControlDirFormatRegistry(registry.Registry):
         self.set_default(key)
         format = self.get('default')()
 
-    def make_bzrdir(self, key):
+    def make_controldir(self, key):
         return self.get(key)()
 
     def help_topic(self, topic):
@@ -1431,7 +1431,7 @@ class RepoInitHookParams(object):
         """
         self.repository = repository
         self.format = format
-        self.bzrdir = controldir
+        self.controldir = controldir
         self.shared = shared
 
     def __eq__(self, other):
@@ -1443,7 +1443,13 @@ class RepoInitHookParams(object):
                 self.repository)
         else:
             return "<%s for %s>" % (self.__class__.__name__,
-                self.bzrdir)
+                self.controldir)
+
+
+def is_control_filename(filename):
+    """Check if filename is used for control directories."""
+    # TODO(jelmer): Allow registration by other VCSes
+    return filename == '.bzr'
 
 
 # Please register new formats after old formats so that formats

@@ -23,6 +23,9 @@ useless stuff.
 from __future__ import absolute_import
 
 from . import osutils
+from .sixish import (
+    range,
+    )
 
 
 class _OutputHandler(object):
@@ -38,7 +41,7 @@ class _OutputHandler(object):
     def add_copy(self, start_byte, end_byte):
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
-        for start_byte in xrange(start_byte, end_byte, 64*1024):
+        for start_byte in range(start_byte, end_byte, 64*1024):
             num_bytes = min(64*1024, end_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             self.out_lines.append(copy_bytes)
@@ -64,7 +67,7 @@ class _OutputHandler(object):
         # Flush out anything pending
         self._flush_insert()
         line_len = len(line)
-        for start_index in xrange(0, line_len, 127):
+        for start_index in range(0, line_len, 127):
             next_len = min(127, line_len - start_index)
             self.out_lines.append(chr(next_len))
             self.index_lines.append(False)
@@ -256,7 +259,7 @@ class LinesDeltaIndex(object):
         bytes_to_insert = ''.join(new_lines[start_linenum:end_linenum])
         insert_length = len(bytes_to_insert)
         # Each insert instruction is at most 127 bytes long
-        for start_byte in xrange(0, insert_length, 127):
+        for start_byte in range(0, insert_length, 127):
             insert_count = min(insert_length - start_byte, 127)
             out_lines.append(chr(insert_count))
             # Don't index the 'insert' instruction
@@ -276,7 +279,7 @@ class LinesDeltaIndex(object):
         num_bytes = stop_byte - first_byte
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
-        for start_byte in xrange(first_byte, stop_byte, 64*1024):
+        for start_byte in range(first_byte, stop_byte, 64*1024):
             num_bytes = min(64*1024, stop_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             out_lines.append(copy_bytes)
@@ -287,7 +290,7 @@ class LinesDeltaIndex(object):
         if bytes_length is None:
             bytes_length = sum(map(len, new_lines))
         # reserved for content type, content length
-        out_lines = ['', '', encode_base128_int(bytes_length)]
+        out_lines = [b'', b'', encode_base128_int(bytes_length)]
         index_lines = [False, False, False]
         output_handler = _OutputHandler(out_lines, index_lines,
                                         self._MIN_MATCH_BYTES)
@@ -313,26 +316,26 @@ class LinesDeltaIndex(object):
 
 def encode_base128_int(val):
     """Convert an integer into a 7-bit lsb encoding."""
-    bytes = []
+    data = bytearray()
     count = 0
     while val >= 0x80:
-        bytes.append(chr((val | 0x80) & 0xFF))
+        data.append((val | 0x80) & 0xFF)
         val >>= 7
-    bytes.append(chr(val))
-    return ''.join(bytes)
+    data.append(val)
+    return bytes(data)
 
 
-def decode_base128_int(bytes):
+def decode_base128_int(data):
     """Decode an integer from a 7-bit lsb encoding."""
     offset = 0
     val = 0
     shift = 0
-    bval = ord(bytes[offset])
+    bval = ord(data[offset])
     while bval >= 0x80:
         val |= (bval & 0x7F) << shift
         shift += 7
         offset += 1
-        bval = ord(bytes[offset])
+        bval = ord(data[offset])
     val |= bval << shift
     offset += 1
     return val, offset

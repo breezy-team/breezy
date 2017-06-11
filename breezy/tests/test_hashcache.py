@@ -96,7 +96,7 @@ class TestHashCache(TestCaseInTempDir):
 
     def test_hammer_hashcache(self):
         hc = self.make_hashcache()
-        for i in xrange(10000):
+        for i in range(10000):
             self.log('start writing at %s', time.time())
             f = file('foo', 'w')
             try:

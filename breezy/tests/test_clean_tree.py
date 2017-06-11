@@ -56,7 +56,7 @@ class TestCleanTree(TestCaseInTempDir):
         """Files are selected for deletion appropriately"""
         os.mkdir('branch')
         tree = ControlDir.create_standalone_workingtree('branch')
-        transport = tree.bzrdir.root_transport
+        transport = tree.controldir.root_transport
         transport.put_bytes('.bzrignore', '*~\n*.pyc\n.bzrignore\n')
         transport.put_bytes('file.BASE', 'contents')
         tree.lock_write()

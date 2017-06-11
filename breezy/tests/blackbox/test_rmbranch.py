@@ -58,7 +58,7 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_no_tree(self):
         # removing the active branch is possible if there is no tree
         tree = self.example_tree('a')
-        tree.bzrdir.destroy_workingtree()
+        tree.controldir.destroy_workingtree()
         self.run_bzr('rmbranch', working_dir='a')
         dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
@@ -75,9 +75,9 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_remove_colo(self):
         # Remove a colocated branch.
         tree = self.example_tree('a')
-        tree.bzrdir.create_branch(name="otherbranch")
-        self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
-        self.run_bzr('rmbranch %s,branch=otherbranch' % tree.bzrdir.user_url)
+        tree.controldir.create_branch(name="otherbranch")
+        self.assertTrue(tree.controldir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch %s,branch=otherbranch' % tree.controldir.user_url)
         dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
@@ -85,22 +85,22 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_remove_colo_directory(self):
         # Remove a colocated branch.
         tree = self.example_tree('a')
-        tree.bzrdir.create_branch(name="otherbranch")
-        self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
-        self.run_bzr('rmbranch otherbranch -d %s' % tree.bzrdir.user_url)
+        tree.controldir.create_branch(name="otherbranch")
+        self.assertTrue(tree.controldir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch otherbranch -d %s' % tree.controldir.user_url)
         dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
 
     def test_remove_active_colo_branch(self):
         # Remove a colocated branch.
-        dir = self.make_repository('a').bzrdir
+        dir = self.make_repository('a').controldir
         branch = dir.create_branch('otherbranch')
         branch.create_checkout('a')
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
-            'rmbranch otherbranch -d %s' % branch.bzrdir.user_url)
+            'rmbranch otherbranch -d %s' % branch.controldir.user_url)
         self.assertTrue(dir.has_branch('otherbranch'))
-        self.run_bzr('rmbranch --force otherbranch -d %s' % branch.bzrdir.user_url)
+        self.run_bzr('rmbranch --force otherbranch -d %s' % branch.controldir.user_url)
         self.assertFalse(dir.has_branch('otherbranch'))
 
 

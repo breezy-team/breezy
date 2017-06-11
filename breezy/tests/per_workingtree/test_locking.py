@@ -154,16 +154,16 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # first check that it was not written yet.
         # TODO: This requires taking a read lock while we are holding the above
         #       write lock, which shouldn't actually be possible
-        reference_tree = tree.bzrdir.open_workingtree()
+        reference_tree = tree.controldir.open_workingtree()
         self.assertEqual(old_root, reference_tree.get_root_id())
         # now unlock the second held lock, which should do nothing.
         tree.unlock()
-        reference_tree = tree.bzrdir.open_workingtree()
+        reference_tree = tree.controldir.open_workingtree()
         self.assertEqual(old_root, reference_tree.get_root_id())
         # unlocking the first lock we took will now flush.
         tree.unlock()
         # and check it was written using another reference tree
-        reference_tree = tree.bzrdir.open_workingtree()
+        reference_tree = tree.controldir.open_workingtree()
         self.assertEqual('new-root', reference_tree.get_root_id())
 
     def test_unlock_from_tree_write_lock_flushes(self):

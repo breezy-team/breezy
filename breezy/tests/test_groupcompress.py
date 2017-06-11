@@ -304,7 +304,7 @@ class TestGroupCompressBlock(tests.TestCase):
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
         locs = dict((key, (start, end)) for key, (start, _, end, _)
-                    in compressor.labels_deltas.iteritems())
+                    in compressor.labels_deltas.items())
         block = compressor.flush()
         raw_bytes = block.to_bytes()
         # Go through from_bytes(to_bytes()) so that we start with a compressed
@@ -406,7 +406,7 @@ class TestGroupCompressBlock(tests.TestCase):
         # partial decompression to work with. Most auto-generated data
         # compresses a bit too well, we want a combination, so we combine a sha
         # hash with compressible data.
-        for i in xrange(2048):
+        for i in range(2048):
             next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
             content_chunks.append(next_content)
             next_sha1 = osutils.sha_string(next_content)
@@ -451,7 +451,7 @@ class TestGroupCompressBlock(tests.TestCase):
         # partial decompression to work with. Most auto-generated data
         # compresses a bit too well, we want a combination, so we combine a sha
         # hash with compressible data.
-        for i in xrange(2048):
+        for i in range(2048):
             next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
             content_chunks.append(next_content)
             next_sha1 = osutils.sha_string(next_content)
@@ -961,7 +961,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
         locs = dict((key, (start, end)) for key, (start, _, end, _)
-                    in compressor.labels_deltas.iteritems())
+                    in compressor.labels_deltas.items())
         block = compressor.flush()
         raw_bytes = block.to_bytes()
         return locs, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)

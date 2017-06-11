@@ -27,7 +27,7 @@ from __future__ import absolute_import
 
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
-ROOT_ID = "TREE_ROOT"
+ROOT_ID = b"TREE_ROOT"
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,7 +48,12 @@ from . import (
     lazy_regex,
     trace,
     )
-
+from .sixish import (
+    bytesintern,
+    PY3,
+    viewitems,
+    viewvalues,
+    )
 from .static_tuple import StaticTuple
 
 
@@ -214,7 +219,7 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         InvalidEntryName: Invalid entry name: src/hello.c
         """
-        if '/' in name or '\\' in name:
+        if u'/' in name or u'\\' in name:
             raise errors.InvalidEntryName(name=name)
         self.file_id = file_id
         self.revision = None
@@ -226,9 +231,6 @@ class InventoryEntry(object):
         raise errors.BzrError('unknown kind %r' % self.kind)
 
     known_kinds = ('file', 'directory', 'symlink')
-
-    def sorted_children(self):
-        return sorted(self.children.items())
 
     @staticmethod
     def versionable_kind(kind):
@@ -388,8 +390,8 @@ class InventoryDirectory(InventoryEntry):
         # to provide a per-fileid log. The hash of every directory content is
         # "da..." below (the sha1sum of '').
         checker.add_pending_item(rev_id,
-            ('texts', self.file_id, self.revision), 'text',
-             'da39a3ee5e6b4b0d3255bfef95601890afd80709')
+            (b'texts', self.file_id, self.revision), b'text',
+             b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
         other = InventoryDirectory(self.file_id, self.name, self.parent_id)
@@ -401,6 +403,9 @@ class InventoryDirectory(InventoryEntry):
     def __init__(self, file_id, name, parent_id):
         super(InventoryDirectory, self).__init__(file_id, name, parent_id)
         self.children = {}
+
+    def sorted_children(self):
+        return sorted(viewitems(self.children))
 
     def kind_character(self):
         """See InventoryEntry.kind_character."""
@@ -425,7 +430,7 @@ class InventoryFile(InventoryEntry):
         """See InventoryEntry._check"""
         # TODO: check size too.
         checker.add_pending_item(tree_revision_id,
-            ('texts', self.file_id, self.revision), 'text',
+            (b'texts', self.file_id, self.revision), b'text',
              self.text_sha1)
         if self.text_size is None:
             checker._report_items.append(
@@ -525,8 +530,8 @@ class InventoryLink(InventoryEntry):
                     % (self.file_id, tree_revision_id))
         # Symlinks are stored as ''
         checker.add_pending_item(tree_revision_id,
-            ('texts', self.file_id, self.revision), 'text',
-             'da39a3ee5e6b4b0d3255bfef95601890afd80709')
+            (b'texts', self.file_id, self.revision), b'text',
+             b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
         other = InventoryLink(self.file_id, self.name, self.parent_id)
@@ -665,7 +670,7 @@ class CommonInventory(object):
 
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
-        children = sorted(from_dir.children.items())
+        children = sorted(viewitems(from_dir.children))
         if not recursive:
             for name, ie in children:
                 yield name, ie
@@ -690,7 +695,7 @@ class CommonInventory(object):
                     continue
 
                 # But do this child first
-                new_children = sorted(ie.children.items())
+                new_children = sorted(viewitems(ie.children))
                 new_children = collections.deque(new_children)
                 stack.append((path, new_children))
                 # Break out of inner loop, so that we start outer loop with child
@@ -771,7 +776,7 @@ class CommonInventory(object):
             cur_relpath, cur_dir = stack.pop()
 
             child_dirs = []
-            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
+            for child_name, child_ie in sorted(viewitems(cur_dir.children)):
 
                 child_relpath = cur_relpath + child_name
 
@@ -814,7 +819,7 @@ class CommonInventory(object):
         """
         accum = []
         def descend(dir_ie, dir_path):
-            kids = sorted(dir_ie.children.items())
+            kids = sorted(viewitems(dir_ie.children))
             for name, ie in kids:
                 child_path = osutils.pathjoin(dir_path, name)
                 accum.append((child_path, ie))
@@ -1102,9 +1107,8 @@ class Inventory(CommonInventory):
         XXX: We may not want to merge this into bzr.dev.
         """
         if self.root is None:
-            return
-        for _, ie in self._byid.iteritems():
-            yield ie
+            return ()
+        return iter(viewvalues(self._byid))
 
     def __len__(self):
         """Returns number of entries."""
@@ -1138,8 +1142,10 @@ class Inventory(CommonInventory):
                 "inventory already contains entry with id {%s}" %
                 entry.file_id)
         self._byid[entry.file_id] = entry
-        for child in getattr(entry, 'children', {}).itervalues():
-            self._add_child(child)
+        children = getattr(entry, 'children', {})
+        if children is not None:
+            for child in viewvalues(children):
+                self._add_child(child)
         return entry
 
     def add(self, entry):
@@ -1288,7 +1294,7 @@ class Inventory(CommonInventory):
             ie = to_find_delete.pop()
             to_delete.append(ie.file_id)
             if ie.kind == 'directory':
-                to_find_delete.extend(ie.children.values())
+                to_find_delete.extend(viewvalues(ie.children))
         for file_id in reversed(to_delete):
             ie = self[file_id]
             del self._byid[file_id]
@@ -1394,25 +1400,25 @@ class CHKInventory(CommonInventory):
         if entry.parent_id is not None:
             parent_str = entry.parent_id
         else:
-            parent_str = ''
+            parent_str = b''
         name_str = entry.name.encode("utf8")
         if entry.kind == 'file':
             if entry.executable:
-                exec_str = "Y"
+                exec_str = b"Y"
             else:
-                exec_str = "N"
-            return "file: %s\n%s\n%s\n%s\n%s\n%d\n%s" % (
+                exec_str = b"N"
+            return b"file: %s\n%s\n%s\n%s\n%s\n%d\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.text_sha1, entry.text_size, exec_str)
         elif entry.kind == 'directory':
-            return "dir: %s\n%s\n%s\n%s" % (
+            return b"dir: %s\n%s\n%s\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision)
         elif entry.kind == 'symlink':
-            return "symlink: %s\n%s\n%s\n%s\n%s" % (
+            return b"symlink: %s\n%s\n%s\n%s\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.symlink_target.encode("utf8"))
         elif entry.kind == 'tree-reference':
-            return "tree: %s\n%s\n%s\n%s\n%s" % (
+            return b"tree: %s\n%s\n%s\n%s\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.reference_revision)
         else:
@@ -1530,43 +1536,43 @@ class CHKInventory(CommonInventory):
         return other
 
     @staticmethod
-    def _bytes_to_utf8name_key(bytes):
-        """Get the file_id, revision_id key out of bytes."""
+    def _bytes_to_utf8name_key(data):
+        """Get the file_id, revision_id key out of data."""
         # We don't normally care about name, except for times when we want
         # to filter out empty names because of non rich-root...
-        sections = bytes.split('\n')
-        kind, file_id = sections[0].split(': ')
-        return (sections[2], intern(file_id), intern(sections[3]))
+        sections = data.split(b'\n')
+        kind, file_id = sections[0].split(b': ')
+        return (sections[2], bytesintern(file_id), bytesintern(sections[3]))
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
-        sections = bytes.split('\n')
-        if sections[0].startswith("file: "):
+        sections = bytes.split(b'\n')
+        if sections[0].startswith(b"file: "):
             result = InventoryFile(sections[0][6:],
                 sections[2].decode('utf8'),
                 sections[1])
             result.text_sha1 = sections[4]
             result.text_size = int(sections[5])
-            result.executable = sections[6] == "Y"
-        elif sections[0].startswith("dir: "):
+            result.executable = sections[6] == b"Y"
+        elif sections[0].startswith(b"dir: "):
             result = CHKInventoryDirectory(sections[0][5:],
                 sections[2].decode('utf8'),
                 sections[1], self)
-        elif sections[0].startswith("symlink: "):
+        elif sections[0].startswith(b"symlink: "):
             result = InventoryLink(sections[0][9:],
                 sections[2].decode('utf8'),
                 sections[1])
             result.symlink_target = sections[4].decode('utf8')
-        elif sections[0].startswith("tree: "):
+        elif sections[0].startswith(b"tree: "):
             result = TreeReference(sections[0][6:],
                 sections[2].decode('utf8'),
                 sections[1])
             result.reference_revision = sections[4]
         else:
             raise ValueError("Not a serialised entry %r" % bytes)
-        result.file_id = intern(result.file_id)
-        result.revision = intern(sections[3])
-        if result.parent_id == '':
+        result.file_id = bytesintern(result.file_id)
+        result.revision = bytesintern(sections[3])
+        if result.parent_id == b'':
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
         return result
@@ -1589,7 +1595,7 @@ class CHKInventory(CommonInventory):
         result = CHKInventory(self._search_key_name)
         if propagate_caches:
             # Just propagate the path-to-fileid cache for now
-            result._path_to_fileid_cache = dict(self._path_to_fileid_cache.iteritems())
+            result._path_to_fileid_cache = self._path_to_fileid_cache.copy()
         search_key_func = chk_map.search_key_registry.get(self._search_key_name)
         self.id_to_entry._ensure_root()
         maximum_size = self.id_to_entry._root_node.maximum_size
@@ -1708,7 +1714,7 @@ class CHKInventory(CommonInventory):
                 continue
             # This loop could potentially be better by using the id_basename
             # map to just get the child file ids.
-            for child in entry.children.values():
+            for child in viewvalues(entry.children):
                 if child.file_id not in altered:
                     raise errors.InconsistentDelta(self.id2path(child.file_id),
                         child.file_id, "Child not deleted or reparented when "
@@ -1720,7 +1726,7 @@ class CHKInventory(CommonInventory):
             # re-keying, but its simpler to just output that as a delete+add
             # to spend less time calculating the delta.
             delta_list = []
-            for key, (old_key, value) in parent_id_basename_delta.iteritems():
+            for key, (old_key, value) in viewitems(parent_id_basename_delta):
                 if value is not None:
                     delta_list.append((old_key, key, value))
                 else:
@@ -1750,18 +1756,18 @@ class CHKInventory(CommonInventory):
             for.
         :return: A CHKInventory
         """
-        lines = bytes.split('\n')
-        if lines[-1] != '':
+        lines = bytes.split(b'\n')
+        if lines[-1] != b'':
             raise AssertionError('bytes to deserialize must end with an eol')
         lines.pop()
-        if lines[0] != 'chkinventory:':
+        if lines[0] != b'chkinventory:':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
         info = {}
-        allowed_keys = frozenset(['root_id', 'revision_id', 'search_key_name',
-                                  'parent_id_basename_to_file_id',
-                                  'id_to_entry'])
+        allowed_keys = frozenset((b'root_id', b'revision_id',
+                                  b'parent_id_basename_to_file_id',
+                                  b'search_key_name', b'id_to_entry'))
         for line in lines[1:]:
-            key, value = line.split(': ', 1)
+            key, value = line.split(b': ', 1)
             if key not in allowed_keys:
                 raise errors.BzrError('Unknown key in inventory: %r\n%r'
                                       % (key, bytes))
@@ -1769,16 +1775,16 @@ class CHKInventory(CommonInventory):
                 raise errors.BzrError('Duplicate key in inventory: %r\n%r'
                                       % (key, bytes))
             info[key] = value
-        revision_id = intern(info['revision_id'])
-        root_id = intern(info['root_id'])
-        search_key_name = intern(info.get('search_key_name', 'plain'))
-        parent_id_basename_to_file_id = intern(info.get(
-            'parent_id_basename_to_file_id', None))
-        if not parent_id_basename_to_file_id.startswith('sha1:'):
+        revision_id = bytesintern(info[b'revision_id'])
+        root_id = bytesintern(info[b'root_id'])
+        search_key_name = bytesintern(info.get(b'search_key_name', b'plain'))
+        parent_id_basename_to_file_id = bytesintern(info.get(
+            b'parent_id_basename_to_file_id', None))
+        if not parent_id_basename_to_file_id.startswith(b'sha1:'):
             raise ValueError('parent_id_basename_to_file_id should be a sha1'
                              ' key not %r' % (parent_id_basename_to_file_id,))
-        id_to_entry = info['id_to_entry']
-        if not id_to_entry.startswith('sha1:'):
+        id_to_entry = info[b'id_to_entry']
+        if not id_to_entry.startswith(b'sha1:'):
             raise ValueError('id_to_entry should be a sha1'
                              ' key not %r' % (id_to_entry,))
 
@@ -1786,7 +1792,7 @@ class CHKInventory(CommonInventory):
         result.revision_id = revision_id
         result.root_id = root_id
         search_key_func = chk_map.search_key_registry.get(
-                            result._search_key_name)
+            result._search_key_name.decode("ascii"))
         if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 chk_store, StaticTuple(parent_id_basename_to_file_id,),
@@ -1852,7 +1858,7 @@ class CHKInventory(CommonInventory):
         if entry.parent_id is not None:
             parent_id = entry.parent_id
         else:
-            parent_id = ''
+            parent_id = b''
         return StaticTuple(parent_id, entry.name.encode('utf8')).intern()
 
     def __getitem__(self, file_id):
@@ -1864,7 +1870,7 @@ class CHKInventory(CommonInventory):
             return result
         try:
             return self._bytes_to_entry(
-                self.id_to_entry.iteritems([StaticTuple(file_id,)]).next()[1])
+                next(self.id_to_entry.iteritems([StaticTuple(file_id,)]))[1])
         except StopIteration:
             # really we're passing an inventory, not a tree...
             raise errors.NoSuchId(self, file_id)
@@ -1947,7 +1953,7 @@ class CHKInventory(CommonInventory):
         last_parent_id = last_parent_ie = None
         pid_items = self.parent_id_basename_to_file_id.iteritems()
         for key, child_file_id in pid_items:
-            if key == ('', ''): # This is the root
+            if key == (b'', b''): # This is the root
                 if child_file_id != self.root_id:
                     raise ValueError('Data inconsistency detected.'
                         ' We expected data with key ("","") to match'
@@ -2125,22 +2131,23 @@ class CHKInventory(CommonInventory):
 
     def to_lines(self):
         """Serialise the inventory to lines."""
-        lines = ["chkinventory:\n"]
+        lines = [b"chkinventory:\n"]
         if self._search_key_name != 'plain':
             # custom ordering grouping things that don't change together
-            lines.append('search_key_name: %s\n' % (self._search_key_name,))
-            lines.append("root_id: %s\n" % self.root_id)
-            lines.append('parent_id_basename_to_file_id: %s\n' %
+            lines.append(b'search_key_name: %s\n' % (
+                self._search_key_name.encode('ascii')))
+            lines.append(b"root_id: %s\n" % self.root_id)
+            lines.append(b'parent_id_basename_to_file_id: %s\n' %
                 (self.parent_id_basename_to_file_id.key()[0],))
-            lines.append("revision_id: %s\n" % self.revision_id)
-            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
+            lines.append(b"revision_id: %s\n" % self.revision_id)
+            lines.append(b"id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         else:
-            lines.append("revision_id: %s\n" % self.revision_id)
-            lines.append("root_id: %s\n" % self.root_id)
+            lines.append(b"revision_id: %s\n" % self.revision_id)
+            lines.append(b"root_id: %s\n" % self.root_id)
             if self.parent_id_basename_to_file_id is not None:
-                lines.append('parent_id_basename_to_file_id: %s\n' %
+                lines.append(b'parent_id_basename_to_file_id: %s\n' %
                     (self.parent_id_basename_to_file_id.key()[0],))
-            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
+            lines.append(b"id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         return lines
 
     @property

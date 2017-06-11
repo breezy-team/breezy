@@ -12,27 +12,26 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"Test suite for the bzr bisect plugin."
+
+
+"""Tests of the 'brz bisect' command."""
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import os
+import shutil
 import stat
 import sys
-import shutil
 
-import breezy
-from ...bzrdir import BzrDir
-from .. import bisect
-from . import cmds
-from ...tests import (
+
+from .. import (
     KnownFailure,
     TestCaseWithTransport,
-    TestSkipped,
     )
+from ...bzrdir import BzrDir
+
 
 class BisectTestCase(TestCaseWithTransport):
     """Test harness specific to the bisect plugin."""
@@ -109,108 +108,6 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append.write(content + "\n")
             test_file_append.close()
             self.tree.commit(message = "make test change")
-
-
-class BisectHarnessTests(BisectTestCase):
-    """Tests for the harness itself."""
-
-    def testLastRev(self):
-        """Test that the last revision is correct."""
-        repo = self.tree.branch.repository
-        top_revtree = repo.revision_tree(self.tree.last_revision())
-        top_revtree.lock_read()
-        top_file = top_revtree.get_file(top_revtree.path2id("test_file"))
-        test_content = top_file.read().strip()
-        top_file.close()
-        top_revtree.unlock()
-        assert test_content == "five"
-
-    def testSubtreeRev(self):
-        """Test that the last revision in a subtree is correct."""
-        repo = self.tree.branch.repository
-        sub_revtree = repo.revision_tree(self.subtree_rev)
-        sub_revtree.lock_read()
-        sub_file = sub_revtree.get_file(sub_revtree.path2id("test_file"))
-        test_content = sub_file.read().strip()
-        sub_file.close()
-        sub_revtree.unlock()
-        assert test_content == "one dot three"
-
-
-class BisectCurrentUnitTests(BisectTestCase):
-    """Test the BisectCurrent class."""
-
-    def testShowLog(self):
-        """Test that the log can be shown."""
-        # Not a very good test; just makes sure the code doesn't fail,
-        # not that the output makes any sense.
-        sio = StringIO()
-        cmds.BisectCurrent().show_rev_log(out=sio)
-
-    def testShowLogSubtree(self):
-        """Test that a subtree's log can be shown."""
-        current = cmds.BisectCurrent()
-        current.switch(self.subtree_rev)
-        sio = StringIO()
-        current.show_rev_log(out=sio)
-
-    def testSwitchVersions(self):
-        """Test switching versions."""
-        current = cmds.BisectCurrent()
-        self.assertRevno(5)
-        current.switch(4)
-        self.assertRevno(4)
-
-    def testReset(self):
-        """Test resetting the working tree to a non-bisected state."""
-        current = cmds.BisectCurrent()
-        current.switch(4)
-        current.reset()
-        self.assertRevno(5)
-        assert not os.path.exists(cmds.bisect_rev_path)
-
-    def testIsMergePoint(self):
-        """Test merge point detection."""
-        current = cmds.BisectCurrent()
-        self.assertRevno(5)
-        assert not current.is_merge_point()
-        current.switch(2)
-        assert current.is_merge_point()
-
-
-class BisectLogUnitTests(BisectTestCase):
-    """Test the BisectLog class."""
-
-    def testCreateBlank(self):
-        """Test creation of new log."""
-        bisect_log = cmds.BisectLog()
-        bisect_log.save()
-        assert os.path.exists(cmds.bisect_info_path)
-
-    def testLoad(self):
-        """Test loading a log."""
-        preloaded_log = open(cmds.bisect_info_path, "w")
-        preloaded_log.write("rev1 yes\nrev2 no\nrev3 yes\n")
-        preloaded_log.close()
-
-        bisect_log = cmds.BisectLog()
-        assert len(bisect_log._items) == 3
-        assert bisect_log._items[0] == ("rev1", "yes")
-        assert bisect_log._items[1] == ("rev2", "no")
-        assert bisect_log._items[2] == ("rev3", "yes")
-
-    def testSave(self):
-        """Test saving the log."""
-        bisect_log = cmds.BisectLog()
-        bisect_log._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
-        bisect_log.save()
-
-        logfile = open(cmds.bisect_info_path)
-        assert logfile.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
-
-
-class BisectFuncTests(BisectTestCase):
-    """Functional tests for the bisect plugin."""
 
     def testWorkflow(self):
         """Run through a basic usage scenario."""
@@ -383,7 +280,7 @@ class BisectFuncTests(BisectTestCase):
             raise KnownFailure\
                 ("bisect does not drill down into merge commits: "
                  "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
-        
+
     def testRunScriptSubtree(self):
         """Make a test script and run it."""
         if sys.platform == "win32":

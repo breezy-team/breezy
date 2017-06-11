@@ -236,7 +236,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
     def test_node_references_three_digits(self):
         # test the node digit expands as needed.
         builder = index.GraphIndexBuilder(reference_lists=1)
-        references = [(str(val), ) for val in reversed(range(9))]
+        references = [(str(val), ) for val in range(8, -1, -1)]
         builder.add_node(('2-key', ), '', (references, ))
         stream = builder.finish()
         contents = stream.read()

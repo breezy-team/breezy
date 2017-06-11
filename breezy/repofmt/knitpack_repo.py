@@ -68,6 +68,7 @@ from .pack_repo import (
     RepositoryPackCollection,
     )
 from ..sixish import (
+    viewitems,
     zip
     )
 from ..vf_repository import (
@@ -77,9 +78,9 @@ from ..vf_repository import (
 
 class KnitPackRepository(PackRepository, KnitRepository):
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
-        PackRepository.__init__(self, _format, a_bzrdir, control_files,
+        PackRepository.__init__(self, _format, a_controldir, control_files,
             _commit_builder_class, _serializer)
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
@@ -157,7 +158,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('pack-0.92')
+        return controldir.format_registry.make_controldir('pack-0.92')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -197,7 +198,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'pack-0.92-subtree')
 
     def _ignore_setting_bzrdir(self, format):
@@ -236,7 +237,7 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'rich-root-pack')
 
     def _ignore_setting_bzrdir(self, format):
@@ -276,7 +277,7 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
         return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('1.6')
+        return controldir.format_registry.make_controldir('1.6')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -316,7 +317,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             '1.6.1-rich-root')
 
     def _ignore_setting_bzrdir(self, format):
@@ -361,7 +362,7 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        matching = controldir.format_registry.make_bzrdir(
+        matching = controldir.format_registry.make_controldir(
             '1.6.1-rich-root')
         matching.repository_format = self
         return matching
@@ -403,7 +404,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
         return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('1.9')
+        return controldir.format_registry.make_controldir('1.9')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -440,7 +441,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             '1.9-rich-root')
 
     def _ignore_setting_bzrdir(self, format):
@@ -481,7 +482,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
@@ -642,7 +643,7 @@ class KnitPacker(Packer):
             request_groups[index].append((key, value))
         record_index = 0
         pb.update("Copied record", record_index, len(nodes))
-        for index, items in request_groups.iteritems():
+        for index, items in viewitems(request_groups):
             pack_readv_requests = []
             for key, value in items:
                 # ---- KnitGraphIndex.get_position
@@ -740,7 +741,7 @@ class KnitPacker(Packer):
         fileid_revisions = repo._find_file_ids_from_xml_inventory_lines(
             inv_lines, self.revision_keys)
         text_filter = []
-        for fileid, file_revids in fileid_revisions.iteritems():
+        for fileid, file_revids in viewitems(fileid_revisions):
             text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
         self._text_filter = text_filter
 
@@ -934,7 +935,7 @@ class KnitPacker(Packer):
                 request_groups[index] = []
             request_groups[index].append((key, value, references))
         result = []
-        for index, items in request_groups.iteritems():
+        for index, items in viewitems(request_groups):
             pack_readv_requests = []
             for key, value, references in items:
                 # ---- KnitGraphIndex.get_position

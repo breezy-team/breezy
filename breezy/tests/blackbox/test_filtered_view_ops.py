@@ -156,7 +156,7 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         wt1.add(['a', 'b', 'c'])
         wt1.commit("adding a b c")
         # Build the second tree and give it a view
-        wt2 = wt1.bzrdir.sprout('tree_2').open_workingtree()
+        wt2 = wt1.controldir.sprout('tree_2').open_workingtree()
         wt2.views.set_view('my', ['a', 'b'])
         # Commit a change to the first tree
         self.build_tree_contents([

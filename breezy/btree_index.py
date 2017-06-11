@@ -43,14 +43,18 @@ from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
 from .sixish import (
     BytesIO,
     map,
+    range,
+    viewitems,
+    viewkeys,
+    viewvalues,
     )
 
 
-_BTSIGNATURE = "B+Tree Graph Index 2\n"
-_OPTION_ROW_LENGTHS = "row_lengths="
-_LEAF_FLAG = "type=leaf\n"
-_INTERNAL_FLAG = "type=internal\n"
-_INTERNAL_OFFSET = "offset="
+_BTSIGNATURE = b"B+Tree Graph Index 2\n"
+_OPTION_ROW_LENGTHS = b"row_lengths="
+_LEAF_FLAG = b"type=leaf\n"
+_INTERNAL_FLAG = b"type=internal\n"
+_INTERNAL_OFFSET = b"offset="
 
 _RESERVED_HEADER_BYTES = 120
 _PAGE_SIZE = 4096
@@ -402,11 +406,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
             pad = (not isinstance(row, _LeafBuilderRow))
             row.finish_node(pad=pad)
         lines = [_BTSIGNATURE]
-        lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
-        lines.append(_OPTION_LEN + str(key_count) + '\n')
+        lines.append(b'%s%d\n' % (_OPTION_NODE_REFS, self.reference_lists))
+        lines.append(b'%s%d\n' % (_OPTION_KEY_ELEMENTS, self._key_length))
+        lines.append(b'%s%d\n' % (_OPTION_LEN, key_count))
         row_lengths = [row.nodes for row in rows]
-        lines.append(_OPTION_ROW_LENGTHS + ','.join(map(str, row_lengths)) + '\n')
+        lines.append(_OPTION_ROW_LENGTHS + ','.join(
+            map(str, row_lengths)).encode('ascii') + b'\n')
         if row_lengths and row_lengths[-1] > 1:
             result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         else:
@@ -528,8 +533,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
             will be returned, and every match that is in the index will be
             returned.
         """
-        # XXX: To much duplication with the GraphIndex class; consider finding
-        # a good place to pull out the actual common logic.
         keys = set(keys)
         if not keys:
             return
@@ -540,11 +543,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 yield (self,) + node[1:]
         if self._key_length == 1:
             for key in keys:
-                # sanity check
-                if key[0] is None:
-                    raise errors.BadIndexKey(key)
-                if len(key) != self._key_length:
-                    raise errors.BadIndexKey(key)
+                index._sanity_check_key(self, key)
                 try:
                     node = self._nodes[key]
                 except KeyError:
@@ -554,50 +553,21 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 else:
                     yield self, key, node[1]
             return
-        for key in keys:
-            # sanity check
-            if key[0] is None:
-                raise errors.BadIndexKey(key)
-            if len(key) != self._key_length:
-                raise errors.BadIndexKey(key)
-            # find what it refers to:
-            key_dict = self._get_nodes_by_key()
-            elements = list(key)
-            # find the subdict to return
-            try:
-                while len(elements) and elements[0] is not None:
-                    key_dict = key_dict[elements[0]]
-                    elements.pop(0)
-            except KeyError:
-                # a non-existant lookup.
-                continue
-            if len(elements):
-                dicts = [key_dict]
-                while dicts:
-                    key_dict = dicts.pop(-1)
-                    # can't be empty or would not exist
-                    item, value = next(key_dict.iteritems())
-                    if isinstance(value, dict):
-                        # push keys
-                        dicts.extend(key_dict.itervalues())
-                    else:
-                        # yield keys
-                        for value in key_dict.itervalues():
-                            yield (self, ) + tuple(value)
-            else:
-                yield (self, ) + key_dict
+        nodes_by_key = self._get_nodes_by_key()
+        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
+            yield entry
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (references, value) in self._nodes.iteritems():
+                for key, (references, value) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (references, value) in self._nodes.iteritems():
+                for key, (references, value) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -817,10 +787,10 @@ class BTreeGraphIndex(object):
         if total_pages - len(cached_offsets) <= self._recommended_pages:
             # Read whatever is left
             if cached_offsets:
-                expanded = [x for x in xrange(total_pages)
+                expanded = [x for x in range(total_pages)
                                if x not in cached_offsets]
             else:
-                expanded = range(total_pages)
+                expanded = list(range(total_pages))
             if 'index' in debug.debug_flags:
                 trace.mutter('  reading all unread pages: %s', expanded)
             return expanded
@@ -939,7 +909,8 @@ class BTreeGraphIndex(object):
 
     def _get_offsets_to_cached_pages(self):
         """Determine what nodes we already have cached."""
-        cached_offsets = set(self._internal_node_cache.keys())
+        cached_offsets = set(self._internal_node_cache)
+        # cache may be dict or LRUCache, keys() is the common method
         cached_offsets.update(self._leaf_node_cache.keys())
         if self._root_node is not None:
             cached_offsets.add(0)
@@ -978,7 +949,7 @@ class BTreeGraphIndex(object):
     def _cache_leaf_values(self, nodes):
         """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in nodes.itervalues():
+            for node in viewvalues(nodes):
                 for key, value in node.all_items():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
@@ -1017,7 +988,7 @@ class BTreeGraphIndex(object):
             return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
-        needed_offsets = range(start_of_leaves, end_of_leaves)
+        needed_offsets = list(range(start_of_leaves, end_of_leaves))
         if needed_offsets == [0]:
             # Special case when we only have a root node, as we have already
             # read everything
@@ -1394,11 +1365,7 @@ class BTreeGraphIndex(object):
                     key_dict[key[-1]] = key_value
         if self._key_length == 1:
             for key in keys:
-                # sanity check
-                if key[0] is None:
-                    raise errors.BadIndexKey(key)
-                if len(key) != self._key_length:
-                    raise errors.BadIndexKey(key)
+                index._sanity_check_key(self, key)
                 try:
                     if self.node_ref_lists:
                         value, node_refs = nodes[key]
@@ -1408,41 +1375,8 @@ class BTreeGraphIndex(object):
                 except KeyError:
                     pass
             return
-        for key in keys:
-            # sanity check
-            if key[0] is None:
-                raise errors.BadIndexKey(key)
-            if len(key) != self._key_length:
-                raise errors.BadIndexKey(key)
-            # find what it refers to:
-            key_dict = nodes_by_key
-            elements = list(key)
-            # find the subdict whose contents should be returned.
-            try:
-                while len(elements) and elements[0] is not None:
-                    key_dict = key_dict[elements[0]]
-                    elements.pop(0)
-            except KeyError:
-                # a non-existant lookup.
-                continue
-            if len(elements):
-                dicts = [key_dict]
-                while dicts:
-                    key_dict = dicts.pop(-1)
-                    # can't be empty or would not exist
-                    item, value = next(key_dict.iteritems())
-                    if isinstance(value, dict):
-                        # push keys
-                        dicts.extend(key_dict.itervalues())
-                    else:
-                        # yield keys
-                        for value in key_dict.itervalues():
-                            # each value is the key:value:node refs tuple
-                            # ready to yield.
-                            yield (self, ) + value
-            else:
-                # the last thing looked up was a terminal element
-                yield (self, ) + key_dict
+        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
+            yield entry
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1501,7 +1435,7 @@ class BTreeGraphIndex(object):
             raise errors.BadIndexOptions(self)
         try:
             self._row_lengths = [int(length) for length in
-                options_line[len(_OPTION_ROW_LENGTHS):].split(',')
+                options_line[len(_OPTION_ROW_LENGTHS):].split(b',')
                 if length]
         except ValueError:
             raise errors.BadIndexOptions(self)
@@ -1543,7 +1477,7 @@ class BTreeGraphIndex(object):
                     self._size = num_bytes - base_offset
                     # the whole thing should be parsed out of 'bytes'
                     ranges = [(start, min(_PAGE_SIZE, num_bytes - start))
-                        for start in xrange(base_offset, num_bytes, _PAGE_SIZE)]
+                        for start in range(base_offset, num_bytes, _PAGE_SIZE)]
                     break
             else:
                 if offset > self._size:
@@ -1596,7 +1530,7 @@ class BTreeGraphIndex(object):
             # We shouldn't be reading anything anyway
             start_node = 1
         node_end = self._row_offsets[-1]
-        for node in self._read_nodes(range(start_node, node_end)):
+        for node in self._read_nodes(list(range(start_node, node_end))):
             pass
 
 

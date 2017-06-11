@@ -70,7 +70,7 @@ class BTreeTestCase(TestCaseWithTransport):
                 prefix = (str(prefix_pos) * 40,)
             else:
                 prefix = ()
-            for pos in xrange(count):
+            for pos in range(count):
                 # TODO: This creates odd keys. When count == 100,000, it
                 #       creates a 240 byte key
                 key = prefix + (str(pos) * 40,)
@@ -643,7 +643,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(1, len(list(index.iter_entries([nodes[30][0]]))))
         self.assertEqual([1, 4], index._row_lengths)
         self.assertIsNot(None, index._root_node)
-        internal_node_pre_clear = index._internal_node_cache.keys()
+        internal_node_pre_clear = set(index._internal_node_cache)
         self.assertTrue(len(index._leaf_node_cache) > 0)
         index.clear_cache()
         # We don't touch _root_node or _internal_node_cache, both should be
@@ -655,7 +655,7 @@ class TestBTreeIndex(BTreeTestCase):
         #       becuase without a 3-level index, we don't have any internal
         #       nodes cached.
         self.assertEqual(internal_node_pre_clear,
-                         index._internal_node_cache.keys())
+                         set(index._internal_node_cache))
         self.assertEqual(0, len(index._leaf_node_cache))
 
     def test_trivial_constructor(self):
@@ -737,7 +737,7 @@ class TestBTreeIndex(BTreeTestCase):
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
-        self.assertEqual([0], nodes.keys())
+        self.assertEqual({0}, set(nodes))
         node = nodes[0]
         self.assertEqual([('key',)], node.all_keys())
         self.assertEqual([('get', 'index')], trans._activity)
@@ -751,7 +751,7 @@ class TestBTreeIndex(BTreeTestCase):
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
-        self.assertEqual(range(num_pages), nodes.keys())
+        self.assertEqual(list(range(num_pages)), sorted(nodes))
 
     def test_2_levels_key_count_2_2(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
@@ -845,7 +845,7 @@ class TestBTreeIndex(BTreeTestCase):
     def test_key_too_big(self):
         # the size that matters here is the _compressed_ size of the key, so we can't
         # do a simple character repeat.
-        bigKey = ''.join(map(repr, xrange(btree_index._PAGE_SIZE)))
+        bigKey = ''.join(map(repr, range(btree_index._PAGE_SIZE)))
         self.assertRaises(errors.BadIndexKey,
                           self.make_index,
                           nodes=[((bigKey,), 'value', ())])
@@ -1111,7 +1111,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = []
         ref_lists = ((),)
         rev_keys = []
-        for i in xrange(400):
+        for i in range(400):
             rev_id = '%s-%s-%s' % (email,
                                    osutils.compact_date(start_time + i),
                                    osutils.rand_chars(16))
@@ -1456,7 +1456,7 @@ class TestExpandOffsets(tests.TestCase):
 
     def test_read_all_from_root(self):
         index = self.make_index(4096*10, 20)
-        self.assertExpandOffsets(range(10), index, [0])
+        self.assertExpandOffsets(list(range(10)), index, [0])
 
     def test_read_all_when_cached(self):
         # We've read enough that we can grab all the rest in a single request

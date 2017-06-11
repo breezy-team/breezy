@@ -38,7 +38,7 @@ class TestCaseWithStackedTarget(TestCaseWithRepository):
         base_tree.add(['f2.txt'], ['f2.txt-id'])
         base_tree.commit('base adds f2', rev_id=self.r2_key[0])
         stacked_url = urlutils.join(base_tree.branch.base, '../stacked')
-        stacked_bzrdir = base_tree.bzrdir.sprout(stacked_url,
+        stacked_bzrdir = base_tree.controldir.sprout(stacked_url,
             stacked=True)
         if isinstance(stacked_bzrdir, remote.RemoteBzrDir):
             stacked_branch = stacked_bzrdir.open_branch()
@@ -65,7 +65,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         This returns a read locked Repository object without any stacking
         fallbacks.
         """
-        repo = tree.branch.repository.bzrdir.open_repository()
+        repo = tree.branch.repository.controldir.open_repository()
         repo.lock_read()
         self.addCleanup(repo.unlock)
         return repo
@@ -90,7 +90,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
             stacked_only_repo.inventories, [self.r1_key, self.r2_key])
         # And we should be able to pull this revision into another stacked
         # branch
-        stacked2_branch = base_tree.bzrdir.sprout('stacked2',
+        stacked2_branch = base_tree.controldir.sprout('stacked2',
                                                   stacked=True).open_branch()
         stacked2_branch.repository.fetch(stacked_only_repo,
                                          revision_id='new-rev-id')
@@ -100,7 +100,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         self.build_tree_contents([('base/f1.txt', 'new content\n')])
         r3_key = ('rev3-id',)
         base_tree.commit('second base', rev_id=r3_key[0])
-        to_be_merged_tree = base_tree.bzrdir.sprout('merged'
+        to_be_merged_tree = base_tree.controldir.sprout('merged'
             ).open_workingtree()
         self.build_tree(['merged/f2.txt'])
         to_be_merged_tree.add(['f2.txt'], ['f2.txt-id'])
@@ -151,7 +151,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
                            [self.r1_key, self.r2_key])
         # This ensures we get a Remote URL, rather than a local one.
         stacked2_url = urlutils.join(base_tree.branch.base, '../stacked2')
-        stacked2_bzrdir = stacked_tree.bzrdir.sprout(stacked2_url,
+        stacked2_bzrdir = stacked_tree.controldir.sprout(stacked2_url,
                             revision_id=self.r1_key[0],
                             stacked=True)
         if isinstance(stacked2_bzrdir, remote.RemoteBzrDir):
@@ -185,7 +185,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         self.build_tree_contents([('base/f1.txt', 'new content\n')])
         r3_key = ('rev3-id',)
         base_tree.commit('second base', rev_id=r3_key[0])
-        to_be_merged_tree = base_tree.bzrdir.sprout('merged'
+        to_be_merged_tree = base_tree.controldir.sprout('merged'
             ).open_workingtree()
         self.build_tree(['merged/f2.txt'])
         to_be_merged_tree.add(['f2.txt'], ['f2.txt-id'])

@@ -12,45 +12,41 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """bisect command implementations."""
 
 from __future__ import absolute_import
 
 import sys
-import os
-from ...bzrdir import BzrDir
-from ... import revision as _mod_revision
-from ...commands import Command
-from ...errors import BzrCommandError
-from ...option import Option
-from ...trace import note
+from .controldir import ControlDir
+from . import revision as _mod_revision
+from .commands import Command
+from .errors import BzrCommandError
+from .option import Option
+from .trace import note
 
-bisect_info_path = ".bzr/bisect"
-bisect_rev_path = ".bzr/bisect_revid"
+BISECT_INFO_PATH = "bisect"
+BISECT_REV_PATH = "bisect_revid"
 
 
 class BisectCurrent(object):
     """Bisect class for managing the current revision."""
 
-    def __init__(self, filename = bisect_rev_path):
+    def __init__(self, controldir, filename=BISECT_REV_PATH):
         self._filename = filename
-        self._bzrdir = BzrDir.open_containing(".")[0]
-        self._bzrbranch = self._bzrdir.open_branch()
-        if os.path.exists(filename):
-            revid_file = open(filename)
-            self._revid = revid_file.read().strip()
-            revid_file.close()
+        self._controldir = controldir
+        self._branch = self._controldir.open_branch()
+        if self._controldir.control_transport.has(filename):
+            self._revid = self._controldir.control_transport.get_bytes(
+                filename).strip()
         else:
-            self._revid = self._bzrbranch.last_revision()
+            self._revid = self._branch.last_revision()
 
     def _save(self):
         """Save the current revision."""
-
-        revid_file = open(self._filename, "w")
-        revid_file.write(self._revid + "\n")
-        revid_file.close()
+        self._controldir.control_transport.put_bytes(
+            self._filename, self._revid + "\n")
 
     def get_current_revid(self):
         """Return the current revision id."""
@@ -58,12 +54,12 @@ class BisectCurrent(object):
 
     def get_current_revno(self):
         """Return the current revision number as a tuple."""
-        revdict = self._bzrbranch.get_revision_id_to_revno_map()
+        revdict = self._branch.get_revision_id_to_revno_map()
         return revdict[self.get_current_revid()]
 
     def get_parent_revids(self):
         """Return the IDs of the current revision's predecessors."""
-        repo = self._bzrbranch.repository
+        repo = self._branch.repository
         repo.lock_read()
         retval = repo.get_parent_map([self._revid]).get(self._revid, None)
         repo.unlock()
@@ -75,16 +71,16 @@ class BisectCurrent(object):
 
     def show_rev_log(self, out = sys.stdout):
         """Write the current revision's log entry to a file."""
-        rev = self._bzrbranch.repository.get_revision(self._revid)
+        rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
         out.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
                                                   rev.message))
 
     def switch(self, revid):
         """Switch the current revision to the given revid."""
-        working = self._bzrdir.open_workingtree()
+        working = self._controldir.open_workingtree()
         if isinstance(revid, int):
-            revid = self._bzrbranch.get_rev_id(revid)
+            revid = self._branch.get_rev_id(revid)
         elif isinstance(revid, list):
             revid = revid[0].in_history(working.branch).rev_id
         working.revert(None, working.branch.repository.revision_tree(revid),
@@ -94,21 +90,22 @@ class BisectCurrent(object):
 
     def reset(self):
         """Revert bisection, setting the working tree to normal."""
-        working = self._bzrdir.open_workingtree()
+        working = self._controldir.open_workingtree()
         last_rev = working.branch.last_revision()
         rev_tree = working.branch.repository.revision_tree(last_rev)
         working.revert(None, rev_tree, False)
-        if os.path.exists(bisect_rev_path):
-            os.unlink(bisect_rev_path)
+        if self._controldir.control_transport.has(BISECT_REV_PATH):
+            self._controldir.control_transport.delete(BISECT_REV_PATH)
 
 
 class BisectLog(object):
     """Bisect log file handler."""
 
-    def __init__(self, filename = bisect_info_path):
+    def __init__(self, controldir, filename=BISECT_INFO_PATH):
         self._items = []
-        self._current = BisectCurrent()
-        self._bzrdir = None
+        self._current = BisectCurrent(controldir)
+        self._controldir = controldir
+        self._branch = None
         self._high_revid = None
         self._low_revid = None
         self._middle_revid = None
@@ -118,34 +115,26 @@ class BisectLog(object):
     def _open_for_read(self):
         """Open log file for reading."""
         if self._filename:
-            return open(self._filename)
+            return self._controldir.control_transport.get(self._filename)
         else:
             return sys.stdin
 
-    def _open_for_write(self):
-        """Open log file for writing."""
-        if self._filename:
-            return open(self._filename, "w")
-        else:
-            return sys.stdout
-
-    def _load_bzr_tree(self):
+    def _load_tree(self):
         """Load bzr information."""
-        if not self._bzrdir:
-            self._bzrdir = BzrDir.open_containing('.')[0]
-            self._bzrbranch = self._bzrdir.open_branch()
+        if not self._branch:
+            self._branch = self._controldir.open_branch()
 
     def _find_range_and_middle(self, branch_last_rev = None):
         """Find the current revision range, and the midpoint."""
-        self._load_bzr_tree()
+        self._load_tree()
         self._middle_revid = None
 
         if not branch_last_rev:
-            last_revid = self._bzrbranch.last_revision()
+            last_revid = self._branch.last_revision()
         else:
             last_revid = branch_last_rev
 
-        repo = self._bzrbranch.repository
+        repo = self._branch.repository
         repo.lock_read()
         try:
             graph = repo.get_graph()
@@ -173,7 +162,7 @@ class BisectLog(object):
             if not high_revid:
                 high_revid = last_revid
             if not low_revid:
-                low_revid = self._bzrbranch.get_rev_id(1)
+                low_revid = self._branch.get_rev_id(1)
         finally:
             repo.unlock()
 
@@ -215,7 +204,7 @@ class BisectLog(object):
     def load(self):
         """Load the bisection log."""
         self._items = []
-        if os.path.exists(self._filename):
+        if self._controldir.control_transport.has(self._filename):
             revlog = self._open_for_read()
             for line in revlog:
                 (revid, status) = line.split()
@@ -223,9 +212,14 @@ class BisectLog(object):
 
     def save(self):
         """Save the bisection log."""
-        revlog = self._open_for_write()
-        for (revid, status) in self._items:
-            revlog.write("%s %s\n" % (revid, status))
+        contents = ''.join(
+            ("%s %s\n" % (revid, status))
+            for (revid, status) in self._items)
+        if self._filename:
+            self._controldir.control_transport.put_bytes(
+                self._filename, contents)
+        else:
+            sys.stdout.write(contents)
 
     def is_done(self):
         """Report whether we've found the right revision."""
@@ -233,8 +227,8 @@ class BisectLog(object):
 
     def set_status_from_revspec(self, revspec, status):
         """Set the bisection status for the revision in revspec."""
-        self._load_bzr_tree()
-        revid = revspec[0].in_history(self._bzrbranch).rev_id
+        self._load_tree()
+        revid = revspec[0].in_history(self._branch).rev_id
         self._set_status(revid, status)
 
     def set_current(self, status):
@@ -245,7 +239,7 @@ class BisectLog(object):
         return len(self.get_parent_revids(revid)) > 1
 
     def get_parent_revids(self, revid):
-        repo = self._bzrbranch.repository
+        repo = self._branch.repository
         repo.lock_read()
         try:
             retval = repo.get_parent_map([revid]).get(revid, None)
@@ -288,34 +282,34 @@ class cmd_bisect(Command):
     of which changes the state of the bisection.  The
     subcommands are:
 
-    bzr bisect start
+    brz bisect start
         Start a bisect, possibly clearing out a previous bisect.
 
-    bzr bisect yes [-r rev]
+    brz bisect yes [-r rev]
         The specified revision (or the current revision, if not given)
         has the characteristic we're looking for,
 
-    bzr bisect no [-r rev]
+    brz bisect no [-r rev]
         The specified revision (or the current revision, if not given)
         does not have the characteristic we're looking for,
 
-    bzr bisect move -r rev
+    brz bisect move -r rev
         Switch to a different revision manually.  Use if the bisect
         algorithm chooses a revision that is not suitable.  Try to
         move as little as possible.
 
-    bzr bisect reset
+    brz bisect reset
         Clear out a bisection in progress.
 
-    bzr bisect log [-o file]
+    brz bisect log [-o file]
         Output a log of the current bisection to standard output, or
         to the specified file.
 
-    bzr bisect replay <logfile>
+    brz bisect replay <logfile>
         Replay a previously-saved bisect log, forgetting any bisection
         that might be in progress.
 
-    bzr bisect run <script>
+    brz bisect run <script>
         Bisect automatically using <script> to determine 'yes' or 'no'.
         <script> should exit with:
            0 for yes
@@ -326,18 +320,18 @@ class cmd_bisect(Command):
     takes_args = ['subcommand', 'args*']
     takes_options = [Option('output', short_name='o',
                             help='Write log to this file.', type=unicode),
-                     'revision']
+                     'revision', 'directory']
 
-    def _check(self):
+    def _check(self, controldir):
         """Check preconditions for most operations to work."""
-        if not os.path.exists(bisect_info_path):
+        if not controldir.control_transport.has(BISECT_INFO_PATH):
             raise BzrCommandError("No bisection in progress.")
 
-    def _set_state(self, revspec, state):
+    def _set_state(self, controldir, revspec, state):
         """Set the state of the given revspec and bisecting.
 
         Returns boolean indicating if bisection is done."""
-        bisect_log = BisectLog()
+        bisect_log = BisectLog(controldir)
         if bisect_log.is_done():
             note("No further bisection is possible.\n")
             bisect_log._current.show_rev_log(self.outf)
@@ -351,7 +345,7 @@ class cmd_bisect(Command):
         bisect_log.save()
         return False
 
-    def run(self, subcommand, args_list, revision=None, output=None):
+    def run(self, subcommand, args_list, directory='.', revision=None, output=None):
         """Handle the bisect command."""
 
         log_fn = None
@@ -368,92 +362,93 @@ class cmd_bisect(Command):
             raise BzrCommandError(
                 "Improper arguments to bisect " + subcommand)
 
-        # Dispatch.
+        controldir, _ = ControlDir.open_containing(directory)
 
+        # Dispatch.
         if subcommand == "start":
-            self.start()
+            self.start(controldir)
         elif subcommand == "yes":
-            self.yes(revision)
+            self.yes(controldir, revision)
         elif subcommand == "no":
-            self.no(revision)
+            self.no(controldir, revision)
         elif subcommand == "move":
-            self.move(revision)
+            self.move(controldir, revision)
         elif subcommand == "reset":
-            self.reset()
+            self.reset(controldir)
         elif subcommand == "log":
-            self.log(output)
+            self.log(controldir, output)
         elif subcommand == "replay":
-            self.replay(log_fn)
+            self.replay(controldir, log_fn)
         elif subcommand == "run":
-            self.run_bisect(run_script)
+            self.run_bisect(controldir, run_script)
         else:
             raise BzrCommandError(
                 "Unknown bisect command: " + subcommand)
 
-    def reset(self):
+    def reset(self, controldir):
         """Reset the bisect state to no state."""
-        self._check()
-        BisectCurrent().reset()
-        os.unlink(bisect_info_path)
+        self._check(controldir)
+        BisectCurrent(controldir).reset()
+        controldir.control_transport.delete(BISECT_INFO_PATH)
 
-    def start(self):
+    def start(self, controldir):
         """Reset the bisect state, then prepare for a new bisection."""
-        if os.path.exists(bisect_info_path):
-            BisectCurrent().reset()
-            os.unlink(bisect_info_path)
+        if controldir.control_transport.has(BISECT_INFO_PATH):
+            BisectCurrent(controldir).reset()
+            controldir.control_transport.delete(BISECT_INFO_PATH)
 
-        bisect_log = BisectLog()
+        bisect_log = BisectLog(controldir)
         bisect_log.set_current("start")
         bisect_log.save()
 
-    def yes(self, revspec):
+    def yes(self, controldir, revspec):
         """Mark that a given revision has the state we're looking for."""
-        self._set_state(revspec, "yes")
+        self._set_state(controldir, revspec, "yes")
 
-    def no(self, revspec):
+    def no(self, controldir, revspec):
         """Mark that a given revision does not have the state we're looking for."""
-        self._set_state(revspec, "no")
+        self._set_state(controldir, revspec, "no")
 
-    def move(self, revspec):
+    def move(self, controldir, revspec):
         """Move to a different revision manually."""
-        current = BisectCurrent()
+        current = BisectCurrent(controldir)
         current.switch(revspec)
         current.show_rev_log(out=self.outf)
 
-    def log(self, filename):
+    def log(self, controldir, filename):
         """Write the current bisect log to a file."""
-        self._check()
-        bisect_log = BisectLog()
+        self._check(controldir)
+        bisect_log = BisectLog(controldir)
         bisect_log.change_file_name(filename)
         bisect_log.save()
 
-    def replay(self, filename):
+    def replay(self, controldir, filename):
         """Apply the given log file to a clean state, so the state is
         exactly as it was when the log was saved."""
-        if os.path.exists(bisect_info_path):
-            BisectCurrent().reset()
-            os.unlink(bisect_info_path)
-        bisect_log = BisectLog(filename)
-        bisect_log.change_file_name(bisect_info_path)
+        if controldir.control_transport.has(BISECT_INFO_PATH):
+            BisectCurrent(controldir).reset()
+            controldir.control_transport.delete(BISECT_INFO_PATH)
+        bisect_log = BisectLog(controldir, filename)
+        bisect_log.change_file_name(BISECT_INFO_PATH)
         bisect_log.save()
 
         bisect_log.bisect(self.outf)
 
-    def run_bisect(self, script):
+    def run_bisect(self, controldir, script):
         import subprocess
         note("Starting bisect.")
-        self.start()
+        self.start(controldir)
         while True:
             try:
                 process = subprocess.Popen(script, shell=True)
                 process.wait()
                 retcode = process.returncode
                 if retcode == 0:
-                    done = self._set_state(None, 'yes')
+                    done = self._set_state(controldir, None, 'yes')
                 elif retcode == 125:
                     break
                 else:
-                    done = self._set_state(None, 'no')
+                    done = self._set_state(controldir, None, 'no')
                 if done:
                     break
             except RuntimeError:

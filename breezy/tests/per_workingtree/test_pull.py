@@ -63,7 +63,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(['from/file'])
         tree.add(['file'])
         tree.commit('first')
-        to_tree = tree.bzrdir.sprout('to').open_workingtree()
+        to_tree = tree.controldir.sprout('to').open_workingtree()
         self.assertEqual('first_root_id', to_tree.get_root_id())
         tree.set_root_id('second_root_id')
         tree.commit('second')
@@ -96,7 +96,7 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
                 '%r does not support missing parent conflicts' %
                     self.workingtree_format)
         trunk = self.make_branch_deleting_dir('trunk')
-        work = trunk.bzrdir.sprout('work', revision_id='2').open_workingtree()
+        work = trunk.controldir.sprout('work', revision_id='2').open_workingtree()
         work.branch.get_config_stack().set(
             'bzr.transform.orphan_policy', 'move')
         # Add some unversioned files in dir

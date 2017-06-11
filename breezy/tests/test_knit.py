@@ -367,7 +367,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         repo = b.repository
         collection = repo._pack_collection
         # Concurrently repack the repo.
-        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo = repo.controldir.open_repository()
         reopened_repo.pack()
         # Pack the new pack.
         collection.pack()
@@ -626,7 +626,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             self.fail('Annotation was not identical with reloading.')
         # Now delete the packs-in-use, which should trigger another reload, but
         # this time we just raise an exception because we can't recover
-        for trans, name in vf._access._indices.itervalues():
+        for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertRaises(errors.NoSuchFile, vf.annotate, key)
         self.assertEqual([2, 1, 1], reload_counter)
@@ -639,7 +639,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([1, 1, 0], reload_counter)
         # Now delete the packs-in-use, which should trigger another reload, but
         # this time we just raise an exception because we can't recover
-        for trans, name in vf._access._indices.itervalues():
+        for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertRaises(errors.NoSuchFile, vf._get_record_map, keys)
         self.assertEqual([2, 1, 1], reload_counter)
@@ -658,7 +658,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual(('rev-3',), record.key)
         self.assertEqual([1, 1, 0], reload_counter)
         # Now delete all pack files, and see that we raise the right error
-        for trans, name in vf._access._indices.itervalues():
+        for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertListRaises(errors.NoSuchFile,
             vf.get_record_stream, keys, 'topological', False)
@@ -682,7 +682,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual(plain_lines, reload_lines)
         self.assertEqual(21, len(plain_lines))
         # Now delete all pack files, and see that we raise the right error
-        for trans, name in vf._access._indices.itervalues():
+        for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertListRaises(errors.NoSuchFile,
             vf.iter_lines_added_or_present_in_keys, keys)

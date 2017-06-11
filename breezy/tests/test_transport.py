@@ -822,7 +822,7 @@ class TestWin32LocalTransport(tests.TestCase):
         # clone to root should stop at least at \\HOST part
         # not on \\
         t = local.EmulatedWin32LocalTransport('file://HOST/path/to/some/dir/')
-        for i in xrange(4):
+        for i in range(4):
             t = t.clone('..')
         self.assertEqual(t.base, 'file://HOST/')
         # make sure we reach the root

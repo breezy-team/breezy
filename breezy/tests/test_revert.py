@@ -26,7 +26,7 @@ class TestRevert(tests.TestCaseWithTransport):
         """Reverting a merge that adds a directory deletes the directory"""
         source_tree = self.make_branch_and_tree('source')
         source_tree.commit('empty tree')
-        target_tree = source_tree.bzrdir.sprout('target').open_workingtree()
+        target_tree = source_tree.controldir.sprout('target').open_workingtree()
         self.build_tree(['source/dir/', 'source/dir/contents'])
         source_tree.add(['dir', 'dir/contents'], ['dir-id', 'contents-id'])
         source_tree.commit('added dir')
@@ -53,7 +53,7 @@ class TestRevert(tests.TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('tree')
         tree.commit('empty tree')
-        merge_target = tree.bzrdir.sprout('merge_target').open_workingtree()
+        merge_target = tree.controldir.sprout('merge_target').open_workingtree()
         self.build_tree(['tree/new_file'])
 
         # newly-added files should not be deleted

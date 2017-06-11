@@ -80,18 +80,18 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         repo = self.make_repository('repo', shared=True)
         self.run_bzr('reconfigure --use-shared', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
-        self.assertNotEqual(tree.bzrdir.root_transport.base,
-            tree.branch.repository.bzrdir.root_transport.base)
+        self.assertNotEqual(tree.controldir.root_transport.base,
+            tree.branch.repository.controldir.root_transport.base)
 
     def test_use_shared_to_standalone(self):
         repo = self.make_repository('repo', shared=True)
         branch = controldir.ControlDir.create_branch_convenience('repo/tree')
-        self.assertNotEqual(branch.bzrdir.root_transport.base,
-            branch.repository.bzrdir.root_transport.base)
+        self.assertNotEqual(branch.controldir.root_transport.base,
+            branch.repository.controldir.root_transport.base)
         self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
-        self.assertEqual(tree.bzrdir.root_transport.base,
-            tree.branch.repository.bzrdir.root_transport.base)
+        self.assertEqual(tree.controldir.root_transport.base,
+            tree.branch.repository.controldir.root_transport.base)
 
     def test_make_with_trees(self):
         repo = self.make_repository('repo', shared=True)
@@ -137,8 +137,8 @@ class TestReconfigure(TestCaseWithTransportAndScript):
     def test_shared_format_to_standalone(self, format=None):
         repo = self.make_repository('repo', shared=True, format=format)
         branch = controldir.ControlDir.create_branch_convenience('repo/tree')
-        self.assertNotEqual(branch.bzrdir.root_transport.base,
-            branch.repository.bzrdir.root_transport.base)
+        self.assertNotEqual(branch.controldir.root_transport.base,
+            branch.repository.controldir.root_transport.base)
         tree = workingtree.WorkingTree.open('repo/tree')
         self.build_tree_contents([('repo/tree/file', 'foo\n')]);
         tree.add(['file'])
@@ -149,8 +149,8 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.check_file_contents('repo/tree/file', 'bar\n')
         self.run_bzr('revert', working_dir='repo/tree')
         self.check_file_contents('repo/tree/file', 'foo\n')
-        self.assertEqual(tree.bzrdir.root_transport.base,
-            tree.branch.repository.bzrdir.root_transport.base)
+        self.assertEqual(tree.controldir.root_transport.base,
+            tree.branch.repository.controldir.root_transport.base)
 
     def test_shared_knit_to_standalone(self):
         self.test_shared_format_to_standalone('knit')
@@ -236,7 +236,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         tree_1.commit('add foo')
         branch_1 = tree_1.branch
         # now branch and commit again
-        bzrdir_2 = tree_1.bzrdir.sprout('b2')
+        bzrdir_2 = tree_1.controldir.sprout('b2')
         tree_2 = bzrdir_2.open_workingtree()
         branch_2 = tree_2.branch
         # now reconfigure to be stacked
@@ -250,7 +250,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
         self.assertEqual('', err)
         # Refresh the branch as 'reconfigure' modified it
-        branch_2 = branch_2.bzrdir.open_branch()
+        branch_2 = branch_2.controldir.open_branch()
         # It should be given a relative URL to the destination, if possible,
         # because that's most likely to work across different transports
         self.assertEqual('../b1', branch_2.get_stacked_on_url())
@@ -263,7 +263,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
             '^.*/b2/ is now not stacked\n$')
         self.assertEqual('', err)
         # Refresh the branch as 'reconfigure' modified it
-        branch_2 = branch_2.bzrdir.open_branch()
+        branch_2 = branch_2.controldir.open_branch()
         self.assertRaises(errors.NotStacked, branch_2.get_stacked_on_url)
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;

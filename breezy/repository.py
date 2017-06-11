@@ -27,12 +27,9 @@ from breezy import (
     debug,
     generate_ids,
     graph,
-    lockable_files,
-    lockdir,
     osutils,
     revision as _mod_revision,
     testament as _mod_testament,
-    tsort,
     gpg,
     )
 from breezy.bundle import serializer
@@ -48,6 +45,11 @@ from . import (
 from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
+from .sixish import (
+    text_type,
+    viewitems,
+    viewvalues,
+    )
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -141,10 +143,10 @@ class CommitBuilder(object):
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
-        for key, value in revprops.iteritems():
+        for key, value in viewitems(revprops):
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
-            if not isinstance(value, basestring):
+            if not isinstance(value, (text_type, str)):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
             self._validate_unicode_text(value,
@@ -247,7 +249,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
 # Repositories
 
 
-class Repository(_RelockDebugMixin, controldir.ControlComponent):
+class Repository(controldir.ControlComponent, _RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -285,7 +287,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 raise
             mutter('abort_write_group failed')
             log_exception_quietly()
-            note(gettext('bzr: ERROR (ignored): %s'), exc)
+            note(gettext('brz: ERROR (ignored): %s'), exc)
         self._write_group = None
 
     def _abort_write_group(self):
@@ -363,7 +365,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
-        self.bzrdir = controldir
+        self.controldir = controldir
         self.control_files = control_files
         # for tests
         self._write_group = None
@@ -372,7 +374,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
     @property
     def user_transport(self):
-        return self.bzrdir.user_transport
+        return self.controldir.user_transport
 
     @property
     def control_transport(self):
@@ -545,7 +547,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            return self.bzrdir.list_branches()
+            return self.controldir.list_branches()
         class Evaluator(object):
 
             def __init__(self):
@@ -566,7 +568,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 return True, value
 
         ret = []
-        for branches, repository in controldir.ControlDir.find_bzrdirs(
+        for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)
@@ -788,17 +790,17 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
-    def _create_sprouting_repo(self, a_bzrdir, shared):
-        if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
+    def _create_sprouting_repo(self, a_controldir, shared):
+        if not isinstance(a_controldir._format, self.controldir._format.__class__):
             # use target default format.
-            dest_repo = a_bzrdir.create_repository()
+            dest_repo = a_controldir.create_repository()
         else:
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(a_bzrdir, shared=shared)
+                dest_repo = self._format.initialize(a_controldir, shared=shared)
             except errors.UninitializableFormat:
-                dest_repo = a_bzrdir.open_repository()
+                dest_repo = a_controldir.open_repository()
         return dest_repo
 
     @needs_read_lock
@@ -904,19 +906,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param signature: Signature text.
         """
         raise NotImplementedError(self.add_signature_text)
-
-    def _find_parent_ids_of_revisions(self, revision_ids):
-        """Find all parent ids that are mentioned in the revision graph.
-
-        :return: set of revisions that are parents of revision_ids which are
-            not part of revision_ids themselves
-        """
-        parent_map = self.get_parent_map(revision_ids)
-        parent_ids = set(itertools.chain.from_iterable(
-            parent_map.itervalues()))
-        parent_ids.difference_update(revision_ids)
-        parent_ids.discard(_mod_revision.NULL_REVISION)
-        return parent_ids
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -1053,8 +1042,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             else:
                 query_keys.append((revision_id ,))
         vf = self.revisions.without_fallbacks()
-        for ((revision_id,), parent_keys) in \
-                vf.get_parent_map(query_keys).iteritems():
+        for (revision_id,), parent_keys in viewitems(
+                vf.get_parent_map(query_keys)):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
                     for (parent_revid,) in parent_keys])
@@ -1186,7 +1175,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 return
             warning("Format %s for %s is deprecated -"
                     " please use 'brz upgrade' to get better performance"
-                    % (self._format, self.bzrdir.transport.base))
+                    % (self._format, self.controldir.transport.base))
         finally:
             _deprecation_warning_done = True
 
@@ -1210,61 +1199,12 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                     raise errors.NonAsciiRevisionId(method, self)
 
 
-class MetaDirRepository(Repository):
-    """Repositories in the new meta-dir layout.
-
-    :ivar _transport: Transport for access to repository control files,
-        typically pointing to .bzr/repository.
-    """
-
-    def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
-        self._transport = control_files._transport
-
-    def is_shared(self):
-        """Return True if this repository is flagged as a shared repository."""
-        return self._transport.has('shared-storage')
-
-    @needs_write_lock
-    def set_make_working_trees(self, new_value):
-        """Set the policy flag for making working trees when creating branches.
-
-        This only applies to branches that use this repository.
-
-        The default is 'True'.
-        :param new_value: True to restore the default, False to disable making
-                          working trees.
-        """
-        if new_value:
-            try:
-                self._transport.delete('no-working-trees')
-            except errors.NoSuchFile:
-                pass
-        else:
-            self._transport.put_bytes('no-working-trees', '',
-                mode=self.bzrdir._get_file_mode())
-
-    def make_working_trees(self):
-        """Returns the policy for making working trees on new branches."""
-        return not self._transport.has('no-working-trees')
-
-    @needs_write_lock
-    def update_feature_flags(self, updated_flags):
-        """Update the feature flags for this branch.
-
-        :param updated_flags: Dictionary mapping feature names to necessities
-            A necessity can be None to indicate the feature should be removed
-        """
-        self._format._update_feature_flags(updated_flags)
-        self.control_transport.put_bytes('format', self._format.as_string())
-
-
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
 
     def get_default(self):
         """Return the current default format."""
-        return controldir.format_registry.make_bzrdir('default').repository_format
+        return controldir.format_registry.make_controldir('default').repository_format
 
 
 network_format_registry = registry.FormatRegistry()
@@ -1446,77 +1386,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
-    """Common base class for the new repositories using the metadir layout."""
-
-    rich_root_data = False
-    supports_tree_reference = False
-    supports_external_lookups = False
-    supports_leaving_lock = True
-    supports_nesting_repositories = True
-
-    @property
-    def _matchingbzrdir(self):
-        matching = bzrdir.BzrDirMetaFormat1()
-        matching.repository_format = self
-        return matching
-
-    def __init__(self):
-        RepositoryFormat.__init__(self)
-        bzrdir.BzrFormat.__init__(self)
-
-    def _create_control_files(self, a_bzrdir):
-        """Create the required files and the initial control_files object."""
-        # FIXME: RBC 20060125 don't peek under the covers
-        # NB: no need to escape relative paths that are url safe.
-        repository_transport = a_bzrdir.get_repository_transport(self)
-        control_files = lockable_files.LockableFiles(repository_transport,
-                                'lock', lockdir.LockDir)
-        control_files.create_lock()
-        return control_files
-
-    def _upload_blank_content(self, a_bzrdir, dirs, files, utf8_files, shared):
-        """Upload the initial blank content."""
-        control_files = self._create_control_files(a_bzrdir)
-        control_files.lock_write()
-        transport = control_files._transport
-        if shared == True:
-            utf8_files += [('shared-storage', '')]
-        try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
-            for (filename, content_stream) in files:
-                transport.put_file(filename, content_stream,
-                    mode=a_bzrdir._get_file_mode())
-            for (filename, content_bytes) in utf8_files:
-                transport.put_bytes_non_atomic(filename, content_bytes,
-                    mode=a_bzrdir._get_file_mode())
-        finally:
-            control_files.unlock()
-
-    @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
-
-        This is used by brz native formats that have a "format" file in
-        the repository.  Other methods may be used by different types of
-        control directory.
-        """
-        try:
-            transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
-        return klass._find_format(format_registry, 'repository', format_string)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        RepositoryFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
-        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-
-
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're
 # all in breezy.repofmt.knitreponow.  When an instance of one of these is
@@ -1631,7 +1500,8 @@ class InterRepository(InterObject):
                             revision_id and its parents.
         """
         try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
+            self.target.set_make_working_trees(
+                self.source.make_working_trees())
         except NotImplementedError:
             pass
         self.target.fetch(self.source, revision_id=revision_id)
@@ -1649,8 +1519,8 @@ class InterRepository(InterObject):
         raise NotImplementedError(self.fetch)
 
     @needs_read_lock
-    def search_missing_revision_ids(self,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
+    def search_missing_revision_ids(
+            self, find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """Return the revision ids that source has that target does not.
 
@@ -1719,7 +1589,7 @@ class CopyConverter(object):
         # this is only useful with metadir layouts - separated repo content.
         # trigger an assertion if not such
         repo._format.get_format_string()
-        self.repo_dir = repo.bzrdir
+        self.repo_dir = repo.controldir
         pb.update(gettext('Moving repository to repository.backup'))
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')
@@ -1747,7 +1617,7 @@ def _strip_NULL_ghosts(revision_graph):
     # Filter ghosts, and null:
     if _mod_revision.NULL_REVISION in revision_graph:
         del revision_graph[_mod_revision.NULL_REVISION]
-    for key, parents in revision_graph.items():
+    for key, parents in viewitems(revision_graph):
         revision_graph[key] = tuple(parent for parent in parents if parent
             in revision_graph)
     return revision_graph
@@ -1792,7 +1662,7 @@ class _LazyListJoin(object):
 
     Each iterator made from this will reflect the current contents of the lists
     at the time the iterator is made.
-    
+
     This is used by Repository's _make_parents_provider implementation so that
     it is safe to do::
 

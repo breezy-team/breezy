@@ -24,6 +24,7 @@ from .. import (
     dirstate,
     errors,
     inventory,
+    inventorytree,
     memorytree,
     osutils,
     revision as _mod_revision,
@@ -407,7 +408,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # create a parent by doing a commit
         tree = self.make_branch_and_tree('tree')
         rev_id = tree.commit('first post')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         rev_id2 = tree2.commit('second post', allow_pointless=True)
         tree.merge_from_branch(tree2.branch)
         expected_result = ([rev_id, rev_id2], [
@@ -482,7 +483,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # create a parent by doing a commit
         tree = self.get_tree_with_a_file()
         rev_id = tree.commit('first post').encode('utf8')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         # change the current content to be different this will alter stat, sha
         # and length:
         self.build_tree_contents([('tree2/a file', 'merge content\n')])
@@ -1026,7 +1027,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             revid1 = tree1.commit('foo')
         finally:
             tree1.unlock()
-        branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
+        branch2 = tree1.branch.controldir.clone('tree2').open_branch()
         tree2 = memorytree.MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         try:
@@ -1096,7 +1097,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             revid1 = tree1.commit('foo')
         finally:
             tree1.unlock()
-        branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
+        branch2 = tree1.branch.controldir.clone('tree2').open_branch()
         tree2 = memorytree.MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         try:
@@ -2442,7 +2443,7 @@ class _Repo(object):
     """A minimal api to get InventoryRevisionTree to work."""
 
     def __init__(self):
-        default_format = controldir.format_registry.make_bzrdir('default')
+        default_format = controldir.format_registry.make_controldir('default')
         self._format = default_format.repository_format
 
     def lock_read(self):
@@ -2492,7 +2493,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 dir_ids[''] = file_id
                 continue
             inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
-        return revisiontree.InventoryRevisionTree(_Repo(), inv, rev_id)
+        return inventorytree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):
         fd, path = tempfile.mkstemp(prefix='bzr-dirstate')
