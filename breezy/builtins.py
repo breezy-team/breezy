@@ -22,7 +22,7 @@ import errno
 import os
 import sys
 
-import breezy.bzrdir
+import breezy.bzr.bzrdir
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -32,7 +32,6 @@ import breezy
 from breezy import (
     bugtracker,
     bundle,
-    btree_index,
     cache_utf8,
     controldir,
     directory_service,
@@ -56,6 +55,9 @@ from breezy import (
     urlutils,
     views,
     gpg,
+    )
+from breezy.bzr import (
+    btree_index,
     )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
@@ -6749,7 +6751,7 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
         ('cmd_conflicts', [], 'breezy.conflicts'),
-        ('cmd_ping', [], 'breezy.smart.ping'),
+        ('cmd_ping', [], 'breezy.bzr.smart.ping'),
         ('cmd_sign_my_commits', [], 'breezy.commit_signature_commands'),
         ('cmd_verify_signatures', [], 'breezy.commit_signature_commands'),
         ('cmd_test_script', [], 'breezy.cmd_test_script'),

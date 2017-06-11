@@ -20,7 +20,6 @@ import os
 
 from ... import (
     branch,
-    bzrbranch,
     builtins,
     controldir,
     check,
@@ -31,10 +30,13 @@ from ... import (
     tests,
     transport,
     )
+from ...bzr import (
+    branch as bzrbranch,
+    )
 from ...sixish import (
     BytesIO,
     )
-from ...smart import (
+from ...bzr.smart import (
     client,
     )
 from .. import (

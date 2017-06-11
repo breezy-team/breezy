@@ -27,11 +27,13 @@ from os import mkdir, chdir, rmdir, unlink
 import sys
 
 from ... import (
-    bzrdir,
     conflicts,
     errors,
     osutils,
     status,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 import breezy.branch
 from ...osutils import pathjoin

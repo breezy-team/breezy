@@ -30,9 +30,11 @@ lazy_import(globals(), """
 import itertools
 
 from breezy import (
-    xml5,
     graph as _mod_graph,
     ui,
+    )
+from breezy.bzr import (
+    xml5,
     )
 """)
 from ... import (
@@ -44,6 +46,8 @@ from ... import (
     trace,
     tuned_gzip,
     urlutils,
+    )
+from ...bzr import (
     versionedfile,
     weave,
     weavefile,
@@ -52,19 +56,19 @@ from ...decorators import needs_read_lock, needs_write_lock
 from ...repository import (
     InterRepository,
     )
-from ...bzrrepository import (
+from ...bzr.repository import (
     RepositoryFormatMetaDir,
     )
 from ...sixish import (
     BytesIO,
     )
 from .store.text import TextStore
-from ...versionedfile import (
+from ...bzr.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
     VersionedFiles,
     )
-from ...vf_repository import (
+from ...bzr.vf_repository import (
     InterSameDataRepository,
     VersionedFileCommitBuilder,
     VersionedFileRepository,
@@ -869,6 +873,6 @@ InterRepository.register_optimiser(InterWeaveRepo)
 
 
 def get_extra_interrepo_test_combinations():
-    from ...repofmt import knitrepo
+    from ...bzr import knitrepo
     return [(InterRepository, RepositoryFormat5(),
         knitrepo.RepositoryFormatKnit3())]

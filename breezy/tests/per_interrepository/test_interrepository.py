@@ -21,7 +21,7 @@ import sys
 import breezy
 import breezy.errors as errors
 import breezy.gpg
-from breezy.inventory import Inventory
+from breezy.bzr.inventory import Inventory
 from breezy.revision import NULL_REVISION
 from breezy.tests import (
     TestNotApplicable,

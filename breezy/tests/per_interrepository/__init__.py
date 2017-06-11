@@ -45,7 +45,7 @@ from breezy.tests import (
     multiply_tests,
     )
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
-from breezy.vf_repository import (
+from breezy.bzr.vf_repository import (
     InterDifferingSerializer,
     )
 
@@ -73,7 +73,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from breezy.repofmt import (
+    from breezy.bzr import (
         groupcompress_repo,
         knitrepo,
         knitpack_repo,

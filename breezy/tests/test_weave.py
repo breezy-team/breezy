@@ -31,8 +31,8 @@ from ..sixish import (
     BytesIO,
     )
 from . import TestCase, TestCaseInTempDir
-from ..weave import Weave, WeaveFormatError
-from ..weavefile import write_weave, read_weave
+from ..bzr.weave import Weave, WeaveFormatError
+from ..bzr.weavefile import write_weave, read_weave
 
 
 # texts for use in testing

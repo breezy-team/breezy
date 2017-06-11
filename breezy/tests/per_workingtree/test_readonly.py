@@ -26,7 +26,7 @@ from breezy import (
     )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
-from breezy.bzrworkingtree import InventoryWorkingTree
+from breezy.bzr.workingtree import InventoryWorkingTree
 
 
 class TestReadonly(TestCaseWithWorkingTree):

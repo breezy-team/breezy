@@ -279,32 +279,34 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
         else:
             source = [c_name]
     source.extend(extra_source)
+    include_dirs = ['breezy']
     ext_modules.append(Extension(module_name, source,
-        define_macros=define_macros, libraries=libraries))
+        define_macros=define_macros, libraries=libraries,
+        include_dirs=include_dirs))
 
 
 add_cython_extension('breezy._annotator_pyx')
 add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
-add_cython_extension('breezy._groupcompress_pyx',
-                    extra_source=['breezy/diff-delta.c'])
-add_cython_extension('breezy._knit_load_data_pyx')
+add_cython_extension('breezy.bzr._groupcompress_pyx',
+                    extra_source=['breezy/bzr/diff-delta.c'])
+add_cython_extension('breezy.bzr._knit_load_data_pyx')
 add_cython_extension('breezy._known_graph_pyx')
 add_cython_extension('breezy._rio_pyx')
 if sys.platform == 'win32':
-    add_cython_extension('breezy._dirstate_helpers_pyx',
+    add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
     add_cython_extension('breezy._walkdirs_win32')
 else:
-    add_cython_extension('breezy._dirstate_helpers_pyx')
+    add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
-add_cython_extension('breezy._chk_map_pyx')
+add_cython_extension('breezy.bzr._chk_map_pyx')
 ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
 add_cython_extension('breezy._simple_set_pyx')
 ext_modules.append(Extension('breezy._static_tuple_c',
                              ['breezy/_static_tuple_c.c']))
-add_cython_extension('breezy._btree_serializer_pyx')
+add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 
 if unavailable_files:

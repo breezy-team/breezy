@@ -21,10 +21,12 @@ import os
 import time
 
 from .. import (
-    dirstate,
     errors,
     osutils,
     tests,
+    )
+from ..bzr import (
+    dirstate,
     _dirstate_helpers_py,
     )
 from . import (
@@ -44,7 +46,7 @@ load_tests = load_tests_apply_scenarios
 
 
 compiled_dirstate_helpers_feature = features.ModuleAvailableFeature(
-    'breezy._dirstate_helpers_pyx')
+    'breezy.bzr._dirstate_helpers_pyx')
 
 
 # FIXME: we should also parametrize against SHA1Provider !
@@ -226,7 +228,7 @@ class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
     """Run all Bisect Path tests against _bisect_path_left."""
 
     def get_bisect_path(self):
-        from breezy._dirstate_helpers_py import _bisect_path_left
+        from breezy.bzr._dirstate_helpers_py import _bisect_path_left
         return _bisect_path_left
 
     def get_bisect(self):
@@ -239,7 +241,7 @@ class TestCompiledBisectPathLeft(TestBisectPathLeft):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_path(self):
-        from breezy._dirstate_helpers_pyx import _bisect_path_left
+        from breezy.bzr._dirstate_helpers_pyx import _bisect_path_left
         return _bisect_path_left
 
 
@@ -247,7 +249,7 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
     """Run all Bisect Path tests against _bisect_path_right"""
 
     def get_bisect_path(self):
-        from breezy._dirstate_helpers_py import _bisect_path_right
+        from breezy.bzr._dirstate_helpers_py import _bisect_path_right
         return _bisect_path_right
 
     def get_bisect(self):
@@ -260,7 +262,7 @@ class TestCompiledBisectPathRight(TestBisectPathRight):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_path(self):
-        from breezy._dirstate_helpers_pyx import _bisect_path_right
+        from breezy.bzr._dirstate_helpers_pyx import _bisect_path_right
         return _bisect_path_right
 
 
@@ -278,7 +280,7 @@ class TestBisectDirblock(tests.TestCase):
 
     def get_bisect_dirblock(self):
         """Return an implementation of bisect_dirblock"""
-        from breezy._dirstate_helpers_py import bisect_dirblock
+        from breezy.bzr._dirstate_helpers_py import bisect_dirblock
         return bisect_dirblock
 
     def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
@@ -372,7 +374,7 @@ class TestCompiledBisectDirblock(TestBisectDirblock):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_dirblock(self):
-        from breezy._dirstate_helpers_pyx import bisect_dirblock
+        from breezy.bzr._dirstate_helpers_pyx import bisect_dirblock
         return bisect_dirblock
 
 
@@ -388,7 +390,7 @@ class TestLtByDirs(tests.TestCase):
 
     def get_lt_by_dirs(self):
         """Get a specific implementation of lt_by_dirs."""
-        from breezy._dirstate_helpers_py import lt_by_dirs
+        from ..bzr._dirstate_helpers_py import lt_by_dirs
         return lt_by_dirs
 
     def assertCmpByDirs(self, expected, str1, str2):
@@ -494,7 +496,7 @@ class TestCompiledLtByDirs(TestLtByDirs):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_lt_by_dirs(self):
-        from breezy._dirstate_helpers_pyx import lt_by_dirs
+        from ..bzr._dirstate_helpers_pyx import lt_by_dirs
         return lt_by_dirs
 
 
@@ -510,7 +512,7 @@ class TestLtPathByDirblock(tests.TestCase):
 
     def get_lt_path_by_dirblock(self):
         """Get a specific implementation of _lt_path_by_dirblock."""
-        from breezy._dirstate_helpers_py import _lt_path_by_dirblock
+        from ..bzr._dirstate_helpers_py import _lt_path_by_dirblock
         return _lt_path_by_dirblock
 
     def assertLtPathByDirblock(self, paths):
@@ -634,7 +636,7 @@ class TestCompiledLtPathByDirblock(TestLtPathByDirblock):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_lt_path_by_dirblock(self):
-        from breezy._dirstate_helpers_pyx import _lt_path_by_dirblock
+        from ..bzr._dirstate_helpers_pyx import _lt_path_by_dirblock
         return _lt_path_by_dirblock
 
 
@@ -644,7 +646,7 @@ class TestMemRChr(tests.TestCase):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def assertMemRChr(self, expected, s, c):
-        from breezy._dirstate_helpers_pyx import _py_memrchr
+        from breezy.bzr._dirstate_helpers_pyx import _py_memrchr
         self.assertEqual(expected, _py_memrchr(s, c))
 
     def test_missing(self):
@@ -694,7 +696,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
     # inherits scenarios from test_dirstate
 
     def get_read_dirblocks(self):
-        from breezy._dirstate_helpers_py import _read_dirblocks
+        from breezy.bzr._dirstate_helpers_py import _read_dirblocks
         return _read_dirblocks
 
     def test_smoketest(self):
@@ -734,7 +736,7 @@ class TestCompiledReadDirblocks(TestReadDirblocks):
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_read_dirblocks(self):
-        from breezy._dirstate_helpers_pyx import _read_dirblocks
+        from breezy.bzr._dirstate_helpers_pyx import _read_dirblocks
         return _read_dirblocks
 
 
@@ -748,52 +750,52 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 
     def test_bisect_dirblock(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import bisect_dirblock
+            from breezy.bzr._dirstate_helpers_pyx import bisect_dirblock
         else:
-            from breezy._dirstate_helpers_py import bisect_dirblock
+            from breezy.bzr._dirstate_helpers_py import bisect_dirblock
         self.assertIs(bisect_dirblock, dirstate.bisect_dirblock)
 
     def test__bisect_path_left(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import _bisect_path_left
+            from breezy.bzr._dirstate_helpers_pyx import _bisect_path_left
         else:
-            from breezy._dirstate_helpers_py import _bisect_path_left
+            from breezy.bzr._dirstate_helpers_py import _bisect_path_left
         self.assertIs(_bisect_path_left, dirstate._bisect_path_left)
 
     def test__bisect_path_right(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import _bisect_path_right
+            from breezy.bzr._dirstate_helpers_pyx import _bisect_path_right
         else:
-            from breezy._dirstate_helpers_py import _bisect_path_right
+            from breezy.bzr._dirstate_helpers_py import _bisect_path_right
         self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
 
     def test_lt_by_dirs(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import lt_by_dirs
+            from ..bzr._dirstate_helpers_pyx import lt_by_dirs
         else:
-            from breezy._dirstate_helpers_py import lt_by_dirs
+            from ..bzr._dirstate_helpers_py import lt_by_dirs
         self.assertIs(lt_by_dirs, dirstate.lt_by_dirs)
 
     def test__read_dirblocks(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import _read_dirblocks
+            from breezy.bzr._dirstate_helpers_pyx import _read_dirblocks
         else:
-            from breezy._dirstate_helpers_py import _read_dirblocks
+            from breezy.bzr._dirstate_helpers_py import _read_dirblocks
         self.assertIs(_read_dirblocks, dirstate._read_dirblocks)
 
     def test_update_entry(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import update_entry
+            from breezy.bzr._dirstate_helpers_pyx import update_entry
         else:
-            from breezy.dirstate import update_entry
+            from breezy.bzr.dirstate import update_entry
         self.assertIs(update_entry, dirstate.update_entry)
 
     def test_process_entry(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import ProcessEntryC
+            from breezy.bzr._dirstate_helpers_pyx import ProcessEntryC
             self.assertIs(ProcessEntryC, dirstate._process_entry)
         else:
-            from breezy.dirstate import ProcessEntryPython
+            from breezy.bzr.dirstate import ProcessEntryPython
             self.assertIs(ProcessEntryPython, dirstate._process_entry)
 
 

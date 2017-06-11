@@ -18,7 +18,6 @@
 
 import breezy.branch
 from breezy import (
-    bzrdir as _mod_bzrdir,
     check,
     controldir,
     errors,
@@ -29,6 +28,9 @@ from breezy import (
     ui,
     urlutils,
     workingtree,
+    )
+from breezy.bzr import (
+    bzrdir as _mod_bzrdir,
     )
 from breezy.tests import (
     fixtures,
@@ -41,7 +43,7 @@ from breezy.transport.local import LocalTransport
 from breezy.ui import (
     CannedInputUIFactory,
     )
-from breezy.remote import (
+from breezy.bzr.remote import (
     RemoteBzrDir,
     RemoteBzrDirFormat,
     RemoteRepository,

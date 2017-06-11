@@ -21,13 +21,15 @@ import pprint
 import zlib
 
 from .. import (
-    btree_index,
     errors,
     fifo_cache,
     lru_cache,
     osutils,
     tests,
     transport,
+    )
+from ..bzr import (
+    btree_index,
     )
 from ..tests import (
     TestCaseWithTransport,
@@ -42,7 +44,7 @@ load_tests = scenarios.load_tests_apply_scenarios
 
 
 def btreeparser_scenarios():
-    import breezy._btree_serializer_py as py_module
+    import breezy.bzr._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
     if compiled_btreeparser_feature.available():
         scenarios.append(('C', 
@@ -51,7 +53,7 @@ def btreeparser_scenarios():
 
 
 compiled_btreeparser_feature = features.ModuleAvailableFeature(
-    'breezy._btree_serializer_pyx')
+    'breezy.bzr._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):

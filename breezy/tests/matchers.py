@@ -41,8 +41,8 @@ from .. import (
 from .. import lazy_import
 lazy_import.lazy_import(globals(),
 """
-from breezy.smart.request import request_handlers as smart_request_handlers
-from breezy.smart import vfs
+from breezy.bzr.smart.request import request_handlers as smart_request_handlers
+from breezy.bzr.smart import vfs
 """)
 
 from testtools.matchers import Equals, Mismatch, Matcher

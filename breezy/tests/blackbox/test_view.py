@@ -16,7 +16,7 @@
 
 """Tests for the view command"""
 
-from breezy import bzrdir
+from breezy.bzr import bzrdir
 from breezy.tests import TestCaseWithTransport
 from breezy.workingtree import WorkingTree
 

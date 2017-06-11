@@ -29,7 +29,7 @@ from breezy import (
     tests,
     )
 from breezy.branch import format_registry
-from breezy.remote import RemoteBranchFormat
+from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests import test_server
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import memory

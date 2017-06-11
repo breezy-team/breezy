@@ -17,6 +17,8 @@
 
 from breezy import (
     branch,
+    )
+from breezy.bzr import (
     vf_search,
     )
 from breezy.tests.per_repository import TestCaseWithRepository

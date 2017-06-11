@@ -18,8 +18,10 @@
 
 from breezy import (
     errors,
-    inventory,
     tests,
+    )
+from breezy.bzr import (
+    inventory,
     )
 from breezy.tests.matchers import HasLayout
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree

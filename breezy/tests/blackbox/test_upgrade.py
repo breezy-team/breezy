@@ -19,18 +19,20 @@ import os
 import stat
 
 from breezy import (
-    bzrdir,
     controldir,
     lockable_files,
     ui,
     urlutils,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.tests import (
     features,
     TestCaseWithTransport,
     )
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.repofmt.knitpack_repo import RepositoryFormatKnitPack1
+from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack1
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):

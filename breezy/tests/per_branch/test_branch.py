@@ -20,7 +20,6 @@ import contextlib
 
 from breezy import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
     controldir,
     config,
     delta as _mod_delta,
@@ -30,11 +29,14 @@ from breezy import (
     urlutils,
     transform,
     transport,
-    remote,
     repository,
     revision,
     shelf,
     tests,
+    )
+from breezy.bzr import (
+    branch as _mod_bzrbranch,
+    remote,
     )
 from breezy.tests import (
     per_branch,

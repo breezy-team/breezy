@@ -29,28 +29,30 @@ import zlib
 from .. import (
     bencode,
     branch,
-    bzrdir,
     config,
     controldir,
     errors,
-    inventory,
-    inventory_delta,
-    remote,
     repository,
     tests,
     transport,
     treebuilder,
+    )
+from ..branch import Branch
+from ..bzr import (
+    bzrdir,
+    inventory,
+    inventory_delta,
+    remote,
     versionedfile,
     vf_search,
     )
-from ..branch import Branch
-from ..bzrdir import (
+from ..bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
     RemoteBzrProber,
     )
-from ..chk_serializer import chk_bencode_serializer
-from ..remote import (
+from ..bzr.chk_serializer import chk_bencode_serializer
+from ..bzr.remote import (
     RemoteBranch,
     RemoteBranchFormat,
     RemoteBzrDir,
@@ -58,7 +60,7 @@ from ..remote import (
     RemoteRepository,
     RemoteRepositoryFormat,
     )
-from ..repofmt import groupcompress_repo, knitpack_repo
+from ..bzr import groupcompress_repo, knitpack_repo
 from ..revision import (
     NULL_REVISION,
     Revision,
@@ -66,9 +68,9 @@ from ..revision import (
 from ..sixish import (
     BytesIO,
     )
-from ..smart import medium, request
-from ..smart.client import _SmartClient
-from ..smart.repository import (
+from ..bzr.smart import medium, request
+from ..bzr.smart.client import _SmartClient
+from ..bzr.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
     _stream_to_byte_stream,
@@ -3603,7 +3605,7 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
 
 
 class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
-    """Base class for unit tests for breezy.remote._translate_error."""
+    """Base class for unit tests for breezy.bzr.remote._translate_error."""
 
     def translateTuple(self, error_tuple, **context):
         """Call _translate_error with an ErrorFromSmartServer built from the
@@ -3637,7 +3639,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
 
 
 class TestErrorTranslationSuccess(TestErrorTranslationBase):
-    """Unit tests for breezy.remote._translate_error.
+    """Unit tests for breezy.bzr.remote._translate_error.
 
     Given an ErrorFromSmartServer (which has an error tuple from a smart
     server) and some context, _translate_error raises more specific errors from
@@ -3817,7 +3819,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
 
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
-    """Unit tests for breezy.remote._translate_error's robustness.
+    """Unit tests for breezy.bzr.remote._translate_error's robustness.
 
     TestErrorTranslationSuccess is for cases where _translate_error can
     translate successfully.  This class about how _translate_err behaves when

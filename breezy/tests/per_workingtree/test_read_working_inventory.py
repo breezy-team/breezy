@@ -16,10 +16,11 @@
 
 """Tests for WorkingTree.read_working_inventory."""
 
-from breezy import errors, inventory
+from breezy import errors
+from breezy.bzr import inventory
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.bzrworkingtree import InventoryWorkingTree
+from breezy.bzr.workingtree import InventoryWorkingTree
 
 
 class TestReadWorkingInventory(TestCaseWithWorkingTree):

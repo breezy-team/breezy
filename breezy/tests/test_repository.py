@@ -30,33 +30,35 @@ from breezy.errors import (
     UnsupportedFormatError,
     )
 from breezy import (
-    btree_index,
     tests,
     transport,
+    )
+from breezy.bzr import (
+    bzrdir,
+    btree_index,
+    inventory,
+    repository as bzrrepository,
+    versionedfile,
+    vf_repository,
     vf_search,
     )
-from breezy.btree_index import BTreeBuilder, BTreeGraphIndex
-from breezy.index import GraphIndex
+from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
+from breezy.bzr.index import GraphIndex
 from breezy.repository import RepositoryFormat
 from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
     )
 from breezy import (
-    bzrdir,
-    bzrrepository,
     controldir,
     errors,
-    inventory,
     osutils,
     repository,
     revision as _mod_revision,
     upgrade,
-    versionedfile,
-    vf_repository,
     workingtree,
     )
-from breezy.repofmt import (
+from breezy.bzr import (
     groupcompress_repo,
     knitrepo,
     knitpack_repo,

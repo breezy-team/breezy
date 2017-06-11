@@ -21,7 +21,6 @@ from stat import S_ISDIR
 
 import breezy.branch
 from breezy import (
-    bzrdir,
     controldir,
     errors,
     repository,
@@ -29,7 +28,10 @@ from breezy import (
     transport,
     workingtree,
     )
-from breezy.remote import RemoteBzrDirFormat
+from breezy.bzr import (
+    bzrdir,
+    )
+from breezy.bzr.remote import RemoteBzrDirFormat
 from breezy.tests import (
     TestNotApplicable,
     TestSkipped,

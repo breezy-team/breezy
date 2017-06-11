@@ -31,11 +31,13 @@ from breezy import (
     delta,
     errors,
     filters,
-    inventory,
     osutils,
     revision as _mod_revision,
     rules,
     trace,
+    )
+from breezy.bzr import (
+    inventory,
     )
 from breezy.i18n import gettext
 """)
@@ -429,7 +431,7 @@ class Tree(object):
         raise NotImplementedError(self.annotate_iter)
 
     def _get_plan_merge_data(self, file_id, other, base):
-        from breezy import versionedfile
+        from .bzr import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')

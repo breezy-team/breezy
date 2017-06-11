@@ -44,7 +44,7 @@ from breezy.tests import (
 from breezy.workingtree import (
     format_registry,
     )
-from breezy.workingtree_4 import (
+from breezy.bzr.workingtree_4 import (
     DirStateRevisionTree,
     WorkingTreeFormat4,
     WorkingTreeFormat5,

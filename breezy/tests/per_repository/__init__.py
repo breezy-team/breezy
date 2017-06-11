@@ -27,7 +27,7 @@ rather than in tests/per_branch/*.py.
 from breezy import (
     repository,
     )
-from breezy.remote import RemoteRepositoryFormat
+from breezy.bzr.remote import RemoteRepositoryFormat
 from breezy.tests import (
     default_transport,
     multiply_tests,

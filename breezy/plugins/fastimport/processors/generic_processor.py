@@ -26,7 +26,7 @@ from .... import (
     osutils,
     progress,
     )
-from ....repofmt.knitpack_repo import KnitPackRepository
+from ....bzr.knitpack_repo import KnitPackRepository
 from ....trace import (
     mutter,
     note,

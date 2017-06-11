@@ -20,18 +20,20 @@
 # hardcode that when we should be using self.make_inventory
 
 from breezy import (
-        errors,
-        inventory,
-        osutils,
-        )
+    errors,
+    osutils,
+    )
+from breezy.bzr import (
+    inventory,
+    )
 
-from breezy.inventory import (
-        InventoryDirectory,
-        InventoryEntry,
-        InventoryFile,
-        InventoryLink,
-        TreeReference,
-        )
+from breezy.bzr.inventory import (
+    InventoryDirectory,
+    InventoryEntry,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+    )
 
 from breezy.tests.per_inventory import TestCaseWithInventory
 

@@ -29,7 +29,7 @@ from .controldir import (
     format_registry,
     )
 from .i18n import gettext
-from .remote import RemoteBzrDir
+from .bzr.remote import RemoteBzrDir
 
 
 class Convert(object):

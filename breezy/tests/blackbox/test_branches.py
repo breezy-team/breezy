@@ -17,7 +17,7 @@
 
 """Black-box tests for brz branches."""
 
-from breezy.bzrdir import BzrDir
+from breezy.bzr.bzrdir import BzrDir
 from breezy.tests import TestCaseWithTransport
 
 

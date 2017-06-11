@@ -17,17 +17,19 @@
 import re
 
 from .. import (
-    bzrdir,
     commands,
     controldir,
     errors,
     option,
     registry,
     )
+from ..bzr import (
+    bzrdir,
+    )
 from ..builtins import cmd_commit
 from ..commands import parse_args
 from . import TestCase
-from ..repofmt import knitrepo
+from ..bzr import knitrepo
 
 
 def parse(options, args):
@@ -190,7 +192,7 @@ class OptionTests(TestCase):
         registry = controldir.ControlDirFormatRegistry()
         bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
         bzrdir.register_metadir(registry, 'two',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit1',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit1',
             'two help',
             )
         bzrdir.register_metadir(registry, 'hidden', 'RepositoryFormat7', 'hidden help',
@@ -218,7 +220,7 @@ class OptionTests(TestCase):
         registry = controldir.ControlDirFormatRegistry()
         bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
         bzrdir.register_metadir(registry, 'two',
-                'breezy.repofmt.knitrepo.RepositoryFormatKnit1',
+                'breezy.bzr.knitrepo.RepositoryFormatKnit1',
                 'two help',
                 )
         registry.set_default('one')

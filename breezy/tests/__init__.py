@@ -62,7 +62,6 @@ import breezy
 from .. import (
     branchbuilder,
     controldir,
-    chk_map,
     commands as _mod_commands,
     config,
     i18n,
@@ -83,6 +82,9 @@ from .. import (
     transport as _mod_transport,
     workingtree,
     )
+from breezy.bzr import (
+    chk_map,
+    )
 try:
     import breezy.lsprof
 except ImportError:
@@ -94,7 +96,7 @@ from ..sixish import (
     string_types,
     text_type,
     )
-from ..smart import client, request
+from ..bzr.smart import client, request
 from ..transport import (
     memory,
     pathfilter,
@@ -2331,7 +2333,7 @@ class TestCase(testtools.TestCase):
 
     def disable_verb(self, verb):
         """Disable a smart server verb for one test."""
-        from breezy.smart import request
+        from breezy.bzr.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         orig_info = request_handlers.get_info(verb)
@@ -4077,8 +4079,8 @@ def _test_suite_modules_to_doctest():
     return [
         'breezy',
         'breezy.branchbuilder',
+        'breezy.bzr.inventory',
         'breezy.decorators',
-        'breezy.inventory',
         'breezy.iterablefile',
         'breezy.lockdir',
         'breezy.merge3',

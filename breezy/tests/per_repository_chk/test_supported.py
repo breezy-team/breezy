@@ -17,13 +17,15 @@
 """Tests for repositories that support CHK indices."""
 
 from breezy import (
-    btree_index,
     errors,
     osutils,
     repository,
     )
-from breezy.remote import RemoteRepository
-from breezy.versionedfile import VersionedFiles
+from breezy.bzr import (
+    btree_index,
+    )
+from breezy.bzr.versionedfile import VersionedFiles
+from breezy.bzr.remote import RemoteRepository
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_repository_chk import TestCaseWithRepositoryCHK
 

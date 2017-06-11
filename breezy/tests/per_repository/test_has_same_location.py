@@ -20,7 +20,7 @@ from breezy import (
     controldir,
     transport,
     )
-from breezy.remote import (
+from breezy.bzr.remote import (
     RemoteRepositoryFormat,
     )
 from breezy.tests import (

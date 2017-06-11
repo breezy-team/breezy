@@ -23,12 +23,14 @@ from testtools.matchers import (
 
 from ... import (
     branch,
-    bzrbranch,
     check,
     controldir,
     errors,
     push,
     tests,
+    )
+from ...bzr import (
+    branch as bzrbranch,
     vf_repository,
     )
 from ...branch import Branch
@@ -38,7 +40,7 @@ from ...revision import NULL_REVISION
 from ...sixish import (
     BytesIO,
     )
-from ...smart.repository import SmartServerRepositoryGetParentMap
+from ...bzr.smart.repository import SmartServerRepositoryGetParentMap
 from . import (
     TestCaseWithInterBranch,
     )

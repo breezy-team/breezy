@@ -52,12 +52,12 @@ BRANCH-INFO
 # Pyrex
 breezy/_annotator_pyx.c
 breezy/_bencode_pyx.c
-breezy/_btree_serializer_pyx.c
-breezy/_chk_map_pyx.c
+breezy/bzr/_btree_serializer_pyx.c
+breezy/bzr/_chk_map_pyx.c
 breezy/_chunks_to_lines_pyx.c
-breezy/_dirstate_helpers_pyx.c
-breezy/_groupcompress_pyx.c
-breezy/_knit_load_data_pyx.c
+breezy/bzr/_dirstate_helpers_pyx.c
+breezy/bzr/_groupcompress_pyx.c
+breezy/bzr/_knit_load_data_pyx.c
 breezy/_known_graph_pyx.c
 breezy/_readdir_pyx.c
 breezy/_rio_pyx.c
