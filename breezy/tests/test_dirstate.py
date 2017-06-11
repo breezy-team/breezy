@@ -22,7 +22,6 @@ import tempfile
 from .. import (
     controldir,
     errors,
-    inventorytree,
     memorytree,
     osutils,
     revision as _mod_revision,
@@ -32,6 +31,7 @@ from .. import (
 from ..bzr import (
     dirstate,
     inventory,
+    inventorytree,
     workingtree_4,
     )
 from . import (

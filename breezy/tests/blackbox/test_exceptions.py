@@ -106,8 +106,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         self.addCleanup(controldir.format_registry.remove, "testobsolete")
         bzrdir.register_metadir(controldir.format_registry, "testobsolete",
             "breezy.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
-            branch_format='breezy.bzrbranch.BzrBranchFormat7',
-            tree_format='breezy.workingtree_4.WorkingTreeFormat6',
+            branch_format='breezy.bzr.branch.BzrBranchFormat7',
+            tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
             deprecated=True,
             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()

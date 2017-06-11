@@ -340,7 +340,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir('revision-store')
         revision_transport = self.controldir.transport.clone('revision-store')
         # TODO permissions
-        from ...xml5 import serializer_v5
+        from ...bzr.xml5 import serializer_v5
         from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
             serializer_v5, False, versionedfile.PrefixMapper(),

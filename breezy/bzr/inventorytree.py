@@ -22,33 +22,35 @@ from __future__ import absolute_import
 import os
 import re
 
-from . import (
+from .. import (
     errors,
     lazy_import,
     osutils,
     revision,
     )
-from .mutabletree import (
+from ..mutabletree import (
     MutableTree,
     needs_tree_write_lock,
     )
-from .revisiontree import (
+from ..revisiontree import (
     RevisionTree,
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
     add,
     controldir,
-    inventory as _mod_inventory,
     trace,
     transport as _mod_transport,
     )
+from breezy.bzr import (
+    inventory as _mod_inventory,
+    )
 """)
-from .decorators import needs_read_lock
-from .sixish import (
+from ..decorators import needs_read_lock
+from ..sixish import (
     viewvalues,
     )
-from .tree import InterTree, Tree
+from ..tree import InterTree, Tree
 
 
 class InventoryTree(Tree):
@@ -456,7 +458,6 @@ class _SmartAddHelper(object):
             self.conflicts_related = conflicts_related
 
     def add(self, file_list, recurse=True):
-        from breezy.inventory import InventoryEntry
         if not file_list:
             # no paths supplied: add the entire tree.
             # FIXME: this assumes we are running in a working tree subdir :-/
@@ -515,11 +516,11 @@ class _SmartAddHelper(object):
                 kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
             else:
                 kind = this_ie.kind
-            
+
             # allow AddAction to skip this file
             if self.action.skip_file(self.tree,  abspath,  kind,  stat_value):
                 continue
-            if not InventoryEntry.versionable_kind(kind):
+            if not _mod_inventory.InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",
                               abspath, kind)
                 continue

@@ -23,7 +23,7 @@ from ...bzr.xml_serializer import (
     escape_invalid_chars,
     )
 from ...bzr.inventory import ROOT_ID, Inventory
-import ...bzr.inventory as inventory
+from ...bzr import inventory
 from ...revision import Revision
 from ...errors import BzrError
 

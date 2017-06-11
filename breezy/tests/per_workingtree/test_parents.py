@@ -28,7 +28,7 @@ from ...bzr.inventory import (
     InventoryDirectory,
     InventoryLink,
     )
-from ...inventorytree import InventoryRevisionTree
+from ...bzr.inventorytree import InventoryRevisionTree
 from ...sixish import (
     BytesIO,
     )

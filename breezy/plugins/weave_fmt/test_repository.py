@@ -36,7 +36,7 @@ from ...repository import (
     InterRepository,
     Repository,
     )
-from ...serializer import (
+from ...bzr.serializer import (
     format_registry as serializer_format_registry,
     )
 from ...sixish import (

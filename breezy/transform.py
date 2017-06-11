@@ -24,7 +24,6 @@ import time
 from . import (
     config as _mod_config,
     errors,
-    inventorytree,
     lazy_import,
     registry,
     trace,
@@ -46,6 +45,7 @@ from breezy import (
     )
 from breezy.bzr import (
     inventory,
+    inventorytree,
     )
 from breezy.i18n import gettext
 """)

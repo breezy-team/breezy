@@ -24,9 +24,11 @@ Specific tests for individual variations are in other places such as:
 
 import breezy
 from breezy import (
-    inventorytree,
     revisiontree,
     tests,
+    )
+from breezy.bzr import (
+    inventorytree,
     )
 from breezy.transform import TransformPreview
 from breezy.tests import (

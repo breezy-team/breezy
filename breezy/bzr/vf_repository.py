@@ -41,12 +41,12 @@ from breezy import (
     )
 from breezy.bzr import (
     inventory_delta,
+    inventorytree,
     versionedfile,
     vf_search,
     )
 
 from breezy.recordcounter import RecordCounter
-from breezy.inventorytree import InventoryRevisionTree
 from breezy.testament import Testament
 from breezy.i18n import gettext
 """)
@@ -237,8 +237,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
         if self.new_inventory is None:
             self.new_inventory = self.repository.get_inventory(
                 self._new_revision_id)
-        return InventoryRevisionTree(self.repository, self.new_inventory,
-            self._new_revision_id)
+        return inventorytree.InventoryRevisionTree(self.repository,
+            self.new_inventory, self._new_revision_id)
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
@@ -1840,11 +1840,11 @@ class VersionedFileRepository(Repository):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == _mod_revision.NULL_REVISION:
-            return InventoryRevisionTree(self,
+            return inventorytree.InventoryRevisionTree(self,
                 Inventory(root_id=None), _mod_revision.NULL_REVISION)
         else:
             inv = self.get_inventory(revision_id)
-            return InventoryRevisionTree(self, inv, revision_id)
+            return inventorytree.InventoryRevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
         """Return Trees for revisions in this repository.
@@ -1854,7 +1854,7 @@ class VersionedFileRepository(Repository):
         """
         inventories = self.iter_inventories(revision_ids)
         for inv in inventories:
-            yield InventoryRevisionTree(self, inv, inv.revision_id)
+            yield inventorytree.InventoryRevisionTree(self, inv, inv.revision_id)
 
     def _filtered_revision_trees(self, revision_ids, file_ids):
         """Return Tree for a revision on this branch with only some files.
@@ -1870,7 +1870,7 @@ class VersionedFileRepository(Repository):
             # Should we introduce a FilteredRevisionTree class rather
             # than pre-filter the inventory here?
             filtered_inv = inv.filter(file_ids)
-            yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
+            yield inventorytree.InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""

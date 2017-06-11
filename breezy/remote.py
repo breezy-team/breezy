@@ -54,7 +54,7 @@ from .errors import (
     )
 from .i18n import gettext
 from .bzr.inventory import Inventory
-from .inventorytree import InventoryRevisionTree
+from .bzr.inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
 from .sixish import (
     viewitems,

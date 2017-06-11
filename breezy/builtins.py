@@ -32,7 +32,6 @@ import breezy
 from breezy import (
     bugtracker,
     bundle,
-    btree_index,
     cache_utf8,
     controldir,
     directory_service,
@@ -56,6 +55,9 @@ from breezy import (
     urlutils,
     views,
     gpg,
+    )
+from breezy.bzr import (
+    btree_index,
     )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
