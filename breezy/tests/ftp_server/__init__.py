@@ -27,14 +27,11 @@ from breezy.tests import (
 
 
 try:
-    from breezy.tests.ftp_server import pyftpdlib_based
-    if pyftpdlib_based.pyftplib_version >= (0, 7, 0):
-        pyftpdlib_available = True
-    else:
-        # 0.6.0 breaks SITE CHMOD
-        pyftpdlib_available = False
+    import pyftpdlib
 except ImportError:
     pyftpdlib_available = False
+else:
+    pyftpdlib_available = True
 
 
 class _FTPServerFeature(features.Feature):
@@ -79,6 +76,7 @@ class UnavailableFTPTestServer(object):
 
 
 if pyftpdlib_available:
+    from . import pyftpdlib_based
     FTPTestServer = pyftpdlib_based.FTPTestServer
 else:
     FTPTestServer = UnavailableFTPTestServer
