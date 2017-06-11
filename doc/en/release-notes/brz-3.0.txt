@@ -78,6 +78,9 @@ Bug Fixes
   Cherry-picked from lp:~vila/bzr/1089352-sni-support
   (Vincent Ladeuil, #1089352)
 
+* The ``bisect`` command now works in non-``.bzr`` directories.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
