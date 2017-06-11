@@ -37,9 +37,9 @@ except ImportError:
     except ImportError:
         from xml.parsers.expat import ExpatError as ParseError
 
-(ElementTree, SubElement, Element, XMLTreeBuilder, fromstring, tostring) = (
+(ElementTree, SubElement, Element, fromstring, tostring) = (
     elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
-    elementtree.XMLTreeBuilder, elementtree.fromstring, elementtree.tostring)
+    elementtree.fromstring, elementtree.tostring)
 
 
 from . import (
