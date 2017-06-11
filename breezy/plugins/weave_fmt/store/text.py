@@ -82,35 +82,6 @@ class TextStore(TransportStore):
         else:
             return self._transport.get(fn)
 
-    def _copy_one(self, fileid, suffix, other, pb):
-        # TODO: Once the copy_to interface is improved to allow a source
-        #       and destination targets, then we can always do the copy
-        #       as long as other is a TextStore
-        if not (isinstance(other, TextStore)
-            and other._prefixed == self._prefixed):
-            return super(TextStore, self)._copy_one(fileid, suffix, other, pb)
-
-        mutter('_copy_one: %r, %r', fileid, suffix)
-        path = other._get_name(fileid, suffix)
-        if path is None:
-            raise KeyError(fileid + '-' + str(suffix))
-
-        try:
-            result = other._transport.copy_to([path], self._transport,
-                                              mode=self._file_mode)
-        except NoSuchFile:
-            if not self._prefixed:
-                raise
-            try:
-                self._transport.mkdir(osutils.dirname(path), mode=self._dir_mode)
-            except FileExists:
-                pass
-            result = other._transport.copy_to([path], self._transport,
-                                              mode=self._file_mode)
-
-        if result != 1:
-            raise BzrError('Unable to copy file: %r' % (path,))
-
     def _get_compressed(self, filename):
         """Returns a file reading from a particular entry."""
         f = self._transport.get(filename)
