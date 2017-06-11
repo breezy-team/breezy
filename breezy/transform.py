@@ -24,6 +24,7 @@ import time
 from . import (
     config as _mod_config,
     errors,
+    inventorytree,
     lazy_import,
     registry,
     trace,
@@ -1971,7 +1972,7 @@ class TransformPreview(DiskTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class _PreviewTree(tree.InventoryTree):
+class _PreviewTree(inventorytree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):

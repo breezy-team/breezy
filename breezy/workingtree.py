@@ -18,7 +18,7 @@
 
 A WorkingTree represents the editable working copy of a branch.
 Operations which represent the WorkingTree are also done here,
-such as renaming or adding files.  
+such as renaming or adding files.
 
 At the moment every WorkingTree has its own branch.  Remote
 WorkingTrees aren't supported.
