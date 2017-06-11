@@ -50,7 +50,7 @@ from breezy.bzr import (
     xml5,
     )
 from breezy.i18n import gettext
-from breezy.store.versioned import VersionedFileStore
+from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
 from breezy.transport import (
     get_transport,
@@ -513,7 +513,7 @@ class ConvertBzrDir5To6(Converter):
             pb.finished()
 
     def _convert_to_prefixed(self):
-        from ...store import TransportStore
+        from .store import TransportStore
         self.controldir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
             ui.ui_factory.note(gettext("adding prefixes to %s") % store_name)

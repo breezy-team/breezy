@@ -62,7 +62,7 @@ from ...bzr.repository import (
 from ...sixish import (
     BytesIO,
     )
-from ...store.text import TextStore
+from .store.text import TextStore
 from ...bzr.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,

@@ -4029,7 +4029,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_source',
         'breezy.tests.test_ssh_transport',
         'breezy.tests.test_status',
-        'breezy.tests.test_store',
         'breezy.tests.test_strace',
         'breezy.tests.test_subsume',
         'breezy.tests.test_switch',
