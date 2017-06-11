@@ -218,7 +218,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
                          inv,
                          _internal=True,
                          _format=self,
-                         _bzrdir=a_controldir,
+                         _controldir=a_controldir,
                          _control_files=control_files)
         wt.lock_tree_write()
         try:
@@ -266,5 +266,5 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         return self._tree_class(a_controldir.root_transport.local_abspath('.'),
                                 _internal=True,
                                 _format=self,
-                                _bzrdir=a_controldir,
+                                _controldir=a_controldir,
                                 _control_files=control_files)

@@ -290,7 +290,7 @@ class LinesDeltaIndex(object):
         if bytes_length is None:
             bytes_length = sum(map(len, new_lines))
         # reserved for content type, content length
-        out_lines = ['', '', encode_base128_int(bytes_length)]
+        out_lines = [b'', b'', encode_base128_int(bytes_length)]
         index_lines = [False, False, False]
         output_handler = _OutputHandler(out_lines, index_lines,
                                         self._MIN_MATCH_BYTES)
@@ -316,26 +316,26 @@ class LinesDeltaIndex(object):
 
 def encode_base128_int(val):
     """Convert an integer into a 7-bit lsb encoding."""
-    bytes = []
+    data = bytearray()
     count = 0
     while val >= 0x80:
-        bytes.append(chr((val | 0x80) & 0xFF))
+        data.append((val | 0x80) & 0xFF)
         val >>= 7
-    bytes.append(chr(val))
-    return ''.join(bytes)
+    data.append(val)
+    return bytes(data)
 
 
-def decode_base128_int(bytes):
+def decode_base128_int(data):
     """Decode an integer from a 7-bit lsb encoding."""
     offset = 0
     val = 0
     shift = 0
-    bval = ord(bytes[offset])
+    bval = ord(data[offset])
     while bval >= 0x80:
         val |= (bval & 0x7F) << shift
         shift += 7
         offset += 1
-        bval = ord(bytes[offset])
+        bval = ord(data[offset])
     val |= bval << shift
     offset += 1
     return val, offset

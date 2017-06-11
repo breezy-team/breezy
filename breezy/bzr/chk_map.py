@@ -94,7 +94,7 @@ _INTERESTING_SHRINKAGE_LIMIT = 20
 
 def _search_key_plain(key):
     """Map the key tuple into a search string that just uses the key bytes."""
-    return '\x00'.join(key)
+    return b'\x00'.join(key)
 
 
 search_key_registry = registry.Registry()
@@ -191,8 +191,8 @@ class CHKMap(object):
         self._ensure_root()
         res = self._dump_tree_node(self._root_node, prefix='', indent='',
                                    include_keys=include_keys)
-        res.append('') # Give a trailing '\n'
-        return '\n'.join(res)
+        res.append(b'') # Give a trailing '\n'
+        return b'\n'.join(res)
 
     def _dump_tree_node(self, node, prefix, indent, include_keys=True):
         """For this node and all children, generate a string representation."""
@@ -202,11 +202,11 @@ class CHKMap(object):
         else:
             node_key = node.key()
             if node_key is not None:
-                key_str = ' %s' % (node_key[0],)
+                key_str = b' %s' % (node_key[0],)
             else:
-                key_str = ' None'
-        result.append('%s%r %s%s' % (indent, prefix, node.__class__.__name__,
-                                     key_str))
+                key_str = b' None'
+        result.append(b'%s%r %s%s' % (indent, prefix, node.__class__.__name__,
+                                      key_str))
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
@@ -217,7 +217,7 @@ class CHKMap(object):
             for key, value in sorted(viewitems(node._items)):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
-                result.append('      %r %r' % (tuple(key), value))
+                result.append(b'      %r %r' % (tuple(key), value))
         return result
 
     @classmethod
@@ -674,7 +674,7 @@ class Node(object):
             if not common_prefix:
                 # if common_prefix is the empty string, then we know it won't
                 # change further
-                return ''
+                return b''
         return common_prefix
 
 
@@ -780,7 +780,7 @@ class LeafNode(Node):
         # TODO: Should probably be done without actually joining the key, but
         #       then that can be done via the C extension
         return (len(self._serialise_key(key)) + 1
-                + len(str(value.count('\n'))) + 1
+                + len(str(value.count(b'\n'))) + 1
                 + len(value) + 1)
 
     def _search_key(self, key):
@@ -847,7 +847,7 @@ class LeafNode(Node):
             #       may get a '\00' node anywhere, but won't have keys of
             #       different lengths.
             if len(prefix) < split_at:
-                prefix += '\x00'*(split_at - len(prefix))
+                prefix += b'\x00'*(split_at - len(prefix))
             if prefix not in result:
                 node = LeafNode(search_key_func=self._search_key_func)
                 node.set_maximum_size(self._maximum_size)
@@ -883,7 +883,7 @@ class LeafNode(Node):
                 raise AssertionError('%r must be known' % self._search_prefix)
             return self._search_prefix, [("", self)]
 
-    _serialise_key = '\x00'.join
+    _serialise_key = b'\x00'.join
 
     def serialise(self, store):
         """Serialise the LeafNode to store.
@@ -891,22 +891,22 @@ class LeafNode(Node):
         :param store: A VersionedFiles honouring the CHK extensions.
         :return: An iterable of the keys inserted by this operation.
         """
-        lines = ["chkleaf:\n"]
-        lines.append("%d\n" % self._maximum_size)
-        lines.append("%d\n" % self._key_width)
-        lines.append("%d\n" % self._len)
+        lines = [b"chkleaf:\n"]
+        lines.append(b"%d\n" % self._maximum_size)
+        lines.append(b"%d\n" % self._key_width)
+        lines.append(b"%d\n" % self._len)
         if self._common_serialised_prefix is None:
-            lines.append('\n')
+            lines.append(b'\n')
             if len(self._items) != 0:
                 raise AssertionError('If _common_serialised_prefix is None'
                     ' we should have no items')
         else:
-            lines.append('%s\n' % (self._common_serialised_prefix,))
+            lines.append(b'%s\n' % (self._common_serialised_prefix,))
             prefix_len = len(self._common_serialised_prefix)
         for key, value in sorted(viewitems(self._items)):
             # Always add a final newline
-            value_lines = osutils.chunks_to_lines([value + '\n'])
-            serialized = "%s\x00%s\n" % (self._serialise_key(key),
+            value_lines = osutils.chunks_to_lines([value + b'\n'])
+            serialized = b"%s\x00%d\n" % (self._serialise_key(key),
                                          len(value_lines))
             if not serialized.startswith(self._common_serialised_prefix):
                 raise AssertionError('We thought the common prefix was %r'
@@ -915,11 +915,11 @@ class LeafNode(Node):
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = StaticTuple("sha1:" + sha1,).intern()
-        bytes = ''.join(lines)
-        if len(bytes) != self._current_size():
+        self._key = StaticTuple(b"sha1:" + sha1,).intern()
+        data = b''.join(lines)
+        if len(data) != self._current_size():
             raise AssertionError('Invalid _current_size')
-        _get_cache()[self._key] = bytes
+        _get_cache()[self._key] = data
         return [self._key]
 
     def refs(self):
@@ -1298,34 +1298,34 @@ class InternalNode(Node):
                 continue
             for key in node.serialise(store):
                 yield key
-        lines = ["chknode:\n"]
-        lines.append("%d\n" % self._maximum_size)
-        lines.append("%d\n" % self._key_width)
-        lines.append("%d\n" % self._len)
+        lines = [b"chknode:\n"]
+        lines.append(b"%d\n" % self._maximum_size)
+        lines.append(b"%d\n" % self._key_width)
+        lines.append(b"%d\n" % self._len)
         if self._search_prefix is None:
             raise AssertionError("_search_prefix should not be None")
-        lines.append('%s\n' % (self._search_prefix,))
+        lines.append(b'%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(viewitems(self._items)):
             if isinstance(node, StaticTuple):
                 key = node[0]
             else:
                 key = node._key[0]
-            serialised = "%s\x00%s\n" % (prefix, key)
+            serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
                 raise AssertionError("prefixes mismatch: %s must start with %s"
                     % (serialised, self._search_prefix))
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = StaticTuple("sha1:" + sha1,).intern()
-        _get_cache()[self._key] = ''.join(lines)
+        self._key = StaticTuple(b"sha1:" + sha1,).intern()
+        _get_cache()[self._key] = b''.join(lines)
         yield self._key
 
     def _search_key(self, key):
         """Return the serialised key for key in this node."""
         # search keys are fixed width. All will be self._node_width wide, so we
         # pad as necessary.
-        return (self._search_key_func(key) + '\x00'*self._node_width)[:self._node_width]
+        return (self._search_key_func(key) + b'\x00'*self._node_width)[:self._node_width]
 
     def _search_prefix_filter(self, key):
         """Serialise key for use as a prefix filter in iteritems."""
@@ -1444,12 +1444,12 @@ class InternalNode(Node):
         return new_leaf
 
 
-def _deserialise(bytes, key, search_key_func):
+def _deserialise(data, key, search_key_func):
     """Helper for repositorydetails - convert bytes to a node."""
-    if bytes.startswith("chkleaf:\n"):
-        node = LeafNode.deserialise(bytes, key, search_key_func=search_key_func)
-    elif bytes.startswith("chknode:\n"):
-        node = InternalNode.deserialise(bytes, key,
+    if data.startswith(b"chkleaf:\n"):
+        node = LeafNode.deserialise(data, key, search_key_func=search_key_func)
+    elif data.startswith(b"chknode:\n"):
+        node = InternalNode.deserialise(data, key,
             search_key_func=search_key_func)
     else:
         raise AssertionError("Unknown node type.")

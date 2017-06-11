@@ -149,15 +149,15 @@ class GCPack(NewPack):
         # robertc says- this is a closure rather than a method on the object
         # so that the variables are locals, and faster than accessing object
         # members.
-        def _write_data(bytes, flush=False, _buffer=self._buffer,
+        def _write_data(data, flush=False, _buffer=self._buffer,
             _write=self.write_stream.write, _update=self._hash.update):
-            _buffer[0].append(bytes)
-            _buffer[1] += len(bytes)
+            _buffer[0].append(data)
+            _buffer[1] += len(data)
             # buffer cap
             if _buffer[1] > self._cache_limit or flush:
-                bytes = ''.join(_buffer[0])
-                _write(bytes)
-                _update(bytes)
+                data = b''.join(_buffer[0])
+                _write(data)
+                _update(data)
                 _buffer[:] = [[], 0]
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
@@ -907,7 +907,7 @@ class CHKInventoryRepository(PackRepository):
                                  ' no new_path %r' % (file_id,))
             if new_path == '':
                 new_inv.root_id = file_id
-                parent_id_basename_key = StaticTuple('', '').intern()
+                parent_id_basename_key = StaticTuple(b'', b'').intern()
             else:
                 utf8_entry_name = entry.name.encode('utf-8')
                 parent_id_basename_key = StaticTuple(entry.parent_id,

@@ -737,7 +737,7 @@ class TestPackRepository(TestCaseWithTransport):
         # But it does log an error
         log = self.get_log()
         self.assertContainsRe(log, 'abort_write_group failed')
-        self.assertContainsRe(log, r'INFO  bzr: ERROR \(ignored\):')
+        self.assertContainsRe(log, r'INFO  brz: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
 

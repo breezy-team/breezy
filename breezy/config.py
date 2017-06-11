@@ -477,10 +477,12 @@ class Config(object):
         If no username can be found, errors.NoWhoami exception is raised.
         """
         v = os.environ.get('BRZ_EMAIL')
-        if v and not PY3:
-            return v.decode(osutils.get_user_encoding())
+        if v:
+            if not PY3:
+                v = v.decode(osutils.get_user_encoding())
+            return v
         v = self._get_user_id()
-        if v and not PY3:
+        if v:
             return v
         return default_email()
 
@@ -1497,11 +1499,15 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
 
 def default_email():
     v = os.environ.get('BRZ_EMAIL')
-    if v and not PY3:
-        return v.decode(osutils.get_user_encoding())
+    if v:
+        if not PY3:
+            v = v.decode(osutils.get_user_encoding())
+        return v
     v = os.environ.get('EMAIL')
-    if v and not PY3:
-        return v.decode(osutils.get_user_encoding())
+    if v:
+        if not PY3:
+            v = v.decode(osutils.get_user_encoding())
+        return v
     name, email = _auto_user_id()
     if name and email:
         return u'%s <%s>' % (name, email)

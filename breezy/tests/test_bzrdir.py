@@ -887,10 +887,10 @@ class ChrootedTests(TestCaseWithTransport):
         baz = self.make_branch('baz').controldir
         return foo, bar, baz
 
-    def test_find_bzrdirs(self):
+    def test_find_controldirs(self):
         foo, bar, baz = self.make_foo_bar_baz()
         t = self.get_transport()
-        self.assertEqualBzrdirs([baz, foo, bar], bzrdir.BzrDir.find_bzrdirs(t))
+        self.assertEqualBzrdirs([baz, foo, bar], bzrdir.BzrDir.find_controldirs(t))
 
     def make_fake_permission_denied_transport(self, transport, paths):
         """Create a transport that raises PermissionDenied for some paths."""
@@ -910,21 +910,21 @@ class ChrootedTests(TestCaseWithTransport):
         for actual_bzrdir in actual_bzrdirs:
             self.assertEndsWith(actual_bzrdir.user_url, expect_url_suffix)
 
-    def test_find_bzrdirs_permission_denied(self):
+    def test_find_controldirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
         t = self.get_transport()
         path_filter_server, path_filter_transport = \
             self.make_fake_permission_denied_transport(t, ['foo'])
         # local transport
         self.assertBranchUrlsEndWith('/baz/',
-            bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
+            bzrdir.BzrDir.find_controldirs(path_filter_transport))
         # smart server
         smart_transport = self.make_smart_server('.',
             backing_server=path_filter_server)
         self.assertBranchUrlsEndWith('/baz/',
-            bzrdir.BzrDir.find_bzrdirs(smart_transport))
+            bzrdir.BzrDir.find_controldirs(smart_transport))
 
-    def test_find_bzrdirs_list_current(self):
+    def test_find_controldirs_list_current(self):
         def list_current(transport):
             return [s for s in transport.list_dir('') if s != 'baz']
 
@@ -932,9 +932,9 @@ class ChrootedTests(TestCaseWithTransport):
         t = self.get_transport()
         self.assertEqualBzrdirs(
             [foo, bar],
-            bzrdir.BzrDir.find_bzrdirs(t, list_current=list_current))
+            bzrdir.BzrDir.find_controldirs(t, list_current=list_current))
 
-    def test_find_bzrdirs_evaluate(self):
+    def test_find_controldirs_evaluate(self):
         def evaluate(bzrdir):
             try:
                 repo = bzrdir.open_repository()
@@ -946,7 +946,7 @@ class ChrootedTests(TestCaseWithTransport):
         foo, bar, baz = self.make_foo_bar_baz()
         t = self.get_transport()
         self.assertEqual([baz.root_transport.base, foo.root_transport.base],
-                         list(bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate)))
+                         list(bzrdir.BzrDir.find_controldirs(t, evaluate=evaluate)))
 
     def assertEqualBzrdirs(self, first, second):
         first = list(first)
@@ -973,7 +973,7 @@ class ChrootedTests(TestCaseWithTransport):
 
 class TestMissingRepoBranchesSkipped(TestCaseWithMemoryTransport):
 
-    def test_find_bzrdirs_missing_repo(self):
+    def test_find_controldirs_missing_repo(self):
         t = self.get_transport()
         arepo = self.make_repository('arepo', shared=True)
         abranch_url = arepo.user_url + '/abranch'

@@ -286,35 +286,35 @@ class TestInventoryUpdates(TestCase):
 
     def test_creation_from_root_id(self):
         # iff a root id is passed to the constructor, a root directory is made
-        inv = inventory.Inventory(root_id='tree-root')
+        inv = inventory.Inventory(root_id=b'tree-root')
         self.assertNotEqual(None, inv.root)
-        self.assertEqual('tree-root', inv.root.file_id)
+        self.assertEqual(b'tree-root', inv.root.file_id)
 
     def test_add_path_of_root(self):
         # if no root id is given at creation time, there is no root directory
         inv = inventory.Inventory(root_id=None)
         self.assertIs(None, inv.root)
         # add a root entry by adding its path
-        ie = inv.add_path("", "directory", "my-root")
-        ie.revision = 'test-rev'
-        self.assertEqual("my-root", ie.file_id)
+        ie = inv.add_path(u"", "directory", b"my-root")
+        ie.revision = b'test-rev'
+        self.assertEqual(b"my-root", ie.file_id)
         self.assertIs(ie, inv.root)
 
     def test_add_path(self):
-        inv = inventory.Inventory(root_id='tree_root')
-        ie = inv.add_path('hello', 'file', 'hello-id')
-        self.assertEqual('hello-id', ie.file_id)
+        inv = inventory.Inventory(root_id=b'tree_root')
+        ie = inv.add_path(u'hello', 'file', b'hello-id')
+        self.assertEqual(b'hello-id', ie.file_id)
         self.assertEqual('file', ie.kind)
 
     def test_copy(self):
         """Make sure copy() works and creates a deep copy."""
-        inv = inventory.Inventory(root_id='some-tree-root')
-        ie = inv.add_path('hello', 'file', 'hello-id')
+        inv = inventory.Inventory(root_id=b'some-tree-root')
+        ie = inv.add_path(u'hello', 'file', b'hello-id')
         inv2 = inv.copy()
-        inv.root.file_id = 'some-new-root'
-        ie.name = 'file2'
-        self.assertEqual('some-tree-root', inv2.root.file_id)
-        self.assertEqual('hello', inv2['hello-id'].name)
+        inv.root.file_id = b'some-new-root'
+        ie.name = u'file2'
+        self.assertEqual(b'some-tree-root', inv2.root.file_id)
+        self.assertEqual(u'hello', inv2[b'hello-id'].name)
 
     def test_copy_empty(self):
         """Make sure an empty inventory can be copied."""
@@ -324,16 +324,17 @@ class TestInventoryUpdates(TestCase):
 
     def test_copy_copies_root_revision(self):
         """Make sure the revision of the root gets copied."""
-        inv = inventory.Inventory(root_id='someroot')
-        inv.root.revision = 'therev'
+        inv = inventory.Inventory(root_id=b'someroot')
+        inv.root.revision = b'therev'
         inv2 = inv.copy()
-        self.assertEqual('someroot', inv2.root.file_id)
-        self.assertEqual('therev', inv2.root.revision)
+        self.assertEqual(b'someroot', inv2.root.file_id)
+        self.assertEqual(b'therev', inv2.root.revision)
 
     def test_create_tree_reference(self):
-        inv = inventory.Inventory('tree-root-123')
-        inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
-                              revision='rev', reference_revision='rev2'))
+        inv = inventory.Inventory(b'tree-root-123')
+        inv.add(TreeReference(
+            b'nested-id', 'nested', parent_id=b'tree-root-123',
+            revision=b'rev', reference_revision=b'rev2'))
 
     def test_error_encoding(self):
         inv = inventory.Inventory('tree-root')
@@ -999,30 +1000,30 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test___getitem__(self):
         inv = Inventory()
-        inv.revision_id = "revid"
-        inv.root.revision = "rootrev"
-        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.revision_id = b"revid"
+        inv.root.revision = b"rootrev"
+        inv.add(InventoryFile(b"fileid", u"file", inv.root.file_id))
+        inv[b"fileid"].revision = b"filerev"
+        inv[b"fileid"].executable = True
+        inv[b"fileid"].text_sha1 = b"ffff"
+        inv[b"fileid"].text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        bytes = ''.join(chk_inv.to_lines())
-        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        data = b''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, data, (b"revid",))
         root_entry = new_inv[inv.root.file_id]
-        file_entry = new_inv["fileid"]
+        file_entry = new_inv[b"fileid"]
         self.assertEqual("directory", root_entry.kind)
         self.assertEqual(inv.root.file_id, root_entry.file_id)
         self.assertEqual(inv.root.parent_id, root_entry.parent_id)
         self.assertEqual(inv.root.name, root_entry.name)
-        self.assertEqual("rootrev", root_entry.revision)
+        self.assertEqual(b"rootrev", root_entry.revision)
         self.assertEqual("file", file_entry.kind)
-        self.assertEqual("fileid", file_entry.file_id)
+        self.assertEqual(b"fileid", file_entry.file_id)
         self.assertEqual(inv.root.file_id, file_entry.parent_id)
-        self.assertEqual("file", file_entry.name)
-        self.assertEqual("filerev", file_entry.revision)
-        self.assertEqual("ffff", file_entry.text_sha1)
+        self.assertEqual(u"file", file_entry.name)
+        self.assertEqual(b"filerev", file_entry.revision)
+        self.assertEqual(b"ffff", file_entry.text_sha1)
         self.assertEqual(1, file_entry.text_size)
         self.assertEqual(True, file_entry.executable)
         self.assertRaises(errors.NoSuchId, new_inv.__getitem__, 'missing')

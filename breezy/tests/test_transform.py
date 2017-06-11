@@ -3643,13 +3643,13 @@ class TestOrphan(tests.TestCaseWithTransport):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
         remaining_conflicts = resolve_conflicts(tt)
-        self.assertEqual(['dir/foo has been orphaned in bzr-orphans'],
+        self.assertEqual(['dir/foo has been orphaned in brz-orphans'],
                           warnings)
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan
         self.assertEqual('foo.~1~', tt.final_name(orphan_tid))
-        self.assertEqual('bzr-orphans',
+        self.assertEqual('brz-orphans',
                           tt.final_name(tt.final_parent(orphan_tid)))
 
     def test_never_orphan(self):

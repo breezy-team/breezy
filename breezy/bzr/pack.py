@@ -73,28 +73,28 @@ class ContainerSerialiser(object):
 
     def begin(self):
         """Return the bytes to begin a container."""
-        return FORMAT_ONE + "\n"
+        return FORMAT_ONE.encode("ascii") + b"\n"
 
     def end(self):
         """Return the bytes to finish a container."""
-        return "E"
+        return b"E"
 
     def bytes_header(self, length, names):
         """Return the header for a Bytes record."""
         # Kind marker
-        byte_sections = ["B"]
+        byte_sections = [b"B"]
         # Length
-        byte_sections.append(str(length) + "\n")
+        byte_sections.append(b"%d\n" % (length,))
         # Names
         for name_tuple in names:
             # Make sure we're writing valid names.  Note that we will leave a
             # half-written record if a name is bad!
             for name in name_tuple:
                 _check_name(name)
-            byte_sections.append('\x00'.join(name_tuple) + "\n")
+            byte_sections.append(b'\x00'.join(name_tuple) + b"\n")
         # End of headers
-        byte_sections.append("\n")
-        return ''.join(byte_sections)
+        byte_sections.append(b"\n")
+        return b''.join(byte_sections)
 
     def bytes_record(self, bytes, names):
         """Return the bytes for a Bytes record with the given name and

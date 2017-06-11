@@ -21,6 +21,7 @@ from __future__ import absolute_import
 import zlib
 import struct
 
+from ..sixish import bytesintern
 from ..static_tuple import StaticTuple
 
 _LeafNode = None
@@ -44,7 +45,7 @@ def _crc32(bit):
 
 def _search_key_16(key):
     """Map the key tuple into a search key string which has 16-way fan out."""
-    return '\x00'.join(['%08X' % _crc32(bit) for bit in key])
+    return b'\x00'.join([b'%08X' % _crc32(bit) for bit in key])
 
 
 def _search_key_255(key):
@@ -53,11 +54,11 @@ def _search_key_255(key):
     We use 255-way because '\n' is used as a delimiter, and causes problems
     while parsing.
     """
-    bytes = '\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
-    return bytes.replace('\n', '_')
+    data = b'\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
+    return data.replace(b'\n', b'_')
 
 
-def _deserialise_leaf_node(bytes, key, search_key_func=None):
+def _deserialise_leaf_node(data, key, search_key_func=None):
     """Deserialise bytes, with key key, into a LeafNode.
 
     :param bytes: The bytes of the node.
@@ -72,13 +73,13 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     result = _LeafNode(search_key_func=search_key_func)
     # Splitlines can split on '\r' so don't use it, split('\n') adds an
     # extra '' if the bytes ends in a final newline.
-    lines = bytes.split('\n')
+    lines = data.split(b'\n')
     trailing = lines.pop()
-    if trailing != '':
+    if trailing != b'':
         raise AssertionError('We did not have a final newline for %s'
                              % (key,))
     items = {}
-    if lines[0] != 'chkleaf:':
+    if lines[0] != b'chkleaf:':
         raise ValueError("not a serialised leaf node: %r" % bytes)
     maximum_size = int(lines[1])
     width = int(lines[2])
@@ -87,7 +88,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     pos = 5
     while pos < len(lines):
         line = prefix + lines[pos]
-        elements = line.split('\x00')
+        elements = line.split(b'\x00')
         pos += 1
         if len(elements) != width + 1:
             raise AssertionError(
@@ -96,7 +97,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         num_value_lines = int(elements[-1])
         value_lines = lines[pos:pos+num_value_lines]
         pos += num_value_lines
-        value = '\n'.join(value_lines)
+        value = b'\n'.join(value_lines)
         items[StaticTuple.from_sequence(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError("item count (%d) mismatch for key %s,"
@@ -115,12 +116,12 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     else:
         result._search_prefix = _unknown
         result._common_serialised_prefix = prefix
-    if len(bytes) != result._current_size():
+    if len(data) != result._current_size():
         raise AssertionError('_current_size computed incorrectly')
     return result
 
 
-def _deserialise_internal_node(bytes, key, search_key_func=None):
+def _deserialise_internal_node(data, key, search_key_func=None):
     global _unknown, _LeafNode, _InternalNode
     if _InternalNode is None:
         from . import chk_map
@@ -131,12 +132,12 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     # Splitlines can split on '\r' so don't use it, remove the extra ''
     # from the result of split('\n') because we should have a trailing
     # newline
-    lines = bytes.split('\n')
-    if lines[-1] != '':
+    lines = data.split(b'\n')
+    if lines[-1] != b'':
         raise ValueError("last line must be ''")
     lines.pop(-1)
     items = {}
-    if lines[0] != 'chknode:':
+    if lines[0] != b'chknode:':
         raise ValueError("not a serialised internal node: %r" % bytes)
     maximum_size = int(lines[1])
     width = int(lines[2])
@@ -144,7 +145,7 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     common_prefix = lines[4]
     for line in lines[5:]:
         line = common_prefix + line
-        prefix, flat_key = line.rsplit('\x00', 1)
+        prefix, flat_key = line.rsplit(b'\x00', 1)
         items[prefix] = StaticTuple(flat_key,)
     if len(items) == 0:
         raise AssertionError("We didn't find any item for %s" % key)
@@ -161,9 +162,9 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     return result
 
 
-def _bytes_to_text_key(bytes):
+def _bytes_to_text_key(data):
     """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
-    sections = bytes.split('\n')
-    kind, file_id = sections[0].split(': ')
-    return (intern(file_id), intern(sections[3]))
+    sections = data.split(b'\n')
+    kind, file_id = sections[0].split(b': ')
+    return (bytesintern(file_id), bytesintern(sections[3]))
 

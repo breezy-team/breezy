@@ -233,3 +233,13 @@ class DefaultControlComponentFormatTests(tests.TestCase):
             'is available.\nIt is recommended that you upgrade by running '
             'the command\n  brz upgrade apath\n',
             ui.ui_factory.stderr.getvalue())
+
+
+class IsControlFilenameTest(tests.TestCase):
+
+    def test_is_bzrdir(self):
+        self.assertTrue(controldir.is_control_filename('.bzr'))
+
+    def test_is_not_bzrdir(self):
+        self.assertFalse(controldir.is_control_filename('.git'))
+        self.assertFalse(controldir.is_control_filename('bla'))

@@ -89,7 +89,7 @@ class TestRunCleanup(CleanupsTestCase):
         self.assertFalse(_run_cleanup(self.failing_cleanup))
         self.assertContainsRe(
             log.getvalue(),
-            "bzr: warning: Cleanup failed:.*failing_cleanup goes boom")
+            "brz: warning: Cleanup failed:.*failing_cleanup goes boom")
 
     def test_prior_error_cleanup_succeeds(self):
         """Calling _run_cleanup from a finally block will not interfere with an
@@ -203,8 +203,8 @@ class TestDoWithCleanups(CleanupsTestCase):
         self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
             self.trivial_func)
         self.assertContainsRe(
-            log.getvalue(), "bzr: warning: Cleanup failed:.*Error B\n")
-        self.assertEqual(1, log.getvalue().count('bzr: warning:'),
+            log.getvalue(), "brz: warning: Cleanup failed:.*Error B\n")
+        self.assertEqual(1, log.getvalue().count('brz: warning:'),
                 log.getvalue())
 
     def test_func_and_cleanup_errors_debug_flag(self):
@@ -215,10 +215,10 @@ class TestDoWithCleanups(CleanupsTestCase):
         self.assertRaises(ZeroDivisionError, _do_with_cleanups, cleanups,
             self.failing_func)
         self.assertContainsRe(
-            log.getvalue(), "bzr: warning: Cleanup failed:.*Error A\n")
+            log.getvalue(), "brz: warning: Cleanup failed:.*Error A\n")
         self.assertContainsRe(
-            log.getvalue(), "bzr: warning: Cleanup failed:.*Error B\n")
-        self.assertEqual(2, log.getvalue().count('bzr: warning:'))
+            log.getvalue(), "brz: warning: Cleanup failed:.*Error B\n")
+        self.assertEqual(2, log.getvalue().count('brz: warning:'))
 
     def test_func_may_mutate_cleanups(self):
         """The main func may mutate the cleanups before it returns.
@@ -248,8 +248,8 @@ class TestDoWithCleanups(CleanupsTestCase):
             [(self.failing_cleanup, (), {})], self.failing_func)
         self.assertContainsRe(
             log.getvalue(),
-            "bzr: warning: Cleanup failed:.*failing_cleanup goes boom")
-        self.assertEqual(1, log.getvalue().count('bzr: warning:'))
+            "brz: warning: Cleanup failed:.*failing_cleanup goes boom")
+        self.assertEqual(1, log.getvalue().count('brz: warning:'))
 
 
 class ErrorA(Exception): pass

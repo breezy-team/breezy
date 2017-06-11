@@ -280,7 +280,7 @@ class Commit(object):
                     raise errors.RootNotRich()
         if message_callback is None:
             if message is not None:
-                if isinstance(message, str):
+                if isinstance(message, bytes):
                     message = message.decode(get_user_encoding())
                 message_callback = lambda x: message
             else:
@@ -657,7 +657,7 @@ class Commit(object):
         """
         exclude = self.exclude
         specific_files = self.specific_files
-        mutter("Selecting files for commit with filter %s", specific_files)
+        mutter("Selecting files for commit with filter %r", specific_files)
 
         self._check_strict()
         if self.use_record_iter_changes:

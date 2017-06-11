@@ -80,11 +80,11 @@ from ..workingtree import (
     )
 
 
-MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 # TODO: Modifying the conflict objects or their type is currently nearly
 # impossible as there is no clear relationship between the working tree format
 # and the conflict list file format.
-CONFLICT_HEADER_1 = "BZR conflict list format 1"
+CONFLICT_HEADER_1 = b"BZR conflict list format 1"
 
 
 class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
@@ -103,14 +103,14 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                  _control_files=None,
                  _internal=False,
                  _format=None,
-                 _bzrdir=None):
+                 _controldir=None):
         """Construct a InventoryWorkingTree instance. This is not a public API.
 
         :param branch: A branch to override probing for the branch.
         """
         super(InventoryWorkingTree, self).__init__(basedir=basedir,
             branch=branch, _transport=_control_files._transport,
-            _internal=_internal, _format=_format, _bzrdir=_bzrdir)
+            _internal=_internal, _format=_format, _controldir=_controldir)
 
         self._control_files = _control_files
         self._detect_case_handling()
@@ -384,7 +384,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             return _mod_conflicts.ConflictList()
         try:
             try:
-                if next(confile) != CONFLICT_HEADER_1 + '\n':
+                if next(confile) != CONFLICT_HEADER_1 + b'\n':
                     raise errors.ConflictFormatError()
             except StopIteration:
                 raise errors.ConflictFormatError()
@@ -652,7 +652,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
-        my_file = _mod_rio.rio_file(stanzas, header.encode('ascii'))
+        my_file = _mod_rio.rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
             mode=self.controldir._get_file_mode())
 
@@ -682,7 +682,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         try:
             merge_hashes = {}
             try:
-                if next(hashfile) != MERGE_MODIFIED_HEADER_1 + '\n':
+                if next(hashfile) != MERGE_MODIFIED_HEADER_1 + b'\n':
                     raise errors.MergeModifiedFormatError()
             except StopIteration:
                 raise errors.MergeModifiedFormatError()

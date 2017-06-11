@@ -78,6 +78,9 @@ Bug Fixes
   Cherry-picked from lp:~vila/bzr/1089352-sni-support
   (Vincent Ladeuil, #1089352)
 
+* The ``bisect`` command now works in non-``.bzr`` directories.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
@@ -115,6 +118,9 @@ API Changes
    (Jelmer Vernooĳ)
 
  * ``breezy.api`` has been removed.  (Jelmer Vernooĳ, #742192)
+
+ * ``ControlDir.find_bzrdirs`` has been renamed to
+   ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
 
 Internals
 *********
