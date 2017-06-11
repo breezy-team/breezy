@@ -19,28 +19,30 @@
 
 """Tests for the merge_quilt code."""
 
+from __future__ import absolute_import
+
 import os
 import shutil
 
-from bzrlib import (
+from .... import (
     errors,
     trace,
     )
-from bzrlib.merge import Merger
-from bzrlib.mutabletree import MutableTree
+from ....merge import Merger
+from ....mutabletree import MutableTree
 
-from bzrlib.plugins.builddeb import (
+from .. import (
     pre_merge_quilt,
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
     start_commit_check_quilt,
     )
-from bzrlib.plugins.builddeb.quilt import quilt_push_all
-from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
+from ..quilt import quilt_push_all
+from ..merge_quilt import tree_unapply_patches
 
-from bzrlib.plugins.builddeb.tests.test_quilt import quilt_feature
+from .test_quilt import quilt_feature
 
-from bzrlib.tests import (
+from ....tests import (
     TestCaseWithTransport,
     TestSkipped,
     )

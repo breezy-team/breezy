@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import bz2
 import gzip
 try:
@@ -34,24 +36,24 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Changelog, Version
 
-from bzrlib.plugins.builddeb.config import (
+from ..config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
     )
-from bzrlib.plugins.builddeb.errors import (
+from ..errors import (
     MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
     NoPreviousUpload,
     )
-from bzrlib.plugins.builddeb.tests import (
+from . import (
     LzmaFeature,
     SourcePackageBuilder,
     TestCaseInTempDir,
     TestCaseWithTransport,
     )
-from bzrlib.plugins.builddeb.util import (
+from ..util import (
     component_from_orig_tarball,
     dget,
     dget_changes,
@@ -77,14 +79,14 @@ from bzrlib.plugins.builddeb.util import (
     write_if_different,
     )
 
-from bzrlib import errors as bzr_errors
-from bzrlib.tests import (
+from .... import errors as bzr_errors
+from ....tests import (
     TestCase,
     )
 try:
-    from bzrlib.tests.features import SymlinkFeature
+    from ....tests.features import SymlinkFeature
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import SymlinkFeature
+    from ....tests import SymlinkFeature
 
 
 class RecursiveCopyTests(TestCaseInTempDir):

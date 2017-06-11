@@ -19,6 +19,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 import shutil
 import subprocess
@@ -32,22 +34,22 @@ except ImportError:
     from debian_bundle.changelog import Version
     from debian_bundle import deb822
 
-from bzrlib import (
+from .... import (
     revision as _mod_revision,
     tests,
     )
 try:
-    from bzrlib.tests.features import (
+    from ....tests.features import (
         Feature,
         SymlinkFeature,
         )
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import (
+    from ....tests import (
         Feature,
         SymlinkFeature,
         )
 
-from bzrlib.plugins.builddeb.tests import make_new_upstream_tarball_xz
+from . import make_new_upstream_tarball_xz
 
 ## Copied from bzrlib.tests.test_fetch from bzr-2.5
 def revision_history(branch):
@@ -62,7 +64,7 @@ def revision_history(branch):
     return history
 
 
-from bzrlib.plugins.builddeb.import_dsc import (
+from ..import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
         OneZeroSourceExtractor,
@@ -70,10 +72,10 @@ from bzrlib.plugins.builddeb.import_dsc import (
         ThreeDotZeroNativeSourceExtractor,
         ThreeDotZeroQuiltSourceExtractor,
         )
-from bzrlib.plugins.builddeb.upstream.pristinetar import (
+from ..upstream.pristinetar import (
         PristineTarDeltaTooLarge,
         )
-from bzrlib.plugins.builddeb.tests import (
+from . import (
         BuilddebTestCase,
         LzmaFeature,
         SourcePackageBuilder,

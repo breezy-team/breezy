@@ -18,18 +18,20 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 import rfc822
 
-from bzrlib.revision import (
+from ....revision import (
     NULL_REVISION,
     )
-from bzrlib.tests import (
+from ....tests import (
     TestCase,
     )
 
-from bzrlib.plugins.builddeb.dep3 import (
+from ..dep3 import (
     describe_origin,
     determine_applied_upstream,
     gather_bugs_and_authors,
@@ -38,7 +40,7 @@ from bzrlib.plugins.builddeb.dep3 import (
     write_dep3_patch_header,
     )
 
-from bzrlib.plugins.builddeb.tests import (
+from . import (
     TestCaseWithTransport,
     )
 

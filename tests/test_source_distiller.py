@@ -17,6 +17,8 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import absolute_import
+
 import os
 
 try:
@@ -25,21 +27,21 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.errors import (
+from ....errors import (
     FileExists,
     )
 
-from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
-from bzrlib.plugins.builddeb.source_distiller import (
+from ..errors import MissingUpstreamTarball
+from ..source_distiller import (
     FullSourceDistiller,
     MergeModeDistiller,
     NativeSourceDistiller,
     )
-from bzrlib.plugins.builddeb.tests import (
+from . import (
     SourcePackageBuilder,
     TestCaseWithTransport,
     )
-from bzrlib.plugins.builddeb.tests.test_upstream import (
+from .test_upstream import (
     _MissingUpstreamProvider,
     _SimpleUpstreamProvider,
     _TouchUpstreamProvider,

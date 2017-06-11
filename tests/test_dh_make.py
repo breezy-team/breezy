@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+
 import tarfile
 
-from bzrlib.plugins.builddeb import dh_make
-from bzrlib.plugins.builddeb.tests import BuilddebTestCase
+from .. import dh_make
+from . import BuilddebTestCase
 
 
 class dh_makeTests(BuilddebTestCase):

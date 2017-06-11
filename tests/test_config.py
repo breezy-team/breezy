@@ -18,14 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.branch import Branch
+from __future__ import absolute_import
 
-from bzrlib.plugins.builddeb.config import (
+from ....branch import Branch
+
+from ..config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NORMAL,
     DebBuildConfig,
     )
-from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
+from . import TestCaseWithTransport
 
 
 class DebBuildConfigTests(TestCaseWithTransport):

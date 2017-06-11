@@ -18,20 +18,22 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 import shutil
 import tarfile
 
-from bzrlib.errors import (NoSuchFile,
+from ....errors import (NoSuchFile,
                            FileExists,
                            )
-from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
-from bzrlib.plugins.builddeb.repack_tarball import (
+from ..errors import UnsupportedRepackFormat
+from ..repack_tarball import (
         repack_tarball,
         get_filetype,
         get_repacker_class,
         )
-from bzrlib.plugins.builddeb.tests import TestCaseInTempDir
+from . import TestCaseInTempDir
 
 
 def touch(filename):

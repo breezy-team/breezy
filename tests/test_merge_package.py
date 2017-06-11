@@ -19,6 +19,8 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import absolute_import
+
 import string
 import unittest
 
@@ -28,12 +30,12 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.plugins.builddeb import merge_package as MP
-from bzrlib.plugins.builddeb.errors import (
+from .. import merge_package as MP
+from ..errors import (
     SharedUpstreamConflictsWithTargetPackaging)
-from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
+from ..import_dsc import DistributionBranch
 
-from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
+from . import TestCaseWithTransport
 
 _Debian_changelog = '''\
 ipsec-tools (%s) unstable; urgency=high

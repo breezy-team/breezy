@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import shutil
 import subprocess
 import tarfile
@@ -26,7 +28,7 @@ import zipfile
 import doctest
 import os
 
-from bzrlib import tests
+from .... import tests
 
 try:
     from debian.changelog import Version, Changelog
@@ -34,15 +36,15 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version, Changelog
 
-from bzrlib.tests import TestUtil, multiply_tests
+from ....tests import TestUtil, multiply_tests
 try:
-    from bzrlib.tests.features import (
+    from ....tests.features import (
         ExecutableFeature,
         ModuleAvailableFeature,
         UnicodeFilenameFeature,
         )
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import (
+    from ....tests import (
         ExecutableFeature,
         ModuleAvailableFeature,
         UnicodeFilenameFeature,

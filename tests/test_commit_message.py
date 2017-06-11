@@ -17,12 +17,14 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from bzrlib.plugins.builddeb import debian_changelog_commit_message, debian_changelog_commit
-from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
+from __future__ import absolute_import
+
+from .. import debian_changelog_commit_message, debian_changelog_commit
+from . import TestCaseWithTransport
 try:
-    from bzrlib.tests.features import Feature
+    from ....tests.features import Feature
 except ImportError: # bzr < 2.4
-    from bzrlib.tests import Feature
+    from ....tests import Feature
 
 
 class _LaunchpadConnectionFeature(Feature):

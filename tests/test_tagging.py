@@ -19,8 +19,10 @@
 
 """Tests for bzrlib.plugins.builddeb.tagging."""
 
-from bzrlib.plugins.builddeb import tagging
-from bzrlib.tests import (
+from __future__ import absolute_import
+
+from .. import tagging
+from ....tests import (
     TestCase,
     )
 

@@ -18,12 +18,14 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig
-from bzrlib.plugins.builddeb.errors import HookFailedError
-from bzrlib.plugins.builddeb.hooks import run_hook
-from bzrlib.plugins.builddeb.tests import TestCaseInTempDir
+from ..config import DebBuildConfig
+from ..errors import HookFailedError
+from ..hooks import run_hook
+from . import TestCaseInTempDir
 
 class MockTree:
   def abspath(self, relpath):

@@ -22,6 +22,8 @@
 
 """Tests for the upstream module."""
 
+from __future__ import absolute_import
+
 from base64 import standard_b64encode
 
 import bz2
@@ -29,31 +31,31 @@ import os
 import tarfile
 import zipfile
 
-from bzrlib.revision import (
+from ....revision import (
     Revision,
     )
-from bzrlib.tests import (
+from ....tests import (
     TestCase,
     )
 try:
-    from bzrlib.tests.features import Feature
+    from ....tests.features import Feature
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import Feature
-from bzrlib.plugins.builddeb.config import (
+    from ....tests import Feature
+from ..config import (
     DebBuildConfig,
     )
-from bzrlib.plugins.builddeb.errors import (
+from ..errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
     WatchFileMissing,
     )
-from bzrlib.plugins.builddeb.tests import (
+from . import (
     LzmaFeature,
     XzFeature,
     make_new_upstream_tarball_xz,
     TestCaseWithTransport,
     )
-from bzrlib.plugins.builddeb.upstream import (
+from ..upstream import (
     AptSource,
     StackedUpstreamSource,
     TarfileSource,
@@ -64,10 +66,10 @@ from bzrlib.plugins.builddeb.upstream import (
     gather_orig_files,
     new_tarball_name,
     )
-from bzrlib.plugins.builddeb.util import (
+from ..util import (
     component_from_orig_tarball,
     )
-from bzrlib.plugins.builddeb.upstream.branch import (
+from ..upstream.branch import (
     get_export_upstream_revision,
     get_snapshot_revision,
     LazyUpstreamBranchSource,
@@ -76,7 +78,7 @@ from bzrlib.plugins.builddeb.upstream.branch import (
     upstream_tag_to_version,
     upstream_version_add_revision
     )
-from bzrlib.plugins.builddeb.upstream.pristinetar import (
+from ..upstream.pristinetar import (
     PristineTarSource,
     is_upstream_tag,
     upstream_tag_version,
@@ -93,7 +95,7 @@ class SvnPluginAvailable(Feature):
 
     def _probe(self):
         try:
-            import bzrlib.plugins.svn
+            from ... import svn
             return True
         except ImportError:
             return False
@@ -630,7 +632,7 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
             self.requireFeature(svn_plugin)
             # Fake a bzr-svn revision
             rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
-            from bzrlib.plugins.svn import mapping
+            from ...svn import mapping
             rev.mapping = mapping.mapping_registry.get_default()()
         return rev
 

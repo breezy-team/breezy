@@ -19,10 +19,12 @@
 
 """Tests for the quilt code."""
 
+from __future__ import absolute_import
+
 import os
 
-from bzrlib.plugins.builddeb.tests import ExecutableFeature
-from bzrlib.plugins.builddeb.quilt import (
+from . import ExecutableFeature
+from ..quilt import (
     quilt_pop_all,
     quilt_applied,
     quilt_unapplied,
@@ -30,7 +32,7 @@ from bzrlib.plugins.builddeb.quilt import (
     quilt_series,
     )
 
-from bzrlib.tests import TestCaseWithTransport
+from ....tests import TestCaseWithTransport
 
 quilt_feature = ExecutableFeature('quilt')
 

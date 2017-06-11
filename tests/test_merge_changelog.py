@@ -19,6 +19,8 @@
 
 """Tests for the merge_changelog code."""
 
+from __future__ import absolute_import
+
 import logging
 
 try:
@@ -30,14 +32,14 @@ except ImportError:
 from testtools.content_type import ContentType
 from testtools.content import Content
 
-from bzrlib import (
+from .... import (
     memorytree,
     merge,
     tests,
     )
-from bzrlib.plugins import builddeb
-from bzrlib.plugins.builddeb import merge_changelog
-from bzrlib.tests.features import ExecutableFeature
+from ... import builddeb
+from .. import merge_changelog
+from ....tests.features import ExecutableFeature
 
 
 dpkg_mergechangelogs_feature = ExecutableFeature('dpkg-mergechangelogs')

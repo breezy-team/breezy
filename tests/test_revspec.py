@@ -18,19 +18,21 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 
-from bzrlib.errors import InvalidRevisionSpec
-from bzrlib.revisionspec import RevisionSpec
+from ....errors import InvalidRevisionSpec
+from ....revisionspec import RevisionSpec
 
-from bzrlib.tests.test_revisionspec import TestRevisionSpec
+from ....tests.test_revisionspec import TestRevisionSpec
 
-from bzrlib.plugins.builddeb.tests import Version, Changelog
-from bzrlib.plugins.builddeb.errors import (
+from . import Version, Changelog
+from ..errors import (
     UnknownVersion,
     VersionNotSpecified,
     )
-from bzrlib.plugins.builddeb.revspec import (
+from ..revspec import (
     RevisionSpec_package,
     RevisionSpec_upstream,
     )
