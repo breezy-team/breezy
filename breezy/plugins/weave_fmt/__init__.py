@@ -121,6 +121,7 @@ def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_bzrdir',
         'test_repository',
+        'test_store',
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(

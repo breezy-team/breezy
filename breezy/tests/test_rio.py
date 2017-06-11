@@ -51,26 +51,18 @@ class TestRio(TestCase):
         self.assertEqual(s.get('number'), '42')
         self.assertEqual(s.get('name'), 'fred')
 
-    def test_value_checks(self):
-        """rio checks types on construction"""
-        # these aren't enforced at construction time
-        ## self.assertRaises(ValueError,
-        ##        Stanza, complex=42 + 3j)
-        ## self.assertRaises(ValueError,
-        ##        Stanza, several=range(10))
-
     def test_empty_value(self):
         """Serialize stanza with empty field"""
         s = Stanza(empty='')
-        self.assertEqualDiff(s.to_string(),
-                "empty: \n")
+        self.assertEquals(s.to_string(),
+                b"empty: \n")
 
     def test_to_lines(self):
         """Write simple rio stanza to string"""
         s = Stanza(number='42', name='fred')
         self.assertEqual(list(s.to_lines()),
-                ['name: fred\n',
-                 'number: 42\n'])
+                [b'name: fred\n',
+                 b'number: 42\n'])
 
     def test_as_dict(self):
         """Convert rio Stanza to dictionary"""
@@ -84,18 +76,18 @@ class TestRio(TestCase):
         s = Stanza(a_thing='something with "quotes like \\"this\\""', number='42', name='fred')
         s.write(tmpf)
         tmpf.seek(0)
-        self.assertEqualDiff(tmpf.read(), r'''
-a_thing: something with "quotes like \"this\""
+        self.assertEqual(tmpf.read(), b'''\
+a_thing: something with "quotes like \\"this\\""
 name: fred
 number: 42
-'''[1:])
+''')
 
     def test_multiline_string(self):
         tmpf = TemporaryFile()
         s = Stanza(motto="war is peace\nfreedom is slavery\nignorance is strength")
         s.write(tmpf)
         tmpf.seek(0)
-        self.assertEqualDiff(tmpf.read(), '''\
+        self.assertEqual(tmpf.read(), b'''\
 motto: war is peace
 \tfreedom is slavery
 \tignorance is strength
@@ -106,7 +98,7 @@ motto: war is peace
 
     def test_read_stanza(self):
         """Load stanza from string"""
-        lines = """\
+        lines = b"""\
 revision: mbp@sourcefrog.net-123-abc
 timestamp: 1130653962
 timezone: 36000
@@ -114,7 +106,7 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
 """.splitlines(True)
         s = read_stanza(lines)
         self.assertTrue('revision' in s)
-        self.assertEqualDiff(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
+        self.assertEqual(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
         self.assertEqual(list(s.iter_pairs()),
                 [('revision', 'mbp@sourcefrog.net-123-abc'),
                  ('timestamp', '1130653962'),
@@ -136,13 +128,13 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
     def test_backslash(self):
         s = Stanza(q='\\')
         t = s.to_string()
-        self.assertEqualDiff(t, 'q: \\\n')
+        self.assertEqual(t, b'q: \\\n')
         s2 = read_stanza(s.to_lines())
         self.assertEqual(s, s2)
 
     def test_blank_line(self):
         s = Stanza(none='', one='\n', two='\n\n')
-        self.assertEqualDiff(s.to_string(), """\
+        self.assertEqual(s.to_string(), b"""\
 none:\x20
 one:\x20
 \t
@@ -155,7 +147,7 @@ two:\x20
 
     def test_whitespace_value(self):
         s = Stanza(space=' ', tabs='\t\t\t', combo='\n\t\t\n')
-        self.assertEqualDiff(s.to_string(), """\
+        self.assertEqual(s.to_string(), b"""\
 combo:\x20
 \t\t\t
 \t
@@ -192,16 +184,16 @@ tabs: \t\t\t
 
     def test_read_nul_byte(self):
         """File consisting of a nul byte causes an error."""
-        self.assertRaises(ValueError, read_stanza, ['\0'])
+        self.assertRaises(ValueError, read_stanza, [b'\0'])
 
     def test_read_nul_bytes(self):
         """File consisting of many nul bytes causes an error."""
-        self.assertRaises(ValueError, read_stanza, ['\0' * 100])
+        self.assertRaises(ValueError, read_stanza, [b'\0' * 100])
 
     def test_read_iter(self):
         """Read several stanzas from file"""
         tmpf = TemporaryFile()
-        tmpf.write("""\
+        tmpf.write(b"""\
 version_header: 1
 
 name: foo
@@ -222,7 +214,7 @@ val: 129319
     def test_read_several(self):
         """Read several stanzas from file"""
         tmpf = TemporaryFile()
-        tmpf.write("""\
+        tmpf.write(b"""\
 version_header: 1
 
 name: foo
@@ -242,8 +234,9 @@ val: 129319
         s = read_stanza(tmpf)
         self.assertEqual(s, Stanza(name="foo", val='123'))
         s = read_stanza(tmpf)
-        self.assertEqualDiff(s.get('name'), 'quoted')
-        self.assertEqualDiff(s.get('address'), '  "Willowglen"\n  42 Wallaby Way\n  Sydney')
+        self.assertEqual(s.get('name'), 'quoted')
+        self.assertEqual(
+            s.get('address'), '  "Willowglen"\n  42 Wallaby Way\n  Sydney')
         s = read_stanza(tmpf)
         self.assertEqual(s, Stanza(name="bar", val='129319'))
         s = read_stanza(tmpf)
@@ -266,7 +259,7 @@ val: 129319
 
     def test_tricky_quoted(self):
         tmpf = TemporaryFile()
-        tmpf.write('''\
+        tmpf.write(b'''\
 s: "one"
 
 s:\x20
@@ -316,7 +309,7 @@ s: both\\\"
             stanza = read_stanza(tmpf)
             self.rio_file_stanzas([stanza])
             self.assertEqual(len(stanza), 1)
-            self.assertEqualDiff(stanza.get('s'), expected)
+            self.assertEqual(stanza.get('s'), expected)
 
     def test_write_empty_stanza(self):
         """Write empty stanza"""
@@ -339,7 +332,7 @@ s: both\\\"
         self.assertEqual(s.get('foo'), uni_data)
         raw_lines = s.to_lines()
         self.assertEqual(raw_lines,
-                ['foo: ' + uni_data.encode('utf-8') + '\n'])
+                [b'foo: ' + uni_data.encode('utf-8') + b'\n'])
         new_s = read_stanza(raw_lines)
         self.assertEqual(new_s.get('foo'), uni_data)
 
@@ -356,8 +349,8 @@ s: both\\\"
         s = Stanza(foo=uni_data)
         parent_stanza = Stanza(child=s.to_unicode())
         raw_lines = parent_stanza.to_lines()
-        self.assertEqual(['child: foo: ' + uni_data.encode('utf-8') + '\n',
-                          '\t\n',
+        self.assertEqual([b'child: foo: ' + uni_data.encode('utf-8') + b'\n',
+                          b'\t\n',
                          ], raw_lines)
         new_parent = read_stanza(raw_lines)
         child_text = new_parent.get('child')
@@ -368,9 +361,9 @@ s: both\\\"
     def mail_munge(self, lines, dos_nl=True):
         new_lines = []
         for line in lines:
-            line = re.sub(' *\n', '\n', line)
+            line = re.sub(b' *\n', b'\n', line)
             if dos_nl:
-                line = re.sub('([^\r])\n', '\\1\r\n', line)
+                line = re.sub(b'([^\r])\n', b'\\1\r\n', line)
             new_lines.append(line)
         return new_lines
 
@@ -378,7 +371,7 @@ s: both\\\"
         stanza = Stanza(data='#\n\r\\r ', space=' ' * 255, hash='#' * 255)
         lines = rio.to_patch_lines(stanza)
         for line in lines:
-            self.assertContainsRe(line, '^# ')
+            self.assertContainsRe(line, b'^# ')
             self.assertTrue(72 >= len(line))
         for line in rio.to_patch_lines(stanza, max_width=12):
             self.assertTrue(12 >= len(line))
@@ -393,10 +386,10 @@ s: both\\\"
     def test_patch_rio_linebreaks(self):
         stanza = Stanza(breaktest='linebreak -/'*30)
         self.assertContainsRe(rio.to_patch_lines(stanza, 71)[0],
-                              'linebreak\\\\\n')
+                              b'linebreak\\\\\n')
         stanza = Stanza(breaktest='linebreak-/'*30)
         self.assertContainsRe(rio.to_patch_lines(stanza, 70)[0],
-                              'linebreak-\\\\\n')
+                              b'linebreak-\\\\\n')
         stanza = Stanza(breaktest='linebreak/'*30)
         self.assertContainsRe(rio.to_patch_lines(stanza, 70)[0],
-                              'linebreak\\\\\n')
+                              b'linebreak\\\\\n')

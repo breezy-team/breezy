@@ -19,19 +19,19 @@
 import os
 import gzip
 
-from .. import errors as errors
-from ..errors import BzrError
-from ..sixish import (
+from ... import errors as errors
+from ...errors import BzrError
+from ...sixish import (
     BytesIO,
     )
-from ..store import TransportStore
-from ..store.text import TextStore
-from ..store.versioned import VersionedFileStore
-from . import TestCase, TestCaseInTempDir, TestCaseWithTransport
-from .. import transactions as transactions
-from .. import transport as transport
-from ..transport.memory import MemoryTransport
-from ..weave import WeaveFile
+from .store import TransportStore
+from .store.text import TextStore
+from .store.versioned import VersionedFileStore
+from ...tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from ... import transactions
+from ... import transport
+from ...transport.memory import MemoryTransport
+from ...weave import WeaveFile
 
 
 class TestStores(object):
@@ -46,22 +46,6 @@ class TestStores(object):
         store.add(BytesIO(b'other'), 'b')
         store.add(BytesIO(b'something'), 'c')
         store.add(BytesIO(b'goodbye'), '123123')
-
-    def test_copy_all(self):
-        """Test copying"""
-        os.mkdir('a')
-        store_a = self.get_store('a')
-        store_a.add(BytesIO(b'foo'), '1')
-        os.mkdir('b')
-        store_b = self.get_store('b')
-        store_b.copy_all_ids(store_a)
-        self.assertEqual(store_a.get('1').read(), 'foo')
-        self.assertEqual(store_b.get('1').read(), 'foo')
-        # TODO: Switch the exception form UnlistableStore to
-        #       or make Stores throw UnlistableStore if their
-        #       Transport doesn't support listing
-        # store_c = RemoteStore('http://example.com/')
-        # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
 
     def test_get(self):
         store = self.get_store()
@@ -382,18 +366,6 @@ class TestTransportStore(TestCase):
 
     def test___len__(self):
         self.assertEqual(1, len(self.get_populated_store()))
-
-    def test_copy_suffixes(self):
-        from_store = self.get_populated_store()
-        to_store = TextStore(MemoryTransport(),
-                             prefixed=True, compressed=True)
-        to_store.register_suffix('sig')
-        to_store.copy_all_ids(from_store)
-        self.assertEqual(1, len(to_store))
-        self.assertEqual({'foo'}, set(to_store.__iter__()))
-        self.assertEqual('content', to_store.get('foo').read())
-        self.assertEqual('signature', to_store.get('foo', 'sig').read())
-        self.assertRaises(KeyError, to_store.get, 'missing', 'sig')
 
     def test_relpath_escaped(self):
         my_store = TransportStore(MemoryTransport())
