@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6686-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6689-1) UNRELEASED; urgency=medium
 
   * Use python-pyftpdlib rather than python-medusa. The latter doesn't
     work with python >= 2.7.
@@ -7,17 +7,10 @@ breezy (3.0.0~bzr6686-1) UNRELEASED; urgency=medium
   * Drop other bzr uploaders.
   * Add /usr/bin/brz as alternative for /usr/bin/bzr.
   * New upstream snapshot.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 11 Jun 2017 15:24:29 +0000
-
-breezy (3.0.0~bzr6674-1) UNRELEASED; urgency=medium
-
-  * New upstream snapshot.
   * Drop patch 17_reproducible_makefile, applied upstream.
   * Drop patch 22_test_copy_to, applied upstream.
-  * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 10 Jun 2017 00:30:05 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 11 Jun 2017 23:22:51 +0000
 
 breezy (3.0.0~bzr6644-1) experimental; urgency=medium
 

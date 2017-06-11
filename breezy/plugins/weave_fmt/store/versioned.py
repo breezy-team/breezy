@@ -21,15 +21,14 @@ from __future__ import absolute_import
 
 
 import os
-from warnings import warn
 
-from breezy import (
+from .... import (
     errors,
     osutils,
+    ui,
     )
-from breezy.store import TransportStore
-from breezy.trace import mutter
-import breezy.ui
+from . import TransportStore
+from ....trace import mutter
 
 
 class VersionedFileStore(TransportStore):
@@ -176,67 +175,6 @@ class VersionedFileStore(TransportStore):
         myweave.insert_record_stream(weave.get_record_stream(
             [(version,) for version in weave.versions()],
             'topological', False))
-
-    def copy_all_ids(self, store_from, pb=None, from_transaction=None,
-                     to_transaction=None):
-        """Copy all the file ids from store_from into self."""
-        if from_transaction is None:
-            warn("Please pass from_transaction into "
-                 "versioned_store.copy_all_ids.", stacklevel=2)
-        if to_transaction is None:
-            warn("Please pass to_transaction into "
-                 "versioned_store.copy_all_ids.", stacklevel=2)
-        if not store_from.listable():
-            raise errors.UnlistableStore(store_from)
-        ids = []
-        for count, file_id in enumerate(store_from):
-            if pb:
-                pb.update('listing files', count, count)
-            ids.append(file_id)
-        if pb:
-            pb.clear()
-        mutter('copy_all ids: %r', ids)
-        self.copy_multi(store_from, ids, pb=pb,
-                        from_transaction=from_transaction,
-                        to_transaction=to_transaction)
-
-    def copy_multi(self, from_store, file_ids, pb=None, from_transaction=None,
-                   to_transaction=None):
-        """Copy all the versions for multiple file_ids from from_store.
-
-        :param from_transaction: required current transaction in from_store.
-        """
-        from breezy.transactions import PassThroughTransaction
-        if from_transaction is None:
-            warn("VersionedFileStore.copy_multi without a from_transaction parameter "
-                 "is deprecated. Please provide a from_transaction.",
-                 DeprecationWarning,
-                 stacklevel=2)
-            # we are reading one object - caching is irrelevant.
-            from_transaction = PassThroughTransaction()
-        if to_transaction is None:
-            warn("VersionedFileStore.copy_multi without a to_transaction parameter "
-                 "is deprecated. Please provide a to_transaction.",
-                 DeprecationWarning,
-                 stacklevel=2)
-            # we are copying single objects, and there may be open transactions
-            # so again with the passthrough
-            to_transaction = PassThroughTransaction()
-        pb = breezy.ui.ui_factory.nested_progress_bar()
-        try:
-            for count, f in enumerate(file_ids):
-                mutter("copy weave {%s} into %s", f, self)
-                pb.update('copy', count, len(file_ids))
-                # if we have it in cache, its faster.
-                # joining is fast with knits, and bearable for weaves -
-                # indeed the new case can be optimised if needed.
-                target = self._make_new_versionedfile(f, to_transaction)
-                source = from_store.get_weave(f, from_transaction)
-                target.insert_record_stream(source.get_record_stream(
-                    [(version,) for version in source.versions()],
-                    'topological', False))
-        finally:
-            pb.finished()
 
     def total_size(self):
         count, bytes =  super(VersionedFileStore, self).total_size()

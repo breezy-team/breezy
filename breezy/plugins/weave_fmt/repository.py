@@ -58,7 +58,7 @@ from ...bzrrepository import (
 from ...sixish import (
     BytesIO,
     )
-from ...store.text import TextStore
+from .store.text import TextStore
 from ...versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,

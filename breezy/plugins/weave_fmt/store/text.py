@@ -25,13 +25,13 @@ from __future__ import absolute_import
 import gzip
 import os
 
-from .. import osutils
-from ..errors import BzrError, NoSuchFile, FileExists
-from ..sixish import (
+from .... import osutils
+from ....errors import BzrError, NoSuchFile, FileExists
+from ....sixish import (
     BytesIO,
     )
 from . import TransportStore
-from ..trace import mutter
+from ....trace import mutter
 
 
 
@@ -46,8 +46,6 @@ class TextStore(TransportStore):
     """
 
     def _add_compressed(self, fn, f):
-        from ..osutils import pumpfile
-
         if isinstance(f, bytes):
             f = BytesIO(f)
 
@@ -55,7 +53,7 @@ class TextStore(TransportStore):
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,
         # so will this function
-        pumpfile(f, gf)
+        osutils.pumpfile(f, gf)
         gf.close()
         sio.seek(0)
         self._try_put(fn, sio)
@@ -83,35 +81,6 @@ class TextStore(TransportStore):
             return self._get_compressed(fn)
         else:
             return self._transport.get(fn)
-
-    def _copy_one(self, fileid, suffix, other, pb):
-        # TODO: Once the copy_to interface is improved to allow a source
-        #       and destination targets, then we can always do the copy
-        #       as long as other is a TextStore
-        if not (isinstance(other, TextStore)
-            and other._prefixed == self._prefixed):
-            return super(TextStore, self)._copy_one(fileid, suffix, other, pb)
-
-        mutter('_copy_one: %r, %r', fileid, suffix)
-        path = other._get_name(fileid, suffix)
-        if path is None:
-            raise KeyError(fileid + '-' + str(suffix))
-
-        try:
-            result = other._transport.copy_to([path], self._transport,
-                                              mode=self._file_mode)
-        except NoSuchFile:
-            if not self._prefixed:
-                raise
-            try:
-                self._transport.mkdir(osutils.dirname(path), mode=self._dir_mode)
-            except FileExists:
-                pass
-            result = other._transport.copy_to([path], self._transport,
-                                              mode=self._file_mode)
-
-        if result != 1:
-            raise BzrError('Unable to copy file: %r' % (path,))
 
     def _get_compressed(self, filename):
         """Returns a file reading from a particular entry."""

@@ -28,12 +28,12 @@ from __future__ import absolute_import
 
 import os
 
-from .. import (
+from .... import (
     errors,
     versionedfile,
     )
-from ..errors import BzrError, UnlistableStore
-from ..trace import mutter
+from ....errors import BzrError, UnlistableStore
+from ....trace import mutter
 
 ######################################################################
 # stores
@@ -81,72 +81,6 @@ class Store(object):
     def listable(self):
         """Return True if this store is able to be listed."""
         return (getattr(self, "__iter__", None) is not None)
-
-    def copy_all_ids(self, store_from, pb=None):
-        """Copy all the file ids from store_from into self."""
-        if not store_from.listable():
-            raise UnlistableStore(store_from)
-        ids = []
-        for count, file_id in enumerate(store_from):
-            if pb:
-                pb.update('listing files', count, count)
-            ids.append(file_id)
-        if pb:
-            pb.clear()
-        mutter('copy_all ids: %r', ids)
-        self.copy_multi(store_from, ids, pb=pb)
-
-    def copy_multi(self, other, ids, pb=None, permit_failure=False):
-        """Copy texts for ids from other into self.
-
-        If an id is present in self, it is skipped.  A count of copied
-        ids is returned, which may be less than len(ids).
-
-        :param other: Another Store object
-        :param ids: A list of entry ids to be copied
-        :param pb: A ProgressTask object, if none is given, the default will be created.
-        :param permit_failure: Allow missing entries to be ignored
-        :return: (n_copied, [failed]) The number of entries copied successfully,
-            followed by a list of entries which could not be copied (because they
-            were missing)
-        """
-        if pb:
-            pb.update('preparing to copy')
-        failed = set()
-        count = 0
-        for fileid in ids:
-            count += 1
-            if self.has_id(fileid):
-                continue
-            try:
-                self._copy_one(fileid, None, other, pb)
-                for suffix in self._suffixes:
-                    try:
-                        self._copy_one(fileid, suffix, other, pb)
-                    except KeyError:
-                        pass
-                if pb:
-                    pb.update('copy', count, len(ids))
-            except KeyError:
-                if permit_failure:
-                    failed.add(fileid)
-                else:
-                    raise
-        if pb:
-            pb.clear()
-        return count, failed
-
-    def _copy_one(self, fileid, suffix, other, pb):
-        """Most generic copy-one object routine.
-
-        Subclasses can override this to provide an optimised
-        copy between their own instances. Such overriden routines
-        should call this if they have no optimised facility for a
-        specific 'other'.
-        """
-        mutter('Store._copy_one: %r', fileid)
-        f = other.get(fileid, suffix)
-        self.add(f, fileid, suffix)
 
 
 class TransportStore(Store):
