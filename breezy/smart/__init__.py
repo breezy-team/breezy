@@ -23,7 +23,7 @@ docstrings for details.
 Server-side request handlers are registered in the `breezy.smart.request`
 module.
 
-The domain logic is in `breezy.remote`: `RemoteBzrDir`, `RemoteBranch`,
+The domain logic is in `breezy.bzr.remote`: `RemoteBzrDir`, `RemoteBranch`,
 and so on.
 
 There is also an plain file-level transport that calls remote methods to

@@ -33,7 +33,6 @@ from .. import (
     repository,
     revision as _mod_revision,
     osutils,
-    remote,
     transport as _mod_transport,
     urlutils,
     win32utils,
@@ -41,6 +40,7 @@ from .. import (
 from ..bzr import (
     branch as bzrbranch,
     bzrdir,
+    remote,
     workingtree_3,
     workingtree_4,
     )

@@ -19,7 +19,7 @@ from __future__ import absolute_import
 import bz2
 import zlib
 
-from . import (
+from .. import (
     bencode,
     branch,
     config as _mod_config,
@@ -38,35 +38,35 @@ from . import (
     testament as _mod_testament,
     urlutils,
     )
-from .bzr import (
+from . import (
     branch as bzrbranch,
     bzrdir as _mod_bzrdir,
     inventory_delta,
     vf_repository,
     vf_search,
     )
-from .bzr.branch import BranchReferenceFormat
-from .branch import BranchWriteLockResult
-from .decorators import needs_read_lock, needs_write_lock, only_raises
-from .errors import (
+from .branch import BranchReferenceFormat
+from ..branch import BranchWriteLockResult
+from ..decorators import needs_read_lock, needs_write_lock, only_raises
+from ..errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
-from .i18n import gettext
-from .bzr.inventory import Inventory
-from .bzr.inventorytree import InventoryRevisionTree
-from .lockable_files import LockableFiles
-from .sixish import (
+from ..i18n import gettext
+from .inventory import Inventory
+from .inventorytree import InventoryRevisionTree
+from ..lockable_files import LockableFiles
+from ..sixish import (
     viewitems,
     viewvalues,
     )
-from .smart import client, vfs, repository as smart_repo
-from .smart.client import _SmartClient
-from .revision import NULL_REVISION
-from .repository import RepositoryWriteLockResult, _LazyListJoin
-from .bzr.serializer import format_registry as serializer_format_registry
-from .trace import mutter, note, warning, log_exception_quietly
-from .bzr.versionedfile import FulltextContentFactory
+from ..smart import client, vfs, repository as smart_repo
+from ..smart.client import _SmartClient
+from ..revision import NULL_REVISION
+from ..repository import RepositoryWriteLockResult, _LazyListJoin
+from .serializer import format_registry as serializer_format_registry
+from ..trace import mutter, note, warning, log_exception_quietly
+from .versionedfile import FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -112,7 +112,7 @@ def response_tuple_to_repo_format(response):
     return format
 
 
-# Note that RemoteBzrDirProber lives in breezy.bzrdir so breezy.remote
+# Note that RemoteBzrDirProber lives in breezy.bzrdir so breezy.bzr.remote
 # does not have to be imported unless a remote format is involved.
 
 class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
@@ -2397,7 +2397,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
-        from .reconcile import RepoReconciler
+        from ..reconcile import RepoReconciler
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response, handler = self._call_expecting_body(

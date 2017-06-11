@@ -25,7 +25,6 @@ from ... import (
     errors,
     gpg,
     info,
-    remote,
     repository,
     revision as _mod_revision,
     tests,
@@ -36,6 +35,7 @@ from ... import (
 from ...bzr import (
     branch as _mod_bzrbranch,
     inventory,
+    remote,
     repository as bzrrepository,
     )
 from ...bzr import (

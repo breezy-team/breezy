@@ -41,7 +41,6 @@ from breezy import (
     lockdir,
     osutils,
     pyutils,
-    remote,
     repository,
     revision as _mod_revision,
     transport as _mod_transport,
@@ -51,6 +50,7 @@ from breezy import (
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
+    remote,
     vf_search,
     workingtree_3,
     workingtree_4,
@@ -1286,12 +1286,12 @@ class RemoteBzrProber(controldir.Prober):
                     raise errors.NotBranchError(path=transport.base)
                 if server_version != '2':
                     raise errors.NotBranchError(path=transport.base)
-            from ..remote import RemoteBzrDirFormat
+            from .remote import RemoteBzrDirFormat
             return RemoteBzrDirFormat()
 
     @classmethod
     def known_formats(cls):
-        from ..remote import RemoteBzrDirFormat
+        from .remote import RemoteBzrDirFormat
         return {RemoteBzrDirFormat()}
 
 
@@ -1326,7 +1326,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             # metadir1
             if not isinstance(self, BzrDirMetaFormat1):
                 return self._initialize_on_transport_vfs(transport)
-            from ..remote import RemoteBzrDirFormat
+            from .remote import RemoteBzrDirFormat
             remote_format = RemoteBzrDirFormat()
             self._supply_sub_formats_to(remote_format)
             return remote_format.initialize_on_transport(transport)
@@ -1370,7 +1370,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             except errors.NoSmartMedium:
                 pass
             else:
-                from ..remote import RemoteBzrDirFormat
+                from .remote import RemoteBzrDirFormat
                 # TODO: lookup the local format from a server hint.
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()

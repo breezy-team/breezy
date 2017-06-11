@@ -22,9 +22,11 @@ from testtools.matchers import *
 
 from .. import (
     config,
-    remote,
     tests,
     ui as _mod_ui,
+    )
+from ..bzr import (
+    remote,
     )
 from . import (
     fixtures,

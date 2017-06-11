@@ -47,7 +47,6 @@ from .. import (
     lockdir,
     memorytree,
     osutils,
-    remote,
     repository,
     symbol_versioning,
     tests,
@@ -56,6 +55,7 @@ from .. import (
     )
 from ..bzr import (
     bzrdir,
+    remote,
     workingtree_3,
     workingtree_4,
     )

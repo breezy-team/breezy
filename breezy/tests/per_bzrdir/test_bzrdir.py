@@ -31,7 +31,7 @@ from breezy import (
 from breezy.bzr import (
     bzrdir,
     )
-from breezy.remote import RemoteBzrDirFormat
+from breezy.bzr.remote import RemoteBzrDirFormat
 from breezy.tests import (
     TestNotApplicable,
     TestSkipped,

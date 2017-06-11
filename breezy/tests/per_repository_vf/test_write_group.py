@@ -23,11 +23,11 @@ from breezy import (
     controldir,
     errors,
     memorytree,
-    remote,
     tests,
     )
 from breezy.bzr import (
     branch as bzrbranch,
+    remote,
     versionedfile,
     )
 from breezy.tests.per_repository_vf import (

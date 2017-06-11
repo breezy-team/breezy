@@ -24,8 +24,10 @@ this.
 
 from breezy import (
     errors,
-    remote,
     urlutils,
+    )
+from breezy.bzr import (
+    remote,
     )
 from breezy.controldir import ControlDir
 from breezy.tests import multiply_tests

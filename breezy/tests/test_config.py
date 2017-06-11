@@ -35,9 +35,11 @@ from .. import (
     ui,
     urlutils,
     registry as _mod_registry,
-    remote,
     tests,
     trace,
+    )
+from ..bzr import (
+    remote,
     )
 from ..sixish import (
     BytesIO,

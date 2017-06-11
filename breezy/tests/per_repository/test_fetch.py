@@ -20,8 +20,10 @@ from breezy import (
     controldir,
     errors,
     gpg,
-    remote,
     repository,
+    )
+from breezy.bzr import (
+    remote,
     )
 from breezy.bzr.inventory import ROOT_ID
 from breezy.tests import (

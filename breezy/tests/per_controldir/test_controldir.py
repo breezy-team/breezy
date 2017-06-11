@@ -43,7 +43,7 @@ from breezy.transport.local import LocalTransport
 from breezy.ui import (
     CannedInputUIFactory,
     )
-from breezy.remote import (
+from breezy.bzr.remote import (
     RemoteBzrDir,
     RemoteBzrDirFormat,
     RemoteRepository,

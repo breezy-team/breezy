@@ -29,7 +29,6 @@ from breezy import (
     urlutils,
     transform,
     transport,
-    remote,
     repository,
     revision,
     shelf,
@@ -37,6 +36,7 @@ from breezy import (
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
+    remote,
     )
 from breezy.tests import (
     per_branch,

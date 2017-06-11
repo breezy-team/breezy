@@ -25,6 +25,8 @@ run.
 
 from breezy import (
     repository,
+    )
+from breezy.bzr import (
     remote,
     )
 from breezy.bzr.knitpack_repo import (

@@ -37,11 +37,13 @@ from .. import (
     debug,
     errors,
     osutils,
-    remote as _mod_remote,
     tests,
     trace,
     transport,
     ui,
+    )
+from ..bzr import (
+    remote as _mod_remote,
     )
 from . import (
     features,

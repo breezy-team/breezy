@@ -28,10 +28,12 @@ from .. import (
     config,
     debug,
     errors,
-    remote,
     trace,
     transport,
     urlutils,
+    )
+from ..bzr import (
+    remote,
     )
 from ..sixish import (
     BytesIO,

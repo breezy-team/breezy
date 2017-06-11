@@ -19,9 +19,11 @@
 from breezy import (
     branch as _mod_branch,
     errors,
-    remote,
     revision,
     tests,
+    )
+from breezy.bzr import (
+    remote,
     )
 from breezy.tests import test_server
 

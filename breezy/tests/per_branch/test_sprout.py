@@ -21,12 +21,12 @@ from breezy import (
     branch as _mod_branch,
     errors,
     osutils,
-    remote,
     revision as _mod_revision,
     tests,
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
+    remote,
     )
 from breezy.tests import (
     features,

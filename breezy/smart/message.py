@@ -348,7 +348,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 def _raise_smart_server_error(error_tuple):
     """Raise exception based on tuple received from smart server
 
-    Specific error translation is handled by breezy.remote._translate_error
+    Specific error translation is handled by breezy.bzr.remote._translate_error
     """
     if error_tuple[0] == 'UnknownMethod':
         raise errors.UnknownSmartMethod(error_tuple[1])
