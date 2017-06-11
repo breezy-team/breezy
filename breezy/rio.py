@@ -174,17 +174,19 @@ class Stanza(object):
             # max() complains if sequence is empty
             return []
         result = []
-        for tag, value in self.items:
-            if value == '':
-                result.append(tag.encode('ascii') + b': \n')
-            elif '\n' in value:
+        for text_tag, text_value in self.items:
+            tag = text_tag.encode('ascii')
+            value = text_value.encode('utf-8')
+            if value == b'':
+                result.append(tag + b': \n')
+            elif b'\n' in value:
                 # don't want splitlines behaviour on empty lines
-                val_lines = value.split('\n')
-                result.append(tag + b': ' + val_lines[0].encode('utf-8') + b'\n')
+                val_lines = value.split(b'\n')
+                result.append(tag + b': ' + val_lines[0] + b'\n')
                 for line in val_lines[1:]:
-                    result.append(b'\t' + line.encode('utf-8') + b'\n')
+                    result.append(b'\t' + line + b'\n')
             else:
-                result.append(tag.encode('ascii') + b': ' + value.encode('utf-8') + b'\n')
+                result.append(tag + b': ' + value + b'\n')
         return result
 
     def to_string(self):
@@ -302,61 +304,61 @@ def to_patch_lines(stanza, max_width=72):
     max_rio_width = max_width - 4
     lines = []
     for pline in stanza.to_lines():
-        for line in pline.split('\n')[:-1]:
-            line = re.sub('\\\\', '\\\\\\\\', line)
+        for line in pline.split(b'\n')[:-1]:
+            line = re.sub(b'\\\\', b'\\\\\\\\', line)
             while len(line) > 0:
                 partline = line[:max_rio_width]
                 line = line[max_rio_width:]
-                if len(line) > 0 and line[0] != [' ']:
+                if len(line) > 0 and line[:1] != [b' ']:
                     break_index = -1
-                    break_index = partline.rfind(' ', -20)
+                    break_index = partline.rfind(b' ', -20)
                     if break_index < 3:
-                        break_index = partline.rfind('-', -20)
+                        break_index = partline.rfind(b'-', -20)
                         break_index += 1
                     if break_index < 3:
-                        break_index = partline.rfind('/', -20)
+                        break_index = partline.rfind(b'/', -20)
                     if break_index >= 3:
                         line = partline[break_index:] + line
                         partline = partline[:break_index]
                 if len(line) > 0:
-                    line = '  ' + line
-                partline = re.sub('\r', '\\\\r', partline)
+                    line = b'  ' + line
+                partline = re.sub(b'\r', b'\\\\r', partline)
                 blank_line = False
                 if len(line) > 0:
-                    partline += '\\'
-                elif re.search(' $', partline):
-                    partline += '\\'
+                    partline += b'\\'
+                elif re.search(b' $', partline):
+                    partline += b'\\'
                     blank_line = True
-                lines.append('# ' + partline + '\n')
+                lines.append(b'# ' + partline + b'\n')
                 if blank_line:
-                    lines.append('#   \n')
+                    lines.append(b'#   \n')
     return lines
 
 
 def _patch_stanza_iter(line_iter):
-    map = {'\\\\': '\\',
-           '\\r' : '\r',
-           '\\\n': ''}
+    map = {b'\\\\': b'\\',
+           b'\\r' : b'\r',
+           b'\\\n': b''}
     def mapget(match):
         return map[match.group(0)]
 
     last_line = None
     for line in line_iter:
-        if line.startswith('# '):
+        if line.startswith(b'# '):
             line = line[2:]
-        elif line.startswith('#'):
+        elif line.startswith(b'#'):
             line = line[1:]
         else:
             raise ValueError("bad line %r" % (line,))
         if last_line is not None and len(line) > 2:
             line = line[2:]
-        line = re.sub('\r', '', line)
-        line = re.sub('\\\\(.|\n)', mapget, line)
+        line = re.sub(b'\r', b'', line)
+        line = re.sub(b'\\\\(.|\n)', mapget, line)
         if last_line is None:
             last_line = line
         else:
             last_line += line
-        if last_line[-1] == '\n':
+        if last_line[-1:] == b'\n':
             yield last_line
             last_line = None
     if last_line is not None:
