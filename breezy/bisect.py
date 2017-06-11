@@ -212,7 +212,7 @@ class BisectLog(object):
 
     def save(self):
         """Save the bisection log."""
-        contents = b''.join(
+        contents = ''.join(
             ("%s %s\n" % (revid, status))
             for (revid, status) in self._items)
         if self._filename:
