@@ -30,12 +30,13 @@ from . import (
     )
 from .decorators import needs_read_lock
 from .inventory import Inventory
+from .inventorytree import MutableInventoryTree
 from .osutils import sha_file
 from .mutabletree import needs_tree_write_lock
 from .transport.memory import MemoryTransport
 
 
-class MemoryTree(mutabletree.MutableInventoryTree):
+class MemoryTree(MutableInventoryTree):
     """A MemoryTree is a specialisation of MutableTree.
 
     It maintains nearly no state outside of read_lock and write_lock
@@ -46,7 +47,7 @@ class MemoryTree(mutabletree.MutableInventoryTree):
     def __init__(self, branch, revision_id):
         """Construct a MemoryTree for branch using revision_id."""
         self.branch = branch
-        self.bzrdir = branch.bzrdir
+        self.controldir = branch.controldir
         self._branch_revision_id = revision_id
         self._locks = 0
         self._lock_mode = None

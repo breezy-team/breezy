@@ -174,7 +174,7 @@ class TestDiff(DiffBase):
         branch1_tree.add('file')
         branch1_tree.add('file2')
         branch1_tree.commit(message='add file and file2')
-        branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
+        branch2_tree = branch1_tree.controldir.sprout('branch2').open_workingtree()
         self.build_tree_contents([('branch2/file', 'new content\n')])
         branch2_tree.commit(message='update file')
         return branch1_tree, branch2_tree
@@ -184,8 +184,8 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqual("=== modified file 'file'\n"
-                          "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                          "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                          "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                           "@@ -1,1 +1,1 @@\n"
                           "-new content\n"
                           "+contents of branch1/file\n"
@@ -196,8 +196,8 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-contents of branch1/file\n"
                               "+new content\n"
@@ -229,7 +229,7 @@ class TestDiff(DiffBase):
     def test_diff_branches_no_working_trees(self):
         branch1_tree, branch2_tree = self.example_branches()
         # Compare a working tree to a branch without a WT
-        dir1 = branch1_tree.bzrdir
+        dir1 = branch1_tree.controldir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
         self.check_b2_vs_b1('diff --old branch2 --new branch1')
@@ -240,7 +240,7 @@ class TestDiff(DiffBase):
         self.check_b1_vs_b2('diff --old branch1 branch2')
         self.check_b1_vs_b2('diff branch1 --new branch2')
         # Compare a branch with a WT against another without a WT
-        dir2 = branch2_tree.bzrdir
+        dir2 = branch2_tree.controldir
         dir2.destroy_workingtree()
         self.assertFalse(dir2.has_workingtree())
         self.check_b1_vs_b2('diff --old branch1 --new branch2')
@@ -261,8 +261,8 @@ class TestDiff(DiffBase):
                                 retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-new content\n"
                               "+contents of branch1/file\n"
@@ -301,7 +301,7 @@ class TestDiff(DiffBase):
 
     def test_diff_to_branch_no_working_tree(self):
         branch1_tree = self.example_branch2()
-        dir1 = branch1_tree.bzrdir
+        dir1 = branch1_tree.controldir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
@@ -397,9 +397,11 @@ class TestExternalDiff(DiffBase):
         self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
-        self.assertStartsWith(out, "=== added file 'goodbye'\n"
-                                   "--- goodbye\t1970-01-01 00:00:00 +0000\n"
-                                   "+++ goodbye\t")
+        self.assertStartsWith(
+            out,
+            "=== added file 'goodbye'\n"
+            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            "+++ new/goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
                                  "+baz\n\n")
 

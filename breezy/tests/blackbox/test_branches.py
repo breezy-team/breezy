@@ -62,8 +62,8 @@ class TestBranches(TestCaseWithTransport):
 
     def test_indicates_non_branch(self):
         t = self.make_branch_and_tree('a', format='development-colo')
-        t.bzrdir.create_branch(name='another')
-        t.bzrdir.create_branch(name='colocated')
+        t.controldir.create_branch(name='another')
+        t.controldir.create_branch(name='colocated')
         out, err = self.run_bzr('branches a')
         self.assertEqual(out, "* (default)\n"
                                "  another\n"
@@ -71,9 +71,9 @@ class TestBranches(TestCaseWithTransport):
 
     def test_indicates_branch(self):
         t = self.make_repository('a', format='development-colo')
-        t.bzrdir.create_branch(name='another')
-        branch = t.bzrdir.create_branch(name='colocated')
-        t.bzrdir.set_branch_reference(target_branch=branch)
+        t.controldir.create_branch(name='another')
+        branch = t.controldir.create_branch(name='colocated')
+        t.controldir.set_branch_reference(target_branch=branch)
         out, err = self.run_bzr('branches a')
         self.assertEqual(out, "  another\n"
                                "* colocated\n")

@@ -67,14 +67,6 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.headers.get('referer', '-'),
                 self.headers.get('user-agent', '-'))
 
-    def handle(self):
-        SimpleHTTPServer.SimpleHTTPRequestHandler.handle(self)
-        # Some client (pycurl, I'm looking at you) are more picky than others
-        # and require that the socket itself is closed
-        # (SocketServer.StreamRequestHandler only close the two associated
-        # 'makefile' objects)
-        self.connection.close()
-
     def handle_one_request(self):
         """Handle a single HTTP request.
 
@@ -502,17 +494,3 @@ class HttpServer_urllib(HttpServer):
 
     # urls returned by this server should require the urllib client impl
     _url_protocol = 'http+urllib'
-
-
-class HttpServer_PyCurl(HttpServer):
-    """Subclass of HttpServer that gives http+pycurl urls.
-
-    This is for use in testing: connections to this server will always go
-    through pycurl where possible.
-    """
-
-    # We don't care about checking the pycurl availability as
-    # this server will be required only when pycurl is present
-
-    # urls returned by this server should require the pycurl client impl
-    _url_protocol = 'http+pycurl'

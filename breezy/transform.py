@@ -24,6 +24,7 @@ import time
 from . import (
     config as _mod_config,
     errors,
+    inventorytree,
     lazy_import,
     registry,
     trace,
@@ -61,6 +62,10 @@ from .osutils import (
     splitpath,
     )
 from .progress import ProgressPhase
+from .sixish import (
+    viewitems,
+    viewvalues,
+    )
 
 
 ROOT_PARENT = "root-parent"
@@ -228,8 +233,8 @@ class TreeTransformBase(object):
         irrelevant.
 
         """
-        new_roots = [k for k, v in self._new_parent.iteritems() if v ==
-                     ROOT_PARENT]
+        new_roots = [k for k, v in viewitems(self._new_parent)
+                     if v == ROOT_PARENT]
         if len(new_roots) < 1:
             return
         if len(new_roots) != 1:
@@ -479,7 +484,7 @@ class TreeTransformBase(object):
         file_id = self.tree_file_id(trans_id)
         if file_id is not None:
             return file_id
-        for key, value in self._non_present_ids.iteritems():
+        for key, value in viewitems(self._non_present_ids):
             if value == trans_id:
                 return key
 
@@ -509,9 +514,9 @@ class TreeTransformBase(object):
         Only new paths and parents of tree files with assigned ids are used.
         """
         by_parent = {}
-        items = list(self._new_parent.iteritems())
-        items.extend((t, self.final_parent(t)) for t in
-                      self._tree_id_paths.keys())
+        items = list(viewitems(self._new_parent))
+        items.extend((t, self.final_parent(t))
+            for t in list(self._tree_id_paths))
         for trans_id, parent_id in items:
             if parent_id not in by_parent:
                 by_parent[parent_id] = set()
@@ -555,7 +560,7 @@ class TreeTransformBase(object):
         Active parents are those which gain children, and those which are
         removed.  This is a necessary first step in detecting conflicts.
         """
-        parents = self.by_parent().keys()
+        parents = list(self.by_parent())
         parents.extend([t for t in self._removed_contents if
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
@@ -634,7 +639,7 @@ class TreeTransformBase(object):
     def _unversioned_parents(self, by_parent):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
-        for parent_id, children in by_parent.iteritems():
+        for parent_id, children in viewitems(by_parent):
             if parent_id == ROOT_PARENT:
                 continue
             if self.final_file_id(parent_id) is not None:
@@ -651,7 +656,7 @@ class TreeTransformBase(object):
         However, existing entries with no contents are okay.
         """
         conflicts = []
-        for trans_id in self._new_id.iterkeys():
+        for trans_id in self._new_id:
             kind = self.final_kind(trans_id)
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
@@ -693,7 +698,7 @@ class TreeTransformBase(object):
         conflicts = []
         if (self._new_name, self._new_parent) == ({}, {}):
             return conflicts
-        for children in by_parent.itervalues():
+        for children in viewvalues(by_parent):
             name_ids = []
             for child_tid in children:
                 name = self.final_name(child_tid)
@@ -724,7 +729,7 @@ class TreeTransformBase(object):
                                 self._removed_id))
         all_ids = self._tree.all_file_ids()
         active_tree_ids = all_ids.difference(removed_tree_ids)
-        for trans_id, file_id in self._new_id.iteritems():
+        for trans_id, file_id in viewitems(self._new_id):
             if file_id in active_tree_ids:
                 old_trans_id = self.trans_id_tree_file_id(file_id)
                 conflicts.append(('duplicate id', old_trans_id, trans_id))
@@ -733,7 +738,7 @@ class TreeTransformBase(object):
     def _parent_type_conflicts(self, by_parent):
         """Children must have a directory parent"""
         conflicts = []
-        for parent_id, children in by_parent.iteritems():
+        for parent_id, children in viewitems(by_parent):
             if parent_id == ROOT_PARENT:
                 continue
             no_children = True
@@ -868,12 +873,12 @@ class TreeTransformBase(object):
     def _affected_ids(self):
         """Return the set of transform ids affected by the transform"""
         trans_ids = set(self._removed_id)
-        trans_ids.update(self._new_id.keys())
+        trans_ids.update(self._new_id)
         trans_ids.update(self._removed_contents)
-        trans_ids.update(self._new_contents.keys())
-        trans_ids.update(self._new_executability.keys())
-        trans_ids.update(self._new_name.keys())
-        trans_ids.update(self._new_parent.keys())
+        trans_ids.update(self._new_contents)
+        trans_ids.update(self._new_executability)
+        trans_ids.update(self._new_name)
+        trans_ids.update(self._new_parent)
         return trans_ids
 
     def _get_file_id_maps(self):
@@ -953,7 +958,7 @@ class TreeTransformBase(object):
         from_trans_ids, to_trans_ids = self._get_file_id_maps()
         results = []
         # Now iterate through all active file_ids
-        for file_id in set(from_trans_ids.keys() + to_trans_ids.keys()):
+        for file_id in set(from_trans_ids).union(to_trans_ids):
             modified = False
             from_trans_id = from_trans_ids.get(file_id)
             # find file ids, and determine versioning state
@@ -1096,11 +1101,11 @@ class TreeTransformBase(object):
         :param serializer: A Serialiser like pack.ContainerSerializer.
         """
         new_name = dict((k, v.encode('utf-8')) for k, v in
-                        self._new_name.items())
+                        viewitems(self._new_name))
         new_executability = dict((k, int(v)) for k, v in
-                                 self._new_executability.items())
+                                 viewitems(self._new_executability))
         tree_path_ids = dict((k.encode('utf-8'), v)
-                             for k, v in self._tree_path_ids.items())
+                             for k, v in viewitems(self._tree_path_ids))
         attribs = {
             '_id_number': self._id_number,
             '_new_name': new_name,
@@ -1114,7 +1119,7 @@ class TreeTransformBase(object):
             }
         yield serializer.bytes_record(bencode.bencode(attribs),
                                       (('attribs',),))
-        for trans_id, kind in self._new_contents.items():
+        for trans_id, kind in viewitems(self._new_contents):
             if kind == 'file':
                 lines = osutils.chunks_to_lines(
                     self._read_file_chunks(trans_id))
@@ -1137,15 +1142,15 @@ class TreeTransformBase(object):
         attribs = bencode.bdecode(content)
         self._id_number = attribs['_id_number']
         self._new_name = dict((k, v.decode('utf-8'))
-                            for k, v in attribs['_new_name'].items())
+                              for k, v in viewitems(attribs['_new_name']))
         self._new_parent = attribs['_new_parent']
-        self._new_executability = dict((k, bool(v)) for k, v in
-            attribs['_new_executability'].items())
+        self._new_executability = dict((k, bool(v))
+            for k, v in viewitems(attribs['_new_executability']))
         self._new_id = attribs['_new_id']
-        self._r_new_id = dict((v, k) for k, v in self._new_id.items())
+        self._r_new_id = dict((v, k) for k, v in viewitems(self._new_id))
         self._tree_path_ids = {}
         self._tree_id_paths = {}
-        for bytepath, trans_id in attribs['_tree_path_ids'].items():
+        for bytepath, trans_id in viewitems(attribs['_tree_path_ids']):
             path = bytepath.decode('utf-8')
             self._tree_path_ids[path] = trans_id
             self._tree_id_paths[trans_id] = path
@@ -1201,9 +1206,9 @@ class DiskTreeTransform(TreeTransformBase):
         if self._tree is None:
             return
         try:
-            limbo_paths = self._limbo_files.values() + list(
-                self._possibly_stale_limbo_files)
-            limbo_paths = sorted(limbo_paths, reverse=True)
+            limbo_paths = list(viewvalues(self._limbo_files))
+            limbo_paths.extend(self._possibly_stale_limbo_files)
+            limbo_paths.sort(reverse=True)
             for path in limbo_paths:
                 try:
                     delete_any(path)
@@ -1425,7 +1430,7 @@ class OrphaningForbidden(OrphaningError):
 def move_orphan(tt, orphan_id, parent_id):
     """See TreeTransformBase.new_orphan.
 
-    This creates a new orphan in the `bzr-orphans` dir at the root of the
+    This creates a new orphan in the `brz-orphans` dir at the root of the
     `TreeTransform`.
 
     :param tt: The TreeTransform orphaning `trans_id`.
@@ -1435,7 +1440,7 @@ def move_orphan(tt, orphan_id, parent_id):
     :param parent_id: The orphan parent trans id.
     """
     # Add the orphan dir if it doesn't exist
-    orphan_dir_basename = 'bzr-orphans'
+    orphan_dir_basename = 'brz-orphans'
     od_id = tt.trans_id_tree_path(orphan_dir_basename)
     if tt.final_kind(od_id) is None:
         tt.create_directory(od_id)
@@ -1462,7 +1467,7 @@ orphaning_registry.register(
     'Leave orphans in place and create a conflict on the directory.')
 orphaning_registry.register(
     'move', move_orphan,
-    'Move orphans into the bzr-orphans directory.')
+    'Move orphans into the brz-orphans directory.')
 orphaning_registry._set_default_key('conflict')
 
 
@@ -1676,8 +1681,8 @@ class TreeTransform(DiskTreeTransform):
                         in (trans_id, None)):
                         use_direct_path = True
                 else:
-                    for l_filename, l_trans_id in\
-                        self._limbo_children_names[parent].iteritems():
+                    for l_filename, l_trans_id in viewitems(
+                            self._limbo_children_names[parent]):
                         if l_trans_id == trans_id:
                             continue
                         if l_filename.lower() == filename.lower():
@@ -1767,7 +1772,7 @@ class TreeTransform(DiskTreeTransform):
             new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                      new_paths)
             entries = self._tree.iter_entries_by_dir(
-                new_path_file_ids.values())
+                viewvalues(new_path_file_ids))
             old_paths = dict((e.file_id, p) for p, e in entries)
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
@@ -1814,8 +1819,7 @@ class TreeTransform(DiskTreeTransform):
 
         If inventory_delta is None, no inventory delta generation is performed.
         """
-        tree_paths = list(self._tree_path_ids.iteritems())
-        tree_paths.sort(reverse=True)
+        tree_paths = sorted(viewitems(self._tree_path_ids), reverse=True)
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(tree_paths):
@@ -1907,7 +1911,7 @@ class TreeTransform(DiskTreeTransform):
         #       problems. (we could observe start time, and finish time, and if
         #       it is less than eg 10% overhead, add a sleep call.)
         paths = FinalPaths(self)
-        for trans_id, observed in self._observed_sha1s.iteritems():
+        for trans_id, observed in viewitems(self._observed_sha1s):
             path = paths.get_path(trans_id)
             # We could get the file_id, but dirstate prefers to use the path
             # anyway, and it is 'cheaper' to determine.
@@ -1968,7 +1972,7 @@ class TransformPreview(DiskTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class _PreviewTree(tree.InventoryTree):
+class _PreviewTree(inventorytree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
@@ -2057,7 +2061,7 @@ class _PreviewTree(tree.InventoryTree):
         tree_ids = set(self._transform._tree.all_file_ids())
         tree_ids.difference_update(self._transform.tree_file_id(t)
                                    for t in self._transform._removed_id)
-        tree_ids.update(self._transform._new_id.values())
+        tree_ids.update(viewvalues(self._transform._new_id))
         return tree_ids
 
     def __iter__(self):
@@ -2120,7 +2124,7 @@ class _PreviewTree(tree.InventoryTree):
             return children
         children = set(self._transform.iter_tree_children(trans_id))
         # children in the _new_parent set are provided by _by_parent.
-        children.difference_update(self._transform._new_parent.keys())
+        children.difference_update(self._transform._new_parent)
         children.update(self._by_parent.get(trans_id, []))
         self._all_children_cache[trans_id] = children
         return children

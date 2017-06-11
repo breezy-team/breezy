@@ -836,7 +836,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
     def _copy_to_tempdir(self, from_repo):
         tmp_dirname = osutils.mkdtemp(prefix='tmpbzrclone')
-        tmp_bzrdir = from_repo.bzrdir._format.initialize(tmp_dirname)
+        tmp_bzrdir = from_repo.controldir._format.initialize(tmp_dirname)
         tmp_repo = from_repo._format.initialize(tmp_bzrdir)
         from_repo.copy_content_into(tmp_repo)
         return tmp_dirname, tmp_repo

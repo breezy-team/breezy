@@ -50,7 +50,7 @@ class TestMergeDirective(TestCaseWithRepository):
             ])
         builder.finish_series()
         b1 = builder.get_branch()
-        b2 = b1.bzrdir.sprout('target', revision_id='A').open_branch()
+        b2 = b1.controldir.sprout('target', revision_id='A').open_branch()
         return b1, b2
 
     def create_merge_directive(self, source_branch, submit_url):

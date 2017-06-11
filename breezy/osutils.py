@@ -326,7 +326,7 @@ def _posix_path_from_environ(key):
     so a path that raises BadFilenameEncoding here may still be accessible.
     """
     val = os.environ.get(key, None)
-    if val is None:
+    if PY3 or val is None:
         return val
     try:
         return val.decode(_fs_enc)
@@ -349,6 +349,8 @@ def _posix_get_home_dir():
 def _posix_getuser_unicode():
     """Get username from environment or password database as unicode"""
     name = getpass.getuser()
+    if PY3:
+        return name
     user_encoding = get_user_encoding()
     try:
         return name.decode(user_encoding)
@@ -373,33 +375,6 @@ def _win32_fixdrive(path):
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
-
-
-def _win98_abspath(path):
-    """Return the absolute version of a path.
-    Windows 98 safe implementation (python reimplementation
-    of Win32 API function GetFullPathNameW)
-    """
-    # Corner cases:
-    #   C:\path     => C:/path
-    #   C:/path     => C:/path
-    #   \\HOST\path => //HOST/path
-    #   //HOST/path => //HOST/path
-    #   path        => C:/cwd/path
-    #   /path       => C:/path
-    path = unicode(path)
-    # check for absolute path
-    drive = ntpath.splitdrive(path)[0]
-    if drive == '' and path[:2] not in('//','\\\\'):
-        cwd = _getcwd()
-        # we cannot simply os.path.join cwd and path
-        # because os.path.join('C:','/path') produce '/path'
-        # and this is incorrect
-        if path[:1] in ('/','\\'):
-            cwd = ntpath.splitdrive(cwd)[0]
-            path = path[1:]
-        path = cwd + '\\' + path
-    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
@@ -503,10 +478,7 @@ MIN_ABS_PATHLENGTH = 1
 
 
 if sys.platform == 'win32':
-    if win32utils.winver == 'Windows 98':
-        abspath = _win98_abspath
-    else:
-        abspath = _win32_abspath
+    abspath = _win32_abspath
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
@@ -1024,7 +996,10 @@ def rand_chars(num):
     """
     s = ''
     for raw_byte in rand_bytes(num):
-        s += ALNUM[ord(raw_byte) % 36]
+        if not PY3:
+            s += ALNUM[ord(raw_byte) % 36]
+        else:
+            s += ALNUM[raw_byte % 36]
     return s
 
 
@@ -1136,8 +1111,9 @@ def _split_lines(s):
 
     This supports Unicode or plain string objects.
     """
-    lines = s.split('\n')
-    result = [line + '\n' for line in lines[:-1]]
+    nl = b'\n' if isinstance(s, bytes) else u'\n'
+    lines = s.split(nl)
+    result = [line + nl for line in lines[:-1]]
     if lines[-1]:
         result.append(lines[-1])
     return result
@@ -1233,11 +1209,11 @@ def contains_whitespace(s):
     #    separators
     # 3) '\xa0' isn't unicode safe since it is >128.
 
-    # This should *not* be a unicode set of characters in case the source
-    # string is not a Unicode string. We can auto-up-cast the characters since
-    # they are ascii, but we don't want to auto-up-cast the string in case it
-    # is utf-8
-    for ch in ' \t\n\r\v\f':
+    if isinstance(s, str):
+        ws = ' \t\n\r\v\f'
+    else:
+        ws = (b' ', b'\t', b'\n', b'\r', b'\v', b'\f')
+    for ch in ws:
         if ch in s:
             return True
     else:
@@ -1394,7 +1370,7 @@ def safe_utf8(unicode_or_utf8_string):
     If it is a str, it is returned.
     If it is Unicode, it is encoded into a utf-8 string.
     """
-    if isinstance(unicode_or_utf8_string, str):
+    if isinstance(unicode_or_utf8_string, bytes):
         # TODO: jam 20070209 This is overkill, and probably has an impact on
         #       performance if we are dealing with lots of apis that want a
         #       utf-8 revision id
@@ -1467,13 +1443,13 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', unicode(path)), True
+    return unicodedata.normalize('NFC', text_type(path)), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', unicode(path))
+    normalized = unicodedata.normalize('NFC', text_type(path))
     return normalized, normalized == path
 
 
@@ -1836,12 +1812,7 @@ def _walkdirs_utf8(top, prefix=""):
     """
     global _selected_dir_reader
     if _selected_dir_reader is None:
-        if sys.platform == "win32" and win32utils.winver == 'Windows NT':
-            # Win98 doesn't have unicode apis like FindFirstFileW
-            # TODO: We possibly could support Win98 by falling back to the
-            #       original FindFirstFile, and using TCHAR instead of WCHAR,
-            #       but that gets a bit tricky, and requires custom compiling
-            #       for win98 anyway.
+        if sys.platform == "win32":
             try:
                 from ._walkdirs_win32 import Win32ReadDir
                 _selected_dir_reader = Win32ReadDir()
@@ -1907,10 +1878,10 @@ class UnicodeDirReader(DirReader):
         _kind_from_mode = file_kind_from_stat_mode
 
         if prefix:
-            relprefix = prefix + '/'
+            relprefix = prefix + b'/'
         else:
-            relprefix = ''
-        top_slash = top + u'/'
+            relprefix = b''
+        top_slash = top + '/'
 
         dirblock = []
         append = dirblock.append
@@ -2073,6 +2044,8 @@ def get_host_name():
         return win32utils.get_host_name()
     else:
         import socket
+        if PY3:
+            return socket.gethostname()
         return socket.gethostname().decode(get_user_encoding())
 
 

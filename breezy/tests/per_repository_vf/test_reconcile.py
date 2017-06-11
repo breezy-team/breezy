@@ -419,7 +419,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
                 raise TestSkipped('wrong-first-parent is not setup for testing')
         finally:
             repo.unlock()
-        self.checkUnreconciled(repo.bzrdir, repo.reconcile())
+        self.checkUnreconciled(repo.controldir, repo.reconcile())
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format
         reconciler = repo.reconcile(thorough=True)
@@ -438,5 +438,5 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
     def test_reconcile_wrong_order_secondary_inventory(self):
         # a wrong order in the parents for inventories is ignored.
         repo = self.second_tree.branch.repository
-        self.checkUnreconciled(repo.bzrdir, repo.reconcile())
-        self.checkUnreconciled(repo.bzrdir, repo.reconcile(thorough=True))
+        self.checkUnreconciled(repo.controldir, repo.reconcile())
+        self.checkUnreconciled(repo.controldir, repo.reconcile(thorough=True))

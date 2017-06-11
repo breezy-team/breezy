@@ -326,7 +326,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
-        wt = b.bzrdir.sprout('branch').open_workingtree()
+        wt = b.controldir.sprout('branch').open_workingtree()
         wt.merge_from_branch(b, 'other')
         return wt
 

@@ -629,8 +629,8 @@ def save_host_keys():
     try:
         f = open(bzr_hostkey_path, 'w')
         f.write('# SSH host keys collected by bzr\n')
-        for hostname, keys in BRZ_HOSTKEYS.iteritems():
-            for keytype, key in keys.iteritems():
+        for hostname, keys in BRZ_HOSTKEYS.items():
+            for keytype, key in keys.items():
                 f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
         f.close()
     except IOError as e:

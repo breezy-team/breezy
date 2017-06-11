@@ -389,7 +389,7 @@ class TestConfigDirectory(tests.TestCaseWithTransport):
     def test_parent_alias(self):
         t = self.make_branch_and_tree('base')
         t.branch.get_config_stack().set('test', 'base')
-        clone = t.branch.bzrdir.sprout('clone').open_branch()
+        clone = t.branch.controldir.sprout('clone').open_branch()
         clone.get_config_stack().set('test', 'clone')
         out, err = self.run_bzr(['config', '-d', ':parent', 'test'],
                                 working_dir='clone')

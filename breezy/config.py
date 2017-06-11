@@ -114,6 +114,7 @@ from . import (
 from .sixish import (
     binary_type,
     BytesIO,
+    PY3,
     text_type,
     string_types,
     )
@@ -477,7 +478,9 @@ class Config(object):
         """
         v = os.environ.get('BRZ_EMAIL')
         if v:
-            return v.decode(osutils.get_user_encoding())
+            if not PY3:
+                v = v.decode(osutils.get_user_encoding())
+            return v
         v = self._get_user_id()
         if v:
             return v
@@ -1497,10 +1500,14 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
 def default_email():
     v = os.environ.get('BRZ_EMAIL')
     if v:
-        return v.decode(osutils.get_user_encoding())
+        if not PY3:
+            v = v.decode(osutils.get_user_encoding())
+        return v
     v = os.environ.get('EMAIL')
     if v:
-        return v.decode(osutils.get_user_encoding())
+        if not PY3:
+            v = v.decode(osutils.get_user_encoding())
+        return v
     name, email = _auto_user_id()
     if name and email:
         return u'%s <%s>' % (name, email)
@@ -1722,7 +1729,7 @@ class AuthenticationConfig(object):
              certificate should be verified, False otherwise.
         """
         credentials = None
-        for auth_def_name, auth_def in self._get_config().items():
+        for auth_def_name, auth_def in self._get_config().iteritems():
             if not isinstance(auth_def, configobj.Section):
                 raise ValueError("%s defined outside a section" % auth_def_name)
 
@@ -1824,7 +1831,7 @@ class AuthenticationConfig(object):
             values['realm'] = realm
         config = self._get_config()
         for_deletion = []
-        for section, existing_values in config.items():
+        for section, existing_values in config.iteritems():
             for key in ('scheme', 'host', 'port', 'path', 'realm'):
                 if existing_values.get(key) != values.get(key):
                     break
@@ -2854,7 +2861,7 @@ class Section(object):
         return self.options.get(name, default)
 
     def iter_option_names(self):
-        for k in self.options.iterkeys():
+        for k in self.options.keys():
             yield k
 
     def __repr__(self):
@@ -2901,7 +2908,7 @@ class MutableSection(Section):
 
         :param store: the store containing the section
         """
-        for k, expected in dirty.orig.iteritems():
+        for k, expected in dirty.orig.items():
             actual = dirty.get(k, _DeletedOption)
             reloaded = self.get(k, _NewlyCreatedOption)
             if actual is _DeletedOption:
@@ -3009,7 +3016,7 @@ class Store(object):
         # get_mutable_section() call below.
         self.unload()
         # Apply the changes from the preserved dirty sections
-        for section_id, dirty in dirty_sections.iteritems():
+        for section_id, dirty in dirty_sections.items():
             clean = self.get_mutable_section(section_id)
             clean.apply_changes(dirty, self)
         # Everything is clean now
@@ -3153,7 +3160,7 @@ class IniFileStore(Store):
         if not self._need_saving():
             return
         # Preserve the current version
-        dirty_sections = dict(self.dirty_sections.items())
+        dirty_sections = self.dirty_sections.copy()
         self.apply_changes(dirty_sections)
         # Save to the persistent storage
         self.save()
@@ -3264,7 +3271,8 @@ class TransportIniFileStore(IniFileStore):
         # The following will do in the interim but maybe we don't want to
         # expose a path here but rather a config ID and its associated
         # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name.encode("ascii"))
+        return urlutils.join(
+            self.transport.external_url(), urlutils.escape(self.file_name))
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -3968,7 +3976,7 @@ class RemoteControlStack(Stack):
         super(RemoteControlStack, self).__init__(
             [NameMatcher(cstore, None).get_sections],
             cstore)
-        self.bzrdir = bzrdir
+        self.controldir = bzrdir
 
 
 class BranchOnlyStack(Stack):

@@ -227,17 +227,16 @@ class Registry(object):
 
     def keys(self):
         """Get a list of registered entries"""
-        return sorted(self._dict.keys())
+        return sorted(self._dict)
 
     def iteritems(self):
-        for key, getter in self._dict.iteritems():
-            yield key, getter.get_obj()
+        for key in self._dict:
+            yield key, self._dict[key].get_obj()
 
     def items(self):
         # We should not use the iteritems() implementation below (see bug
         # #430510)
-        return sorted([(key, getter.get_obj())
-                       for key, getter in self._dict.items()])
+        return [(key, self._dict[key].get_obj()) for key in self.keys()]
 
     def _set_default_key(self, key):
         if key not in self._dict:

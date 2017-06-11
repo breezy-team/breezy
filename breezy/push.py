@@ -77,7 +77,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     :param create_prefix: if True, create the necessary parent directories
         at the destination if they don't already exist
     :param use_existing_dir: if True, proceed even if the destination
-        directory exists without a current .bzr directory in it
+        directory exists without a current control directory in it
     """
     to_transport = transport.get_transport(location)
     try:

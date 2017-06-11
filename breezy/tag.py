@@ -226,7 +226,7 @@ class BasicTags(_Tags):
 
     def _serialize_tag_dict(self, tag_dict):
         td = dict((k.encode('utf-8'), v)
-                  for k,v in tag_dict.items())
+                  for k, v in tag_dict.items())
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):
@@ -324,7 +324,7 @@ class BasicTags(_Tags):
         :param rename_map: Dictionary mapping old revids to new revids
         """
         reverse_tags = self.get_reverse_tag_dict()
-        for revid, names in reverse_tags.iteritems():
+        for revid, names in reverse_tags.items():
             if revid in rename_map:
                 for name in names:
                     self.set_tag(name, rename_map[revid])

@@ -1489,7 +1489,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                       'print "@old_path @new_path"'],
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
-        self.assertContainsRe(diff_obj._root, 'bzr-diff-[^/]*')
+        self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
         old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')

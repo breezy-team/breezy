@@ -44,7 +44,7 @@ from breezy import (
     )
 
 from breezy.recordcounter import RecordCounter
-from breezy.revisiontree import InventoryRevisionTree
+from breezy.inventorytree import InventoryRevisionTree
 from breezy.testament import Testament
 from breezy.i18n import gettext
 """)
@@ -67,10 +67,18 @@ from .inventory import (
 from .repository import (
     CommitBuilder,
     InterRepository,
-    MetaDirRepository,
-    RepositoryFormatMetaDir,
     Repository,
     RepositoryFormat,
+    )
+from .bzrrepository import (
+    MetaDirRepository,
+    RepositoryFormatMetaDir,
+    )
+
+from .sixish import (
+    range,
+    viewitems,
+    viewvalues,
     )
 
 from .trace import (
@@ -430,7 +438,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candidate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(ie.file_id, parent_candidate_entries.keys())
+        head_set = self._heads(ie.file_id, parent_candidate_entries)
         heads = []
         for inv in parent_invs:
             if inv.has_id(ie.file_id):
@@ -688,12 +696,12 @@ class VersionedFileCommitBuilder(CommitBuilder):
         seen_root = False # Is the root in the basis delta?
         inv_delta = self._basis_delta
         modified_rev = self._new_revision_id
-        for change, head_candidates in changes.values():
+        for change, head_candidates in viewvalues(changes):
             if change[3][1]: # versioned in target.
                 # Several things may be happening here:
                 # We may have a fork in the per-file graph
                 #  - record a change with the content from tree
-                # We may have a change against < all trees  
+                # We may have a change against < all trees
                 #  - carry over the tree that hasn't changed
                 # We may have a change against all trees
                 #  - record the change with the content from tree
@@ -1192,9 +1200,9 @@ class VersionedFileRepository(Repository):
         graph = self.get_graph()
         parent_map = graph.get_parent_map(revision_ids)
         # The old API returned a list, should this actually be a set?
-        return parent_map.keys()
+        return list(parent_map)
 
-    def __init__(self, _format, a_bzrdir, control_files):
+    def __init__(self, _format, a_controldir, control_files):
         """Instantiate a VersionedFileRepository.
 
         :param _format: The format of the repository on disk.
@@ -1204,7 +1212,7 @@ class VersionedFileRepository(Repository):
         # In the future we will have a single api for all stores for
         # getting file texts, inventories and revisions, then
         # this construct will accept instances of those things.
-        super(VersionedFileRepository, self).__init__(_format, a_bzrdir,
+        super(VersionedFileRepository, self).__init__(_format, a_controldir,
             control_files)
         self._transport = control_files._transport
         self.base = self._transport.base
@@ -1347,7 +1355,7 @@ class VersionedFileRepository(Repository):
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
         file_ids = self.fileids_altered_by_revision_ids(referrers)
         missing_texts = set()
-        for file_id, version_ids in file_ids.iteritems():
+        for file_id, version_ids in viewitems(file_ids):
             missing_texts.update(
                 (file_id, version_id) for version_id in version_ids)
         present_texts = self.texts.get_parent_map(missing_texts)
@@ -1495,8 +1503,7 @@ class VersionedFileRepository(Repository):
             revision_ids. Each altered file-ids has the exact revision_ids that
             altered it listed explicitly.
         """
-        seen = set(self._serializer._find_text_key_references(
-                line_iterator).iterkeys())
+        seen = set(self._serializer._find_text_key_references(line_iterator))
         parent_keys = self._find_parent_keys_of_revisions(revision_keys)
         parent_seen = set(self._serializer._find_text_key_references(
             self._inventory_xml_lines_for_keys(parent_keys)))
@@ -1516,7 +1523,7 @@ class VersionedFileRepository(Repository):
         """
         parent_map = self.revisions.get_parent_map(revision_keys)
         parent_keys = set(itertools.chain.from_iterable(
-            parent_map.itervalues()))
+            viewvalues(parent_map)))
         parent_keys.difference_update(revision_keys)
         parent_keys.discard(_mod_revision.NULL_REVISION)
         return parent_keys
@@ -1599,7 +1606,7 @@ class VersionedFileRepository(Repository):
         # a cache of the text keys to allow reuse; costs a dict of all the
         # keys, but saves a 2-tuple for every child of a given key.
         text_key_cache = {}
-        for text_key, valid in text_key_references.iteritems():
+        for text_key, valid in viewitems(text_key_references):
             if not valid:
                 invalid_keys.add(text_key)
             else:
@@ -1619,7 +1626,7 @@ class VersionedFileRepository(Repository):
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
         pb.update(gettext("Calculating text parents"), processed_texts, text_count)
-        for offset in xrange(batch_count):
+        for offset in range(batch_count):
             to_query = revision_order[offset * batch_size:(offset + 1) *
                 batch_size]
             if not to_query:
@@ -1701,7 +1708,7 @@ class VersionedFileRepository(Repository):
         file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
-        for file_id, altered_versions in file_ids.iteritems():
+        for file_id, altered_versions in viewitems(file_ids):
             if pb is not None:
                 pb.update(gettext("Fetch texts"), count, num_file_ids)
             count += 1
@@ -1876,8 +1883,8 @@ class VersionedFileRepository(Repository):
                 raise ValueError('get_parent_map(None) is not valid')
             else:
                 query_keys.append((revision_id ,))
-        for ((revision_id,), parent_keys) in \
-                self.revisions.get_parent_map(query_keys).iteritems():
+        for (revision_id,), parent_keys in viewitems(
+                self.revisions.get_parent_map(query_keys)):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
                     for (parent_revid,) in parent_keys])
@@ -1901,10 +1908,8 @@ class VersionedFileRepository(Repository):
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
-        result_parents = set()
-        for parents in self.get_graph().get_parent_map(
-            result_set).itervalues():
-            result_parents.update(parents)
+        result_parents = set(itertools.chain.from_iterable(viewvalues(
+            self.get_graph().get_parent_map(result_set))))
         included_keys = result_set.intersection(result_parents)
         start_keys = result_set.difference(included_keys)
         exclude_keys = result_parents.difference(result_set)
@@ -1997,8 +2002,8 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
                                      VersionedFileRepository):
     """Repositories in a meta-dir, that work via versioned file objects."""
 
-    def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirVersionedFileRepository, self).__init__(_format, a_bzrdir,
+    def __init__(self, _format, a_controldir, control_files):
+        super(MetaDirVersionedFileRepository, self).__init__(_format, a_controldir,
             control_files)
 
 
@@ -2330,7 +2335,7 @@ class StreamSource(object):
             raise AssertionError(
                 'cannot copy revisions to fill in missing deltas %s' % (
                     keys['revisions'],))
-        for substream_kind, keys in keys.iteritems():
+        for substream_kind, keys in viewitems(keys):
             vf = getattr(self.from_repository, substream_kind)
             if vf is None and keys:
                     raise AssertionError(
@@ -2527,8 +2532,7 @@ class _VersionedFileChecker(object):
     def _check_file_version_parents(self, texts, progress_bar):
         """See check_file_version_parents."""
         wrong_parents = {}
-        self.file_ids = {file_id for file_id, _ in
-            self.text_index.iterkeys()}
+        self.file_ids = {file_id for file_id, _ in self.text_index}
         # text keys is now grouped by file_id
         n_versions = len(self.text_index)
         progress_bar.update(gettext('loading text store'), 0, n_versions)
@@ -2536,7 +2540,7 @@ class _VersionedFileChecker(object):
         # On unlistable transports this could well be empty/error...
         text_keys = self.repository.texts.keys()
         unused_keys = frozenset(text_keys) - set(self.text_index)
-        for num, key in enumerate(self.text_index.iterkeys()):
+        for num, key in enumerate(self.text_index):
             progress_bar.update(gettext('checking text graph'), num, n_versions)
             correct_parents = self.calculate_file_version_parents(key)
             try:
@@ -2749,9 +2753,9 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             return True
         # Only use this code path for local source and target.  IDS does far
         # too much IO (both bandwidth and roundtrips) over a network.
-        if not source.bzrdir.transport.base.startswith('file:///'):
+        if not source.controldir.transport.base.startswith('file:///'):
             return False
-        if not target.bzrdir.transport.base.startswith('file:///'):
+        if not target.controldir.transport.base.startswith('file:///'):
             return False
         return True
 
@@ -2810,11 +2814,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         source may be not have _fallback_repositories even though it is
         stacked.)
         """
-        parent_revs = set()
-        for parents in parent_map.values():
-            parent_revs.update(parents)
+        parent_revs = set(itertools.chain.from_iterable(viewvalues(
+            parent_map)))
         present_parents = self.source.get_parent_map(parent_revs)
-        absent_parents = set(parent_revs).difference(present_parents)
+        absent_parents = parent_revs.difference(present_parents)
         parent_invs_keys_for_stacking = self.source.inventories.get_parent_map(
             (rev_id,) for rev_id in absent_parents)
         parent_inv_ids = [key[-1] for key in parent_invs_keys_for_stacking]
@@ -3150,7 +3153,7 @@ def _install_revision(repository, rev, revision_tree, signature,
         # commit to determine parents. There is a latent/real bug here where
         # the parents inserted are not those commit would do - in particular
         # they are not filtered by heads(). RBC, AB
-        for revision, tree in parent_trees.iteritems():
+        for revision, tree in viewitems(parent_trees):
             if not tree.has_id(ie.file_id):
                 continue
             parent_id = tree.get_file_revision(ie.file_id)

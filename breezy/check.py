@@ -56,6 +56,9 @@ from . import (
 from .branch import Branch
 from .controldir import ControlDir
 from .revision import NULL_REVISION
+from .sixish import (
+    viewitems,
+    )
 from .trace import note
 from .workingtree import WorkingTree
 from .i18n import gettext
@@ -128,7 +131,7 @@ class VersionedFileCheck(Check):
                 # landing].
                 distances = set()
                 existences = set()
-                for ref, wantlist in callback_refs.iteritems():
+                for ref, wantlist in viewitems(callback_refs):
                     wanting_items.update(wantlist)
                     kind, value = ref
                     if kind == 'trees':
@@ -141,7 +144,7 @@ class VersionedFileCheck(Check):
                         raise AssertionError(
                             'unknown ref kind for ref %s' % ref)
                 node_distances = repo.get_graph().find_lefthand_distances(distances)
-                for key, distance in node_distances.iteritems():
+                for key, distance in viewitems(node_distances):
                     refs[('lefthand-distance', key)] = distance
                     if key in existences and distance > 0:
                         refs[('revision-existence', key)] = True
@@ -229,7 +232,7 @@ class VersionedFileCheck(Check):
             note(gettext('%6d revisions missing parents in ancestry'),
                  len(self.missing_parent_links))
             if verbose:
-                for link, linkers in self.missing_parent_links.items():
+                for link, linkers in viewitems(self.missing_parent_links):
                     note(gettext('      %s should be in the ancestry for:'), link)
                     for linker in linkers:
                         note('       * %s', linker)
@@ -320,12 +323,10 @@ class VersionedFileCheck(Check):
                 text_key_references=self.text_key_references,
                 ancestors=self.ancestors)
         storebar.update('file-graph', 1)
-        result = weave_checker.check_file_version_parents(
+        wrongs, unused_versions = weave_checker.check_file_version_parents(
             self.repository.texts)
         self.checked_weaves = weave_checker.file_ids
-        bad_parents, unused_versions = result
-        bad_parents = bad_parents.items()
-        for text_key, (stored_parents, correct_parents) in bad_parents:
+        for text_key, (stored_parents, correct_parents) in viewitems(wrongs):
             # XXX not ready for id join/split operations.
             weave_id = text_key[0]
             revision_id = text_key[-1]
@@ -415,7 +416,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 for branch in branches:
                     if do_tree:
                         try:
-                            tree = branch.bzrdir.open_workingtree()
+                            tree = branch.controldir.open_workingtree()
                             saw_tree = True
                         except (errors.NotLocalUrl, errors.NoWorkingTree):
                             pass

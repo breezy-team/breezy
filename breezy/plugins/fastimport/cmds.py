@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 
-from ... import bzrdir
+from ... import controldir
 from ...commands import Command
 from ...option import Option, ListOption, RegistryOption
 
@@ -277,8 +277,8 @@ class cmd_fast_import(Command):
                     RegistryOption('format',
                             help='Specify a format for the created repository. See'
                                  ' "bzr help formats" for details.',
-                            lazy_registry=('breezy.bzrdir', 'format_registry'),
-                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+                            lazy_registry=('breezy.controldir', 'format_registry'),
+                            converter=lambda name: controldir.format_registry.make_controldir(name),
                             value_switches=False, title='Repository format'),
                      ]
     def run(self, source, destination='.', verbose=False, info=None,

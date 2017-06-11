@@ -23,6 +23,7 @@ from testtools.matchers import (
 
 from ... import (
     branch,
+    bzrbranch,
     check,
     controldir,
     errors,
@@ -55,7 +56,7 @@ class TestPush(TestCaseWithInterBranch):
         # become the revision-history.
         mine = self.make_from_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
-        other = self.sprout_to(mine.bzrdir, 'other').open_workingtree()
+        other = self.sprout_to(mine.controldir, 'other').open_workingtree()
         other.commit('my change', rev_id='M1', allow_pointless=True)
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
@@ -72,9 +73,9 @@ class TestPush(TestCaseWithInterBranch):
         # directly accessible.
         mine = self.make_from_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
-        target = self.sprout_to(mine.bzrdir, 'target').open_workingtree()
+        target = self.sprout_to(mine.controldir, 'target').open_workingtree()
         target.commit('my change', rev_id='M1', allow_pointless=True)
-        other = self.sprout_to(mine.bzrdir, 'other').open_workingtree()
+        other = self.sprout_to(mine.controldir, 'other').open_workingtree()
         other.merge_from_branch(target.branch)
         other.commit('merge my change', rev_id='O2')
         mine.merge_from_branch(other.branch)
@@ -93,7 +94,7 @@ class TestPush(TestCaseWithInterBranch):
             return
         rev1 = checkout.commit('master')
 
-        other_bzrdir = self.sprout_from(master_tree.branch.bzrdir, 'other')
+        other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
         other = other_bzrdir.open_workingtree()
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
@@ -109,11 +110,11 @@ class TestPush(TestCaseWithInterBranch):
         except errors.UpgradeRequired:
             # cant bind this format, the test is irrelevant.
             return
-        other_bzrdir = self.sprout_from(master_tree.branch.bzrdir, 'other')
+        other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
         other = other_bzrdir.open_workingtree()
         # move the branch out of the way on disk to cause a connection
         # error.
-        master_tree.bzrdir.destroy_branch()
+        master_tree.controldir.destroy_branch()
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
@@ -152,9 +153,9 @@ class TestPush(TestCaseWithInterBranch):
             # Cannot create these branches
             return
         try:
-            tree = a_branch.bzrdir.create_workingtree()
+            tree = a_branch.controldir.create_workingtree()
         except errors.UnsupportedOperation:
-            self.assertFalse(a_branch.bzrdir._format.supports_workingtrees)
+            self.assertFalse(a_branch.controldir._format.supports_workingtrees)
             tree = a_branch.create_checkout('repo/tree', lightweight=True)
         except errors.NotLocalUrl:
             if self.vfs_transport_factory is test_server.LocalURLServer:
@@ -198,7 +199,7 @@ class TestPush(TestCaseWithInterBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
+        if isinstance(self.branch_format_from, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
             raise tests.TestSkipped(
@@ -220,10 +221,10 @@ class TestPush(TestCaseWithInterBranch):
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
-        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
@@ -239,7 +240,7 @@ class TestPush(TestCaseWithInterBranch):
         # Make a local branch with four revisions.  Four revisions because:
         # one to push, one there for _walk_to_common_revisions to find, one we
         # don't want to access, one for luck :)
-        if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
+        if isinstance(self.branch_format_from, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
             raise tests.TestSkipped(
@@ -257,7 +258,7 @@ class TestPush(TestCaseWithInterBranch):
         builder.finish_series()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
-        remote_bzrdir = local.bzrdir.sprout(
+        remote_bzrdir = local.controldir.sprout(
             self.get_url('remote'), revision_id='third')
         remote = remote_bzrdir.open_branch()
         # Push fourth revision
@@ -364,7 +365,7 @@ class TestPushHook(TestCaseWithInterBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.branch.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.branch.controldir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_push',

@@ -41,10 +41,10 @@ def chunks_to_lines(chunks):
         if not chunk:
             # Empty strings are never valid lines
             break
-        elif '\n' in chunk[:-1]:
+        elif b'\n' in chunk[:-1]:
             # This chunk has an extra '\n', so we will have to split it
             break
-        elif chunk[-1] != '\n':
+        elif chunk[-1:] != b'\n':
             # This chunk does not have a trailing newline
             last_no_newline = True
     else:
@@ -56,4 +56,4 @@ def chunks_to_lines(chunks):
 
     # These aren't simple lines, just join and split again.
     from breezy import osutils
-    return osutils._split_lines(''.join(chunks))
+    return osutils._split_lines(b''.join(chunks))

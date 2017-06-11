@@ -25,7 +25,7 @@ class TestRevisionIdToDottedRevno(TestCaseWithBranch):
         tree = self.create_tree_with_merge()
         # Re-open the branch so we make sure we start fresh.
         # see bug #162486
-        the_branch = tree.bzrdir.open_branch()
+        the_branch = tree.controldir.open_branch()
 
         self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
                           'rev-1.1.1':(1,1,1)

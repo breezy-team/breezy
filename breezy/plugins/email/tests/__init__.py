@@ -1,4 +1,5 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2005 by Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,20 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Support for git-style bisection."""
+from unittest import TestLoader, TestSuite
 
-from __future__ import absolute_import
+def test_suite():
+    result = TestSuite()
+    from . import testemail
 
-# Since we are a built-in plugin we share the breezy version
-from ... import version_info
-from ...commands import plugin_cmds
+    loader = TestLoader()
+    result.addTests(loader.loadTestsFromModule(testemail))
+    return result
 
-plugin_cmds.register_lazy('cmd_bisect', [], 'breezy.plugins.bisect.cmds')
-
-def load_tests(loader, basic_tests, pattern):
-    testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return basic_tests

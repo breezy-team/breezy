@@ -84,7 +84,7 @@ class AliasDirectory(object):
     branch_aliases.register('bound', lambda b: b.get_bound_location(),
         help="The branch this branch is bound to, for bound branches.")
     branch_aliases.register('push', lambda b: b.get_push_location(),
-        help="The saved location used for `bzr push` with no arguments.")
+        help="The saved location used for `brz push` with no arguments.")
     branch_aliases.register('this', lambda b: b.base,
         help="This branch.")
 
@@ -119,14 +119,14 @@ Location aliases
 ================
 
 Bazaar defines several aliases for locations associated with a branch.  These
-can be used with most commands that expect a location, such as `bzr push`.
+can be used with most commands that expect a location, such as `brz push`.
 
 The aliases are::
 
 %s
 For example, to push to the parent location::
 
-    bzr push :parent
+    brz push :parent
 """ % "".join(alias_lines)
 
 

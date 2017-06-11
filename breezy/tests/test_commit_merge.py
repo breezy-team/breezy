@@ -43,7 +43,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx = self.make_branch_and_tree('x')
         base_rev = wtx.commit('common parent')
         bx = wtx.branch
-        wty = wtx.bzrdir.sprout('y').open_workingtree()
+        wty = wtx.controldir.sprout('y').open_workingtree()
         by = wty.branch
 
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
@@ -74,7 +74,7 @@ class TestCommitMerge(TestCaseWithTransport):
         base_rev = wtx.commit('common parent')
         bx = wtx.branch
         wtx.commit('establish root id')
-        wty = wtx.bzrdir.sprout('y').open_workingtree()
+        wty = wtx.controldir.sprout('y').open_workingtree()
         self.assertEqual(wtx.get_root_id(), wty.get_root_id())
         by = wty.branch
 
@@ -110,7 +110,7 @@ class TestCommitMerge(TestCaseWithTransport):
         os.symlink('target', osutils.pathjoin('tree_a', 'link'))
         tree_a.add('link')
         tree_a.commit('added link')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         self.build_tree(['tree_a/file'])
         tree_a.add('file')
         tree_a.commit('added file')

@@ -49,7 +49,7 @@ class TestCheckout(TestCaseWithTransport):
         # if we have a checkout, the branch base should be 'branch'
         source = controldir.ControlDir.open('branch')
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual(source.open_branch().bzrdir.root_transport.base,
+        self.assertEqual(source.open_branch().controldir.root_transport.base,
                          result.open_branch().get_bound_location())
 
     def test_checkout_light_makes_checkout(self):
@@ -57,8 +57,8 @@ class TestCheckout(TestCaseWithTransport):
         # if we have a checkout, the branch base should be 'branch'
         source = controldir.ControlDir.open('branch')
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual(source.open_branch().bzrdir.root_transport.base,
-                         result.open_branch().bzrdir.root_transport.base)
+        self.assertEqual(source.open_branch().controldir.root_transport.base,
+                         result.open_branch().controldir.root_transport.base)
 
     def test_checkout_dash_r(self):
         out, err = self.run_bzr(['checkout', '-r', '-2', 'branch', 'checkout'])
@@ -78,7 +78,7 @@ class TestCheckout(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_into_empty_dir(self):
-        self.make_bzrdir('checkout')
+        self.make_controldir('checkout')
         out, err = self.run_bzr(['checkout', 'branch', 'checkout'])
         result = controldir.ControlDir.open('checkout')
         tree = result.open_workingtree()
@@ -94,10 +94,10 @@ class TestCheckout(TestCaseWithTransport):
             force_new_tree=False,
             format=bzrdir.BzrDirMetaFormat1())
         # check no tree was created
-        self.assertRaises(errors.NoWorkingTree, branch.bzrdir.open_workingtree)
+        self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
         out, err = self.run_bzr('checkout treeless-branch')
         # we should have a tree now
-        branch.bzrdir.open_workingtree()
+        branch.controldir.open_workingtree()
         # with no diff
         out, err = self.run_bzr('diff treeless-branch')
 
@@ -107,10 +107,10 @@ class TestCheckout(TestCaseWithTransport):
             force_new_tree=False,
             format=bzrdir.BzrDirMetaFormat1())
         # check no tree was created
-        self.assertRaises(errors.NoWorkingTree, branch.bzrdir.open_workingtree)
+        self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
         out, err = self.run_bzr('checkout')
         # we should have a tree now
-        branch.bzrdir.open_workingtree()
+        branch.controldir.open_workingtree()
         # with no diff
         out, err = self.run_bzr('diff')
 
@@ -140,11 +140,11 @@ class TestCheckout(TestCaseWithTransport):
 
     def test_checkout_in_branch_with_r(self):
         branch = _mod_branch.Branch.open('branch')
-        branch.bzrdir.destroy_workingtree()
+        branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 1', working_dir='branch')
         tree = workingtree.WorkingTree.open('branch')
         self.assertEqual('1', tree.last_revision())
-        branch.bzrdir.destroy_workingtree()
+        branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 0', working_dir='branch')
         self.assertEqual('null:', tree.last_revision())
 
@@ -170,7 +170,7 @@ class TestCheckout(TestCaseWithTransport):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        source.bzrdir.sprout('second')
+        source.controldir.sprout('second')
         out, err = self.run_bzr('checkout source target --hardlink'
                                 ' --files-from second')
         second_stat = os.stat('second/file1')
@@ -182,7 +182,7 @@ class TestCheckout(TestCaseWithTransport):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        target = source.bzrdir.sprout('file:second,branch=somebranch',
+        target = source.controldir.sprout('file:second,branch=somebranch',
             create_tree_if_local=False)
         out, err = self.run_bzr('checkout file:,branch=somebranch .',
             working_dir='second')

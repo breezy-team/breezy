@@ -66,7 +66,7 @@ class TestPull(tests.TestCaseWithTransport):
         if sys.platform not in ('win32', 'cygwin'):
             self.run_bzr('pull', working_dir='a')
 
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
         self.run_bzr('pull', working_dir='b')
         os.mkdir('b/subdir')
         b_tree.add('subdir')
@@ -83,7 +83,7 @@ class TestPull(tests.TestCaseWithTransport):
         b_tree.commit(message='blah3', allow_pointless=True)
         # no overwrite
         self.run_bzr('pull ../a', retcode=3, working_dir='b')
-        b_tree.bzrdir.sprout('overwriteme')
+        b_tree.controldir.sprout('overwriteme')
         self.run_bzr('pull --overwrite ../a', working_dir='overwriteme')
         overwritten = branch.Branch.open('overwriteme')
         self.assertEqual(overwritten.last_revision(),
@@ -125,7 +125,7 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree.add('goodbye2')
         a_tree.commit(message="setup")
 
-        b_tree = a_tree.bzrdir.sprout('b',
+        b_tree = a_tree.controldir.sprout('b',
                    revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
         self.run_bzr('pull -r 2', working_dir='b')
         a = branch.Branch.open('a')
@@ -145,7 +145,7 @@ class TestPull(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
-        target_bzrdir = source.bzrdir.sprout('target')
+        target_bzrdir = source.controldir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
         self.run_bzr('pull -d target source')
@@ -163,7 +163,7 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree.add('foo')
         a_tree.commit(message='initial commit')
 
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
         self.build_tree_contents([('a/foo', 'changed\n')])
         a_tree.commit(message='later change')
@@ -191,7 +191,7 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree.add('foo')
         a_tree.commit(message='initial commit')
 
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
         self.build_tree_contents([('a/foo', 'changed\n')])
         a_tree.commit(message='later change')
@@ -227,9 +227,9 @@ class TestPull(tests.TestCaseWithTransport):
         self.build_tree(['branch_a/a'])
         tree_a.add('a')
         tree_a.commit('commit a')
-        tree_b = branch_a.bzrdir.sprout('branch_b').open_workingtree()
+        tree_b = branch_a.controldir.sprout('branch_b').open_workingtree()
         branch_b = tree_b.branch
-        tree_c = branch_a.bzrdir.sprout('branch_c').open_workingtree()
+        tree_c = branch_a.controldir.sprout('branch_c').open_workingtree()
         branch_c = tree_c.branch
         self.build_tree(['branch_a/b'])
         tree_a.add('b')
@@ -253,7 +253,7 @@ class TestPull(tests.TestCaseWithTransport):
                 ('','brz: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
-        tree_b = tree_b.bzrdir.open_workingtree()
+        tree_b = tree_b.controldir.open_workingtree()
         branch_b = tree_b.branch
         self.assertEqual(parent, branch_b.get_parent())
         # test implicit --remember after resolving previous failure
@@ -261,13 +261,13 @@ class TestPull(tests.TestCaseWithTransport):
         t.delete('branch_b/d')
         self.run_bzr('pull', working_dir='branch_b')
         # Refresh the branch object as 'pull' modified it
-        branch_b = branch_b.bzrdir.open_branch()
+        branch_b = branch_b.controldir.open_branch()
         self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
         self.run_bzr('pull ../branch_c --remember', working_dir='branch_b')
         # Refresh the branch object as 'pull' modified it
-        branch_b = branch_b.bzrdir.open_branch()
-        self.assertEqual(branch_c.bzrdir.root_transport.base,
+        branch_b = branch_b.controldir.open_branch()
+        self.assertEqual(branch_c.controldir.root_transport.base,
                          branch_b.get_parent())
 
     def test_pull_bundle(self):
@@ -279,7 +279,7 @@ class TestPull(tests.TestCaseWithTransport):
         tree_a.add('a')
         tree_a.commit('message')
 
-        tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('branch_b').open_workingtree()
 
         # Make a change to 'a' that 'b' can pull
         with open('branch_a/a', 'wb') as f:
@@ -328,7 +328,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.build_tree(['tree_a/foo'])
         tree_a.add('foo')
         revision_id = tree_a.commit('bar')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         out, err = self.run_bzr('pull --quiet -d tree_b')
         self.assertEqual(out, '')
         self.assertEqual(err, '')
@@ -344,7 +344,7 @@ class TestPull(tests.TestCaseWithTransport):
     def test_pull_from_directory_service(self):
         source = self.make_branch_and_tree('source')
         source.commit('commit 1')
-        target = source.bzrdir.sprout('target').open_workingtree()
+        target = source.controldir.sprout('target').open_workingtree()
         source_last = source.commit('commit 2')
         class FooService(object):
             """A directory service that always returns source"""
@@ -377,7 +377,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         parent = self.make_branch_and_tree('parent')
         parent.commit(message='first commit')
-        child = parent.bzrdir.sprout('child').open_workingtree()
+        child = parent.controldir.sprout('child').open_workingtree()
         child.commit(message='second commit')
         checkout = parent.branch.create_checkout('checkout')
         self.run_bzr(['pull', self.get_url('child')], working_dir='checkout')
@@ -396,7 +396,7 @@ class TestPull(tests.TestCaseWithTransport):
         parent = self.make_branch_and_tree('parent', format='1.9')
         parent.commit(message='first commit')
         parent.commit(message='second commit')
-        local = parent.bzrdir.sprout('local').open_workingtree()
+        local = parent.controldir.sprout('local').open_workingtree()
         local.commit(message='local commit')
         local.branch.create_clone_on_transport(
             self.get_transport('stacked'), stacked_on=self.get_url('parent'))
@@ -448,7 +448,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertIsInstance(from_tree.branch, remote.RemoteBranch)
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to',
-            from_tree.branch.bzrdir.root_transport.base])
+            from_tree.branch.controldir.root_transport.base])
         self.assertContainsRe(err,
             "(?m)Doing on-the-fly conversion")
 
@@ -479,7 +479,7 @@ class TestPull(tests.TestCaseWithTransport):
         # create two trees with conflicts, setup conflict, check that
         # conflicted file looks correct
         a_tree = self.example_branch('a')
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
         with open(osutils.pathjoin('a', 'hello'),'wt') as f:
             f.write('fee')

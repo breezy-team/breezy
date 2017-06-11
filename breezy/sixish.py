@@ -29,6 +29,7 @@ from six import (
     string_types,
     text_type,
     viewitems,
+    viewkeys,
     viewvalues,
 )
 
@@ -39,8 +40,19 @@ if PY3:
     import io as _io
     BytesIO = _io.BytesIO
     StringIO = _io.StringIO
-    from builtins import zip, map
+    from builtins import range, map, zip
 else:
     from cStringIO import StringIO as BytesIO
     from StringIO import StringIO
     from future_builtins import zip, map
+    range = xrange
+
+
+# GZ 2017-06-10: Work out if interning bits of inventory is behaviour we want
+# to retain outside of StaticTuple, if so need to implement for Python 3.
+if PY3:
+    def bytesintern(b):
+        """Dummy intern() function."""
+        return b
+else:
+    bytesintern = intern

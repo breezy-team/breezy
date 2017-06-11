@@ -127,11 +127,8 @@ A version of it was merged into the bzr source tree in May 2010.
 References
 ----------
 
-Bazaar homepage
-  | http://bazaar.canonical.com/
-Standalone plugin homepages
-  | https://launchpad.net/bzr-bash-completion
-  | http://pypi.python.org/pypi/bzr-bash-completion
+Breezy homepage
+  | https://www.breezy-vcs.org/
 
 
 

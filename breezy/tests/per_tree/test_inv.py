@@ -23,9 +23,9 @@ from breezy import (
 from breezy.tests import (
     per_tree,
     )
+from breezy.inventorytree import InventoryTree
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
-from breezy.tree import InventoryTree
 from breezy.transform import _PreviewTree
 from breezy.uncommit import uncommit
 from breezy.tests import (

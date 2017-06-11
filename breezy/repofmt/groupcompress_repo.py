@@ -58,6 +58,10 @@ from .pack_repo import (
 from ..vf_repository import (
     StreamSource,
     )
+from ..sixish import (
+    viewitems,
+    viewvalues,
+    )
 from ..static_tuple import StaticTuple
 
 
@@ -143,15 +147,15 @@ class GCPack(NewPack):
         # robertc says- this is a closure rather than a method on the object
         # so that the variables are locals, and faster than accessing object
         # members.
-        def _write_data(bytes, flush=False, _buffer=self._buffer,
+        def _write_data(data, flush=False, _buffer=self._buffer,
             _write=self.write_stream.write, _update=self._hash.update):
-            _buffer[0].append(bytes)
-            _buffer[1] += len(bytes)
+            _buffer[0].append(data)
+            _buffer[1] += len(data)
             # buffer cap
             if _buffer[1] > self._cache_limit or flush:
-                bytes = ''.join(_buffer[0])
-                _write(bytes)
-                _update(bytes)
+                data = b''.join(_buffer[0])
+                _write(data)
+                _update(data)
                 _buffer[:] = [[], 0]
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
@@ -276,7 +280,7 @@ class GCCHKPacker(Packer):
                 remaining_keys.difference_update(cur_keys)
                 next_keys = set()
                 def handle_internal_node(node):
-                    for prefix, value in node._items.iteritems():
+                    for prefix, value in viewitems(node._items):
                         # We don't want to request the same key twice, and we
                         # want to order it by the first time it is seen.
                         # Even further, we don't want to request a key which is
@@ -543,7 +547,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
         ancestor_keys = revision_vf.get_parent_map(revision_vf.keys())
         # Strip keys back into revision_ids.
         ancestors = dict((k[0], tuple([p[0] for p in parents]))
-                         for k, parents in ancestor_keys.iteritems())
+                         for k, parents in viewitems(ancestor_keys))
         del ancestor_keys
         # TODO: _generate_text_key_index should be much cheaper to generate from
         #       a chk repository, rather than the current implementation
@@ -665,7 +669,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if search_key_name is None:
                     # Find the name corresponding to the search_key_func
                     search_key_reg = chk_map.search_key_registry
-                    for search_key_name, func in search_key_reg.iteritems():
+                    for search_key_name, func in viewitems(search_key_reg):
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(
@@ -741,7 +745,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # any present parent inventories, which may be used when calculating
         # deltas for streaming.
         all_inv_keys = set(corresponding_invs)
-        for parent_inv_keys in inv_parent_map.itervalues():
+        for parent_inv_keys in viewvalues(inv_parent_map):
             all_inv_keys.update(parent_inv_keys)
         # Filter out ghost parents.
         all_inv_keys.intersection_update(
@@ -801,10 +805,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 class CHKInventoryRepository(PackRepository):
     """subclass of PackRepository that uses CHK based inventories."""
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir,
+        super(CHKInventoryRepository, self).__init__(_format, a_controldir,
             control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
@@ -901,7 +905,7 @@ class CHKInventoryRepository(PackRepository):
                                  ' no new_path %r' % (file_id,))
             if new_path == '':
                 new_inv.root_id = file_id
-                parent_id_basename_key = StaticTuple('', '').intern()
+                parent_id_basename_key = StaticTuple(b'', b'').intern()
             else:
                 utf8_entry_name = entry.name.encode('utf-8')
                 parent_id_basename_key = StaticTuple(entry.parent_id,
@@ -1385,7 +1389,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     pack_compresses = True
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('2a')
+        return controldir.format_registry.make_controldir('2a')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1408,7 +1412,7 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     """
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('development-subtree')
+        return controldir.format_registry.make_controldir('development-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
