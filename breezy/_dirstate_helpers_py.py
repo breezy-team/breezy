@@ -184,7 +184,7 @@ def lt_by_dirs(path1, path2):
     if not isinstance(path2, bytes):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return path1.split('/') < path2.split('/')
+    return path1.split(b'/') < path2.split(b'/')
 
 
 def _lt_path_by_dirblock(path1, path2):
@@ -207,7 +207,7 @@ def _lt_path_by_dirblock(path1, path2):
     dirname1, basename1 = os.path.split(path1)
     key1 = (dirname1.split(b'/'), basename1)
     dirname2, basename2 = os.path.split(path2)
-    key2 = (dirname2.split('/'), basename2)
+    key2 = (dirname2.split(b'/'), basename2)
     return key1 < key2
 
 

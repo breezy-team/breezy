@@ -419,7 +419,7 @@ class NewPack(Pack):
             _buffer[1] += len(bytes)
             # buffer cap
             if _buffer[1] > self._cache_limit or flush:
-                bytes = ''.join(_buffer[0])
+                bytes = b''.join(_buffer[0])
                 _write(bytes)
                 _update(bytes)
                 _buffer[:] = [[], 0]
@@ -524,7 +524,7 @@ class NewPack(Pack):
     def flush(self):
         """Flush any current data."""
         if self._buffer[1]:
-            bytes = ''.join(self._buffer[0])
+            bytes = b''.join(self._buffer[0])
             self.write_stream.write(bytes)
             self._hash.update(bytes)
             self._buffer[:] = [[], 0]
@@ -1987,7 +1987,7 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
-        if not isinstance(raw_data, str):
+        if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
