@@ -93,7 +93,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                  branch,
                  _control_files=None,
                  _format=None,
-                 _bzrdir=None):
+                 _controldir=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -102,7 +102,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         would be meaningless).
         """
         self._format = _format
-        self.controldir = _bzrdir
+        self.controldir = _controldir
         basedir = safe_unicode(basedir)
         trace.mutter("opening working tree %r", basedir)
         self._branch = branch
@@ -1494,7 +1494,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         wt = self._tree_class(a_controldir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
-                         _bzrdir=a_controldir,
+                         _controldir=a_controldir,
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
@@ -1585,7 +1585,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         return self._tree_class(a_controldir.root_transport.local_abspath('.'),
                            branch=a_controldir.open_branch(),
                            _format=self,
-                           _bzrdir=a_controldir,
+                           _controldir=a_controldir,
                            _control_files=control_files)
 
     def __get_matchingbzrdir(self):

@@ -79,7 +79,7 @@ def _filter_out_nested_controldirs(deletables):
     for path, subp in deletables:
         # bzr won't recurse into unknowns/ignored directories by default
         # so we don't pay a penalty for checking subdirs of path for nested
-        # bzrdir.
+        # control dir.
         # That said we won't detect the branch in the subdir of non-branch
         # directory and therefore delete it. (worth to FIXME?)
         if isdir(path):

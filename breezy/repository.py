@@ -286,7 +286,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 raise
             mutter('abort_write_group failed')
             log_exception_quietly()
-            note(gettext('bzr: ERROR (ignored): %s'), exc)
+            note(gettext('brz: ERROR (ignored): %s'), exc)
         self._write_group = None
 
     def _abort_write_group(self):

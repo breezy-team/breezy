@@ -1446,6 +1446,12 @@ class RepoInitHookParams(object):
                 self.controldir)
 
 
+def is_control_filename(filename):
+    """Check if filename is used for control directories."""
+    # TODO(jelmer): Allow registration by other VCSes
+    return filename == '.bzr'
+
+
 # Please register new formats after old formats so that formats
 # appear in chronological order and format descriptions can build
 # on previous ones.

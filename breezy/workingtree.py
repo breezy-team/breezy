@@ -23,7 +23,7 @@ such as renaming or adding files.
 At the moment every WorkingTree has its own branch.  Remote
 WorkingTrees aren't supported.
 
-To get a WorkingTree, call bzrdir.open_workingtree() or
+To get a WorkingTree, call controldir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
@@ -147,15 +147,15 @@ class WorkingTree(mutabletree.MutableTree,
                  _internal=False,
                  _transport=None,
                  _format=None,
-                 _bzrdir=None):
+                 _controldir=None):
         """Construct a WorkingTree instance. This is not a public API.
 
         :param branch: A branch to override probing for the branch.
         """
         self._format = _format
-        self.controldir = _bzrdir
+        self.controldir = _controldir
         if not _internal:
-            raise errors.BzrError("Please use bzrdir.open_workingtree or "
+            raise errors.BzrError("Please use controldir.open_workingtree or "
                 "WorkingTree.open() to obtain a WorkingTree.")
         basedir = osutils.safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
@@ -334,17 +334,18 @@ class WorkingTree(mutabletree.MutableTree,
     def open_downlevel(path=None):
         """Open an unsupported working tree.
 
-        Only intended for advanced situations like upgrading part of a bzrdir.
+        Only intended for advanced situations like upgrading part of a controldir.
         """
         return WorkingTree.open(path, _unsupported=True)
 
     @staticmethod
     def find_trees(location):
         def list_current(transport):
-            return [d for d in transport.list_dir('') if d != '.bzr']
-        def evaluate(bzrdir):
+            return [d for d in transport.list_dir('')
+                    if not controldir.is_control_filename(d)]
+        def evaluate(controldir):
             try:
-                tree = bzrdir.open_workingtree()
+                tree = controldir.open_workingtree()
             except errors.NoWorkingTree:
                 return True, None
             else:
