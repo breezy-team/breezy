@@ -41,6 +41,9 @@ External Compatibility Breaks
    URL schemes "http+pycurl://" and "https+pycurl://" has been dropped.
    (Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)
 
+ * Support for medusa for FTP tests has been dropped, only
+   pyftpdlib is now supported. (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -134,6 +137,9 @@ Testing
  * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
    which caused ``output_encoding = iso-8859-1`` to be added to the
    users' bazaar.conf. (Jelmer Vernooĳ)
+
+ * Newer versions of ``pyftpdlib`` are now supported for running FTP tests.
+   (Jelmer Vernooĳ)
 
 ..
    vim: tw=74 ft=rst ff=unix
