@@ -2,10 +2,7 @@ Source: breezy
 Section: vcs
 Priority: optional
 Maintainer: Debian Breezy Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
-Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
-           Andrew Starr-Bochicchio <asb@debian.org>,
-           Jelmer Vernooĳ <jelmer@debian.org>,
-           Vincent Ladeuil <v.ladeuil+lp@free.fr>
+Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: bash-completion,
                ca-certificates,
                cython-dbg | python-pyrex,
@@ -18,15 +15,14 @@ Build-Depends: bash-completion,
                python-docutils,
                python-fastimport,
                python-lzma-dbg [!m68k !powerpcspe !sh4],
-               python-medusa,
+               python-pyftpdlib,
                python-meliae-dbg,
                python-paramiko (<< 1.12.0) | python-paramiko (>= 1.14.1),
-               python-pycurl-dbg,
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.8
-X-Python-Version: >= 2.6
+X-Python-Version: >= 2.7
 Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/breezy/3.0
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/breezy/3.0
 Homepage: https://launchpad.net/brz
@@ -39,9 +35,7 @@ Depends: python-breezy (<= ${source:Version}.1~),
          python-breezy (>= ${source:Version}),
          ${misc:Depends},
          ${python:Depends}
-Breaks: brz-pqm (<< 1.4.0~brz80),
-        brz-xmloutput (<< 0.8.8+brz160),
-        python-breezy (<< 2.4.0~beta3~)
+Conflicts: bzr (<< 2.7.0+bzr6622-1)
 Suggests: brz-doc,
           python-breezy.tests,
           python-fastimport
@@ -80,14 +74,8 @@ Suggests: python-breezy-dbg,
           python-gpgme,
           python-kerberos (>= 1.0+svn2455-1),
           python-paramiko,
-          python-pycurl,
           xdg-utils
-Breaks: brz (<< 2.3.0-2),
-        brz-grep
-Provides: brz-grep,
-          ${python:Provides}
-Replaces: brz (<< 2.3.0-2),
-          brz-grep
+Provides: ${python:Provides}
 Description: distributed version control system - python library
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
@@ -125,8 +113,7 @@ Depends: python-breezy (<= ${source:Version}.1~),
          python-testtools (>= 0.9.5~),
          ${misc:Depends},
          ${python:Depends}
-Suggests: python-subunit
-Breaks: python-breezy (<< 2.4.0~beta1-2)
+Suggests: python-subunit, python-pyftpdlib
 Provides: ${python:Provides}
 Replaces: python-breezy (<< 2.4.0~beta1-2)
 Description: distributed version control system - testsuite
@@ -144,8 +131,6 @@ Section: doc
 Depends: ${misc:Depends},
          ${sphinxdoc:Depends}
 Suggests: brz
-Replaces: brz (<< 2.0.1)
-Breaks: brz (<< 2.0.1)
 Description: easy to use distributed version control system (documentation)
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
