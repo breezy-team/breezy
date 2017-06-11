@@ -21,8 +21,9 @@
 
 """Blackbox tests for "bzr dep3-patch"."""
 
+from __future__ import absolute_import
 
-from bzrlib.tests.blackbox import ExternalBase
+from .....tests.blackbox import ExternalBase
 
 import os
 

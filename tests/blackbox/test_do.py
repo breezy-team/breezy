@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 import tarfile
 
@@ -32,7 +34,7 @@ except ImportError:
                                         )
 
 
-from bzrlib.tests.blackbox import ExternalBase
+from .....tests.blackbox import ExternalBase
 
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100

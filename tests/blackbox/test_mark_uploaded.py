@@ -18,13 +18,15 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 try:
     from debian.changelog import Changelog, Version
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Changelog, Version
 
-from bzrlib.plugins.builddeb.tests import BuilddebTestCase
+from .. import BuilddebTestCase
 
 
 class TestMarkUploaded(BuilddebTestCase):

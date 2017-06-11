@@ -19,14 +19,16 @@
 
 """Tests for import-upstream."""
 
+from __future__ import absolute_import
+
 try:
     from debian.changelog import Version
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.plugins.builddeb.tests.blackbox.test_import_dsc import TestBaseImportDsc
-from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
+from .test_import_dsc import TestBaseImportDsc
+from ..test_import_dsc import PristineTarFeature
 
 
 class TestImportUpstream(TestBaseImportDsc):

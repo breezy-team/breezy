@@ -18,15 +18,17 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os
 import shutil
 import subprocess
 import tarfile
 
-from bzrlib.transport import get_transport
+from .....transport import get_transport
 
-from bzrlib.plugins.builddeb.tests import BuilddebTestCase, Version
-from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
+from .. import BuilddebTestCase, Version
+from ..test_import_dsc import PristineTarFeature
 
 
 class TestBaseImportDsc(BuilddebTestCase):

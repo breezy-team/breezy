@@ -18,9 +18,12 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
+
 import os
 
-from bzrlib.plugins.builddeb.tests import BuilddebTestCase
+from .. import BuilddebTestCase
 
 
 class TestBuilddeb(BuilddebTestCase):

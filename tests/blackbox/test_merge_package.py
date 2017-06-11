@@ -18,17 +18,19 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.merge import Merger
+from __future__ import absolute_import
+
+from .....merge import Merger
 import os
 import string
 
-from bzrlib import (
+from ..... import (
     errors,
     version_info as bzrlib_version,
     )
-from bzrlib.tests import TestNotApplicable
-from bzrlib.plugins.builddeb import pre_merge_fix_ancestry
-from bzrlib.plugins.builddeb.tests import BuilddebTestCase
+from .....tests import TestNotApplicable
+from ... import pre_merge_fix_ancestry
+from .. import BuilddebTestCase
 
 
 _Debian_changelog = '''\

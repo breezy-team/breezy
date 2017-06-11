@@ -18,19 +18,21 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 import os.path
 
-import bzrlib.export
+from ..... import export
 
-from bzrlib.plugins.builddeb.tests import (
+from .. import (
     BuilddebTestCase,
     SourcePackageBuilder,
     )
-from bzrlib.plugins.builddeb.import_dsc import (
+from ...import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
     )
-from bzrlib.plugins.builddeb.util import (
+from ...util import (
     md5sum_filename,
     )
 
@@ -83,7 +85,7 @@ class ExportedTarball(Fixture):
         filename = "project-%s.tar.gz" % self.version
         tree = self.upstream.tree.branch.repository.revision_tree(
             self.upstream.tree.branch.last_revision())
-        bzrlib.export.export(tree, filename)
+        export.export(tree, filename)
         self.tarball = filename
 
 
