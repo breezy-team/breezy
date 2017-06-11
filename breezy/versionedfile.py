@@ -120,7 +120,7 @@ class ChunkedContentFactory(ContentFactory):
         if storage_kind == 'chunked':
             return self._chunks
         elif storage_kind == 'fulltext':
-            return ''.join(self._chunks)
+            return b''.join(self._chunks)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
@@ -1079,13 +1079,13 @@ class VersionedFiles(object):
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:
-            if line.__class__ is not str:
+            if line.__class__ is not bytes:
                 raise errors.BzrBadParameterUnicode("lines")
 
     def _check_lines_are_lines(self, lines):
         """Check that the lines really are full lines without inline EOL."""
         for line in lines:
-            if '\n' in line[:-1]:
+            if b'\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
     def get_known_graph_ancestry(self, keys):
@@ -1792,7 +1792,7 @@ class NoDupeAddLinesDecorator(object):
                 "nostore_sha behaviour.")
         if key[-1] is None:
             sha1 = osutils.sha_strings(lines)
-            key = ("sha1:" + sha1,)
+            key = (b"sha1:" + sha1,)
         else:
             sha1 = None
         if key in self._store.get_parent_map([key]):
@@ -1816,7 +1816,7 @@ def network_bytes_to_kind_and_offset(network_bytes):
     :param network_bytes: The bytes of a record.
     :return: A tuple (storage_kind, offset_of_remaining_bytes)
     """
-    line_end = network_bytes.find('\n')
+    line_end = network_bytes.find(b'\n')
     storage_kind = network_bytes[:line_end]
     return storage_kind, line_end + 1
 
@@ -1859,7 +1859,7 @@ def fulltext_network_to_record(kind, bytes, line_end):
     meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
     record_meta = bytes[line_end+4:line_end+4+meta_len]
     key, parents = bencode.bdecode_as_tuple(record_meta)
-    if parents == 'nil':
+    if parents == b'nil':
         parents = None
     fulltext = bytes[line_end+4+meta_len:]
     return [FulltextContentFactory(key, parents, None, fulltext)]
@@ -1871,12 +1871,12 @@ def _length_prefix(bytes):
 
 def record_to_fulltext_bytes(record):
     if record.parents is None:
-        parents = 'nil'
+        parents = b'nil'
     else:
         parents = record.parents
     record_meta = bencode.bencode((record.key, parents))
     record_content = record.get_bytes_as('fulltext')
-    return "fulltext\n%s%s%s" % (
+    return b"fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
 
 
@@ -1893,8 +1893,8 @@ def sort_groupcompress(parent_map):
     per_prefix_map = {}
     for item in viewitems(parent_map):
         key = item[0]
-        if isinstance(key, str) or len(key) == 1:
-            prefix = ''
+        if isinstance(key, bytes) or len(key) == 1:
+            prefix = b''
         else:
             prefix = key[0]
         try:

@@ -164,7 +164,7 @@ class MemoryTransport(transport.Transport):
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
-        self.put_bytes(relpath, "", mode)
+        self.put_bytes(relpath, b"", mode)
         result = AppendBasedFileStream(self, relpath)
         _file_streams[self.abspath(relpath)] = result
         return result

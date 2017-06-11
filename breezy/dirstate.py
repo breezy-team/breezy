@@ -3541,9 +3541,13 @@ class ProcessEntryPython(object):
             source_details = DirState.NULL_PARENT_DETAILS
         else:
             source_details = entry[1][self.source_index]
+        # GZ 2017-06-09: Eck, more sets.
+        _fdltr = {b'f', b'd', b'l', b't', b'r'}
+        _fdlt = {b'f', b'd', b'l', b't'}
+        _ra = (b'r', b'a')
         target_details = entry[1][self.target_index]
         target_minikind = target_details[0]
-        if path_info is not None and target_minikind in 'fdlt':
+        if path_info is not None and target_minikind in _fdlt:
             if not (self.target_index == 0):
                 raise AssertionError()
             link_or_sha1 = update_entry(self.state, entry,
@@ -3555,10 +3559,6 @@ class ProcessEntryPython(object):
             link_or_sha1 = None
         file_id = entry[0][2]
         source_minikind = source_details[0]
-        # GZ 2017-06-09: Eck, more sets.
-        _fdltr = {b'f', b'd', b'l', b't', b'r'}
-        _fdlt = {b'f', b'd', b'l', b't'}
-        _ra = (b'r', b'a')
         if source_minikind in _fdltr and target_minikind in _fdlt:
             # claimed content in both: diff
             #   r    | fdlt   |      | add source to search, add id path move and perform

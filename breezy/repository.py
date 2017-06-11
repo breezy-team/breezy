@@ -46,6 +46,7 @@ from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
+    text_type,
     viewitems,
     viewvalues,
     )
@@ -145,7 +146,7 @@ class CommitBuilder(object):
         for key, value in viewitems(revprops):
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
-            if not isinstance(value, basestring):
+            if not isinstance(value, (text_type, str)):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
             self._validate_unicode_text(value,

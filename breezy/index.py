@@ -56,8 +56,8 @@ _OPTION_NODE_REFS = b"node_ref_lists="
 _SIGNATURE = b"Bazaar Graph Index 1\n"
 
 
-_whitespace_re = re.compile('[\t\n\x0b\x0c\r\x00 ]')
-_newline_null_re = re.compile('[\n\0]')
+_whitespace_re = re.compile(b'[\t\n\x0b\x0c\r\x00 ]')
+_newline_null_re = re.compile(b'[\n\0]')
 
 
 def _has_key_from_parent_map(self, key):

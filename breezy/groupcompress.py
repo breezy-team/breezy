@@ -61,7 +61,7 @@ from .versionedfile import (
 BATCH_SIZE = 2**16
 
 # osutils.sha_string('')
-_null_sha1 = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+_null_sha1 = b'da39a3ee5e6b4b0d3255bfef95601890afd80709'
 
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
@@ -75,8 +75,8 @@ def sort_gc_optimal(parent_map):
     # properly grouped by file-id.
     per_prefix_map = {}
     for key, value in viewitems(parent_map):
-        if isinstance(key, str) or len(key) == 1:
-            prefix = ''
+        if isinstance(key, bytes) or len(key) == 1:
+            prefix = b''
         else:
             prefix = key[0]
         try:
@@ -102,9 +102,9 @@ class GroupCompressBlock(object):
     """
 
     # Group Compress Block v1 Zlib
-    GCB_HEADER = 'gcb1z\n'
+    GCB_HEADER = b'gcb1z\n'
     # Group Compress Block v1 Lzma
-    GCB_LZ_HEADER = 'gcb1l\n'
+    GCB_LZ_HEADER = b'gcb1l\n'
     GCB_KNOWN_HEADERS = (GCB_HEADER, GCB_LZ_HEADER)
 
     def __init__(self):
@@ -141,7 +141,7 @@ class GroupCompressBlock(object):
         # Expand the content if required
         if self._content is None:
             if self._content_chunks is not None:
-                self._content = ''.join(self._content_chunks)
+                self._content = b''.join(self._content_chunks)
                 self._content_chunks = None
         if self._content is None:
             # We join self._z_content_chunks here, because if we are
@@ -149,9 +149,9 @@ class GroupCompressBlock(object):
             # chunk
             if self._z_content_chunks is None:
                 raise AssertionError('No content to decompress')
-            z_content = ''.join(self._z_content_chunks)
-            if z_content == '':
-                self._content = ''
+            z_content = b''.join(self._z_content_chunks)
+            if z_content == b'':
+                self._content = b''
             elif self._compressor_name == 'lzma':
                 # We don't do partial lzma decomp yet
                 import pylzma
@@ -201,7 +201,7 @@ class GroupCompressBlock(object):
             # The stream is finished
             self._z_content_decompressor = None
 
-    def _parse_bytes(self, bytes, pos):
+    def _parse_bytes(self, data, pos):
         """Read the various lengths from the header.
 
         This also populates the various 'compressed' buffers.
@@ -211,17 +211,17 @@ class GroupCompressBlock(object):
         # At present, we have 2 integers for the compressed and uncompressed
         # content. In base10 (ascii) 14 bytes can represent > 1TB, so to avoid
         # checking too far, cap the search to 14 bytes.
-        pos2 = bytes.index('\n', pos, pos + 14)
-        self._z_content_length = int(bytes[pos:pos2])
+        pos2 = data.index(b'\n', pos, pos + 14)
+        self._z_content_length = int(data[pos:pos2])
         pos = pos2 + 1
-        pos2 = bytes.index('\n', pos, pos + 14)
-        self._content_length = int(bytes[pos:pos2])
+        pos2 = data.index(b'\n', pos, pos + 14)
+        self._content_length = int(data[pos:pos2])
         pos = pos2 + 1
-        if len(bytes) != (pos + self._z_content_length):
+        if len(data) != (pos + self._z_content_length):
             # XXX: Define some GCCorrupt error ?
             raise AssertionError('Invalid bytes: (%d) != %d + %d' %
-                                 (len(bytes), pos, self._z_content_length))
-        self._z_content_chunks = (bytes[pos:],)
+                                 (len(data), pos, self._z_content_length))
+        self._z_content_chunks = (data[pos:],)
 
     @property
     def _z_content(self):
@@ -230,7 +230,7 @@ class GroupCompressBlock(object):
         Meant only to be used by the test suite.
         """
         if self._z_content_chunks is not None:
-            return ''.join(self._z_content_chunks)
+            return b''.join(self._z_content_chunks)
         return None
 
     @classmethod
@@ -257,17 +257,17 @@ class GroupCompressBlock(object):
         :return: The bytes for the content
         """
         if start == end == 0:
-            return ''
+            return b''
         self._ensure_content(end)
         # The bytes are 'f' or 'd' for the type, then a variable-length
         # base128 integer for the content size, then the actual content
         # We know that the variable-length integer won't be longer than 5
         # bytes (it takes 5 bytes to encode 2^32)
         c = self._content[start]
-        if c == 'f':
+        if c == b'f':
             type = 'fulltext'
         else:
-            if c != 'd':
+            if c != b'd':
                 raise ValueError('Unknown content control code: %s'
                                  % (c,))
             type = 'delta'
@@ -277,11 +277,10 @@ class GroupCompressBlock(object):
         if end != content_start + content_len:
             raise ValueError('end != len according to field header'
                 ' %s != %s' % (end, content_start + content_len))
-        if c == 'f':
-            bytes = self._content[content_start:end]
-        elif c == 'd':
-            bytes = apply_delta_to_source(self._content, content_start, end)
-        return bytes
+        if c == b'f':
+            return self._content[content_start:end]
+        # Must be type delta as checked above
+        return apply_delta_to_source(self._content, content_start, end)
 
     def set_chunked_content(self, content_chunks, length):
         """Set the content of this block to the given chunks."""
@@ -324,7 +323,7 @@ class GroupCompressBlock(object):
         """Create the byte stream as a series of 'chunks'"""
         self._create_z_content()
         header = self.GCB_HEADER
-        chunks = ['%s%d\n%d\n'
+        chunks = [b'%s%d\n%d\n'
                   % (header, self._z_content_length, self._content_length),
                  ]
         chunks.extend(self._z_content_chunks)
@@ -334,7 +333,7 @@ class GroupCompressBlock(object):
     def to_bytes(self):
         """Encode the information into a byte stream."""
         total_len, chunks = self.to_chunks()
-        return ''.join(chunks)
+        return b''.join(chunks)
 
     def _dump(self, include_text=False):
         """Take this block, and spit out a human-readable structure.
@@ -352,7 +351,7 @@ class GroupCompressBlock(object):
         while pos < self._content_length:
             kind = self._content[pos]
             pos += 1
-            if kind not in ('f', 'd'):
+            if kind not in (b'f', b'd'):
                 raise ValueError('invalid kind character: %r' % (kind,))
             content_len, len_len = decode_base128_int(
                                 self._content[pos:pos + 5])
@@ -360,18 +359,18 @@ class GroupCompressBlock(object):
             if content_len + pos > self._content_length:
                 raise ValueError('invalid content_len %d for record @ pos %d'
                                  % (content_len, pos - len_len - 1))
-            if kind == 'f': # Fulltext
+            if kind == b'f': # Fulltext
                 if include_text:
                     text = self._content[pos:pos+content_len]
-                    result.append(('f', content_len, text))
+                    result.append((b'f', content_len, text))
                 else:
-                    result.append(('f', content_len))
-            elif kind == 'd': # Delta
+                    result.append((b'f', content_len))
+            elif kind == b'd': # Delta
                 delta_content = self._content[pos:pos+content_len]
                 delta_info = []
                 # The first entry in a delta is the decompressed length
                 decomp_len, delta_pos = decode_base128_int(delta_content)
-                result.append(('d', content_len, decomp_len, delta_info))
+                result.append((b'd', content_len, decomp_len, delta_info))
                 measured_len = 0
                 while delta_pos < content_len:
                     c = ord(delta_content[delta_pos])
@@ -382,16 +381,16 @@ class GroupCompressBlock(object):
                                                               delta_pos)
                         if include_text:
                             text = self._content[offset:offset+length]
-                            delta_info.append(('c', offset, length, text))
+                            delta_info.append((b'c', offset, length, text))
                         else:
-                            delta_info.append(('c', offset, length))
+                            delta_info.append((b'c', offset, length))
                         measured_len += length
                     else: # Insert
                         if include_text:
                             txt = delta_content[delta_pos:delta_pos+c]
                         else:
                             txt = ''
-                        delta_info.append(('i', c, txt))
+                        delta_info.append((b'i', c, txt))
                         measured_len += c
                         delta_pos += c
                 if delta_pos != content_len:
@@ -447,7 +446,7 @@ class _LazyGroupCompressFactory(object):
                 # wire bytes, something...
                 return self._manager._wire_bytes()
             else:
-                return ''
+                return b''
         if storage_kind in ('fulltext', 'chunked'):
             if self._bytes is None:
                 # Grab and cache the raw bytes for this entry
@@ -842,7 +841,9 @@ class _CommonGroupCompressor(object):
             if sha1 == nostore_sha:
                 raise errors.ExistingContent()
         if key[-1] is None:
-            key = key[:-1] + ('sha1:' + sha1,)
+            # GZ 2017-06-10: Seems perverse to have to encode here.
+            sha1 = sha1.encode('ascii')
+            key = key[:-1] + (b'sha1:' + sha1,)
 
         start, end, type = self._compress(key, bytes, len(bytes) / 2, soft)
         return sha1, start, end, type
@@ -875,7 +876,7 @@ class _CommonGroupCompressor(object):
         (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
         delta_chunks = self.chunks[start_chunk:end_chunk]
         stored_bytes = ''.join(delta_chunks)
-        if stored_bytes[0] == 'f':
+        if stored_bytes[0] == b'f':
             fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
             data_len = fulltext_len + 1 + offset
             if  data_len != len(stored_bytes):
@@ -947,14 +948,14 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         if delta_length > max_delta_size:
             # The delta is longer than the fulltext, insert a fulltext
             type = 'fulltext'
-            out_lines = ['f', encode_base128_int(input_len)]
+            out_lines = [b'f', encode_base128_int(input_len)]
             out_lines.extend(new_lines)
             index_lines = [False, False]
             index_lines.extend([True] * len(new_lines))
         else:
             # this is a worthy delta, output it
             type = 'delta'
-            out_lines[0] = 'd'
+            out_lines[0] = b'd'
             # Update the delta_length to include those two encoded integers
             out_lines[1] = encode_base128_int(delta_length)
         # Before insertion
@@ -1014,12 +1015,12 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             enc_length = encode_base128_int(len(bytes))
             len_mini_header = 1 + len(enc_length)
             self._delta_index.add_source(bytes, len_mini_header)
-            new_chunks = ['f', enc_length, bytes]
+            new_chunks = [b'f', enc_length, bytes]
         else:
             type = 'delta'
             enc_length = encode_base128_int(len(delta))
             len_mini_header = 1 + len(enc_length)
-            new_chunks = ['d', enc_length, delta]
+            new_chunks = [b'd', enc_length, delta]
             self._delta_index.add_delta_source(delta, len_mini_header)
         # Before insertion
         start = self.endpoint
@@ -1715,13 +1716,13 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             #       the fulltext content at this point. Note that sometimes we
             #       will want it later (streaming CHK pages), but most of the
             #       time we won't (everything else)
-            bytes = ''.join(chunks)
+            data = b''.join(chunks)
             del chunks
             index, start, length = self._access.add_raw_records(
-                [(None, len(bytes))], bytes)[0]
+                [(None, len(data))], data)[0]
             nodes = []
             for key, reads, refs in keys_to_add:
-                nodes.append((key, "%d %d %s" % (start, length, reads), refs))
+                nodes.append((key, b"%d %d %s" % (start, length, reads), refs))
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
@@ -1777,7 +1778,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                             ' the current record, we cannot be positive'
                             ' that the appropriate content was inserted.'
                             )
-                    value = "%d %d %d %d" % (block_start, block_length,
+                    value = b"%d %d %d %d" % (block_start, block_length,
                                              record._start, record._end)
                     nodes = [(record.key, value, (record.parents,))]
                     # TODO: Consider buffering up many nodes to be added, not
@@ -1827,7 +1828,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                  type) = self._compressor.compress(record.key, bytes,
                                                    record.sha1)
             if record.key[-1] is None:
-                key = record.key[:-1] + ('sha1:' + found_sha1,)
+                key = record.key[:-1] + (b'sha1:' + found_sha1,)
             else:
                 key = record.key
             self._unadded_refs[key] = record.parents
@@ -1838,7 +1839,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             else:
                 parents = None
             refs = static_tuple.StaticTuple(parents)
-            keys_to_add.append((key, '%d %d' % (start_point, end_point), refs))
+            keys_to_add.append(
+                (key, b'%d %d' % (start_point, end_point), refs))
         if len(keys_to_add):
             flush()
         self._compressor = None

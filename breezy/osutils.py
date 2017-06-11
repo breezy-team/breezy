@@ -1209,11 +1209,11 @@ def contains_whitespace(s):
     #    separators
     # 3) '\xa0' isn't unicode safe since it is >128.
 
-    # This should *not* be a unicode set of characters in case the source
-    # string is not a Unicode string. We can auto-up-cast the characters since
-    # they are ascii, but we don't want to auto-up-cast the string in case it
-    # is utf-8
-    for ch in ' \t\n\r\v\f':
+    if isinstance(s, str):
+        ws = ' \t\n\r\v\f'
+    else:
+        ws = (b' ', b'\t', b'\n', b'\r', b'\v', b'\f')
+    for ch in ws:
         if ch in s:
             return True
     else:
@@ -1370,7 +1370,7 @@ def safe_utf8(unicode_or_utf8_string):
     If it is a str, it is returned.
     If it is Unicode, it is encoded into a utf-8 string.
     """
-    if isinstance(unicode_or_utf8_string, str):
+    if isinstance(unicode_or_utf8_string, bytes):
         # TODO: jam 20070209 This is overkill, and probably has an impact on
         #       performance if we are dealing with lots of apis that want a
         #       utf-8 revision id
@@ -1443,13 +1443,13 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', unicode(path)), True
+    return unicodedata.normalize('NFC', text_type(path)), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', unicode(path))
+    normalized = unicodedata.normalize('NFC', text_type(path))
     return normalized, normalized == path
 
 
@@ -1878,10 +1878,10 @@ class UnicodeDirReader(DirReader):
         _kind_from_mode = file_kind_from_stat_mode
 
         if prefix:
-            relprefix = prefix + '/'
+            relprefix = prefix + b'/'
         else:
-            relprefix = ''
-        top_slash = top + u'/'
+            relprefix = b''
+        top_slash = top + '/'
 
         dirblock = []
         append = dirblock.append
