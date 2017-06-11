@@ -1,0 +1,6 @@
+#!/bin/sh -e
+
+update-alternatives --install /usr/bin/bzr bzr /usr/bin/brz 10 \
+    --slave /usr/share/man/man1/bzr.1.gz bzr.1.gz /usr/share/man/man1/brz.1.gz
+
+#DEBHELPER#
