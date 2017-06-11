@@ -195,8 +195,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
-    oldtmp_fd, old_abspath = tempfile.mkstemp(prefix='bzr-diff-old-')
-    newtmp_fd, new_abspath = tempfile.mkstemp(prefix='bzr-diff-new-')
+    oldtmp_fd, old_abspath = tempfile.mkstemp(prefix='brz-diff-old-')
+    newtmp_fd, new_abspath = tempfile.mkstemp(prefix='brz-diff-new-')
     oldtmpf = os.fdopen(oldtmp_fd, 'wb')
     newtmpf = os.fdopen(newtmp_fd, 'wb')
 
@@ -710,7 +710,7 @@ class DiffFromTool(DiffPath):
                  path_encoding='utf-8'):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        self._root = osutils.mkdtemp(prefix='bzr-diff-')
+        self._root = osutils.mkdtemp(prefix='brz-diff-')
 
     @classmethod
     def from_string(klass, command_string, old_tree, new_tree, to_file,

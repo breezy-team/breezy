@@ -141,33 +141,34 @@ class BisectCurrentUnitTests(BisectTestCase):
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
         sio = StringIO()
-        bisect.BisectCurrent().show_rev_log(out=sio)
+        bisect.BisectCurrent(self.tree.controldir).show_rev_log(out=sio)
 
     def testShowLogSubtree(self):
         """Test that a subtree's log can be shown."""
-        current = bisect.BisectCurrent()
+        current = bisect.BisectCurrent(self.tree.controldir)
         current.switch(self.subtree_rev)
         sio = StringIO()
         current.show_rev_log(out=sio)
 
     def testSwitchVersions(self):
         """Test switching versions."""
-        current = bisect.BisectCurrent()
+        current = bisect.BisectCurrent(self.tree.controldir)
         self.assertRevno(5)
         current.switch(4)
         self.assertRevno(4)
 
     def testReset(self):
         """Test resetting the working tree to a non-bisected state."""
-        current = bisect.BisectCurrent()
+        current = bisect.BisectCurrent(self.tree.controldir)
         current.switch(4)
         current.reset()
         self.assertRevno(5)
-        self.assertFalse(os.path.exists(bisect.bisect_rev_path))
+        self.assertFalse(os.path.exists(
+            os.path.join('.bzr', bisect.BISECT_REV_PATH)))
 
     def testIsMergePoint(self):
         """Test merge point detection."""
-        current = bisect.BisectCurrent()
+        current = bisect.BisectCurrent(self.tree.controldir)
         self.assertRevno(5)
         self.assertFalse(current.is_merge_point())
         current.switch(2)
@@ -179,17 +180,18 @@ class BisectLogUnitTests(BisectTestCase):
 
     def testCreateBlank(self):
         """Test creation of new log."""
-        bisect_log = bisect.BisectLog()
+        bisect_log = bisect.BisectLog(self.tree.controldir)
         bisect_log.save()
-        self.assertTrue(os.path.exists(bisect.bisect_info_path))
+        self.assertTrue(
+            os.path.exists(os.path.join('.bzr', bisect.BISECT_INFO_PATH)))
 
     def testLoad(self):
         """Test loading a log."""
-        preloaded_log = open(bisect.bisect_info_path, "w")
+        preloaded_log = open(os.path.join('.bzr', bisect.BISECT_INFO_PATH), "w")
         preloaded_log.write("rev1 yes\nrev2 no\nrev3 yes\n")
         preloaded_log.close()
 
-        bisect_log = bisect.BisectLog()
+        bisect_log = bisect.BisectLog(self.tree.controldir)
         self.assertEqual(len(bisect_log._items), 3)
         self.assertEqual(bisect_log._items[0], ("rev1", "yes"))
         self.assertEqual(bisect_log._items[1], ("rev2", "no"))
@@ -197,9 +199,9 @@ class BisectLogUnitTests(BisectTestCase):
 
     def testSave(self):
         """Test saving the log."""
-        bisect_log = bisect.BisectLog()
+        bisect_log = bisect.BisectLog(self.tree.controldir)
         bisect_log._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
         bisect_log.save()
 
-        with open(bisect.bisect_info_path) as logfile:
+        with open(os.path.join('.bzr', bisect.BISECT_INFO_PATH)) as logfile:
             self.assertEqual(logfile.read(), "rev1 yes\nrev2 no\nrev3 yes\n")

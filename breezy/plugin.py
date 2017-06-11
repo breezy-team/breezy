@@ -363,7 +363,7 @@ def _get_core_plugin_paths(existing_paths):
         # We need to use relative path to system-wide plugin
         # directory because breezy from standalone brz.exe
         # could be imported by another standalone program
-        # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+        # (e.g. brz-config; or TortoiseBzr/Olive if/when they
         # will become standalone exe). [bialix 20071123]
         # __file__ typically is
         # C:\Program Files\Bazaar\lib\library.zip\breezy\plugin.pyc

@@ -346,9 +346,9 @@ class Reconfigure(object):
                 reference_branch.repository.fetch(self.repository)
             elif self.local_branch is not None and not self._destroy_branch:
                 up = self.local_branch.user_transport.clone('..')
-                up_bzrdir = controldir.ControlDir.open_containing_from_transport(
+                up_controldir = controldir.ControlDir.open_containing_from_transport(
                     up)[0]
-                new_repo = up_bzrdir.find_repository()
+                new_repo = up_controldir.find_repository()
                 new_repo.fetch(self.repository)
         last_revision_info = None
         if self._destroy_reference:

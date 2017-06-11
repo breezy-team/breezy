@@ -101,14 +101,14 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                  _control_files=None,
                  _internal=False,
                  _format=None,
-                 _bzrdir=None):
+                 _controldir=None):
         """Construct a InventoryWorkingTree instance. This is not a public API.
 
         :param branch: A branch to override probing for the branch.
         """
         super(InventoryWorkingTree, self).__init__(basedir=basedir,
             branch=branch, _transport=_control_files._transport,
-            _internal=_internal, _format=_format, _bzrdir=_bzrdir)
+            _internal=_internal, _format=_format, _controldir=_controldir)
 
         self._control_files = _control_files
         self._detect_case_handling()

@@ -281,8 +281,8 @@ class BranchOpener(object):
 
         This exists as a separate method only to be overriden in unit tests.
         """
-        bzrdir = ControlDir.open(url, probers=self.probers)
-        return bzrdir.get_branch_reference()
+        controldir = ControlDir.open(url, probers=self.probers)
+        return controldir.get_branch_reference()
 
     def open(self, url):
         """Open the Bazaar branch at url, first checking it.

@@ -287,7 +287,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 raise
             mutter('abort_write_group failed')
             log_exception_quietly()
-            note(gettext('bzr: ERROR (ignored): %s'), exc)
+            note(gettext('brz: ERROR (ignored): %s'), exc)
         self._write_group = None
 
     def _abort_write_group(self):
@@ -568,7 +568,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return True, value
 
         ret = []
-        for branches, repository in controldir.ControlDir.find_bzrdirs(
+        for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)

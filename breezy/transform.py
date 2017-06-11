@@ -1430,7 +1430,7 @@ class OrphaningForbidden(OrphaningError):
 def move_orphan(tt, orphan_id, parent_id):
     """See TreeTransformBase.new_orphan.
 
-    This creates a new orphan in the `bzr-orphans` dir at the root of the
+    This creates a new orphan in the `brz-orphans` dir at the root of the
     `TreeTransform`.
 
     :param tt: The TreeTransform orphaning `trans_id`.
@@ -1440,7 +1440,7 @@ def move_orphan(tt, orphan_id, parent_id):
     :param parent_id: The orphan parent trans id.
     """
     # Add the orphan dir if it doesn't exist
-    orphan_dir_basename = 'bzr-orphans'
+    orphan_dir_basename = 'brz-orphans'
     od_id = tt.trans_id_tree_path(orphan_dir_basename)
     if tt.final_kind(od_id) is None:
         tt.create_directory(od_id)
@@ -1467,7 +1467,7 @@ orphaning_registry.register(
     'Leave orphans in place and create a conflict on the directory.')
 orphaning_registry.register(
     'move', move_orphan,
-    'Move orphans into the bzr-orphans directory.')
+    'Move orphans into the brz-orphans directory.')
 orphaning_registry._set_default_key('conflict')
 
 
