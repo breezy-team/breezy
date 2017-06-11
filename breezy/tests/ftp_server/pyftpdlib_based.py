@@ -80,7 +80,7 @@ class BzrConformingFTPHandler(FTPHandler):
 
     abstracted_fs = BzrConformingFS
 
-    def __init__(self, conn, server):
+    def __init__(self, conn, server, ioloop=None):
         FTPHandler.__init__(self, conn, server)
         self.authorizer = server.authorizer
 
@@ -165,13 +165,6 @@ class FTPTestServer(test_server.TestServer):
         authorizer.add_anonymous(self._root, perm='elradfmwM')
         self._ftp_server = ftp_server(address, BzrConformingFTPHandler,
                                       authorizer)
-        # This is hacky as hell, will not work if we need two servers working
-        # at the same time, but that's the best we can do so far...
-        # FIXME: At least log and logline could be overriden in the handler ?
-        # -- vila 20090227
-        ftpserver.log = self.log
-        ftpserver.logline = self.log
-        ftpserver.logerror = self.log
 
         self._port = self._ftp_server.socket.getsockname()[1]
         self._ftpd_starting = threading.Lock()
@@ -206,11 +199,11 @@ class FTPTestServer(test_server.TestServer):
         self._ftpd_starting.release()
         while self._ftpd_running:
             try:
-                self._ftp_server.serve_forever(timeout=0.1, count=1)
+                self._ftp_server.serve_forever(timeout=0.1)
             except select.error as e:
                 if e.args[0] != errno.EBADF:
                     raise
-        self._ftp_server.close_all(ignore_all=True)
+        self._ftp_server.close_all()
 
     def add_user(self, user, password):
         """Add a user with write access."""
