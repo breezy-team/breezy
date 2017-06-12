@@ -75,7 +75,6 @@ up=pull
 from __future__ import absolute_import
 import os
 import sys
-import stat
 
 import configobj
 
@@ -84,8 +83,10 @@ from .decorators import needs_write_lock
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import base64
+import errno
 import fnmatch
 import re
+import stat
 
 from breezy import (
     atomicfile,
@@ -1683,11 +1684,13 @@ class AuthenticationConfig(object):
         """Check permission of auth file are user read/write able only."""
         try:
             st = os.stat(self._filename)
-        except OSError:
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                trace.mutter('Unable to stat %r: %r', self._filename, e)
             return
         mode = stat.S_IMODE(st.st_mode)
         if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
-             stat.S_IWGRP | stat.S_IRGRP ) & mode) > 0:
+             stat.S_IWGRP | stat.S_IRGRP ) & mode):
             if not GlobalConfig().suppress_warning('insecure_permissions'):
                 trace.warning("The file '%s' has insecure "
                         "file permissions. Saved passwords may be accessible "
