@@ -1170,7 +1170,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 conf = config.GlobalStack()
             else:
                 conf = branch.get_config_stack()
-            if 'format_deprecation' in conf.get('suppress_warnings'):
+            if conf.suppress_warning('format_deprecation'):
                 return
             warning("Format %s for %s is deprecated -"
                     " please use 'brz upgrade' to get better performance"

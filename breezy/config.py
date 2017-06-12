@@ -75,6 +75,7 @@ up=pull
 from __future__ import absolute_import
 import os
 import sys
+import stat
 
 import configobj
 
@@ -1655,6 +1656,7 @@ class AuthenticationConfig(object):
         if _file is None:
             self._filename = authentication_config_filename()
             self._input = self._filename = authentication_config_filename()
+            self._check_permissions()
         else:
             # Tests can provide a string as _file
             self._filename = None
@@ -1677,15 +1679,30 @@ class AuthenticationConfig(object):
             raise errors.ConfigContentError(self._filename)
         return self._config
 
+    def _check_permissions(self):
+        """Check permission of auth file are user read/write able only."""
+        try:
+            st = os.stat(self._filename)
+        except OSError:
+            return
+        mode = stat.S_IMODE(st.st_mode)
+        if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
+             stat.S_IWGRP | stat.S_IRGRP ) & mode) > 0:
+            if not GlobalConfig().suppress_warning('insecure_permissions'):
+                trace.warning("The file '%s' has insecure "
+                        "file permissions. Saved passwords may be accessible "
+                        "by other users.", self._filename)
+
     def _save(self):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        f = file(self._filename, 'wb')
+        old_umask = os.umask(0177)
         try:
-            self._get_config().write(f)
+            with file(self._filename, 'wb') as f:
+                self._get_config().write(f)
         finally:
-            f.close()
+            os.umask(old_umask)
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""

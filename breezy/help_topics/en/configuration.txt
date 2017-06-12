@@ -600,6 +600,10 @@ Valid values:
     whether the format deprecation warning is shown on repositories that are
     using deprecated formats.
 
+* ``insecure_permissions``:
+    whether a warning is shown if ``authentication.conf`` can be read
+    by other users.
+
 default_format
 ~~~~~~~~~~~~~~
 

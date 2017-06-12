@@ -84,6 +84,11 @@ Bug Fixes
 * The ``bisect`` command now works in non-``.bzr`` directories.
   (Jelmer Vernooĳ)
 
+* When creating ``authentication.conf``, umask is now set so only the
+  current user can read the file. Breezy warns if the file is
+  accessible for other users when it starts.
+  (Joke de Buhr, Jelmer Vernooĳ, #475501)
+
 Documentation
 *************
 
