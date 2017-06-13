@@ -599,15 +599,10 @@ class TextTestResult(ExtendedTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 pb=None,
                  strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, strict)
-        # We no longer pass them around, but just rely on the UIFactory stack
-        # for state
-        if pb is not None:
-            warnings.warn("Passing pb to TextTestResult is deprecated")
         self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
