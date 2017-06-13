@@ -794,11 +794,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        if isinstance(codec, tuple):
-            # Python 2.4
-            encode = codec[0]
-        else:
-            encode = codec.encode
+        encode = codec.encode
         # GZ 2010-09-08: Really we don't want to be writing arbitrary bytes,
         #                so should swap to the plain codecs.StreamWriter
         stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream,
