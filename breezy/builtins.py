@@ -1440,19 +1440,12 @@ class cmd_branch(Command):
         Option('bind',
             help="Bind new branch to from location."),
         ]
-    aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
             files_from=None):
         from breezy import switch as _mod_switch
-        if self.invoked_as in ['get', 'clone']:
-            ui.ui_factory.show_user_warning(
-                'deprecated_command',
-                deprecated_name=self.invoked_as,
-                recommended_name='branch',
-                deprecated_in_version='2.4')
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
