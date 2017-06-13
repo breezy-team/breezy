@@ -641,11 +641,7 @@ py_unique_lcs(PyObject *self, PyObject *args)
 
     res = PyList_New(nmatches);
     for (i = 0; i < nmatches; i++) {
-#if PY_VERSION_HEX < 0x02050000
-        item = Py_BuildValue("ii", matches[nmatches - i - 1].a, matches[nmatches - i - 1].b);
-#else
         item = Py_BuildValue("nn", matches[nmatches - i - 1].a, matches[nmatches - i - 1].b);
-#endif
         if (item == NULL)
             goto error;
         if (PyList_SetItem(res, i, item) != 0)
@@ -680,13 +676,8 @@ py_recurse_matches(PyObject *self, PyObject *args)
     struct hashtable hashtable;
     struct matching_blocks matches;
 
-#if PY_VERSION_HEX < 0x02050000
-    if (!PyArg_ParseTuple(args, "OOiiiiOi", &aseq, &bseq, &alo, &blo,
-                          &ahi, &bhi, &answer, &maxrecursion))
-#else
     if (!PyArg_ParseTuple(args, "OOnnnnOi", &aseq, &bseq, &alo, &blo,
                           &ahi, &bhi, &answer, &maxrecursion))
-#endif
         return NULL;
 
     hashtable.table = NULL;
@@ -722,13 +713,8 @@ py_recurse_matches(PyObject *self, PyObject *args)
 
     for (i = 0; i < matches.count; i++) {
         for (j = 0; j < matches.matches[i].len; j++) {
-#if PY_VERSION_HEX < 0x02050000
-            item = Py_BuildValue("ii", matches.matches[i].a + j,
-                                 matches.matches[i].b + j);
-#else
             item = Py_BuildValue("nn", matches.matches[i].a + j,
                                  matches.matches[i].b + j);
-#endif
             if (item == NULL)
                 goto error;
             if (PyList_Append(answer, item) != 0)
@@ -854,23 +840,14 @@ PatienceSequenceMatcher_get_matching_blocks(PatienceSequenceMatcher* self)
     }
 
     for (i = 0; i < matches.count; i++) {
-#if PY_VERSION_HEX < 0x02050000
-        item = Py_BuildValue("iii", matches.matches[i].a,
-                             matches.matches[i].b, matches.matches[i].len);
-#else
         item = Py_BuildValue("nnn", matches.matches[i].a,
                              matches.matches[i].b, matches.matches[i].len);
-#endif
         if (item == NULL)
             goto error;
         if (PyList_SetItem(answer, i, item) != 0)
             goto error;
     }
-#if PY_VERSION_HEX < 0x02050000
-    item = Py_BuildValue("iii", self->asize, self->bsize, 0);
-#else
     item = Py_BuildValue("nnn", self->asize, self->bsize, 0);
-#endif
     if (item == NULL)
         goto error;
     if (PyList_SetItem(answer, i, item) != 0)
@@ -960,11 +937,7 @@ PatienceSequenceMatcher_get_opcodes(PatienceSequenceMatcher* self)
             tag = OP_INSERT;
 
         if (tag != -1) {
-#if PY_VERSION_HEX < 0x02050000
-            item = Py_BuildValue("siiii", opcode_names[tag], i, ai, j, bj);
-#else
             item = Py_BuildValue("snnnn", opcode_names[tag], i, ai, j, bj);
-#endif
             if (item == NULL)
                 goto error;
             if (PyList_Append(answer, item) != 0)
@@ -975,11 +948,7 @@ PatienceSequenceMatcher_get_opcodes(PatienceSequenceMatcher* self)
         j = bj + matches.matches[k].len;
 
         if (matches.matches[k].len > 0) {
-#if PY_VERSION_HEX < 0x02050000
-            item = Py_BuildValue("siiii", opcode_names[OP_EQUAL], ai, i, bj, j);
-#else
             item = Py_BuildValue("snnnn", opcode_names[OP_EQUAL], ai, i, bj, j);
-#endif
             if (item == NULL)
                 goto error;
             if (PyList_Append(answer, item) != 0)
@@ -1137,13 +1106,8 @@ PatienceSequenceMatcher_get_grouped_opcodes(PatienceSequenceMatcher* self,
         /* end the current group and start a new one whenever
            there is a large range with no changes. */
         if (tag == OP_EQUAL && i2 - i1 > nn) {
-#if PY_VERSION_HEX < 0x02050000
-            item = Py_BuildValue("siiii", opcode_names[tag],
-                                  i1, MIN(i2, i1 + n), j1, MIN(j2, j1 + n));
-#else
             item = Py_BuildValue("snnnn", opcode_names[tag],
                                   i1, MIN(i2, i1 + n), j1, MIN(j2, j1 + n));
-#endif
             if (item == NULL)
                 goto error;
             if (PyList_Append(group, item) != 0)
@@ -1156,11 +1120,7 @@ PatienceSequenceMatcher_get_grouped_opcodes(PatienceSequenceMatcher* self,
             i1 = MAX(i1, i2 - n);
             j1 = MAX(j1, j2 - n);
         }
-#if PY_VERSION_HEX < 0x02050000
-        item = Py_BuildValue("siiii", opcode_names[tag], i1, i2, j1 ,j2);
-#else
         item = Py_BuildValue("snnnn", opcode_names[tag], i1, i2, j1 ,j2);
-#endif
         if (item == NULL)
             goto error;
         if (PyList_Append(group, item) != 0)
