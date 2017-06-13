@@ -573,10 +573,7 @@ elif 'py2exe' in sys.argv:
         includes.append(module)
 
     additional_packages = set()
-    if sys.version.startswith('2.4'):
-        # adding elementtree package
-        additional_packages.add('elementtree')
-    elif sys.version.startswith('2.6') or sys.version.startswith('2.5'):
+    if sys.version.startswith('2.7'):
         additional_packages.add('xml.etree')
     else:
         import warnings
