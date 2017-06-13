@@ -2536,7 +2536,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 mode='r|bz2')
             tmpdir = osutils.mkdtemp()
             try:
-                _extract_tar(tar, tmpdir)
+                tar.extractall(tmpdir)
                 tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
                 tmp_repo = tmp_bzrdir.open_repository()
                 tmp_repo.copy_content_into(destination, revision_id)
@@ -4128,15 +4128,6 @@ class RemoteBzrDirConfig(RemoteConfig):
     def _real_object(self):
         self._bzrdir._ensure_real()
         return self._bzrdir._real_bzrdir
-
-
-def _extract_tar(tar, to_dir):
-    """Extract all the contents of a tarfile object.
-
-    A replacement for extractall, which is not present in python2.4
-    """
-    for tarinfo in tar:
-        tar.extract(tarinfo, to_dir)
 
 
 error_translators = registry.Registry()
