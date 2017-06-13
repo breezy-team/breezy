@@ -956,7 +956,7 @@ class TestSupressWarning(TestIniConfig):
         self.assertEqual(True, suppress_warning('b'))
 
 
-class TestGetConfig(tests.TestCase):
+class TestGetConfig(tests.TestCaseInTempDir):
 
     def test_constructs(self):
         config.GlobalConfig()
@@ -4114,6 +4114,38 @@ class TestSharedStores(tests.TestCaseInTempDir):
         self.assertIs(g1.store, g2.store)
 
 
+class TestAuthenticationConfigFilePermissions(tests.TestCaseInTempDir):
+    """Test warning for permissions of authentication.conf."""
+
+    def setUp(self):
+        super(TestAuthenticationConfigFilePermissions, self).setUp()
+        self.path = osutils.pathjoin(self.test_dir, 'authentication.conf')
+        with open(self.path, 'w') as f:
+            f.write(b"""[broken]
+scheme=ftp
+user=joe
+port=port # Error: Not an int
+""")
+        self.overrideAttr(config, 'authentication_config_filename',
+            lambda: self.path)
+        osutils.chmod_if_possible(self.path, 0o755)
+
+    def test_check_warning(self):
+        conf = config.AuthenticationConfig()
+        self.assertEqual(conf._filename, self.path)
+        self.assertContainsRe(self.get_log(),
+            'Saved passwords may be accessible by other users.')
+
+    def test_check_suppressed_warning(self):
+        global_config = config.GlobalConfig()
+        global_config.set_user_option('suppress_warnings',
+            'insecure_permissions')
+        conf = config.AuthenticationConfig()
+        self.assertEqual(conf._filename, self.path)
+        self.assertNotContainsRe(self.get_log(),
+            'Saved passwords may be accessible by other users.')
+
+
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
 
@@ -4350,7 +4382,7 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
         self.assertEqual(CREDENTIALS, credentials)
 
 
-class TestAuthenticationConfig(tests.TestCase):
+class TestAuthenticationConfig(tests.TestCaseInTempDir):
     """Test AuthenticationConfig behaviour"""
 
     def _check_default_password_prompt(self, expected_prompt_format, scheme,
