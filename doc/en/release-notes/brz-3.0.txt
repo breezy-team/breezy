@@ -44,6 +44,9 @@ External Compatibility Breaks
  * Support for medusa for FTP tests has been dropped, only
    pyftpdlib is now supported. (Jelmer Vernooĳ)
 
+ * The deprecated ``brz get`` and ``brz clone`` commands have been
+   removed. (Jelmer Vernooĳ)
+
 New Features
 ************
 
