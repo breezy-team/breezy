@@ -22,7 +22,7 @@ import errno
 import os
 import sys
 
-import breezy.bzr.bzrdir
+import breezy.bzr
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
