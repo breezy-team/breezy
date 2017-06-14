@@ -1076,13 +1076,13 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    if config.GlobalStack().get('ignore_missing_extensions'):
+    if config.GlobalStore().suppress_warning('missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from .trace import warning
     warning(
         "brz: warning: some compiled extensions could not be loaded; "
-        "see <https://answers.launchpad.net/bzr/+faq/703>")
+        "see <https://answers.launchpad.net/brz/+faq/703>")
     # we no longer show the specific missing extensions here, because it makes
     # the message too long and scary - see
     # https://bugs.launchpad.net/bzr/+bug/430529
