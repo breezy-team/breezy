@@ -64,6 +64,7 @@ from ..bzr import (
     )
 from ..sixish import (
     StringIO,
+    text_type,
     )
 from ..symbol_versioning import (
     deprecated_function,
@@ -1902,7 +1903,7 @@ class TestExtraAssertions(tests.TestCase):
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
-        self.assertIsInstance(u'', basestring)
+        self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertEqual(str(e),
             "None is an instance of <type 'NoneType'> rather than <type 'int'>")

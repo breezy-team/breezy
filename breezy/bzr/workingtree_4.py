@@ -135,7 +135,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """See MutableTree._add."""
         state = self.current_dirstate()
         for f, file_id, kind in zip(files, ids, kinds):
-            f = f.strip(b'/')
+            f = f.strip(u'/')
             if self.path2id(f):
                 # special case tree root handling.
                 if f == b'' and self.path2id(f) == ROOT_ID:
@@ -664,7 +664,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if not from_paths:
             return result
         state = self.current_dirstate()
-        if isinstance(from_paths, basestring):
+        if isinstance(from_paths, (str, bytes)):
             raise ValueError()
         to_dir_utf8 = to_dir.encode('utf8')
         to_entry_dirname, to_basename = os.path.split(to_dir_utf8)

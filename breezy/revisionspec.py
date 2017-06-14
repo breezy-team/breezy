@@ -154,9 +154,6 @@ class RevisionSpec(object):
         :return: A RevisionSpec object that understands how to parse the
             supplied notation.
         """
-        if not isinstance(spec, (type(None), basestring)):
-            raise TypeError('error')
-
         if spec is None:
             return RevisionSpec(None, _internal=True)
         match = revspec_registry.get_prefix(spec)

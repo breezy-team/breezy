@@ -44,6 +44,9 @@ lazy_import.lazy_import(globals(),
 from breezy.bzr.smart.request import request_handlers as smart_request_handlers
 from breezy.bzr.smart import vfs
 """)
+from ..sixish import (
+    text_type,
+    )
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -156,7 +159,7 @@ class HasLayout(Matcher):
         """
         directories = []
         for entry in entries:
-            if isinstance(entry, basestring):
+            if isinstance(entry, (str, text_type)):
                 path = entry
             else:
                 path = entry[0]
@@ -176,7 +179,7 @@ class HasLayout(Matcher):
 
     def match(self, tree):
         actual = list(self.get_tree_layout(tree))
-        if self.entries and isinstance(self.entries[0], basestring):
+        if self.entries and isinstance(self.entries[0], (str, text_type)):
             actual = [path for (path, fileid) in actual]
         if not tree.has_versioned_directories():
             entries = list(self._strip_unreferenced_directories(self.entries))

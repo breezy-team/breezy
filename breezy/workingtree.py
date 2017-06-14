@@ -69,6 +69,9 @@ from .decorators import needs_read_lock, needs_write_lock
 from .i18n import gettext
 from . import mutabletree
 from .mutabletree import needs_tree_write_lock
+from .sixish import (
+    text_type,
+    )
 from .trace import mutter, note
 
 
@@ -1157,7 +1160,7 @@ class WorkingTree(mutabletree.MutableTree,
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
-        if isinstance(files, basestring):
+        if isinstance(files, (str, text_type)):
             files = [files]
 
         inv_delta = []
