@@ -39,6 +39,9 @@ from .. import (
     osutils,
     trace,
     )
+from ..sixish import (
+    text_type,
+    )
 from . import (
     NullProgressView,
     UIFactory,
@@ -304,7 +307,7 @@ class TextUIFactory(UIFactory):
         :param kwargs: Dictionary of arguments to insert into the prompt,
             to allow UIs to reformat the prompt.
         """
-        if not isinstance(prompt, unicode):
+        if not isinstance(prompt, text_type):
             raise ValueError("prompt %r not a unicode string" % prompt)
         if kwargs:
             # See <https://launchpad.net/bugs/365891>

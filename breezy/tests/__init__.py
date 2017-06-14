@@ -2280,7 +2280,7 @@ class TestCase(testtools.TestCase):
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
-            stdin = BytesIO("")
+            stdin = BytesIO(b"")
         if stdout is None:
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file

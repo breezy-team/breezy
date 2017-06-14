@@ -257,11 +257,13 @@ class TestTextUIFactory(tests.TestCase):
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
             to_format=remote_fmt)
         self.assertEqual('', ui.stdout.getvalue())
-        self.assertEqual("Doing on-the-fly conversion from RepositoryFormat2a() to "
-            "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
-            "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
-            "the same format for better performance.\n",
-            ui.stderr.getvalue())
+        self.assertContainsRe(
+            ui.stderr.getvalue(),
+            "^Doing on-the-fly conversion from RepositoryFormat2a\(\) to "
+                "RemoteRepositoryFormat\(_network_name="
+                "b?'Bazaar RepositoryFormatKnitPack5 \(bzr 1.6\)\\\\n'\)\.\n"
+            "This may take some time. Upgrade the repositories to "
+                "the same format for better performance\.\n$")
         # and now with it suppressed please
         ui = ui_testing.TextUIFactory()
         ui.suppressed_warnings.add('cross_format_fetch')
