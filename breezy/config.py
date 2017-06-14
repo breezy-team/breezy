@@ -2713,14 +2713,6 @@ GPG key to use for signing.
 This defaults to the first key associated with the users email.
 """))
 option_registry.register(
-    Option('ignore_missing_extensions', default=False,
-           from_unicode=bool_from_store,
-           help='''\
-Control the missing extensions warning display.
-
-The warning will not be emitted if set to True.
-'''))
-option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
