@@ -25,6 +25,7 @@ import sys
 
 from .. import (
     branch,
+    bzr,
     config,
     controldir,
     errors,
@@ -103,18 +104,18 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register_lazy('lazy', 'breezy.tests.test_bzrdir',
             'DeprecatedBzrDirFormat', 'Format registered lazily',
             deprecated=True)
-        bzrdir.register_metadir(my_format_registry, 'knit',
+        bzr.register_metadir(my_format_registry, 'knit',
             'breezy.bzr.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        bzrdir.register_metadir(my_format_registry,
+        bzr.register_metadir(my_format_registry,
             'branch6',
             'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='breezy.bzr.branch.BzrBranchFormat6',
             experimental=True)
-        bzrdir.register_metadir(my_format_registry,
+        bzr.register_metadir(my_format_registry,
             'hidden format',
             'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
@@ -281,13 +282,13 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        bzrdir.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
+        bzr.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
             BzrDirFormatTest1())
-        self.addCleanup(bzrdir.BzrProber.formats.remove,
+        self.addCleanup(bzr.BzrProber.formats.remove,
             BzrDirFormatTest1.get_format_string())
-        bzrdir.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
+        bzr.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
             BzrDirFormatTest2())
-        self.addCleanup(bzrdir.BzrProber.formats.remove,
+        self.addCleanup(bzr.BzrProber.formats.remove,
             BzrDirFormatTest2.get_format_string())
         t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
@@ -318,7 +319,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # make a bzrdir
         format.initialize(url)
         # register a format for it.
-        bzrdir.BzrProber.formats.register(format.get_format_string(), format)
+        bzr.BzrProber.formats.register(format.get_format_string(), format)
         # which bzrdir.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open, url)
         # which bzrdir.open_containing will refuse (not supported)
@@ -327,7 +328,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t = _mod_transport.get_transport_from_url(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
-        bzrdir.BzrProber.formats.remove(format.get_format_string())
+        bzr.BzrProber.formats.remove(format.get_format_string())
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 

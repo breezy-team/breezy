@@ -49,6 +49,8 @@ from ..bzr import (
 from ..bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
+    )
+from ..bzr import (
     RemoteBzrProber,
     )
 from ..bzr.chk_serializer import chk_bencode_serializer

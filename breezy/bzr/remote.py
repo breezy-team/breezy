@@ -22,6 +22,7 @@ import zlib
 from .. import (
     bencode,
     branch,
+    bzr as _mod_bzr,
     config as _mod_config,
     controldir,
     debug,
@@ -490,7 +491,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 warning('VFS BzrDir access triggered\n%s',
                     ''.join(traceback.format_stack()))
             self._real_bzrdir = _mod_bzrdir.BzrDir.open_from_transport(
-                self.root_transport, probers=[_mod_bzrdir.BzrProber])
+                self.root_transport, probers=[_mod_bzr.BzrProber])
             self._format._network_name = \
                 self._real_bzrdir._format.network_name()
 
