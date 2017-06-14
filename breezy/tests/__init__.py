@@ -2244,9 +2244,9 @@ class TestCase(testtools.TestCase):
         if retcode is not None and retcode != process.returncode:
             if process_args is None:
                 process_args = "(unknown args)"
-            trace.mutter('Output of brz %s:\n%s', process_args, out)
-            trace.mutter('Error for brz %s:\n%s', process_args, err)
-            self.fail('Command brz %s failed with retcode %s != %s'
+            trace.mutter('Output of brz %r:\n%s', process_args, out)
+            trace.mutter('Error for brz %r:\n%s', process_args, err)
+            self.fail('Command brz %r failed with retcode %d != %d'
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
