@@ -27,7 +27,6 @@ import os
 import sys
 
 import breezy
-import breezy.api
 
 from .info import (
     bzr_compatible_versions,
@@ -41,7 +40,10 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-breezy.api.require_any_api(breezy, bzr_compatible_versions)
+if breezy.version_info[:3] not in bzr_compatible_versions:
+    from ...errors import IncompatibleVersion
+    raise IncompatibleVersion(breezy,
+            bzr_compatible_versions, breezy.version_info[:3])
 
 try:
     from ...i18n import load_plugin_translations
