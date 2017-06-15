@@ -528,21 +528,10 @@ class Weave(VersionedFile):
 
     def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
-        if isinstance(version_ids, basestring):
+        if isinstance(version_ids, bytes):
             version_ids = [version_ids]
         i = self._inclusions([self._lookup(v) for v in version_ids])
         return [self._idx_to_name(v) for v in i]
-
-    def _check_lines(self, text):
-        if not isinstance(text, list):
-            raise ValueError("text should be a list, not %s" % type(text))
-
-        for l in text:
-            if not isinstance(l, basestring):
-                raise ValueError("text line should be a string or unicode, not %s"
-                                 % type(l))
-
-
 
     def _check_versions(self, indexes):
         """Check everything in the sequence of indexes is valid"""

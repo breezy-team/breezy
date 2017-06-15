@@ -234,7 +234,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        if not revision_id or not isinstance(revision_id, basestring):
+        if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()

@@ -1430,7 +1430,7 @@ class VersionedFileRepository(Repository):
             revision_ids = self.all_revision_ids()
         else:
             for rev_id in revision_ids:
-                if not rev_id or not isinstance(rev_id, basestring):
+                if not rev_id or not isinstance(rev_id, bytes):
                     raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         keys = [(key,) for key in revision_ids]
         stream = self.revisions.get_record_stream(keys, 'unordered', True)

@@ -2584,7 +2584,7 @@ class DirState(object):
             return
         if new_id.__class__ != bytes:
             raise AssertionError(
-                "must be a utf8 file_id not %s" % (type(file_id), ))
+                "must be a utf8 file_id not %s" % (type(new_id), ))
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
         self.update_minimal((b'', b'', new_id), b'd',

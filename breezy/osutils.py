@@ -1391,7 +1391,7 @@ def safe_revision_id(unicode_or_utf8_string):
     :return: None or a utf8 revision id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == str):
+        or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode revision ids are no longer supported. '
                     'Revision id generators should be creating utf8 revision '
@@ -1409,7 +1409,7 @@ def safe_file_id(unicode_or_utf8_string):
     :return: None or a utf8 file id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == str):
+        or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode file ids are no longer supported. '
                     'File id generators should be creating utf8 file ids.')

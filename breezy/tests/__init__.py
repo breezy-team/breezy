@@ -1551,7 +1551,7 @@ class TestCase(testtools.TestCase):
 
     def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertPathDoesNotExist(p)
         else:
@@ -2082,7 +2082,7 @@ class TestCase(testtools.TestCase):
         if len(args) == 1:
             if isinstance(args[0], list):
                 args = args[0]
-            elif isinstance(args[0], basestring):
+            elif isinstance(args[0], (str, text_type)):
                 args = list(shlex.split(args[0]))
         else:
             raise ValueError("passing varargs to run_bzr_subprocess")
@@ -2839,18 +2839,18 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
-            self.assertIsInstance(name, basestring)
+            self.assertIsInstance(name, (str, text_type))
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
                 if line_endings == 'binary':
-                    end = '\n'
+                    end = b'\n'
                 elif line_endings == 'native':
-                    end = os.linesep
+                    end = os.linesep.encode('ascii')
                 else:
                     raise errors.BzrError(
                         'Invalid line ending request %r' % line_endings)
-                content = "contents of %s%s" % (name.encode('utf-8'), end)
+                content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     build_tree_contents = staticmethod(treeshape.build_tree_contents)
@@ -2859,7 +2859,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
@@ -2870,7 +2870,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertNotInWorkingTree(p,tree=tree)
         else:

@@ -38,6 +38,9 @@ from breezy.bzr import (
     branch as _mod_bzrbranch,
     remote,
     )
+from breezy.sixish import (
+    text_type,
+    )
 from breezy.tests import (
     per_branch,
     )
@@ -281,12 +284,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch = self.make_branch('bzr.dev')
         # An implicit nick name is set; what it is exactly depends on the
         # format.
-        self.assertIsInstance(branch.nick, basestring)
+        self.assertIsInstance(branch.nick, text_type)
         # Set the branch nick explicitly.
-        branch.nick = "Aaron's branch"
+        branch.nick = u"Aaron's branch"
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch".
-        self.assertEqual(branch.nick, "Aaron's branch")
+        self.assertEqual(branch.nick, u"Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
 

@@ -68,6 +68,7 @@ from ..mutabletree import needs_tree_write_lock
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from ..trace import mutter
 from ..workingtree import (
@@ -959,7 +960,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         if to_dir is None:
             raise TypeError('You must supply a target directory')
         # check destination directory
-        if isinstance(from_paths, basestring):
+        if isinstance(from_paths, (str, text_type)):
             raise ValueError()
         to_abs = self.abspath(to_dir)
         if not osutils.isdir(to_abs):

@@ -2662,7 +2662,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             revision_ids = self.all_revision_ids()
         else:
             for rev_id in revision_ids:
-                if not rev_id or not isinstance(rev_id, basestring):
+                if not rev_id or not isinstance(rev_id, bytes):
                     raise errors.InvalidRevisionId(
                         revision_id=rev_id, branch=self)
         try:
@@ -3893,7 +3893,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # XXX: These should be returned by the set_last_revision_info verb
         old_revno, old_revid = self.last_revision_info()
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        if not revision_id or not isinstance(revision_id, basestring):
+        if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
             response = self._call('Branch.set_last_revision_info',
