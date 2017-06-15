@@ -129,7 +129,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(bzrdir.RemoteBzrProber
+        self.assertTrue(RemoteBzrProber
                         in controldir.ControlDirFormat._server_probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
 
