@@ -117,7 +117,7 @@ from ...revisionspec import (RevisionSpec_dwim, revspec_registry)
 revspec_registry.register_lazy("git:", __name__ + ".revspec",
     "RevisionSpec_git")
 RevisionSpec_dwim.append_possible_lazy_revspec(
-    __name__ + ".git.revspec", "RevisionSpec_git")
+    __name__ + ".revspec", "RevisionSpec_git")
 
 
 class LocalGitProber(Prober):
@@ -394,7 +394,7 @@ else:
             __name__ + '.directory', 'GitHubDirectory',
             'GitHub directory.')
     register_lazy('breezy.directory_service', 'directories',
-            'git@github.com:', __name__ + '.git.directory',
+            'git@github.com:', __name__ + '.directory',
             'GitHubDirectory', 'GitHub directory.')
     register_lazy('breezy.help_topics', 'topic_registry',
             'git', __name__ + '.help', 'help_git',
