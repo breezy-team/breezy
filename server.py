@@ -27,8 +27,8 @@ from ... import (
     trace,
     )
 
-from ...bzrdir import (
-    BzrDir,
+from ...controldir import (
+    ControlDir,
     )
 
 from .mapping import (
@@ -67,7 +67,7 @@ class BzrBackendRepo(BackendRepo):
 
     def __init__(self, transport, mapping):
         self.mapping = mapping
-        self.repo_dir = BzrDir.open_from_transport(transport)
+        self.repo_dir = ControlDir.open_from_transport(transport)
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
         self.refs = get_refs_container(self.repo_dir, self.object_store)

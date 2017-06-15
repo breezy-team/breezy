@@ -28,7 +28,7 @@ from ... import (
     revision as _mod_revision,
     urlutils,
     )
-from ...bzrdir import CreateRepository
+from ...bzr.bzrdir import CreateRepository
 from ...transport import do_catching_redirections
 
 from ...controldir import (
@@ -75,10 +75,10 @@ class GitDir(ControlDir):
         pass
 
     def cloning_metadir(self, stacked=False):
-        return format_registry.make_bzrdir("default")
+        return format_registry.make_controldir("default")
 
     def checkout_metadir(self, stacked=False):
-        return format_registry.make_bzrdir("default")
+        return format_registry.make_controldir("default")
 
     def _get_default_ref(self):
         return "HEAD"
@@ -326,7 +326,7 @@ class LocalGitDir(GitDir):
         return None
 
     def set_branch_reference(self, target, name=None):
-        if self.control_transport.base != target.bzrdir.control_transport.base:
+        if self.control_transport.base != target.controldir.control_transport.base:
             raise bzr_errors.IncompatibleFormat(target._format, self._format)
         ref = self._get_selected_ref(name)
         self._git.refs.set_symbolic_ref(ref, target.ref)
@@ -380,7 +380,7 @@ class LocalGitDir(GitDir):
         ref_chain, sha = self._git.refs.follow(ref)
         if sha is None:
             raise bzr_errors.NotBranchError(self.root_transport.base,
-                    bzrdir=self)
+                    controldir=self)
         return LocalGitBranch(self, repo, ref)
 
     def destroy_branch(self, name=None):
@@ -389,7 +389,7 @@ class LocalGitDir(GitDir):
             del self._git.refs[refname]
         except KeyError:
             raise bzr_errors.NotBranchError(self.root_transport.base,
-                    bzrdir=self)
+                    controldir=self)
 
     def destroy_repository(self):
         raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)

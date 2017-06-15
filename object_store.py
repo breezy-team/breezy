@@ -596,7 +596,7 @@ class BazaarObjectStore(BaseObjectStore):
                     if self.repository.has_revision(type_data[0]):
                         return True
                 elif type == "blob":
-                    if self.repository.texts.has_key(type_data):
+                    if type_data in self.repository.texts:
                         return True
                 elif type == "tree":
                     if self.repository.has_revision(type_data[1]):

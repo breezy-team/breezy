@@ -20,7 +20,7 @@ from dulwich.repo import Repo as GitRepo
 import os
 
 from .... import (
-    bzrdir,
+    controldir,
     errors,
     urlutils,
     )
@@ -38,7 +38,7 @@ class TestGitDir(tests.TestCaseInTempDir):
     def test_get_head_branch_reference(self):
         GitRepo.init(".")
 
-        gd = bzrdir.BzrDir.open('.')
+        gd = controldir.ControlDir.open('.')
         self.assertEquals(
             "%s,ref=refs%%2Fheads%%2Fmaster" %
                 urlutils.local_path_to_url(os.path.abspath(".")),
@@ -47,13 +47,13 @@ class TestGitDir(tests.TestCaseInTempDir):
     def test_open_existing(self):
         GitRepo.init(".")
 
-        gd = bzrdir.BzrDir.open('.')
+        gd = controldir.ControlDir.open('.')
         self.assertIsInstance(gd, dir.LocalGitDir)
 
     def test_open_workingtree(self):
         GitRepo.init(".")
 
-        gd = bzrdir.BzrDir.open('.')
+        gd = controldir.ControlDir.open('.')
         raise TestSkipped
         wt = gd.open_workingtree()
         self.assertIsInstance(wt, workingtree.GitWorkingTree)
@@ -61,7 +61,7 @@ class TestGitDir(tests.TestCaseInTempDir):
     def test_open_workingtree_bare(self):
         GitRepo.init_bare(".")
 
-        gd = bzrdir.BzrDir.open('.')
+        gd = controldir.ControlDir.open('.')
         self.assertRaises(errors.NoWorkingTree, gd.open_workingtree)
 
 
@@ -79,6 +79,6 @@ class TestGitDirFormat(tests.TestCase):
         format2 = dir.LocalGitControlDirFormat()
         self.assertEquals(self.format, format2)
         self.assertEquals(self.format, self.format)
-        bzr_format = bzrdir.format_registry.make_bzrdir("default")
+        bzr_format = controldir.format_registry.make_controldir("default")
         self.assertNotEquals(self.format, bzr_format)
 

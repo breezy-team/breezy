@@ -25,8 +25,8 @@ import os
 from .... import (
     version_info as breezy_version,
     )
-from ....bzrdir import (
-    BzrDir,
+from ....controldir import (
+    ControlDir,
     )
 
 from ....tests.blackbox import ExternalBase
@@ -49,7 +49,7 @@ class TestGitBlackBox(ExternalBase):
     def test_nick(self):
         r = GitRepo.init(self.test_dir)
         del r["HEAD"]
-        dir = BzrDir.open(self.test_dir)
+        dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
         self.assertEquals("HEAD\n", output)
@@ -195,7 +195,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(set([".bzr"]), set(os.listdir("b")))
         self.assertEquals(set(["abranch", "bbranch"]),
-                set(BzrDir.open("b").get_branches().keys()))
+                set(ControlDir.open("b").get_branches().keys()))
 
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
@@ -205,7 +205,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(set([".bzr"]), set(os.listdir("b")))
-        b = BzrDir.open("b")
+        b = ControlDir.open("b")
         self.assertEquals(["abranch"], b.get_branches().keys())
 
     def test_git_import_tags(self):
@@ -216,7 +216,7 @@ class TestGitBlackBox(ExternalBase):
         r["refs/tags/atag"] = cid
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(set([".bzr"]), set(os.listdir("b")))
-        b = BzrDir.open("b")
+        b = ControlDir.open("b")
         self.assertEquals(["abranch"], b.get_branches().keys())
         self.assertEquals(["atag"],
                 b.open_branch("abranch").tags.get_tag_dict().keys())
@@ -227,10 +227,10 @@ class TestGitBlackBox(ExternalBase):
         r.stage("file")
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
-        self.make_bzrdir("b", format="development-colo")
+        self.make_controldir("b", format="development-colo")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(
-            set([b.name for b in BzrDir.open("b").list_branches()]),
+            set([b.name for b in ControlDir.open("b").list_branches()]),
             set(["abranch", "bbranch"]))
 
     def test_git_refs_from_git(self):

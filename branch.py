@@ -29,8 +29,8 @@ from dulwich.repo import check_ref_format
 
 from ... import (
     branch,
-    bzrdir,
     config,
+    controldir,
     errors,
     repository as _mod_repository,
     revision,
@@ -115,7 +115,7 @@ class GitTags(tag.BasicTags):
                 continue
             peeled = refs.get_peeled(k)
             if peeled is None:
-                peeled = self.repository.bzrdir._git.object_store.peel_sha(unpeeled).id
+                peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
             assert type(tag_name) is unicode
             yield (tag_name, peeled, unpeeled,
                    self.branch.lookup_foreign_revision_id(peeled))
@@ -137,7 +137,7 @@ class GitTags(tag.BasicTags):
                 else:
                     conflicts.append((name, v, old_refs[k]))
             return ret
-        target_repo.bzrdir.send_pack(get_changed_refs, lambda have, want: [])
+        target_repo.controldir.send_pack(get_changed_refs, lambda have, want: [])
         return updates, conflicts
 
     def _merge_to_local_git(self, target_repo, refs, overwrite=False):
@@ -147,7 +147,7 @@ class GitTags(tag.BasicTags):
             if not is_tag(k):
                 continue
             name = ref_to_tag_name(k)
-            peeled = self.repository.bzrdir.get_peeled(k)
+            peeled = self.repository.controldir.get_peeled(k)
             if target_repo._git.refs.get(k) == unpeeled:
                 pass
             elif overwrite or not k in target_repo._git.refs:
@@ -227,7 +227,7 @@ class LocalGitTagDict(GitTags):
 
     def __init__(self, branch):
         super(LocalGitTagDict, self).__init__(branch)
-        self.refs = self.repository.bzrdir._git.refs
+        self.refs = self.repository.controldir._git.refs
 
     def get_refs_container(self):
         return self.refs
@@ -316,12 +316,12 @@ class GitBranchFormat(branch.BranchFormat):
         else:
             return LocalGitTagDict(branch)
 
-    def initialize(self, a_bzrdir, name=None, repository=None,
+    def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         from .dir import LocalGitDir
-        if not isinstance(a_bzrdir, LocalGitDir):
-            raise errors.IncompatibleFormat(self, a_bzrdir._format)
-        return a_bzrdir.create_branch(repository=repository, name=name,
+        if not isinstance(a_controldir, LocalGitDir):
+            raise errors.IncompatibleFormat(self, a_controldir._format)
+        return a_controldir.create_branch(repository=repository, name=name,
             append_revisions_only=append_revisions_only)
 
 
@@ -343,13 +343,13 @@ class GitBranch(ForeignBranch):
 
     @property
     def control_transport(self):
-        return self.bzrdir.control_transport
+        return self.controldir.control_transport
 
-    def __init__(self, bzrdir, repository, ref):
-        self.base = bzrdir.root_transport.base
+    def __init__(self, controldir, repository, ref):
+        self.base = controldir.root_transport.base
         self.repository = repository
         self._format = GitBranchFormat()
-        self.bzrdir = bzrdir
+        self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
@@ -364,7 +364,7 @@ class GitBranch(ForeignBranch):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        return bzrdir.format_registry.make_bzrdir("default")
+        return controldir.format_registry.make_controldir("default")
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
@@ -396,7 +396,7 @@ class GitBranch(ForeignBranch):
         cf.set(("branch", self.name), "nick", nick)
         f = StringIO()
         cf.write_to_file(f)
-        self.bzrdir.control_transport.put_bytes('config', f.getvalue())
+        self.controldir.control_transport.put_bytes('config', f.getvalue())
 
     nick = property(_get_nick, _set_nick)
 
@@ -499,9 +499,9 @@ class GitBranch(ForeignBranch):
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
-    def __init__(self, bzrdir, repository, ref):
-        super(LocalGitBranch, self).__init__(bzrdir, repository, ref)
-        refs = bzrdir.get_refs_container()
+    def __init__(self, controldir, repository, ref):
+        super(LocalGitBranch, self).__init__(controldir, repository, ref)
+        refs = controldir.get_refs_container()
         if not (ref in refs or "HEAD" in refs):
             raise errors.NotBranchError(self.base)
 
@@ -530,10 +530,10 @@ class LocalGitBranch(GitBranch):
         :param hardlink: Whether to hardlink
         :return: WorkingTree object of checkout.
         """
-        checkout_branch = bzrdir.BzrDir.create_branch_convenience(
+        checkout_branch = controldir.ControlDir.create_branch_convenience(
             to_location, force_new_tree=False,
             format=self._get_checkout_format(lightweight=False))
-        checkout = checkout_branch.bzrdir
+        checkout = checkout_branch.controldir
         checkout_branch.bind(self)
         # pull up to the specified revision_id to set the initial
         # branch tip correctly, and seed it with history.

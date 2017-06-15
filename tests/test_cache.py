@@ -27,7 +27,7 @@ import stat
 
 from .... import osutils
 
-from ....inventory import (
+from ....bzr.inventory import (
     InventoryFile,
     InventoryDirectory,
     ROOT_ID,

@@ -149,7 +149,7 @@ class InterToGitRepository(InterRepository):
                 git_sha = self.source_store._lookup_revision_sha1(revid)
                 git_shas.append(git_sha)
             walker = Walker(self.source_store,
-                include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
+                include=git_shas, exclude=[sha for sha in self.target.controldir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
             missing_revids = set()
             for entry in walker:
                 for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
@@ -165,8 +165,8 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def __init__(self, source, target):
         super(InterToLocalGitRepository, self).__init__(source, target)
-        self.target_store = self.target.bzrdir._git.object_store
-        self.target_refs = self.target.bzrdir._git.refs
+        self.target_store = self.target.controldir._git.object_store
+        self.target_refs = self.target.controldir._git.refs
 
     def _commit_needs_fetching(self, sha_id):
         try:

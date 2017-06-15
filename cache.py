@@ -30,12 +30,14 @@ from dulwich.objects import (
     )
 
 from ... import (
-    btree_index as _mod_btree_index,
     errors as bzr_errors,
-    index as _mod_index,
     osutils,
     registry,
     trace,
+    )
+from ...bzr import (
+    btree_index as _mod_btree_index,
+    index as _mod_index,
     versionedfile,
     )
 from ...transport import (

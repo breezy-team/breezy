@@ -447,11 +447,11 @@ class RemoteGitRepository(GitRepository):
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
-        return self.bzrdir.fetch_pack(determine_wants, graph_walker,
+        return self.controldir.fetch_pack(determine_wants, graph_walker,
                                           pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        return self.bzrdir.send_pack(get_changed_refs, generate_pack_contents)
+        return self.controldir.send_pack(get_changed_refs, generate_pack_contents)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
@@ -494,7 +494,7 @@ class RemoteGitRepository(GitRepository):
 class RemoteGitTagDict(GitTags):
 
     def get_refs_container(self):
-        return self.repository.bzrdir.get_refs_container()
+        return self.repository.controldir.get_refs_container()
 
     def set_tag(self, name, revid):
         # FIXME: Not supported yet, should do a push of a new ref
@@ -503,9 +503,9 @@ class RemoteGitTagDict(GitTags):
 
 class RemoteGitBranch(GitBranch):
 
-    def __init__(self, bzrdir, repository, name):
+    def __init__(self, controldir, repository, name):
         self._sha = None
-        super(RemoteGitBranch, self).__init__(bzrdir, repository, name)
+        super(RemoteGitBranch, self).__init__(controldir, repository, name)
 
     def last_revision_info(self):
         raise GitSmartRemoteNotSupported(self.last_revision_info, self)
@@ -528,7 +528,7 @@ class RemoteGitBranch(GitBranch):
     def head(self):
         if self._sha is not None:
             return self._sha
-        refs = self.bzrdir.get_refs_container()
+        refs = self.controldir.get_refs_container()
         name = branch_name_to_ref(self.name)
         try:
             self._sha = refs[name]

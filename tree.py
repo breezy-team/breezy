@@ -26,10 +26,12 @@ import posixpath
 from ... import (
     delta,
     errors,
-    inventory,
     osutils,
     revisiontree,
     tree,
+    )
+from ...bzr import (
+    inventory,
     )
 
 from .mapping import (

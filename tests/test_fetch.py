@@ -29,17 +29,19 @@ import stat
 import time
 
 from .... import (
-    knit,
     osutils,
+    )
+from ....bzr import (
+    knit,
     versionedfile,
     )
 from ....branch import (
     Branch,
     )
-from ....bzrdir import (
-    BzrDir,
+from ....controldir import (
+    ControlDir,
     )
-from ....inventory import (
+from ....bzr.inventory import (
     Inventory,
     )
 from ....repository import (
@@ -71,7 +73,7 @@ class RepositoryFetchTests(object):
 
     def clone_git_repo(self, from_url, to_url, revision_id=None):
         oldrepos = self.open_git_repo(from_url)
-        dir = BzrDir.create(to_url)
+        dir = ControlDir.create(to_url)
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos, revision_id=revision_id)
         return newrepos
@@ -250,7 +252,7 @@ class RepositoryFetchTests(object):
         oldrepo = Repository.open("d")
         revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
         self.assertEquals([revid1], stacked_on.all_revision_ids())
-        b = stacked_on.bzrdir.create_branch()
+        b = stacked_on.controldir.create_branch()
         b.generate_revision_history(revid1)
         self.assertEquals(b.last_revision(), revid1)
         tree = self.make_branch_and_tree("stacked")

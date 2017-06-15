@@ -49,12 +49,14 @@ from ... import (
     errors,
     conflicts as _mod_conflicts,
     ignores,
-    inventory,
     lock,
     osutils,
     trace,
     tree,
     workingtree,
+    )
+from ...bzr import (
+    inventory,
     )
 from ...decorators import (
     needs_read_lock,
@@ -80,14 +82,14 @@ IGNORE_FILENAME = ".gitignore"
 class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
-    def __init__(self, bzrdir, repo, branch, index):
-        self.basedir = bzrdir.root_transport.local_abspath('.').encode(osutils._fs_enc)
-        self.bzrdir = bzrdir
+    def __init__(self, controldir, repo, branch, index):
+        self.basedir = controldir.root_transport.local_abspath('.').encode(osutils._fs_enc)
+        self.controldir = controldir
         self.repository = repo
         self.store = self.repository._git.object_store
         self.mapping = self.repository.get_mapping()
         self._branch = branch
-        self._transport = bzrdir.transport
+        self._transport = controldir.transport
         self._format = GitWorkingTreeFormat()
         self.index = index
         self._versioned_dirs = None
@@ -284,7 +286,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         def backup(file_to_backup):
             abs_path = self.abspath(file_to_backup)
-            backup_name = self.bzrdir._available_backup_name(file_to_backup)
+            backup_name = self.controldir._available_backup_name(file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
             return "removed %s (but kept a copy: %s)" % (
                 file_to_backup, backup_name)
@@ -439,7 +441,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             from_dir = ""
         for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir)):
             dir_relpath = dirpath[len(self.basedir):].strip("/")
-            if self.bzrdir.is_control_filename(dir_relpath):
+            if self.controldir.is_control_filename(dir_relpath):
                 continue
             for filename in filenames:
                 if not self.mapping.is_special_file(filename):
@@ -673,7 +675,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             else:
                 start = os.path.join(self.basedir, from_dir)
             path_iterator = sorted([os.path.join(from_dir, name) for name in
-                os.listdir(start) if not self.bzrdir.is_control_filename(name)
+                os.listdir(start) if not self.controldir.is_control_filename(name)
                 and not self.mapping.is_special_file(name)])
         for path in path_iterator:
             try:
@@ -843,15 +845,15 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     def get_format_description(self):
         return "Git Working Tree"
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize()."""
-        if not isinstance(a_bzrdir, LocalGitDir):
-            raise errors.IncompatibleFormat(self, a_bzrdir)
-        index = Index(a_bzrdir.root_transport.local_abspath(".git/index"))
+        if not isinstance(a_controldir, LocalGitDir):
+            raise errors.IncompatibleFormat(self, a_controldir)
+        index = Index(a_controldir.root_transport.local_abspath(".git/index"))
         index.write()
-        return GitWorkingTree(a_bzrdir, a_bzrdir.open_repository(),
-            a_bzrdir.open_branch(), index)
+        return GitWorkingTree(a_controldir, a_controldir.open_repository(),
+            a_controldir.open_branch(), index)
 
 
 class InterIndexGitTree(tree.InterTree):

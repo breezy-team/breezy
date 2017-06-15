@@ -17,7 +17,7 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
-from ....bzrdir import (
+from ....controldir import (
     format_registry,
     )
 from ....repository import (
@@ -42,7 +42,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
     def setUp(self):
         super(InterToGitRepositoryTests, self).setUp()
         self.git_repo = self.make_repository("git",
-                format=format_registry.make_bzrdir("git"))
+                format=format_registry.make_controldir("git"))
         self.bzr_repo = self.make_repository("bzr", shared=True)
 
     def _get_interrepo(self, mapping=None):
@@ -87,8 +87,8 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def test_odd_rename(self):
         # Add initial revision to bzr branch.
-        branch = self.bzr_repo.bzrdir.create_branch()
-        tree = branch.bzrdir.create_workingtree()
+        branch = self.bzr_repo.controldir.create_branch()
+        tree = branch.controldir.create_workingtree()
         self.build_tree(["bzr/bar/", "bzr/bar/foobar"])
         tree.add(["bar", "bar/foobar"])
         tree.commit("initial")

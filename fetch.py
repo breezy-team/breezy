@@ -49,7 +49,7 @@ from ... import (
 from ...errors import (
     BzrError,
     )
-from ...inventory import (
+from ...bzr.inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
@@ -61,14 +61,14 @@ from ...repository import (
 from ...revision import (
     NULL_REVISION,
     )
-from ...revisiontree import InventoryRevisionTree
+from ...bzr.inventorytree import InventoryRevisionTree
 from ...testament import (
     StrictTestament3,
     )
 from ...tsort import (
     topo_sort,
     )
-from ...versionedfile import (
+from ...bzr.versionedfile import (
     ChunkedContentFactory,
     )
 
@@ -567,7 +567,8 @@ class InterFromGitRepository(InterRepository):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             git_shas.append(git_sha)
         walker = Walker(self.source._git.object_store,
-            include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
+            include=git_shas, exclude=[
+                sha for sha in self.target.controldir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
         missing_revids = set()
         for entry in walker:
             missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
@@ -596,7 +597,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             # For non-git target repositories, only worry about peeled
             if v == ZERO_SHA:
                 continue
-            potential.add(self.source.bzrdir.get_peeled(k))
+            potential.add(self.source.controldir.get_peeled(k))
         return list(potential - self._target_has_shas(potential))
 
     def get_determine_wants_heads(self, wants, include_tags=False):
@@ -609,7 +610,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
                         continue
                     if unpeeled == ZERO_SHA:
                         continue
-                    potential.add(self.source.bzrdir.get_peeled(k))
+                    potential.add(self.source.controldir.get_peeled(k))
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
@@ -744,7 +745,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 
     def fetch_objects(self, determine_wants, mapping, limit=None):
         """See `InterGitNonGitRepository`."""
-        remote_refs = self.source.bzrdir.get_refs_container()
+        remote_refs = self.source.controldir.get_refs_container()
         wants = determine_wants(remote_refs)
         create_pb = None
         pb = ui.ui_factory.nested_progress_bar()
@@ -781,7 +782,7 @@ class InterGitGitRepository(InterFromGitRepository):
     def fetch_refs(self, update_refs, lossy=False):
         if lossy:
             raise errors.LossyPushToSameVCS(self.source, self.target)
-        old_refs = self.target.bzrdir.get_refs_container()
+        old_refs = self.target.controldir.get_refs_container()
         ref_changes = {}
         def determine_wants(heads):
             old_refs = dict([(k, (v, None)) for (k, v) in heads.as_dict().iteritems()])
@@ -791,7 +792,7 @@ class InterGitGitRepository(InterFromGitRepository):
         self.fetch_objects(determine_wants)
         for k, (git_sha, bzr_revid) in ref_changes.iteritems():
             self.target._git.refs[k] = git_sha
-        new_refs = self.target.bzrdir.get_refs_container()
+        new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, mapping=None, limit=None):
@@ -816,7 +817,7 @@ class InterGitGitRepository(InterFromGitRepository):
             try:
                 f, commit = self.target._git.object_store.add_pack()
                 try:
-                    refs = self.source.bzrdir.fetch_pack(
+                    refs = self.source.controldir.fetch_pack(
                         determine_wants, graphwalker, f.write,
                         lambda text: report_git_progress(pb, text))
                     commit()

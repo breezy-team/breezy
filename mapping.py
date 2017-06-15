@@ -29,7 +29,7 @@ from ... import (
     foreign,
     trace,
     )
-from ...inventory import (
+from ...bzr.inventory import (
     ROOT_ID,
     )
 from ...foreign import (

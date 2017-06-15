@@ -66,9 +66,9 @@ class FetchTests(TestCaseWithTransport):
 
     def setUp(self):
         super(FetchTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git').bzrdir
+        self.local_dir = self.make_branch_and_tree('local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
-        self.remote_dir = self.remote_tree.bzrdir
+        self.remote_dir = self.remote_tree.controldir
         self.shortname = 'bzr'
 
     def fetch(self, wants):
@@ -96,9 +96,9 @@ class RemoteHelperTests(TestCaseWithTransport):
 
     def setUp(self):
         super(RemoteHelperTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git').bzrdir
+        self.local_dir = self.make_branch_and_tree('local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
-        self.remote_dir = self.remote_tree.bzrdir
+        self.remote_dir = self.remote_tree.controldir
         self.shortname = 'bzr'
         self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
 

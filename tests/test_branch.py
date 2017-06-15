@@ -39,8 +39,8 @@ from ....branch import (
     Branch,
     InterBranch,
     )
-from ....bzrdir import (
-    BzrDir,
+from ....controldir import (
+    ControlDir,
     )
 from ....repository import (
     Repository,
@@ -66,21 +66,21 @@ class TestGitBranch(tests.TestCaseInTempDir):
             urlutils.local_path_to_url(self.test_dir),
             urllib.quote("refs/remotes/origin/unstable", safe='')
             )
-        d = BzrDir.open(url)
+        d = ControlDir.open(url)
         b = d.create_branch()
         self.assertEquals(b.ref, "refs/remotes/origin/unstable")
 
     def test_open_existing(self):
         r = GitRepo.init('.')
         del r.refs["HEAD"]
-        d = BzrDir.open('.')
+        d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
         r = GitRepo.init('.')
         del r.refs["HEAD"]
-        d = BzrDir.open('.')
+        d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEquals(
             "<LocalGitBranch('%s/', u'')>" % (
@@ -90,7 +90,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
     def test_last_revision_is_null(self):
         r = GitRepo.init('.')
         del r.refs["HEAD"]
-        thedir = BzrDir.open('.')
+        thedir = ControlDir.open('.')
         thebranch = thedir.create_branch()
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
         self.assertEqual((0, revision.NULL_REVISION),
@@ -150,7 +150,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
         tests.TestCaseWithTransport.setUp(self)
         r = dulwich.repo.Repo.create(self.test_dir)
         del r.refs["HEAD"]
-        d = BzrDir.open(self.test_dir)
+        d = ControlDir.open(self.test_dir)
         self.git_branch = d.create_branch()
 
     def test_get_parent(self):
@@ -206,7 +206,7 @@ class BranchTests(tests.TestCaseInTempDir):
         return "d", (marks[mark1], marks[mark2])
 
     def clone_git_branch(self, from_url, to_url):
-        from_dir = BzrDir.open(from_url)
+        from_dir = ControlDir.open(from_url)
         to_dir = from_dir.sprout(to_url)
         return to_dir.open_branch()
 

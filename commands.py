@@ -42,26 +42,26 @@ class cmd_git_import(Command):
                      Option('colocated', help='Create colocated branches.'),
                      ]
 
-    def _get_colocated_branch(self, target_bzrdir, name):
+    def _get_colocated_branch(self, target_controldir, name):
         from ...errors import NotBranchError
         try:
-            return target_bzrdir.open_branch(name=name)
+            return target_controldir.open_branch(name=name)
         except NotBranchError:
-            return target_bzrdir.create_branch(name=name)
+            return target_controldir.create_branch(name=name)
 
     def _get_nested_branch(self, dest_transport, dest_format, name):
-        from ...bzrdir import BzrDir
+        from ...controldir import ControlDir
         from ...errors import NotBranchError
         head_transport = dest_transport.clone(name)
         try:
-            head_bzrdir = BzrDir.open_from_transport(head_transport)
+            head_controldir = ControlDir.open_from_transport(head_transport)
         except NotBranchError:
-            head_bzrdir = dest_format.initialize_on_transport_ex(
+            head_controldir = dest_format.initialize_on_transport_ex(
                 head_transport, create_prefix=True)[1]
         try:
-            return head_bzrdir.open_branch()
+            return head_controldir.open_branch()
         except NotBranchError:
-            return head_bzrdir.create_branch()
+            return head_controldir.create_branch()
 
     def run(self, src_location, dest_location=None, colocated=False):
         import os
@@ -72,8 +72,8 @@ class cmd_git_import(Command):
             ui,
             urlutils,
             )
-        from ...bzrdir import (
-            BzrDir,
+        from ...controldir import (
+            ControlDir,
             )
         from ...errors import (
             BzrCommandError,
@@ -105,14 +105,14 @@ class cmd_git_import(Command):
         if not isinstance(source_repo, GitRepository):
             raise BzrCommandError(gettext("%r is not a git repository") % src_location)
         try:
-            target_bzrdir = BzrDir.open_from_transport(dest_transport)
+            target_controldir = ControlDir.open_from_transport(dest_transport)
         except NotBranchError:
-            target_bzrdir = dest_format.initialize_on_transport_ex(
+            target_controldir = dest_format.initialize_on_transport_ex(
                 dest_transport, shared_repo=True)[1]
         try:
-            target_repo = target_bzrdir.find_repository()
+            target_repo = target_controldir.find_repository()
         except NoRepositoryPresent:
-            target_repo = target_bzrdir.create_repository(shared=True)
+            target_repo = target_controldir.create_repository(shared=True)
 
         if not target_repo.supports_rich_root():
             raise BzrCommandError(gettext("Target repository doesn't support rich roots"))
@@ -130,14 +130,14 @@ class cmd_git_import(Command):
                     # Not a branch, ignore
                     continue
                 pb.update(gettext("creating branches"), i, len(refs_dict))
-                if getattr(target_bzrdir._format, "colocated_branches", False) and colocated:
+                if getattr(target_controldir._format, "colocated_branches", False) and colocated:
                     if name == "HEAD":
                         branch_name = None
-                    head_branch = self._get_colocated_branch(target_bzrdir, branch_name)
+                    head_branch = self._get_colocated_branch(target_controldir, branch_name)
                 else:
                     head_branch = self._get_nested_branch(dest_transport, dest_format, branch_name)
                 revid = mapping.revision_id_foreign_to_bzr(sha)
-                source_branch = GitBranch(source_repo.bzrdir, source_repo,
+                source_branch = GitBranch(source_repo.controldir, source_repo,
                     sha)
                 source_branch.head = sha
                 if head_branch.last_revision() != revid:
@@ -176,15 +176,15 @@ class cmd_git_object(Command):
         from ...errors import (
             BzrCommandError,
             )
-        from ...bzrdir import (
-            BzrDir,
+        from ...controldir import (
+            ControlDir,
             )
         from .object_store import (
             get_object_store,
             )
         from . import gettext
-        bzrdir, _ = BzrDir.open_containing(directory)
-        repo = bzrdir.find_repository()
+        controldir, _ = ControlDir.open_containing(directory)
+        repo = controldir.find_repository()
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
@@ -216,8 +216,8 @@ class cmd_git_refs(Command):
 
     @display_command
     def run(self, location="."):
-        from ...bzrdir import (
-            BzrDir,
+        from ...controldir import (
+            ControlDir,
             )
         from .refs import (
             get_refs_container,
@@ -225,12 +225,12 @@ class cmd_git_refs(Command):
         from .object_store import (
             get_object_store,
             )
-        bzrdir, _ = BzrDir.open_containing(location)
-        repo = bzrdir.find_repository()
+        controldir, _ = ControlDir.open_containing(location)
+        repo = controldir.find_repository()
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
-            refs = get_refs_container(bzrdir, object_store)
+            refs = get_refs_container(controldir, object_store)
             for k, v in refs.as_dict().iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:

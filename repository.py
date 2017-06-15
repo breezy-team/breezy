@@ -23,15 +23,17 @@ from ... import (
     check,
     errors,
     graph as _mod_graph,
-    inventory,
     repository,
     revision,
     transactions,
     ui,
     version_info as breezy_version,
     )
+from ...bzr import (
+    inventory,
+    inventorytree,
+    )
 from ...decorators import only_raises
-from ...revisiontree import InventoryRevisionTree
 from ...foreign import (
     ForeignRepository,
     )
@@ -525,7 +527,7 @@ class LocalGitRepository(GitRepository):
         if revision_id == revision.NULL_REVISION:
             inv = inventory.Inventory(root_id=None)
             inv.revision_id = revision_id
-            return InventoryRevisionTree(self, inv, revision_id)
+            return inventorytree.InventoryRevisionTree(self, inv, revision_id)
         return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
