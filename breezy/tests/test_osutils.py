@@ -2008,7 +2008,7 @@ class TestFailedToLoadExtension(tests.TestCase):
         self.assertContainsRe(
             log.getvalue(),
             r"brz: warning: some compiled extensions could not be loaded; "
-            "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
+            "see ``brz help missing-extensions``\n"
             )
 
 

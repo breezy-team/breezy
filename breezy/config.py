@@ -2348,7 +2348,9 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2719,14 +2721,6 @@ GPG key to use for signing.
 
 This defaults to the first key associated with the users email.
 """))
-option_registry.register(
-    Option('ignore_missing_extensions', default=False,
-           from_unicode=bool_from_store,
-           help='''\
-Control the missing extensions warning display.
-
-The warning will not be emitted if set to True.
-'''))
 option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
@@ -3227,7 +3221,7 @@ class IniFileStore(Store):
             self.load()
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
-            self._load_from_string('')
+            self._load_from_string(b'')
         if section_id in self.dirty_sections:
             # We already created a mutable section for this id
             return self.dirty_sections[section_id]

@@ -2280,7 +2280,7 @@ class TestCase(testtools.TestCase):
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
-            stdin = BytesIO("")
+            stdin = BytesIO(b"")
         if stdout is None:
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
@@ -2989,7 +2989,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         There is no point in forcing them to duplicate the extension related
         warning.
         """
-        config.GlobalStack().set('ignore_missing_extensions', True)
+        config.GlobalStack().set('suppress_warnings', 'missing_extensions')
 
 
 class ChrootedTestCase(TestCaseWithTransport):

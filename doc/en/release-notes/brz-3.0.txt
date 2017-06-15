@@ -47,6 +47,10 @@ External Compatibility Breaks
  * The deprecated ``brz get`` and ``brz clone`` commands have been
    removed. (Jelmer Vernooĳ)
 
+ * The setting to ignore missing C extensions has been changed from
+   ``ignore_missing_extensions=True`` to
+   ``suppress_warnings=missing_extensions``. (Jelmer Vernooĳ)
+
 New Features
 ************
 
