@@ -1645,6 +1645,9 @@ class TreeConfig(IniBasedConfig):
             self.branch.unlock()
 
 
+_authentication_config_permission_errors = set()
+
+
 class AuthenticationConfig(object):
     """The authentication configuration file based on a ini file.
 
@@ -1691,10 +1694,14 @@ class AuthenticationConfig(object):
         mode = stat.S_IMODE(st.st_mode)
         if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
              stat.S_IWGRP | stat.S_IRGRP ) & mode):
-            if not GlobalConfig().suppress_warning('insecure_permissions'):
+            # Only warn once
+            if (not self._filename in _authentication_config_permission_errors
+                and not GlobalConfig().suppress_warning(
+                    'insecure_permissions')):
                 trace.warning("The file '%s' has insecure "
                         "file permissions. Saved passwords may be accessible "
                         "by other users.", self._filename)
+                _authentication_config_permission_errors.add(self._filename)
 
     def _save(self):
         """Save the config file, only tests should use it for now."""
