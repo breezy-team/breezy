@@ -5209,6 +5209,7 @@ class cmd_re_sign(Command):
             b.repository.start_write_group()
             try:
                 for revision_id in revision_id_list:
+                    revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
             except:
                 b.repository.abort_write_group()
