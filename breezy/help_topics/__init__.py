@@ -791,6 +791,8 @@ topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('missing-extensions', _load_from_file,
+                        'What to do when compiled extensions are missing')
 topic_registry.register('url-special-chars', _load_from_file,
                         'Special character handling in URLs')
 
