@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     command_classes = {}
     try:
-        from bzrlib.bzr_distutils import build_mo
+        from breezy.bzr_distutils import build_mo
     except ImportError:
         pass
     else:
@@ -27,9 +27,9 @@ if __name__ == '__main__':
           maintainer='Jelmer Vernooij',
           maintainer_email='jelmer@samba.org',
           long_description=readme,
-          package_dir={'bzrlib.plugins.git':'.'},
-          packages=['bzrlib.plugins.git',
-                    'bzrlib.plugins.git.tests'],
+          package_dir={'breezy.plugins.git':'.'},
+          packages=['breezy.plugins.git',
+                    'breezy.plugins.git.tests'],
           scripts=['bzr-receive-pack', 'bzr-upload-pack', 'git-remote-bzr'],
           classifiers=[
               'Topic :: Software Development :: Version Control',

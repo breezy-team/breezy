@@ -102,7 +102,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def lock_read(self):
         """Lock the repository for read operations.
 
-        :return: A bzrlib.lock.LogicalLockResult.
+        :return: A breezy.lock.LogicalLockResult.
         """
         if not self._lock_mode:
             self._lock_mode = 'r'

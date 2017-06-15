@@ -29,13 +29,13 @@ def handle_sigint(signal, frame):
 
 signal.signal(signal.SIGINT, handle_sigint)
 
-import bzrlib
-bzrlib.initialize()
+import breezy
+breezy.initialize()
 
-from bzrlib.plugin import load_plugins
+from breezy.plugin import load_plugins
 load_plugins()
 
-from bzrlib.plugins.git.git_remote_helper import (
+from breezy.plugins.git.git_remote_helper import (
     RemoteHelper,
     open_local_dir,
     open_remote_dir,

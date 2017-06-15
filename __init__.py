@@ -26,8 +26,8 @@ from __future__ import absolute_import
 import os
 import sys
 
-import bzrlib
-import bzrlib.api
+import breezy
+import breezy.api
 
 from .info import (
     bzr_compatible_versions,
@@ -41,7 +41,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
+breezy.api.require_any_api(breezy, bzr_compatible_versions)
 
 try:
     from ...i18n import load_plugin_translations
@@ -101,21 +101,21 @@ def lazy_check_versions():
     _versions_checked = True
 
 format_registry.register_lazy('git',
-    "bzrlib.plugins.git.dir", "LocalGitControlDirFormat",
+    __name__ + ".dir", "LocalGitControlDirFormat",
     help='GIT repository.', native=False, experimental=False,
     )
 
 format_registry.register_lazy('git-bare',
-    "bzrlib.plugins.git.dir", "BareLocalGitControlDirFormat",
+    __name__ + ".dir", "BareLocalGitControlDirFormat",
     help='Bare GIT repository (no working tree).', native=False,
     experimental=False,
     )
 
 from ...revisionspec import (RevisionSpec_dwim, revspec_registry)
-revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
+revspec_registry.register_lazy("git:", __name__ + ".revspec",
     "RevisionSpec_git")
 RevisionSpec_dwim.append_possible_lazy_revspec(
-    "bzrlib.plugins.git.revspec", "RevisionSpec_git")
+    __name__ + ".git.revspec", "RevisionSpec_git")
 
 
 class LocalGitProber(Prober):
@@ -292,7 +292,7 @@ def update_stanza(rev, stanza):
         stanza.add("git-commit", git_commit)
 
 from ...hooks import install_lazy_named_hook
-install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
+install_lazy_named_hook("breezy.version_info_formats.format_rio",
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
     "git commits")
 
@@ -382,22 +382,22 @@ except ImportError:
     foreign_vcs_registry.register_lazy("git",
         __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
 else:
-    register_lazy("bzrlib.diff", "format_registry",
+    register_lazy("breezy.diff", "format_registry",
         'git', __name__ + '.send', 'GitDiffTree',
         'Git am-style diff format')
-    register_lazy("bzrlib.send", "format_registry",
+    register_lazy("breezy.send", "format_registry",
         'git', __name__ + '.send', 'send_git',
         'Git am-style diff format')
-    register_lazy('bzrlib.directory_service', 'directories', 'github:',
+    register_lazy('breezy.directory_service', 'directories', 'github:',
             __name__ + '.directory', 'GitHubDirectory',
             'GitHub directory.')
-    register_lazy('bzrlib.directory_service', 'directories',
-            'git@github.com:', 'bzrlib.plugins.git.directory',
+    register_lazy('breezy.directory_service', 'directories',
+            'git@github.com:', __name__ + '.git.directory',
             'GitHubDirectory', 'GitHub directory.')
-    register_lazy('bzrlib.help_topics', 'topic_registry',
+    register_lazy('breezy.help_topics', 'topic_registry',
             'git', __name__ + '.help', 'help_git',
             'Using Bazaar with Git')
-    register_lazy('bzrlib.foreign', 'foreign_vcs_registry', "git",
+    register_lazy('breezy.foreign', 'foreign_vcs_registry', "git",
         __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
 
 def update_git_cache(repository, revid):
@@ -447,10 +447,10 @@ def loggerhead_git_hook(branch_app, environ):
     return git_http_hook(branch, environ['REQUEST_METHOD'],
         environ['PATH_INFO'])
 
-install_lazy_named_hook("bzrlib.branch",
+install_lazy_named_hook("breezy.branch",
     "Branch.hooks", "post_commit", post_commit_update_cache,
     "git cache")
-install_lazy_named_hook("bzrlib.plugins.loggerhead.apps.branch",
+install_lazy_named_hook("breezy.plugins.loggerhead.apps.branch",
     "BranchWSGIApp.hooks", "controller",
     loggerhead_git_hook, "git support")
 

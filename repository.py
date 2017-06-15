@@ -28,7 +28,7 @@ from ... import (
     revision,
     transactions,
     ui,
-    version_info as bzrlib_version,
+    version_info as breezy_version,
     )
 from ...decorators import only_raises
 from ...revisiontree import InventoryRevisionTree

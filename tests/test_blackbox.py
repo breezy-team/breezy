@@ -23,7 +23,7 @@ from dulwich.repo import (
 import os
 
 from .... import (
-    version_info as bzrlib_version,
+    version_info as breezy_version,
     )
 from ....bzrdir import (
     BzrDir,

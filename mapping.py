@@ -335,7 +335,7 @@ class BzrGitMapping(foreign.VcsMapping):
     def import_commit(self, commit, lookup_parent_revid):
         """Convert a git commit to a bzr revision.
 
-        :return: a `bzrlib.revision.Revision` object, foreign revid and a
+        :return: a `breezy.revision.Revision` object, foreign revid and a
             testament sha1
         """
         if commit is None:
@@ -471,10 +471,10 @@ class GitMappingRegistry(VcsMappingRegistry):
 
 
 mapping_registry = GitMappingRegistry()
-mapping_registry.register_lazy('git-v1', "bzrlib.plugins.git.mapping",
+mapping_registry.register_lazy('git-v1', "breezy.plugins.git.mapping",
     "BzrGitMappingv1")
 mapping_registry.register_lazy('git-experimental',
-    "bzrlib.plugins.git.mapping", "BzrGitMappingExperimental")
+    "breezy.plugins.git.mapping", "BzrGitMappingExperimental")
 # Uncomment the next line to enable the experimental bzr-git mappings.
 # This will make sure all bzr metadata is pushed into git, allowing for
 # full roundtripping later.
