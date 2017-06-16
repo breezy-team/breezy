@@ -33,7 +33,7 @@ from ... import (
 from ...bzr import (
     serializer,
     )
-from ...bzr.bzrdir import (
+from ...bzr import (
     BzrProber,
     register_metadir,
     )
