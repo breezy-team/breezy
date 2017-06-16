@@ -15,12 +15,12 @@ Build-Depends: bash-completion,
                python-docutils,
                python-fastimport,
                python-lzma-dbg [!m68k !powerpcspe !sh4],
-               python-pyftpdlib,
                python-meliae-dbg,
                python-paramiko (<< 1.12.0) | python-paramiko (>= 1.14.1),
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
                python-testtools (>= 0.9.5~)
+Build-Conflicts: python-pyftpdlib
 Standards-Version: 3.9.8
 X-Python-Version: >= 2.7
 Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/breezy/3.0

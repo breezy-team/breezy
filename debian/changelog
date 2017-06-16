@@ -1,7 +1,5 @@
 breezy (3.0.0~bzr6701-1) UNRELEASED; urgency=medium
 
-  * Use python-pyftpdlib rather than python-medusa. The latter doesn't
-    work with python >= 2.7.
   * Mark as supporting only Python >= 2.7.
   * Drop unnecessary Breaks that are only relevant for bzr.
   * Drop other bzr uploaders.
