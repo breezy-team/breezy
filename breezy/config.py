@@ -83,8 +83,10 @@ from .decorators import needs_write_lock
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import base64
+import errno
 import fnmatch
 import re
+import stat
 
 from breezy import (
     atomicfile,
@@ -1643,6 +1645,9 @@ class TreeConfig(IniBasedConfig):
             self.branch.unlock()
 
 
+_authentication_config_permission_errors = set()
+
+
 class AuthenticationConfig(object):
     """The authentication configuration file based on a ini file.
 
@@ -1655,6 +1660,7 @@ class AuthenticationConfig(object):
         if _file is None:
             self._filename = authentication_config_filename()
             self._input = self._filename = authentication_config_filename()
+            self._check_permissions()
         else:
             # Tests can provide a string as _file
             self._filename = None
@@ -1677,12 +1683,33 @@ class AuthenticationConfig(object):
             raise errors.ConfigContentError(self._filename)
         return self._config
 
+    def _check_permissions(self):
+        """Check permission of auth file are user read/write able only."""
+        try:
+            st = os.stat(self._filename)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                trace.mutter('Unable to stat %r: %r', self._filename, e)
+            return
+        mode = stat.S_IMODE(st.st_mode)
+        if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
+             stat.S_IWGRP | stat.S_IRGRP ) & mode):
+            # Only warn once
+            if (not self._filename in _authentication_config_permission_errors
+                and not GlobalConfig().suppress_warning(
+                    'insecure_permissions')):
+                trace.warning("The file '%s' has insecure "
+                        "file permissions. Saved passwords may be accessible "
+                        "by other users.", self._filename)
+                _authentication_config_permission_errors.add(self._filename)
+
     def _save(self):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        f = file(self._filename, 'wb')
+        fd = os.open(self._filename, os.O_RDWR|os.O_CREAT, 0o600)
         try:
+            f = os.fdopen(fd, 'wb')
             self._get_config().write(f)
         finally:
             f.close()
@@ -2321,7 +2348,9 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2692,14 +2721,6 @@ GPG key to use for signing.
 
 This defaults to the first key associated with the users email.
 """))
-option_registry.register(
-    Option('ignore_missing_extensions', default=False,
-           from_unicode=bool_from_store,
-           help='''\
-Control the missing extensions warning display.
-
-The warning will not be emitted if set to True.
-'''))
 option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
@@ -3200,7 +3221,7 @@ class IniFileStore(Store):
             self.load()
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
-            self._load_from_string('')
+            self._load_from_string(b'')
         if section_id in self.dirty_sections:
             # We already created a mutable section for this id
             return self.dirty_sections[section_id]

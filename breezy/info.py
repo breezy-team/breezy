@@ -22,12 +22,14 @@ import time
 import sys
 
 from . import (
-    bzrdir,
     controldir,
     errors,
     hooks as _mod_hooks,
     osutils,
     urlutils,
+    )
+from .bzr import (
+    bzrdir,
     )
 from .errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)

@@ -29,8 +29,8 @@ from . import (
     revision as _mod_revision,
     )
 from .decorators import needs_read_lock
-from .inventory import Inventory
-from .inventorytree import MutableInventoryTree
+from .bzr.inventory import Inventory
+from .bzr.inventorytree import MutableInventoryTree
 from .osutils import sha_file
 from .mutabletree import needs_tree_write_lock
 from .transport.memory import MemoryTransport

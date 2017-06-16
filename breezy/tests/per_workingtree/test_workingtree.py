@@ -21,7 +21,6 @@ import os
 
 from ... import (
     branch,
-    bzrdir,
     config,
     controldir,
     errors,
@@ -31,11 +30,14 @@ from ... import (
     trace,
     urlutils,
     )
+from...bzr import (
+    bzrdir,
+    )
 from ...errors import (
     UnsupportedOperation,
     PathsNotVersionedError,
     )
-from ...inventory import Inventory
+from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
 from ...osutils import pathjoin, getcwd, has_symlinks
 from ...sixish import (
@@ -47,7 +49,7 @@ from .. import (
     TestNotApplicable,
     )
 from .  import TestCaseWithWorkingTree
-from ...bzrworkingtree import (
+from ...bzr.workingtree import (
     InventoryWorkingTree,
     )
 from ...workingtree import (

@@ -19,14 +19,16 @@
 import zlib
 
 from .. import (
-    btree_index,
     config,
-    groupcompress,
     errors,
-    index as _mod_index,
     osutils,
     tests,
     trace,
+    )
+from ..bzr import (
+    btree_index,
+    groupcompress,
+    index as _mod_index,
     versionedfile,
     )
 from ..osutils import sha_string

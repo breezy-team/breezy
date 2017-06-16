@@ -17,9 +17,11 @@
 from .. import (
     add,
     cache_utf8,
-    inventory,
     osutils,
     tests,
+    )
+from ..bzr import (
+    inventory,
     )
 from ..sixish import (
     BytesIO,

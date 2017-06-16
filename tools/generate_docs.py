@@ -27,8 +27,8 @@ several different output formats:
 
 Examples: 
 
-    python2.4 generated-docs.py man
-    python2.4 generated-docs.py bash_completion
+    python generated-docs.py man
+    python generated-docs.py bash_completion
 
 Run "%(prog)s --help" for the option reference.
 """
@@ -38,12 +38,11 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import breezy
+# Don't remove the following import, it triggers a format registration that
+# avoid http://pad.lv/956860
+import breezy.bzr
 from breezy import (
     commands,
-    # Don't remove the following import, it triggers a format registration that
-    # avoid http://pad.lv/956860
-    branch,
     doc_generate,
     )
 

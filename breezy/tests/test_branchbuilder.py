@@ -18,9 +18,11 @@
 
 from .. import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
     revision as _mod_revision,
     tests,
+    )
+from ..bzr import (
+    branch as _mod_bzrbranch,
     )
 from ..branchbuilder import BranchBuilder
 

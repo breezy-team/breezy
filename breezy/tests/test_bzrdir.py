@@ -25,8 +25,7 @@ import sys
 
 from .. import (
     branch,
-    bzrbranch,
-    bzrdir,
+    bzr,
     config,
     controldir,
     errors,
@@ -35,16 +34,20 @@ from .. import (
     repository,
     revision as _mod_revision,
     osutils,
-    remote,
     transport as _mod_transport,
     urlutils,
     win32utils,
+    )
+from ..bzr import (
+    branch as bzrbranch,
+    bzrdir,
+    remote,
     workingtree_3,
     workingtree_4,
     )
 import breezy.branch
-import breezy.bzrbranch
-from ..branchfmt.fullhistory import BzrBranchFormat5
+import breezy.bzr.branch
+from ..bzr.fullhistory import BzrBranchFormat5
 from ..errors import (
     NotBranchError,
     NoColocatedBranchSupport,
@@ -68,7 +71,7 @@ from ..transport import (
 from ..transport.http._urllib import HttpTransport_urllib
 from ..transport.nosmart import NoSmartTransportDecorator
 from ..transport.readonly import ReadonlyTransportDecorator
-from ..repofmt import knitrepo, knitpack_repo
+from ..bzr import knitrepo, knitpack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -101,22 +104,22 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register_lazy('lazy', 'breezy.tests.test_bzrdir',
             'DeprecatedBzrDirFormat', 'Format registered lazily',
             deprecated=True)
-        bzrdir.register_metadir(my_format_registry, 'knit',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit1',
+        bzr.register_metadir(my_format_registry, 'knit',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        bzrdir.register_metadir(my_format_registry,
+        bzr.register_metadir(my_format_registry,
             'branch6',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit3',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='breezy.bzrbranch.BzrBranchFormat6',
+            branch_format='breezy.bzr.branch.BzrBranchFormat6',
             experimental=True)
-        bzrdir.register_metadir(my_format_registry,
+        bzr.register_metadir(my_format_registry,
             'hidden format',
-            'breezy.repofmt.knitrepo.RepositoryFormatKnit3',
+            'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='breezy.bzrbranch.BzrBranchFormat6', hidden=True)
+            branch_format='breezy.bzr.branch.BzrBranchFormat6', hidden=True)
         my_format_registry.register('hiddendeprecated', DeprecatedBzrDirFormat,
             'Old format.  Slower and does not support things. ', hidden=True)
         my_format_registry.register_lazy('hiddenlazy', 'breezy.tests.test_bzrdir',
@@ -138,7 +141,7 @@ class TestFormatRegistry(TestCase):
             knitrepo.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_controldir('branch6')
         self.assertIsInstance(my_bzrdir.get_branch_format(),
-                              breezy.bzrbranch.BzrBranchFormat6)
+                              breezy.bzr.branch.BzrBranchFormat6)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
@@ -279,13 +282,13 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        bzrdir.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
+        bzr.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
             BzrDirFormatTest1())
-        self.addCleanup(bzrdir.BzrProber.formats.remove,
+        self.addCleanup(bzr.BzrProber.formats.remove,
             BzrDirFormatTest1.get_format_string())
-        bzrdir.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
+        bzr.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
             BzrDirFormatTest2())
-        self.addCleanup(bzrdir.BzrProber.formats.remove,
+        self.addCleanup(bzr.BzrProber.formats.remove,
             BzrDirFormatTest2.get_format_string())
         t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
@@ -316,7 +319,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # make a bzrdir
         format.initialize(url)
         # register a format for it.
-        bzrdir.BzrProber.formats.register(format.get_format_string(), format)
+        bzr.BzrProber.formats.register(format.get_format_string(), format)
         # which bzrdir.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open, url)
         # which bzrdir.open_containing will refuse (not supported)
@@ -325,7 +328,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t = _mod_transport.get_transport_from_url(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
-        bzrdir.BzrProber.formats.remove(format.get_format_string())
+        bzr.BzrProber.formats.remove(format.get_format_string())
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
@@ -509,7 +512,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_controldir('source')
         knitpack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
-        source_branch = breezy.bzrbranch.BzrBranchFormat7().initialize(
+        source_branch = breezy.bzr.branch.BzrBranchFormat7().initialize(
             source_bzrdir)
         # Make a directory with a default stacking policy
         parent_bzrdir = self.make_controldir('parent')

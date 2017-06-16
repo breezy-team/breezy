@@ -41,27 +41,30 @@ import testtools.testresult.doubles
 import breezy
 from .. import (
     branchbuilder,
-    bzrdir,
     controldir,
     errors,
     hooks,
     lockdir,
     memorytree,
     osutils,
-    remote,
     repository,
     symbol_versioning,
     tests,
     transport,
     workingtree,
+    )
+from ..bzr import (
+    bzrdir,
+    remote,
     workingtree_3,
     workingtree_4,
     )
-from ..repofmt import (
+from ..bzr import (
     groupcompress_repo,
     )
 from ..sixish import (
     StringIO,
+    text_type,
     )
 from ..symbol_versioning import (
     deprecated_function,
@@ -481,8 +484,8 @@ class TestInterTreeScenarios(tests.TestCase):
         from .per_intertree import (
             make_scenarios,
             )
-        from ..workingtree_3 import WorkingTreeFormat3
-        from ..workingtree_4 import WorkingTreeFormat4
+        from ..bzr.workingtree_3 import WorkingTreeFormat3
+        from ..bzr.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
@@ -1455,8 +1458,8 @@ class TestTestCase(tests.TestCase):
         # useful warning in that case.
         self.assertEqual(breezy.branch.BranchHooks(), breezy.branch.Branch.hooks)
         self.assertEqual(
-            breezy.smart.server.SmartServerHooks(),
-            breezy.smart.server.SmartTCPServer.hooks)
+            breezy.bzr.smart.server.SmartServerHooks(),
+            breezy.bzr.smart.server.SmartTCPServer.hooks)
         self.assertEqual(
             breezy.commands.CommandHooks(), breezy.commands.Command.hooks)
 
@@ -1900,7 +1903,7 @@ class TestExtraAssertions(tests.TestCase):
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
-        self.assertIsInstance(u'', basestring)
+        self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertEqual(str(e),
             "None is an instance of <type 'NoneType'> rather than <type 'int'>")
@@ -1999,9 +2002,9 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
 
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
-        self.make_branch_and_tree('a', format=breezy.bzrdir.BzrDirMetaFormat1())
+        self.make_branch_and_tree('a', format=breezy.bzr.bzrdir.BzrDirMetaFormat1())
         self.assertIsInstance(breezy.controldir.ControlDir.open('a')._format,
-                              breezy.bzrdir.BzrDirMetaFormat1)
+                              breezy.bzr.bzrdir.BzrDirMetaFormat1)
 
     def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from

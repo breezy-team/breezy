@@ -19,8 +19,10 @@
 
 from breezy import (
     controldir,
-    inventory,
     tests,
+    )
+from breezy.bzr import (
+    inventory,
     )
 from breezy.tests.matchers import ContainsNoVfsCalls
 

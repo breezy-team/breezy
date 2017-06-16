@@ -30,7 +30,7 @@ from .. import (
     KnownFailure,
     TestCaseWithTransport,
     )
-from ...bzrdir import BzrDir
+from ...bzr.bzrdir import BzrDir
 
 
 class BisectTestCase(TestCaseWithTransport):

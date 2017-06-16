@@ -20,10 +20,10 @@ from .. import urlutils
 from ..branch import (
     Branch,
     )
-from ..bzrbranch import (
+from ..bzr.branch import (
     BranchReferenceFormat,
     )
-from ..bzrdir import (
+from ..bzr import (
     BzrProber,
     )
 from ..controldir import (

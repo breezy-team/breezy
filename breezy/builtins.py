@@ -22,7 +22,7 @@ import errno
 import os
 import sys
 
-import breezy.bzrdir
+import breezy.bzr
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -32,7 +32,6 @@ import breezy
 from breezy import (
     bugtracker,
     bundle,
-    btree_index,
     cache_utf8,
     controldir,
     directory_service,
@@ -56,6 +55,9 @@ from breezy import (
     urlutils,
     views,
     gpg,
+    )
+from breezy.bzr import (
+    btree_index,
     )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
@@ -1438,19 +1440,12 @@ class cmd_branch(Command):
         Option('bind',
             help="Bind new branch to from location."),
         ]
-    aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
             files_from=None):
         from breezy import switch as _mod_switch
-        if self.invoked_as in ['get', 'clone']:
-            ui.ui_factory.show_user_warning(
-                'deprecated_command',
-                deprecated_name=self.invoked_as,
-                recommended_name='branch',
-                deprecated_in_version='2.4')
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
@@ -5214,6 +5209,7 @@ class cmd_re_sign(Command):
             b.repository.start_write_group()
             try:
                 for revision_id in revision_id_list:
+                    revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
             except:
                 b.repository.abort_write_group()
@@ -6749,7 +6745,7 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
         ('cmd_conflicts', [], 'breezy.conflicts'),
-        ('cmd_ping', [], 'breezy.smart.ping'),
+        ('cmd_ping', [], 'breezy.bzr.smart.ping'),
         ('cmd_sign_my_commits', [], 'breezy.commit_signature_commands'),
         ('cmd_verify_signatures', [], 'breezy.commit_signature_commands'),
         ('cmd_test_script', [], 'breezy.cmd_test_script'),

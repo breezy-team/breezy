@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from ...bzrdir import (
+from ...bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrDirMetaFormat1,
@@ -43,6 +43,8 @@ from breezy import (
     trace,
     ui,
     urlutils,
+    )
+from breezy.bzr import (
     versionedfile,
     weave,
     xml5,
@@ -338,7 +340,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir('revision-store')
         revision_transport = self.controldir.transport.clone('revision-store')
         # TODO permissions
-        from ...xml5 import serializer_v5
+        from ...bzr.xml5 import serializer_v5
         from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
             serializer_v5, False, versionedfile.PrefixMapper(),
@@ -545,7 +547,7 @@ class ConvertBzrDir6ToMeta(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         from .repository import RepositoryFormat7
-        from ...branchfmt.fullhistory import BzrBranchFormat5
+        from ...bzr.fullhistory import BzrBranchFormat5
         self.controldir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
@@ -616,7 +618,7 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.controldir.transport.delete(name)
         else:
-            from ...workingtree_3 import WorkingTreeFormat3
+            from ...bzr.workingtree_3 import WorkingTreeFormat3
             self.step(gettext('Upgrading working tree'))
             self.controldir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
@@ -925,7 +927,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def set_branch_reference(self, target_branch, name=None):
-        from ...bzrbranch import BranchReferenceFormat
+        from ...bzr.branch import BranchReferenceFormat
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)

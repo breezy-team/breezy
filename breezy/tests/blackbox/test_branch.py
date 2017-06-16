@@ -21,13 +21,15 @@ import os
 
 from breezy import (
     branch,
-    bzrdir,
     controldir,
     errors,
     revision as _mod_revision,
     tests,
     )
-from breezy.repofmt.knitrepo import RepositoryFormatKnit1
+from breezy.bzr import (
+    bzrdir,
+    )
+from breezy.bzr.knitrepo import RepositoryFormatKnit1
 from breezy.tests import (
     fixtures,
     test_server,
@@ -610,22 +612,6 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
         t = self.get_transport()
         # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
-
-
-class TestDeprecatedAliases(tests.TestCaseWithTransport):
-
-    def test_deprecated_aliases(self):
-        """brz branch can be called clone or get, but those names are
-        deprecated.
-
-        See bug 506265.
-        """
-        for command in ['clone', 'get']:
-            run_script(self, """
-            $ brz %(command)s A B
-            2>The command 'brz %(command)s' has been deprecated in brz 2.4. Please use 'brz branch' instead.
-            2>brz: ERROR: Not a branch...
-            """ % locals())
 
 
 class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):

@@ -23,7 +23,7 @@ from breezy import (
 from breezy.tests import (
     per_tree,
     )
-from breezy.inventorytree import InventoryTree
+from breezy.bzr.inventorytree import InventoryTree
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
 from breezy.transform import _PreviewTree

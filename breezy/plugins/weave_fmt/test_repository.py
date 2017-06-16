@@ -25,7 +25,7 @@ from __future__ import absolute_import
 from stat import S_ISDIR
 import sys
 
-from ...bzrdir import (
+from ...bzr.bzrdir import (
     BzrDirMetaFormat1,
     )
 from ...errors import (
@@ -36,7 +36,7 @@ from ...repository import (
     InterRepository,
     Repository,
     )
-from ...serializer import (
+from ...bzr.serializer import (
     format_registry as serializer_format_registry,
     )
 from ...sixish import (
@@ -255,7 +255,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
         # is a format 5/6/7 branch
-        from ...repofmt import knitrepo
+        from ...bzr import knitrepo
         formats = [RepositoryFormat5(),
                    RepositoryFormat6(),
                    RepositoryFormat7()]

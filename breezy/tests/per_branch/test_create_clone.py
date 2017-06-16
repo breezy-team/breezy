@@ -19,8 +19,10 @@
 from breezy import (
     branch,
     errors,
-    remote,
     tests,
+    )
+from breezy.bzr import (
+    remote,
     )
 from breezy.tests import per_branch
 

@@ -20,7 +20,7 @@ import os
 import re
 
 from breezy import (
-    bzrdir,
+    bzr,
     config,
     controldir,
     errors,
@@ -28,7 +28,7 @@ from breezy import (
     repository,
     tests,
     )
-from breezy.repofmt.groupcompress_repo import RepositoryFormat2a
+from breezy.bzr.groupcompress_repo import RepositoryFormat2a
 
 
 class TestExceptionReporting(tests.TestCaseInTempDir):
@@ -102,10 +102,10 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
             TestObsoleteRepoFormat)
         repository.format_registry.register(TestObsoleteRepoFormat)
         self.addCleanup(controldir.format_registry.remove, "testobsolete")
-        bzrdir.register_metadir(controldir.format_registry, "testobsolete",
+        bzr.register_metadir(controldir.format_registry, "testobsolete",
             "breezy.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
-            branch_format='breezy.bzrbranch.BzrBranchFormat7',
-            tree_format='breezy.workingtree_4.WorkingTreeFormat6',
+            branch_format='breezy.bzr.branch.BzrBranchFormat7',
+            tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
             deprecated=True,
             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()

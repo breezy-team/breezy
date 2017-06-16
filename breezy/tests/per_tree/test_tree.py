@@ -20,6 +20,8 @@ from breezy import (
     osutils,
     revisiontree,
     tests,
+    )
+from breezy.bzr import (
     workingtree_4,
     )
 from breezy.tests import TestSkipped

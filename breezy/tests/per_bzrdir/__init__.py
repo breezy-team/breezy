@@ -26,7 +26,7 @@ rather than in tests/per_branch/*.py. Generic control directory tests not
 specific to BzrDir are in tests/per_controldir/*.py.
 """
 
-from breezy.bzrdir import BzrDirFormat
+from breezy.bzr.bzrdir import BzrDirFormat
 from breezy.controldir import ControlDirFormat
 from breezy.tests import (
     default_transport,
@@ -68,7 +68,7 @@ def load_tests(loader, standard_tests, pattern):
         None,
         formats)
     # This will always add scenarios using the smart server.
-    from breezy.remote import RemoteBzrDirFormat
+    from breezy.bzr.remote import RemoteBzrDirFormat
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     scenarios.extend(make_scenarios(

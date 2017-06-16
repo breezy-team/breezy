@@ -18,9 +18,11 @@
 
 from .. import (
     errors,
-    groupcompress,
     multiparent,
     tests,
+    )
+from ..bzr import (
+    groupcompress,
     versionedfile,
     )
 

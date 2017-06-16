@@ -75,7 +75,7 @@ class Template(object):
                 data = self._data[name]
             except KeyError:
                 raise errors.MissingTemplateVariable(name)
-            if not isinstance(data, basestring):
+            if not isinstance(data, str):
                 data = str(data)
             yield data
 

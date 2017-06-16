@@ -19,7 +19,7 @@
 import os
 
 from breezy import uncommit
-from breezy.bzrdir import BzrDirMetaFormat1
+from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.errors import BoundBranchOutOfDate
 from breezy.tests import TestCaseWithTransport
 from breezy.tests.matchers import ContainsNoVfsCalls

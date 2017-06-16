@@ -22,12 +22,14 @@ import cStringIO
 from ... import (
     errors,
     graph as _mod_graph,
-    inventory,
-    knit,
     lru_cache,
     osutils,
     revision as _mod_revision,
     trace,
+    )
+from ...bzr import (
+    knit,
+    inventory,
     )
 
 
@@ -192,7 +194,7 @@ class AbstractRevisionStore(object):
 
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
-        from ... import chk_map
+        from ...bzr import chk_map
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
         serializer = self.repo._format._serializer
@@ -413,10 +415,7 @@ class AbstractRevisionStore(object):
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
         rev.inv_sha1 = builder.inv_sha1
-        try:
-            config = builder._config_stack
-        except AttributeError: # bzr < 2.5
-            config = builder._config
+        config = builder._config_stack
         builder.repository.add_revision(builder._new_revision_id, rev,
             builder.new_inventory)
         if self._graph is not None:

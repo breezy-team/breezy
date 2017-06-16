@@ -15,14 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from .. import (
-    bzrdir,
     errors,
     osutils,
     revision as _mod_revision,
+    )
+from ..bzr import (
+    bzrdir,
     versionedfile,
     )
 from ..branch import Branch
-from ..repofmt import knitrepo
+from ..bzr import knitrepo
 from . import TestCaseWithTransport
 from .test_revision import make_branches
 from ..upgrade import Convert
