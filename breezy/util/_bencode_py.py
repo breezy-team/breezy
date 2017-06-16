@@ -108,6 +108,7 @@ class Bencached(object):
     def __init__(self, s):
         self.bencoded = s
 
+
 def encode_bencached(x,r):
     r.append(x.bencoded)
 
@@ -118,9 +119,6 @@ def encode_int(x, r):
     r.extend((b'i', int_to_bytes(x), b'e'))
 
 def encode_string(x, r):
-    r.extend((int_to_bytes(len(x)), b':', x))
-
-def encode_unicode(x, r):
     r.extend((int_to_bytes(len(x)), b':', x))
 
 def encode_list(x, r):
@@ -144,7 +142,8 @@ if sys.version_info < (3,):
     encode_func[long] = encode_int
     int_to_bytes = str
 else:
-    int_to_bytes = lambda n: b"%d" % n
+    def int_to_bytes(n):
+        return b'%d' % n
 encode_func[bytes] = encode_string
 encode_func[list] = encode_list
 encode_func[tuple] = encode_list
