@@ -22,10 +22,12 @@ The tags are actually in the Branch.tags namespace, but these are
 
 from breezy import (
     branch,
-    bzrbranch,
     controldir,
     errors,
     tests,
+    )
+from breezy.bzr import (
+    branch as bzrbranch,
     )
 from breezy.tests import per_branch
 

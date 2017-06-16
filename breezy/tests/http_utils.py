@@ -27,7 +27,7 @@ from .. import (
 from ..sixish import (
     BytesIO,
     )
-from ..smart import (
+from ..bzr.smart import (
     medium,
     )
 from . import http_server

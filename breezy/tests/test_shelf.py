@@ -16,16 +16,18 @@
 
 import os
 
-from breezy import (
+from .. import (
     errors,
     osutils,
-    pack,
     shelf,
     tests,
     transform,
     workingtree,
     )
-from breezy.tests import (
+from ..bzr import (
+    pack,
+    )
+from . import (
     features,
     )
 

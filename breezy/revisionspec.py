@@ -38,6 +38,9 @@ from . import (
     registry,
     trace,
     )
+from .sixish import (
+    text_type,
+    )
 
 
 class RevisionInfo(object):
@@ -154,11 +157,10 @@ class RevisionSpec(object):
         :return: A RevisionSpec object that understands how to parse the
             supplied notation.
         """
-        if not isinstance(spec, (type(None), basestring)):
-            raise TypeError('error')
-
         if spec is None:
             return RevisionSpec(None, _internal=True)
+        if not isinstance(spec, (str, text_type)):
+            raise TypeError("revision spec needs to be text")
         match = revspec_registry.get_prefix(spec)
         if match is not None:
             spectype, specsuffix = match

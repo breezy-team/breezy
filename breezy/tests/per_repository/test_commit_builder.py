@@ -21,11 +21,13 @@ import os
 from breezy import (
     config,
     errors,
-    inventory,
     osutils,
     repository,
     revision as _mod_revision,
     tests,
+    )
+from breezy.bzr import (
+    inventory,
     )
 from breezy.tests import per_repository
 from breezy.tests import (

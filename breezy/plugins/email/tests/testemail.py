@@ -21,7 +21,7 @@ from .... import (
     config,
     tests,
     )
-from ....bzrdir import BzrDir
+from ....bzr.bzrdir import BzrDir
 from ....tests import TestCaseInTempDir
 from ..emailer import EmailSender
 

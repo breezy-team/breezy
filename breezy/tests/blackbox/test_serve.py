@@ -35,8 +35,8 @@ from ... import (
     )
 from ...branch import Branch
 from ...controldir import ControlDir
-from ...smart import client, medium
-from ...smart.server import (
+from ...bzr.smart import client, medium
+from ...bzr.smart.server import (
     BzrServerFactory,
     SmartTCPServer,
     )

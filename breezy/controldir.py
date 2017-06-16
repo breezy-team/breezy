@@ -1091,14 +1091,6 @@ class ControlDirFormat(object):
             target_format.rich_root_data)
 
     @classmethod
-    def register_format(klass, format):
-        """Register a format that does not use '.bzr' for its control dir.
-
-        """
-        raise errors.BzrError("ControlDirFormat.register_format() has been "
-            "removed in Bazaar 2.4. Please upgrade your plugins.")
-
-    @classmethod
     def register_prober(klass, prober):
         """Register a prober that can look for a control dir.
 

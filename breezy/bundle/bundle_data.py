@@ -32,7 +32,7 @@ from ..errors import (
     TestamentMismatch,
     BzrError,
     )
-from ..inventory import (
+from ..bzr.inventory import (
     Inventory,
     InventoryDirectory,
     InventoryFile,
@@ -47,7 +47,7 @@ from ..sixish import (
 from ..testament import StrictTestament
 from ..trace import mutter, warning
 from ..tree import Tree
-from ..xml5 import serializer_v5
+from ..bzr.xml5 import serializer_v5
 
 
 class RevisionInfo(object):

@@ -1076,13 +1076,13 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    if config.GlobalStack().get('ignore_missing_extensions'):
+    if config.GlobalConfig().suppress_warning('missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from .trace import warning
     warning(
         "brz: warning: some compiled extensions could not be loaded; "
-        "see <https://answers.launchpad.net/bzr/+faq/703>")
+        "see ``brz help missing-extensions``")
     # we no longer show the specific missing extensions here, because it makes
     # the message too long and scary - see
     # https://bugs.launchpad.net/bzr/+bug/430529
@@ -1391,7 +1391,7 @@ def safe_revision_id(unicode_or_utf8_string):
     :return: None or a utf8 revision id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == str):
+        or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode revision ids are no longer supported. '
                     'Revision id generators should be creating utf8 revision '
@@ -1409,7 +1409,7 @@ def safe_file_id(unicode_or_utf8_string):
     :return: None or a utf8 file id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == str):
+        or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode file ids are no longer supported. '
                     'File id generators should be creating utf8 file ids.')
@@ -2327,13 +2327,11 @@ def local_concurrency(use_cache=True):
 
     concurrency = os.environ.get('BRZ_CONCURRENCY', None)
     if concurrency is None:
+        import multiprocessing
         try:
-            import multiprocessing
             concurrency = multiprocessing.cpu_count()
-        except (ImportError, NotImplementedError):
-            # multiprocessing is only available on Python >= 2.6
-            # and multiprocessing.cpu_count() isn't implemented on all
-            # platforms
+        except NotImplementedError:
+            # multiprocessing.cpu_count() isn't implemented on all platforms
             try:
                 concurrency = _local_concurrency()
             except (OSError, IOError):

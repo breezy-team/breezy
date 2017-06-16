@@ -17,7 +17,7 @@
 """RemoteTransport client for the smart-server.
 
 This module shouldn't be accessed directly.  The classes defined here should be
-imported from breezy.smart.
+imported from breezy.bzr.smart.
 """
 
 from __future__ import absolute_import
@@ -28,15 +28,17 @@ from .. import (
     config,
     debug,
     errors,
-    remote,
     trace,
     transport,
     urlutils,
     )
+from ..bzr import (
+    remote,
+    )
 from ..sixish import (
     BytesIO,
     )
-from ..smart import client, medium
+from ..bzr.smart import client, medium
 
 
 class _SmartStat(object):

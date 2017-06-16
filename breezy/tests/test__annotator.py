@@ -19,9 +19,12 @@
 from .. import (
     annotate,
     errors,
-    knit,
     revision,
     tests,
+    )
+
+from ..bzr import (
+    knit,
     )
 
 

@@ -18,9 +18,11 @@
 
 from .. import (
     errors,
-    index,
     tests,
     transport,
+    )
+from ..bzr import (
+    index,
     )
 
 

@@ -84,7 +84,7 @@ $ brz add a/dir
 $ cd a
 $ brz commit -m one
 $ cd ..
-$ brz clone a b
+$ brz branch a b
 $ echo bar > b/dir/file
 $ cd a
 $ rm -r dir

@@ -16,7 +16,7 @@
 
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-import breezy.xml6
+import breezy.bzr.xml6
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -25,7 +25,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate is mandatory.
         if isinstance(self.workingtree_format,
-            breezy.workingtree_4.DirStateWorkingTreeFormat):
+            breezy.bzr.workingtree_4.DirStateWorkingTreeFormat):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         # TODO: jam 20051218 this probably should add more than just
@@ -53,7 +53,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = breezy.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
+        basis_inv = breezy.bzr.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
         self.assertEqual('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 
@@ -64,7 +64,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate and ignorable.
         if isinstance(self.workingtree_format,
-            breezy.workingtree_4.DirStateWorkingTreeFormat):
+            breezy.bzr.workingtree_4.DirStateWorkingTreeFormat):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')

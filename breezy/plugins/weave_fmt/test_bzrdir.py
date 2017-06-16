@@ -26,13 +26,15 @@ import sys
 
 from ... import (
     branch,
-    bzrdir,
     controldir,
     errors,
     repository,
     upgrade,
     urlutils,
     workingtree,
+    )
+from ...bzr import (
+    bzrdir,
     )
 from ...osutils import (
     getcwd,

@@ -20,15 +20,11 @@ import re
 
 from ... import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
-    bzrrepository,
     controldir,
     delta as _mod_delta,
     errors,
     gpg,
     info,
-    inventory,
-    remote,
     repository,
     revision as _mod_revision,
     tests,
@@ -36,7 +32,13 @@ from ... import (
     upgrade,
     workingtree,
     )
-from ...repofmt import (
+from ...bzr import (
+    branch as _mod_bzrbranch,
+    inventory,
+    remote,
+    repository as bzrrepository,
+    )
+from ...bzr import (
     knitpack_repo,
     )
 from ...sixish import (
@@ -625,7 +627,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.get_vfs_only_url('remote')).open_repository()
         # Make a branch in that repo in an old format that isn't the default
         # branch format for the repo.
-        from breezy.branchfmt.fullhistory import BzrBranchFormat5
+        from breezy.bzr.fullhistory import BzrBranchFormat5
         format = remote_backing_repo.controldir.cloning_metadir()
         format._branch_format = BzrBranchFormat5()
         remote_transport = remote_repo.controldir.root_transport.clone('branch')

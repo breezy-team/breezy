@@ -69,6 +69,9 @@ from .decorators import needs_read_lock, needs_write_lock
 from .i18n import gettext
 from . import mutabletree
 from .mutabletree import needs_tree_write_lock
+from .sixish import (
+    text_type,
+    )
 from .trace import mutter, note
 
 
@@ -1157,7 +1160,7 @@ class WorkingTree(mutabletree.MutableTree,
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
-        if isinstance(files, basestring):
+        if isinstance(files, (str, text_type)):
             files = [files]
 
         inv_delta = []
@@ -1825,11 +1828,11 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
-    "breezy.workingtree_4", "WorkingTreeFormat4")
+    "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
 format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
-    "breezy.workingtree_4", "WorkingTreeFormat5")
+    "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
 format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
-    "breezy.workingtree_4", "WorkingTreeFormat6")
+    "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
 format_registry.register_lazy("Bazaar-NG Working Tree format 3",
-    "breezy.workingtree_3", "WorkingTreeFormat3")
+    "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
 format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")

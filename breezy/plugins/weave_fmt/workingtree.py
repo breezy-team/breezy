@@ -21,10 +21,12 @@ from __future__ import absolute_import
 from ... import (
     conflicts as _mod_conflicts,
     errors,
-    inventory,
     osutils,
     revision as _mod_revision,
     transform,
+    )
+from ...bzr import (
+    inventory,
     xml5,
     )
 from ...decorators import needs_read_lock
@@ -36,7 +38,7 @@ from ...transport.local import LocalTransport
 from ...workingtree import (
     WorkingTreeFormat,
     )
-from ...workingtree_3 import (
+from ...bzr.workingtree_3 import (
     PreDirStateWorkingTree,
     )
 

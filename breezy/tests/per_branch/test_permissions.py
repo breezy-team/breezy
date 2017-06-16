@@ -31,9 +31,9 @@ import sys
 import stat
 
 from breezy import tests
-from breezy.bzrbranch import BzrBranch
+from breezy.bzr.branch import BzrBranch
 from breezy.controldir import ControlDir
-from breezy.remote import RemoteBranchFormat
+from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests.test_permissions import check_mode_r
 
 

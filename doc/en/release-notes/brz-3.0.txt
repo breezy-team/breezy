@@ -44,6 +44,13 @@ External Compatibility Breaks
  * Support for medusa for FTP tests has been dropped, only
    pyftpdlib is now supported. (Jelmer Vernooĳ)
 
+ * The deprecated ``brz get`` and ``brz clone`` commands have been
+   removed. (Jelmer Vernooĳ)
+
+ * The setting to ignore missing C extensions has been changed from
+   ``ignore_missing_extensions=True`` to
+   ``suppress_warnings=missing_extensions``. (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -84,6 +91,11 @@ Bug Fixes
 * The ``bisect`` command now works in non-``.bzr`` directories.
   (Jelmer Vernooĳ)
 
+* When creating ``authentication.conf``, umask is now set so only the
+  current user can read the file. Breezy warns if the file is
+  accessible for other users when it starts.
+  (Joke de Buhr, Jelmer Vernooĳ, #475501)
+
 Documentation
 *************
 
@@ -93,7 +105,7 @@ Documentation
 API Changes
 ***********
 
- * bzrlib has been renamed to bzrlib. (Martin Packman, Jelmer Vernooĳ)
+ * bzrlib has been renamed to breezy. (Martin Packman, Jelmer Vernooĳ)
 
  * Signature of ``load_tests`` used by ``TestLoader`` changed to be
    compatible with standard libarary unittest.  (Martin Packman)

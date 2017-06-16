@@ -16,14 +16,14 @@
 
 from __future__ import absolute_import
 
-from ...xml_serializer import (
+from ...bzr.xml_serializer import (
     Element,
     SubElement,
     XMLSerializer,
     escape_invalid_chars,
     )
-from ...inventory import ROOT_ID, Inventory
-import breezy.inventory as inventory
+from ...bzr.inventory import ROOT_ID, Inventory
+from ...bzr import inventory
 from ...revision import Revision
 from ...errors import BzrError
 

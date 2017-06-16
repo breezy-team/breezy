@@ -7,19 +7,19 @@ Make a temporary directory for these tests:
    >>> from breezy import osutils
    >>> test_dir = osutils.mkdtemp(prefix='breezy_doc_api_branch_txt_')
 
-Branches are created by BzrDir's:
+Branches are created by ControlDir's:
 
    >>> from breezy.branch import Branch
-   >>> from breezy.bzrdir import BzrDir
+   >>> from breezy.controldir import ControlDir
 
-   >>> new_branch = BzrDir.create_branch_convenience(test_dir)
+   >>> new_branch = ControlDir.create_branch_convenience(test_dir)
 
 Existing Branches can be opened directly:
 
    >>> transport = new_branch.controldir.transport
    >>> another_instance = Branch.open(transport.clone('..').base)
 
-or via the BzrDir:
+or via the ControlDir:
 
    >>> still_the_same_branch = new_branch.controldir.open_branch()
 

@@ -16,7 +16,7 @@
 
 """Tests for fetch between repositories of the same type."""
 
-from breezy import (
+from breezy.bzr import (
     vf_search,
     )
 from breezy.tests.per_repository_vf import (

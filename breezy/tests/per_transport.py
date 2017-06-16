@@ -44,7 +44,7 @@ from ..sixish import (
     BytesIO,
     zip,
     )
-from ..smart import medium
+from ..bzr.smart import medium
 from . import (
     TestSkipped,
     TestNotApplicable,

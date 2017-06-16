@@ -22,15 +22,17 @@ except ImportError:
 import sys
 
 from .. import (
-    bzrdir,
     diff,
     errors,
-    inventory,
     merge,
     osutils,
     revision as _mod_revision,
     tests,
     treebuilder,
+    )
+from ..bzr import (
+    bzrdir,
+    inventory,
     )
 from ..bundle import read_mergeable_from_url
 from ..bundle.apply_bundle import install_bundle, merge_bundle
@@ -40,7 +42,7 @@ from ..bundle.serializer import write_bundle, read_bundle, v09, v4
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
 from ..bundle.serializer.v4 import BundleSerializerV4
-from ..repofmt import knitrepo
+from ..bzr import knitrepo
 from ..sixish import (
     BytesIO,
     )
@@ -72,7 +74,7 @@ def get_inventory_text(repo, revision_id):
 class MockTree(object):
 
     def __init__(self):
-        from ..inventory import InventoryDirectory, ROOT_ID
+        from ..bzr.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
@@ -116,7 +118,7 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import (InventoryFile , InventoryDirectory,
+        from ..bzr.inventory import (InventoryFile , InventoryDirectory,
             InventoryLink)
         name = os.path.basename(path)
         kind = self.kind(file_id)

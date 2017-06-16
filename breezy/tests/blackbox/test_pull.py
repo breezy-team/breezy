@@ -24,11 +24,13 @@ from breezy import (
     branch,
     debug,
     osutils,
-    remote,
     tests,
     uncommit,
     urlutils,
     workingtree,
+    )
+from breezy.bzr import (
+    remote,
     )
 
 from breezy.directory_service import directories

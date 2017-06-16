@@ -27,18 +27,20 @@ import itertools
 from .. import (
     errors,
     graph as _mod_graph,
-    groupcompress,
-    knit as _mod_knit,
     osutils,
     progress,
     transport,
     ui,
     )
+from ..bzr import (
+    groupcompress,
+    knit as _mod_knit,
+    )
 from ..errors import (
-                           RevisionNotPresent,
-                           RevisionAlreadyPresent,
-                           )
-from ..knit import (
+    RevisionNotPresent,
+    RevisionAlreadyPresent,
+    )
+from ..bzr.knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
@@ -55,16 +57,16 @@ from . import (
     )
 from .http_utils import TestCaseWithWebserver
 from ..transport.memory import MemoryTransport
-from .. import versionedfile as versionedfile
-from ..versionedfile import (
+from ..bzr import versionedfile as versionedfile
+from ..bzr.versionedfile import (
     ConstantMapper,
     HashEscapedPrefixMapper,
     PrefixMapper,
     VirtualVersionedFiles,
     make_versioned_files_factory,
     )
-from ..weave import WeaveFile
-from ..weavefile import write_weave
+from ..bzr.weave import WeaveFile
+from ..bzr.weavefile import write_weave
 from .scenarios import load_tests_apply_scenarios
 
 

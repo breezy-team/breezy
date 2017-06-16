@@ -21,7 +21,6 @@ import re
 
 from breezy import (
     branch,
-    bzrdir,
     controldir,
     errors,
     osutils,
@@ -31,7 +30,10 @@ from breezy import (
     urlutils,
     workingtree
     )
-from breezy.repofmt import knitrepo
+from breezy.bzr import (
+    bzrdir,
+    )
+from breezy.bzr import knitrepo
 from breezy.tests import (
     http_server,
     scenarios,

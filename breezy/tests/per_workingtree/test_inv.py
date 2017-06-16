@@ -19,7 +19,8 @@
 
 import os
 
-from breezy import inventory, tests
+from breezy import tests
+from breezy.bzr import inventory
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 

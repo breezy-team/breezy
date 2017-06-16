@@ -21,19 +21,21 @@ import sys
 
 from .. import (
     errors,
-    knit,
     multiparent,
     osutils,
-    pack,
     tests,
     transport,
+    )
+from ..bzr import (
+    knit,
+    pack,
     )
 from ..errors import (
     KnitHeaderError,
     NoSuchFile,
     )
-from ..index import *
-from ..knit import (
+from ..bzr.index import *
+from ..bzr.knit import (
     AnnotatedKnitContent,
     KnitContent,
     KnitVersionedFiles,
@@ -45,7 +47,7 @@ from ..knit import (
     make_file_factory,
     )
 from ..patiencediff import PatienceSequenceMatcher
-from ..repofmt import (
+from ..bzr import (
     knitpack_repo,
     pack_repo,
     )
@@ -58,7 +60,7 @@ from . import (
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from ..versionedfile import (
+from ..bzr.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
     network_bytes_to_kind_and_offset,
@@ -70,7 +72,7 @@ from . import (
 
 
 compiled_knit_feature = features.ModuleAvailableFeature(
-    'breezy._knit_load_data_pyx')
+    'breezy.bzr._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):
@@ -893,7 +895,7 @@ class LowLevelKnitIndexTests(TestCase):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        from breezy._knit_load_data_py import _load_data_py
+        from ..bzr._knit_load_data_py import _load_data_py
         self.overrideAttr(knit, '_load_data', _load_data_py)
         allow_writes = lambda: 'w' in mode
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
@@ -1194,16 +1196,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 0 1 4 :"  # We don't have a 4th record
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.IndexError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_corrupted_parent(self):
         transport = MockTransport([
@@ -1213,16 +1206,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1v :", # Can't have a parent of '1v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_corrupted_parent_in_list(self):
         transport = MockTransport([
@@ -1232,16 +1216,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1 v :", # Can't have a parent of 'v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_invalid_position(self):
         transport = MockTransport([
@@ -1249,16 +1224,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 1v 1 :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_invalid_size(self):
         transport = MockTransport([
@@ -1266,16 +1232,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 1 1v :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_scan_unvalidated_index_not_implemented(self):
         transport = MockTransport()
@@ -1324,7 +1281,7 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        from breezy._knit_load_data_pyx import _load_data_c
+        from ..bzr._knit_load_data_pyx import _load_data_c
         self.overrideAttr(knit, '_load_data', _load_data_c)
         allow_writes = lambda: mode == 'w'
         return _KndxIndex(transport, mapper, lambda:None,

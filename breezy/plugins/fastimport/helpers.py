@@ -53,7 +53,6 @@ def best_format_for_objects_in_a_repository(repo):
     :return: the BzrDirFormat or None if no matches were found.
     """
     # Based on code from breezy/info.py ...
-    from ... import bzrdir
     repo_format = repo._format
     candidates  = []
     non_aliases = set(controldir.format_registry.keys())
