@@ -80,9 +80,9 @@ class RevisionSpec_upstream(RevisionSpec):
     prefix = 'upstream:'
 
     def _match_on(self, branch, revs):
-        from bzrlib.workingtree import WorkingTree
-        from bzrlib.plugins.builddeb.util import find_changelog
-        from bzrlib.plugins.builddeb.upstream.pristinetar import PristineTarSource
+        from ...workingtree import WorkingTree
+        from .util import find_changelog
+        from .upstream.pristinetar import PristineTarSource
         from debian.changelog import Version
         tree = WorkingTree.open_containing('.')[0]
         try:

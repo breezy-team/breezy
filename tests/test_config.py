@@ -92,11 +92,11 @@ class DebBuildConfigTests(TestCaseWithTransport):
     DebBuildConfig([('invalid.conf', True, 'invalid.conf')])
 
 try:
-  from bzrlib.plugins.svn.config import SubversionBuildPackageConfig
+  from ...svn.config import SubversionBuildPackageConfig
 except ImportError:
   pass
 else:
-  from bzrlib.plugins.svn.tests import SubversionTestCase
+  from ...svn.tests import SubversionTestCase
 
   class DebuildSvnBpTests(SubversionTestCase):
 
