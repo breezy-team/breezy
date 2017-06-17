@@ -188,6 +188,33 @@ class ModuleAvailableFeature(Feature):
         return self.module_name
 
 
+class PluginLoadedFeature(Feature):
+    """Check whether a plugin with specific name is loaded.
+
+    This is different from ModuleAvailableFeature, because
+    plugins can be available but explicitly disabled
+    (e.g. through BRZ_DISABLE_PLUGINS=blah).
+
+    :ivar plugin_name: The name of the plugin
+    """
+
+    def __init__(self, plugin_name):
+        super(PluginLoadedFeature, self).__init__()
+        self.plugin_name = plugin_name
+
+    def _probe(self):
+        import breezy
+        return self.plugin_name in breezy.global_state.plugins
+
+    @property
+    def plugin(self):
+        import breezy
+        return breezy.global_state.plugins.get(self.plugin_name)
+
+    def feature_name(self):
+        return '%s plugin' % self.plugin_name
+
+
 class _HTTPSServerFeature(Feature):
     """Some tests want an https Server, check if one is available.
 
