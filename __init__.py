@@ -49,7 +49,6 @@ commands = {
         "import_dsc": [],
         "import_upstream": [],
         "mark_uploaded": [],
-        "merge_package": [],
         "merge_upstream": ["mu"],
         }
 

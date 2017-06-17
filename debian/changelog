@@ -7,6 +7,8 @@ brz-debian (2.8.9) UNRELEASED; urgency=medium
   * Remove deprecated --result option for 'bzr builddeb'.
   * Remove deprecated export-upstream setting in configuation.
   * Remove deprecated --v3 option from 'bzr dh-make'.
+  * Remove 'bzr merge-package' command - this functionality is now in
+    the 'brz merge' command.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Jun 2017 14:10:48 +0000
 
