@@ -132,7 +132,10 @@ class TestModuleAvailableFeature(tests.TestCase):
 class TestPluginLoadedFeature(tests.TestCase):
 
     def test_available_plugin(self):
-        a_plugin_name = breezy.global_state.plugins.keys()[0]
+        plugin_names = breezy.global_state.plugins.keys()
+        if not plugin_names:
+            self.skipTest('no plugins available to test with')
+        a_plugin_name = plugin_names[0]
         feature = features.PluginLoadedFeature(a_plugin_name)
         self.assertEqual(a_plugin_name, feature.plugin_name)
         self.assertEqual(a_plugin_name + ' plugin', str(feature))
