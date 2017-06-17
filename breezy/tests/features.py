@@ -208,10 +208,8 @@ class PluginLoadedFeature(Feature):
 
     @property
     def plugin(self):
-        if self.available():
-            return __import__(
-                'breezy.plugins.' + self.plugin_name, {}, {}, [''])
-        return None
+        import breezy
+        return breezy.global_state.plugins.get(self.plugin_name)
 
     def feature_name(self):
         return '%s plugin' % self.plugin_name
