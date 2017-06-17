@@ -40,6 +40,7 @@ from .. import (
     )
 from ..quilt import quilt_push_all
 from ..merge_quilt import tree_unapply_patches
+from ..util import FORMAT_3_0_QUILT
 
 from .test_quilt import quilt_feature
 
@@ -113,8 +114,9 @@ class TestMergeHook(TestCaseWithTransport):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
         self.build_tree_contents([
+            ('a/debian/source/format', FORMAT_3_0_QUILT),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -167,7 +169,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_b = tree_a.branch.create_checkout("b")
         self.assertFileEqual("a\n", "b/a")
 
-    def test_auto_apply_patches_after_update(self):
+    def test_auto_apply_patches_after_update_format_1(self):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
@@ -180,8 +182,33 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')
 
-        self.build_tree(["b/.bzr-builddeb/"])
-        self.build_tree_contents([("b/.bzr-builddeb/local.conf", "[BUILDDEB]\nquilt-tree-policy = applied\n")])
+        self.build_tree(["b/.bzr-builddeb/", "b/debian/", "b/debian/source/"])
+        self.build_tree_contents([
+            ("b/.bzr-builddeb/local.conf", "[BUILDDEB]\nquilt-tree-policy = applied\n"),
+            ("b/debian/source/format", "1.0")])
+
+        tree_b.update()
+        self.assertPathDoesNotExist("b/a")
+
+    def test_auto_apply_patches_after_update(self):
+        self.enable_hooks()
+
+        tree_a = self.make_branch_and_tree('a')
+        tree_b = tree_a.branch.create_checkout("b")
+
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
+        self.build_tree_contents([
+            ('a/debian/source/format', FORMAT_3_0_QUILT),
+            ('a/debian/patches/series', 'patch1\n'),
+            ('a/debian/patches/patch1', TRIVIAL_PATCH)])
+        tree_a.smart_add([tree_a.basedir])
+        tree_a.commit('initial')
+
+        self.build_tree(["b/.bzr-builddeb/", "b/debian/", "b/debian/source/"])
+        self.build_tree_contents([
+            ("b/.bzr-builddeb/local.conf", "[BUILDDEB]\nquilt-tree-policy = applied\n"),
+            ('b/debian/source/format', FORMAT_3_0_QUILT),
+            ])
 
         tree_b.update()
         self.assertFileEqual("a\n", "b/a")
@@ -192,8 +219,9 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         tree_b = tree_a.branch.create_checkout("b")
 
-        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
         self.build_tree_contents([
+            ('a/debian/source/format', FORMAT_3_0_QUILT),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -265,8 +293,10 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
     def test_applied(self):
         self.enable_hooks()
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree(['source/debian/', 'source/debian/patches/',
+            'source/debian/source/'])
         self.build_tree_contents([
+            ('source/debian/source/format', FORMAT_3_0_QUILT),
             ('source/debian/patches/series', 'patch1\n'),
             ('source/debian/patches/patch1', TRIVIAL_PATCH),
             ('source/debian/bzr-builddeb.conf',
@@ -282,10 +312,12 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
     def test_unapplied(self):
         self.enable_hooks()
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree(['source/debian/', 'source/debian/patches/',
+            'source/debian/source/'])
         self.build_tree_contents([
             ('source/debian/patches/series', 'patch1\n'),
             ('source/debian/patches/patch1', TRIVIAL_PATCH),
+            ('source/debian/source/format', FORMAT_3_0_QUILT),
             ('source/debian/bzr-builddeb.conf',
                 "[BUILDDEB]\n"
                 "quilt-commit-policy = unapplied\n")])
@@ -309,7 +341,7 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
         trace.warning = warning
         self.addCleanup(setattr, trace, "warning", _warning)
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree(['source/debian/', 'source/debian/patches/', 'source/debian/source/'])
         self.build_tree_contents([
             ('source/debian/patches/series', 'patch1\n'),
             ('source/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -320,8 +352,9 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
         self.assertPathExists("source/.pc/applied-patches")
         self.assertPathExists("source/a")
         self.build_tree_contents([
+            ('source/debian/source/format', FORMAT_3_0_QUILT),
             ('source/debian/patches/series', 'patch1\npatch2\n'),
-            ('source/debian/patches/patch2', 
+            ('source/debian/patches/patch2',
                 """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/b	2012-01-02 20:03:59.710666215 +0100
 @@ -0,0 +1 @@

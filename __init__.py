@@ -215,6 +215,12 @@ def start_commit_check_quilt(tree):
     if tree.path2id("debian/patches") is None:
         # No patches to worry about
         return
+    from . import util
+    this_source_format = util.tree_get_source_format(tree)
+    if this_source_format != util.FORMAT_3_0_QUILT:
+        from ... import trace
+        trace.mutter("skipping smart quilt merge, not a 3.0 (quilt) tree.")
+        return
     from .merge_quilt import start_commit_quilt_patches
     start_commit_quilt_patches(tree)
 
@@ -234,6 +240,11 @@ def pre_merge_quilt(merger):
         return
 
     from ... import trace
+    this_source_format = util.tree_get_source_format(merger.this_tree)
+    if this_source_format != util.FORMAT_3_0_QUILT:
+        trace.mutter("skipping smart quilt merge, not a 3.0 (quilt) tree.")
+        return
+
     from .util import debuild_config
     config = debuild_config(merger.working_tree, merger.working_tree)
     merger.debuild_config = config
