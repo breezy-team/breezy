@@ -20,14 +20,47 @@ License: GPL-2+
 Files: *
 Copyright:
  2004-2016 Canonical Ltd
- 2017 Martin <gzlist@googlemail.com>
- 2017 Jelmer Vernooĳ <jelmer@jelmer.uk>
+ 2017 Breezy Developers (Martin Packman, Jelmer Vernooĳ)
+ 2008-2017 Jelmer Vernooĳ
+ 2004-2012 Aaron Bentley
+ 2005-2012, 2016 Robey Pointer <robey@lag.net>
 Comment: Upstream authors (among others):
  Martin Pool <mbp@canonical.com>
  Robert Collins <robertc@robertcollins.net>
  Aaron Bentley <aaron.bentley@utoronto.ca>
  John Arbash Meinel <john@arbash-meinel.com>
 License: GPL-2+
+
+Files: breezy/utextwrap.py
+Copyright:
+  1999-2001 Gregory P. Ward.
+  2002, 2003 Python Software Foundation.
+  2011 Canonical Ltd
+License: GPL-2+
+
+Files: breezy/i18n.py
+Copyright:
+  2011 Canonical Ltd
+  2007 Lukáš Lalinský <lalinsky@gmail.com>
+  2007,2009 Alexander Belchenko <bialix@ukr.net>
+License: GPL-2+
+
+Files: breezy/util/simplemapi.py
+Copyright: 2007 Ian Cook and John Popplewell
+License: MIT
+
+Files: contrib/brz_access
+Copyright: 2007 Balint Aradi
+License: GPL-2+
+
+Files: contrib/brz_access
+Copyright: 2005 Luke Gorrie <luke@member.fsf.org>
+License: GPL-2+
+
+Files: breezy/plugins/fastimport/*
+Copyright:
+  2008-2011 Canonical Ltd
+  2008 Adeodato Simó
 
 License: GPL-2+
  This program is free software; you can redistribute it and/or modify
@@ -46,3 +79,23 @@ License: GPL-2+
  .
  On Debian systems, the full text of the GNU General Public License is available
  in /usr/share/common-licenses/GPL-2.
+
+License: MIT
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
