@@ -29,27 +29,27 @@ import shutil
 import subprocess
 import tempfile
 
-from bzrlib.plugins.builddeb.errors import (
+from ..errors import (
     PackageVersionNotPresent,
     PerFileTimestampsNotSupported,
     )
-from bzrlib.plugins.builddeb.upstream import UpstreamSource
-from bzrlib.plugins.builddeb.util import (
+from ..upstream import UpstreamSource
+from ..util import (
     debuild_config,
     export,
     subprocess_setup,
     )
 
-from bzrlib import (
+from .... import (
     osutils,
     revision as _mod_revision,
     )
-from bzrlib.errors import (
+from ....errors import (
     BzrError,
     NoSuchRevision,
     NoSuchTag,
     )
-from bzrlib.trace import (
+from ....trace import (
     mutter,
     note,
     warning,

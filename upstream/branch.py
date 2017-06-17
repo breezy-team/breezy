@@ -20,21 +20,21 @@
 
 import re
 
-from bzrlib.branch import Branch
-from bzrlib.errors import (
+from ....branch import Branch
+from ....errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
     NoSuchTag,
     )
-from bzrlib.revisionspec import RevisionSpec
-from bzrlib.trace import note
+from ....revisionspec import RevisionSpec
+from ....trace import note
 
-from bzrlib.plugins.builddeb.errors import (
+from ..errors import (
     MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     )
-from bzrlib.plugins.builddeb.upstream import UpstreamSource
-from bzrlib.plugins.builddeb.util import (
+from . import UpstreamSource
+from ..util import (
     export,
     )
 
@@ -101,7 +101,7 @@ def extract_svn_revno(rev):
          if the revision number could not be determined (bzr-svn not available).
     """
     try:
-        from bzrlib.plugins.svn import extract_svn_foreign_revid
+        from ...svn import extract_svn_foreign_revid
     except ImportError:
         # No svn support
         return None

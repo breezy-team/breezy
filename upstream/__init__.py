@@ -31,22 +31,22 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib import osutils
-from bzrlib.trace import (
+from .... import osutils
+from ....trace import (
     note,
     warning,
     )
 
-from bzrlib.plugins.builddeb.errors import (
+from ..errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
     WatchFileMissing,
     )
-from bzrlib.plugins.builddeb.repack_tarball import (
+from ..repack_tarball import (
     get_filetype,
     repack_tarball,
     )
-from bzrlib.plugins.builddeb.util import (
+from ..util import (
     component_from_orig_tarball,
     export,
     tarball_name,
@@ -554,7 +554,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         :param package: Package name
         :return: A `LaunchpadReleaseFileSource`
         """
-        from bzrlib.plugins.builddeb.launchpad import (
+        from ...launchpad import (
             get_upstream_projectseries_for_package,
             )
         project_series = get_upstream_projectseries_for_package(
