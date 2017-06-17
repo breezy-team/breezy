@@ -18,6 +18,7 @@
 
 import sys
 
+import breezy
 from .. import (
     symbol_versioning,
     tests,
@@ -126,6 +127,22 @@ class TestModuleAvailableFeature(tests.TestCase):
         self.assertEqual('breezy.no_such_module_exists', str(feature))
         self.assertFalse(feature.available())
         self.assertIs(None, feature.module)
+
+
+class TestPluginLoadedFeature(tests.TestCase):
+
+    def test_available_plugin(self):
+        a_plugin_name = breezy.global_state.plugins.keys()[0]
+        feature = features.PluginLoadedFeature(a_plugin_name)
+        self.assertEqual(a_plugin_name, feature.plugin_name)
+        self.assertEqual(a_plugin_name, str(feature))
+        self.assertTrue(feature.available())
+
+    def test_unavailable_plugin(self):
+        feature = features.PluginLoadedFeature('idontexist')
+        self.assertEqual('idontexist', str(feature))
+        self.assertFalse(feature.available())
+        self.assertIs(None, feature.plugin)
 
 
 class TestUnicodeFilenameFeature(tests.TestCase):
