@@ -135,12 +135,12 @@ class TestPluginLoadedFeature(tests.TestCase):
         a_plugin_name = breezy.global_state.plugins.keys()[0]
         feature = features.PluginLoadedFeature(a_plugin_name)
         self.assertEqual(a_plugin_name, feature.plugin_name)
-        self.assertEqual(a_plugin_name, str(feature))
+        self.assertEqual(a_plugin_name + ' plugin', str(feature))
         self.assertTrue(feature.available())
 
     def test_unavailable_plugin(self):
         feature = features.PluginLoadedFeature('idontexist')
-        self.assertEqual('idontexist', str(feature))
+        self.assertEqual('idontexist plugin', str(feature))
         self.assertFalse(feature.available())
         self.assertIs(None, feature.plugin)
 

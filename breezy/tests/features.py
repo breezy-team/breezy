@@ -214,7 +214,7 @@ class PluginLoadedFeature(Feature):
         return None
 
     def feature_name(self):
-        return self.plugin_name
+        return '%s plugin' % self.plugin_name
 
 
 class _HTTPSServerFeature(Feature):
