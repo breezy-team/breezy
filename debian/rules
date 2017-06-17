@@ -14,7 +14,7 @@ html_docs=$(patsubst %.rst, %.html, $(rst_docs))
 	dh $* --with python2 --buildsystem=python_distutils
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
-SELFTEST_CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+SELFTEST_CONCURRENCY = BRZ_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 SELFTEST_PARALLEL = --parallel=fork
 else
 SELFTEST_CONCURRENCY =
@@ -23,8 +23,8 @@ endif
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	$(SELFTEST_CONCURRENCY) BZR_PLUGINS_AT=builddeb@$(CURDIR) python$* /usr/bin/bzr selftest \
-	    $(SELFTEST_PARALLEL) -v -s bp.builddeb
+	$(SELFTEST_CONCURRENCY) BRZ_PLUGINS_AT=debian@$(CURDIR) python$* /usr/bin/brz selftest \
+	    $(SELFTEST_PARALLEL) -v -s bp.debian
 endif
 
 %.html: %.rst

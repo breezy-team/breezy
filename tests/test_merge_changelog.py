@@ -33,7 +33,7 @@ from .... import (
     merge,
     tests,
     )
-from ... import builddeb
+from ... import debian
 from .. import merge_changelog
 from ....tests.features import ExecutableFeature
 

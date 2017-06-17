@@ -1,10 +1,10 @@
-Document: bzr-builddeb
-Title: bzr-builddeb User Guide
+Document: brz-debian
+Title: brz-debian User Guide
 Author: James Westby
-Abstract: This user guide describes how to use bzr-builddeb to build Debian
+Abstract: This user guide describes how to use brz-debian to build Debian
  packages from Bazaar branches.
 Section: Programming
 
 Format: HTML
-Index: /usr/share/doc/bzr-builddeb/user_manual/index.html
-Files: /usr/share/doc/bzr-builddeb/user_manual/*.html
+Index: /usr/share/doc/brz-debian/user_manual/index.html
+Files: /usr/share/doc/brz-debian/user_manual/*.html

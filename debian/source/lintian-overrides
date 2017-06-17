@@ -1,2 +1,2 @@
-bzr-builddeb source: quilt-build-dep-but-no-series-file
-bzr-builddeb source: patch-system-but-no-source-readme
+brz-debian source: quilt-build-dep-but-no-series-file
+brz-debian source: patch-system-but-no-source-readme

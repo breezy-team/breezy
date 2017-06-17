@@ -141,7 +141,7 @@ def load_tests(loader, basic_tests, pattern):
              ]
     for mod in doctest_mod_names:
         basic_tests.addTest(
-            doctest.DocTestSuite("breezy.plugins.builddeb." + mod))
+            doctest.DocTestSuite("breezy.plugins.debian." + mod))
     repack_tarball_tests = loader.loadTestsFromModuleNames(
             ['%s.test_repack_tarball' % __name__])
     scenarios = [('dir', dict(build_tarball=make_new_upstream_dir,
