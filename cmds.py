@@ -189,8 +189,6 @@ class cmd_builddeb(Command):
     strict_opt = Option('strict',
                help='Refuse to build if there are unknown files in'
                ' the working tree, --no-strict disables the check.')
-    result_compat_opt = Option('result', help="Present only for compatibility "
-            "with bzr-builddeb <= 2.0. Use --result-dir instead.")
     package_merge_opt = Option('package-merge', help="Build using the "
             "appropriate -v and -sa options for merging in the changes from "
             "another source.")
@@ -313,7 +311,7 @@ class cmd_builddeb(Command):
             export_upstream=None, export_upstream_revision=None,
             orig_dir=None, split=None,
             quick=False, reuse=False, native=None,
-            source=False, revision=None, result=None, package_merge=None,
+            source=False, revision=None, package_merge=None,
             strict=False):
         import commands
         from .source_distiller import (
@@ -348,8 +346,6 @@ class cmd_builddeb(Command):
             tree_contains_upstream_source,
             )
 
-        if result is not None:
-            warning(gettext("--result is deprecated, use --result-dir instead"))
         location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local, location = self._get_tree_and_branch(location)
