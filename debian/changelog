@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6701-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6703-1) UNRELEASED; urgency=medium
 
   * Mark as supporting only Python >= 2.7.
   * Drop unnecessary Breaks that are only relevant for bzr.
@@ -9,7 +9,7 @@ breezy (3.0.0~bzr6701-1) UNRELEASED; urgency=medium
   * Drop patch 22_test_copy_to, applied upstream.
   * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 16 Jun 2017 19:42:58 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Jun 2017 12:34:02 +0000
 
 breezy (3.0.0~bzr6644-1) experimental; urgency=medium
 
