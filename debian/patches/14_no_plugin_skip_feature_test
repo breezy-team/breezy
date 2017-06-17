@@ -1,0 +1,23 @@
+Description: Only run PluginLoadedFeature if there are actually plugins loaded.
+Origin: commit, revision id: jelmer@jelmer.uk-20170617134713-5mlz9twojm13vavq
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2017-06-17
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20170617134713-5mlz9twojm13vavq
+
+=== modified file 'breezy/tests/test_features.py'
+--- old/breezy/tests/test_features.py	2017-06-17 12:23:19 +0000
++++ new/breezy/tests/test_features.py	2017-06-17 13:47:13 +0000
+@@ -132,7 +132,10 @@
+ class TestPluginLoadedFeature(tests.TestCase):
+ 
+     def test_available_plugin(self):
+-        a_plugin_name = breezy.global_state.plugins.keys()[0]
++        plugin_names = breezy.global_state.plugins.keys()
++        if not plugin_names:
++            self.skipTest('no plugins available to test with')
++        a_plugin_name = plugin_names[0]
+         feature = features.PluginLoadedFeature(a_plugin_name)
+         self.assertEqual(a_plugin_name, feature.plugin_name)
+         self.assertEqual(a_plugin_name + ' plugin', str(feature))
+
