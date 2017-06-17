@@ -145,7 +145,7 @@ class TestMergeChangelog(tests.TestCase):
         self.addCleanup(self.addMergeChangelogWarningsDetail)
         handler = logging.StreamHandler(self.logged_warnings)
         handler.setLevel(logging.WARNING)
-        logger = logging.getLogger('bzr.plugins.builddeb.merge_changelog')
+        logger = logging.getLogger('breezy.plugins.debian.merge_changelog')
         logger.addHandler(handler)
         self.addCleanup(logger.removeHandler, handler)
         self.overrideAttr(logger, 'propagate', False)
@@ -348,7 +348,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         params, merger = self.make_params()
         params.other_lines = ['']
         params.base_lines = ['']
-        file_merger = builddeb.changelog_merge_hook_factory(merger)
+        file_merger = debian.changelog_merge_hook_factory(merger)
         result, new_content = file_merger.merge_text(params)
         self.assertEqual('success', result)
         # We ignore the new_content, as we test that elsewhere

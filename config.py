@@ -84,7 +84,7 @@ class DebBuildConfig(object):
 
     >>> import os
     >>> import breezy.plugins.debian
-    >>> d = os.path.dirname(breezy.plugins.builddeb.__file__) + '/'
+    >>> d = os.path.dirname(breezy.plugins.debian.__file__) + '/'
     >>> c = DebBuildConfig([
     ...      (d + 'local.conf', False),
     ...      (d + 'user.conf', True), 

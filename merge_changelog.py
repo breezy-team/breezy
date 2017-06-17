@@ -35,7 +35,7 @@ from ... import (
 # A logger in the 'bzr' hierarchy.  By default messages will be propagated to
 # the standard bzr logger, but tests can easily intercept just this logger if
 # they wish.
-_logger = logging.getLogger('bzr.plugins.builddeb.merge_changelog')
+_logger = logging.getLogger('breezy.plugins.debian.merge_changelog')
 
 
 class ChangeLogFileMerge(merge.ConfigurableFileMerger):
