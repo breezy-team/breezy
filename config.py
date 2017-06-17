@@ -292,9 +292,6 @@ class DebBuildConfig(object):
   upstream_branch = _opt_property('upstream-branch',
           "The upstream branch to merge from")
 
-  export_upstream = _opt_property('export-upstream',
-                         "Get the upstream source from another branch")
-
   export_upstream_revision = _opt_property('export-upstream-revision',
                          "The revision of the upstream source to use.")
 

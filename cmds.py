@@ -200,7 +200,7 @@ class cmd_builddeb(Command):
         export_upstream_opt, export_upstream_revision_opt,
         quick_opt, reuse_opt, native_opt,
         source_opt, 'revision', strict_opt,
-        result_compat_opt, package_merge_opt]
+        package_merge_opt]
 
     def _get_tree_and_branch(self, location):
         import urlparse
@@ -394,17 +394,13 @@ class cmd_builddeb(Command):
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             result_dir, build_dir, orig_dir = self._get_dirs(config,
-                location or ".", is_local, result_dir or result, build_dir, orig_dir)
+                location or ".", is_local, result_dir, build_dir, orig_dir)
 
             upstream_sources = [
                 PristineTarSource(tree, branch),
                 AptSource(),
                 ]
             if build_type == BUILD_TYPE_MERGE:
-                if export_upstream is None and config.export_upstream:
-                    export_upstream = config.export_upstream
-                    warning(gettext("The 'export-upstream' configuration "
-                        "option is deprecated. Use 'upstream-branch' instead."))
                 if export_upstream is None and config.upstream_branch:
                     export_upstream = config.upstream_branch
                 if export_upstream:
