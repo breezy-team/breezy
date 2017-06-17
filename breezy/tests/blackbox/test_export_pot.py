@@ -30,6 +30,11 @@ class TestExportPot(TestCaseWithMemoryTransport):
         self.assertContainsRe(out, "help of 'change' option\n"\
                                    "msgid \"Select changes introduced by the specified revision.")
 
+    def test_export_pot_plugin_unknown(self):
+        out, err = self.run_bzr("export-pot --plugin=lalalala", retcode=3)
+        self.assertContainsRe(
+             err, 'ERROR: Plugin lalalala is not loaded')
+
     def test_export_pot_plugin(self):
         self.requireFeature(PluginLoadedFeature('launchpad'))
         out, err = self.run_bzr("export-pot --plugin=launchpad")
