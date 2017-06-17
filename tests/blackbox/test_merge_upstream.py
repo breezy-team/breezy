@@ -98,7 +98,7 @@ class DHMadePackage(Fixture):
 
     def setUp(self, test_case):
         branchpath = test_case.getUniqueString()
-        tree = self.upstream.tree.bzrdir.sprout(branchpath).open_workingtree()
+        tree = self.upstream.tree.controldir.sprout(branchpath).open_workingtree()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree,
                 pristine_upstream_tree=tree)
         dbs = DistributionBranchSet()
@@ -125,7 +125,7 @@ class FileMovedReplacedUpstream(Fixture):
 
     def setUp(self, test_case):
         branchpath = test_case.getUniqueString()
-        tree = self.upstream.tree.bzrdir.sprout(branchpath).open_workingtree()
+        tree = self.upstream.tree.controldir.sprout(branchpath).open_workingtree()
         self.tree = tree
         tree.lock_write()
         try:
@@ -191,7 +191,7 @@ class TestMergeUpstream(BuilddebTestCase):
         rel2 = self.release_upstream(changed_upstream)
         self.run_bzr_error([
             'Using version string 8.',
-            'bzr: ERROR: Version 8 can not be found in upstream branch <UpstreamBranchSource for \'.*\'>. Specify the revision manually using --revision or adjust \'export-upstream-revision\' in the configuration.'],
+            'brz: ERROR: Version 8 can not be found in upstream branch <UpstreamBranchSource for \'.*\'>. Specify the revision manually using --revision or adjust \'export-upstream-revision\' in the configuration.'],
             ['merge-upstream', '--version', str(rel2.version),
             os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
             working_dir=package.tree.basedir)
@@ -228,7 +228,7 @@ class TestMergeUpstream(BuilddebTestCase):
         self.assertEquals(out, "")
         self.assertEquals(err,
             "Using distribution unstable\n"
-            "bzr: ERROR: --revision can only be used with a valid upstream branch\n")
+            "brz: ERROR: --revision can only be used with a valid upstream branch\n")
 
     def test_hooks(self):
         upstream = self.make_upstream()
@@ -249,7 +249,7 @@ class TestMergeUpstream(BuilddebTestCase):
 
     def test_new_package(self):
         upstream = self.make_upstream()
-        tree = upstream.tree.bzrdir.sprout("package").open_workingtree()
+        tree = upstream.tree.controldir.sprout("package").open_workingtree()
         rel1 = self.release_upstream(upstream)
         self.run_bzr(['merge-upstream', '--version', str(rel1.version),
             "--package", "bar", os.path.abspath(rel1.tarball)],

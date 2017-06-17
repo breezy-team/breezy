@@ -34,14 +34,14 @@ class TestDep3Patch(ExternalBase):
         super(TestDep3Patch, self).setUp()
         self.upstream_tree = self.make_branch_and_tree("upstream")
         self.upstream_tree.commit(message="initial commit")
-        packaging = self.upstream_tree.bzrdir.sprout("packaging")
+        packaging = self.upstream_tree.controldir.sprout("packaging")
         self.packaging_tree = packaging.open_workingtree()
-        feature = self.upstream_tree.bzrdir.sprout("feature")
+        feature = self.upstream_tree.controldir.sprout("feature")
         self.feature_tree = feature.open_workingtree()
 
     def test_nothing_to_do(self):
         (out, err) = self.run_bzr("dep3-patch -d packaging feature", retcode=3)
-        self.assertEquals("bzr: ERROR: No unmerged revisions\n", err)
+        self.assertEquals("brz: ERROR: No unmerged revisions\n", err)
         self.assertEquals("", out)
 
     def test_simple(self):

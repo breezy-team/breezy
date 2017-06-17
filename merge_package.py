@@ -22,17 +22,11 @@
 
 from __future__ import absolute_import
 
-from ... import version_info as bzrlib_version
-
 import os
 import shutil
 import tempfile
 
-try:
-    from debian.changelog import Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
+from debian.changelog import Version
 
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
@@ -169,10 +163,7 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     # creates revison L in the digram above.
                     conflicts = tree.merge_from_branch(tmp_target_utree.branch)
                     if conflicts > 0:
-                        if bzrlib_version >= (2, 5):
-                            cmd = "bzr merge"
-                        else:
-                            cmd = "bzr merge-package"
+                        cmd = "bzr merge"
                         raise SharedUpstreamConflictsWithTargetPackaging(cmd)
                     else:
                         tree.commit('Merging shared upstream rev into target branch.')

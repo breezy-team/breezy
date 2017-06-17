@@ -20,11 +20,7 @@
 
 from __future__ import absolute_import
 
-try:
-    from debian.changelog import Changelog, Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Changelog, Version
+from debian.changelog import Changelog, Version
 
 from ....tests import (
     TestCase,

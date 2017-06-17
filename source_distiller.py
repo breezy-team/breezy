@@ -25,9 +25,11 @@ import shutil
 import tempfile
 
 from ... import errors as bzr_errors
+from ...export import (
+    export,
+    )
 
 from .util import (
-    export,
     extract_orig_tarballs,
     get_parent_dir,
     recursive_copy,

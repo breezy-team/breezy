@@ -86,7 +86,7 @@ class TestBuilddeb(BuilddebTestCase):
                      self.unadded_file])
     tree.add([self.commited_file])
     tree.commit("one", rev_id='revid1')
-    newtree = tree.bzrdir.sprout('newtree').open_workingtree()
+    newtree = tree.controldir.sprout('newtree').open_workingtree()
     tree.add([self.uncommited_file])
     tree.commit("two", rev_id='revid2')
 
@@ -116,7 +116,7 @@ class TestBuilddeb(BuilddebTestCase):
   def test_builddeb_strict(self):
     tree = self.build_really_simple_tree()
     self.run_bzr_error(
-      ['bzr: ERROR: Build refused because there are unknown files in the tree. '
+      ['brz: ERROR: Build refused because there are unknown files in the tree. '
        "To list all known files, run 'bzr unknowns'."],
       "builddeb --strict")
 
@@ -175,12 +175,10 @@ class TestBuilddeb(BuilddebTestCase):
     self.assertInBuildDir(['pre-build', 'post-build'])
 
   def test_utf8_changelog(self):
-    from bzrlib.plugins import builddeb
-    from bzrlib.msgeditor import hooks
-    if "set_commit_message" not in hooks:
-      self.skip("No set_commit_message hook in bzrlib this old")
+    from ... import debian_changelog_commit
+    from .....msgeditor import hooks
     hooks.install_named_hook("set_commit_message",
-      builddeb.debian_changelog_commit, "Test builddeb set commit msg hook")
+      debian_changelog_commit, "Test builddeb set commit msg hook")
     tree = self.make_unpacked_source()
     f = open("debian/bzr-builddeb.conf", 'wb')
     try:

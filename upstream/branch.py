@@ -34,7 +34,7 @@ from ..errors import (
     PackageVersionNotPresent,
     )
 from . import UpstreamSource
-from ..util import (
+from ....export import (
     export,
     )
 

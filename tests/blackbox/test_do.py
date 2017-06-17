@@ -23,15 +23,9 @@ from __future__ import absolute_import
 import os
 import tarfile
 
-try:
-    from debian.changelog import (Changelog,
-                                  Version,
-                                  )
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import (Changelog,
-                                         Version,
-                                        )
+from debian.changelog import (Changelog,
+                              Version,
+                              )
 
 
 from .....tests.blackbox import ExternalBase
@@ -51,14 +45,6 @@ class TestDo(ExternalBase):
   commited_file = 'commited_file'
   uncommited_file = 'uncommited_file'
   unadded_file = 'unadded_file'
-
-  if not getattr(ExternalBase, "assertPathDoesNotExist", None):
-    # Compatibility with bzr < 2.4
-    def assertPathDoesNotExist(self, path):
-      self.failIfExists(path)
-
-    def assertPathExists(self, path):
-      self.failUnlessExists(path)
 
   def make_changelog(self, version=None):
     if version is None:

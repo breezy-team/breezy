@@ -179,12 +179,6 @@ class SharedUpstreamConflictsWithTargetPackaging(BzrError):
         self.cmd = cmd
 
 
-class PerFileTimestampsNotSupported(BzrError):
-
-    _fmt = ("Per file timestamps are not supported by the "
-            "currently loaded version of bzrlib.")
-
-
 class NoPreviousUpload(BzrError):
 
     _fmt = ("There was no previous upload to %(distribution)s.")

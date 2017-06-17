@@ -21,10 +21,7 @@ from __future__ import absolute_import
 
 from .. import debian_changelog_commit_message, debian_changelog_commit
 from . import TestCaseWithTransport
-try:
-    from ....tests.features import Feature
-except ImportError: # bzr < 2.4
-    from ....tests import Feature
+from ....tests.features import Feature
 
 
 class _LaunchpadConnectionFeature(Feature):

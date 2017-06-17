@@ -20,7 +20,6 @@
 
 from __future__ import absolute_import
 
-from ... import version_info as bzrlib_version
 from ...errors import (
     InvalidRevisionSpec,
     NoSuchTag,
@@ -55,14 +54,8 @@ class RevisionSpec_package(RevisionSpec):
 
         try:
             revision_id = branch.tags.lookup_tag(version_spec)
-            if bzrlib_version < (2, 5):
-                if revs is None:
-                    revs = branch.revision_history()
-                return RevisionInfo.from_revision_id(branch,
-                        revision_id, revs)
-            else:
-                return RevisionInfo.from_revision_id(
-                    branch, revision_id)
+            return RevisionInfo.from_revision_id(
+                branch, revision_id)
         except NoSuchTag:
             raise UnknownVersion(version_spec)
 
@@ -106,13 +99,7 @@ class RevisionSpec_upstream(RevisionSpec):
         try:
             revision_id = pristine_tar_source.version_as_revisions(cl.package,
                 version_spec)[None]
-            if bzrlib_version < (2, 5):
-                if revs is None:
-                    revs = branch.revision_history()
-                return RevisionInfo.from_revision_id(branch,
-                        revision_id, revs)
-            else:
-                return RevisionInfo.from_revision_id(
-                    branch, revision_id)
+            return RevisionInfo.from_revision_id(
+                branch, revision_id)
         except NoSuchTag:
             raise UnknownVersion(version_spec)

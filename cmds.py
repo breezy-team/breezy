@@ -29,10 +29,9 @@ import tempfile
 
 from ... import (
     urlutils,
-    version_info as bzrlib_version,
     )
 from ...branch import Branch
-from ...bzrdir import BzrDir
+from ...controldir import ControlDir
 from ...commands import Command
 from ...errors import (
     BzrCommandError,
@@ -210,9 +209,9 @@ class cmd_builddeb(Command):
         if location is None:
             location = "."
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
-        bzrdir, relpath = BzrDir.open_containing(location)
-        tree, branch = bzrdir._get_tree_branch()
-        return tree, branch, is_local, bzrdir.user_url
+        controldir, relpath = ControlDir.open_containing(location)
+        tree, branch = controldir._get_tree_branch()
+        return tree, branch, is_local, controldir.user_url
 
     def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
@@ -686,11 +685,7 @@ class cmd_merge_upstream(Command):
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, snapshot=False, launchpad=False):
-        try:
-            from debian.changelog import Version
-        except ImportError:
-            # Prior to 0.1.15 the debian module was called debian_bundle
-            from debian_bundle.changelog import Version
+        from debian.changelog import Version
 
         from .errors import PackageVersionNotPresent
         from .hooks import run_hook
@@ -1049,11 +1044,7 @@ class cmd_import_upstream(Command):
     takes_args = ['version', 'location', 'upstream_branch?']
 
     def run(self, version, location, upstream_branch=None, revision=None):
-        try:
-            from debian.changelog import Version
-        except ImportError:
-            # Prior to 0.1.15 the debian module was called debian_bundle
-            from debian_bundle.changelog import Version
+        from debian.changelog import Version
         from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
@@ -1071,7 +1062,7 @@ class cmd_import_upstream(Command):
         branch.lock_write() # we will be adding a tag here.
         self.add_cleanup(branch.unlock)
         tempdir = tempfile.mkdtemp(
-            dir=branch.bzrdir.root_transport.clone('..').local_abspath('.'))
+            dir=branch.controldir.root_transport.clone('..').local_abspath('.'))
         self.add_cleanup(shutil.rmtree, tempdir)
         db = DistributionBranch(branch, pristine_upstream_branch=branch)
         if db.pristine_upstream_source.has_version(None, version):
@@ -1327,13 +1318,11 @@ class cmd_merge_package(Command):
     takes_options = ['revision']
     takes_args = ['source']
 
-    if bzrlib_version >= (2, 5):
-        hidden = True
+    hidden = True
 
     def run(self, source, revision=None):
         from ... import ui
         from ...merge import Merger
-        from ...tag import _merge_tags_if_possible
         from .merge_package import fix_ancestry_as_needed
         if 'pre_merge' in Merger.hooks:
             ui.ui_factory.show_warning(
@@ -1372,7 +1361,7 @@ class cmd_merge_package(Command):
             fix_ancestry_as_needed(tree, source_branch, source_revid=revid)
 
         # Merge source packaging branch in to the target packaging branch.
-        _merge_tags_if_possible(source_branch, tree.branch)
+        source_branch.tags.merge_to(tree.branch.tags)
         conflicts = tree.merge_from_branch(source_branch, to_revision=revid)
         if conflicts > 0:
             note(gettext(
@@ -1475,10 +1464,10 @@ class cmd_dep3_patch(Command):
             gather_bugs_and_authors,
             write_dep3_patch,
             )
-        packaging_tree, packaging_branch = BzrDir.open_containing_tree_or_branch(
+        packaging_tree, packaging_branch = ControlDir.open_containing_tree_or_branch(
             directory)[:2]
         self.add_cleanup(packaging_branch.lock_read().unlock)
-        tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
+        tree, branch = ControlDir.open_containing_tree_or_branch(location)[:2]
         self.add_cleanup(branch.lock_read().unlock)
         if revision is not None and len(revision) >= 1:
             revision_id = revision[-1].as_revision_id(branch)

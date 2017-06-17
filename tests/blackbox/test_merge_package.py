@@ -26,7 +26,6 @@ import string
 
 from ..... import (
     errors,
-    version_info as bzrlib_version,
     )
 from .....tests import TestNotApplicable
 from ... import pre_merge_fix_ancestry
@@ -152,7 +151,7 @@ class TestMergePackageBB(BuilddebTestCase):
 
         # Set up the ubuntu upstream branch.
         name = 'ubuu-o'
-        ubuu_o = debu_n.bzrdir.sprout(
+        ubuu_o = debu_n.controldir.sprout(
             name, revision_id=self.revid_debu_n_B).open_workingtree()
 
         vdata = [('upstream-1.1.2', (), None, None)]
@@ -160,7 +159,7 @@ class TestMergePackageBB(BuilddebTestCase):
 
         # Set up the ubuntu packaging branch.
         name = 'ubup-o'
-        ubup_o = debu_n.bzrdir.sprout(
+        ubup_o = debu_n.controldir.sprout(
             name, revision_id=self.revid_debu_n_A).open_workingtree()
 
         vdata = [

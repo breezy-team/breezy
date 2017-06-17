@@ -169,7 +169,7 @@ class DetermineAppliedUpstreamTests(TestCaseWithTransport):
     def test_merged(self):
         upstream = self.make_branch_and_tree("upstream")
         upstream.commit(message="initial upstream commit")
-        feature = upstream.bzrdir.sprout("feature").open_workingtree()
+        feature = upstream.controldir.sprout("feature").open_workingtree()
         feature.commit(message="nutter alert")
         upstream.merge_from_branch(feature.branch)
         upstream.commit(message="merge feature")

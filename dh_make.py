@@ -5,13 +5,13 @@ import sys
 import subprocess
 
 from ... import (
-    bzrdir,
+    controldir,
+    errors as bzr_errors,
     revision as mod_revision,
     trace,
     transport,
     workingtree,
     )
-from ... import errors as bzr_errors
 
 from . import (
     default_orig_dir,
@@ -34,22 +34,22 @@ def _get_tree(package_name):
         to_transport = transport.get_transport(package_name)
         tree = to_transport.ensure_base()
         try:
-            a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
+            a_controldir = controldir.ControlDir.open_from_transport(to_transport)
         except bzr_errors.NotBranchError:
-            # really a NotBzrDir error...
-            create_branch = bzrdir.BzrDir.create_branch_convenience
+            # really a NotBranchError...
+            create_branch = controldir.ControlDir.create_branch_convenience
             branch = create_branch(to_transport.base,
                                    possible_transports=[to_transport])
-            a_bzrdir = branch.bzrdir
+            a_controldir = branch.controldir
         else:
-            if a_bzrdir.has_branch():
+            if a_controldir.has_branch():
                 raise bzr_errors.AlreadyBranchError(package_name)
-            branch = a_bzrdir.create_branch()
-            a_bzrdir.create_workingtree()
+            branch = a_controldir.create_branch()
+            a_controldir.create_workingtree()
         try:
-            tree = a_bzrdir.open_workingtree()
+            tree = a_controldir.open_workingtree()
         except bzr_errors.NoWorkingTree:
-            tree = a_bzrdir.create_workingtree()
+            tree = a_controldir.create_workingtree()
     return tree
 
 

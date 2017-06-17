@@ -23,11 +23,7 @@ from __future__ import absolute_import
 
 import logging
 
-try:
-    from debian import changelog
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle import changelog
+from debian import changelog
 
 from testtools.content_type import ContentType
 from testtools.content import Content
@@ -343,11 +339,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
                 return tree.get_file_lines(file_id)
 
         merger = FakeMerger(tree)
-        try:
-            params_cls = merge.MergeFileHookParams
-        except AttributeError:
-            # bzr < 2.5
-            params_cls = merge.MergeHookParams
+        params_cls = merge.MergeFileHookParams
         params = params_cls(merger, 'c-id', None, 'file', 'file', 'this')
         return params, merger
 

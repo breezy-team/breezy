@@ -25,13 +25,10 @@ import subprocess
 import tarfile
 import tempfile
 
-try:
-    from debian.changelog import Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
+from debian.changelog import Version
 
 from .... import osutils
+from ....export import export
 from ....trace import (
     note,
     warning,
@@ -48,7 +45,6 @@ from ..repack_tarball import (
     )
 from ..util import (
     component_from_orig_tarball,
-    export,
     tarball_name,
     )
 

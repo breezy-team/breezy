@@ -37,10 +37,7 @@ from ....revision import (
 from ....tests import (
     TestCase,
     )
-try:
-    from ....tests.features import Feature
-except ImportError: # bzr < 2.5
-    from ....tests import Feature
+from ....tests.features import PluginLoadedFeature
 from ..config import (
     DebBuildConfig,
     )
@@ -85,21 +82,7 @@ from ..upstream.pristinetar import (
     )
 
 
-# Unless bug #712474 is fixed and available in the minimum bzrlib required, we
-# can't use:
-# svn_plugin = tests.ModuleAvailableFeature('bzrlib.plugins.svn')
-class SvnPluginAvailable(Feature):
-
-    def feature_name(self):
-        return 'bzr-svn plugin'
-
-    def _probe(self):
-        try:
-            from ... import svn
-            return True
-        except ImportError:
-            return False
-svn_plugin = SvnPluginAvailable()
+svn_plugin = PluginLoadedFeature('svn')
 
 
 class MockSources(object):

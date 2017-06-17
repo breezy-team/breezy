@@ -1,6 +1,6 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR Canonical Ltd. <bazaar@lists.canonical.com>
-# This file is distributed under the same license as the PACKAGE package.
+# This file is distributed under the same license as the bzr-builddeb package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr-builddeb\n"
 "Report-Msgid-Bugs-To: <bazaar@lists.canonical.com>\n"
-"POT-Creation-Date: 2012-01-13 11:48+0100\n"
+"POT-Creation-Date: 2017-06-17 13:03+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,132 +17,151 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: cmds.py:104
+#: __init__.py:308
+#, python-format
+msgid ""
+"Not attempting to fix packaging branch ancestry, missing pristine tar data "
+"for version %s."
+msgstr ""
+
+#: cmds.py:107
+#, python-format
+msgid "No distribution specified, and no changelog, assuming '%s'"
+msgstr ""
+
+#: cmds.py:117
 #, python-format
 msgid "Using distribution %s"
 msgstr ""
 
-#: cmds.py:115
+#: cmds.py:120
+#, python-format
+msgid ""
+"No distribution specified, and no previous distribution in changelog. "
+"Assuming '%s'"
+msgstr ""
+
+#: cmds.py:126
 #, python-format
 msgid "Unknown target distribution: %s"
 msgstr ""
 
-#: cmds.py:207
+#: cmds.py:218
 msgid "Building using working tree"
 msgstr ""
 
-#: cmds.py:216
+#: cmds.py:227
 msgid "bzr builddeb --revision takes exactly one revision specifier."
 msgstr ""
 
-#: cmds.py:218
+#: cmds.py:229
 #, python-format
 msgid "Building branch from revision %s"
 msgstr ""
 
-#: cmds.py:341
+#: cmds.py:352
 msgid "--result is deprecated, use --result-dir instead"
 msgstr ""
 
-#: cmds.py:359
+#: cmds.py:370
 msgid "Reusing existing build dir"
 msgstr ""
 
-#: cmds.py:371
+#: cmds.py:382
 #, python-format
 msgid "Building package in %s mode"
 msgstr ""
 
-#: cmds.py:399
+#: cmds.py:410
 msgid ""
 "The 'export-upstream' configuration option is deprecated. Use 'upstream-"
 "branch' instead."
 msgstr ""
 
-#: cmds.py:521
+#: cmds.py:532
 #, python-format
 msgid "Tar now in %s"
 msgstr ""
 
-#: cmds.py:729
+#: cmds.py:736
 msgid "Merge upstream in native mode is not supported."
 msgstr ""
 
-#: cmds.py:738
+#: cmds.py:745
 #, python-format
 msgid "Using upstream branch %s"
 msgstr ""
 
-#: cmds.py:767
+#: cmds.py:774
 msgid "--snapshot requires an upstream branch source"
 msgstr ""
 
-#: cmds.py:775
+#: cmds.py:782
 msgid "--revision can only be used with a valid upstream branch"
 msgstr ""
 
-#: cmds.py:778
+#: cmds.py:785
 msgid "merge-upstream takes only a single --revision"
 msgstr ""
 
-#: cmds.py:795
+#: cmds.py:802
 msgid ""
 "You must specify the version number using --version or specify --snapshot to "
 "merge a snapshot from the upstream branch."
 msgstr ""
 
-#: cmds.py:800
+#: cmds.py:807
 msgid "You must specify the version number using --version."
 msgstr ""
 
-#: cmds.py:803
+#: cmds.py:810
 #, python-format
 msgid "Using version string %s."
 msgstr ""
 
-#: cmds.py:840
+#: cmds.py:847
 #, python-format
 msgid "Upstream version %s has already been merged."
 msgstr ""
 
-#: cmds.py:850
+#: cmds.py:857
 msgid "An entry for the new upstream version has been added to the changelog."
 msgstr ""
 
-#: cmds.py:853
+#: cmds.py:860
 msgid "The new upstream version has been imported."
 msgstr ""
 
-#: cmds.py:855
+#: cmds.py:862
 msgid ""
 "You should now resolve the conflicts, review the changes, and then commit."
 msgstr ""
 
-#: cmds.py:858
+#: cmds.py:865
 msgid "You should now review the changes and then commit."
 msgstr ""
 
-#: cmds.py:938
+#: cmds.py:945
 msgid "There is no tree to import the packages in to"
 msgstr ""
 
-#: cmds.py:942 cmds.py:1275
+#: cmds.py:949 cmds.py:1278
 msgid ""
 "There are uncommitted changes in the working tree. You must commit before "
 "using this command"
 msgstr ""
 
-#: cmds.py:956
+#: cmds.py:963
 msgid ""
 "You must give the location of at least one source package to install, or use "
 "the --file option."
 msgstr ""
 
-#: cmds.py:962
+#: cmds.py:969
 msgid "import-dsc in merge mode is not yet supported."
 msgstr ""
 
-#: cmds.py:979
+#: cmds.py:986
 #, python-format
 msgid ""
 "Unable to find the tag for the previous upstream version, %(version)s, in "
@@ -150,651 +169,127 @@ msgid ""
 "present in the branch please make sure it is tagged as %(tag)r."
 msgstr ""
 
-#: cmds.py:1066
+#: cmds.py:1069
 #, python-format
 msgid "Version %s is already present."
 msgstr ""
 
-#: cmds.py:1097
+#: cmds.py:1100
 msgid "bzr import-upstream --revision takes exactly one revision specifier."
 msgstr ""
 
-#: cmds.py:1105
+#: cmds.py:1108
 #, python-format
 msgid "Imported %(location)s as tag:%(tag)s.\n"
 msgstr ""
 
-#: cmds.py:1109
+#: cmds.py:1112
 #, python-format
 msgid "Imported %(location)s (%(component)s) as tag:%(tag)s.\n"
 msgstr ""
 
-#: cmds.py:1185
+#: cmds.py:1188
 msgid ""
 "This command only works for merge mode packages. See /usr/share/doc/bzr-"
 "builddeb/user_manual/merge.html for more information."
 msgstr ""
 
-#: cmds.py:1222
+#: cmds.py:1225
 #, python-format
 msgid "Running \"%s\" in the exported directory."
 msgstr ""
 
-#: cmds.py:1224
+#: cmds.py:1227
 msgid ""
 "If you want to cancel your changes then exit with a non-zero exit code, e.g. "
 "run \"exit 1\"."
 msgstr ""
 
-#: cmds.py:1229
+#: cmds.py:1232
 msgid "Not updating the working tree as the command failed."
 msgstr ""
 
-#: cmds.py:1231
+#: cmds.py:1234
 msgid "Copying debian/ back"
 msgstr ""
 
-#: cmds.py:1244
+#: cmds.py:1247
 msgid "Copying back debian/ failed"
 msgstr ""
 
-#: cmds.py:1246
+#: cmds.py:1249
 msgid ""
 "If any files were added or removed you should run \"bzr add\" or \"bzr rm\" "
 "as appropriate."
 msgstr ""
 
-#: cmds.py:1284
+#: cmds.py:1287
 msgid ""
 "The changelog still targets 'UNRELEASED', so apparently hasn't been uploaded."
 msgstr ""
 
-#: cmds.py:1293
+#: cmds.py:1296
 msgid ""
 "This version has already been marked uploaded. Use --force to force marking "
 "this new version."
 msgstr ""
 
-#: cmds.py:1297
+#: cmds.py:1300
 #, python-format
 msgid "Tag '%s' created.\n"
 msgstr ""
 
-#: cmds.py:1336
+#: cmds.py:1338
 msgid "There is no tree to merge the source branch in to"
 msgstr ""
 
-#: cmds.py:1341
+#: cmds.py:1343
 msgid "Invalid source branch URL?"
 msgstr ""
 
-#: cmds.py:1348
+#: cmds.py:1350
 msgid "bzr merge-package --revision takes exactly one argument"
 msgstr ""
 
-#: cmds.py:1367
+#: cmds.py:1369
 #, python-format
 msgid ""
 "The merge resulted in %s conflicts. Please resolve these and commit the "
 "changes with \"bzr commit\"."
 msgstr ""
 
-#: cmds.py:1370
+#: cmds.py:1372
 msgid ""
 "The merge resulted in no conflicts. You may commit the changes by running "
 "\"bzr commit\"."
 msgstr ""
 
-#: cmds.py:1418
+#: cmds.py:1413
+msgid ""
+"The --v3 option has been deprecated. dh_make now creates format v3 packages "
+"by default."
+msgstr ""
+
+#: cmds.py:1423
 #, python-format
 msgid "Package prepared in %s"
 msgstr ""
 
-#: cmds.py:1466
+#: cmds.py:1488
 msgid "No unmerged revisions"
 msgstr ""
 
-# help of 'dont-purge' option of 'builddeb' command
-#: cmds.py:61
-msgid "Don't purge the build directory after building."
+#: merge_quilt.py:109
+#, python-format
+msgid "Applying %d quilt patches."
 msgstr ""
 
-# help of 'result-dir' option of 'builddeb' command
-#: cmds.py:63
-msgid "Directory in which to place the resulting package files."
+#: merge_quilt.py:121
+#, python-format
+msgid "Unapplying %d quilt patches."
 msgstr ""
 
-# help of 'builder' option of 'builddeb' command
-#: cmds.py:65
-msgid "Command to build the package."
-msgstr ""
-
-# help of 'merge' option of 'builddeb' command
-#: cmds.py:67
-msgid "Merge the debian part of the source in to the upstream tarball."
-msgstr ""
-
-# help of 'split' option of 'builddeb' command
-#: cmds.py:69
-msgid "Automatically create an .orig.tar.gz from a full source branch."
-msgstr ""
-
-# help of 'build-dir' option of 'builddeb' command
-#: cmds.py:71
-msgid "The dir to use for building."
-msgstr ""
-
-# help of 'native' option of 'builddeb' command
-#: cmds.py:76
-msgid "Build a native package."
-msgstr ""
-
-# help of 'export-upstream' option of 'builddeb' command
-#: cmds.py:78
-msgid "Create the .orig.tar.gz from a bzr branch before building."
-msgstr ""
-
-# help of 'export-upstream-revision' option of 'builddeb' command
-#: cmds.py:81
-msgid "Select the upstream revision that will be exported."
-msgstr ""
-
-# help of 'orig-dir' option of 'builddeb' command
-#: cmds.py:122
-msgid ""
-"Directory containing the .orig.tar.gz files. For use when onlydebian/ is "
-"versioned."
-msgstr ""
-
-# help of 'quick' option of 'builddeb' command
-#: cmds.py:122
-msgid ""
-"Quickly build the package, uses quick-builder, which defaults to \"fakeroot "
-"debian/rules binary\"."
-msgstr ""
-
-# help of 'reuse' option of 'builddeb' command
-#: cmds.py:122
-msgid ""
-"Try to avoid exporting too much on each build. Only works in merge mode; it "
-"saves unpacking the upstream tarball each time. Implies --dont-purge and --"
-"use-existing."
-msgstr ""
-
-#: cmds.py:123
-msgid "Builds a Debian package from a branch."
-msgstr ""
-
-#: cmds.py:125
-msgid ""
-"If BRANCH is specified it is assumed that the branch you wish to build is\n"
-"located there. If it is not specified then the current directory is used."
-msgstr ""
-
-#: cmds.py:128
-msgid ""
-"By default, if a working tree is found, it is used to build. Otherwise the\n"
-"last committed revision found in the branch is used. To force building the\n"
-"last committed revision use --revision -1. You can also specify any other\n"
-"revision with the --revision option."
-msgstr ""
-
-#: cmds.py:133
-msgid ""
-"If you only wish to export the package, and not build it (especially useful\n"
-"for merge mode), use --export-only."
-msgstr ""
-
-#: cmds.py:136
-msgid ""
-"To leave the build directory when the build is completed use --dont-purge."
-msgstr ""
-
-#: cmds.py:138
-msgid ""
-"Specify the command to use when building using the --builder option, by\n"
-"default \"debuild\" is used. It can be overriden by setting the \"builder\"\n"
-"variable in you configuration. You can specify extra options to build with\n"
-"by adding them to the end of the command, after using \"--\" to indicate "
-"the\n"
-"end of the options to builddeb itself. The builder that you specify must\n"
-"accept the options you provide at the end of its command line."
-msgstr ""
-
-#: cmds.py:145
-msgid ""
-"You can also specify directories to use for different things. --build-dir\n"
-"is the directory to build the packages beneath, which defaults to\n"
-"'../build-area'. '--orig-dir' specifies the directory that contains the\n"
-".orig.tar.gz files , which defaults to '..'. '--result-dir' specifies where\n"
-"the resulting package files should be placed, which defaults to '..'.\n"
-"--result-dir will have problems if you use a build command that places\n"
-"the results in a different directory."
-msgstr ""
-
-#: cmds.py:153
-msgid ""
-"The --reuse option will be useful if you are in merge mode, and the "
-"upstream\n"
-"tarball is very large. It attempts to reuse a build directory from an "
-"earlier\n"
-"build. It will fail if one doesn't exist, but you can create one by using \n"
-"--export-only. "
-msgstr ""
-
-#: cmds.py:158
-msgid ""
-"--quick allows you to define a quick-builder in your configuration files, \n"
-"which will be used when this option is passed. It defaults to 'fakeroot \n"
-"debian/rules binary'. It is overriden if --builder is passed. Using this\n"
-"and --reuse allows for fast rebuilds."
-msgstr ""
-
-# help of 'working-tree' option of 'builddeb' command
-#: cmds.py:163
-msgid "This option has no effect."
-msgstr ""
-
-# help of 'export-only' option of 'builddeb' command
-#: cmds.py:165
-msgid "Export only, don't build."
-msgstr ""
-
-# help of 'use-existing' option of 'builddeb' command
-#: cmds.py:168
-msgid "Use an existing build directory."
-msgstr ""
-
-# help of 'source' option of 'builddeb' command
-#: cmds.py:176
-msgid "Build a source package."
-msgstr ""
-
-# help of 'strict' option of 'builddeb' command
-#: cmds.py:179
-msgid ""
-"Refuse to build if there are unknown files in the working tree, --no-strict "
-"disables the check."
-msgstr ""
-
-# help of 'result' option of 'builddeb' command
-#: cmds.py:181
-msgid ""
-"Present only for compatibility with bzr-builddeb <= 2.0. Use --result-dir "
-"instead."
-msgstr ""
-
-# help of 'package-merge' option of 'builddeb' command
-#: cmds.py:183
-msgid ""
-"Build using the appropriate -v and -sa options for merging in the changes "
-"from another source."
-msgstr ""
-
-#: cmds.py:479
-msgid "Gets the upstream tar file for the packaging branch."
-msgstr ""
-
-# help of 'directory' option of 'get-orig-source' command
-#: cmds.py:482
-msgid "Directory from which to retrieve the packaging data"
-msgstr ""
-
-#: cmds.py:528
-msgid "Merges a new upstream version into the current branch."
-msgstr ""
-
-#: cmds.py:530
-msgid ""
-"Takes a new upstream version and merges it in to your branch, so that your\n"
-"packaging changes are applied to the new version."
-msgstr ""
-
-#: cmds.py:533
-msgid ""
-"You must supply the source to import from, and in some cases\n"
-"the version number of the new release. The source can be a .tar.gz, .tar,\n"
-".tar.bz2, .tar.xz, .tgz or .zip archive, a directory or a branch. The\n"
-"source may also be a remote file described by a URL."
-msgstr ""
-
-#: cmds.py:538
-msgid ""
-"In most situations the version can be guessed from the upstream source.\n"
-"If the upstream version can not be guessed or if it is guessed\n"
-"incorrectly then the version number can be specified with --version."
-msgstr ""
-
-#: cmds.py:542
-msgid ""
-"The distribution this version is targetted at can be specified with\n"
-"--distribution. This will be used to guess the version number suffix\n"
-"that you want, but you can always correct it in the resulting\n"
-"debian/changelog."
-msgstr ""
-
-#: cmds.py:547
-msgid ""
-"If there is no debian changelog in the branch to retrieve the package\n"
-"name from then you must pass the --package option. If this version\n"
-"will change the name of the source package then you can use this option\n"
-"to set the new name."
-msgstr ""
-
-#: cmds.py:552
-msgid "examples::"
-msgstr ""
-
-#: cmds.py:554
-msgid ""
-"    bzr merge-upstream --version 0.2             http://example.org/releases/"
-"scruff-0.2.tar.gz"
-msgstr ""
-
-#: cmds.py:556
-msgid ""
-"If you are merging a branch as well as the tarball then you can\n"
-"specify the branch after the tarball, along with -r to specify the\n"
-"revision of that branch to take::"
-msgstr ""
-
-#: cmds.py:560
-msgid ""
-"    bzr merge-upstream --version 0.2             http://example.org/releases/"
-"scruff-0.2.tar.gz             http://scruff.org/bzr/scruff.dev -r tag:0.2"
-msgstr ""
-
-#: cmds.py:562
-msgid ""
-"If there is no upstream release tarball, and you want bzr-builddeb to\n"
-"create the tarball for you::"
-msgstr ""
-
-#: cmds.py:565
-msgid "    bzr merge-upstream --version 0.2 http://scruff.org/bzr/scruff.dev"
-msgstr ""
-
-#: cmds.py:567
-msgid ""
-"Note that the created tarball is just the same as the contents of\n"
-"the branch at the specified revision. If you wish to have something\n"
-"different, for instance the results of running \"make dist\", then you\n"
-"should create the tarball first, and pass it to the command as in\n"
-"the second example."
-msgstr ""
-
-# help of 'package' option of 'merge-upstream' command
-#: cmds.py:576
-msgid "The name of the source package."
-msgstr ""
-
-# help of 'version' option of 'merge-upstream' command
-#: cmds.py:579
-msgid "The upstream version number of this release, for example \"0.2\"."
-msgstr ""
-
-# help of 'distribution' option of 'merge-upstream' command
-#: cmds.py:581
-msgid "The distribution that this release is targetted at."
-msgstr ""
-
-# help of 'directory' option of 'merge-upstream' command
-#: cmds.py:584
-msgid "Working tree into which to merge."
-msgstr ""
-
-# help of 'last-version' option of 'merge-upstream' command
-#: cmds.py:587
-msgid "The full version of the last time upstream was merged."
-msgstr ""
-
-# help of 'force' option of 'merge-upstream' command
-#: cmds.py:590
-msgid "Force a merge even if the upstream branch has not changed."
-msgstr ""
-
-# help of 'snapshot' option of 'merge-upstream' command
-#: cmds.py:592
-msgid ""
-"Merge a snapshot from the upstream branch rather than a new upstream release."
-msgstr ""
-
-# help of 'launchpad' option of 'merge-upstream' command
-#: cmds.py:596
-msgid "Use Launchpad to find upstream locations."
-msgstr ""
-
-#: cmds.py:863
-msgid "Import a series of source packages."
-msgstr ""
-
-#: cmds.py:865
-msgid ""
-"Provide a number of source packages (.dsc files), and they will\n"
-"be imported to create a branch with history that reflects those\n"
-"packages."
-msgstr ""
-
-#: cmds.py:869
-msgid ""
-"The first argument is the distribution that these source packages\n"
-"were uploaded to, one of \"debian\" or \"ubuntu\". It can also\n"
-"be the target distribution from the changelog, e.g. \"unstable\",\n"
-"which will be resolved to the correct distribution."
-msgstr ""
-
-#: cmds.py:874
-msgid ""
-"You can also specify a file (possibly remote) that contains a\n"
-"list of source packages (.dsc files) to import using the --file\n"
-"option. Each line is taken to be a URI or path to import. The\n"
-"sources specified in the file are used in addition to those\n"
-"specified on the command line."
-msgstr ""
-
-#: cmds.py:880
-msgid ""
-"If you have an existing branch containing packaging and you want to\n"
-"import a .dsc from an upload done from outside the version control\n"
-"system you can use this command."
-msgstr ""
-
-# help of 'file' option of 'import-dsc' command
-#: cmds.py:887
-msgid "File containing URIs of source packages to import."
-msgstr ""
-
-#: cmds.py:1000
-msgid "Imports an upstream tarball."
-msgstr ""
-
-#: cmds.py:1002
-msgid ""
-"This will import an upstream tarball in to your branch, but not modify the\n"
-"working tree. Use merge-upstream if you wish to directly merge the new\n"
-"upstream version in to your tree."
-msgstr ""
-
-#: cmds.py:1006
-msgid ""
-"The imported revision can be accessed using the tag name that will be\n"
-"reported at the end of a successful operation. The revision will include\n"
-"the pristine-tar data that will allow other commands to recreate the\n"
-"tarball when needed."
-msgstr ""
-
-#: cmds.py:1011
-msgid "For instance::"
-msgstr ""
-
-#: cmds.py:1013
-msgid "    $ bzr import-upstream 1.2.3 ../package_1.2.3.orig.tar.gz"
-msgstr ""
-
-#: cmds.py:1015
-msgid ""
-"If upstream is packaged in bzr, you should provide the upstream branch\n"
-"whose tip commit is the closest match to the tarball::"
-msgstr ""
-
-#: cmds.py:1018
-msgid ""
-"    $ bzr import-upstream 1.2.3 ../package_1.2.3.orig.tar.gz ../upstream"
-msgstr ""
-
-#: cmds.py:1020
-msgid ""
-"After doing this, commands that assume there is an upstream tarball, like\n"
-"'bzr builddeb' will be able to recreate the one provided at import-upstream\n"
-"time, meaning that you don't need to distribute the tarball in addition to\n"
-"the branch."
-msgstr ""
-
-#: cmds.py:1025
-msgid "If you want to manually merge with the imported upstream, you can do::"
-msgstr ""
-
-#: cmds.py:1027
-msgid "    $ bzr merge . -r tag:upstream-1.2.3"
-msgstr ""
-
-#: cmds.py:1029
-msgid ""
-"The imported revision will have file ids taken from your branch, the\n"
-"upstream branch, or previous tarball imports as necessary. In addition\n"
-"the parents of the new revision will be the previous upstream tarball\n"
-"import and the tip of the upstream branch if you supply one."
-msgstr ""
-
-#: cmds.py:1116
-msgid "Run a command in an exported package, copying the result back."
-msgstr ""
-
-#: cmds.py:1118
-msgid ""
-"For a merge mode package the full source is not available, making some\n"
-"operations difficult. This command allows you to run any command in an\n"
-"exported source directory, copying the resulting debian/ directory back\n"
-"to your branch if the command is successful."
-msgstr ""
-
-#: cmds.py:1123
-msgid "For instance:"
-msgstr ""
-
-#: cmds.py:1125
-msgid "  bzr builddeb-do"
-msgstr ""
-
-#: cmds.py:1127
-msgid ""
-"will run a shell in the unpacked source. Any changes you make in the\n"
-"``debian/`` directory (and only those made in that directory) will be "
-"copied\n"
-"back to the branch. If you exit with a non-zero exit code (e.g. \"exit "
-"1\"),\n"
-"then the changes will not be copied back."
-msgstr ""
-
-#: cmds.py:1132
-msgid "You can also specify single commands to be run, e.g."
-msgstr ""
-
-#: cmds.py:1134
-msgid "  bzr builddeb-do \"dpatch-edit-patch 01-fix-build\""
-msgstr ""
-
-#: cmds.py:1136
-msgid ""
-"Note that only the first argument is used as the command, and so the above\n"
-"example had to be quoted."
-msgstr ""
-
-#: cmds.py:1251
-msgid "Mark that this branch has been uploaded, prior to pushing it."
-msgstr ""
-
-#: cmds.py:1253
-msgid ""
-"When a package has been uploaded we want to mark the revision\n"
-"that it was uploaded in. This command automates doing that\n"
-"by marking the current tip revision with the version indicated\n"
-"in debian/changelog."
-msgstr ""
-
-# help of 'force' option of 'mark-uploaded' command
-#: cmds.py:1258
-msgid "Mark the upload even if it is already marked."
-msgstr ""
-
-#: cmds.py:1375
-msgid "Helps you create a new package."
-msgstr ""
-
-#: cmds.py:1377
-msgid ""
-"This code wraps dh_make to do the Bazaar setup for you, ensuring that\n"
-"your branches have all the necessary information and are correctly\n"
-"linked to the upstream branches where necessary."
-msgstr ""
-
-#: cmds.py:1381
-msgid "The basic use case is satisfied by"
-msgstr ""
-
-#: cmds.py:1383
-msgid "    bzr dh-make project 0.1 http://project.org/project-0.1.tar.gz"
-msgstr ""
-
-#: cmds.py:1385
-msgid ""
-"which will import the tarball with the correct tags etc. and then\n"
-"run dh_make for you in order to start the packaging."
-msgstr ""
-
-#: cmds.py:1388
-msgid ""
-"If there upstream is available in bzr then run the command from the\n"
-"root of a branch of that corresponding to the 0.1 release."
-msgstr ""
-
-#: cmds.py:1391
-msgid ""
-"If there is no upstream available in bzr then run the command from\n"
-"outside a branch and it will create a branch for you in a directory\n"
-"named the same as the package name you specify as the second argument."
-msgstr ""
-
-#: cmds.py:1395
-msgid ""
-"If you do not wish to use dh_make, but just take advantage of the\n"
-"Bazaar specific parts then use the --bzr-only option."
-msgstr ""
-
-# help of 'bzr-only' option of 'dh-make' command
-#: cmds.py:1403
-msgid "Don't run dh_make."
-msgstr ""
-
-# help of 'v3' option of 'dh-make' command
-#: cmds.py:1404
-msgid "Use dpkg-source format v3."
-msgstr ""
-
-#: cmds.py:1423
-msgid "Format the changes in a branch as a DEP-3 patch."
-msgstr ""
-
-#: cmds.py:1425
-msgid "    "
-msgstr ""
-
-# help of 'directory' option of 'dep3-patch' command
-#: cmds.py:1430
-msgid "Packaging tree for which to generate patch."
-msgstr ""
-
-# help of 'no-upstream-check' option of 'dep3-patch' command
-#: cmds.py:1434
-msgid "Don't check whether patch has been merged upstream."
+#: merge_quilt.py:136
+#, python-format
+msgid "Committing with %d patches applied and %d patches unapplied."
 msgstr ""

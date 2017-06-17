@@ -21,11 +21,7 @@
 
 from __future__ import absolute_import
 
-try:
-    from debian.changelog import Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
+from debian.changelog import Version
 
 from .test_import_dsc import TestBaseImportDsc
 from ..test_import_dsc import PristineTarFeature
@@ -61,7 +57,7 @@ class TestImportUpstream(TestBaseImportDsc):
     def make_upstream_tree(self):
         """Make an upstream tree with its own history."""
         upstreamtree = self.make_branch_and_tree('upstream')
-        self.make_unpacked_upstream_source(transport=upstreamtree.bzrdir.root_transport)
+        self.make_unpacked_upstream_source(transport=upstreamtree.controldir.root_transport)
         upstreamtree.smart_add(['upstream'])
         upstreamtree.commit('upstream release')
         return upstreamtree
@@ -75,8 +71,8 @@ class TestImportUpstream(TestBaseImportDsc):
     def make_workingdir(self):
         """Make a working directory with both upstream source and debian packaging."""
         tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(transport=tree.bzrdir.root_transport)
-        self.make_debian_dir(tree.bzrdir.root_transport.local_abspath('debian'))
+        self.make_unpacked_upstream_source(transport=tree.controldir.root_transport)
+        self.make_debian_dir(tree.controldir.root_transport.local_abspath('debian'))
         tree.smart_add(['working'])
         tree.commit('save changes')
         return tree
@@ -88,8 +84,8 @@ class TestImportUpstream(TestBaseImportDsc):
         self.make_upstream_tarball()
         self.make_real_source_package()
         tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(transport=tree.bzrdir.root_transport)
-        self.make_debian_dir(tree.bzrdir.root_transport.local_abspath('debian'))
+        self.make_unpacked_upstream_source(transport=tree.controldir.root_transport)
+        self.make_debian_dir(tree.controldir.root_transport.local_abspath('debian'))
         tree.smart_add(['working'])
         tree.commit('save changes')
         tar_path = "../%s" % self.upstream_tarball_name

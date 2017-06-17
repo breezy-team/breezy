@@ -83,8 +83,8 @@ class DebBuildConfig(object):
     The sample files used in this test are included in the builddeb source tree.
 
     >>> import os
-    >>> import bzrlib.plugins.builddeb
-    >>> d = os.path.dirname(bzrlib.plugins.builddeb.__file__) + '/'
+    >>> import breezy.plugins.builddeb
+    >>> d = os.path.dirname(breezy.plugins.builddeb.__file__) + '/'
     >>> c = DebBuildConfig([
     ...      (d + 'local.conf', False),
     ...      (d + 'user.conf', True), 

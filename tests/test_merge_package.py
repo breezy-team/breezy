@@ -24,11 +24,7 @@ from __future__ import absolute_import
 import string
 import unittest
 
-try:
-    from debian.changelog import Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
+from debian.changelog import Version
 
 from .. import merge_package as MP
 from ..errors import (
@@ -325,7 +321,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu upstream branch.
         name = 'ubuu-o'
-        ubuu_o = debu_n.bzrdir.sprout(
+        ubuu_o = debu_n.controldir.sprout(
             name, revision_id=self.revid_debu_n_B).open_workingtree()
 
         vdata = [
@@ -335,7 +331,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu packaging branch.
         name = 'ubup-o'
-        ubup_o = debu_n.bzrdir.sprout(
+        ubup_o = debu_n.controldir.sprout(
             name, revision_id=self.revid_debu_n_A).open_workingtree()
 
         vdata = [
@@ -399,7 +395,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu upstream branch.
         name = 'ubuu-o'
-        ubuu_o = debu_n.bzrdir.sprout(
+        ubuu_o = debu_n.controldir.sprout(
             name, revision_id=self.revid_debu_n_B).open_workingtree()
 
         vdata = [
@@ -409,7 +405,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu packaging branch.
         name = 'ubup-o'
-        ubup_o = debu_n.bzrdir.sprout(
+        ubup_o = debu_n.controldir.sprout(
             name, revision_id=self.revid_debu_n_A).open_workingtree()
 
         vdata = [
@@ -473,7 +469,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu upstream branch.
         name = 'ubuu-n'
-        ubuu_n = debu_o.bzrdir.sprout(
+        ubuu_n = debu_o.controldir.sprout(
             name, revision_id=self.revid_debu_o_B).open_workingtree()
 
         vdata = [
@@ -483,7 +479,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu packaging branch.
         name = 'ubup-n'
-        ubup_n = debu_o.bzrdir.sprout(
+        ubup_n = debu_o.controldir.sprout(
             name, revision_id=self.revid_debu_o_A).open_workingtree()
 
         vdata = [
@@ -534,7 +530,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the debian upstream branch.
         name = 'dupstream'
-        dupstream = upstream.bzrdir.sprout(name).open_workingtree()
+        dupstream = upstream.controldir.sprout(name).open_workingtree()
         vdata = [
             ('upstream-2.2', (), None, None),
             ]
@@ -554,7 +550,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Set up the ubuntu packaging branch.
         name = 'ubuntup'
-        ubuntup = upstream.bzrdir.sprout(
+        ubuntup = upstream.controldir.sprout(
             name, revision_id=self.revid_upstream_A).open_workingtree()
 
         vdata = [
@@ -629,8 +625,3 @@ class MergePackageTests(TestCaseWithTransport):
             commit(msg, version)
 
         return tree
-
-
-if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(MergePackageTests)
-    unittest.TextTestRunner(verbosity=2).run(suite)

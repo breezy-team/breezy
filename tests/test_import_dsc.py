@@ -26,28 +26,17 @@ import shutil
 import subprocess
 import tarfile
 
-try:
-    from debian.changelog import Version
-    from debian import deb822
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
-    from debian_bundle import deb822
+from debian.changelog import Version
+from debian import deb822
 
 from .... import (
     revision as _mod_revision,
     tests,
     )
-try:
-    from ....tests.features import (
-        Feature,
-        SymlinkFeature,
-        )
-except ImportError: # bzr < 2.5
-    from ....tests import (
-        Feature,
-        SymlinkFeature,
-        )
+from ....tests.features import (
+    Feature,
+    SymlinkFeature,
+    )
 
 from . import make_new_upstream_tarball_xz
 
@@ -1788,7 +1777,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.build_tree(['upstream/a'])
         upstream_tree.add(['a'], ['a-id'])
         upstream_rev1 = upstream_tree.commit("one")
-        tree = upstream_tree.bzrdir.sprout('packaging').open_workingtree()
+        tree = upstream_tree.controldir.sprout('packaging').open_workingtree()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
@@ -1824,7 +1813,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.build_tree(['upstream/a', 'upstream/b'])
         upstream_tree.add(['a', 'b'], ['a-id', 'b-id'])
         upstream_rev1 = upstream_tree.commit("one")
-        tree = upstream_tree.bzrdir.sprout('packaging').open_workingtree()
+        tree = upstream_tree.controldir.sprout('packaging').open_workingtree()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)

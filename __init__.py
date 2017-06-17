@@ -27,7 +27,7 @@ from __future__ import absolute_import
 
 import os
 
-import bzrlib
+import breezy
 from ...commands import plugin_cmds
 
 from .info import (
@@ -35,13 +35,10 @@ from .info import (
     )
 
 
-try:
-    from ...i18n import load_plugin_translations
-except ImportError: # No translations for bzr < 2.5
-    gettext = lambda x: x
-else:
-    translation = load_plugin_translations("bzr-builddeb")
-    gettext = translation.ugettext
+from ...i18n import load_plugin_translations
+translation = load_plugin_translations("bzr-builddeb")
+gettext = translation.ugettext
+
 
 commands = {
         "builddeb_do": ["bd-do"],
@@ -92,41 +89,29 @@ except ImportError:
                 __name__ + ".directory", "upstream_branch_alias",
                 help="upstream branch (for packaging branches)")
 
-    try:
-        from ...tag import tag_sort_methods
-    except ImportError:
-        pass # bzr tags --sort= can not be extended
-    else:
-        tag_sort_methods.register_lazy("debversion",
-            __name__ + ".tagging", "sort_debversion",
-            "Sort like Debian versions.")
-
-    try:
-        from ...revisionspec import revspec_registry
-        revspec_registry.register_lazy("package:",
-            __name__ + ".revspec", "RevisionSpec_package")
-        revspec_registry.register_lazy("upstream:",
-            __name__ + ".revspec", "RevisionSpec_upstream")
-    except ImportError:
-        from ...revisionspec import SPEC_TYPES
-        from .revspec import (
-            RevisionSpec_package,
-            RevisionSpec_upstream,
-            )
-        SPEC_TYPES.extend([RevisionSpec_package, RevisionSpec_upstream])
-else:
-    register_lazy("bzrlib.directory", "directories", "apt:",
-            __name__ + '.directory', 'VcsDirectory',
-            help="Directory that uses Debian Vcs-* control fields to look up branches")
-    register_lazy("bzrlib.directory", "AliasDirectory.branch_aliases", "upstream",
-            __name__ + ".directory", "upstream_branch_alias",
-            help="upstream branch (for packaging branches)")
-    register_lazy("bzrlib.tag", "tag_sort_methods", "debversion",
+    from ...tag import tag_sort_methods
+    tag_sort_methods.register_lazy("debversion",
         __name__ + ".tagging", "sort_debversion",
         "Sort like Debian versions.")
-    register_lazy("bzrlib.revisionspec", "revspec_registry", "package:",
+
+    from ...revisionspec import revspec_registry
+    revspec_registry.register_lazy("package:",
         __name__ + ".revspec", "RevisionSpec_package")
-    register_lazy("bzrlib.revisionspec", "revspec_registry", "upstream:",
+    revspec_registry.register_lazy("upstream:",
+        __name__ + ".revspec", "RevisionSpec_upstream")
+else:
+    register_lazy("breezy.directory", "directories", "apt:",
+            __name__ + '.directory', 'VcsDirectory',
+            help="Directory that uses Debian Vcs-* control fields to look up branches")
+    register_lazy("breezy.directory", "AliasDirectory.branch_aliases", "upstream",
+            __name__ + ".directory", "upstream_branch_alias",
+            help="upstream branch (for packaging branches)")
+    register_lazy("breezy.tag", "tag_sort_methods", "debversion",
+        __name__ + ".tagging", "sort_debversion",
+        "Sort like Debian versions.")
+    register_lazy("breezy.revisionspec", "revspec_registry", "package:",
+        __name__ + ".revspec", "RevisionSpec_package")
+    register_lazy("breezy.revisionspec", "revspec_registry", "upstream:",
         __name__ + ".revspec", "RevisionSpec_upstream")
 
 
@@ -174,7 +159,7 @@ def debian_changelog_commit_message(commit, start_message):
 
 
 def debian_changelog_commit(commit, start_message):
-    """hooked into bzrlib.msgeditor set_commit_message.
+    """hooked into breezy.msgeditor set_commit_message.
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
     from .util import (
@@ -352,68 +337,39 @@ def pre_merge_fix_ancestry(merger):
                 "data for version %s."), e.version)
 
 
-try:
-    from ...hooks import install_lazy_named_hook
-except ImportError: # Compatibility with bzr < 2.4
-    from ... import (
-        branch as _mod_branch,
-        errors,
-        merge,
-        msgeditor,
-        )
-    msgeditor.hooks.install_named_hook("commit_message_template",
-            debian_changelog_commit_message,
-            "Use changes documented in debian/changelog to suggest "
-            "the commit message")
-    if getattr(merge, 'ConfigurableFileMerger', None) is None:
-        raise ImportError(
-            'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
-    else:
-        merge.Merger.hooks.install_named_hook(
-            'merge_file_content', changelog_merge_hook_factory,
-            'Debian Changelog file merge')
-    try:
-        _mod_branch.Branch.hooks.install_named_hook("automatic_tag_name",
-             debian_tag_name,
-             "Automatically determine tag names from Debian version")
-    except errors.UnknownHook:
-        pass # bzr < 2.2 doesn't have this hook.
-else:
-    install_lazy_named_hook(
-        "bzrlib.msgeditor", "hooks", "commit_message_template",
-            debian_changelog_commit_message,
-            "Use changes documented in debian/changelog to suggest "
-            "the commit message")
-    if bzrlib.version_info[0] >= 2 and bzrlib.version_info[1] >= 4:
-        install_lazy_named_hook(
-            "bzrlib.msgeditor", "hooks", "set_commit_message",
-                debian_changelog_commit,
-                "Use changes documented in debian/changelog to set "
-                "the commit message and bugs fixed")
-    install_lazy_named_hook(
-        "bzrlib.merge", "Merger.hooks",
-        'merge_file_content', changelog_merge_hook_factory,
-        'Debian Changelog file merge')
-    install_lazy_named_hook(
-        "bzrlib.branch", "Branch.hooks",
-        "automatic_tag_name", debian_tag_name,
-         "Automatically determine tag names from Debian version")
-    install_lazy_named_hook(
-        "bzrlib.merge", "Merger.hooks",
-        'pre_merge', pre_merge,
-        'Debian quilt patch (un)applying and ancestry fixing')
-    install_lazy_named_hook(
-        "bzrlib.merge", "Merger.hooks",
-        'post_merge', post_merge_quilt_cleanup,
-        'Cleaning up quilt temporary directories')
-    install_lazy_named_hook(
-        "bzrlib.mutabletree", "MutableTree.hooks",
-        'post_build_tree', post_build_tree_quilt,
-        'Applying quilt patches.')
-    install_lazy_named_hook(
-        "bzrlib.mutabletree", "MutableTree.hooks",
-        "start_commit", start_commit_check_quilt,
-        "Check for (un)applied quilt patches")
+from ...hooks import install_lazy_named_hook
+install_lazy_named_hook(
+    "breezy.msgeditor", "hooks", "commit_message_template",
+        debian_changelog_commit_message,
+        "Use changes documented in debian/changelog to suggest "
+        "the commit message")
+install_lazy_named_hook(
+    "breezy.merge", "Merger.hooks",
+    'merge_file_content', changelog_merge_hook_factory,
+    'Debian Changelog file merge')
+install_lazy_named_hook(
+    "breezy.branch", "Branch.hooks",
+    "automatic_tag_name", debian_tag_name,
+     "Automatically determine tag names from Debian version")
+install_lazy_named_hook(
+    "breezy.merge", "Merger.hooks",
+    'pre_merge', pre_merge,
+    'Debian quilt patch (un)applying and ancestry fixing')
+install_lazy_named_hook(
+    "breezy.merge", "Merger.hooks",
+    'post_merge', post_merge_quilt_cleanup,
+    'Cleaning up quilt temporary directories')
+install_lazy_named_hook(
+    "breezy.mutabletree", "MutableTree.hooks",
+    'post_build_tree', post_build_tree_quilt,
+    'Applying quilt patches.')
+install_lazy_named_hook(
+    "breezy.mutabletree", "MutableTree.hooks",
+    "start_commit", start_commit_check_quilt,
+    "Check for (un)applied quilt patches")
 
-def load_tests(standard_tests, module, loader):
-    return loader.loadTestsFromModuleNames([__name__ + '.tests'])
+
+def load_tests(loader, basic_tests, pattern):
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames([__name__ + '.tests']))
+    return basic_tests

@@ -31,12 +31,11 @@ import tempfile
 
 from ..errors import (
     PackageVersionNotPresent,
-    PerFileTimestampsNotSupported,
     )
 from ..upstream import UpstreamSource
+from ....export import export
 from ..util import (
     debuild_config,
-    export,
     subprocess_setup,
     )
 
@@ -260,8 +259,6 @@ class PristineTarSource(UpstreamSource):
             self.reconstruct_pristine_tar(revid, package, version, target_filename)
         except PristineTarError:
             raise PackageVersionNotPresent(package, version, self)
-        except PerFileTimestampsNotSupported:
-            raise PackageVersionNotPresent(package, version, self)
         return target_filename
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
@@ -396,7 +393,7 @@ class PristineTarSource(UpstreamSource):
                 delta = self.pristine_tar_delta(rev)
                 reconstruct_pristine_tar(dest, delta, dest_filename)
             else:
-                export(tree, dest_filename, require_per_file_timestamps=True)
+                export(tree, dest_filename, per_file_timestamps=True)
         finally:
             shutil.rmtree(tmpdir)
 

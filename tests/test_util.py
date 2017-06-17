@@ -30,11 +30,7 @@ import os
 import shutil
 import tarfile
 
-try:
-    from debian.changelog import Changelog, Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Changelog, Version
+from debian.changelog import Changelog, Version
 
 from ..config import (
     BUILD_TYPE_MERGE,
@@ -83,10 +79,7 @@ from .... import errors as bzr_errors
 from ....tests import (
     TestCase,
     )
-try:
-    from ....tests.features import SymlinkFeature
-except ImportError: # bzr < 2.5
-    from ....tests import SymlinkFeature
+from ....tests.features import SymlinkFeature
 
 
 class RecursiveCopyTests(TestCaseInTempDir):

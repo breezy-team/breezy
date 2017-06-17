@@ -20,7 +20,7 @@
 
 from __future__ import absolute_import
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
   testmod_names = [
           'test_builddeb',
           'test_dep3',
@@ -32,8 +32,8 @@ def load_tests(standard_tests, module, loader):
           'test_merge_package',
           'test_merge_upstream',
           ]
-  suite = loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
-                                       for i in testmod_names])
-  return suite
+  basic_tests.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
+                      for i in testmod_names]))
+  return basic_tests
 
 # vim: ts=2 sts=2 sw=2

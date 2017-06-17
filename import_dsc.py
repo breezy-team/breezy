@@ -34,17 +34,15 @@ import stat
 import subprocess
 import tempfile
 
-try:
-    from debian import deb822
-    from debian.changelog import Version, Changelog, VersionError
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle import deb822
-    from debian_bundle.changelog import Version, Changelog, VersionError
+from debian import deb822
+from debian.changelog import Version, Changelog, VersionError
 
 from ... import (
-    bzrdir,
+    controldir,
     osutils,
+    )
+from ...export import (
+    export,
     )
 from ...config import ConfigObj
 from ...errors import (
@@ -72,7 +70,6 @@ from .util import (
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
     component_from_orig_tarball,
-    export,
     extract_orig_tarballs,
     get_commit_info_from_changelog,
     md5sum_filename,
@@ -1262,7 +1259,7 @@ class DistributionBranch(object):
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
         assert upstream_tips.keys() == [None]
-        dir_to = source_branch.bzrdir.sprout(to_location,
+        dir_to = source_branch.controldir.sprout(to_location,
                 revision_id=upstream_tips[None],
                 accelerator_tree=self.tree)
         try:
@@ -1276,24 +1273,24 @@ class DistributionBranch(object):
         to_location = os.path.join(basedir, "upstream")
         to_transport = get_transport(to_location)
         to_transport.ensure_base()
-        format = bzrdir.format_registry.make_bzrdir('default')
+        format = controldir.format_registry.make_controldir('default')
         try:
-            existing_bzrdir = bzrdir.BzrDir.open_from_transport(
+            existing_controldir = controldir.ControlDir.open_from_transport(
                     to_transport)
         except NotBranchError:
-            # really a NotBzrDir error...
-            create_branch = bzrdir.BzrDir.create_branch_convenience
+            # really a NotControlDirError error...
+            create_branch = controldir.ControlDir.create_branch_convenience
             branch = create_branch(to_transport.base,
                     format=format,
                     possible_transports=[to_transport])
         else:
-            if existing_bzrdir.has_branch():
+            if existing_controldir.has_branch():
                 raise AlreadyBranchError(to_location)
             else:
-                branch = existing_bzrdir.create_branch()
-                existing_bzrdir.create_workingtree()
+                branch = existing_controldir.create_branch()
+                existing_controldir.create_workingtree()
         self.pristine_upstream_branch = branch
-        self.pristine_upstream_tree = branch.bzrdir.open_workingtree()
+        self.pristine_upstream_tree = branch.controldir.open_workingtree()
         if self.tree:
             root_id = self.tree.path2id('')
         else:

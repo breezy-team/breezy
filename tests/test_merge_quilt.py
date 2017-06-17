@@ -25,6 +25,7 @@ import os
 import shutil
 
 from .... import (
+    config,
     errors,
     trace,
     )
@@ -119,7 +120,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')
 
-        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([
             ('a/debian/patches/patch1', 
                 "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+d\n"]))])
@@ -158,8 +159,9 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')
 
+        config.ensure_config_dir_exists()
         self.build_tree_contents([
-            (os.path.join(self.test_home_dir, ".bazaar/builddeb.conf"),
+            (os.path.join(config.config_dir(), "builddeb.conf"),
                 "[BUILDDEB]\nquilt-tree-policy = applied\n")])
 
         tree_b = tree_a.branch.create_checkout("b")
@@ -217,7 +219,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')
 
-        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([
             ('a/debian/patches/patch1', 
                 "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+d\n"]))])

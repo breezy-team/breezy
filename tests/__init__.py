@@ -30,25 +30,19 @@ import os
 
 from .... import tests
 
-try:
-    from debian.changelog import Version, Changelog
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version, Changelog
+from debian.changelog import Version, Changelog
 
-from ....tests import TestUtil, multiply_tests
-try:
-    from ....tests.features import (
-        ExecutableFeature,
-        ModuleAvailableFeature,
-        UnicodeFilenameFeature,
-        )
-except ImportError: # bzr < 2.5
-    from ....tests import (
-        ExecutableFeature,
-        ModuleAvailableFeature,
-        UnicodeFilenameFeature,
-        )
+from ....tests import (
+    TestUtil,
+    multiply_tests,
+    TestCaseWithTransport,
+    TestCaseInTempDir,
+    )
+from ....tests.features import (
+    ExecutableFeature,
+    ModuleAvailableFeature,
+    UnicodeFilenameFeature,
+    )
 
 
 def make_new_upstream_dir(source, dest):
@@ -116,8 +110,7 @@ def make_new_upstream_tarball_lzma(source, dest):
         f.close()
 
 
-def load_tests(standard_tests, module, loader):
-    suite = loader.suiteClass()
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
             'blackbox',
             'test_builder',
@@ -140,14 +133,15 @@ def load_tests(standard_tests, module, loader):
             'test_util',
             'test_tagging',
             ]
-    suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
-                                            for i in testmod_names]))
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+        ["%s.%s" % (__name__, i) for i in testmod_names]))
 
     doctest_mod_names = [
              'config'
              ]
     for mod in doctest_mod_names:
-        suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
+        basic_tests.addTest(
+            doctest.DocTestSuite("breezy.plugins.builddeb." + mod))
     repack_tarball_tests = loader.loadTestsFromModuleNames(
             ['%s.test_repack_tarball' % __name__])
     scenarios = [('dir', dict(build_tarball=make_new_upstream_dir,
@@ -167,33 +161,11 @@ def load_tests(standard_tests, module, loader):
                  ('.tar', dict(build_tarball=make_new_upstream_tarball_bare,
                               old_tarball='../package-0.2.tar')),
                  ]
-    suite = multiply_tests(repack_tarball_tests, scenarios, suite)
-    return suite
+    basic_tests = multiply_tests(repack_tarball_tests, scenarios, basic_tests)
+    return basic_tests
 
 
-class TestCaseWithTransport(tests.TestCaseWithTransport):
-
-    if not getattr(tests.TestCaseWithTransport, "assertPathDoesNotExist", None):
-        # Compatibility with bzr < 2.4
-        def assertPathDoesNotExist(self, path):
-            self.failIfExists(path)
-
-        def assertPathExists(self, path):
-            self.failUnlessExists(path)
-
-
-class TestCaseInTempDir(tests.TestCaseInTempDir):
-
-    if not getattr(tests.TestCaseInTempDir, "assertPathDoesNotExist", None):
-        # Compatibility with bzr < 2.4
-        def assertPathDoesNotExist(self, path):
-            self.failIfExists(path)
-
-        def assertPathExists(self, path):
-            self.failUnlessExists(path)
-
-
-class BuilddebTestCase(TestCaseWithTransport):
+class BuilddebTestCase(tests.TestCaseWithTransport):
 
     package_name = 'test'
     package_version = Version('0.1-1')

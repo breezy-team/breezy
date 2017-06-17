@@ -22,15 +22,9 @@ from __future__ import absolute_import
 
 import os
 
-try:
-    from debian.changelog import (Changelog,
-                                  Version,
-                                  )
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import (Changelog,
-                                         Version,
-                                        )
+from debian.changelog import (Changelog,
+                              Version,
+                              )
 
 
 from .. import BuilddebTestCase
@@ -120,5 +114,5 @@ class TestGetOrigSource(BuilddebTestCase):
     def test_get_orig_source_explicit_version_not_found(self):
         tree = self.make_source_with_upstream()
         self.run_bzr_error([
-            'bzr: ERROR: Unable to find the needed upstream tarball for package test, version 0.3.'],
+            'brz: ERROR: Unable to find the needed upstream tarball for package test, version 0.3.'],
             'get-orig-source 0.3')

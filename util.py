@@ -33,13 +33,8 @@ import re
 
 from ...trace import mutter
 
-try:
-    from debian import deb822
-    from debian.changelog import Changelog, ChangelogParseError
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle import deb822
-    from debian_bundle.changelog import Changelog, ChangelogParseError
+from debian import deb822
+from debian.changelog import Changelog, ChangelogParseError
 
 from ... import (
     bugtracker,
@@ -47,7 +42,6 @@ from ... import (
     urlutils,
     version_info as bzr_version_info,
     )
-from ...export import export as bzr_export
 from ...trace import warning
 from ...transport import (
     do_catching_redirections,
@@ -591,23 +585,6 @@ def debuild_config(tree, working_tree):
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
-
-
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
-           require_per_file_timestamps=False):
-    """Simple wrapper around bzrlib.export.export that prefers 
-    per_file_timestamps if it is supported.
-
-    """
-    # per_file_timestamps is available as of bzr 2.2.0
-    if bzr_version_info >= (2, 2, 0):
-        return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
-            filtered=filtered, per_file_timestamps=True)
-    else:
-        if require_per_file_timestamps:
-            raise errors.PerFileTimestampsNotSupported()
-        return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
-            filtered=filtered)
 
 
 def find_previous_upload(tree, merge):
