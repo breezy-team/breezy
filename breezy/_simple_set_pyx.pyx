@@ -18,31 +18,25 @@
 
 from __future__ import absolute_import
 
-cdef extern from "python-compat.h":
-    pass
-
-cdef extern from "Python.h":
-    ctypedef unsigned long size_t
-    ctypedef long (*hashfunc)(PyObject*) except -1
-    ctypedef object (*richcmpfunc)(PyObject *, PyObject *, int)
-    ctypedef int (*visitproc)(PyObject *, void *)
-    ctypedef int (*traverseproc)(PyObject *, visitproc, void *)
-    int Py_EQ
-    void Py_INCREF(PyObject *)
-    void Py_DECREF(PyObject *)
-    ctypedef struct PyTypeObject:
-        hashfunc tp_hash
-        richcmpfunc tp_richcompare
-        traverseproc tp_traverse
-
-    PyTypeObject *Py_TYPE(PyObject *)
-    # Note: *Don't* use hash(), Pyrex 0.9.8.5 thinks it returns an 'int', and
-    #       thus silently truncates to 32-bits on 64-bit machines.
-    long PyObject_Hash(PyObject *) except -1
-        
-    void *PyMem_Malloc(size_t nbytes)
-    void PyMem_Free(void *)
-    void memset(void *, int, size_t)
+from cpython.object cimport (
+    hashfunc,
+    Py_EQ,
+    PyObject_Hash,
+    PyTypeObject,
+    Py_TYPE,
+    richcmpfunc,
+    traverseproc,
+    visitproc,
+    )
+from cpython.mem cimport (
+    PyMem_Malloc,
+    PyMem_Free,
+    )
+from cpython.ref cimport (
+    Py_INCREF,
+    Py_DECREF,
+    )
+from libc.string cimport memset
 
 
 # Dummy is an object used to mark nodes that have been deleted. Since
@@ -61,10 +55,10 @@ cdef object _NotImplemented
 _NotImplemented = NotImplemented
 
 
-cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
+cdef int _is_equal(object this, long this_hash, object other) except -1:
     cdef long other_hash
 
-    if this == other:
+    if <PyObject *>this == <PyObject *>other:
         return 1
     other_hash = PyObject_Hash(other)
     if other_hash != this_hash:
@@ -204,13 +198,14 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         """
         cdef size_t i, n_lookup
         cdef long the_hash
-        cdef PyObject **table, **slot
+        cdef PyObject **table
+        cdef PyObject **slot
         cdef Py_ssize_t mask
 
         mask = self._mask
         table = self._table
 
-        the_hash = PyObject_Hash(key)
+        the_hash = PyObject_Hash(<object>key)
         i = the_hash
         for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
             slot = &table[i & mask]
@@ -236,7 +231,9 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         :return: The new size of the internal table
         """
         cdef Py_ssize_t new_size, n_bytes, remaining
-        cdef PyObject **new_table, **old_table, **slot
+        cdef PyObject **new_table
+        cdef PyObject **old_table
+        cdef PyObject **slot
 
         new_size = DEFAULT_SIZE
         while new_size <= min_used and new_size > 0:
@@ -289,12 +286,13 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         return self._add(key)
 
     cdef object _add(self, key):
-        cdef PyObject **slot, *py_key
+        cdef PyObject **slot
+        cdef PyObject *py_key
         cdef int added
 
         py_key = <PyObject *>key
-        if (Py_TYPE(py_key).tp_richcompare == NULL
-            or Py_TYPE(py_key).tp_hash == NULL):
+        if (Py_TYPE(key).tp_richcompare == NULL
+            or Py_TYPE(key).tp_hash == NULL):
             raise TypeError('Types added to SimpleSet must implement'
                             ' both tp_richcompare and tp_hash')
         added = 0
@@ -302,13 +300,13 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         assert self._used < self._mask
         slot = _lookup(self, key)
         if (slot[0] == NULL):
-            Py_INCREF(py_key)
+            Py_INCREF(key)
             self._fill = self._fill + 1
             self._used = self._used + 1
             slot[0] = py_key
             added = 1
         elif (slot[0] == _dummy):
-            Py_INCREF(py_key)
+            Py_INCREF(key)
             self._used = self._used + 1
             slot[0] = py_key
             added = 1
@@ -334,13 +332,14 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         return False
 
     cdef int _discard(self, key) except -1:
-        cdef PyObject **slot, *py_key
+        cdef PyObject **slot
+        cdef PyObject *py_key
 
         slot = _lookup(self, key)
         if slot[0] == NULL or slot[0] == _dummy:
             return 0
         self._used = self._used - 1
-        Py_DECREF(slot[0])
+        Py_DECREF(<object>slot[0])
         slot[0] = _dummy
         # PySet uses the heuristic: If more than 1/5 are dummies, then resize
         #                           them away
@@ -461,12 +460,12 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
     cdef size_t i, n_lookup
     cdef Py_ssize_t mask
     cdef long key_hash
-    cdef PyObject **table, **slot, *cur, **free_slot, *py_key
+    cdef PyObject **table
+    cdef PyObject **slot
+    cdef PyObject *cur
+    cdef PyObject **free_slot
 
-    py_key = <PyObject *>key
-    # Note: avoid using hash(obj) because of a bug w/ pyrex 0.9.8.5 and 64-bit
-    #       (it treats hash() as returning an 'int' rather than a 'long')
-    key_hash = PyObject_Hash(py_key)
+    key_hash = PyObject_Hash(key)
     i = <size_t>key_hash
     mask = self._mask
     table = self._table
@@ -481,13 +480,13 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
                 return free_slot
             else:
                 return slot
-        if cur == py_key:
+        if cur == <PyObject *>key:
             # Found an exact pointer to the key
             return slot
         if cur == _dummy:
             if free_slot == NULL:
                 free_slot = slot
-        elif _is_equal(py_key, key_hash, cur):
+        elif _is_equal(key, key_hash, <object>cur):
             # Both py_key and cur belong in this slot, return it
             return slot
         i = i + 1 + n_lookup
