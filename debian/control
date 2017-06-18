@@ -21,7 +21,7 @@ Build-Depends: bash-completion,
                python-subunit,
                python-testtools (>= 0.9.5~)
 Build-Conflicts: python-pyftpdlib
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 X-Python-Version: >= 2.7
 Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/breezy/3.0
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/breezy/3.0
