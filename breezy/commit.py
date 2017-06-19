@@ -321,10 +321,8 @@ class Commit(object):
         # the command line parameters, and the repository has fast delta
         # generation. See bug 347649.
         self.use_record_iter_changes = (
-            not self.exclude and 
-            not self.branch.repository._format.supports_tree_reference and
-            (self.branch.repository._format.fast_deltas or
-             len(self.parents) < 2))
+            not self.exclude and
+            not self.branch.repository._format.supports_tree_reference)
         self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
         self.basis_revid = self.work_tree.last_revision()
