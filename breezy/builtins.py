@@ -2185,7 +2185,7 @@ class cmd_init_repository(Command):
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=True, title='Repository format'),
+                            value_switches=False, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
