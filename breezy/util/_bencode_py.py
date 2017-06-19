@@ -49,25 +49,24 @@ class BDecoder(object):
         f += 1
         newf = x.index(b'e', f)
         n = int(x[f:newf])
-        if x[f] == b'-':
-            if x[f + 1] == b'0':
-                raise ValueError
-        elif x[f] == b'0' and newf != f+1:
+        if x[f:f+2] == b'-0':
+            raise ValueError
+        elif x[f:f+1] == b'0' and newf != f+1:
             raise ValueError
         return (n, newf+1)
 
     def decode_string(self, x, f):
         colon = x.index(b':', f)
         n = int(x[f:colon])
-        if x[f] == b'0' and colon != f+1:
+        if x[f:f+1] == b'0' and colon != f+1:
             raise ValueError
         colon += 1
         return (x[colon:colon+n], colon+n)
 
     def decode_list(self, x, f):
         r, f = [], f+1
-        while x[f] != b'e':
-            v, f = self.decode_func[x[f]](x, f)
+        while x[f:f+1] != b'e':
+            v, f = self.decode_func[x[f:f+1]](x, f)
             r.append(v)
         if self.yield_tuples:
             r = tuple(r)
@@ -76,12 +75,12 @@ class BDecoder(object):
     def decode_dict(self, x, f):
         r, f = {}, f+1
         lastkey = None
-        while x[f] != b'e':
+        while x[f:f+1] != b'e':
             k, f = self.decode_string(x, f)
-            if lastkey >= k:
+            if lastkey is not None and lastkey >= k:
                 raise ValueError
             lastkey = k
-            r[k], f = self.decode_func[x[f]](x, f)
+            r[k], f = self.decode_func[x[f:f+1]](x, f)
         return (r, f + 1)
 
     def bdecode(self, x):
@@ -109,6 +108,7 @@ class Bencached(object):
     def __init__(self, s):
         self.bencoded = s
 
+
 def encode_bencached(x,r):
     r.append(x.bencoded)
 
@@ -119,9 +119,6 @@ def encode_int(x, r):
     r.extend((b'i', int_to_bytes(x), b'e'))
 
 def encode_string(x, r):
-    r.extend((int_to_bytes(len(x)), b':', x))
-
-def encode_unicode(x, r):
     r.extend((int_to_bytes(len(x)), b':', x))
 
 def encode_list(x, r):
@@ -145,7 +142,8 @@ if sys.version_info < (3,):
     encode_func[long] = encode_int
     int_to_bytes = str
 else:
-    int_to_bytes = lambda n: b"%d" % n
+    def int_to_bytes(n):
+        return b'%d' % n
 encode_func[bytes] = encode_string
 encode_func[list] = encode_list
 encode_func[tuple] = encode_list

@@ -96,6 +96,9 @@ Bug Fixes
   accessible for other users when it starts.
   (Joke de Buhr, Jelmer Vernooĳ, #475501)
 
+* Support ``brz commit -x`` in combination with iter_changes.
+  (Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)
+
 Documentation
 *************
 
@@ -105,7 +108,7 @@ Documentation
 API Changes
 ***********
 
- * bzrlib has been renamed to bzrlib. (Martin Packman, Jelmer Vernooĳ)
+ * bzrlib has been renamed to breezy. (Martin Packman, Jelmer Vernooĳ)
 
  * Signature of ``load_tests`` used by ``TestLoader`` changed to be
    compatible with standard libarary unittest.  (Martin Packman)

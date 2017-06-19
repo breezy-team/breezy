@@ -75,6 +75,33 @@ from .urlutils import unescape_for_display
 from .i18n import gettext
 
 
+def filter_excluded(iter_changes, exclude):
+    """Filter exclude filenames.
+
+    :param iter_changes: iter_changes function
+    :param exclude: List of paths to exclude
+    :return: iter_changes function
+    """
+    for change in iter_changes:
+        old_path = change[1][0]
+        new_path = change[1][1]
+
+        new_excluded = (new_path is not None and
+            is_inside_any(exclude, new_path))
+
+        old_excluded = (old_path is not None and
+            is_inside_any(exclude, old_path))
+
+        if old_excluded and new_excluded:
+            continue
+
+        if old_excluded or new_excluded:
+            # TODO(jelmer): Perhaps raise an error here instead?
+            continue
+
+        yield change
+
+
 class NullCommitReporter(object):
     """I report on progress of a commit."""
 
@@ -317,11 +344,8 @@ class Commit(object):
         self.work_tree.lock_write()
         operation.add_cleanup(self.work_tree.unlock)
         self.parents = self.work_tree.get_parent_ids()
-        # We can use record_iter_changes IFF iter_changes is compatible with
-        # the command line parameters, and the repository has fast delta
-        # generation. See bug 347649.
+        # We can use record_iter_changes IFF no tree references are involved.
         self.use_record_iter_changes = (
-            not self.exclude and
             not self.branch.repository._format.supports_tree_reference)
         self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
@@ -381,9 +405,6 @@ class Commit(object):
         self.builder = self.branch.get_commit_builder(self.parents,
             self.config_stack, timestamp, timezone, committer, self.revprops,
             rev_id, lossy=lossy)
-        if not self.builder.supports_record_entry_contents and self.exclude:
-            self.builder.abort()
-            raise errors.ExcludesUnsupported(self.branch.repository)
 
         if self.builder.updates_branch and self.bound_branch:
             self.builder.abort()
@@ -661,6 +682,8 @@ class Commit(object):
         if self.use_record_iter_changes:
             iter_changes = self.work_tree.iter_changes(self.basis_tree,
                 specific_files=specific_files)
+            if self.exclude:
+                iter_changes = filter_excluded(iter_changes, self.exclude)
             iter_changes = self._filter_iter_changes(iter_changes)
             for file_id, path, fs_hash in self.builder.record_iter_changes(
                 self.work_tree, self.basis_revid, iter_changes):
