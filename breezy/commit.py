@@ -344,13 +344,9 @@ class Commit(object):
         self.work_tree.lock_write()
         operation.add_cleanup(self.work_tree.unlock)
         self.parents = self.work_tree.get_parent_ids()
-        # We can use record_iter_changes IFF iter_changes is compatible with
-        # the command line parameters, and the repository has fast delta
-        # generation. See bug 347649.
+        # We can use record_iter_changes IFF no tree references are involved.
         self.use_record_iter_changes = (
-            not self.branch.repository._format.supports_tree_reference and
-            (self.branch.repository._format.fast_deltas or
-             len(self.parents) < 2))
+            not self.branch.repository._format.supports_tree_reference)
         self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
         self.basis_revid = self.work_tree.last_revision()
