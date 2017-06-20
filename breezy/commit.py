@@ -407,7 +407,6 @@ class Commit(object):
                 "that update the branch")
 
         try:
-            self.builder.will_record_deletes()
             # find the location being committed to
             if self.bound_branch:
                 master_location = self.master_branch.base
