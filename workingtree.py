@@ -101,6 +101,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._lock_mode = None
         self._lock_count = 0
 
+    def supports_tree_reference(self):
+        return False
+
     def lock_read(self):
         """Lock the repository for read operations.
 
