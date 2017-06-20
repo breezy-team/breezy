@@ -134,20 +134,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
         # memo'd check for no-op commits.
         self._any_changes = False
-        # API compatibility, older code that used CommitBuilder did not call
-        # .record_delete(), which means the delta that is computed would not be
-        # valid. Callers that will call record_delete() should call
-        # .will_record_deletes() to indicate that.
-        self._recording_deletes = False
-
-    def will_record_deletes(self):
-        """Tell the commit builder that deletes are being notified.
-
-        This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid, deletes against the basis MUST be recorded via
-        builder.record_delete().
-        """
-        self._recording_deletes = True
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -326,30 +312,22 @@ class VersionedFileCommitBuilder(CommitBuilder):
         """Return the complete inventory delta versus the basis inventory.
 
         This has been built up with the calls to record_delete and
-        record_entry_contents. The client must have already called
-        will_record_deletes() to indicate that they will be generating a
-        complete delta.
+        record_entry_contents.
 
         :return: An inventory delta, suitable for use with apply_delta, or
             Repository.add_inventory_by_delta, etc.
         """
-        if not self._recording_deletes:
-            raise AssertionError("recording deletes not activated.")
         return self._basis_delta
 
     def record_delete(self, path, file_id):
         """Record that a delete occured against a basis tree.
 
         This is an optional API - when used it adds items to the basis_delta
-        being accumulated by the commit builder. It cannot be called unless the
-        method will_record_deletes() has been called to inform the builder that
-        a delta is being supplied.
+        being accumulated by the commit builder.
 
         :param path: The path of the thing deleted.
         :param file_id: The file id that was deleted.
         """
-        if not self._recording_deletes:
-            raise AssertionError("recording deletes not activated.")
         delta = (path, None, file_id, None)
         self._basis_delta.append(delta)
         self._any_changes = True
