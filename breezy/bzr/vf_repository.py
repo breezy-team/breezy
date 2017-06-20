@@ -126,7 +126,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         except IndexError:
             basis_id = _mod_revision.NULL_REVISION
         self.basis_delta_revision = basis_id
-        self.new_inventory = Inventory(None)
+        self._new_inventory = None
         self._basis_delta = []
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
         # memo'd check for no-op commits.
@@ -217,11 +217,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
         require deserializing the inventory, while we already have a copy in
         memory.
         """
-        if self.new_inventory is None:
-            self.new_inventory = self.repository.get_inventory(
+        if self._new_inventory is None:
+            self._new_inventory = self.repository.get_inventory(
                 self._new_revision_id)
         return inventorytree.InventoryRevisionTree(self.repository,
-            self.new_inventory, self._new_revision_id)
+            self._new_inventory, self._new_revision_id)
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
@@ -229,23 +229,12 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :return: The inventory id in the repository, which can be used with
             repository.get_inventory.
         """
-        if self.new_inventory is None:
-            # an inventory delta was accumulated without creating a new
-            # inventory.
-            basis_id = self.basis_delta_revision
-            # We ignore the 'inventory' returned by add_inventory_by_delta
-            # because self.new_inventory is used to hint to the rest of the
-            # system what code path was taken
-            self.inv_sha1, _ = self.repository.add_inventory_by_delta(
-                basis_id, self._basis_delta, self._new_revision_id,
-                self.parents)
-        else:
-            self.new_inventory.revision_id = self._new_revision_id
-            self.inv_sha1 = self.repository.add_inventory(
-                self._new_revision_id,
-                self.new_inventory,
-                self.parents
-                )
+        # an inventory delta was accumulated without creating a new
+        # inventory.
+        basis_id = self.basis_delta_revision
+        self.inv_sha1, self._new_inventory = self.repository.add_inventory_by_delta(
+            basis_id, self._basis_delta, self._new_revision_id,
+            self.parents)
         return self._new_revision_id
 
     def _require_root_change(self, tree):
@@ -555,7 +544,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
             inv_delta.append((change[1][0], new_path, change[0], entry))
             if new_path == '':
                 seen_root = True
-        self.new_inventory = None
         # The initial commit adds a root directory, but this in itself is not
         # a worthwhile commit.
         if ((len(inv_delta) > 0 and basis_revision_id != _mod_revision.NULL_REVISION) or

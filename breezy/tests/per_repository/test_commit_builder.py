@@ -509,14 +509,12 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqualStat(result[2][1], tree_file_stat[1])
             else:
                 self.assertEqual([], result)
-            self.assertIs(None, builder.new_inventory)
             builder.finish_inventory()
             if tree.branch.repository._format.supports_full_versioned_files:
                 inv_key = (builder._new_revision_id,)
                 inv_sha1 = tree.branch.repository.inventories.get_sha1s(
                                 [inv_key])[inv_key]
                 self.assertEqual(inv_sha1, builder.inv_sha1)
-            self.assertIs(None, builder.new_inventory)
             rev2 = builder.commit('')
             delta = builder.get_basis_delta()
             delta_dict = dict((change[2], change) for change in delta)
