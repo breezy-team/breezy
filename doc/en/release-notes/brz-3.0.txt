@@ -116,6 +116,9 @@ API Changes
  * All previously deprecated functionality has been removed.
    (Jelmer Vernooĳ)
 
+ * ``CommitBuilder.record_entry_contents`` has been removed.
+   (Jelmer Vernooĳ, #731433, #604953)
+
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
 
