@@ -203,28 +203,24 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                     parent_revids = []
                 else:
                     parent_revids = [parent_revid]
-                builder = self.target.get_commit_builder(parent_revids, 
+                builder = self.target.get_commit_builder(parent_revids,
                         self.target.get_config_stack(), rev.timestamp,
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
                     parent_tree = self.target.repository.revision_tree(
                         parent_revid)
-                    for path, ie in tree.iter_entries_by_dir():
-                        new_ie = ie.copy()
-                        new_ie.revision = None
-                        builder.record_entry_contents(new_ie, 
-                            [parent_tree.root_inventory],
-                            path, tree, 
-                            (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
+                    iter_changes = tree.iter_changes(parent_tree)
+                    list(builder.record_iter_changes(
+                        tree, parent_revid, iter_changes))
                     builder.finish_inventory()
                 except:
                     builder.abort()
                     raise
                 revidmap[revid] = builder.commit(rev.message)
-                self.target.set_last_revision_info(parent_revno+1, 
+                self.target.set_last_revision_info(parent_revno+1,
                     revidmap[revid])
-                trace.mutter('lossily pushed revision %s -> %s', 
+                trace.mutter('lossily pushed revision %s -> %s',
                     revid, revidmap[revid])
         finally:
             self.source.unlock()
