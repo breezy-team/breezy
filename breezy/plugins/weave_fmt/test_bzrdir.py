@@ -39,7 +39,7 @@ from ...bzr import (
 from ...osutils import (
     getcwd,
     )
-from ...tests.test_bundle import V4BundleTester
+from ...tests import test_bundle
 from ...tests.test_sftp_transport import TestCaseWithSFTPServer
 from ...tests import (
     TestCaseWithTransport,
@@ -580,7 +580,7 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual('', err)
 
 
-class V4WeaveBundleTester(V4BundleTester):
+class V4WeaveBundleTester(test_bundle.V4BundleTester):
 
     def bzrdir_format(self):
         return 'metaweave'
