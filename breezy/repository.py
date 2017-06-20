@@ -201,15 +201,6 @@ class CommitBuilder(object):
         else:
             self.random_revid = False
 
-    def will_record_deletes(self):
-        """Tell the commit builder that deletes are being notified.
-
-        This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid, deletes against the basis MUST be recorded via
-        builder.record_delete().
-        """
-        raise NotImplementedError(self.will_record_deletes)
-
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
         """Record a new tree via iter_changes.
 

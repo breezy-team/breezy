@@ -286,7 +286,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             if not builder.supports_record_entry_contents:
                 raise tests.TestNotApplicable("CommitBuilder doesn't support "
                     "record_entry_contents")
-            builder.will_record_deletes()
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
             delta, version_recorded, fs_hash = builder.record_entry_contents(
@@ -378,7 +377,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
                 parent_invs = [basis.root_inventory]
-                builder.will_record_deletes()
                 if builder.record_root_entry:
                     ie = basis.root_inventory.root.copy()
                     delta, _, _ = builder.record_entry_contents(ie, parent_invs,
@@ -402,23 +400,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
-    def test_get_basis_delta_without_notification(self):
-        tree = self.make_branch_and_tree(".")
-        old_revision_id = tree.commit('')
-        tree.lock_write()
-        try:
-            parent_tree = tree.basis_tree()
-            parent_tree.lock_read()
-            self.addCleanup(parent_tree.unlock)
-            builder = tree.branch.get_commit_builder([old_revision_id])
-            # It is an error to expect builder.get_basis_delta() to be correct,
-            # if you have not also called will_record_deletes() to indicate you
-            # will be calling record_delete() when appropriate
-            self.assertRaises(AssertionError, builder.get_basis_delta)
-            tree.branch.repository.abort_write_group()
-        finally:
-            tree.unlock()
-
     def test_record_delete(self):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["foo"])
@@ -435,7 +416,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if not builder.supports_record_entry_contents:
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
-                builder.will_record_deletes()
                 if builder.record_root_entry is True:
                     parent_invs = [basis.root_inventory]
                     del basis.root_inventory.root.children['foo']
@@ -466,7 +446,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                builder.will_record_deletes()
                 delete_change = ('foo-id', ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
@@ -870,7 +849,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if not builder.supports_record_entry_contents:
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
-                builder.will_record_deletes()
                 parent_tree = tree.basis_tree()
                 parent_tree.lock_read()
                 self.addCleanup(parent_tree.unlock)
@@ -960,7 +938,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # record_entry_contents.
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
-            builder.will_record_deletes()
             parent_tree = tree.basis_tree()
             parent_tree.lock_read()
             self.addCleanup(parent_tree.unlock)
