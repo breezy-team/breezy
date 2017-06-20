@@ -479,8 +479,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
                 self.record_root(builder, tree)
-                self.assertRaises(AssertionError,
-                    builder.record_delete, "foo", "foo-id")
+                builder.record_delete("foo", "foo-id")
             finally:
                 tree.branch.repository.abort_write_group()
         finally:
