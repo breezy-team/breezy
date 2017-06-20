@@ -47,34 +47,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch.repository.commit_write_group()
         branch.repository.unlock()
 
-    def record_root(self, builder, tree):
-        if builder.record_root_entry is True:
-            tree.lock_read()
-            try:
-                ie = tree.root_inventory.root
-            finally:
-                tree.unlock()
-            parent_tree = tree.branch.repository.revision_tree(
-                              _mod_revision.NULL_REVISION)
-            parent_invs = []
-            builder.record_entry_contents(ie, parent_invs, '', tree,
-                tree.path_content_summary(''))
-
-    def test_finish_inventory_with_record_root(self):
-        tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
-            builder = tree.branch.get_commit_builder([])
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't support "
-                    "record_entry_contents")
-            repo = tree.branch.repository
-            self.record_root(builder, tree)
-            builder.finish_inventory()
-            repo.commit_write_group()
-        finally:
-            tree.unlock()
-
     def test_finish_inventory_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -89,20 +61,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 raise
             repo = tree.branch.repository
             repo.commit_write_group()
-        finally:
-            tree.unlock()
-
-    def test_abort_record_entry_contents(self):
-        tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
-            builder = tree.branch.get_commit_builder([])
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't support "
-                    "record_entry_contents")
-            self.record_root(builder, tree)
-            builder.finish_inventory()
-            builder.abort()
         finally:
             tree.unlock()
 
@@ -165,41 +123,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         actually_updated_branch = (tree.branch.last_revision() == rev_id)
         self.assertEqual(actually_updated_branch, will_update_branch)
 
-    def test_commit_with_revision_id_record_entry_contents(self):
-        tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
-            # use a unicode revision id to test more corner cases.
-            # The repository layer is meant to handle this.
-            revision_id = u'\xc8abc'.encode('utf8')
-            try:
-                try:
-                    builder = tree.branch.get_commit_builder([],
-                        revision_id=revision_id)
-                except errors.NonAsciiRevisionId:
-                    revision_id = 'abc'
-                    builder = tree.branch.get_commit_builder([],
-                        revision_id=revision_id)
-            except errors.CannotSetRevisionId:
-                # This format doesn't support supplied revision ids
-                return
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't support "
-                    "record_entry_contents")
-            self.assertFalse(builder.random_revid)
-            self.record_root(builder, tree)
-            builder.finish_inventory()
-            self.assertEqual(revision_id, builder.commit('foo bar'))
-        finally:
-            tree.unlock()
-        self.assertTrue(tree.branch.repository.has_revision(revision_id))
-        # the revision id must be set on the inventory when saving it. This
-        # does not precisely test that - a repository that wants to can add it
-        # on deserialisation, but thats all the current contract guarantees
-        # anyway.
-        self.assertEqual(revision_id,
-            tree.branch.repository.get_inventory(revision_id).revision_id)
-
     def test_commit_with_revision_id_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -256,64 +179,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
-    def test_commit_without_root_or_record_iter_changes_errors(self):
-        tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
-            self.build_tree(['foo'])
-            tree.add('foo', 'foo-id')
-            builder = tree.branch.get_commit_builder([])
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't support "
-                    "record_entry_contents")
-            entry = tree.root_inventory['foo-id']
-            self.assertRaises(errors.RootMissing,
-                builder.record_entry_contents, entry, [], 'foo', tree,
-                    tree.path_content_summary('foo'))
-            builder.abort()
-        finally:
-            tree.unlock()
-
-    def test_commit_unchanged_root_record_entry_contents(self):
-        tree = self.make_branch_and_tree(".")
-        old_revision_id = tree.commit('')
-        tree.lock_write()
-        parent_tree = tree.basis_tree()
-        parent_tree.lock_read()
-        self.addCleanup(parent_tree.unlock)
-        builder = tree.branch.get_commit_builder([old_revision_id])
-        try:
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't support "
-                    "record_entry_contents")
-            ie = inventory.make_entry('directory', '', None,
-                    tree.get_root_id())
-            delta, version_recorded, fs_hash = builder.record_entry_contents(
-                ie, [parent_tree.root_inventory], '', tree,
-                tree.path_content_summary(''))
-            # Regardless of repository root behaviour we should consider this a
-            # pointless commit.
-            self.assertFalse(builder.any_changes())
-            self.assertFalse(version_recorded)
-            # if the repository format recorded a new root revision, that
-            # should be in the delta
-            got_new_revision = ie.revision != old_revision_id
-            if got_new_revision:
-                self.assertEqual(('', '', ie.file_id, ie), delta)
-                # The delta should be tracked
-                self.assertEqual(delta, builder.get_basis_delta()[-1])
-            else:
-                self.assertEqual(None, delta)
-            # Directories do not get hashed.
-            self.assertEqual(None, fs_hash)
-            builder.abort()
-        except:
-            builder.abort()
-            tree.unlock()
-            raise
-        else:
-            tree.unlock()
-
     def test_commit_unchanged_root_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
         old_revision_id = tree.commit('')
@@ -337,105 +202,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertNotEqual(old_revision_id, new_root_revision)
         finally:
             tree.unlock()
-
-    def test_commit_record_entry_contents(self):
-        tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
-            builder = tree.branch.get_commit_builder([])
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't "
-                    "support record_entry_contents")
-            self.record_root(builder, tree)
-            builder.finish_inventory()
-            rev_id = builder.commit('foo bar')
-        finally:
-            tree.unlock()
-        self.assertNotEqual(None, rev_id)
-        self.assertTrue(tree.branch.repository.has_revision(rev_id))
-        # the revision id must be set on the inventory when saving it. This does not
-        # precisely test that - a repository that wants to can add it on deserialisation,
-        # but thats all the current contract guarantees anyway.
-        self.assertEqual(rev_id, tree.branch.repository.get_inventory(rev_id).revision_id)
-
-    def test_get_basis_delta(self):
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["foo"])
-        tree.add(["foo"], ["foo-id"])
-        old_revision_id = tree.commit("added foo")
-        tree.lock_write()
-        try:
-            self.build_tree(['bar'])
-            tree.add(['bar'], ['bar-id'])
-            basis = tree.branch.repository.revision_tree(old_revision_id)
-            basis.lock_read()
-            self.addCleanup(basis.unlock)
-            builder = tree.branch.get_commit_builder([old_revision_id])
-            total_delta = []
-            try:
-                if not builder.supports_record_entry_contents:
-                    raise tests.TestNotApplicable("CommitBuilder doesn't "
-                        "support record_entry_contents")
-                parent_invs = [basis.root_inventory]
-                if builder.record_root_entry:
-                    ie = basis.root_inventory.root.copy()
-                    delta, _, _ = builder.record_entry_contents(ie, parent_invs,
-                        '', tree, tree.path_content_summary(''))
-                    if delta is not None:
-                        total_delta.append(delta)
-                delta = builder.record_delete("foo", "foo-id")
-                total_delta.append(delta)
-                new_bar = inventory.make_entry('file', 'bar',
-                    parent_id=tree.get_root_id(), file_id='bar-id')
-                delta, _, _ = builder.record_entry_contents(new_bar, parent_invs,
-                    'bar', tree, tree.path_content_summary('bar'))
-                total_delta.append(delta)
-                # All actions should have been recorded in the basis_delta
-                self.assertEqual(total_delta, builder.get_basis_delta())
-                builder.finish_inventory()
-                builder.commit('delete foo, add bar')
-            except:
-                tree.branch.repository.abort_write_group()
-                raise
-        finally:
-            tree.unlock()
-
-    def test_record_delete(self):
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["foo"])
-        tree.add(["foo"], ["foo-id"])
-        rev_id = tree.commit("added foo")
-        # Remove the inventory details for foo-id, because
-        # record_entry_contents ends up copying root verbatim.
-        tree.unversion(["foo-id"])
-        tree.lock_write()
-        try:
-            basis = tree.branch.repository.revision_tree(rev_id)
-            builder = tree.branch.get_commit_builder([rev_id])
-            try:
-                if not builder.supports_record_entry_contents:
-                    raise tests.TestNotApplicable("CommitBuilder doesn't "
-                        "support record_entry_contents")
-                if builder.record_root_entry is True:
-                    parent_invs = [basis.root_inventory]
-                    del basis.root_inventory.root.children['foo']
-                    builder.record_entry_contents(basis.root_inventory.root,
-                        parent_invs, '', tree, tree.path_content_summary(''))
-                # the delta should be returned, and recorded in _basis_delta
-                delta = builder.record_delete("foo", "foo-id")
-                self.assertEqual(("foo", None, "foo-id", None), delta)
-                self.assertEqual(delta, builder.get_basis_delta()[-1])
-                builder.finish_inventory()
-                rev_id2 = builder.commit('delete foo')
-            except:
-                tree.branch.repository.abort_write_group()
-                raise
-        finally:
-            tree.unlock()
-        rev_tree = builder.revision_tree()
-        rev_tree.lock_read()
-        self.addCleanup(rev_tree.unlock)
-        self.assertFalse(rev_tree.path2id('foo'))
 
     def test_record_delete_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
@@ -465,44 +231,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         self.assertFalse(rev_tree.path2id('foo'))
-
-    def test_record_delete_without_notification(self):
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["foo"])
-        tree.add(["foo"], ["foo-id"])
-        rev_id = tree.commit("added foo")
-        tree.lock_write()
-        try:
-            builder = tree.branch.get_commit_builder([rev_id])
-            try:
-                if not builder.supports_record_entry_contents:
-                    raise tests.TestNotApplicable("CommitBuilder doesn't "
-                        "support record_entry_contents")
-                self.record_root(builder, tree)
-                builder.record_delete("foo", "foo-id")
-            finally:
-                tree.branch.repository.abort_write_group()
-        finally:
-            tree.unlock()
-
-    def test_revision_tree_record_entry_contents(self):
-        tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
-            builder = tree.branch.get_commit_builder([])
-            if not builder.supports_record_entry_contents:
-                raise tests.TestNotApplicable("CommitBuilder doesn't "
-                    "support record_entry_contents")
-            self.record_root(builder, tree)
-            builder.finish_inventory()
-            rev_id = builder.commit('foo bar')
-        finally:
-            tree.unlock()
-        rev_tree = builder.revision_tree()
-        # Just a couple simple tests to ensure that it actually follows
-        # the RevisionTree api.
-        self.assertEqual(rev_id, rev_tree.get_revision_id())
-        self.assertEqual([], rev_tree.get_parent_ids())
 
     def test_revision_tree_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
@@ -573,8 +301,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def _commit_check_unchanged(self, tree, name, file_id, mini_commit=None):
         rev1 = tree.commit('')
-        if mini_commit is None:
-            mini_commit = self.mini_commit
         rev2 = mini_commit(tree, name, name, False, False)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.get_file_revision(file_id))
@@ -584,12 +310,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertFileGraph(expected_graph, tree, (file_id, rev1))
 
     def test_last_modified_revision_after_commit_dir_unchanged(self):
-        # committing without changing a dir does not change the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/'])
-        self._add_commit_check_unchanged(tree, 'dir')
-
-    def test_last_modified_revision_after_commit_dir_unchanged_ric(self):
         # committing without changing a dir does not change the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/'])
@@ -618,12 +338,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # committing without changing a file does not change the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
-        self._add_commit_check_unchanged(tree, 'file')
-
-    def test_last_modified_revision_after_commit_file_unchanged_ric(self):
-        # committing without changing a file does not change the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
         self._add_commit_check_unchanged(tree, 'file',
             mini_commit=self.mini_commit_record_iter_changes)
 
@@ -632,29 +346,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
-        self._add_commit_check_unchanged(tree, 'link')
-
-    def test_last_modified_revision_after_commit_link_unchanged_ric(self):
-        # committing without changing a link does not change the last modified.
-        self.requireFeature(features.SymlinkFeature)
-        tree = self.make_branch_and_tree('.')
-        os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link',
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_commit_reference_unchanged(self):
-        # committing without changing a subtree does not change the last
-        # modified.
-        tree = self.make_branch_and_tree('.')
-        subtree = self.make_reference('reference')
-        try:
-            tree.add_reference(subtree)
-            self._commit_check_unchanged(tree, 'reference',
-                subtree.get_root_id())
-        except errors.UnsupportedOperation:
-            return
-
-    def test_last_modified_revision_after_commit_reference_unchanged_ric(self):
         # committing without changing a subtree does not change the last
         # modified.
         tree = self.make_branch_and_tree('.')
@@ -685,23 +380,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # renaming a dir changes the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/'])
-        self._add_commit_renamed_check_changed(tree, 'dir')
-
-    def test_last_modified_revision_after_rename_dir_changes_ric(self):
-        # renaming a dir changes the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/'])
         self._add_commit_renamed_check_changed(tree, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_rename_file_changes(self):
-        # renaming a file changes the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        self._add_commit_renamed_check_changed(tree, 'file',
-            expect_fs_hash=True)
-
-    def test_last_modified_revision_after_rename_file_changes_ric(self):
         # renaming a file changes the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
@@ -714,28 +396,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
-        self._add_commit_renamed_check_changed(tree, 'link')
-
-    def test_last_modified_revision_after_rename_link_changes_ric(self):
-        # renaming a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
-        tree = self.make_branch_and_tree('.')
-        os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link',
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_rename_ref_changes(self):
-        # renaming a reference changes the last modified.
-        tree = self.make_branch_and_tree('.')
-        subtree = self.make_reference('reference')
-        try:
-            tree.add_reference(subtree)
-            self._commit_renamed_check_changed(tree, 'reference',
-                subtree.get_root_id())
-        except errors.UnsupportedOperation:
-            return
-
-    def test_last_modified_revision_after_rename_ref_changes_ric(self):
         # renaming a reference changes the last modified.
         tree = self.make_branch_and_tree('.')
         subtree = self.make_reference('reference')
@@ -760,12 +424,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # reparenting a dir changes the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/'])
-        self._add_commit_reparent_check_changed(tree, 'dir')
-
-    def test_last_modified_revision_after_reparent_dir_changes_ric(self):
-        # reparenting a dir changes the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/'])
         self._add_commit_reparent_check_changed(tree, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
 
@@ -774,24 +432,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         self._add_commit_reparent_check_changed(tree, 'file',
-            expect_fs_hash=True)
-
-    def test_last_modified_revision_after_reparent_file_changes_ric(self):
-        # reparenting a file changes the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        self._add_commit_reparent_check_changed(tree, 'file',
             expect_fs_hash=True,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_reparent_link_changes(self):
-        # reparenting a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
-        tree = self.make_branch_and_tree('.')
-        os.symlink('target', 'link')
-        self._add_commit_reparent_check_changed(tree, 'link')
-
-    def test_last_modified_revision_after_reparent_link_changes_ric(self):
         # reparenting a link changes the last modified.
         self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
@@ -812,8 +456,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         expect_fs_hash=False, mini_commit=None):
         rev1 = tree.commit('')
         changer()
-        if mini_commit is None:
-            mini_commit = self.mini_commit
         rev2 = mini_commit(tree, name, tree.id2path(file_id),
             expect_fs_hash=expect_fs_hash)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
@@ -823,97 +465,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         expected_graph[(file_id, rev1)] = ()
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
         self.assertFileGraph(expected_graph, tree, (file_id, rev2))
-
-    def mini_commit(self, tree, name, new_name, records_version=True,
-        delta_against_basis=True, expect_fs_hash=False):
-        """Perform a miniature commit looking for record entry results.
-
-        :param tree: The tree to commit.
-        :param name: The path in the basis tree of the tree being committed.
-        :param new_name: The path in the tree being committed.
-        :param records_version: True if the commit of new_name is expected to
-            record a new version.
-        :param delta_against_basis: True of the commit of new_name is expected
-            to have a delta against the basis.
-        :param expect_fs_hash: True or false to indicate whether we expect a
-            file hash to be returned from the record_entry_contents call.
-        """
-        tree.lock_write()
-        try:
-            # mini manual commit here so we can check the return of
-            # record_entry_contents.
-            parent_ids = tree.get_parent_ids()
-            builder = tree.branch.get_commit_builder(parent_ids)
-            try:
-                if not builder.supports_record_entry_contents:
-                    raise tests.TestNotApplicable("CommitBuilder doesn't "
-                        "support record_entry_contents")
-                parent_tree = tree.basis_tree()
-                parent_tree.lock_read()
-                self.addCleanup(parent_tree.unlock)
-                parent_invs = [parent_tree.root_inventory]
-                for parent_id in parent_ids[1:]:
-                    parent_invs.append(tree.branch.repository.revision_tree(
-                        parent_id).root_inventory)
-                # root
-                builder.record_entry_contents(
-                    inventory.make_entry('directory', '', None,
-                        tree.get_root_id()), parent_invs, '', tree,
-                        tree.path_content_summary(''))
-                def commit_id(file_id):
-                    old_ie = tree.root_inventory[file_id]
-                    path = tree.id2path(file_id)
-                    ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
-                        old_ie.parent_id, file_id)
-                    content_summary = tree.path_content_summary(path)
-                    if content_summary[0] == 'tree-reference':
-                        content_summary = content_summary[:3] + (
-                            tree.get_reference_revision(file_id),)
-                    return builder.record_entry_contents(ie, parent_invs, path,
-                        tree, content_summary)
-
-                file_id = tree.path2id(new_name)
-                parent_id = tree.root_inventory[file_id].parent_id
-                if parent_id != tree.get_root_id():
-                    commit_id(parent_id)
-                # because a change of some sort is meant to have occurred,
-                # recording the entry must return True.
-                delta, version_recorded, fs_hash = commit_id(file_id)
-                if records_version:
-                    self.assertTrue(version_recorded)
-                else:
-                    self.assertFalse(version_recorded)
-                if expect_fs_hash:
-                    tree_file_stat = tree.get_file_with_stat(file_id)
-                    tree_file_stat[0].close()
-                    self.assertEqual(2, len(fs_hash))
-                    self.assertEqual(tree.get_file_sha1(file_id), fs_hash[0])
-                    self.assertEqualStat(tree_file_stat[1], fs_hash[1])
-                else:
-                    self.assertEqual(None, fs_hash)
-                new_entry = builder.new_inventory[file_id]
-                if delta_against_basis:
-                    expected_delta = (name, new_name, file_id, new_entry)
-                    # The delta should be recorded
-                    self.assertEqual(expected_delta,
-                        builder.get_basis_delta()[-1])
-                else:
-                    expected_delta = None
-                self.assertEqual(expected_delta, delta)
-                builder.finish_inventory()
-            except:
-                builder.abort()
-                raise
-            else:
-                rev2 = builder.commit('')
-        except:
-            tree.unlock()
-            raise
-        try:
-            tree.set_parent_ids([rev2])
-        finally:
-            tree.unlock()
-        return rev2
 
     def mini_commit_record_iter_changes(self, tree, name, new_name,
         records_version=True, delta_against_basis=True, expect_fs_hash=False):
@@ -934,7 +485,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.lock_write()
         try:
             # mini manual commit here so we can check the return of
-            # record_entry_contents.
+            # record_iter_changes
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
             parent_tree = tree.basis_tree()
@@ -958,14 +509,12 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqualStat(result[2][1], tree_file_stat[1])
             else:
                 self.assertEqual([], result)
-            self.assertIs(None, builder.new_inventory)
             builder.finish_inventory()
             if tree.branch.repository._format.supports_full_versioned_files:
                 inv_key = (builder._new_revision_id,)
                 inv_sha1 = tree.branch.repository.inventories.get_sha1s(
                                 [inv_key])[inv_key]
                 self.assertEqual(inv_sha1, builder.inv_sha1)
-            self.assertIs(None, builder.new_inventory)
             rev2 = builder.commit('')
             delta = builder.get_basis_delta()
             delta_dict = dict((change[2], change) for change in delta)
@@ -1009,29 +558,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         def change_file():
             tree.put_file_bytes_non_atomic('fileid', 'new content')
         self._add_commit_change_check_changed(tree, 'file', change_file,
-            expect_fs_hash=True)
-
-    def test_last_modified_revision_after_content_file_changes_ric(self):
-        # altering a file changes the last modified.
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        def change_file():
-            tree.put_file_bytes_non_atomic('fileid', 'new content')
-        self._add_commit_change_check_changed(tree, 'file', change_file,
             expect_fs_hash=True,
             mini_commit=self.mini_commit_record_iter_changes)
 
-    def test_last_modified_revision_after_content_link_changes(self):
-        # changing a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
-        tree = self.make_branch_and_tree('.')
-        os.symlink('target', 'link')
-        def change_link():
-            os.unlink('link')
-            os.symlink('newtarget', 'link')
-        self._add_commit_change_check_changed(tree, 'link', change_link)
-
-    def _test_last_mod_rev_after_content_link_changes_ric(
+    def _test_last_mod_rev_after_content_link_changes(
         self, link, target, newtarget, file_id=None):
         if file_id is None:
             file_id = link
@@ -1047,13 +577,13 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             mini_commit=self.mini_commit_record_iter_changes,
             file_id=file_id)
 
-    def test_last_modified_rev_after_content_link_changes_ric(self):
-        self._test_last_mod_rev_after_content_link_changes_ric(
+    def test_last_modified_rev_after_content_link_changes(self):
+        self._test_last_mod_rev_after_content_link_changes(
             'link', 'target', 'newtarget')
 
-    def test_last_modified_rev_after_content_unicode_link_changes_ric(self):
+    def test_last_modified_rev_after_content_unicode_link_changes(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_last_mod_rev_after_content_link_changes_ric(
+        self._test_last_mod_rev_after_content_link_changes(
             u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget',
 
             file_id=u'li\u1234nk'.encode('UTF-8'))
@@ -1075,8 +605,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev2 = self._rename_in_tree(tree1, name)
         rev3 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        if mini_commit is None:
-            mini_commit = self.mini_commit
         rev4 = mini_commit(tree1, 'new_' + name, 'new_' + name,
             expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
@@ -1093,12 +621,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # merge a dir changes the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/dir/'])
-        self._commit_sprout_rename_merge(tree1, 'dir')
-
-    def test_last_modified_revision_after_merge_dir_changes_ric(self):
-        # merge a dir changes the last modified.
-        tree1 = self.make_branch_and_tree('t1')
-        self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge(tree1, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
 
@@ -1106,23 +628,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # merge a file changes the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/file'])
-        self._commit_sprout_rename_merge(tree1, 'file', expect_fs_hash=True)
-
-    def test_last_modified_revision_after_merge_file_changes_ric(self):
-        # merge a file changes the last modified.
-        tree1 = self.make_branch_and_tree('t1')
-        self.build_tree(['t1/file'])
         self._commit_sprout_rename_merge(tree1, 'file', expect_fs_hash=True,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_merge_link_changes(self):
-        # merge a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
-        tree1 = self.make_branch_and_tree('t1')
-        os.symlink('target', 't1/link')
-        self._commit_sprout_rename_merge(tree1, 'link')
-
-    def test_last_modified_revision_after_merge_link_changes_ric(self):
         # merge a link changes the last modified.
         self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
@@ -1140,8 +649,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        if mini_commit is None:
-            mini_commit = self.mini_commit
         def _check_graph(in_tree, changed_in_tree):
             rev3 = mini_commit(in_tree, name, 'new_' + name, False,
                 delta_against_basis=changed_in_tree)
@@ -1173,8 +680,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree2.add(['name'], [file_id])
         rev2 = tree2.commit('')
         tree1.merge_from_branch(tree2.branch)
-        if mini_commit is None:
-            mini_commit = self.mini_commit
         rev3 = mini_commit(tree1, None, 'name', False)
         tree3, = self._get_revtrees(tree1, [rev2])
         # in rev2, name should be only changed in rev2
@@ -1187,22 +692,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # merge a dir that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/dir/'])
-        self._commit_sprout_rename_merge_converged(tree1, 'dir')
-
-    def test_last_modified_revision_after_converged_merge_dir_unchanged_ric(self):
-        # merge a dir that changed preserves the last modified.
-        tree1 = self.make_branch_and_tree('t1')
-        self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge_converged(tree1, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_converged_merge_file_unchanged(self):
-        # merge a file that changed preserves the last modified.
-        tree1 = self.make_branch_and_tree('t1')
-        self.build_tree(['t1/file'])
-        self._commit_sprout_rename_merge_converged(tree1, 'file')
-
-    def test_last_modified_revision_after_converged_merge_file_unchanged_ric(self):
         # merge a file that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/file'])
@@ -1214,22 +707,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
-        self._commit_sprout_rename_merge_converged(tree1, 'link')
-
-    def test_last_modified_revision_after_converged_merge_link_unchanged_ric(self):
-        # merge a link that changed preserves the last modified.
-        self.requireFeature(features.SymlinkFeature)
-        tree1 = self.make_branch_and_tree('t1')
-        os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link',
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_merge_new_dir_unchanged(self):
-        # merge a new dir does not change the last modified.
-        tree1 = self.make_branch_and_tree('t1')
-        self._commit_sprout_make_merge(tree1, self.make_dir)
-
-    def test_last_modified_revision_after_merge_new_dir_unchanged_ric(self):
         # merge a new dir does not change the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self._commit_sprout_make_merge(tree1, self.make_dir,
@@ -1238,20 +719,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_merge_new_file_unchanged(self):
         # merge a new file does not change the last modified.
         tree1 = self.make_branch_and_tree('t1')
-        self._commit_sprout_make_merge(tree1, self.make_file)
-
-    def test_last_modified_revision_after_merge_new_file_unchanged_ric(self):
-        # merge a new file does not change the last modified.
-        tree1 = self.make_branch_and_tree('t1')
         self._commit_sprout_make_merge(tree1, self.make_file,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_merge_new_link_unchanged(self):
-        # merge a new link does not change the last modified.
-        tree1 = self.make_branch_and_tree('t1')
-        self._commit_sprout_make_merge(tree1, self.make_link)
-
-    def test_last_modified_revision_after_merge_new_link_unchanged_ric(self):
         # merge a new link does not change the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self._commit_sprout_make_merge(tree1, self.make_link,
@@ -1289,10 +760,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
     def test_last_modified_dir_file(self):
-        self._check_kind_change(self.make_dir, self.make_file,
-            expect_fs_hash=True)
-
-    def test_last_modified_dir_file_ric(self):
         try:
             self._check_kind_change(self.make_dir, self.make_file,
                 expect_fs_hash=True,
@@ -1303,9 +770,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 "directory to file")
 
     def test_last_modified_dir_link(self):
-        self._check_kind_change(self.make_dir, self.make_link)
-
-    def test_last_modified_dir_link_ric(self):
         try:
             self._check_kind_change(self.make_dir, self.make_link,
                 mini_commit=self.mini_commit_record_iter_changes)
@@ -1316,31 +780,18 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,
-            expect_fs_hash=True)
-
-    def test_last_modified_link_file_ric(self):
-        self._check_kind_change(self.make_link, self.make_file,
             expect_fs_hash=True,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_link_dir(self):
-        self._check_kind_change(self.make_link, self.make_dir)
-
-    def test_last_modified_link_dir_ric(self):
         self._check_kind_change(self.make_link, self.make_dir,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_file_dir(self):
-        self._check_kind_change(self.make_file, self.make_dir)
-
-    def test_last_modified_file_dir_ric(self):
         self._check_kind_change(self.make_file, self.make_dir,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_file_link(self):
-        self._check_kind_change(self.make_file, self.make_link)
-
-    def test_last_modified_file_link_ric(self):
         self._check_kind_change(self.make_file, self.make_link,
             mini_commit=self.mini_commit_record_iter_changes)
 
