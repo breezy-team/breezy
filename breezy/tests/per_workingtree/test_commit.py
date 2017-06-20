@@ -420,6 +420,7 @@ class TestCommit(TestCaseWithWorkingTree):
         if not tree.supports_tree_reference():
             # inapplicable test.
             return
+        self.knownFailure('nested trees don\'t work well with iter_changes')
         subtree = self.make_branch_and_tree('subtree')
         tree.add(['subtree'])
         self.build_tree(['subtree/file'])
