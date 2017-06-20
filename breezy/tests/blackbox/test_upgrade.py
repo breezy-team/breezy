@@ -279,7 +279,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
 
     def test_recommend_upgrade_wt4(self):
         # using a deprecated format gives a warning
-        self.run_bzr('init --knit a')
+        self.run_bzr('init --format=knit a')
         out, err = self.run_bzr('status a')
         self.assertContainsRe(err, 'brz upgrade .*[/\\\\]a')
 
@@ -287,7 +287,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         # we should only get a recommendation to upgrade when we're accessing
         # the actual workingtree, not when we only open a bzrdir that contains
         # an old workngtree
-        self.run_bzr('init --knit a')
+        self.run_bzr('init --format=knit a')
         out, err = self.run_bzr('revno a')
         if err.find('upgrade') > -1:
             self.fail("message shouldn't suggest upgrade:\n%s" % err)

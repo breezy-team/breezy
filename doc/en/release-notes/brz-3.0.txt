@@ -51,6 +51,11 @@ External Compatibility Breaks
    ``ignore_missing_extensions=True`` to
    ``suppress_warnings=missing_extensions``. (Jelmer Vernooĳ)
 
+ * Remove format names as options to ``brz init`` and ``brz
+   init-repository``.. Now you must use ``brz init --format=...``.
+   This simplifies ``brz init --help``.
+   (Neil Martinsen-Burrell, #330494)
+
 New Features
 ************
 
