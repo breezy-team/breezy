@@ -198,16 +198,16 @@ class GitCommitBuilder(CommitBuilder):
         c = Commit()
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
-        c.committer = self._committer
-        c.author = self._revprops.get('author', self._committer)
+        c.encoding = 'utf-8'
+        c.committer = self._committer.encode(c.encoding)
+        c.author = self._revprops.get('author', self._committer).encode(c.encoding)
         if c.author != c.committer:
             self._revprops.remove("author")
         c.commit_time = int(self._timestamp)
         c.author_time = int(self._timestamp)
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
-        c.encoding = 'utf-8'
-        c.message = message.encode("utf-8")
+        c.message = message.encode(c.encoding)
         if not self._lossy:
             commit_supplement = CommitSupplement()
             commit_supplement.revision_id = self._new_revision_id
