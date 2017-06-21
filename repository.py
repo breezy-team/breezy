@@ -578,7 +578,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return target_repo_format.rich_root_data
 
     def get_foreign_tests_repository_factory(self):
-        from ...tests.test_repository import (
+        from .tests.test_repository import (
             ForeignTestsRepositoryFactory,
             )
         return ForeignTestsRepositoryFactory()
