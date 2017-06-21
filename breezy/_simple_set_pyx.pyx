@@ -58,8 +58,6 @@ _NotImplemented = NotImplemented
 cdef int _is_equal(object this, long this_hash, object other) except -1:
     cdef long other_hash
 
-    if <PyObject *>this == <PyObject *>other:
-        return 1
     other_hash = PyObject_Hash(other)
     if other_hash != this_hash:
         return 0
@@ -266,7 +264,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         slot = old_table
         while remaining > 0:
             if slot[0] == NULL: # unused slot
-                pass 
+                pass
             elif slot[0] == _dummy: # dummy slot
                 remaining = remaining - 1
             else: # active slot
@@ -276,21 +274,16 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         PyMem_Free(old_table)
         return new_size
 
-    def add(self, key):
+    cpdef object add(self, key):
         """Similar to set.add(), start tracking this key.
-        
+
         There is one small difference, which is that we return the object that
         is stored at the given location. (which is closer to the
         dict.setdefault() functionality.)
         """
-        return self._add(key)
-
-    cdef object _add(self, key):
         cdef PyObject **slot
-        cdef PyObject *py_key
-        cdef int added
+        cdef bint added
 
-        py_key = <PyObject *>key
         if (Py_TYPE(key).tp_richcompare == NULL
             or Py_TYPE(key).tp_hash == NULL):
             raise TypeError('Types added to SimpleSet must implement'
@@ -303,12 +296,12 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
             Py_INCREF(key)
             self._fill = self._fill + 1
             self._used = self._used + 1
-            slot[0] = py_key
+            slot[0] = <PyObject *>key
             added = 1
         elif (slot[0] == _dummy):
             Py_INCREF(key)
             self._used = self._used + 1
-            slot[0] = py_key
+            slot[0] = <PyObject *>key
             added = 1
         # No else: clause. If _lookup returns a pointer to
         # a live object, then we already have a value at this location.
@@ -322,18 +315,12 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         # so we can still return it
         return retval
 
-    def discard(self, key):
+    cpdef bint discard(self, key) except -1:
         """Remove key from the set, whether it exists or not.
 
         :return: False if the item did not exist, True if it did
         """
-        if self._discard(key):
-            return True
-        return False
-
-    cdef int _discard(self, key) except -1:
         cdef PyObject **slot
-        cdef PyObject *py_key
 
         slot = _lookup(self, key)
         if slot[0] == NULL or slot[0] == _dummy:
@@ -398,7 +385,6 @@ cdef class _SimpleSet_iterator:
         if self.set is not None and self._used == self.set._used:
             return self.len
         return 0
-    
 
 
 cdef api SimpleSet SimpleSet_New():
@@ -518,8 +504,8 @@ cdef api object SimpleSet_Add(object self, object key):
         This may be the same object, or it may be an equivalent object.
         (consider dict.setdefault(key, key))
     """
-    return _check_self(self)._add(key)
-    
+    return _check_self(self).add(key)
+
 
 cdef api int SimpleSet_Contains(object self, object key) except -1:
     """Is key present in self?"""
@@ -534,7 +520,7 @@ cdef api int SimpleSet_Discard(object self, object key) except -1:
     :return: 1 if there was an object present, 0 if there was not, and -1 on
         error.
     """
-    return _check_self(self)._discard(key)
+    return _check_self(self).discard(key)
 
 
 cdef api PyObject *SimpleSet_Get(SimpleSet self, object key) except? NULL:
