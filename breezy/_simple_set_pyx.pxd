@@ -23,9 +23,7 @@ differs from Set in that we:
      eg. SimpleSet.add(key) => saved_key and SimpleSet[key] => saved_key
 """
 
-cdef extern from "Python.h":
-    ctypedef struct PyObject:
-        pass
+from cpython.object cimport PyObject
 
 
 cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
@@ -74,8 +72,8 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
                             # so we manage it manually
 
     cdef PyObject *_get(self, object key) except? NULL
-    cdef object _add(self, key)
-    cdef int _discard(self, key) except -1
+    cpdef object add(self, key)
+    cpdef bint discard(self, key) except -1
     cdef int _insert_clean(self, PyObject *key) except -1
     cdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
 
