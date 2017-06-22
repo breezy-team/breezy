@@ -151,6 +151,9 @@ API Changes
  * ``Repository.get_revisions`` no longer accepts ``None`` as
    argument. (Jelmer Vernooĳ)
 
+ * A new ``Repository.iter_revisions`` method has been added.
+   (Jelmer Vernooĳ)
+
 Internals
 *********
 

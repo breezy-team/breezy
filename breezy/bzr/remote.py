@@ -2658,39 +2658,29 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             yield serializer.read_revision_from_string("".join(chunks))
 
     @needs_read_lock
-    def get_revisions(self, revision_ids):
+    def iter_revisions(self, revision_ids):
         for rev_id in revision_ids:
             if not rev_id or not isinstance(rev_id, bytes):
                 raise errors.InvalidRevisionId(
                     revision_id=rev_id, branch=self)
         try:
             missing = set(revision_ids)
-            revs = {}
             for rev in self._iter_revisions_rpc(revision_ids):
                 missing.remove(rev.revision_id)
-                revs[rev.revision_id] = rev
+                yield (rev.revision_id, rev)
+            for fallback in self._fallback_repositories:
+                if not missing:
+                    break
+                for (revid, rev) in fallback.iter_revisions(missing):
+                    if rev is not None:
+                        yield (revid, rev)
+                        missing.remove(revid)
+            for revid in missing:
+                yield (revid, None)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            return self._real_repository.get_revisions(revision_ids)
-        for fallback in self._fallback_repositories:
-            if not missing:
-                break
-            for revid in list(missing):
-                # XXX JRV 2011-11-20: It would be nice if there was a
-                # public method on Repository that could be used to query
-                # for revision objects *without* failing completely if one
-                # was missing. There is VersionedFileRepository._iter_revisions,
-                # but unfortunately that's private and not provided by
-                # all repository implementations.
-                try:
-                    revs[revid] = fallback.get_revision(revid)
-                except errors.NoSuchRevision:
-                    pass
-                else:
-                    missing.remove(revid)
-        if missing:
-            raise errors.NoSuchRevision(self, list(missing)[0])
-        return [revs[revid] for revid in revision_ids]
+            for entry in self._real_repository.iter_revisions(revision_ids):
+                yield entry
 
     def supports_rich_root(self):
         return self._format.rich_root_data

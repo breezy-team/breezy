@@ -1102,28 +1102,9 @@ class VersionedFileRepository(Repository):
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
         """
-        return self._get_revisions([revision_id])[0]
+        return self.get_revisions([revision_id])[0]
 
-    @needs_read_lock
-    def get_revisions(self, revision_ids):
-        """Get many revisions at once.
-        
-        Repositories that need to check data on every revision read should 
-        subclass this method.
-        """
-        return self._get_revisions(revision_ids)
-
-    @needs_read_lock
-    def _get_revisions(self, revision_ids):
-        """Core work logic to get many revisions without sanity checks."""
-        revs = {}
-        for revid, rev in self._iter_revisions(revision_ids):
-            if rev is None:
-                raise errors.NoSuchRevision(self, revid)
-            revs[revid] = rev
-        return [revs[revid] for revid in revision_ids]
-
-    def _iter_revisions(self, revision_ids):
+    def iter_revisions(self, revision_ids):
         """Iterate over revision objects.
 
         :param revision_ids: An iterable of revisions to examine. None may be
@@ -1133,19 +1114,23 @@ class VersionedFileRepository(Repository):
         :return: An iterator of (revid, revision) tuples. Absent revisions (
             those asked for but not available) are returned as (revid, None).
         """
-        for rev_id in revision_ids:
-            if not rev_id or not isinstance(rev_id, bytes):
-                raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
-        keys = [(key,) for key in revision_ids]
-        stream = self.revisions.get_record_stream(keys, 'unordered', True)
-        for record in stream:
-            revid = record.key[0]
-            if record.storage_kind == 'absent':
-                yield (revid, None)
-            else:
-                text = record.get_bytes_as('fulltext')
-                rev = self._serializer.read_revision_from_string(text)
-                yield (revid, rev)
+        self.lock_read()
+        try:
+            for rev_id in revision_ids:
+                if not rev_id or not isinstance(rev_id, bytes):
+                    raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
+            keys = [(key,) for key in revision_ids]
+            stream = self.revisions.get_record_stream(keys, 'unordered', True)
+            for record in stream:
+                revid = record.key[0]
+                if record.storage_kind == 'absent':
+                    yield (revid, None)
+                else:
+                    text = record.get_bytes_as('fulltext')
+                    rev = self._serializer.read_revision_from_string(text)
+                    yield (revid, rev)
+        finally:
+            self.unlock()
 
     @needs_write_lock
     def add_signature_text(self, revision_id, signature):
@@ -1677,7 +1662,7 @@ class VersionedFileRepository(Repository):
             raise AssertionError()
         vf = self.revisions
         if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(self.all_revision_ids())
+            revisions_iterator = self.iter_revisions(self.all_revision_ids())
         for revid, revision in revisions_iterator:
             if revision is None:
                 pass

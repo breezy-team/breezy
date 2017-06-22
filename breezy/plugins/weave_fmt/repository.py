@@ -166,11 +166,6 @@ class AllInOneRepository(VersionedFileRepository):
         self.start_write_group()
         return result
 
-    @needs_read_lock
-    def get_revisions(self, revision_ids):
-        revs = self._get_revisions(revision_ids)
-        return revs
-
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):
         """Store lines in inv_vf and return the sha1 of the inventory."""
