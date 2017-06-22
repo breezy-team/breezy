@@ -188,10 +188,10 @@ def _expand_annotations(annotations, branch, current_rev=None):
         revision_id_to_revno[CURRENT_REVISION] = (
             "%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
-    revision_ids = [o for o in revision_ids if
-                    repository.has_revision(o)]
-    revisions.update((r.revision_id, r) for r in
-                     repository.get_revisions(revision_ids))
+    revisions.update(
+            entry for entry in
+            repository.iter_revisions(revision_ids)
+            if entry[1] is not None)
     for origin, text in annotations:
         text = text.rstrip('\r\n')
         if origin == last_origin:
