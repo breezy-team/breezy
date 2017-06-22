@@ -104,6 +104,9 @@ Bug Fixes
 * Support ``brz commit -x`` in combination with iter_changes.
   (Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)
 
+* Print a proper error when encountering ghost revisions in
+  mainline in ``bzr log``. (Jelmer Vernooĳ, #726466)
+
 Documentation
 *************
 

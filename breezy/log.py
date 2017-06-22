@@ -409,8 +409,12 @@ class Logger(object):
 
         # Find and print the interesting revisions
         generator = self._generator_factory(self.branch, rqst)
-        for lr in generator.iter_log_revisions():
-            lf.log_revision(lr)
+        try:
+            for lr in generator.iter_log_revisions():
+                lf.log_revision(lr)
+        except errors.GhostRevisionUnusableHere:
+            raise errors.BzrCommandError(
+                    gettext('Further revision history missing.'))
         lf.show_advice()
 
     def _generator_factory(self, branch, rqst):
@@ -456,6 +460,8 @@ class _DefaultLogGenerator(LogGenerator):
                     continue
                 if omit_merges and len(rev.parent_ids) > 1:
                     continue
+                if rev is None:
+                    raise errors.GhostRevisionUnusableHere(rev_id)
                 if diff_type is None:
                     diff = None
                 else:
@@ -723,6 +729,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     :param exclude_common_ancestry: Whether the start_rev_id should be part of
         the iterated revisions.
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+        dotted_revno will be None for ghosts
     :raises _StartNotLinearAncestor: if a start_rev_id is specified but
         is not found walking the left-hand history
     """
@@ -731,27 +738,44 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
         cur_revno = br_revno
-        for revision_id in graph.iter_lefthand_ancestry(br_rev_id,
-            (_mod_revision.NULL_REVISION,)):
-            yield revision_id, str(cur_revno), 0
-            cur_revno -= 1
+        graph_iter = graph.iter_lefthand_ancestry(br_rev_id,
+            (_mod_revision.NULL_REVISION,))
+        while True:
+            try:
+                revision_id = next(graph_iter)
+            except errors.RevisionNotPresent as e:
+                # Oops, a ghost.
+                yield e.revision_id, None, None
+                break
+            else:
+                yield revision_id, str(cur_revno), 0
+                cur_revno -= 1
     else:
         if end_rev_id is None:
             end_rev_id = br_rev_id
         found_start = start_rev_id is None
-        for revision_id in graph.iter_lefthand_ancestry(end_rev_id,
-                (_mod_revision.NULL_REVISION,)):
-            revno_str = _compute_revno_str(branch, revision_id)
-            if not found_start and revision_id == start_rev_id:
-                if not exclude_common_ancestry:
-                    yield revision_id, revno_str, 0
-                found_start = True
+        graph_iter = graph.iter_lefthand_ancestry(end_rev_id,
+            (_mod_revision.NULL_REVISION,))
+        while True:
+            try:
+                revision_id = next(graph_iter)
+            except StopIteration:
+                break
+            except errors.RevisionNotPresent as e:
+                # Oops, a ghost.
+                yield e.revision_id, None, None
                 break
             else:
-                yield revision_id, revno_str, 0
-        else:
-            if not found_start:
-                raise _StartNotLinearAncestor()
+                revno_str = _compute_revno_str(branch, revision_id)
+                if not found_start and revision_id == start_rev_id:
+                    if not exclude_common_ancestry:
+                        yield revision_id, revno_str, 0
+                    found_start = True
+                    break
+                else:
+                    yield revision_id, revno_str, 0
+        if not found_start:
+            raise _StartNotLinearAncestor()
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
@@ -998,10 +1022,8 @@ def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
     for revs in log_rev_iterator:
         # r = revision_id, n = revno, d = merge depth
         revision_ids = [view[0] for view, _, _ in revs]
-        revisions = repository.get_revisions(revision_ids)
-        revs = [(rev[0], revision, rev[2]) for rev, revision in
-            zip(revs, revisions)]
-        yield revs
+        revisions = dict(repository.iter_revisions(revision_ids))
+        yield [(rev[0], revisions[rev[0][0]], rev[2]) for rev in revs]
 
 
 def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
