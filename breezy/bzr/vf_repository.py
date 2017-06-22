@@ -1133,12 +1133,9 @@ class VersionedFileRepository(Repository):
         :return: An iterator of (revid, revision) tuples. Absent revisions (
             those asked for but not available) are returned as (revid, None).
         """
-        if revision_ids is None:
-            revision_ids = self.all_revision_ids()
-        else:
-            for rev_id in revision_ids:
-                if not rev_id or not isinstance(rev_id, bytes):
-                    raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
+        for rev_id in revision_ids:
+            if not rev_id or not isinstance(rev_id, bytes):
+                raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         keys = [(key,) for key in revision_ids]
         stream = self.revisions.get_record_stream(keys, 'unordered', True)
         for record in stream:
@@ -1680,7 +1677,7 @@ class VersionedFileRepository(Repository):
             raise AssertionError()
         vf = self.revisions
         if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
+            revisions_iterator = self._iter_revisions(self.all_revision_ids())
         for revid, revision in revisions_iterator:
             if revision is None:
                 pass

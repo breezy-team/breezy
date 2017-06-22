@@ -148,6 +148,9 @@ API Changes
  * ``ControlDir.find_bzrdirs`` has been renamed to
    ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
 
+ * ``Repository.get_revisions`` no longer accepts ``None`` as
+   argument. (Jelmer Vernooĳ)
+
 Internals
 *********
 
