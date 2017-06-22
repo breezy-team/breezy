@@ -742,9 +742,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
             (_mod_revision.NULL_REVISION,))
         while True:
             try:
-                revision_id = graph_iter.next()
-            except StopIteration:
-                raise
+                revision_id = next(graph_iter)
             except errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
@@ -760,7 +758,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
             (_mod_revision.NULL_REVISION,))
         while True:
             try:
-                revision_id = graph_iter.next()
+                revision_id = next(graph_iter)
             except StopIteration:
                 break
             except errors.RevisionNotPresent as e:
