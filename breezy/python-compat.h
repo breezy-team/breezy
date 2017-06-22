@@ -25,6 +25,37 @@
 #ifndef _BZR_PYTHON_COMPAT_H
 #define _BZR_PYTHON_COMPAT_H
 
+#if PY_MAJOR_VERSION >= 3
+
+#define PyInt_FromSsize_t PyLong_FromSsize_t
+
+/* In Python 3 the Py_TPFLAGS_CHECKTYPES behaviour is on by default */
+#define Py_TPFLAGS_CHECKTYPES 0
+
+#define PYMOD_ERROR NULL
+#define PYMOD_SUCCESS(val) val
+#define PYMOD_INIT_FUNC(name) PyMODINIT_FUNC PyInit_##name(void)
+#define PYMOD_CREATE(ob, name, doc, methods) do { \
+    static struct PyModuleDef moduledef = { \
+        PyModuleDef_HEAD_INIT, name, doc, -1, methods \
+    }; \
+    ob = PyModule_Create(&moduledef); \
+    } while(0)
+
+#else
+
+#define PyBytes_Type PyString_Type
+#define PyBytes_CheckExact PyString_CheckExact
+
+#define PYMOD_ERROR
+#define PYMOD_SUCCESS(val)
+#define PYMOD_INIT_FUNC(name) void init##name(void)
+#define PYMOD_CREATE(ob, name, doc, methods) do { \
+    ob = Py_InitModule3(name, methods, doc); \
+    } while(0)
+
+#endif
+
 #if defined(_WIN32) || defined(WIN32)
     /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit
      * lighter weight.

@@ -26,12 +26,6 @@
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
 
-/* Pyrex 0.9.6.4 exports _simple_set_pyx_api as
- * import__simple_set_pyx(), while Pyrex 0.9.8.5 and Cython 0.11.3 export them
- * as import_breezy___simple_set_pyx(). As such, we just #define one to be
- * equivalent to the other in our internal code.
- */
-#define import__simple_set_pyx import_breezy___simple_set_pyx
 #include "_simple_set_pyx_api.h"
 
 #if defined(__GNUC__)
@@ -242,11 +236,14 @@ StaticTuple_check_items(StaticTuple *self)
                 " should not have a NULL entry.");
             return 0;
         }
-        if (PyString_CheckExact(obj)
+        if (PyBytes_CheckExact(obj)
             || StaticTuple_CheckExact(obj)
             || obj == Py_None
             || PyBool_Check(obj)
+#if PY_MAJOR_VERSION >= 3
+#else
             || PyInt_CheckExact(obj)
+#endif
             || PyLong_CheckExact(obj)
             || PyFloat_CheckExact(obj)
             || PyUnicode_CheckExact(obj)
@@ -314,8 +311,12 @@ StaticTuple_repr(StaticTuple *self)
     if (tuple_repr == NULL) {
         return NULL;
     }
+#if PY_MAJOR_VERSION >= 3
+    result = PyUnicode_FromFormat("StaticTuple%U", tuple_repr);
+#else
     result = PyString_FromFormat("StaticTuple%s",
                                  PyString_AsString(tuple_repr));
+#endif
     return result;
 }
 
@@ -362,7 +363,7 @@ StaticTuple_richcompare_to_tuple(StaticTuple *v, PyObject *wt, int op)
 {
     PyObject *vt;
     PyObject *result = NULL;
-    
+
     vt = StaticTuple_as_tuple((StaticTuple *)v);
     if (vt == NULL) {
         goto done;
@@ -478,7 +479,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
     vlen = v_st->size;
     wlen = w_st->size;
     min_len = (vlen < wlen) ? vlen : wlen;
-    string_richcompare = PyString_Type.tp_richcompare;
+    string_richcompare = PyBytes_Type.tp_richcompare;
     for (i = 0; i < min_len; i++) {
         PyObject *result = NULL;
         v_obj = StaticTuple_GET_ITEM(v_st, i);
@@ -487,7 +488,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             /* Shortcut case, these must be identical */
             continue;
         }
-        if (PyString_CheckExact(v_obj) && PyString_CheckExact(w_obj)) {
+        if (PyBytes_CheckExact(v_obj) && PyBytes_CheckExact(w_obj)) {
             result = string_richcompare(v_obj, w_obj, Py_EQ);
         } else if (StaticTuple_CheckExact(v_obj) &&
                    StaticTuple_CheckExact(w_obj))
@@ -547,7 +548,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         return Py_True;
     }
     /* It is some other comparison, go ahead and do the real check. */
-    if (PyString_CheckExact(v_obj) && PyString_CheckExact(w_obj))
+    if (PyBytes_CheckExact(v_obj) && PyBytes_CheckExact(w_obj))
     {
         return string_richcompare(v_obj, w_obj, op);
     } else if (StaticTuple_CheckExact(v_obj) &&
@@ -679,6 +680,8 @@ StaticTuple_item(StaticTuple *self, Py_ssize_t offset)
     return obj;
 }
 
+#if PY_MAJOR_VERSION >= 3
+#else
 static PyObject *
 StaticTuple_slice(StaticTuple *self, Py_ssize_t ilow, Py_ssize_t ihigh)
 {
@@ -689,6 +692,21 @@ StaticTuple_slice(StaticTuple *self, Py_ssize_t ilow, Py_ssize_t ihigh)
         return NULL;
     }
     result = PyTuple_Type.tp_as_sequence->sq_slice(as_tuple, ilow, ihigh);
+    Py_DECREF(as_tuple);
+    return result;
+}
+#endif
+
+static PyObject *
+StaticTuple_subscript(StaticTuple *self, PyObject *key)
+{
+    PyObject *as_tuple, *result;
+
+    as_tuple = StaticTuple_as_tuple(self);
+    if (as_tuple == NULL) {
+        return NULL;
+    }
+    result = PyTuple_Type.tp_as_mapping->mp_subscript(as_tuple, key);
     Py_DECREF(as_tuple);
     return result;
 }
@@ -759,29 +777,36 @@ static PyNumberMethods StaticTuple_as_number = {
     0,                              /* nb_or */
     0,                              /* nb_coerce */
 };
-    
+
 
 static PySequenceMethods StaticTuple_as_sequence = {
     (lenfunc)StaticTuple_length,            /* sq_length */
     0,                              /* sq_concat */
     0,                              /* sq_repeat */
     (ssizeargfunc)StaticTuple_item,         /* sq_item */
+#if PY_MAJOR_VERSION >= 3
+#else
     (ssizessizeargfunc)StaticTuple_slice,   /* sq_slice */
+#endif
     0,                              /* sq_ass_item */
     0,                              /* sq_ass_slice */
     0,                              /* sq_contains */
+#if PY_MAJOR_VERSION >= 3
+    0,                              /* sq_inplace_concat */
+    0,                              /* sq_inplace_repeat */
+#endif
 };
 
-/* TODO: Implement StaticTuple_as_mapping.
- *       The only thing we really want to support from there is mp_subscript,
- *       so that we could support extended slicing (foo[::2]). Not worth it
- *       yet, though.
- */
+
+static PyMappingMethods StaticTuple_as_mapping = {
+    (lenfunc)StaticTuple_length,            /* mp_length */
+    (binaryfunc)StaticTuple_subscript,      /* mp_subscript */
+    0,                                      /* mp_ass_subscript */
+};
 
 
 PyTypeObject StaticTuple_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                           /* ob_size */
+    PyVarObject_HEAD_INIT(NULL, 0)
     "breezy._static_tuple_c.StaticTuple",        /* tp_name */
     sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
@@ -793,7 +818,7 @@ PyTypeObject StaticTuple_Type = {
     (reprfunc)StaticTuple_repr,                  /* tp_repr */
     &StaticTuple_as_number,                      /* tp_as_number */
     &StaticTuple_as_sequence,                    /* tp_as_sequence */
-    0,                                           /* tp_as_mapping */
+    &StaticTuple_as_mapping,                     /* tp_as_mapping */
     (hashfunc)StaticTuple_hash,                  /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
@@ -887,72 +912,32 @@ setup_c_api(PyObject *m)
 }
 
 
-static int
-_workaround_pyrex_096(void)
-{
-    /* Work around an incompatibility in how pyrex 0.9.6 exports a module,
-     * versus how pyrex 0.9.8 and cython 0.11 export it.
-     * Namely 0.9.6 exports import__simple_set_pyx and tries to
-     * "import _simple_set_pyx" but it is available only as
-     * "import breezy._simple_set_pyx"
-     * It is a shame to hack up sys.modules, but that is what we've got to do.
-     */
-    PyObject *sys_module = NULL, *modules = NULL, *set_module = NULL;
-    int retval = -1;
-
-    /* Clear out the current ImportError exception, and try again. */
-    PyErr_Clear();
-    /* Note that this only seems to work if somewhere else imports
-     * breezy._simple_set_pyx before importing breezy._static_tuple_c
-     */
-    set_module = PyImport_ImportModule("breezy._simple_set_pyx");
-    if (set_module == NULL) {
-        goto end;
-    }
-    /* Add the _simple_set_pyx into sys.modules at the appropriate location. */
-    sys_module = PyImport_ImportModule("sys");
-    if (sys_module == NULL) {
-        goto end;
-    }
-    modules = PyObject_GetAttrString(sys_module, "modules");
-    if (modules == NULL || !PyDict_Check(modules)) {
-        goto end;
-    }
-    PyDict_SetItemString(modules, "_simple_set_pyx", set_module);
-    /* Now that we have hacked it in, try the import again. */
-    retval = import_breezy___simple_set_pyx();
-end:
-    Py_XDECREF(set_module);
-    Py_XDECREF(sys_module);
-    Py_XDECREF(modules);
-    return retval;
-}
-
-
-PyMODINIT_FUNC
-init_static_tuple_c(void)
+PYMOD_INIT_FUNC(static_tuple_c)
 {
     PyObject* m;
 
     StaticTuple_Type.tp_getattro = PyObject_GenericGetAttr;
-    if (PyType_Ready(&StaticTuple_Type) < 0)
-        return;
+    if (PyType_Ready(&StaticTuple_Type) < 0) {
+        return PYMOD_ERROR;
+    }
 
-    m = Py_InitModule3("_static_tuple_c", static_tuple_c_methods,
-                       "C implementation of a StaticTuple structure");
-    if (m == NULL)
-      return;
+    PYMOD_CREATE(m, "_static_tuple_c",
+                 "C implementation of a StaticTuple structure",
+                 static_tuple_c_methods);
+    if (m == NULL) {
+      return PYMOD_ERROR;
+    }
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    if (import_breezy___simple_set_pyx() == -1
-        && _workaround_pyrex_096() == -1)
-    {
-        return;
+    if (import_breezy___simple_set_pyx() == -1) {
+        return PYMOD_ERROR;
     }
     setup_interned_tuples(m);
     setup_empty_tuple(m);
     setup_c_api(m);
+
+    return PYMOD_SUCCESS(m);
 }
 
 // vim: tabstop=4 sw=4 expandtab
