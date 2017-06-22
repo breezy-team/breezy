@@ -181,7 +181,7 @@ class VersionedFileCheck(Check):
 
     def check_revisions(self):
         """Scan revisions, checking data directly available as we go."""
-        revision_iterator = self.repository._iter_revisions(
+        revision_iterator = self.repository.iter_revisions(
             self.repository.all_revision_ids())
         revision_iterator = self._check_revisions(revision_iterator)
         # We read the all revisions here:

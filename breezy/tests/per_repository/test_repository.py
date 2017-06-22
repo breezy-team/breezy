@@ -424,6 +424,25 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
 
+    def test_iter_revisions(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('initial empty commit', rev_id='a-rev',
+                    allow_pointless=True)
+        tree.commit('second empty commit', rev_id='b-rev',
+                    allow_pointless=True)
+        tree.commit('third empty commit', rev_id='c-rev',
+                    allow_pointless=True)
+        repo = tree.branch.repository
+        revision_ids = ['a-rev', 'c-rev', 'b-rev', 'd-rev']
+        revid_with_rev = repo.iter_revisions(revision_ids)
+        self.assertEqual(
+            set((revid, rev.revision_id if rev is not None else None)
+                for (revid, rev) in revid_with_rev),
+            {('a-rev', 'a-rev'),
+             ('b-rev', 'b-rev'),
+             ('c-rev', 'c-rev'),
+             ('d-rev', None)})
+
     def test_root_entry_has_revision(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('message', rev_id='rev_id')

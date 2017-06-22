@@ -822,11 +822,29 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def get_revisions(self, revision_ids):
         """Get many revisions at once.
-        
-        Repositories that need to check data on every revision read should 
+
+        Repositories that need to check data on every revision read should
         subclass this method.
         """
-        raise NotImplementedError(self.get_revisions)
+        revs = {}
+        for revid, rev in self.iter_revisions(revision_ids):
+            if rev is None:
+                raise errors.NoSuchRevision(self, revid)
+            revs[revid] = rev
+        return [revs[revid] for revid in revision_ids]
+
+    def iter_revisions(self, revision_ids):
+        """Iterate over revision objects.
+
+        :param revision_ids: An iterable of revisions to examine. None may be
+            passed to request all revisions known to the repository. Note that
+            not all repositories can find unreferenced revisions; for those
+            repositories only referenced ones will be returned.
+        :return: An iterator of (revid, revision) tuples. Absent revisions (
+            those asked for but not available) are returned as (revid, None).
+            N.B.: Revisions are not necessarily yielded in order.
+        """
+        raise NotImplementedError(self.iter_revisions)
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
