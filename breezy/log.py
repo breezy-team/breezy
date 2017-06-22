@@ -861,7 +861,7 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    if match is None:
+    if not match:
         return log_rev_iterator
     searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v])
                 for k, v in match.items()]
