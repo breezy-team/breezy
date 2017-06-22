@@ -995,16 +995,18 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
-        self.knownFailure("log with ghosts fails. bug #726466")
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
-        self.assertEqual("brz: ERROR: Further revision history missing.", stderr)
+        self.assertEqual("brz: ERROR: Further revision history missing.\n",
+                stderr)
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])
 
+
 class TestLogMatch(TestLogWithLogCatcher):
+
     def prepare_tree(self):
         tree = self.make_branch_and_tree('')
         self.build_tree(
@@ -1013,7 +1015,7 @@ class TestLogMatch(TestLogWithLogCatcher):
         tree.commit(message='message1', committer='committer1', authors=['author1'])
         tree.add('goodbye.txt')
         tree.commit(message='message2', committer='committer2', authors=['author2'])
-    
+
     def test_message(self):
         self.prepare_tree()
         self.assertLogRevnos(["-m", "message1"], ["1"])
