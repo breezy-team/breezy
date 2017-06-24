@@ -344,11 +344,11 @@ class Unshelver(object):
         tt.deserialize(records)
         return klass(tree, base_tree, tt, metadata.get('message'))
 
-    def make_merger(self, task=None):
+    def make_merger(self):
         """Return a merger that can unshelve the changes."""
         target_tree = self.transform.get_preview_tree()
         merger = merge.Merger.from_uncommitted(self.tree, target_tree,
-            task, self.base_tree)
+            self.base_tree)
         merger.merge_type = merge.Merge3Merger
         return merger
 

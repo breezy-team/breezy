@@ -4559,7 +4559,7 @@ class cmd_merge(Command):
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
         other_branch.tags.merge_to(tree.branch.tags, ignore_master=True)
-        merger = _mod_merge.Merger.from_revision_ids(pb, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
             allow_pending = False

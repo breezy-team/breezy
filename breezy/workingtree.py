@@ -955,7 +955,6 @@ class WorkingTree(mutabletree.MutableTree,
                                 new_basis_tree,
                                 basis_tree,
                                 this_tree=self,
-                                pb=None,
                                 change_reporter=change_reporter,
                                 show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()

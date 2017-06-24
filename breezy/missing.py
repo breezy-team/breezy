@@ -90,7 +90,7 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
     :param tip: The tip of mainline
     :param backward: Show oldest versions first when True, newest versions
         first when False.
-    :return: [(revno, revision_id)] for all revisions in ancestry that
+    :return: [(revno, revision_id, 0)] for all revisions in ancestry that
         are left-hand parents from tip, or None if ancestry is None.
     """
     if ancestry is None:
@@ -110,7 +110,7 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
         parents = parent_map.get(cur)
         if not parents:
             break # Ghost, we are done
-        mainline.append((str(cur_revno), cur))
+        mainline.append((str(cur_revno), cur, 0))
         cur = parents[0]
         cur_revno -= 1
     if not backward:

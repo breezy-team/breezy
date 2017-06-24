@@ -352,30 +352,28 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb=None, base_tree=None):
+    def from_uncommitted(tree, other_tree, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into
         :param other_tree: The tree to get uncommitted changes from
-        :param pb: A progress indicator
         :param base_tree: The basis to use for the merge.  If unspecified,
             other_tree.basis_tree() will be used.
         """
         if base_tree is None:
             base_tree = other_tree.basis_tree()
-        merger = Merger(tree.branch, other_tree, base_tree, tree, pb)
+        merger = Merger(tree.branch, other_tree, base_tree, tree)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
         merger.other_basis = merger.base_rev_id
         return merger
 
     @classmethod
-    def from_mergeable(klass, tree, mergeable, pb):
+    def from_mergeable(klass, tree, mergeable):
         """Return a Merger for a bundle or merge directive.
 
         :param tree: The tree to merge changes into
         :param mergeable: A merge directive or bundle
-        :param pb: A progress indicator
         """
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
@@ -388,18 +386,17 @@ class Merger(object):
                 base_revision_id = None
             else:
                 trace.warning('Performing cherrypick')
-        merger = klass.from_revision_ids(pb, tree, other_revision_id,
+        merger = klass.from_revision_ids(tree, other_revision_id,
                                          base_revision_id, revision_graph=
                                          revision_graph)
         return merger, verified
 
     @staticmethod
-    def from_revision_ids(pb, tree, other, base=None, other_branch=None,
+    def from_revision_ids(tree, other, base=None, other_branch=None,
                           base_branch=None, revision_graph=None,
                           tree_branch=None):
         """Return a Merger for revision-ids.
 
-        :param pb: A progress indicator
         :param tree: The tree to merge changes into
         :param other: The revision-id to use as OTHER
         :param base: The revision-id to use as BASE.  If not specified, will
@@ -415,7 +412,7 @@ class Merger(object):
         """
         if tree_branch is None:
             tree_branch = tree.branch
-        merger = Merger(tree_branch, this_tree=tree, pb=pb,
+        merger = Merger(tree_branch, this_tree=tree,
                         revision_graph=revision_graph)
         if other_branch is None:
             other_branch = tree.branch
@@ -640,8 +637,7 @@ class Merger(object):
         if self._is_criss_cross and getattr(self.merge_type,
                                             'supports_lca_trees', False):
             kwargs['lca_trees'] = self._lca_trees
-        return self.merge_type(pb=None,
-                               change_reporter=self.change_reporter,
+        return self.merge_type(change_reporter=self.change_reporter,
                                **kwargs)
 
     def _do_merge_to(self):
@@ -1913,7 +1909,6 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=None,
                 change_reporter=None):
     """Primary interface for merging.
 
@@ -1926,7 +1921,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         raise errors.BzrError("breezy.merge.merge_inner requires a this_tree "
                               "parameter")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
-                    pb=pb, change_reporter=change_reporter)
+                    change_reporter=change_reporter)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
