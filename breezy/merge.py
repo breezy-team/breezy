@@ -280,7 +280,7 @@ class Merger(object):
     hooks = MergeHooks()
 
     def __init__(self, this_branch, other_tree=None, base_tree=None,
-                 this_tree=None, pb=None, change_reporter=None,
+                 this_tree=None, change_reporter=None,
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
@@ -299,8 +299,6 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
-        if pb is not None:
-            warnings.warn("pb parameter to Merger() is deprecated and ignored")
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
@@ -725,8 +723,7 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=None, pp=None, change_reporter=None,
-                 interesting_files=None, do_merge=True,
+                 change_reporter=None, interesting_files=None, do_merge=True,
                  cherrypick=False, lca_trees=None, this_branch=None,
                  other_branch=None):
         """Initialize the merger object and perform the merge.
@@ -744,8 +741,6 @@ class Merge3Merger(object):
         :param: reprocess If True, perform conflict-reduction processing.
         :param show_base: If True, show the base revision in text conflicts.
             (incompatible with reprocess)
-        :param pb: ignored
-        :param pp: A ProgressPhase object
         :param change_reporter: An object that should report changes made
         :param interesting_files: The tree-relative paths of files that should
             participate in the merge.  If these paths refer to directories,
@@ -785,10 +780,6 @@ class Merge3Merger(object):
         self.cherrypick = cherrypick
         if do_merge:
             self.do_merge()
-        if pp is not None:
-            warnings.warn("pp argument to Merge3Merger is deprecated")
-        if pb is not None:
-            warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
         operation = cleanup.OperationWithCleanups(self._do_merge)

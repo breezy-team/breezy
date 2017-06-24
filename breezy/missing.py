@@ -30,14 +30,7 @@ def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
 
     if rev_tag_dict is None:
         rev_tag_dict = {}
-    for rev in revisions:
-        # We need the following for backward compatibilty (hopefully
-        # this will be deprecated soon :-/) -- vila 080911
-        if len(rev) == 2:
-            revno, rev_id = rev
-            merge_depth = 0
-        else:
-            revno, rev_id, merge_depth = rev
+    for revno, rev_id, merge_depth in revisions:
         rev = revision_source.get_revision(rev_id)
         if verbose:
             delta = revision_source.get_revision_delta(rev_id)

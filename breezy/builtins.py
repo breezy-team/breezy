@@ -1411,8 +1411,6 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
