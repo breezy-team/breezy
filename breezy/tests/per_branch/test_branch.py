@@ -1028,7 +1028,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         checkout.commit('bar')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        merger = merge.Merger.from_revision_ids(None, tree,
+        merger = merge.Merger.from_revision_ids(tree,
                                                 branch.last_revision(),
                                                 other_branch=branch)
         merger.merge_type = merge.Merge3Merger

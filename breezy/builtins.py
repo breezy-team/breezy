@@ -4404,7 +4404,7 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(gettext(
                         'Cannot use -r with merge directives or bundles'))
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, None)
+                   mergeable)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
@@ -4711,7 +4711,7 @@ class cmd_remerge(Command):
         # have not yet been seen.
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
