@@ -16,7 +16,10 @@
 
 """Tests for the StaticTuple type."""
 
-import cPickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import sys
 
 from breezy import (
@@ -25,6 +28,10 @@ from breezy import (
     osutils,
     static_tuple,
     tests,
+    )
+from breezy.sixish import (
+    PY3,
+    text_type,
     )
 from breezy.tests import (
     features,
@@ -213,6 +220,8 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
 
     def test_holds_long(self):
+        if PY3:
+            self.skipTest("No long type on Python 3")
         k1 = self.module.StaticTuple(2**65)
         class sublong(long):
             pass
@@ -225,15 +234,15 @@ class TestStaticTuple(tests.TestCase):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple, subfloat(1.5))
 
-    def test_holds_str(self):
-        k1 = self.module.StaticTuple('astring')
-        class substr(str):
+    def test_holds_bytes(self):
+        k1 = self.module.StaticTuple(b'astring')
+        class substr(bytes):
             pass
-        self.assertRaises(TypeError, self.module.StaticTuple, substr('a'))
+        self.assertRaises(TypeError, self.module.StaticTuple, substr(b'a'))
 
     def test_holds_unicode(self):
         k1 = self.module.StaticTuple(u'\xb5')
-        class subunicode(unicode):
+        class subunicode(text_type):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple,
                           subunicode(u'\xb5'))
@@ -416,16 +425,8 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
         self.assertEqual(('foo', 'bar'), k[:2])
         self.assertEqual(('baz',), k[2:-1])
-        try:
-            val = k[::2]
-        except TypeError:
-            # C implementation raises a TypeError, we don't need the
-            # implementation yet, so allow this to pass
-            pass
-        else:
-            # Python implementation uses a regular Tuple, so make sure it gives
-            # the right result
-            self.assertEqual(('foo', 'baz'), val)
+        self.assertEqual(('foo', 'baz',), k[::2])
+        self.assertRaises(TypeError, k.__getitem__, 'not_slice')
 
     def test_referents(self):
         # We implement tp_traverse so that things like 'meliae' can measure the
@@ -582,20 +583,20 @@ class TestStaticTuple(tests.TestCase):
 
     def test_pickle(self):
         st = self.module.StaticTuple('foo', 'bar')
-        pickled = cPickle.dumps(st)
-        unpickled = cPickle.loads(pickled)
+        pickled = pickle.dumps(st)
+        unpickled = pickle.loads(pickled)
         self.assertEqual(unpickled, st)
 
     def test_pickle_empty(self):
         st = self.module.StaticTuple()
-        pickled = cPickle.dumps(st)
-        unpickled = cPickle.loads(pickled)
+        pickled = pickle.dumps(st)
+        unpickled = pickle.loads(pickled)
         self.assertIs(st, unpickled)
 
     def test_pickle_nested(self):
         st = self.module.StaticTuple('foo', self.module.StaticTuple('bar'))
-        pickled = cPickle.dumps(st)
-        unpickled = cPickle.loads(pickled)
+        pickled = pickle.dumps(st)
+        unpickled = pickle.loads(pickled)
         self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):
