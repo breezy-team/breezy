@@ -912,7 +912,7 @@ setup_c_api(PyObject *m)
 }
 
 
-PYMOD_INIT_FUNC(static_tuple_c)
+PYMOD_INIT_FUNC(_static_tuple_c)
 {
     PyObject* m;
 
