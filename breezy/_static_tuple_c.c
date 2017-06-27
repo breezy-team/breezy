@@ -428,14 +428,22 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
     } else if (w == Py_None) {
         // None is always less than the object
         switch (op) {
-        case Py_NE:case Py_GT:case Py_GE:
+        case Py_NE:
+#if PY_MAJOR_VERSION >= 3
+#else
+        case Py_GT:case Py_GE:
+#endif
             Py_INCREF(Py_True);
             return Py_True;
-        case Py_EQ:case Py_LT:case Py_LE:
+        case Py_EQ:
+#if PY_MAJOR_VERSION >= 3
+#else
+        case Py_LT:case Py_LE:
+#endif
             Py_INCREF(Py_False);
             return Py_False;
-    default: // Should never happen
-        return Py_NotImplemented;
+        default: // Should only happen on Python 3
+            return Py_NotImplemented;
         }
     } else {
         /* We don't special case this comparison, we just let python handle
