@@ -20,6 +20,7 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+import operator
 import sys
 
 from breezy import (
@@ -287,15 +288,24 @@ class TestStaticTuple(tests.TestCase):
         k6 = self.module.StaticTuple(k3, k4)
         self.assertCompareEqual(k5, k6)
 
-    def assertCompareDifferent(self, k_small, k_big):
-        self.assertFalse(k_small == k_big)
-        self.assertFalse(k_small >= k_big)
-        self.assertFalse(k_small > k_big)
-        self.assertTrue(k_small != k_big)
-        self.assertTrue(k_small <= k_big)
-        self.assertTrue(k_small < k_big)
+    def check_strict_compare(self, k1, k2, mismatched_types):
+        """True if on Python 3 and stricter comparison semantics are used."""
+        if PY3 and mismatched_types:
+            for op in ("ge", "gt", "le", "lt"):
+                self.assertRaises(TypeError, getattr(operator, op), k1, k2)
+            return True
+        return False
 
-    def assertCompareNoRelation(self, k1, k2):
+    def assertCompareDifferent(self, k_small, k_big, mismatched_types=False):
+        self.assertFalse(k_small == k_big)
+        self.assertTrue(k_small != k_big)
+        if not self.check_strict_compare(k_small, k_big, mismatched_types):
+            self.assertFalse(k_small >= k_big)
+            self.assertFalse(k_small > k_big)
+            self.assertTrue(k_small <= k_big)
+            self.assertTrue(k_small < k_big)
+
+    def assertCompareNoRelation(self, k1, k2, mismatched_types=False):
         """Run the comparison operators, make sure they do something.
 
         However, we don't actually care what comes first or second. This is
@@ -304,20 +314,21 @@ class TestStaticTuple(tests.TestCase):
         """
         self.assertFalse(k1 == k2)
         self.assertTrue(k1 != k2)
-        # Do the comparison, but we don't care about the result
-        k1 >= k2
-        k1 > k2
-        k1 <= k2
-        k1 < k2
+        if not self.check_strict_compare(k1, k2, mismatched_types):
+            # Do the comparison, but we don't care about the result
+            k1 >= k2
+            k1 > k2
+            k1 <= k2
+            k1 < k2
 
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple('baz', 'bing')
-        self.assertCompareDifferent(None, k1)
+        self.assertCompareDifferent(None, k1, mismatched_types=True)
     
     def test_compare_cross_class(self):
         k1 = self.module.StaticTuple('baz', 'bing')
-        self.assertCompareNoRelation(10, k1)
-        self.assertCompareNoRelation('baz', k1)
+        self.assertCompareNoRelation(10, k1, mismatched_types=True)
+        self.assertCompareNoRelation('baz', k1, mismatched_types=True)
 
     def test_compare_all_different_same_width(self):
         k1 = self.module.StaticTuple('baz', 'bing')
@@ -344,8 +355,8 @@ class TestStaticTuple(tests.TestCase):
         k4 = self.module.StaticTuple(k1, k2)
         self.assertCompareDifferent(k3, k4)
         k5 = self.module.StaticTuple('foo', None)
-        self.assertCompareDifferent(k5, k1)
-        self.assertCompareDifferent(k5, k2)
+        self.assertCompareDifferent(k5, k1, mismatched_types=True)
+        self.assertCompareDifferent(k5, k2, mismatched_types=True)
 
     def test_compare_diff_width(self):
         k1 = self.module.StaticTuple('foo')
@@ -359,13 +370,13 @@ class TestStaticTuple(tests.TestCase):
         k1 = self.module.StaticTuple('foo', 'bar')
         k2 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, 2**65, True,
                                      k1)
-        self.assertCompareNoRelation(k1, k2)
+        self.assertCompareNoRelation(k1, k2, mismatched_types=True)
         k3 = self.module.StaticTuple('foo')
         self.assertCompareDifferent(k3, k1)
         k4 = self.module.StaticTuple(None)
-        self.assertCompareDifferent(k4, k1)
+        self.assertCompareDifferent(k4, k1, mismatched_types=True)
         k5 = self.module.StaticTuple(1)
-        self.assertCompareNoRelation(k1, k5)
+        self.assertCompareNoRelation(k1, k5, mismatched_types=True)
 
     def test_compare_to_tuples(self):
         k1 = self.module.StaticTuple('foo')
@@ -381,7 +392,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertCompareDifferent(('foo',), k2)
         self.assertCompareDifferent(('foo', 'aaa'), k2)
         self.assertCompareDifferent(('baz', 'bing'), k2)
-        self.assertCompareDifferent(('foo', 10), k2)
+        self.assertCompareDifferent(('foo', 10), k2, mismatched_types=True)
 
         k3 = self.module.StaticTuple(k1, k2)
         self.assertCompareEqual(k3, (('foo',), ('foo', 'bar')))
@@ -397,7 +408,7 @@ class TestStaticTuple(tests.TestCase):
         # This requires comparing a StaticTuple to a 'string', and then
         # interpreting that value in the next higher StaticTuple. This used to
         # generate a PyErr_BadIternalCall. We now fall back to *something*.
-        self.assertCompareNoRelation(k1, k2)
+        self.assertCompareNoRelation(k1, k2, mismatched_types=True)
 
     def test_hash(self):
         k = self.module.StaticTuple('foo')
