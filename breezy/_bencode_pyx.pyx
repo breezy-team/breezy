@@ -50,17 +50,18 @@ from cpython.mem cimport (
     PyMem_Realloc,
     )
 
+from libc.stdlib cimport (
+    strtol,
+    )
+from libc.string cimport (
+    memcpy,
+    )
+
 cdef extern from "Python.h":
     # There is no cython module for ceval.h for some reason
     int Py_GetRecursionLimit()
     int Py_EnterRecursiveCall(char *)
     void Py_LeaveRecursiveCall()
-
-cdef extern from "stdlib.h":
-    long strtol(char *, char **, int)
-
-cdef extern from "string.h":
-    void *memcpy(void *dest, void *src, size_t count)
 
 cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
