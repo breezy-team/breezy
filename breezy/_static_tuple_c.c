@@ -725,10 +725,10 @@ StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
 static PyObject *
 StaticTuple_sizeof(StaticTuple *self)
 {
-	Py_ssize_t res;
+    Py_ssize_t res;
 
-	res = _PyObject_SIZE(&StaticTuple_Type) + (int)self->size * sizeof(void*);
-	return PyInt_FromSsize_t(res);
+    res = _PyObject_SIZE(&StaticTuple_Type) + (int)self->size * sizeof(void*);
+    return PyInt_FromSsize_t(res);
 }
 
 
