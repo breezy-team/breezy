@@ -18,37 +18,50 @@
 
 from __future__ import absolute_import
 
+from cpython.bytes cimport (
+    PyBytes_CheckExact,
+    PyBytes_FromStringAndSize,
+    PyBytes_AS_STRING,
+    PyBytes_GET_SIZE,
+    )
+from cpython.long cimport (
+    PyLong_CheckExact,
+    )
+from cpython.int cimport (
+    PyInt_CheckExact,
+    PyInt_FromString,
+    )
+from cpython.tuple cimport (
+    PyTuple_CheckExact,
+    )
+from cpython.list cimport (
+    PyList_CheckExact,
+    PyList_Append,
+    )
+from cpython.dict cimport (
+    PyDict_CheckExact,
+    )
+from cpython.bool cimport (
+    PyBool_Check,
+    )
+from cpython.mem cimport (
+    PyMem_Free,
+    PyMem_Malloc,
+    PyMem_Realloc,
+    )
 
-cdef extern from "stddef.h":
-    ctypedef unsigned int size_t
+from libc.stdlib cimport (
+    strtol,
+    )
+from libc.string cimport (
+    memcpy,
+    )
 
 cdef extern from "Python.h":
-    ctypedef int  Py_ssize_t
-    int PyInt_CheckExact(object o)
-    int PyLong_CheckExact(object o)
-    int PyString_CheckExact(object o)
-    int PyTuple_CheckExact(object o)
-    int PyList_CheckExact(object o)
-    int PyDict_CheckExact(object o)
-    int PyBool_Check(object o)
-    object PyString_FromStringAndSize(char *v, Py_ssize_t len)
-    char *PyString_AS_STRING(object o) except NULL
-    Py_ssize_t PyString_GET_SIZE(object o) except -1
-    object PyInt_FromString(char *str, char **pend, int base)
+    # There is no cython module for ceval.h for some reason
     int Py_GetRecursionLimit()
     int Py_EnterRecursiveCall(char *)
     void Py_LeaveRecursiveCall()
-
-    int PyList_Append(object, object) except -1
-
-cdef extern from "stdlib.h":
-    void free(void *memblock)
-    void *malloc(size_t size)
-    void *realloc(void *memblock, size_t size)
-    long strtol(char *, char **, int)
-
-cdef extern from "string.h":
-    void *memcpy(void *dest, void *src, size_t count)
 
 cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
@@ -78,12 +91,12 @@ cdef class Decoder:
         """Initialize decoder engine.
         @param  s:  Python string.
         """
-        if not PyString_CheckExact(s):
-            raise TypeError("String required")
+        if not PyBytes_CheckExact(s):
+            raise TypeError("bytes required")
 
         self.text = s
-        self.tail = PyString_AS_STRING(s)
-        self.size = PyString_GET_SIZE(s)
+        self.tail = PyBytes_AS_STRING(s)
+        self.size = PyBytes_GET_SIZE(s)
         self._yield_tuples = int(yield_tuples)
 
     def decode(self):
@@ -166,13 +179,13 @@ cdef class Decoder:
             raise ValueError('leading zeros are not allowed')
         D_UPDATE_TAIL(self, next_tail - self.tail + 1)
         if n == 0:
-            return ''
+            return b''
         if n > self.size:
             raise ValueError('stream underflow')
         if n < 0:
             raise ValueError('string size below zero: %d' % n)
 
-        result = PyString_FromStringAndSize(self.tail, n)
+        result = PyBytes_FromStringAndSize(self.tail, n)
         D_UPDATE_TAIL(self, n)
         return result
 
@@ -210,7 +223,7 @@ cdef class Decoder:
                 if self.tail[0] < c'0' or self.tail[0] > c'9':
                     raise ValueError('key was not a simple string.')
                 key = self._decode_string()
-                if lastkey >= key:
+                if lastkey is not None and lastkey >= key:
                     raise ValueError('dict keys disordered')
                 else:
                     lastkey = key
@@ -260,7 +273,7 @@ cdef class Encoder:
         self.size = 0
         self.tail = NULL
 
-        p = <char*>malloc(maxsize)
+        p = <char*>PyMem_Malloc(maxsize)
         if p == NULL:
             raise MemoryError('Not enough memory to allocate buffer '
                               'for encoder')
@@ -269,15 +282,14 @@ cdef class Encoder:
         self.tail = p
 
     def __dealloc__(self):
-        free(self.buffer)
+        PyMem_Free(self.buffer)
         self.buffer = NULL
         self.maxsize = 0
 
-    def __str__(self):
+    def to_bytes(self):
         if self.buffer != NULL and self.size != 0:
-            return PyString_FromStringAndSize(self.buffer, self.size)
-        else:
-            return ''
+            return PyBytes_FromStringAndSize(self.buffer, self.size)
+        return b''
 
     cdef int _ensure_buffer(self, int required) except 0:
         """Ensure that tail of CharTail buffer has enough size.
@@ -293,7 +305,7 @@ cdef class Encoder:
         new_size = self.maxsize
         while new_size < self.size + required:
             new_size = new_size * 2
-        new_buffer = <char*>realloc(self.buffer, <size_t>new_size)
+        new_buffer = <char*>PyMem_Realloc(self.buffer, <size_t>new_size)
         if new_buffer == NULL:
             raise MemoryError('Cannot realloc buffer for encoder')
 
@@ -308,32 +320,32 @@ cdef class Encoder:
         """
         cdef int n
         self._ensure_buffer(INT_BUF_SIZE)
-        n = snprintf(self.tail, INT_BUF_SIZE, "i%de", x)
+        n = snprintf(self.tail, INT_BUF_SIZE, b"i%de", x)
         if n < 0:
             raise MemoryError('int %d too big to encode' % x)
         E_UPDATE_TAIL(self, n)
         return 1
 
     cdef int _encode_long(self, x) except 0:
-        return self._append_string(''.join(('i', str(x), 'e')))
+        return self._append_string(b'i%de' % x)
 
     cdef int _append_string(self, s) except 0:
         cdef Py_ssize_t n
-        n = PyString_GET_SIZE(s)
+        n = PyBytes_GET_SIZE(s)
         self._ensure_buffer(n)
-        memcpy(self.tail, PyString_AS_STRING(s), n)
+        memcpy(self.tail, PyBytes_AS_STRING(s), n)
         E_UPDATE_TAIL(self, n)
         return 1
 
     cdef int _encode_string(self, x) except 0:
         cdef int n
         cdef Py_ssize_t x_len
-        x_len = PyString_GET_SIZE(x)
+        x_len = PyBytes_GET_SIZE(x)
         self._ensure_buffer(x_len + INT_BUF_SIZE)
-        n = snprintf(self.tail, INT_BUF_SIZE, '%d:', x_len)
+        n = snprintf(self.tail, INT_BUF_SIZE, b'%d:', x_len)
         if n < 0:
             raise MemoryError('string %s too big to encode' % x)
-        memcpy(<void *>(self.tail+n), PyString_AS_STRING(x), x_len)
+        memcpy(<void *>(self.tail+n), PyBytes_AS_STRING(x), x_len)
         E_UPDATE_TAIL(self, n + x_len)
         return 1
 
@@ -355,10 +367,8 @@ cdef class Encoder:
         self.tail[0] = c'd'
         E_UPDATE_TAIL(self, 1)
 
-        keys = x.keys()
-        keys.sort()
-        for k in keys:
-            if not PyString_CheckExact(k):
+        for k in sorted(x):
+            if not PyBytes_CheckExact(k):
                 raise TypeError('key in dict should be string')
             self._encode_string(k)
             self.process(x[k])
@@ -372,14 +382,14 @@ cdef class Encoder:
         if Py_EnterRecursiveCall("encode"):
             raise RuntimeError("too deeply nested")
         try:
-            if PyString_CheckExact(x):
+            if PyBytes_CheckExact(x):
                 self._encode_string(x)
-            elif PyInt_CheckExact(x):
+            elif PyInt_CheckExact(x) and x.bit_length() < 32:
                 self._encode_int(x)
             elif PyLong_CheckExact(x):
                 self._encode_long(x)
             elif (PyList_CheckExact(x) or PyTuple_CheckExact(x)
-                  or StaticTuple_CheckExact(x)):
+                  or isinstance(x, StaticTuple)):
                 self._encode_list(x)
             elif PyDict_CheckExact(x):
                 self._encode_dict(x)
@@ -397,4 +407,4 @@ def bencode(x):
     """Encode Python object x to string"""
     encoder = Encoder()
     encoder.process(x)
-    return str(encoder)
+    return encoder.to_bytes()
