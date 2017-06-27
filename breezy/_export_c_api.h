@@ -15,8 +15,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-/* GZ 2017-06-22: This header needs updating to use Capsules over CObjects */
-
 /* This file contains helper functions for exporting a C API for a CPython
  * extension module.
  */
@@ -44,7 +42,7 @@ static int
 _export_function(PyObject *module, char *funcname, void *func, char *signature)
 {
     PyObject *d = NULL;
-    PyObject *c_obj = NULL;
+    PyObject *capsule = NULL;
 
     d = PyObject_GetAttrString(module, _C_API_NAME);
     if (!d) {
@@ -56,15 +54,15 @@ _export_function(PyObject *module, char *funcname, void *func, char *signature)
         if (PyModule_AddObject(module, _C_API_NAME, d) < 0)
             goto bad;
     }
-    c_obj = PyCObject_FromVoidPtrAndDesc(func, signature, 0);
-    if (!c_obj)
+    capsule = PyCapsule_New(func, signature, 0);
+    if (!capsule)
         goto bad;
-    if (PyDict_SetItemString(d, funcname, c_obj) < 0)
+    if (PyDict_SetItemString(d, funcname, capsule) < 0)
         goto bad;
     Py_DECREF(d);
     return 0;
 bad:
-    Py_XDECREF(c_obj);
+    Py_XDECREF(capsule);
     Py_XDECREF(d);
     return -1;
 }
