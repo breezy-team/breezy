@@ -384,7 +384,7 @@ cdef class Encoder:
         try:
             if PyBytes_CheckExact(x):
                 self._encode_string(x)
-            elif PyInt_CheckExact(x) and x.bit_length() <= 32:
+            elif PyInt_CheckExact(x) and x.bit_length() < 32:
                 self._encode_int(x)
             elif PyLong_CheckExact(x):
                 self._encode_long(x)
