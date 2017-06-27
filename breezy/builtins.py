@@ -1411,8 +1411,6 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -4406,7 +4404,7 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(gettext(
                         'Cannot use -r with merge directives or bundles'))
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, None)
+                   mergeable)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
@@ -4561,7 +4559,7 @@ class cmd_merge(Command):
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
         other_branch.tags.merge_to(tree.branch.tags, ignore_master=True)
-        merger = _mod_merge.Merger.from_revision_ids(pb, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
             allow_pending = False
@@ -4713,7 +4711,7 @@ class cmd_remerge(Command):
         # have not yet been seen.
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base

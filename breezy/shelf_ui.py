@@ -466,7 +466,7 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note(gettext('Message: %s') % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                merger = unshelver.make_merger(None)
+                merger = unshelver.make_merger()
                 merger.change_reporter = change_reporter
                 if self.apply_changes:
                     merger.do_merge()

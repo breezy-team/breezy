@@ -773,14 +773,14 @@ class TestMerger(TestCaseWithTransport):
     def test_from_revision_ids(self):
         this, other = self.set_up_trees()
         self.assertRaises(errors.NoSuchRevision, Merger.from_revision_ids,
-                          None, this, 'rev2b')
+                          this, 'rev2b')
         this.lock_write()
         self.addCleanup(this.unlock)
-        merger = Merger.from_revision_ids(None, this,
+        merger = Merger.from_revision_ids(this,
             'rev2b', other_branch=other.branch)
         self.assertEqual('rev2b', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)
-        merger = Merger.from_revision_ids(None, this,
+        merger = Merger.from_revision_ids(this,
             'rev2b', 'rev2a', other_branch=other.branch)
         self.assertEqual('rev2a', merger.base_rev_id)
 
@@ -804,17 +804,14 @@ class TestMerger(TestCaseWithTransport):
             other.branch.repository, 'rev3', 0, 0, 'this')
         other.lock_read()
         self.addCleanup(other.unlock)
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         md.patch = None
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual('inapplicable', verified)
         self.assertEqual('rev3', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)
         md.base_revision_id = 'rev2b'
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual('rev2b', merger.base_rev_id)
 
     def test_from_mergeable_old_merge_directive(self):
@@ -823,7 +820,6 @@ class TestMerger(TestCaseWithTransport):
         self.addCleanup(other.unlock)
         md = merge_directive.MergeDirective.from_objects(
             other.branch.repository, 'rev3', 0, 0, 'this')
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual('rev3', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)

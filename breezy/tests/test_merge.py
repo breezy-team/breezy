@@ -373,7 +373,7 @@ class TestMerge(TestCaseWithTransport):
 
     def test_weave_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
@@ -381,14 +381,14 @@ class TestMerge(TestCaseWithTransport):
 
     def test_weave_cannot_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', 'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         self.assertRaises(errors.CannotReverseCherrypick, merger.do_merge)
 
     def test_merge3_can_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', 'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
@@ -406,7 +406,7 @@ class TestMerge(TestCaseWithTransport):
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
@@ -424,7 +424,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a'])
         tree.add('a')
         first_rev = tree.commit("added a")
-        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
         merger.merge_type = _mod_merge.Merge3Merger
@@ -444,7 +444,7 @@ class TestMerge(TestCaseWithTransport):
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
@@ -467,7 +467,7 @@ class TestMerge(TestCaseWithTransport):
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
@@ -497,7 +497,7 @@ class TestMerge(TestCaseWithTransport):
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
@@ -516,7 +516,7 @@ class TestMerge(TestCaseWithTransport):
         tree.add('a')
         first_rev = tree.commit("added a")
         old_root_id = tree.get_root_id()
-        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
         merger.merge_type = _mod_merge.Merge3Merger
@@ -1270,7 +1270,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
         mem_tree.lock_write()
         self.addCleanup(mem_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             mem_tree, other_revision_id)
         merger.set_interesting_files(interesting_files)
         # It seems there is no matching function for set_interesting_ids
@@ -2072,7 +2072,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def do_merge(self, builder, other_revision_id):
         wt = self.get_wt_from_builder(builder)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             wt, other_revision_id)
         merger.merge_type = _mod_merge.Merge3Merger
         return wt, merger.do_merge()
@@ -2338,8 +2338,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('D merges B & C', rev_id='D-id')
         self.assertEqual('barry', wt.id2path('foo-id'))
         # Check the output of the Merger object directly
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'F-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'F-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         root_id = wt.path2id('')
@@ -2394,8 +2393,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('F foo => bing', rev_id='F-id')
 
         # Check the output of the Merger object directly
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         # Nothing interesting happened in OTHER relative to BASE
@@ -2445,8 +2443,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         list(wt.iter_changes(wt.basis_tree()))
         wt.commit('D merges B & C, makes it a file', rev_id='D-id')
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2660,8 +2657,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2697,8 +2693,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2737,8 +2732,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2782,8 +2776,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
