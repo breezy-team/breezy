@@ -44,6 +44,11 @@ from cpython.dict cimport (
 from cpython.bool cimport (
     PyBool_Check,
     )
+from cpython.mem cimport (
+    PyMem_Free,
+    PyMem_Malloc,
+    PyMem_Realloc,
+    )
 
 cdef extern from "Python.h":
     # There is no cython module for ceval.h for some reason
@@ -52,9 +57,6 @@ cdef extern from "Python.h":
     void Py_LeaveRecursiveCall()
 
 cdef extern from "stdlib.h":
-    void free(void *memblock)
-    void *malloc(size_t size)
-    void *realloc(void *memblock, size_t size)
     long strtol(char *, char **, int)
 
 cdef extern from "string.h":
@@ -270,7 +272,7 @@ cdef class Encoder:
         self.size = 0
         self.tail = NULL
 
-        p = <char*>malloc(maxsize)
+        p = <char*>PyMem_Malloc(maxsize)
         if p == NULL:
             raise MemoryError('Not enough memory to allocate buffer '
                               'for encoder')
@@ -279,7 +281,7 @@ cdef class Encoder:
         self.tail = p
 
     def __dealloc__(self):
-        free(self.buffer)
+        PyMem_Free(self.buffer)
         self.buffer = NULL
         self.maxsize = 0
 
@@ -302,7 +304,7 @@ cdef class Encoder:
         new_size = self.maxsize
         while new_size < self.size + required:
             new_size = new_size * 2
-        new_buffer = <char*>realloc(self.buffer, <size_t>new_size)
+        new_buffer = <char*>PyMem_Realloc(self.buffer, <size_t>new_size)
         if new_buffer == NULL:
             raise MemoryError('Cannot realloc buffer for encoder')
 
