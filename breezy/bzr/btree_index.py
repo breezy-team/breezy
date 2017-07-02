@@ -17,7 +17,7 @@
 
 """B+Tree indices"""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -737,8 +737,7 @@ class BTreeGraphIndex(object):
         pages fit in that length.
         """
         recommended_read = self._transport.recommended_page_size()
-        recommended_pages = int(math.ceil(recommended_read /
-                                          float(_PAGE_SIZE)))
+        recommended_pages = int(math.ceil(recommended_read / _PAGE_SIZE))
         return recommended_pages
 
     def _compute_total_pages_in_index(self):
@@ -755,7 +754,7 @@ class BTreeGraphIndex(object):
             return self._row_offsets[-1]
         # This is the number of pages as defined by the size of the index. They
         # should be indentical.
-        total_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        total_pages = int(math.ceil(self._size / _PAGE_SIZE))
         return total_pages
 
     def _expand_offsets(self, offsets):
