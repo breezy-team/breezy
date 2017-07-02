@@ -33,6 +33,7 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
+import breezy
 import collections
 import errno
 import os
