@@ -50,7 +50,6 @@ from breezy import (
     errors,
     filters as _mod_filters,
     generate_ids,
-    globbing,
     merge,
     revision as _mod_revision,
     shelf,
