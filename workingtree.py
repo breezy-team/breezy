@@ -25,6 +25,10 @@ from cStringIO import (
 from collections import defaultdict
 import errno
 from dulwich.errors import NotGitRepository
+from dulwich.ignore import (
+    read_ignore_patterns,
+    translate as translate_ignore,
+    )
 from dulwich.index import (
     Index,
     changes_from_tree,
@@ -42,12 +46,14 @@ from dulwich.objects import (
 from dulwich.repo import Repo
 import os
 import posixpath
+import re
 import stat
 import sys
 
 from ... import (
     errors,
     conflicts as _mod_conflicts,
+    globbing,
     ignores,
     lock,
     osutils,
@@ -519,20 +525,48 @@ class GitWorkingTree(workingtree.WorkingTree):
             path = self.id2path(file_id)
         return os.lstat(self.abspath(path)).st_mtime
 
+    def is_ignored(self, filename):
+        r"""Check whether the filename matches an ignore pattern.
+
+        Patterns containing '/' or '\' need to match the whole path;
+        others match against only the last component.  Patterns starting
+        with '!' are ignore exceptions.  Exceptions take precedence
+        over regular patterns and cause the filename to not be ignored.
+
+        If the file is ignored, returns the pattern which caused it to
+        be ignored, otherwise None.  So this can simply be used as a
+        boolean if desired."""
+        if getattr(self, '_global_ignoreglobster', None) is None:
+            ignore_globs = set()
+            ignore_globs.update(ignores.get_runtime_ignores())
+            ignore_globs.update(ignores.get_user_ignores())
+            self._global_ignoreglobster = globbing.ExceptionGlobster(ignore_globs)
+        if self._global_ignoreglobster.match(filename):
+            return True
+        if osutils.file_kind(self.abspath(filename)) == 'directory':
+            filename += b'/'
+        ignore_list = self.get_ignore_list()
+        for pattern in ignore_list:
+            if re.match(pattern, filename):
+                return True
+        else:
+            return False
+
     def get_ignore_list(self):
         ignoreset = getattr(self, '_ignoreset', None)
         if ignoreset is not None:
             return ignoreset
 
+        # TODO(jelmer): Handle other .gitignore files
         ignore_globs = set()
-        ignore_globs.update(ignores.get_runtime_ignores())
-        ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(IGNORE_FILENAME):
             f = self.get_file_byname(IGNORE_FILENAME)
             try:
-                # FIXME: Parse git file format, rather than assuming it's
-                # the same as for bzr's native formats.
-                ignore_globs.update(ignores.parse_ignore_file(f))
+                patterns = read_ignore_patterns(f)
+                for pattern in patterns:
+                    ignore_globs.add(translate_ignore(pattern))
+                    # TODO(jelmer): Urgh.
+                    ignore_globs.add(translate_ignore(pattern.rstrip('/') + '/**'))
             finally:
                 f.close()
         self._ignoreset = ignore_globs
