@@ -17,6 +17,9 @@
 
 """Black-box tests for brz log."""
 
+from __future__ import absolute_import
+
+
 import os
 
 from breezy import (
@@ -474,7 +477,7 @@ class TestLogTags(TestLog):
 class TestLogSignatures(TestLog):
 
     def test_log_with_signatures(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
 
         tree = self.make_linear_branch(format='dirstate-tags')
 
@@ -482,7 +485,7 @@ class TestLogSignatures(TestLog):
         self.assertTrue('signature: no signature' in log)
 
     def test_log_without_signatures(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
 
         tree = self.make_linear_branch(format='dirstate-tags')
 

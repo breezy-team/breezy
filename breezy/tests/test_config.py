@@ -176,7 +176,6 @@ sample_config_text = u"""
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
 change_editor=vimdiff -of @new_path @old_path
-gpg_signing_command=gnome-gpg
 gpg_signing_key=DD4D5088
 log_format=short
 validate_signatures_in_log=true
@@ -232,7 +231,6 @@ check_signatures=require
 # test trailing / matching with no children
 [/a/]
 check_signatures=check-available
-gpg_signing_command=false
 gpg_signing_key=default
 user_local_option=local
 # test trailing / matching

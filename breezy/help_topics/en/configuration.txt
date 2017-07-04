@@ -498,16 +498,6 @@ false
     This section only applies to the branch at this directory and not
     branches below it.
 
-gpg_signing_command
-~~~~~~~~~~~~~~~~~~~
-
-(Default: "gpg"). Which program should be used to sign and check revisions.
-For example::
-
-    gpg_signing_command = /usr/bin/gnpg
-
-The specified command must accept the options "--clearsign" and "-u <email>".
-
 bzr_remote_path
 ~~~~~~~~~~~~~~~
 
