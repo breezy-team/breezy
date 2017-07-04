@@ -512,9 +512,14 @@ class LocalGitRepository(GitRepository):
         """See Repository.has_revisions."""
         return set(filter(self.has_revision, revision_ids))
 
-    def get_revisions(self, revids):
+    def iter_revisions(self, revision_ids):
         """See Repository.get_revisions."""
-        return [self.get_revision(r) for r in revids]
+        for revid in revision_ids:
+            try:
+                rev = self.get_revision(revid)
+            except errors.NoSuchRevision:
+                rev = None
+            yield (revid, rev)
 
     def revision_trees(self, revids):
         """See Repository.revision_trees."""
