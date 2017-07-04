@@ -60,7 +60,8 @@ External Compatibility Breaks
    ``python-gpgme``. (Jelmer Vernooĳ, #1702308)
 
  * ``python-gpg`` is now used for signing commits, rather than shelling
-   out to the gnupg command. (Jelmer Vernooĳ, #847388)
+   out to the gnupg command. The ``gpg_signing_command`` option has been
+   removed.  (Jelmer Vernooĳ, #847388)
 
 New Features
 ************
