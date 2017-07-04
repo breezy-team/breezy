@@ -27,7 +27,6 @@ editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
-gpg_signing_command=name-of-program
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
@@ -798,10 +797,6 @@ class IniBasedConfig(Config):
         else:
             return None
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        return self._get_user_option('gpg_signing_command')
-
     def _log_format(self):
         """See Config.log_format."""
         return self._get_user_option('log_format')
@@ -1313,10 +1308,6 @@ class BranchConfig(Config):
 
     def remove_user_option(self, option_name, section_name=None):
         self._get_branch_data_config().remove_option(option_name, section_name)
-
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        return self._get_safe_value('_gpg_signing_command')
 
     def _post_commit(self):
         """See Config.post_commit."""
@@ -2705,14 +2696,6 @@ option_registry.register(
 option_registry.register(
     Option('email', override_from_env=['BRZ_EMAIL'], default=default_email,
            help='The users identity'))
-option_registry.register(
-    Option('gpg_signing_command',
-           default='gpg',
-           help="""\
-Program to use use for creating signatures.
-
-This should support at least the -u and --clearsign options.
-"""))
 option_registry.register(
     Option('gpg_signing_key',
            default=None,

@@ -17,6 +17,8 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
+from __future__ import absolute_import
+
 import os
 import subprocess
 import stat

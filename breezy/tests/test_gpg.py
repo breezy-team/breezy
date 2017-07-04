@@ -43,81 +43,8 @@ class FakeConfig(config.MemoryStack):
         if content is None:
             content = '''
 gpg_signing_key=amy@example.com
-gpg_signing_command=false'''
+'''
         super(FakeConfig, self).__init__(content)
-
-
-class TestCommandLine(tests.TestCase):
-
-    def setUp(self):
-        super(TestCommandLine, self).setUp()
-        self.my_gpg = gpg.GPGStrategy(FakeConfig())
-
-    def test_signing_command_line(self):
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         self.my_gpg._command_line())
-
-    def test_signing_command_line_from_default(self):
-        # Using 'default' for gpg_signing_key will use the mail part of 'email'
-        my_gpg = gpg.GPGStrategy(FakeConfig('''
-email=Amy <amy@example.com>
-gpg_signing_key=default
-gpg_signing_command=false'''))
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         my_gpg._command_line())
-
-    def test_signing_command_line_from_email(self):
-        # Not setting gpg_signing_key will use the mail part of 'email'
-        my_gpg = gpg.GPGStrategy(FakeConfig('''
-email=Amy <amy@example.com>
-gpg_signing_command=false'''))
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         my_gpg._command_line())
-
-    def test_checks_return_code(self):
-        # This test needs a unix like platform - one with 'false' to run.
-        # if you have one, please make this work :)
-        self.assertRaises(errors.SigningFailed, self.my_gpg.sign, 'content')
-
-    def assertProduces(self, content):
-        # This needs a 'cat' command or similar to work.
-        if sys.platform == 'win32':
-            # Windows doesn't come with cat, and we don't require it
-            # so lets try using python instead.
-            # But stupid windows and line-ending conversions.
-            # It is too much work to make sys.stdout be in binary mode.
-            # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
-            self.my_gpg._command_line = lambda:[sys.executable, '-c',
-                    'import sys; sys.stdout.write(sys.stdin.read())']
-            new_content = content.replace('\n', '\r\n')
-
-            self.assertEqual(new_content, self.my_gpg.sign(content))
-        else:
-            self.my_gpg._command_line = lambda:['cat', '-']
-            self.assertEqual(content, self.my_gpg.sign(content))
-
-    def test_returns_output(self):
-        content = "some content\nwith newlines\n"
-        self.assertProduces(content)
-
-    def test_clears_progress(self):
-        content = "some content\nwith newlines\n"
-        old_clear_term = ui.ui_factory.clear_term
-        clear_term_called = []
-        def clear_term():
-            old_clear_term()
-            clear_term_called.append(True)
-        ui.ui_factory.clear_term = clear_term
-        try:
-            self.assertProduces(content)
-        finally:
-            ui.ui_factory.clear_term = old_clear_term
-        self.assertEqual([True], clear_term_called)
-
-    def test_aborts_on_unicode(self):
-        """You can't sign Unicode text; it must be encoded first."""
-        self.assertRaises(errors.BzrBadParameterUnicode,
-                          self.assertProduces, u'foo')
 
 
 class TestVerify(TestCase):
@@ -526,10 +453,10 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 class TestDisabled(TestCase):
 
     def test_sign(self):
-        self.assertRaises(errors.SigningFailed,
+        self.assertRaises(gpg.SigningFailed,
                           gpg.DisabledGPGStrategy(None).sign, 'content')
 
     def test_verify(self):
-        self.assertRaises(errors.SignatureVerificationFailed,
+        self.assertRaises(gpg.SignatureVerificationFailed,
                           gpg.DisabledGPGStrategy(None).verify, 'content',
                           'testament')

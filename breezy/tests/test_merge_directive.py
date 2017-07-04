@@ -464,8 +464,6 @@ class TestMergeDirectiveBranch(object):
         class FakeBranch(object):
             def get_config_stack(self):
                 return self
-            def gpg_signing_command(self):
-                return 'loopback'
         md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')

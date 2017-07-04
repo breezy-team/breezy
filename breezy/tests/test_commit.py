@@ -33,7 +33,6 @@ from ..commit import (
 from ..errors import (
     PointlessCommit,
     BzrError,
-    SigningFailed,
     LockContention,
     )
 from . import (
@@ -53,7 +52,6 @@ class MustSignConfig(config.MemoryStack):
 
     def __init__(self):
         super(MustSignConfig, self).__init__('''
-gpg_signing_command=cat -
 create_signatures=always
 ''')
 
@@ -431,7 +429,6 @@ class TestCommit(TestCaseWithTransport):
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack('''
-gpg_signing_command=cat -
 create_signatures=always
 ''')
             commit.Commit(config_stack=conf).commit(
@@ -457,10 +454,9 @@ create_signatures=always
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
             conf = config.MemoryStack('''
-gpg_signing_command=cat -
 create_signatures=always
 ''')
-            self.assertRaises(SigningFailed,
+            self.assertRaises(breezy.gpg.SigningFailed,
                               commit.Commit(config_stack=conf).commit,
                               message="base",
                               allow_pointless=True,

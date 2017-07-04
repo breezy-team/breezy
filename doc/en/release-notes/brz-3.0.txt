@@ -59,6 +59,9 @@ External Compatibility Breaks
  * ``python-gpg`` is now used for checking GPG signatures rather than
    ``python-gpgme``. (Jelmer Vernooĳ, #1702308)
 
+ * ``python-gpg`` is now used for signing commits, rather than shelling
+   out to the gnupg command. (Jelmer Vernooĳ, #847388)
+
 New Features
 ************
 
