@@ -123,10 +123,10 @@ gpg_signing_command=false'''))
 class TestVerify(TestCase):
 
     def import_keys(self):
-        import gpgme
-        context = gpgme.Context()
+        import gpg
+        context = gpg.Context()
 
-        key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mQENBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -158,7 +158,7 @@ LhnkL5l4MO0wrUds0UWRwa3d7j/P2ExrqXdlLmEzrifWyEQ=
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
-        secret_key = BytesIO(b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
+        secret_key = gpg.Data(b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 lQOYBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -217,7 +217,7 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
 -----END PGP PRIVATE KEY BLOCK-----
 """)
 
-        revoked_key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        revoked_key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjlW5gEEAOb/6P+TVM59E897wRtatxys2BhsHCXM4T7xjIiANfDwejDdifqh
@@ -242,7 +242,7 @@ YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
-        expired_key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        expired_key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjZ6PAEEALkR4GcFQidCCxV7pgQwQd5MZua0YO2l92fVqHX+PhnZ6egCLKdD
@@ -263,14 +263,14 @@ kRk=
 =p0gt
 -----END PGP PUBLIC KEY BLOCK-----
 """)
-        context.import_(key)
-        context.import_(secret_key)
-        context.import_(revoked_key)
-        context.import_(expired_key)
+        context.op_import(key)
+        context.op_import(secret_key)
+        context.op_import(revoked_key)
+        context.op_import(expired_key)
 
     def test_verify_untrusted_but_accepted(self):
         #untrusted by gpg but listed as acceptable_keys by user
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -301,7 +301,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                             plain))
 
     def test_verify_unacceptable_key(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -332,7 +332,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                          my_gpg.verify(content, plain))
 
     def test_verify_valid_but_untrusted(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -362,7 +362,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                             plain))
 
     def test_verify_bad_testament(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -394,7 +394,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 
 
     def test_verify_revoked_signature(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -418,7 +418,7 @@ JFA6kUIJU2w9LU/b88Y=
                             plain))
 
     def test_verify_invalid(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
@@ -443,7 +443,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                             my_gpg.verify(content, plain))
 
     def test_verify_expired_but_valid(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
@@ -470,7 +470,7 @@ sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
                             my_gpg.verify(content, plain))
 
     def test_verify_unknown_key(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
@@ -494,7 +494,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
                             my_gpg.verify(content, plain))
 
     def test_set_acceptable_keys(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
@@ -502,7 +502,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_from_config(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig(
                 'acceptable_keys=bazaar@example.com'))
@@ -511,7 +511,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_unknown(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.notes = []
         def note(*args):

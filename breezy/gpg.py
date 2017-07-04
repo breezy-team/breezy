@@ -29,7 +29,6 @@ import subprocess
 
 from breezy import (
     config,
-    errors,
     trace,
     ui,
     )
@@ -39,6 +38,9 @@ from breezy.i18n import (
     )
 """)
 
+from . import (
+    errors,
+    )
 from .sixish import (
     BytesIO,
     )
@@ -49,6 +51,14 @@ SIGNATURE_KEY_MISSING = 1
 SIGNATURE_NOT_VALID = 2
 SIGNATURE_NOT_SIGNED = 3
 SIGNATURE_EXPIRED = 4
+
+
+class GpgNotInstalled(errors.DependencyNotPresent):
+
+    _fmt = 'python-gpg is not installed, it is needed to verify signatures'
+
+    def __init__(self, error):
+        errors.DependencyNotPresent.__init__(self, 'gpg', error)
 
 
 def bulk_verify_signatures(repository, revids, strategy,
@@ -162,8 +172,8 @@ class GPGStrategy(object):
     def __init__(self, config_stack):
         self._config_stack = config_stack
         try:
-            import gpgme
-            self.context = gpgme.Context()
+            import gpg
+            self.context = gpg.Context()
         except ImportError as error:
             pass # can't use verify()
 
@@ -175,7 +185,7 @@ class GPGStrategy(object):
         :return: boolean if this strategy can verify signatures
         """
         try:
-            import gpgme
+            import gpg
             return True
         except ImportError as error:
             return False
@@ -234,70 +244,69 @@ class GPGStrategy(object):
         :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid
         """
         try:
-            import gpgme
+            import gpg
         except ImportError as error:
-            raise errors.GpgmeNotInstalled(error)
+            raise errors.GpgNotInstalled(error)
 
-        signature = BytesIO(content)
-        plain_output = BytesIO()
+        signature = gpg.Data(content)
         try:
-            result = self.context.verify(signature, None, plain_output)
-        except gpgme.GpgmeError as error:
+            plain_output, result = self.context.verify(signature)
+        except gpg.errors.BadSignatures as error:
+            fingerprint = error.result.signatures[0].fpr
+            if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_EXPIRED:
+                expires = self.context.get_key(error.result.signatures[0].fpr).subkeys[0].expires
+                if expires > error.result.signatures[0].timestamp:
+                    # The expired key was not expired at time of signing.
+                    # test_verify_expired_but_valid()
+                    return SIGNATURE_EXPIRED, fingerprint[-8:]
+                else:
+                    # I can't work out how to create a test where the signature
+                    # was expired at the time of signing.
+                    return SIGNATURE_NOT_VALID, None
+
+            # GPG does not know this key.
+            # test_verify_unknown_key()
+            if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_MISSING:
+                return SIGNATURE_KEY_MISSING, fingerprint[-8:]
+
+            return SIGNATURE_NOT_VALID, None
+        except gpg.errors.GPGMEError as error:
             raise errors.SignatureVerificationFailed(error[2])
 
         # No result if input is invalid.
         # test_verify_invalid()
-        if len(result) == 0:
+        if len(result.signatures) == 0:
             return SIGNATURE_NOT_VALID, None
         # User has specified a list of acceptable keys, check our result is in
         # it.  test_verify_unacceptable_key()
-        fingerprint = result[0].fpr
+        fingerprint = result.signatures[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
         # Check the signature actually matches the testament.
         # test_verify_bad_testament()
-        if testament != plain_output.getvalue():
+        if testament != plain_output:
             return SIGNATURE_NOT_VALID, None
-        # Yay gpgme set the valid bit.
+        # Yay gpg set the valid bit.
         # Can't write a test for this one as you can't set a key to be
-        # trusted using gpgme.
-        if result[0].summary & gpgme.SIGSUM_VALID:
+        # trusted using gpg.
+        if result.signatures[0].summary & gpg.constants.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
-        if result[0].summary & gpgme.SIGSUM_RED:
+        if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
-        # GPG does not know this key.
-        # test_verify_unknown_key()
-        if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
-            return SIGNATURE_KEY_MISSING, fingerprint[-8:]
         # Summary isn't set if sig is valid but key is untrusted but if user
         # has explicity set the key as acceptable we can validate it.
-        if result[0].summary == 0 and self.acceptable_keys is not None:
+        if result.signatures[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
                 # test_verify_untrusted_but_accepted()
                 return SIGNATURE_VALID, None
         # test_verify_valid_but_untrusted()
-        if result[0].summary == 0 and self.acceptable_keys is None:
-            return SIGNATURE_NOT_VALID, None
-        if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
-            expires = self.context.get_key(result[0].fpr).subkeys[0].expires
-            if expires > result[0].timestamp:
-                # The expired key was not expired at time of signing.
-                # test_verify_expired_but_valid()
-                return SIGNATURE_EXPIRED, fingerprint[-8:]
-            else:
-                # I can't work out how to create a test where the signature
-                # was expired at the time of signing.
-                return SIGNATURE_NOT_VALID, None
-        # A signature from a revoked key gets this.
-        # test_verify_revoked_signature()
-        if ((result[0].summary & gpgme.SIGSUM_SYS_ERROR
-             or result[0].status.strerror == 'Certificate revoked')):
+        if result.signatures[0].summary == 0 and self.acceptable_keys is None:
             return SIGNATURE_NOT_VALID, None
         # Other error types such as revoked keys should (I think) be caught by
         # SIGSUM_RED so anything else means something is buggy.

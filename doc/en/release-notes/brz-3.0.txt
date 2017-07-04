@@ -56,6 +56,9 @@ External Compatibility Breaks
    This simplifies ``brz init --help``.
    (Neil Martinsen-Burrell, #330494)
 
+ * ``python-gpg`` is now used for checking GPG signatures rather than
+   ``python-gpgme``. (Jelmer Vernooĳ, #1702308)
+
 New Features
 ************
 

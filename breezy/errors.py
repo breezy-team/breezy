@@ -1795,14 +1795,6 @@ class DependencyNotPresent(BzrError):
         BzrError.__init__(self, library=library, error=error)
 
 
-class GpgmeNotInstalled(DependencyNotPresent):
-
-    _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
-
-    def __init__(self, error):
-        DependencyNotPresent.__init__(self, 'gpgme', error)
-
-
 class WorkingTreeNotRevision(BzrError):
 
     _fmt = ("The working tree for %(basedir)s has changed since"
