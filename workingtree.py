@@ -541,18 +541,19 @@ class GitWorkingTree(workingtree.WorkingTree):
             ignore_globs.update(ignores.get_runtime_ignores())
             ignore_globs.update(ignores.get_user_ignores())
             self._global_ignoreglobster = globbing.ExceptionGlobster(ignore_globs)
-        if self._global_ignoreglobster.match(filename):
-            return True
+        match = self._global_ignoreglobster.match(filename)
+        if match is not None:
+            return match
         if osutils.file_kind(self.abspath(filename)) == 'directory':
             filename += b'/'
-        ignore_list = self.get_ignore_list()
-        for pattern in ignore_list:
-            if re.match(pattern, filename):
-                return True
+        ignore_list = self._get_ignore_list()
+        for pattern, re_match in ignore_list:
+            if re_match.match(filename):
+                return pattern
         else:
-            return False
+            return None
 
-    def get_ignore_list(self):
+    def _get_ignore_list(self):
         ignoreset = getattr(self, '_ignoreset', None)
         if ignoreset is not None:
             return ignoreset
@@ -564,9 +565,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             try:
                 patterns = read_ignore_patterns(f)
                 for pattern in patterns:
-                    ignore_globs.add(translate_ignore(pattern))
+                    ignore_globs.add((pattern, re.compile(translate_ignore(pattern))))
                     # TODO(jelmer): Urgh.
-                    ignore_globs.add(translate_ignore(pattern.rstrip('/') + '/**'))
+                    ignore_globs.add((pattern, re.compile(translate_ignore(pattern.rstrip('/') + '/**'))))
             finally:
                 f.close()
         self._ignoreset = ignore_globs
@@ -693,7 +694,6 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     @needs_read_lock
     def list_files(self, include_root=False, from_dir=None, recursive=True):
-        # FIXME: Yield non-versioned files
         if from_dir is None:
             from_dir = ""
         dir_ids = {}
@@ -729,7 +729,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             else:
                 kind = osutils.file_kind(self.abspath(path))
                 ie = fk_entries[kind]()
-                yield path, "?", kind, None, ie
+                yield path, ("I" if self.is_ignored(path) else "?"), kind, None, ie
 
     @needs_read_lock
     def all_file_ids(self):
