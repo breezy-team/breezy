@@ -413,14 +413,6 @@ class TestErrors(tests.TestCase):
             "location specified in the merge directive is not a branch: "
             "foo.", str(error))
 
-    def test_malformed_bug_identifier(self):
-        """Test the formatting of MalformedBugIdentifier."""
-        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
-        self.assertEqual(
-            'Did not understand bug identifier bogus: reason for bogosity. '
-            'See "brz help bugs" for more information on this feature.',
-            str(error))
-
     def test_unexpected_smart_server_response(self):
         e = errors.UnexpectedSmartServerResponse(('not yes',))
         self.assertEqual(
@@ -509,13 +501,6 @@ class TestErrors(tests.TestCase):
         self.assertEqual(
             "Invalid URL join request: Reason: 'base path' + ('args',)",
             str(e))
-
-    def test_incorrect_url(self):
-        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
-        self.assertEqual(
-            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
-             "http://bug.com/"),
-            str(err))
 
     def test_unable_encode_path(self):
         err = errors.UnableEncodePath('foo', 'executable')
@@ -724,14 +709,6 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
                              "Please run brz reconcile on this repository." %
                              repo.controldir.root_transport.base,
                              str(error))
-
-    def test_unknown_bug_tracker_abbreviation(self):
-        """Test the formatting of UnknownBugTrackerAbbreviation."""
-        branch = self.make_branch('some_branch')
-        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
-        self.assertEqual(
-            "Cannot find registered bug tracker called xxx on %s" % branch,
-            str(error))
 
     def test_not_branch_bzrdir_with_repo(self):
         controldir = self.make_repository('repo').controldir

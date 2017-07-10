@@ -3547,10 +3547,10 @@ class cmd_commit(Command):
                 tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id)
-            except errors.UnknownBugTrackerAbbreviation:
+            except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
-            except errors.MalformedBugIdentifier as e:
+            except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     "%s\nCommit refused.") % (str(e),))
 
