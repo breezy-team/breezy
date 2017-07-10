@@ -3226,16 +3226,6 @@ class IllegalOptionName(BzrError):
         self.name = name
 
 
-class NoCompatibleInter(BzrError):
-
-    _fmt = ('No compatible object available for operations from %(source)r '
-            'to %(target)r.')
-
-    def __init__(self, source, target):
-        self.source = source
-        self.target = target
-
-
 class HpssVfsRequestNotAllowed(BzrError):
 
     _fmt = ("VFS requests over the smart server are not allowed. Encountered: "

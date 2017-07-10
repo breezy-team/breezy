@@ -18,7 +18,17 @@
 
 from __future__ import absolute_import
 
-from .errors import NoCompatibleInter
+from .errors import BzrError
+
+
+class NoCompatibleInter(BzrError):
+
+    _fmt = ('No compatible object available for operations from %(source)r '
+            'to %(target)r.')
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
 
 
 class InterObject(object):
