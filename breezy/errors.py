@@ -3181,14 +3181,6 @@ class NoWhoami(BzrError):
         'E.g. brz whoami "Your Name <name@example.com>"')
 
 
-class InvalidPattern(BzrError):
-
-    _fmt = ('Invalid pattern(s) found. %(msg)s')
-
-    def __init__(self, msg):
-        self.msg = msg
-
-
 class RecursiveBind(BzrError):
 
     _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '

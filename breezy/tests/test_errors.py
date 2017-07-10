@@ -619,11 +619,6 @@ class TestErrors(tests.TestCase):
         err = errors.NotBranchError('path', controldir=FakeBzrDir())
         self.assertEqual('Not a branch: "path": NotBranchError.', str(err))
 
-    def test_invalid_pattern(self):
-        error = errors.InvalidPattern('Bad pattern msg.')
-        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
-            str(error))
-
     def test_recursive_bind(self):
         error = errors.RecursiveBind('foo_bar_branch')
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '

@@ -17,7 +17,7 @@
 
 import re
 
-from .. import errors
+from .. import errors, lazy_regex
 from ..globbing import (
     Globster,
     ExceptionGlobster,
@@ -316,7 +316,7 @@ class TestGlobster(TestCase):
         """Ensure that globster handles bad patterns cleanly."""
         patterns = [u'RE:[', u'/home/foo', u'RE:*.cpp']
         g = Globster(patterns)
-        e = self.assertRaises(errors.InvalidPattern, g.match, 'filename')
+        e = self.assertRaises(lazy_regex.InvalidPattern, g.match, 'filename')
         self.assertContainsRe(e.msg,
             "File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
 

@@ -31,6 +31,14 @@ import re
 from . import errors
 
 
+class InvalidPattern(errors.BzrError):
+
+    _fmt = ('Invalid pattern(s) found. %(msg)s')
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
 class LazyRegex(object):
     """A proxy around a real regex, which won't be compiled until accessed."""
 
@@ -71,7 +79,7 @@ class LazyRegex(object):
         except re.error as e:
             # raise InvalidPattern instead of re.error as this gives a
             # cleaner message to the user.
-            raise errors.InvalidPattern('"' + args[0] + '" ' +str(e))
+            raise InvalidPattern('"' + args[0] + '" ' +str(e))
 
     def __getstate__(self):
         """Return the state to use when pickling."""

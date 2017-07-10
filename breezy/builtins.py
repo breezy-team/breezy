@@ -40,6 +40,7 @@ from breezy import (
     errors,
     globbing,
     hooks,
+    lazy_regex,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -3190,7 +3191,7 @@ class cmd_ignore(Command):
                             'Invalid ignore patterns found. %s',
                             bad_patterns_count) % bad_patterns)
             ui.ui_factory.show_error(msg)
-            raise errors.InvalidPattern('')
+            raise lazy_regex.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
