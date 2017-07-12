@@ -2485,52 +2485,6 @@ class TagAlreadyExists(BzrError):
         self.tag_name = tag_name
 
 
-class MalformedBugIdentifier(BzrError):
-
-    _fmt = ('Did not understand bug identifier %(bug_id)s: %(reason)s. '
-            'See "brz help bugs" for more information on this feature.')
-
-    def __init__(self, bug_id, reason):
-        self.bug_id = bug_id
-        self.reason = reason
-
-
-class InvalidBugTrackerURL(BzrError):
-
-    _fmt = ("The URL for bug tracker \"%(abbreviation)s\" doesn't "
-            "contain {id}: %(url)s")
-
-    def __init__(self, abbreviation, url):
-        self.abbreviation = abbreviation
-        self.url = url
-
-
-class UnknownBugTrackerAbbreviation(BzrError):
-
-    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
-            "on %(branch)s")
-
-    def __init__(self, abbreviation, branch):
-        self.abbreviation = abbreviation
-        self.branch = branch
-
-
-class InvalidLineInBugsProperty(BzrError):
-
-    _fmt = ("Invalid line in bugs property: '%(line)s'")
-
-    def __init__(self, line):
-        self.line = line
-
-
-class InvalidBugStatus(BzrError):
-
-    _fmt = ("Invalid bug status: '%(status)s'")
-
-    def __init__(self, status):
-        self.status = status
-
-
 class UnexpectedSmartServerResponse(BzrError):
 
     _fmt = "Could not understand response from smart server: %(response_tuple)r"

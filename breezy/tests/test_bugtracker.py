@@ -15,8 +15,35 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from .. import bugtracker, errors, urlutils
+from .. import bugtracker, urlutils
 from . import TestCase, TestCaseWithMemoryTransport
+
+
+class ErrorsTest(TestCaseWithMemoryTransport):
+
+    def test_unknown_bug_tracker_abbreviation(self):
+        """Test the formatting of UnknownBugTrackerAbbreviation."""
+        branch = self.make_branch('some_branch')
+        error = bugtracker.UnknownBugTrackerAbbreviation('xxx', branch)
+        self.assertEqual(
+            "Cannot find registered bug tracker called xxx on %s" % branch,
+            str(error))
+
+    def test_malformed_bug_identifier(self):
+        """Test the formatting of MalformedBugIdentifier."""
+        error = bugtracker.MalformedBugIdentifier(
+            'bogus', 'reason for bogosity')
+        self.assertEqual(
+            'Did not understand bug identifier bogus: reason for bogosity. '
+            'See "brz help bugs" for more information on this feature.',
+            str(error))
+
+    def test_incorrect_url(self):
+        err = bugtracker.InvalidBugTrackerURL('foo', 'http://bug.com/')
+        self.assertEqual(
+            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
+             "http://bug.com/"),
+            str(err))
 
 
 class TestGetBugURL(TestCaseWithMemoryTransport):
@@ -54,7 +81,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
     def test_unrecognized_abbreviation_raises_error(self):
         """If the abbreviation is unrecognized, then raise an error."""
         branch = self.make_branch('some_branch')
-        self.assertRaises(errors.UnknownBugTrackerAbbreviation,
+        self.assertRaises(bugtracker.UnknownBugTrackerAbbreviation,
                           bugtracker.get_bug_url, 'xxx', branch, '1234')
         self.assertEqual([('get', 'xxx', branch)], self.tracker_type.log)
 
@@ -130,7 +157,8 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         config = branch.get_config()
         config.set_user_option('bugtracker_foo_url', 'http://bugs.com/view.html')
         tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
-        self.assertRaises(errors.InvalidBugTrackerURL, tracker.get_bug_url, '1234')
+        self.assertRaises(bugtracker.InvalidBugTrackerURL, tracker.get_bug_url,
+                '1234')
 
 
 class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
@@ -179,7 +207,7 @@ class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
         tracker = bugtracker.UniqueIntegerBugTracker('xxx',
                 'http://bugs.com/')
         self.assertRaises(
-            errors.MalformedBugIdentifier, tracker.check_bug_id, 'red')
+            bugtracker.MalformedBugIdentifier, tracker.check_bug_id, 'red')
 
 class TestURLParametrizedBugTracker(TestCaseWithMemoryTransport):
     """Tests for URLParametrizedBugTracker."""
@@ -230,7 +258,7 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
         should raise an error.
         """
         self.assertRaises(
-            errors.MalformedBugIdentifier, self.tracker.get_bug_url, 'bad')
+            bugtracker.MalformedBugIdentifier, self.tracker.get_bug_url, 'bad')
 
 
 class TestPropertyEncoding(TestCase):
