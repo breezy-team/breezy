@@ -3083,16 +3083,6 @@ class NoRoundtrippingSupport(BzrError):
         self.target_branch = target_branch
 
 
-class FileTimestampUnavailable(BzrError):
-
-    _fmt = "The filestamp for %(path)s is not available."
-
-    internal_error = True
-
-    def __init__(self, path):
-        self.path = path
-
-
 class NoColocatedBranchSupport(BzrError):
 
     _fmt = ("%(controldir)r does not support co-located branches.")

@@ -50,7 +50,11 @@ from ..decorators import needs_read_lock
 from ..sixish import (
     viewvalues,
     )
-from ..tree import InterTree, Tree
+from ..tree import (
+    FileTimestampUnavailable,
+    InterTree,
+    Tree,
+    )
 
 
 class InventoryTree(Tree):
@@ -611,7 +615,7 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:
-            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+            raise FileTimestampUnavailable(self.id2path(file_id))
         return revision.timestamp
 
     def get_file_size(self, file_id):

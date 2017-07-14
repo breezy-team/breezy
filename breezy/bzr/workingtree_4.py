@@ -81,6 +81,7 @@ from ..sixish import (
     )
 from ..transport.local import LocalTransport
 from ..tree import (
+    FileTimestampUnavailable,
     InterTree,
     )
 from ..workingtree import (
@@ -1868,7 +1869,7 @@ class DirStateRevisionTree(InventoryTree):
         try:
             rev = self._repository.get_revision(last_changed_revision)
         except errors.NoSuchRevision:
-            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+            raise FileTimestampUnavailable(self.id2path(file_id))
         return rev.timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):

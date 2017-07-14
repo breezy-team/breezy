@@ -21,8 +21,19 @@ from breezy import (
     revision,
     tree as _mod_tree,
     )
-from breezy.tests import TestCaseWithTransport
+from breezy.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 from breezy.tree import InterTree
+
+
+class ErrorTests(TestCase):
+
+    def test_file_timestamp_unavailable(self):
+        e = FileTimestampUnavailable("/path/foo")
+        self.assertEqual("The filestamp for /path/foo is not available.",
+                         str(e))
 
 
 class TestInterTree(TestCaseWithTransport):

@@ -29,9 +29,7 @@ from breezy import (
     conflicts as _mod_conflicts,
     debug,
     delta,
-    errors,
     filters,
-    osutils,
     revision as _mod_revision,
     rules,
     trace,
@@ -42,11 +40,25 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    osutils,
+    )
 from .decorators import needs_read_lock
 from .inter import InterObject
 from .sixish import (
     viewvalues,
     )
+
+
+class FileTimestampUnavailable(errors.BzrError):
+
+    _fmt = "The filestamp for %(path)s is not available."
+
+    internal_error = True
+
+    def __init__(self, path):
+        self.path = path
 
 
 class Tree(object):

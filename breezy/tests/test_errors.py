@@ -689,11 +689,6 @@ class TestErrorFormatting(tests.TestCase):
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
 
-    def test_file_timestamp_unavailable(self):
-        e = errors.FileTimestampUnavailable("/path/foo")
-        self.assertEqual("The filestamp for /path/foo is not available.",
-                         str(e))
-
     def test_transform_rename_failed(self):
         e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
         self.assertEqual(
