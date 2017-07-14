@@ -1032,7 +1032,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
     def test_with_features(self):
         tree = self.make_branch_and_tree('tree', format='2a')
         tree.controldir.update_feature_flags({"bar": "required"})
-        self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
+        self.assertRaises(bzrdir.MissingFeature, bzrdir.BzrDir.open, 'tree')
         bzrdir.BzrDirMetaFormat1.register_feature('bar')
         self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, 'bar')
         dir = bzrdir.BzrDir.open('tree')
@@ -1536,7 +1536,7 @@ class TestBzrFormat(TestCase):
         # Optional, so trigger an exception
         format = SampleBzrFormat()
         format.features = {"nested-trees": "required"}
-        self.assertRaises(errors.MissingFeature, format.check_support_status,
+        self.assertRaises(bzrdir.MissingFeature, format.check_support_status,
             True)
         self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
         SampleBzrFormat.register_feature("nested-trees")
@@ -1546,7 +1546,7 @@ class TestBzrFormat(TestCase):
         # treat unknown necessity as required
         format = SampleBzrFormat()
         format.features = {"nested-trees": "unknown"}
-        self.assertRaises(errors.MissingFeature, format.check_support_status,
+        self.assertRaises(bzrdir.MissingFeature, format.check_support_status,
             True)
         self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
         SampleBzrFormat.register_feature("nested-trees")

@@ -228,7 +228,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             tree.controldir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
         self.assertEqual(found_format.features.get("name"), "necessity")
-        self.assertRaises(errors.MissingFeature, found_format.check_support_status,
+        self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(bzrworkingtree.WorkingTreeFormatMetaDir.unregister_feature,
             "name")

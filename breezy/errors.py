@@ -3156,15 +3156,6 @@ class UnsupportedKindChange(BzrError):
         self.format = format
 
 
-class MissingFeature(BzrError):
-
-    _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
-
-    def __init__(self, feature):
-        self.feature = feature
-
-
 class PatchSyntax(BzrError):
     """Base class for patch syntax errors."""
 
