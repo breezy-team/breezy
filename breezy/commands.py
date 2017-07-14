@@ -37,7 +37,6 @@ from breezy import (
     cleanup,
     cmdline,
     debug,
-    errors,
     i18n,
     option,
     osutils,
@@ -51,10 +50,15 @@ from .i18n import gettext
 # Compatibility - Option used to be in commands.
 from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
-from . import registry
+from . import errors, registry
 from .sixish import (
     string_types,
     )
+
+
+class BzrOptionError(errors.BzrCommandError):
+
+    _fmt = "Error in command line options"
 
 
 class CommandInfo(object):

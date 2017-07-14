@@ -342,11 +342,6 @@ class NotWriteLocked(BzrError):
         self.not_locked = not_locked
 
 
-class BzrOptionError(BzrCommandError):
-
-    _fmt = "Error in command line options"
-
-
 class BadIndexFormatSignature(BzrError):
 
     _fmt = "%(value)s is not an index of type %(_type)s."
@@ -401,14 +396,6 @@ class BadIndexValue(BzrError):
     def __init__(self, value):
         BzrError.__init__(self)
         self.value = value
-
-
-class BadOptionValue(BzrError):
-
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
-
-    def __init__(self, name, value):
-        BzrError.__init__(self, name=name, value=value)
 
 
 class StrictCommitFailed(BzrError):
