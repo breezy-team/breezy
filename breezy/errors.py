@@ -259,15 +259,6 @@ class NoPublicBranch(BzrError):
         BzrError.__init__(self, branch_url=public_location)
 
 
-class NoHelpTopic(BzrError):
-
-    _fmt = ("No help could be found for '%(topic)s'. "
-        "Please use 'brz help topics' to obtain a list of topics.")
-
-    def __init__(self, topic):
-        self.topic = topic
-
-
 class NoSuchId(BzrError):
 
     _fmt = 'The file id "%(file_id)s" is not present in the tree %(tree)s.'
