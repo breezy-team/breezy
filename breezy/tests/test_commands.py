@@ -429,7 +429,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         def pre_command(cmd):
             hook_calls.append('pre')
             # verify that all subclasses of BzrCommandError caught too
-            raise errors.BzrOptionError()
+            raise commands.BzrOptionError()
 
         def post_command(cmd, e):
             self.fail('post_command should not be called')

@@ -44,7 +44,7 @@ class BadOptionValue(errors.BzrError):
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
 
     def __init__(self, name, value):
-        BzrError.__init__(self, name=name, value=value)
+        errors.BzrError.__init__(self, name=name, value=value)
 
 
 def _parse_revision_str(revstr):
@@ -314,7 +314,7 @@ class RegistryOption(Option):
     def validate_value(self, value):
         """Validate a value name"""
         if value not in self.registry:
-            raise errors.BadOptionValue(self.name, value)
+            raise BadOptionValue(self.name, value)
 
     def convert(self, value):
         """Convert a value name into an output type"""

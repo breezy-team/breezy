@@ -25,7 +25,10 @@ from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
     )
-from breezy.tree import InterTree
+from breezy.tree import (
+    FileTimestampUnavailable,
+    InterTree,
+    )
 
 
 class ErrorTests(TestCase):
