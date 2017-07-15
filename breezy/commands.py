@@ -218,6 +218,52 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
+# Overrides for common mispellings that heuristics get wrong
+_GUESS_OVERRIDES = {
+    'ic': {'ci': 0}, # heuristic finds nick
+    }
+
+
+def guess_command(cmd_name):
+    """Guess what command a user typoed.
+
+    :param cmd_name: Command to search for
+    :return: None if no command was found, name of a command otherwise
+    """
+    names = set()
+    for name in all_command_names():
+        names.add(name)
+        cmd = get_cmd_object(name)
+        names.update(cmd.aliases)
+    # candidate: modified levenshtein distance against cmd_name.
+    costs = {}
+    from . import patiencediff
+    for name in sorted(names):
+        matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
+        distance = 0.0
+        opcodes = matcher.get_opcodes()
+        for opcode, l1, l2, r1, r2 in opcodes:
+            if opcode == 'delete':
+                distance += l2-l1
+            elif opcode == 'replace':
+                distance += max(l2-l1, r2-l1)
+            elif opcode == 'insert':
+                distance += r2-r1
+            elif opcode == 'equal':
+                # Score equal ranges lower, making similar commands of equal
+                # length closer than arbitrary same length commands.
+                distance -= 0.1 * (l2-l1)
+        costs[name] = distance
+    costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
+    costs = sorted((value, key) for key, value in costs.iteritems())
+    if not costs:
+        return
+    if costs[0][0] > 4:
+        return
+    candidate = costs[0][1]
+    return candidate
+
+
 def get_cmd_object(cmd_name, plugins_override=True):
     """Return the command object for a command.
 
@@ -227,7 +273,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     try:
         return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
-        raise errors.BzrCommandError(gettext('unknown command "%s"') % cmd_name)
+        # No command found, see if this was a typo
+        candidate = guess_command(cmd_name)
+        if candidate is not None:
+            raise errors.BzrCommandError(
+                    gettext('unknown command "%s". Perhaps you meant "%s"')
+                    % (cmd_name, candidate))
+        raise errors.BzrCommandError(gettext('unknown command "%s"')
+                % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
