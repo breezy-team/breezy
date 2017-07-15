@@ -41,6 +41,7 @@ from .. import (
     trace,
     transport,
     ui,
+    urlutils,
     )
 from ..bzr import (
     remote as _mod_remote,
