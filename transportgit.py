@@ -324,6 +324,13 @@ class TransportRepo(BaseRepo):
         super(TransportRepo, self).__init__(object_store,
                 refs_container)
 
+    def controldir(self):
+        return self._controltransport.local_abspath('.')
+
+    @property
+    def path(self):
+        return self.transport.local_abspath('.')
+
     def _determine_file_mode(self):
         # Be consistent with bzr
         if sys.platform == 'win32':

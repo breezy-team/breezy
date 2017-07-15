@@ -26,8 +26,7 @@ from collections import defaultdict
 import errno
 from dulwich.errors import NotGitRepository
 from dulwich.ignore import (
-    read_ignore_patterns,
-    translate as translate_ignore,
+    IgnoreFilterManager,
     )
 from dulwich.index import (
     Index,
@@ -163,6 +162,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         if self._lock_count > 0:
             return
         self._lock_mode = None
+
+    def _cleanup(self):
+        pass
 
     def _detect_case_handling(self):
         try:
@@ -528,11 +530,6 @@ class GitWorkingTree(workingtree.WorkingTree):
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
 
-        Patterns containing '/' or '\' need to match the whole path;
-        others match against only the last component.  Patterns starting
-        with '!' are ignore exceptions.  Exceptions take precedence
-        over regular patterns and cause the filename to not be ignored.
-
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
@@ -546,32 +543,22 @@ class GitWorkingTree(workingtree.WorkingTree):
             return match
         if osutils.file_kind(self.abspath(filename)) == 'directory':
             filename += b'/'
-        ignore_list = self._get_ignore_list()
-        for pattern, re_match in ignore_list:
-            if re_match.match(filename):
-                return pattern
-        else:
+        ignore_manager = self._get_ignore_manager()
+        ps = list(ignore_manager.find_matching(filename))
+        if not ps:
             return None
+        if not ps[-1].is_exclude:
+            return None
+        return bytes(ps[-1])
 
-    def _get_ignore_list(self):
-        ignoreset = getattr(self, '_ignoreset', None)
-        if ignoreset is not None:
-            return ignoreset
+    def _get_ignore_manager(self):
+        ignoremanager = getattr(self, '_ignoremanager', None)
+        if ignoremanager is not None:
+            return ignoremanager
 
-        # TODO(jelmer): Handle other .gitignore files
-        ignore_globs = set()
-        if self.has_filename(IGNORE_FILENAME):
-            f = self.get_file_byname(IGNORE_FILENAME)
-            try:
-                patterns = read_ignore_patterns(f)
-                for pattern in patterns:
-                    ignore_globs.add((pattern, re.compile(translate_ignore(pattern))))
-                    # TODO(jelmer): Urgh.
-                    ignore_globs.add((pattern, re.compile(translate_ignore(pattern.rstrip('/') + '/**'))))
-            finally:
-                f.close()
-        self._ignoreset = ignore_globs
-        return ignore_globs
+        ignore_manager = IgnoreFilterManager.from_repo(self.repository._git)
+        self._ignoremanager = ignore_manager
+        return ignore_manager
 
     def set_last_revision(self, revid):
         self._change_last_revision(revid)
