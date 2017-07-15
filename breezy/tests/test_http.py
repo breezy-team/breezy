@@ -381,7 +381,7 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
         self._transport('http://example.com/bzr/bzr.dev/')
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           self._transport,
                           'http://http://example.com/bzr/bzr.dev/')
 
@@ -1144,7 +1144,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
         self.overrideEnv('http_proxy', 'host:1234')
-        self.assertRaises(errors.InvalidURL, self._proxied_request)
+        self.assertRaises(urlutils.InvalidURL, self._proxied_request)
 
     def test_evaluate_proxy_bypass_true(self):
         """The host is not proxied"""
@@ -1242,7 +1242,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def test_http_proxy_without_scheme(self):
         self.overrideEnv('http_proxy', self.server_host_port)
-        self.assertRaises(errors.InvalidURL, self.assertProxied)
+        self.assertRaises(urlutils.InvalidURL, self.assertProxied)
 
 
 class TestRanges(http_utils.TestCaseWithWebserver):

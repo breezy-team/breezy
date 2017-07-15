@@ -2143,7 +2143,7 @@ class cmd_init(Command):
                 url = repository.controldir.root_transport.external_url()
                 try:
                     url = urlutils.local_path_from_url(url)
-                except errors.InvalidURL:
+                except urlutils.InvalidURL:
                     pass
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
