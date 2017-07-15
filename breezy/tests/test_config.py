@@ -654,7 +654,7 @@ class TestIniConfigOptionExpansion(tests.TestCase):
 
     def test_unknown_ref(self):
         c = self.get_config('')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           c.expand_options, '{foo}')
 
     def test_indirect_ref(self):
@@ -673,14 +673,15 @@ bar=foo
 
     def test_simple_loop(self):
         c = self.get_config('foo={foo}')
-        self.assertRaises(errors.OptionExpansionLoop, c.expand_options, '{foo}')
+        self.assertRaises(config.OptionExpansionLoop, c.expand_options,
+                          '{foo}')
 
     def test_indirect_loop(self):
         c = self.get_config('''
 foo={bar}
 bar={baz}
 baz={foo}''')
-        e = self.assertRaises(errors.OptionExpansionLoop,
+        e = self.assertRaises(config.OptionExpansionLoop,
                               c.expand_options, '{foo}')
         self.assertEqual('foo->bar->baz', e.refs)
         self.assertEqual('{foo}', e.string)
@@ -739,7 +740,7 @@ bar = {foo}/2
 [/another/branch/path]
 bar = {foo}/2
 ''')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           c.get_user_option, 'bar', expand=True)
 
     def test_cross_related_sections(self):
@@ -1534,7 +1535,7 @@ class TestMailAddressExtraction(tests.TestCase):
     def test_extract_email_address(self):
         self.assertEqual('jane@test.com',
                          config.extract_email_address('Jane <jane@test.com>'))
-        self.assertRaises(errors.NoEmailInUsername,
+        self.assertRaises(config.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
 
     def test_parse_username(self):
@@ -1595,14 +1596,14 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#\xff\n')
         conf = config.TransportConfig(t, 'foo.conf')
-        self.assertRaises(errors.ConfigContentError, conf._get_configobj)
+        self.assertRaises(config.ConfigContentError, conf._get_configobj)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
         t.put_bytes('foo.conf', '[open_section\n')
         conf = config.TransportConfig(t, 'foo.conf')
-        self.assertRaises(errors.ParseConfigError, conf._get_configobj)
+        self.assertRaises(config.ParseConfigError, conf._get_configobj)
 
     def test_load_permission_denied(self):
         """Ensure we get an empty config file if the file is inaccessible."""
@@ -2012,7 +2013,7 @@ class TestOptionConverter(tests.TestCase):
             warnings[0])
 
     def assertCallsError(self, opt, value):
-        self.assertRaises(errors.ConfigOptionValueError,
+        self.assertRaises(config.ConfigOptionValueError,
                           opt.convert_from_unicode, None, value)
 
     def assertConvertInvalid(self, opt, invalid_value):
@@ -2179,9 +2180,9 @@ class TestOptionRegistry(tests.TestCase):
         self.assertEqual('A simple option', self.registry.get_help('foo'))
 
     def test_dont_register_illegal_name(self):
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register, config.Option(' foo'))
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register, config.Option('bar,'))
 
     lazy_option = config.Option('lazy_foo', help='Lazy help')
@@ -2202,10 +2203,10 @@ class TestOptionRegistry(tests.TestCase):
         # the option name which indirectly requires that the option name is a
         # valid python identifier. We violate that rule here (using a key that
         # doesn't match the option name) to test the option name checking.
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register_lazy, ' foo', self.__module__,
                           'TestOptionRegistry.lazy_option')
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register_lazy, '1,2', self.__module__,
                           'TestOptionRegistry.lazy_option')
 
@@ -2519,14 +2520,14 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         store = config.TransportIniFileStore(t, 'foo.conf')
-        self.assertRaises(errors.ConfigContentError, store.load)
+        self.assertRaises(config.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
         t.put_bytes('foo.conf', '[open_section\n')
         store = config.TransportIniFileStore(t, 'foo.conf')
-        self.assertRaises(errors.ParseConfigError, store.load)
+        self.assertRaises(config.ParseConfigError, store.load)
 
     def test_load_permission_denied(self):
         """Ensure we get warned when trying to load an inaccessible file."""
@@ -2576,14 +2577,14 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
         with open('foo.conf', 'wb') as f:
             f.write('user=foo\n#%s\n' % (self.invalid_utf8_char,))
         conf = config.IniBasedConfig(file_name='foo.conf')
-        self.assertRaises(errors.ConfigContentError, conf._get_parser)
+        self.assertRaises(config.ConfigContentError, conf._get_parser)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         with open('foo.conf', 'wb') as f:
             f.write('[open_section\n')
         conf = config.IniBasedConfig(file_name='foo.conf')
-        self.assertRaises(errors.ParseConfigError, conf._get_parser)
+        self.assertRaises(config.ParseConfigError, conf._get_parser)
 
 
 class TestMutableStore(TestStore):
@@ -2868,7 +2869,7 @@ class TestTransportIniFileStore(TestStore):
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         self.assertEqual(False, store.is_loaded())
         exc = self.assertRaises(
-            errors.ParseConfigError, store._load_from_string,
+            config.ParseConfigError, store._load_from_string,
             'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
@@ -3668,7 +3669,7 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         self.assertExpansion('xxx', '{foo}')
 
     def test_unknown_ref(self):
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           self.conf.expand_options, '{foo}')
 
     def test_illegal_def_is_ignored(self):
@@ -3692,7 +3693,7 @@ bar=foo
 
     def test_simple_loop(self):
         self.conf.store._load_from_string('foo={foo}')
-        self.assertRaises(errors.OptionExpansionLoop,
+        self.assertRaises(config.OptionExpansionLoop,
                           self.conf.expand_options, '{foo}')
 
     def test_indirect_loop(self):
@@ -3700,7 +3701,7 @@ bar=foo
 foo={bar}
 bar={baz}
 baz={foo}''')
-        e = self.assertRaises(errors.OptionExpansionLoop,
+        e = self.assertRaises(config.OptionExpansionLoop,
                               self.conf.expand_options, '{foo}')
         self.assertEqual('foo->bar->baz', e.refs)
         self.assertEqual('{foo}', e.string)
@@ -3771,7 +3772,7 @@ bar = {foo}/2
 [/another/branch/path]
 bar = {foo}/2
 ''')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           c.get, 'bar', expand=True)
 
     def test_cross_related_sections(self):
@@ -3859,7 +3860,7 @@ gfoo = {relpath}
 ''')
         g_store.save()
         stack = config.LocationStack('/home/user/project/branch')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           stack.get, 'gfoo', expand=True)
 
     def test_expand_local_option_locally(self):
@@ -4166,7 +4167,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
 
     def test_non_utf8_config(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b'foo = bar\xff'))
-        self.assertRaises(errors.ConfigContentError, conf._get_config)
+        self.assertRaises(config.ConfigContentError, conf._get_config)
 
     def test_missing_auth_section_header(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b'foo = bar'))
@@ -4174,7 +4175,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
 
     def test_auth_section_header_not_closed(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b'[DEF'))
-        self.assertRaises(errors.ParseConfigError, conf._get_config)
+        self.assertRaises(config.ParseConfigError, conf._get_config)
 
     def test_auth_value_not_boolean(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b"""\
@@ -4765,5 +4766,5 @@ class MailClientOptionTests(tests.TestCase):
 
     def test_unknown(self):
         conf = config.MemoryStack('mail_client=firebird')
-        self.assertRaises(errors.ConfigOptionValueError, conf.get,
+        self.assertRaises(config.ConfigOptionValueError, conf.get,
                 'mail_client')

@@ -92,7 +92,6 @@ from breezy import (
     controldir,
     debug,
     directory_service,
-    errors,
     lazy_regex,
     library_state,
     lockdir,
@@ -108,6 +107,7 @@ from breezy.i18n import gettext
 """)
 from . import (
     commands,
+    errors,
     hooks,
     lazy_regex,
     registry,
@@ -153,6 +153,94 @@ STORE_LOCATION_NORECURSE = POLICY_NORECURSE
 STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
+
+
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribes this -- vila 20101222
+class OptionExpansionLoop(errors.BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(errors.BzrError):
+
+    _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string
+
+
+class IllegalOptionName(errors.BzrError):
+
+    _fmt = 'Option "%(name)s" is not allowed.'
+
+    def __init__(self, name):
+        self.name = name
+
+
+class ConfigContentError(errors.BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        errors.BzrError.__init__(self)
+        self.filename = filename
+
+
+class ParseConfigError(errors.BzrError):
+
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
+    def __init__(self, errors, filename):
+        errors.BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
+
+
+class ConfigOptionValueError(errors.BzrError):
+
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``brz help %(name)s``')
+
+    def __init__(self, name, value):
+        errors.BzrError.__init__(self, name=name, value=value)
+
+
+class NoEmailInUsername(errors.BzrError):
+
+    _fmt = "%(username)r does not seem to contain a reasonable email address"
+
+    def __init__(self, username):
+        errors.BzrError.__init__(self)
+        self.username = username
+
+
+class NoSuchConfig(errors.BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        errors.BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(errors.BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        errors.BzrError.__init__(self, option_name=option_name)
+
+
+class NoWhoami(errors.BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. brz whoami "Your Name <name@example.com>"')
 
 
 def signature_policy_from_unicode(signature_string):
@@ -342,11 +430,11 @@ class Config(object):
                 else:
                     name = chunk[1:-1]
                     if name in _ref_stack:
-                        raise errors.OptionExpansionLoop(string, _ref_stack)
+                        raise OptionExpansionLoop(string, _ref_stack)
                     _ref_stack.append(name)
                     value = self._expand_option(name, env, _ref_stack)
                     if value is None:
-                        raise errors.ExpandingUnknownOption(name, string)
+                        raise ExpandingUnknownOption(name, string)
                     if isinstance(value, list):
                         list_value = True
                         chunks.extend(value)
@@ -666,9 +754,9 @@ class IniBasedConfig(Config):
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise errors.ParseConfigError(e.errors, e.config.filename)
+            raise ParseConfigError(e.errors, e.config.filename)
         except UnicodeDecodeError:
-            raise errors.ConfigContentError(self.file_name)
+            raise ConfigContentError(self.file_name)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         for hook in OldConfigHooks['load']:
@@ -840,7 +928,7 @@ class IniBasedConfig(Config):
         try:
             del section[option_name]
         except KeyError:
-            raise errors.NoSuchConfigOption(option_name)
+            raise NoSuchConfigOption(option_name)
         self._write_config_file()
         for hook in OldConfigHooks['remove']:
             hook(self, option_name)
@@ -1591,7 +1679,7 @@ def extract_email_address(e):
     """
     name, email = parse_username(e)
     if not email:
-        raise errors.NoEmailInUsername(e)
+        raise NoEmailInUsername(e)
     return email
 
 
@@ -1669,9 +1757,9 @@ class AuthenticationConfig(object):
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise errors.ParseConfigError(e.errors, e.config.filename)
+            raise ParseConfigError(e.errors, e.config.filename)
         except UnicodeError:
-            raise errors.ConfigContentError(self._filename)
+            raise ConfigContentError(self._filename)
         return self._config
 
     def _check_permissions(self):
@@ -2202,9 +2290,9 @@ class TransportConfig(object):
             try:
                 conf = ConfigObj(f, encoding='utf-8')
             except configobj.ConfigObjError as e:
-                raise errors.ParseConfigError(e.errors, self._external_url())
+                raise ParseConfigError(e.errors, self._external_url())
             except UnicodeDecodeError:
-                raise errors.ConfigContentError(self._external_url())
+                raise ConfigContentError(self._external_url())
         finally:
             f.close()
         return conf
@@ -2320,7 +2408,7 @@ class Option(object):
                 trace.warning('Value "%s" is not valid for "%s"',
                               unicode_value, self.name)
             elif self.invalid == 'error':
-                raise errors.ConfigOptionValueError(self.name, unicode_value)
+                raise ConfigOptionValueError(self.name, unicode_value)
         return converted
 
     def get_override(self):
@@ -2520,7 +2608,7 @@ class OptionRegistry(registry.Registry):
         :param option_name: The name to validate.
         """
         if _option_ref_re.match('{%s}' % option_name) is None:
-            raise errors.IllegalOptionName(option_name)
+            raise IllegalOptionName(option_name)
 
     def register(self, option):
         """Register a new option to its name.
@@ -3153,9 +3241,9 @@ class IniFileStore(Store):
                                          list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
-            raise errors.ParseConfigError(e.errors, self.external_url())
+            raise ParseConfigError(e.errors, self.external_url())
         except UnicodeDecodeError:
-            raise errors.ConfigContentError(self.external_url())
+            raise ConfigContentError(self.external_url())
 
     def save_changes(self):
         if not self.is_loaded():
@@ -3717,11 +3805,11 @@ class Stack(object):
                     expanded = True
                     name = chunk[1:-1]
                     if name in _refs:
-                        raise errors.OptionExpansionLoop(string, _refs)
+                        raise OptionExpansionLoop(string, _refs)
                     _refs.append(name)
                     value = self._expand_option(name, env, _refs)
                     if value is None:
-                        raise errors.ExpandingUnknownOption(name, string)
+                        raise ExpandingUnknownOption(name, string)
                     chunks.append(value)
                     _refs.pop()
             result = ''.join(chunks)
@@ -4112,7 +4200,7 @@ class cmd_config(commands.Command):
                 if write_access:
                     self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
-            raise errors.NoSuchConfig(scope)
+            raise NoSuchConfig(scope)
         else:
             try:
                 (_, br, _) = (
@@ -4137,7 +4225,7 @@ class cmd_config(commands.Command):
             value = self._quote_multiline(value)
             self.outf.write('%s\n' % (value,))
         else:
-            raise errors.NoSuchConfigOption(name)
+            raise NoSuchConfigOption(name)
 
     def _show_matching_options(self, name, directory, scope):
         name = lazy_regex.lazy_compile(name)
@@ -4182,7 +4270,7 @@ class cmd_config(commands.Command):
             # Explicitly save the changes
             conf.store.save_changes()
         except KeyError:
-            raise errors.NoSuchConfigOption(name)
+            raise NoSuchConfigOption(name)
 
 
 # Test registries
