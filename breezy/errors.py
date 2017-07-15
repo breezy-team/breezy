@@ -259,15 +259,6 @@ class NoPublicBranch(BzrError):
         BzrError.__init__(self, branch_url=public_location)
 
 
-class NoHelpTopic(BzrError):
-
-    _fmt = ("No help could be found for '%(topic)s'. "
-        "Please use 'brz help topics' to obtain a list of topics.")
-
-    def __init__(self, topic):
-        self.topic = topic
-
-
 class NoSuchId(BzrError):
 
     _fmt = 'The file id "%(file_id)s" is not present in the tree %(tree)s.'
@@ -351,11 +342,6 @@ class NotWriteLocked(BzrError):
         self.not_locked = not_locked
 
 
-class BzrOptionError(BzrCommandError):
-
-    _fmt = "Error in command line options"
-
-
 class BadIndexFormatSignature(BzrError):
 
     _fmt = "%(value)s is not an index of type %(_type)s."
@@ -410,14 +396,6 @@ class BadIndexValue(BzrError):
     def __init__(self, value):
         BzrError.__init__(self)
         self.value = value
-
-
-class BadOptionValue(BzrError):
-
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
-
-    def __init__(self, name, value):
-        BzrError.__init__(self, name=name, value=value)
 
 
 class StrictCommitFailed(BzrError):
@@ -3037,16 +3015,6 @@ class NoRoundtrippingSupport(BzrError):
         self.target_branch = target_branch
 
 
-class FileTimestampUnavailable(BzrError):
-
-    _fmt = "The filestamp for %(path)s is not available."
-
-    internal_error = True
-
-    def __init__(self, path):
-        self.path = path
-
-
 class NoColocatedBranchSupport(BzrError):
 
     _fmt = ("%(controldir)r does not support co-located branches.")
@@ -3119,15 +3087,6 @@ class UnsupportedKindChange(BzrError):
         self.from_kind = from_kind
         self.to_kind = to_kind
         self.format = format
-
-
-class MissingFeature(BzrError):
-
-    _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
-
-    def __init__(self, feature):
-        self.feature = feature
 
 
 class PatchSyntax(BzrError):

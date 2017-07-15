@@ -30,7 +30,6 @@ WorkingTree.open(dir).
 """
 
 
-
 from __future__ import absolute_import
 
 import breezy
@@ -74,6 +73,7 @@ from ..sixish import (
     text_type,
     )
 from ..trace import mutter
+from ..tree import FileTimestampUnavailable
 from ..workingtree import (
     TreeDirectory,
     TreeFile,
@@ -580,7 +580,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise errors.FileTimestampUnavailable(path)
+                raise FileTimestampUnavailable(path)
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):

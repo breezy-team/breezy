@@ -19,6 +19,7 @@
 import os
 
 from breezy import errors
+from breezy.tree import FileTimestampUnavailable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -106,7 +107,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         os.remove('tree/one')
         tree.lock_read()
         try:
-            self.assertRaises(errors.FileTimestampUnavailable,
+            self.assertRaises(FileTimestampUnavailable,
                 tree.get_file_mtime, file_id='one-id')
         finally:
             tree.unlock()

@@ -202,12 +202,6 @@ class TestErrors(tests.TestCase):
             "smart protocol.",
             str(error))
 
-    def test_no_help_topic(self):
-        error = errors.NoHelpTopic("topic")
-        self.assertEqualDiff("No help could be found for 'topic'. "
-            "Please use 'brz help topics' to obtain a list of topics.",
-            str(error))
-
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id \"anid\" is not present in the tree "
@@ -668,11 +662,6 @@ class TestErrorFormatting(tests.TestCase):
         self.assertContainsRe(
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
-
-    def test_file_timestamp_unavailable(self):
-        e = errors.FileTimestampUnavailable("/path/foo")
-        self.assertEqual("The filestamp for /path/foo is not available.",
-                         str(e))
 
     def test_transform_rename_failed(self):
         e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)

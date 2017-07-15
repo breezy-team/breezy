@@ -34,6 +34,15 @@ from .test_i18n import ZzzTranslations
 import re
 
 
+class ErrorTests(tests.TestCase):
+
+    def test_no_help_topic(self):
+        error = help.NoHelpTopic("topic")
+        self.assertEqualDiff("No help could be found for 'topic'. "
+            "Please use 'brz help topics' to obtain a list of topics.",
+            str(error))
+
+
 class TestCommandHelp(tests.TestCase):
     """Tests for help on commands."""
 
@@ -660,7 +669,7 @@ class TestHelpIndices(tests.TestCase):
         """Searching for an unknown topic should raise NoHelpTopic."""
         indices = help.HelpIndices()
         indices.search_path = []
-        error = self.assertRaises(errors.NoHelpTopic, indices.search, 'foo')
+        error = self.assertRaises(help.NoHelpTopic, indices.search, 'foo')
         self.assertEqual('foo', error.topic)
 
     def test_search_calls_get_topic(self):

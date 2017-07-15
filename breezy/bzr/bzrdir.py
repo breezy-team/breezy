@@ -34,7 +34,6 @@ lazy_import(globals(), """
 import breezy
 from breezy import (
     cleanup,
-    errors,
     fetch,
     graph,
     lockable_files,
@@ -72,8 +71,18 @@ from ..trace import (
 from .. import (
     config,
     controldir,
+    errors,
     registry,
     )
+
+
+class MissingFeature(errors.BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
 
 
 class BzrDir(controldir.ControlDir):
@@ -1149,11 +1158,11 @@ class BzrFormat(object):
                 mutter("ignoring optional missing feature %s", name)
                 continue
             elif necessity == "required":
-                raise errors.MissingFeature(name)
+                raise MissingFeature(name)
             else:
                 mutter("treating unknown necessity as require for %s",
                        name)
-                raise errors.MissingFeature(name)
+                raise MissingFeature(name)
 
     @classmethod
     def get_format_string(cls):
