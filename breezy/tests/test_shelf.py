@@ -43,6 +43,15 @@ EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
                "17:_removed_contentsle11:_removed_idle14:_tree_path_idsdeeE")
 
 
+class TestErrors(tests.TestCase):
+
+    def test_invalid_shelf_id(self):
+        invalid_id = "foo"
+        err = shelf.InvalidShelfId(invalid_id)
+        self.assertEqual('"foo" is not a valid shelf id, '
+                         'try a number instead.', str(err))
+
+
 class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def prepare_shelve_rename(self):
@@ -622,7 +631,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
                                                                 'foo'))])
         shelf_file = open('shelf', 'rb')
         self.addCleanup(shelf_file.close)
-        e = self.assertRaises(errors.ShelfCorrupt,
+        e = self.assertRaises(shelf.ShelfCorrupt,
                               shelf.Unshelver.from_tree_and_shelf, tree,
                               shelf_file)
         self.assertEqual('Shelf corrupt.', str(e))
@@ -733,7 +742,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
 
     def test_read_non_existant(self):
         manager = self.get_manager()
-        e = self.assertRaises(errors.NoSuchShelfId, manager.read_shelf, 1)
+        e = self.assertRaises(shelf.NoSuchShelfId, manager.read_shelf, 1)
         self.assertEqual('No changes are shelved with id "1".', str(e))
 
     def test_shelve_changes(self):

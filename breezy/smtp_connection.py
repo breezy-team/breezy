@@ -28,10 +28,8 @@ from . import (
     osutils,
     )
 from .errors import (
-    NoDestinationAddress,
-    SMTPError,
-    DefaultSMTPConnectionRefused,
-    SMTPConnectionRefused,
+    BzrError,
+    InternalBzrError,
     )
 
 
@@ -47,6 +45,35 @@ smtp_username = config.Option('smtp_username', default=None,
         help='''\
 Username to use for authentication to SMTP server.
 ''')
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
+
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."
+
+
+
+class NoDestinationAddress(InternalBzrError):
+
+    _fmt = "Message does not have a destination address."
+
 
 
 class SMTPConnection(object):

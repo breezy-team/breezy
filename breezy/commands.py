@@ -61,6 +61,27 @@ class BzrOptionError(errors.BzrCommandError):
     _fmt = "Error in command line options"
 
 
+class CommandAvailableInPlugin(Exception):
+
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard brz command. \n'
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'],
+                    self.plugin_metadata['url']))
+
+        return _fmt
+
+
 class CommandInfo(object):
     """Information about a command."""
 
@@ -272,13 +293,16 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     return cmd
 
 
+class NoPluginAvailable(errors.BzrError):
+    pass
+
+
 def _try_plugin_provider(cmd_name):
     """Probe for a plugin provider having cmd_name."""
     try:
         plugin_metadata, provider = probe_for_provider(cmd_name)
-        raise errors.CommandAvailableInPlugin(cmd_name,
-            plugin_metadata, provider)
-    except errors.NoPluginAvailable:
+        raise CommandAvailableInPlugin(cmd_name, plugin_metadata, provider)
+    except NoPluginAvailable:
         pass
 
 
@@ -293,9 +317,9 @@ def probe_for_provider(cmd_name):
     for provider in command_providers_registry:
         try:
             return provider.plugin_for_command(cmd_name), provider
-        except errors.NoPluginAvailable:
+        except NoPluginAvailable:
             pass
-    raise errors.NoPluginAvailable(cmd_name)
+    raise NoPluginAvailable(cmd_name)
 
 
 def _get_bzr_command(cmd_or_None, cmd_name):
