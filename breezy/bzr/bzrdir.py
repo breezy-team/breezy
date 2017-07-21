@@ -1852,7 +1852,7 @@ class RepositoryAcquisitionPolicy(object):
                 stack_on = urlutils.rebase_url(self._stack_on,
                     self._stack_on_pwd,
                     branch.user_url)
-            except errors.InvalidRebaseURLs:
+            except urlutils.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:
             branch.set_stacked_on_url(stack_on)

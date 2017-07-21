@@ -372,7 +372,7 @@ def _local_path_for_transport(transport):
             base_url = base_url[len('readonly+'):]
         try:
             return urlutils.local_path_from_url(base_url)
-        except errors.InvalidURL:
+        except urlutils.InvalidURL:
             return None
 
 

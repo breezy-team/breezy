@@ -491,7 +491,7 @@ class TestErrors(tests.TestCase):
 
     def test_invalid_url_join(self):
         """Test the formatting of InvalidURLJoin."""
-        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        e = urlutils.InvalidURLJoin('Reason', 'base path', ('args',))
         self.assertEqual(
             "Invalid URL join request: Reason: 'base path' + ('args',)",
             str(e))

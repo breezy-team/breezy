@@ -30,7 +30,10 @@ from ... import (
 from ...i18n import gettext
 
 from .lp_registration import (
-    LaunchpadService, ResolveLaunchpadPathRequest)
+    InvalidURL,
+    LaunchpadService,
+    ResolveLaunchpadPathRequest,
+    )
 from .account import get_lp_login
 
 
@@ -99,7 +102,7 @@ class LaunchpadDirectory(object):
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault as fault:
-            raise errors.InvalidURL(
+            raise InvalidURL(
                 path=url, extra=fault.faultString)
         return result
 
@@ -132,7 +135,7 @@ class LaunchpadDirectory(object):
             else:
                 # There are either 0 or > 2 path parts, neither of which is
                 # supported for these schemes.
-                raise errors.InvalidURL('Bad path: %s' % url)
+                raise InvalidURL('Bad path: %s' % url)
             # Expand any series shortcuts, but keep unknown series.
             series = distro_series.get(series, series)
             # Hack the url and let the following do the final resolution.
@@ -146,7 +149,7 @@ class LaunchpadDirectory(object):
     def _expand_user(self, path, url, lp_login):
         if path.startswith('~/'):
             if lp_login is None:
-                raise errors.InvalidURL(path=url,
+                raise InvalidURL(path=url,
                     extra='Cannot resolve "~" to your username.'
                           ' See "bzr help launchpad-login"')
             path = '~' + lp_login + path[1:]
@@ -199,7 +202,7 @@ class LaunchpadDirectory(object):
                 else:
                     break
         else:
-            raise errors.InvalidURL(path=url, extra='no supported schemes')
+            raise InvalidURL(path=url, extra='no supported schemes')
         return url
 
 
