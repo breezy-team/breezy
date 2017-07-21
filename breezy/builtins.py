@@ -299,7 +299,7 @@ def _get_view_info_for_change_reporter(tree):
         current_view = tree.views.get_view_info()[0]
         if current_view is not None:
             view_info = (current_view, tree.views.lookup_view())
-    except errors.ViewsNotSupported:
+    except views.ViewsNotSupported:
         pass
     return view_info
 
