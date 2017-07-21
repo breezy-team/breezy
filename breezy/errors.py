@@ -1639,43 +1639,6 @@ class ConflictsInTree(BzrError):
     _fmt = "Working tree has conflicts."
 
 
-class ConfigContentError(BzrError):
-
-    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
-
-    def __init__(self, filename):
-        BzrError.__init__(self)
-        self.filename = filename
-
-
-class ParseConfigError(BzrError):
-
-    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
-
-    def __init__(self, errors, filename):
-        BzrError.__init__(self)
-        self.filename = filename
-        self.errors = '\n'.join(e.msg for e in errors)
-
-
-class ConfigOptionValueError(BzrError):
-
-    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
-            'See ``brz help %(name)s``')
-
-    def __init__(self, name, value):
-        BzrError.__init__(self, name=name, value=value)
-
-
-class NoEmailInUsername(BzrError):
-
-    _fmt = "%(username)r does not seem to contain a reasonable email address"
-
-    def __init__(self, username):
-        BzrError.__init__(self)
-        self.username = username
-
-
 class DependencyNotPresent(BzrError):
 
     _fmt = 'Unable to import library "%(library)s": %(error)s'
@@ -2808,22 +2771,6 @@ class UnableEncodePath(BzrError):
         self.user_encoding = get_user_encoding()
 
 
-class NoSuchConfig(BzrError):
-
-    _fmt = ('The "%(config_id)s" configuration does not exist.')
-
-    def __init__(self, config_id):
-        BzrError.__init__(self, config_id=config_id)
-
-
-class NoSuchConfigOption(BzrError):
-
-    _fmt = ('The "%(option_name)s" configuration option does not exist.')
-
-    def __init__(self, option_name):
-        BzrError.__init__(self, option_name=option_name)
-
-
 class NoSuchAlias(BzrError):
 
     _fmt = ('The alias "%(alias_name)s" does not exist.')
@@ -3023,13 +2970,6 @@ class NoColocatedBranchSupport(BzrError):
         self.controldir = controldir
 
 
-class NoWhoami(BzrError):
-
-    _fmt = ('Unable to determine your name.\n'
-        "Please, set your name with the 'whoami' command.\n"
-        'E.g. brz whoami "Your Name <name@example.com>"')
-
-
 class RecursiveBind(BzrError):
 
     _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
@@ -3037,34 +2977,6 @@ class RecursiveBind(BzrError):
 
     def __init__(self, branch_url):
         self.branch_url = branch_url
-
-
-# FIXME: I would prefer to define the config related exception classes in
-# config.py but the lazy import mechanism proscribes this -- vila 20101222
-class OptionExpansionLoop(BzrError):
-
-    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
-
-    def __init__(self, string, refs):
-        self.string = string
-        self.refs = '->'.join(refs)
-
-
-class ExpandingUnknownOption(BzrError):
-
-    _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
-
-    def __init__(self, name, string):
-        self.name = name
-        self.string = string
-
-
-class IllegalOptionName(BzrError):
-
-    _fmt = 'Option "%(name)s" is not allowed.'
-
-    def __init__(self, name):
-        self.name = name
 
 
 class HpssVfsRequestNotAllowed(BzrError):

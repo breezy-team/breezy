@@ -41,7 +41,11 @@ from . import (
     errors,
     osutils,
     )
-from .config import extract_email_address
+from .config import (
+    NoEmailInUsername,
+    NoWhoami,
+    extract_email_address,
+    )
 from .repository import _strip_NULL_ghosts
 from .revision import (
     CURRENT_REVISION,
@@ -82,7 +86,7 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         current_rev.parent_ids = tree.get_parent_ids()
         try:
             current_rev.committer = branch.get_config_stack().get('email')
-        except errors.NoWhoami:
+        except NoWhoami:
             current_rev.committer = 'local user'
         current_rev.message = "?"
         current_rev.timestamp = round(time.time(), 3)
@@ -212,7 +216,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
             author = rev.get_apparent_authors()[0]
             try:
                 author = extract_email_address(author)
-            except errors.NoEmailInUsername:
+            except NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
 

@@ -142,7 +142,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.overrideEnv('EMAIL', None)
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         global_conf = config.GlobalStack()
-        self.assertRaises(errors.NoWhoami, global_conf.get, 'email')
+        self.assertRaises(config.NoWhoami, global_conf.get, 'email')
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""
