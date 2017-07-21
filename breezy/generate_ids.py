@@ -24,12 +24,12 @@ import time
 
 from breezy import (
     config,
-    errors,
     osutils,
     )
 """)
 
 from . import (
+    errors,
     lazy_regex,
     )
 
@@ -103,7 +103,7 @@ def gen_revision_id(username, timestamp=None):
     """
     try:
         user_or_email = config.extract_email_address(username)
-    except errors.NoEmailInUsername:
+    except config.NoEmailInUsername:
         user_or_email = username
 
     user_or_email = user_or_email.lower()

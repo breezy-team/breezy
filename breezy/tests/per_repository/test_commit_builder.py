@@ -855,7 +855,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.lock_write()
         try:
             # Make sure no username is available.
-            self.assertRaises(errors.NoWhoami, tree.branch.get_commit_builder,
+            self.assertRaises(config.NoWhoami, tree.branch.get_commit_builder,
                               [])
             builder = tree.branch.get_commit_builder(
                 [], committer='me@example.com')

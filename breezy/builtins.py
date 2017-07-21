@@ -3864,7 +3864,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except errors.NoEmailInUsername as e:
+        except _mod_config.NoEmailInUsername as e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
