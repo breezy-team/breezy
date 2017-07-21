@@ -77,11 +77,6 @@ class TestErrors(tests.TestCase):
             " appears to be corrupt: trailing garbage: \"x\"",
             str(error))
 
-    def test_disabled_method(self):
-        error = errors.DisabledMethod("class name")
-        self.assertEqualDiff(
-            "The smart server method 'class name' is disabled.", str(error))
-
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'

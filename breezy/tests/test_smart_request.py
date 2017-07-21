@@ -90,6 +90,14 @@ class CheckJailRequest(request.SmartServerRequest):
         self.jail_transports_log.append(request.jail_info.transports)
 
 
+class ErrorTests(tests.TestCase):
+
+    def test_disabled_method(self):
+        error = request.DisabledMethod("class name")
+        self.assertEqualDiff(
+            "The smart server method 'class name' is disabled.", str(error))
+
+
 class TestSmartRequest(TestCase):
 
     def test_request_class_without_do_body(self):

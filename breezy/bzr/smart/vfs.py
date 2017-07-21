@@ -60,7 +60,7 @@ class VfsRequest(request.SmartServerRequest):
 
     def _check_enabled(self):
         if not vfs_enabled():
-            raise errors.DisabledMethod(self.__class__.__name__)
+            raise request.DisabledMethod(self.__class__.__name__)
 
     def translate_client_path(self, relpath):
         # VFS requests are made with escaped paths so the escaping done in

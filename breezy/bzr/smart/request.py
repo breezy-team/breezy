@@ -58,6 +58,15 @@ jail_info = threading.local()
 jail_info.transports = None
 
 
+class DisabledMethod(errors.InternalBzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    def __init__(self, class_name):
+        errors.BzrError.__init__(self)
+        self.class_name = class_name
+
+
 def _install_hook():
     bzrdir.BzrDir.hooks.install_named_hook(
         'pre_open', _pre_open_hook, 'checking server jail')

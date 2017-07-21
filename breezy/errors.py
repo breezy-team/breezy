@@ -177,15 +177,6 @@ class DirstateCorrupt(BzrError):
         self.msg = msg
 
 
-class DisabledMethod(InternalBzrError):
-
-    _fmt = "The smart server method '%(class_name)s' is disabled."
-
-    def __init__(self, class_name):
-        BzrError.__init__(self)
-        self.class_name = class_name
-
-
 class IncompatibleVersion(BzrError):
 
     _fmt = 'API %(api)s is not compatible; one of versions %(wanted)r '\
