@@ -90,7 +90,7 @@ class CheckJailRequest(request.SmartServerRequest):
         self.jail_transports_log.append(request.jail_info.transports)
 
 
-class ErrorTests(tests.TestCase):
+class ErrorTests(TestCase):
 
     def test_disabled_method(self):
         error = request.DisabledMethod("class name")

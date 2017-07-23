@@ -245,7 +245,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
-                        raise errors.FileOutsideView(filename, view_files)
+                        raise views.FileOutsideView(filename, view_files)
         file_list = file_list[:]
         file_list[0] = tree.abspath(relpath)
     else:
@@ -3040,7 +3040,7 @@ class cmd_ls(Command):
                     else:
                         fullpath = fp
                     views.check_path_in_view(tree, fullpath)
-                except errors.FileOutsideView:
+                except views.FileOutsideView:
                     continue
 
             # Output the entry
