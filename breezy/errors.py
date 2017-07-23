@@ -259,15 +259,6 @@ class NoPublicBranch(BzrError):
         BzrError.__init__(self, branch_url=public_location)
 
 
-class NoHelpTopic(BzrError):
-
-    _fmt = ("No help could be found for '%(topic)s'. "
-        "Please use 'brz help topics' to obtain a list of topics.")
-
-    def __init__(self, topic):
-        self.topic = topic
-
-
 class NoSuchId(BzrError):
 
     _fmt = 'The file id "%(file_id)s" is not present in the tree %(tree)s.'
@@ -351,11 +342,6 @@ class NotWriteLocked(BzrError):
         self.not_locked = not_locked
 
 
-class BzrOptionError(BzrCommandError):
-
-    _fmt = "Error in command line options"
-
-
 class BadIndexFormatSignature(BzrError):
 
     _fmt = "%(value)s is not an index of type %(_type)s."
@@ -410,14 +396,6 @@ class BadIndexValue(BzrError):
     def __init__(self, value):
         BzrError.__init__(self)
         self.value = value
-
-
-class BadOptionValue(BzrError):
-
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
-
-    def __init__(self, name, value):
-        BzrError.__init__(self, name=name, value=value)
 
 
 class StrictCommitFailed(BzrError):
@@ -509,32 +487,6 @@ class ResourceBusy(PathError):
 class PermissionDenied(PathError):
 
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
-
-
-class InvalidURL(PathError):
-
-    _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
-
-
-class InvalidURLJoin(PathError):
-
-    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
-
-    def __init__(self, reason, base, join_args):
-        self.reason = reason
-        self.base = base
-        self.join_args = join_args
-        PathError.__init__(self, base, reason)
-
-
-class InvalidRebaseURLs(PathError):
-
-    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
-
-    def __init__(self, from_, to):
-        self.from_ = from_
-        self.to = to
-        PathError.__init__(self, from_, 'URLs differ by more than path.')
 
 
 class UnavailableRepresentation(InternalBzrError):
@@ -1314,79 +1266,6 @@ class BoundBranchConnectionFailure(BzrError):
         self.error = error
 
 
-class WeaveError(BzrError):
-
-    _fmt = "Error in processing weave: %(msg)s"
-
-    def __init__(self, msg=None):
-        BzrError.__init__(self)
-        self.msg = msg
-
-
-class WeaveRevisionAlreadyPresent(WeaveError):
-
-    _fmt = "Revision {%(revision_id)s} already present in %(weave)s"
-
-    def __init__(self, revision_id, weave):
-
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave = weave
-
-
-class WeaveRevisionNotPresent(WeaveError):
-
-    _fmt = "Revision {%(revision_id)s} not present in %(weave)s"
-
-    def __init__(self, revision_id, weave):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave = weave
-
-
-class WeaveFormatError(WeaveError):
-
-    _fmt = "Weave invariant violated: %(what)s"
-
-    def __init__(self, what):
-        WeaveError.__init__(self)
-        self.what = what
-
-
-class WeaveParentMismatch(WeaveError):
-
-    _fmt = "Parents are mismatched between two revisions. %(msg)s"
-
-
-class WeaveInvalidChecksum(WeaveError):
-
-    _fmt = "Text did not match its checksum: %(msg)s"
-
-
-class WeaveTextDiffers(WeaveError):
-
-    _fmt = ("Weaves differ on text content. Revision:"
-            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
-
-    def __init__(self, revision_id, weave_a, weave_b):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave_a = weave_a
-        self.weave_b = weave_b
-
-
-class WeaveTextDiffers(WeaveError):
-
-    _fmt = ("Weaves differ on text content. Revision:"
-            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
-
-    def __init__(self, revision_id, weave_a, weave_b):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave_a = weave_a
-        self.weave_b = weave_b
-
-
 class VersionedFileError(BzrError):
 
     _fmt = "Versioned file error"
@@ -1734,73 +1613,12 @@ class ConflictsInTree(BzrError):
     _fmt = "Working tree has conflicts."
 
 
-class ConfigContentError(BzrError):
-
-    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
-
-    def __init__(self, filename):
-        BzrError.__init__(self)
-        self.filename = filename
-
-
-class ParseConfigError(BzrError):
-
-    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
-
-    def __init__(self, errors, filename):
-        BzrError.__init__(self)
-        self.filename = filename
-        self.errors = '\n'.join(e.msg for e in errors)
-
-
-class ConfigOptionValueError(BzrError):
-
-    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
-            'See ``brz help %(name)s``')
-
-    def __init__(self, name, value):
-        BzrError.__init__(self, name=name, value=value)
-
-
-class NoEmailInUsername(BzrError):
-
-    _fmt = "%(username)r does not seem to contain a reasonable email address"
-
-    def __init__(self, username):
-        BzrError.__init__(self)
-        self.username = username
-
-
-class SigningFailed(BzrError):
-
-    _fmt = 'Failed to GPG sign data with command "%(command_line)s"'
-
-    def __init__(self, command_line):
-        BzrError.__init__(self, command_line=command_line)
-
-
-class SignatureVerificationFailed(BzrError):
-
-    _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
-
-    def __init__(self, error):
-        BzrError.__init__(self, error=error)
-
-
 class DependencyNotPresent(BzrError):
 
     _fmt = 'Unable to import library "%(library)s": %(error)s'
 
     def __init__(self, library, error):
         BzrError.__init__(self, library=library, error=error)
-
-
-class GpgmeNotInstalled(DependencyNotPresent):
-
-    _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
-
-    def __init__(self, error):
-        DependencyNotPresent.__init__(self, 'gpgme', error)
 
 
 class WorkingTreeNotRevision(BzrError):
@@ -2582,52 +2400,6 @@ class TagAlreadyExists(BzrError):
         self.tag_name = tag_name
 
 
-class MalformedBugIdentifier(BzrError):
-
-    _fmt = ('Did not understand bug identifier %(bug_id)s: %(reason)s. '
-            'See "brz help bugs" for more information on this feature.')
-
-    def __init__(self, bug_id, reason):
-        self.bug_id = bug_id
-        self.reason = reason
-
-
-class InvalidBugTrackerURL(BzrError):
-
-    _fmt = ("The URL for bug tracker \"%(abbreviation)s\" doesn't "
-            "contain {id}: %(url)s")
-
-    def __init__(self, abbreviation, url):
-        self.abbreviation = abbreviation
-        self.url = url
-
-
-class UnknownBugTrackerAbbreviation(BzrError):
-
-    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
-            "on %(branch)s")
-
-    def __init__(self, abbreviation, branch):
-        self.abbreviation = abbreviation
-        self.branch = branch
-
-
-class InvalidLineInBugsProperty(BzrError):
-
-    _fmt = ("Invalid line in bugs property: '%(line)s'")
-
-    def __init__(self, line):
-        self.line = line
-
-
-class InvalidBugStatus(BzrError):
-
-    _fmt = ("Invalid bug status: '%(status)s'")
-
-    def __init__(self, status):
-        self.status = status
-
-
 class UnexpectedSmartServerResponse(BzrError):
 
     _fmt = "Could not understand response from smart server: %(response_tuple)r"
@@ -2973,22 +2745,6 @@ class UnableEncodePath(BzrError):
         self.user_encoding = get_user_encoding()
 
 
-class NoSuchConfig(BzrError):
-
-    _fmt = ('The "%(config_id)s" configuration does not exist.')
-
-    def __init__(self, config_id):
-        BzrError.__init__(self, config_id=config_id)
-
-
-class NoSuchConfigOption(BzrError):
-
-    _fmt = ('The "%(option_name)s" configuration option does not exist.')
-
-    def __init__(self, option_name):
-        BzrError.__init__(self, option_name=option_name)
-
-
 class NoSuchAlias(BzrError):
 
     _fmt = ('The alias "%(alias_name)s" does not exist.')
@@ -3180,37 +2936,12 @@ class NoRoundtrippingSupport(BzrError):
         self.target_branch = target_branch
 
 
-class FileTimestampUnavailable(BzrError):
-
-    _fmt = "The filestamp for %(path)s is not available."
-
-    internal_error = True
-
-    def __init__(self, path):
-        self.path = path
-
-
 class NoColocatedBranchSupport(BzrError):
 
     _fmt = ("%(controldir)r does not support co-located branches.")
 
     def __init__(self, controldir):
         self.controldir = controldir
-
-
-class NoWhoami(BzrError):
-
-    _fmt = ('Unable to determine your name.\n'
-        "Please, set your name with the 'whoami' command.\n"
-        'E.g. brz whoami "Your Name <name@example.com>"')
-
-
-class InvalidPattern(BzrError):
-
-    _fmt = ('Invalid pattern(s) found. %(msg)s')
-
-    def __init__(self, msg):
-        self.msg = msg
 
 
 class RecursiveBind(BzrError):
@@ -3220,44 +2951,6 @@ class RecursiveBind(BzrError):
 
     def __init__(self, branch_url):
         self.branch_url = branch_url
-
-
-# FIXME: I would prefer to define the config related exception classes in
-# config.py but the lazy import mechanism proscribes this -- vila 20101222
-class OptionExpansionLoop(BzrError):
-
-    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
-
-    def __init__(self, string, refs):
-        self.string = string
-        self.refs = '->'.join(refs)
-
-
-class ExpandingUnknownOption(BzrError):
-
-    _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
-
-    def __init__(self, name, string):
-        self.name = name
-        self.string = string
-
-
-class IllegalOptionName(BzrError):
-
-    _fmt = 'Option "%(name)s" is not allowed.'
-
-    def __init__(self, name):
-        self.name = name
-
-
-class NoCompatibleInter(BzrError):
-
-    _fmt = ('No compatible object available for operations from %(source)r '
-            'to %(target)r.')
-
-    def __init__(self, source, target):
-        self.source = source
-        self.target = target
 
 
 class HpssVfsRequestNotAllowed(BzrError):
@@ -3280,66 +2973,6 @@ class UnsupportedKindChange(BzrError):
         self.from_kind = from_kind
         self.to_kind = to_kind
         self.format = format
-
-
-class MissingFeature(BzrError):
-
-    _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
-
-    def __init__(self, feature):
-        self.feature = feature
-
-
-class PatchSyntax(BzrError):
-    """Base class for patch syntax errors."""
-
-
-class BinaryFiles(BzrError):
-
-    _fmt = 'Binary files section encountered.'
-
-    def __init__(self, orig_name, mod_name):
-        self.orig_name = orig_name
-        self.mod_name = mod_name
-
-
-class MalformedPatchHeader(PatchSyntax):
-
-    _fmt = "Malformed patch header.  %(desc)s\n%(line)r"
-
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-
-
-class MalformedHunkHeader(PatchSyntax):
-
-    _fmt = "Malformed hunk header.  %(desc)s\n%(line)r"
-
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-
-
-class MalformedLine(PatchSyntax):
-
-    _fmt = "Malformed line.  %(desc)s\n%(line)r"
-
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-
-
-class PatchConflict(BzrError):
-
-    _fmt = ('Text contents mismatch at line %(line_no)d.  Original has '
-            '"%(orig_line)s", but patch says it should be "%(patch_line)s"')
-
-    def __init__(self, line_no, orig_line, patch_line):
-        self.line_no = line_no
-        self.orig_line = orig_line.rstrip('\n')
-        self.patch_line = patch_line.rstrip('\n')
 
 
 class FeatureAlreadyRegistered(BzrError):

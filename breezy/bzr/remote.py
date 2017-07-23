@@ -22,6 +22,7 @@ import zlib
 from .. import (
     bencode,
     branch,
+    bzr as _mod_bzr,
     config as _mod_config,
     controldir,
     debug,
@@ -490,7 +491,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 warning('VFS BzrDir access triggered\n%s',
                     ''.join(traceback.format_stack()))
             self._real_bzrdir = _mod_bzrdir.BzrDir.open_from_transport(
-                self.root_transport, probers=[_mod_bzrdir.BzrProber])
+                self.root_transport, probers=[_mod_bzr.BzrProber])
             self._format._network_name = \
                 self._real_bzrdir._format.network_name()
 
@@ -2536,7 +2537,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 mode='r|bz2')
             tmpdir = osutils.mkdtemp()
             try:
-                _extract_tar(tar, tmpdir)
+                tar.extractall(tmpdir)
                 tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
                 tmp_repo = tmp_bzrdir.open_repository()
                 tmp_repo.copy_content_into(destination, revision_id)
@@ -2657,42 +2658,29 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             yield serializer.read_revision_from_string("".join(chunks))
 
     @needs_read_lock
-    def get_revisions(self, revision_ids):
-        if revision_ids is None:
-            revision_ids = self.all_revision_ids()
-        else:
-            for rev_id in revision_ids:
-                if not rev_id or not isinstance(rev_id, basestring):
-                    raise errors.InvalidRevisionId(
-                        revision_id=rev_id, branch=self)
+    def iter_revisions(self, revision_ids):
+        for rev_id in revision_ids:
+            if not rev_id or not isinstance(rev_id, bytes):
+                raise errors.InvalidRevisionId(
+                    revision_id=rev_id, branch=self)
         try:
             missing = set(revision_ids)
-            revs = {}
             for rev in self._iter_revisions_rpc(revision_ids):
                 missing.remove(rev.revision_id)
-                revs[rev.revision_id] = rev
+                yield (rev.revision_id, rev)
+            for fallback in self._fallback_repositories:
+                if not missing:
+                    break
+                for (revid, rev) in fallback.iter_revisions(missing):
+                    if rev is not None:
+                        yield (revid, rev)
+                        missing.remove(revid)
+            for revid in missing:
+                yield (revid, None)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            return self._real_repository.get_revisions(revision_ids)
-        for fallback in self._fallback_repositories:
-            if not missing:
-                break
-            for revid in list(missing):
-                # XXX JRV 2011-11-20: It would be nice if there was a
-                # public method on Repository that could be used to query
-                # for revision objects *without* failing completely if one
-                # was missing. There is VersionedFileRepository._iter_revisions,
-                # but unfortunately that's private and not provided by
-                # all repository implementations.
-                try:
-                    revs[revid] = fallback.get_revision(revid)
-                except errors.NoSuchRevision:
-                    pass
-                else:
-                    missing.remove(revid)
-        if missing:
-            raise errors.NoSuchRevision(self, list(missing)[0])
-        return [revs[revid] for revid in revision_ids]
+            for entry in self._real_repository.iter_revisions(revision_ids):
+                yield entry
 
     def supports_rich_root(self):
         return self._format.rich_root_data
@@ -3893,7 +3881,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # XXX: These should be returned by the set_last_revision_info verb
         old_revno, old_revid = self.last_revision_info()
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        if not revision_id or not isinstance(revision_id, basestring):
+        if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
             response = self._call('Branch.set_last_revision_info',
@@ -4128,15 +4116,6 @@ class RemoteBzrDirConfig(RemoteConfig):
     def _real_object(self):
         self._bzrdir._ensure_real()
         return self._bzrdir._real_bzrdir
-
-
-def _extract_tar(tar, to_dir):
-    """Extract all the contents of a tarfile object.
-
-    A replacement for extractall, which is not present in python2.4
-    """
-    for tarinfo in tar:
-        tar.extract(tarinfo, to_dir)
 
 
 error_translators = registry.Registry()

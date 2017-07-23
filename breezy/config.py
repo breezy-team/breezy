@@ -27,7 +27,6 @@ editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
-gpg_signing_command=name-of-program
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
@@ -83,15 +82,16 @@ from .decorators import needs_write_lock
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import base64
+import errno
 import fnmatch
 import re
+import stat
 
 from breezy import (
     atomicfile,
     controldir,
     debug,
     directory_service,
-    errors,
     lazy_regex,
     library_state,
     lockdir,
@@ -107,6 +107,7 @@ from breezy.i18n import gettext
 """)
 from . import (
     commands,
+    errors,
     hooks,
     lazy_regex,
     registry,
@@ -152,6 +153,89 @@ STORE_LOCATION_NORECURSE = POLICY_NORECURSE
 STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
+
+
+class OptionExpansionLoop(errors.BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(errors.BzrError):
+
+    _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string
+
+
+class IllegalOptionName(errors.BzrError):
+
+    _fmt = 'Option "%(name)s" is not allowed.'
+
+    def __init__(self, name):
+        self.name = name
+
+
+class ConfigContentError(errors.BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        self.filename = filename
+
+
+class ParseConfigError(errors.BzrError):
+
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
+    def __init__(self, errors, filename):
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
+
+
+class ConfigOptionValueError(errors.BzrError):
+
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``brz help %(name)s``')
+
+    def __init__(self, name, value):
+        errors.BzrError.__init__(self, name=name, value=value)
+
+
+class NoEmailInUsername(errors.BzrError):
+
+    _fmt = "%(username)r does not seem to contain a reasonable email address"
+
+    def __init__(self, username):
+        self.username = username
+
+
+class NoSuchConfig(errors.BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        errors.BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(errors.BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        errors.BzrError.__init__(self, option_name=option_name)
+
+
+class NoWhoami(errors.BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. brz whoami "Your Name <name@example.com>"')
 
 
 def signature_policy_from_unicode(signature_string):
@@ -341,11 +425,11 @@ class Config(object):
                 else:
                     name = chunk[1:-1]
                     if name in _ref_stack:
-                        raise errors.OptionExpansionLoop(string, _ref_stack)
+                        raise OptionExpansionLoop(string, _ref_stack)
                     _ref_stack.append(name)
                     value = self._expand_option(name, env, _ref_stack)
                     if value is None:
-                        raise errors.ExpandingUnknownOption(name, string)
+                        raise ExpandingUnknownOption(name, string)
                     if isinstance(value, list):
                         list_value = True
                         chunks.extend(value)
@@ -474,7 +558,7 @@ class Config(object):
         $BRZ_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If no username can be found, errors.NoWhoami exception is raised.
+        If no username can be found, NoWhoami exception is raised.
         """
         v = os.environ.get('BRZ_EMAIL')
         if v:
@@ -487,7 +571,7 @@ class Config(object):
         return default_email()
 
     def ensure_username(self):
-        """Raise errors.NoWhoami if username is not set.
+        """Raise NoWhoami if username is not set.
 
         This method relies on the username() function raising the error.
         """
@@ -665,9 +749,9 @@ class IniBasedConfig(Config):
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise errors.ParseConfigError(e.errors, e.config.filename)
+            raise ParseConfigError(e.errors, e.config.filename)
         except UnicodeDecodeError:
-            raise errors.ConfigContentError(self.file_name)
+            raise ConfigContentError(self.file_name)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         for hook in OldConfigHooks['load']:
@@ -796,10 +880,6 @@ class IniBasedConfig(Config):
         else:
             return None
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        return self._get_user_option('gpg_signing_command')
-
     def _log_format(self):
         """See Config.log_format."""
         return self._get_user_option('log_format')
@@ -843,7 +923,7 @@ class IniBasedConfig(Config):
         try:
             del section[option_name]
         except KeyError:
-            raise errors.NoSuchConfigOption(option_name)
+            raise NoSuchConfigOption(option_name)
         self._write_config_file()
         for hook in OldConfigHooks['remove']:
             hook(self, option_name)
@@ -1312,10 +1392,6 @@ class BranchConfig(Config):
     def remove_user_option(self, option_name, section_name=None):
         self._get_branch_data_config().remove_option(option_name, section_name)
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        return self._get_safe_value('_gpg_signing_command')
-
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_safe_value('_post_commit')
@@ -1513,7 +1589,7 @@ def default_email():
         return u'%s <%s>' % (name, email)
     elif email:
         return email
-    raise errors.NoWhoami()
+    raise NoWhoami()
 
 
 def _auto_user_id():
@@ -1598,7 +1674,7 @@ def extract_email_address(e):
     """
     name, email = parse_username(e)
     if not email:
-        raise errors.NoEmailInUsername(e)
+        raise NoEmailInUsername(e)
     return email
 
 
@@ -1643,6 +1719,9 @@ class TreeConfig(IniBasedConfig):
             self.branch.unlock()
 
 
+_authentication_config_permission_errors = set()
+
+
 class AuthenticationConfig(object):
     """The authentication configuration file based on a ini file.
 
@@ -1655,6 +1734,7 @@ class AuthenticationConfig(object):
         if _file is None:
             self._filename = authentication_config_filename()
             self._input = self._filename = authentication_config_filename()
+            self._check_permissions()
         else:
             # Tests can provide a string as _file
             self._filename = None
@@ -1672,17 +1752,38 @@ class AuthenticationConfig(object):
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise errors.ParseConfigError(e.errors, e.config.filename)
+            raise ParseConfigError(e.errors, e.config.filename)
         except UnicodeError:
-            raise errors.ConfigContentError(self._filename)
+            raise ConfigContentError(self._filename)
         return self._config
+
+    def _check_permissions(self):
+        """Check permission of auth file are user read/write able only."""
+        try:
+            st = os.stat(self._filename)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                trace.mutter('Unable to stat %r: %r', self._filename, e)
+            return
+        mode = stat.S_IMODE(st.st_mode)
+        if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
+             stat.S_IWGRP | stat.S_IRGRP ) & mode):
+            # Only warn once
+            if (not self._filename in _authentication_config_permission_errors
+                and not GlobalConfig().suppress_warning(
+                    'insecure_permissions')):
+                trace.warning("The file '%s' has insecure "
+                        "file permissions. Saved passwords may be accessible "
+                        "by other users.", self._filename)
+                _authentication_config_permission_errors.add(self._filename)
 
     def _save(self):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        f = file(self._filename, 'wb')
+        fd = os.open(self._filename, os.O_RDWR|os.O_CREAT, 0o600)
         try:
+            f = os.fdopen(fd, 'wb')
             self._get_config().write(f)
         finally:
             f.close()
@@ -2184,9 +2285,9 @@ class TransportConfig(object):
             try:
                 conf = ConfigObj(f, encoding='utf-8')
             except configobj.ConfigObjError as e:
-                raise errors.ParseConfigError(e.errors, self._external_url())
+                raise ParseConfigError(e.errors, self._external_url())
             except UnicodeDecodeError:
-                raise errors.ConfigContentError(self._external_url())
+                raise ConfigContentError(self._external_url())
         finally:
             f.close()
         return conf
@@ -2302,7 +2403,7 @@ class Option(object):
                 trace.warning('Value "%s" is not valid for "%s"',
                               unicode_value, self.name)
             elif self.invalid == 'error':
-                raise errors.ConfigOptionValueError(self.name, unicode_value)
+                raise ConfigOptionValueError(self.name, unicode_value)
         return converted
 
     def get_override(self):
@@ -2321,7 +2422,9 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2500,7 +2603,7 @@ class OptionRegistry(registry.Registry):
         :param option_name: The name to validate.
         """
         if _option_ref_re.match('{%s}' % option_name) is None:
-            raise errors.IllegalOptionName(option_name)
+            raise IllegalOptionName(option_name)
 
     def register(self, option):
         """Register a new option to its name.
@@ -2677,14 +2780,6 @@ option_registry.register(
     Option('email', override_from_env=['BRZ_EMAIL'], default=default_email,
            help='The users identity'))
 option_registry.register(
-    Option('gpg_signing_command',
-           default='gpg',
-           help="""\
-Program to use use for creating signatures.
-
-This should support at least the -u and --clearsign options.
-"""))
-option_registry.register(
     Option('gpg_signing_key',
            default=None,
            help="""\
@@ -2692,14 +2787,6 @@ GPG key to use for signing.
 
 This defaults to the first key associated with the users email.
 """))
-option_registry.register(
-    Option('ignore_missing_extensions', default=False,
-           from_unicode=bool_from_store,
-           help='''\
-Control the missing extensions warning display.
-
-The warning will not be emitted if set to True.
-'''))
 option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
@@ -3149,9 +3236,9 @@ class IniFileStore(Store):
                                          list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
-            raise errors.ParseConfigError(e.errors, self.external_url())
+            raise ParseConfigError(e.errors, self.external_url())
         except UnicodeDecodeError:
-            raise errors.ConfigContentError(self.external_url())
+            raise ConfigContentError(self.external_url())
 
     def save_changes(self):
         if not self.is_loaded():
@@ -3200,7 +3287,7 @@ class IniFileStore(Store):
             self.load()
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
-            self._load_from_string('')
+            self._load_from_string(b'')
         if section_id in self.dirty_sections:
             # We already created a mutable section for this id
             return self.dirty_sections[section_id]
@@ -3713,11 +3800,11 @@ class Stack(object):
                     expanded = True
                     name = chunk[1:-1]
                     if name in _refs:
-                        raise errors.OptionExpansionLoop(string, _refs)
+                        raise OptionExpansionLoop(string, _refs)
                     _refs.append(name)
                     value = self._expand_option(name, env, _refs)
                     if value is None:
-                        raise errors.ExpandingUnknownOption(name, string)
+                        raise ExpandingUnknownOption(name, string)
                     chunks.append(value)
                     _refs.pop()
             result = ''.join(chunks)
@@ -4108,7 +4195,7 @@ class cmd_config(commands.Command):
                 if write_access:
                     self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
-            raise errors.NoSuchConfig(scope)
+            raise NoSuchConfig(scope)
         else:
             try:
                 (_, br, _) = (
@@ -4133,7 +4220,7 @@ class cmd_config(commands.Command):
             value = self._quote_multiline(value)
             self.outf.write('%s\n' % (value,))
         else:
-            raise errors.NoSuchConfigOption(name)
+            raise NoSuchConfigOption(name)
 
     def _show_matching_options(self, name, directory, scope):
         name = lazy_regex.lazy_compile(name)
@@ -4178,7 +4265,7 @@ class cmd_config(commands.Command):
             # Explicitly save the changes
             conf.store.save_changes()
         except KeyError:
-            raise errors.NoSuchConfigOption(name)
+            raise NoSuchConfigOption(name)
 
 
 # Test registries

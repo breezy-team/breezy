@@ -202,12 +202,6 @@ class TestErrors(tests.TestCase):
             "smart protocol.",
             str(error))
 
-    def test_no_help_topic(self):
-        error = errors.NoHelpTopic("topic")
-        self.assertEqualDiff("No help could be found for 'topic'. "
-            "Please use 'brz help topics' to obtain a list of topics.",
-            str(error))
-
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id \"anid\" is not present in the tree "
@@ -413,14 +407,6 @@ class TestErrors(tests.TestCase):
             "location specified in the merge directive is not a branch: "
             "foo.", str(error))
 
-    def test_malformed_bug_identifier(self):
-        """Test the formatting of MalformedBugIdentifier."""
-        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
-        self.assertEqual(
-            'Did not understand bug identifier bogus: reason for bogosity. '
-            'See "brz help bugs" for more information on this feature.',
-            str(error))
-
     def test_unexpected_smart_server_response(self):
         e = errors.UnexpectedSmartServerResponse(('not yes',))
         self.assertEqual(
@@ -505,17 +491,10 @@ class TestErrors(tests.TestCase):
 
     def test_invalid_url_join(self):
         """Test the formatting of InvalidURLJoin."""
-        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        e = urlutils.InvalidURLJoin('Reason', 'base path', ('args',))
         self.assertEqual(
             "Invalid URL join request: Reason: 'base path' + ('args',)",
             str(e))
-
-    def test_incorrect_url(self):
-        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
-        self.assertEqual(
-            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
-             "http://bug.com/"),
-            str(err))
 
     def test_unable_encode_path(self):
         err = errors.UnableEncodePath('foo', 'executable')
@@ -619,11 +598,6 @@ class TestErrors(tests.TestCase):
         err = errors.NotBranchError('path', controldir=FakeBzrDir())
         self.assertEqual('Not a branch: "path": NotBranchError.', str(err))
 
-    def test_invalid_pattern(self):
-        error = errors.InvalidPattern('Bad pattern msg.')
-        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
-            str(error))
-
     def test_recursive_bind(self):
         error = errors.RecursiveBind('foo_bar_branch')
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
@@ -689,11 +663,6 @@ class TestErrorFormatting(tests.TestCase):
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
 
-    def test_file_timestamp_unavailable(self):
-        e = errors.FileTimestampUnavailable("/path/foo")
-        self.assertEqual("The filestamp for /path/foo is not available.",
-                         str(e))
-
     def test_transform_rename_failed(self):
         e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
         self.assertEqual(
@@ -724,14 +693,6 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
                              "Please run brz reconcile on this repository." %
                              repo.controldir.root_transport.base,
                              str(error))
-
-    def test_unknown_bug_tracker_abbreviation(self):
-        """Test the formatting of UnknownBugTrackerAbbreviation."""
-        branch = self.make_branch('some_branch')
-        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
-        self.assertEqual(
-            "Cannot find registered bug tracker called xxx on %s" % branch,
-            str(error))
 
     def test_not_branch_bzrdir_with_repo(self):
         controldir = self.make_repository('repo').controldir

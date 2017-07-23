@@ -81,6 +81,7 @@ from ..sixish import (
     )
 from ..transport.local import LocalTransport
 from ..tree import (
+    FileTimestampUnavailable,
     InterTree,
     )
 from ..workingtree import (
@@ -135,7 +136,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """See MutableTree._add."""
         state = self.current_dirstate()
         for f, file_id, kind in zip(files, ids, kinds):
-            f = f.strip(b'/')
+            f = f.strip(u'/')
             if self.path2id(f):
                 # special case tree root handling.
                 if f == b'' and self.path2id(f) == ROOT_ID:
@@ -664,7 +665,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if not from_paths:
             return result
         state = self.current_dirstate()
-        if isinstance(from_paths, basestring):
+        if isinstance(from_paths, (str, bytes)):
             raise ValueError()
         to_dir_utf8 = to_dir.encode('utf8')
         to_entry_dirname, to_basename = os.path.split(to_dir_utf8)
@@ -1868,7 +1869,7 @@ class DirStateRevisionTree(InventoryTree):
         try:
             rev = self._repository.get_revision(last_changed_revision)
         except errors.NoSuchRevision:
-            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+            raise FileTimestampUnavailable(self.id2path(file_id))
         return rev.timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):

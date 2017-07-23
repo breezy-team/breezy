@@ -74,8 +74,6 @@ class CommitBuilder(object):
 
     # all clients should supply tree roots.
     record_root_entry = True
-    # whether this commit builder supports the record_entry_contents interface
-    supports_record_entry_contents = False
     # whether this commit builder will automatically update the branch that is
     # being committed to
     updates_branch = False
@@ -200,15 +198,6 @@ class CommitBuilder(object):
             self.random_revid = True
         else:
             self.random_revid = False
-
-    def will_record_deletes(self):
-        """Tell the commit builder that deletes are being notified.
-
-        This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid, deletes against the basis MUST be recorded via
-        builder.record_delete().
-        """
-        raise NotImplementedError(self.will_record_deletes)
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
         """Record a new tree via iter_changes.
@@ -833,11 +822,29 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def get_revisions(self, revision_ids):
         """Get many revisions at once.
-        
-        Repositories that need to check data on every revision read should 
+
+        Repositories that need to check data on every revision read should
         subclass this method.
         """
-        raise NotImplementedError(self.get_revisions)
+        revs = {}
+        for revid, rev in self.iter_revisions(revision_ids):
+            if rev is None:
+                raise errors.NoSuchRevision(self, revid)
+            revs[revid] = rev
+        return [revs[revid] for revid in revision_ids]
+
+    def iter_revisions(self, revision_ids):
+        """Iterate over revision objects.
+
+        :param revision_ids: An iterable of revisions to examine. None may be
+            passed to request all revisions known to the repository. Note that
+            not all repositories can find unreferenced revisions; for those
+            repositories only referenced ones will be returned.
+        :return: An iterator of (revid, revision) tuples. Absent revisions (
+            those asked for but not available) are returned as (revid, None).
+            N.B.: Revisions are not necessarily yielded in order.
+        """
+        raise NotImplementedError(self.iter_revisions)
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.

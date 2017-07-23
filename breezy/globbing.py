@@ -242,7 +242,7 @@ class Globster(object):
                 match = regex.match(filename)
                 if match:
                     return patterns[match.lastindex -1]
-        except errors.InvalidPattern as e:
+        except lazy_regex.InvalidPattern as e:
             # We can't show the default e.msg to the user as thats for
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
@@ -286,7 +286,7 @@ class Globster(object):
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("") # force compile
-        except errors.InvalidPattern as e:
+        except lazy_regex.InvalidPattern as e:
             result = False
         return result
 

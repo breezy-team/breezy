@@ -653,15 +653,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
 
     if opts.files_with_matches or opts.files_without_match:
         if opts.fixed_string:
-            if sys.platform > (2, 5):
-                found = pattern in file_text
-            else:
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        found = True
-                        break
-                else:
-                    found = False
+            found = pattern in file_text
         else:
             search = opts.patternc.search
             if "$" not in pattern:

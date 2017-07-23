@@ -690,11 +690,7 @@ class KnitPacker(Packer):
             for result in self._do_copy_nodes_graph(index_map, writer,
                 write_index, output_lines, pb, readv_group_iter, total_items):
                 yield result
-        except Exception:
-            # Python 2.4 does not permit try:finally: in a generator.
-            pb.finished()
-            raise
-        else:
+        finally:
             pb.finished()
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,

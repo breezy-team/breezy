@@ -25,14 +25,18 @@ from .. import (
     )
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
-from ..commit import Commit, NullCommitReporter
+from ..commit import (
+    Commit,
+    NullCommitReporter,
+    filter_excluded,
+    )
 from ..errors import (
     PointlessCommit,
     BzrError,
-    SigningFailed,
     LockContention,
     )
 from . import (
+    TestCase,
     TestCaseWithTransport,
     test_foreign,
     )
@@ -48,7 +52,6 @@ class MustSignConfig(config.MemoryStack):
 
     def __init__(self):
         super(MustSignConfig, self).__init__('''
-gpg_signing_command=cat -
 create_signatures=always
 ''')
 
@@ -426,7 +429,6 @@ class TestCommit(TestCaseWithTransport):
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack('''
-gpg_signing_command=cat -
 create_signatures=always
 ''')
             commit.Commit(config_stack=conf).commit(
@@ -452,10 +454,9 @@ create_signatures=always
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
             conf = config.MemoryStack('''
-gpg_signing_command=cat -
 create_signatures=always
 ''')
-            self.assertRaises(SigningFailed,
+            self.assertRaises(breezy.gpg.SigningFailed,
                               commit.Commit(config_stack=conf).commit,
                               message="base",
                               allow_pointless=True,
@@ -832,3 +833,35 @@ create_signatures=always
         tree2 = branch.create_checkout('repo/tree2')
         tree2.commit('message', rev_id='rev1')
         self.assertTrue(tree2.branch.repository.has_revision('rev1'))
+
+
+class FilterExcludedTests(TestCase):
+
+    def test_add_file_not_excluded(self):
+        changes = [
+            ('fid', (None, 'newpath'),
+             0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
+             ('file', 'file'), (True, True))]
+        self.assertEqual(changes, list(filter_excluded(changes, ['otherpath'])))
+
+    def test_add_file_excluded(self):
+        changes = [
+            ('fid', (None, 'newpath'),
+             0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
+             ('file', 'file'), (True, True))]
+        self.assertEqual([], list(filter_excluded(changes, ['newpath'])))
+
+    def test_delete_file_excluded(self):
+        changes = [
+            ('fid', ('somepath', None),
+             0, (False, None), ('pid', None), ('newpath', None),
+             ('file', None), (True, None))]
+        self.assertEqual([], list(filter_excluded(changes, ['somepath'])))
+
+    def test_move_from_or_to_excluded(self):
+        changes = [
+            ('fid', ('oldpath', 'newpath'),
+             0, (False, False), ('pid', 'pid'), ('oldpath', 'newpath'),
+             ('file', 'file'), (True, True))]
+        self.assertEqual([], list(filter_excluded(changes, ['oldpath'])))
+        self.assertEqual([], list(filter_excluded(changes, ['newpath'])))

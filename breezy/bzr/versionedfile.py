@@ -603,8 +603,6 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""
-        if isinstance(version_ids, basestring):
-            version_ids = [version_ids]
         raise NotImplementedError(self.get_ancestry)
 
     def get_ancestry_with_ghosts(self, version_ids):

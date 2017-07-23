@@ -25,10 +25,12 @@ from ... import (
     repository,
     urlutils,
     )
+from .. import (
+    BzrProber,
+    )
 from ..bzrdir import (
     BzrDir,
     BzrDirFormat,
-    BzrProber,
     )
 from ...controldir import (
     network_format_registry,

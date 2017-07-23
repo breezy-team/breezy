@@ -3230,7 +3230,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.delete_contents(file_trans_id)
         preview.create_file('a\nb\n', file_trans_id)
         preview_tree = preview.get_preview_tree()
-        merger = Merger.from_revision_ids(None, preview_tree,
+        merger = Merger.from_revision_ids(preview_tree,
                                           child_tree.branch.last_revision(),
                                           other_branch=child_tree.branch,
                                           tree_branch=work_tree.branch)
@@ -3249,7 +3249,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         tree2.set_root_id('TREE_ROOT')
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
-                                         None, tree.basis_tree())
+                                         tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
 
@@ -3265,9 +3265,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tt.create_file('baz', trans_id)
         tree2 = tree.controldir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree2/foo', 'qux')])
-        pb = None
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
-                                         pb, tree.basis_tree())
+                                         tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
 

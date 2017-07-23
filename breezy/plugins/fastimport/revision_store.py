@@ -415,12 +415,9 @@ class AbstractRevisionStore(object):
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
         rev.inv_sha1 = builder.inv_sha1
-        try:
-            config = builder._config_stack
-        except AttributeError: # bzr < 2.5
-            config = builder._config
+        config = builder._config_stack
         builder.repository.add_revision(builder._new_revision_id, rev,
-            builder.new_inventory)
+            builder.revision_tree().root_inventory)
         if self._graph is not None:
             # TODO: Use StaticTuple and .intern() for these things
             self._graph.add_node(builder._new_revision_id, rev.parent_ids)

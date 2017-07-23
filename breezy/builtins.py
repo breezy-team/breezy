@@ -22,7 +22,7 @@ import errno
 import os
 import sys
 
-import breezy.bzr.bzrdir
+import breezy.bzr
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -40,6 +40,7 @@ from breezy import (
     errors,
     globbing,
     hooks,
+    lazy_regex,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -1411,8 +1412,6 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1440,19 +1439,12 @@ class cmd_branch(Command):
         Option('bind',
             help="Bind new branch to from location."),
         ]
-    aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
             files_from=None):
         from breezy import switch as _mod_switch
-        if self.invoked_as in ['get', 'clone']:
-            ui.ui_factory.show_user_warning(
-                'deprecated_command',
-                deprecated_name=self.invoked_as,
-                recommended_name='branch',
-                deprecated_in_version='2.4')
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
@@ -2073,7 +2065,7 @@ class cmd_init(Command):
                 'See "help formats".',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
-                value_switches=True,
+                value_switches=False,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
@@ -2152,7 +2144,7 @@ class cmd_init(Command):
                 url = repository.controldir.root_transport.external_url()
                 try:
                     url = urlutils.local_path_from_url(url)
-                except errors.InvalidURL:
+                except urlutils.InvalidURL:
                     pass
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
@@ -2192,7 +2184,7 @@ class cmd_init_repository(Command):
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=True, title='Repository format'),
+                            value_switches=False, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
@@ -3199,7 +3191,7 @@ class cmd_ignore(Command):
                             'Invalid ignore patterns found. %s',
                             bad_patterns_count) % bad_patterns)
             ui.ui_factory.show_error(msg)
-            raise errors.InvalidPattern('')
+            raise lazy_regex.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
@@ -3556,10 +3548,10 @@ class cmd_commit(Command):
                 tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id)
-            except errors.UnknownBugTrackerAbbreviation:
+            except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
-            except errors.MalformedBugIdentifier as e:
+            except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     "%s\nCommit refused.") % (str(e),))
 
@@ -3872,7 +3864,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except errors.NoEmailInUsername as e:
+        except _mod_config.NoEmailInUsername as e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
@@ -4413,7 +4405,7 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(gettext(
                         'Cannot use -r with merge directives or bundles'))
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, None)
+                   mergeable)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
@@ -4568,7 +4560,7 @@ class cmd_merge(Command):
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
         other_branch.tags.merge_to(tree.branch.tags, ignore_master=True)
-        merger = _mod_merge.Merger.from_revision_ids(pb, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
             allow_pending = False
@@ -4720,7 +4712,7 @@ class cmd_remerge(Command):
         # have not yet been seen.
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
@@ -5216,6 +5208,7 @@ class cmd_re_sign(Command):
             b.repository.start_write_group()
             try:
                 for revision_id in revision_id_list:
+                    revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
             except:
                 b.repository.abort_write_group()

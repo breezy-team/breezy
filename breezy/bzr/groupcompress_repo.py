@@ -1136,7 +1136,7 @@ class CHKInventoryRepository(PackRepository):
             raise AssertionError()
         vf = self.revisions
         if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
+            revisions_iterator = self.iter_revisions(self.all_revision_ids())
         for revid, revision in revisions_iterator:
             if revision is None:
                 pass

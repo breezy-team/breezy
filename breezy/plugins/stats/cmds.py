@@ -148,8 +148,8 @@ def get_revisions_and_committers(a_repo, revids):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         trace.note('getting revisions')
-        revisions = a_repo.get_revisions(revids)
-        for count, rev in enumerate(revisions):
+        revisions = a_repo.iter_revisions(revids)
+        for count, (revid, rev) in enumerate(revisions):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
                 # XXX: There is a chance sometimes with svn imports that the

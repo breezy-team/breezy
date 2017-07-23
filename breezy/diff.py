@@ -48,6 +48,8 @@ from .registry import (
     Registry,
     )
 from .trace import mutter, note, warning
+from .tree import FileTimestampUnavailable
+
 
 DEFAULT_CONTEXT_AMOUNT = 3
 
@@ -484,7 +486,7 @@ def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     try:
         mtime = tree.get_file_mtime(file_id, path)
-    except errors.FileTimestampUnavailable:
+    except FileTimestampUnavailable:
         mtime = 0
     return timestamp.format_patch_date(mtime)
 
@@ -825,7 +827,7 @@ class DiffFromTool(DiffPath):
             source.close()
         try:
             mtime = tree.get_file_mtime(file_id)
-        except errors.FileTimestampUnavailable:
+        except FileTimestampUnavailable:
             pass
         else:
             os.utime(full_path, (mtime, mtime))

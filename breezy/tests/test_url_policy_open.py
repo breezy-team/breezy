@@ -23,7 +23,7 @@ from ..branch import (
 from ..bzr.branch import (
     BranchReferenceFormat,
     )
-from ..bzr.bzrdir import (
+from ..bzr import (
     BzrProber,
     )
 from ..controldir import (

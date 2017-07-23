@@ -85,14 +85,6 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
 
 
-class TestControlDirFormatDeprecated(tests.TestCaseWithTransport):
-    """Tests for removed registration method in the ControlDirFormat facility."""
-
-    def test_register_format(self):
-        self.assertRaises(errors.BzrError,
-            controldir.ControlDirFormat.register_format, object())
-
-
 class TestProber(tests.TestCaseWithTransport):
     """Per-prober tests."""
 

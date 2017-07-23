@@ -1196,16 +1196,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 0 1 4 :"  # We don't have a 4th record
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.IndexError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_corrupted_parent(self):
         transport = MockTransport([
@@ -1215,16 +1206,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1v :", # Can't have a parent of '1v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_corrupted_parent_in_list(self):
         transport = MockTransport([
@@ -1234,16 +1216,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1 v :", # Can't have a parent of 'v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_invalid_position(self):
         transport = MockTransport([
@@ -1251,16 +1224,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 1v 1 :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_invalid_size(self):
         transport = MockTransport([
@@ -1268,16 +1232,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 1 1v :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        try:
-            self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError as e:
-            if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')):
-                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
-                                  ' raising new style exceptions with python'
-                                  ' >=2.5')
-            else:
-                raise
+        self.assertRaises(errors.KnitCorrupt, index.keys)
 
     def test_scan_unvalidated_index_not_implemented(self):
         transport = MockTransport()

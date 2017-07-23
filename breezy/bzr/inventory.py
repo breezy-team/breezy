@@ -53,6 +53,7 @@ from .. import (
 from ..sixish import (
     bytesintern,
     PY3,
+    text_type,
     viewitems,
     viewvalues,
     )
@@ -667,7 +668,7 @@ class CommonInventory(object):
                 return
             from_dir = self.root
             yield '', self.root
-        elif isinstance(from_dir, basestring):
+        elif isinstance(from_dir, (str, text_type)):
             from_dir = self[from_dir]
 
         # unrolling the recursive called changed the time from
@@ -751,7 +752,7 @@ class CommonInventory(object):
             if (specific_file_ids is None or yield_parents or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
-        elif isinstance(from_dir, basestring):
+        elif isinstance(from_dir, (str, text_type)):
             from_dir = self[from_dir]
 
         if specific_file_ids is not None:
@@ -843,7 +844,7 @@ class CommonInventory(object):
 
         Returns None IFF the path is not found.
         """
-        if isinstance(relpath, basestring):
+        if isinstance(relpath, (str, text_type)):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
@@ -2094,7 +2095,7 @@ class CHKInventory(CommonInventory):
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        if isinstance(relpath, basestring):
+        if isinstance(relpath, (str, text_type)):
             names = osutils.splitpath(relpath)
         else:
             names = relpath

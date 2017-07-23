@@ -44,6 +44,25 @@ External Compatibility Breaks
  * Support for medusa for FTP tests has been dropped, only
    pyftpdlib is now supported. (Jelmer Vernooĳ)
 
+ * The deprecated ``brz get`` and ``brz clone`` commands have been
+   removed. (Jelmer Vernooĳ)
+
+ * The setting to ignore missing C extensions has been changed from
+   ``ignore_missing_extensions=True`` to
+   ``suppress_warnings=missing_extensions``. (Jelmer Vernooĳ)
+
+ * Remove format names as options to ``brz init`` and ``brz
+   init-repository``.. Now you must use ``brz init --format=...``.
+   This simplifies ``brz init --help``.
+   (Neil Martinsen-Burrell, #330494)
+
+ * ``python-gpg`` is now used for checking GPG signatures rather than
+   ``python-gpgme``. (Jelmer Vernooĳ, #1702308)
+
+ * ``python-gpg`` is now used for signing commits, rather than shelling
+   out to the gnupg command. The ``gpg_signing_command`` option has been
+   removed.  (Jelmer Vernooĳ, #847388)
+
 New Features
 ************
 
@@ -67,7 +86,13 @@ New Features
  * The 'fetch-ghosts' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
- * The 'commitfromnews' plugin is now bundled.  (Jelmer Vernooĳ)
+ * The 'commitfromnews' plugin is now bundled and
+   can be enabled by setting ``commit.template_from_files = NEWS``.
+   (Jelmer Vernooĳ)
+
+ * The functionality from ``bzr-guess`` is now merged into Breezy.
+   It will provide suggestions if the user typoes a command.
+   (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -86,6 +111,17 @@ Bug Fixes
 * The ``bisect`` command now works in non-``.bzr`` directories.
   (Jelmer Vernooĳ)
 
+* When creating ``authentication.conf``, umask is now set so only the
+  current user can read the file. Breezy warns if the file is
+  accessible for other users when it starts.
+  (Joke de Buhr, Jelmer Vernooĳ, #475501)
+
+* Support ``brz commit -x`` in combination with iter_changes.
+  (Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)
+
+* Print a proper error when encountering ghost revisions in
+  mainline in ``bzr log``. (Jelmer Vernooĳ, #726466)
+
 Documentation
 *************
 
@@ -95,13 +131,16 @@ Documentation
 API Changes
 ***********
 
- * bzrlib has been renamed to bzrlib. (Martin Packman, Jelmer Vernooĳ)
+ * bzrlib has been renamed to breezy. (Martin Packman, Jelmer Vernooĳ)
 
  * Signature of ``load_tests`` used by ``TestLoader`` changed to be
    compatible with standard libarary unittest.  (Martin Packman)
 
  * All previously deprecated functionality has been removed.
    (Jelmer Vernooĳ)
+
+ * ``CommitBuilder.record_entry_contents`` has been removed.
+   (Jelmer Vernooĳ, #731433, #604953)
 
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
@@ -126,6 +165,12 @@ API Changes
 
  * ``ControlDir.find_bzrdirs`` has been renamed to
    ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
+
+ * ``Repository.get_revisions`` no longer accepts ``None`` as
+   argument. (Jelmer Vernooĳ)
+
+ * A new ``Repository.iter_revisions`` method has been added.
+   (Jelmer Vernooĳ)
 
 Internals
 *********

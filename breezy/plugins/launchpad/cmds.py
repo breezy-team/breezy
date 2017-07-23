@@ -28,7 +28,6 @@ from ...commands import (
     )
 from ...errors import (
     BzrCommandError,
-    InvalidURL,
     NotBranchError,
     )
 from ...i18n import gettext
@@ -65,6 +64,7 @@ class cmd_launchpad_open(Command):
 
     def _get_web_url(self, service, location):
         from .lp_registration import (
+            InvalidURL,
             NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:

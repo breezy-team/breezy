@@ -26,6 +26,14 @@ from .. import (
     )
 
 
+class ErrorTests(tests.TestCase):
+
+    def test_invalid_pattern(self):
+        error = lazy_regex.InvalidPattern('Bad pattern msg.')
+        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
+            str(error))
+
+
 class InstrumentedLazyRegex(lazy_regex.LazyRegex):
     """Keep track of actions on the lazy regex"""
 
@@ -71,7 +79,7 @@ class TestLazyRegex(tests.TestCase):
         p = lazy_regex.lazy_compile('RE:[')
         # As p.match is lazy, we make it into a lambda so its handled
         # by assertRaises correctly.
-        e = self.assertRaises(errors.InvalidPattern, lambda: p.match('foo'))
+        e = self.assertRaises(lazy_regex.InvalidPattern, lambda: p.match('foo'))
         self.assertEqual(e.msg, '"RE:[" unexpected end of regular expression')
 
 

@@ -599,15 +599,10 @@ class TextTestResult(ExtendedTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 pb=None,
                  strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, strict)
-        # We no longer pass them around, but just rely on the UIFactory stack
-        # for state
-        if pb is not None:
-            warnings.warn("Passing pb to TextTestResult is deprecated")
         self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
@@ -794,11 +789,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        if isinstance(codec, tuple):
-            # Python 2.4
-            encode = codec[0]
-        else:
-            encode = codec.encode
+        encode = codec.encode
         # GZ 2010-09-08: Really we don't want to be writing arbitrary bytes,
         #                so should swap to the plain codecs.StreamWriter
         stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream,
@@ -1042,7 +1033,7 @@ class TestCase(testtools.TestCase):
                                   % (counter_name,))
         _counters[counter_name] = 0
         self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
-            lambda: ['%d' % (_counters[counter_name],)]))
+            lambda: [b'%d' % (_counters[counter_name],)]))
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
         label = 'count %s calls' % (counter_name,)
@@ -1560,7 +1551,7 @@ class TestCase(testtools.TestCase):
 
     def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertPathDoesNotExist(p)
         else:
@@ -1889,8 +1880,8 @@ class TestCase(testtools.TestCase):
         self._benchcalls.
         """
         if self._benchtime is None:
-            self.addDetail('benchtime', content.Content(content.ContentType(
-                "text", "plain"), lambda:[str(self._benchtime)]))
+            self.addDetail('benchtime', content.Content(content.UTF8_TEXT,
+                lambda:[str(self._benchtime).encode('utf-8')]))
             self._benchtime = 0
         start = time.time()
         try:
@@ -2091,7 +2082,7 @@ class TestCase(testtools.TestCase):
         if len(args) == 1:
             if isinstance(args[0], list):
                 args = args[0]
-            elif isinstance(args[0], basestring):
+            elif isinstance(args[0], (str, text_type)):
                 args = list(shlex.split(args[0]))
         else:
             raise ValueError("passing varargs to run_bzr_subprocess")
@@ -2253,9 +2244,9 @@ class TestCase(testtools.TestCase):
         if retcode is not None and retcode != process.returncode:
             if process_args is None:
                 process_args = "(unknown args)"
-            trace.mutter('Output of brz %s:\n%s', process_args, out)
-            trace.mutter('Error for brz %s:\n%s', process_args, err)
-            self.fail('Command brz %s failed with retcode %s != %s'
+            trace.mutter('Output of brz %r:\n%s', process_args, out)
+            trace.mutter('Error for brz %r:\n%s', process_args, err)
+            self.fail('Command brz %r failed with retcode %d != %d'
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
@@ -2289,7 +2280,7 @@ class TestCase(testtools.TestCase):
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
-            stdin = BytesIO("")
+            stdin = BytesIO(b"")
         if stdout is None:
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
@@ -2848,18 +2839,18 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
-            self.assertIsInstance(name, basestring)
+            self.assertIsInstance(name, (str, text_type))
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
                 if line_endings == 'binary':
-                    end = '\n'
+                    end = b'\n'
                 elif line_endings == 'native':
-                    end = os.linesep
+                    end = os.linesep.encode('ascii')
                 else:
                     raise errors.BzrError(
                         'Invalid line ending request %r' % line_endings)
-                content = "contents of %s%s" % (name.encode('utf-8'), end)
+                content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     build_tree_contents = staticmethod(treeshape.build_tree_contents)
@@ -2868,7 +2859,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
@@ -2879,7 +2870,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertNotInWorkingTree(p,tree=tree)
         else:
@@ -2998,7 +2989,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
         There is no point in forcing them to duplicate the extension related
         warning.
         """
-        config.GlobalStack().set('ignore_missing_extensions', True)
+        config.GlobalConfig().set_user_option(
+            'suppress_warnings', 'missing_extensions')
 
 
 class ChrootedTestCase(TestCaseWithTransport):

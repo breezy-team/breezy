@@ -61,6 +61,7 @@ from ...bzr.repository import (
     )
 from ...sixish import (
     BytesIO,
+    text_type,
     )
 from .store.text import TextStore
 from ...bzr.versionedfile import (
@@ -88,7 +89,7 @@ class AllInOneRepository(VersionedFileRepository):
         return xml5.serializer_v5
 
     def _escape(self, file_or_path):
-        if not isinstance(file_or_path, basestring):
+        if not isinstance(file_or_path, (str, text_type)):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
@@ -164,11 +165,6 @@ class AllInOneRepository(VersionedFileRepository):
             timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
-
-    @needs_read_lock
-    def get_revisions(self, revision_ids):
-        revs = self._get_revisions(revision_ids)
-        return revs
 
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):

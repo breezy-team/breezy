@@ -33,6 +33,7 @@ from . import (
 
 from .decorators import needs_read_lock, needs_write_lock
 from .sixish import (
+    text_type,
     viewvalues,
     )
 
@@ -106,12 +107,12 @@ class MutableTree(tree.Tree):
 
         TODO: Perhaps callback with the ids and paths as they're added.
         """
-        if isinstance(files, basestring):
+        if isinstance(files, (str, text_type)):
             # XXX: Passing a single string is inconsistent and should be
             # deprecated.
-            if not (ids is None or isinstance(ids, basestring)):
+            if not (ids is None or isinstance(ids, (str, text_type))):
                 raise AssertionError()
-            if not (kinds is None or isinstance(kinds, basestring)):
+            if not (kinds is None or isinstance(kinds, (str, text_type))):
                 raise AssertionError()
             files = [files]
             if ids is not None:

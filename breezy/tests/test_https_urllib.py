@@ -25,9 +25,6 @@ from .. import (
     config,
     trace,
 )
-from ..errors import (
-    ConfigOptionValueError,
-)
 from .. import tests
 from ..transport.http import _urllib2_wrappers
 from ..transport.http._urllib2_wrappers import ssl
@@ -77,7 +74,8 @@ class CertReqsConfigTests(tests.TestCaseInTempDir):
         stack = config.MemoryStack("ssl.cert_reqs = required\n")
         self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = invalid\n")
-        self.assertRaises(ConfigOptionValueError, stack.get, "ssl.cert_reqs")
+        self.assertRaises(config.ConfigOptionValueError, stack.get,
+                          "ssl.cert_reqs")
 
 
 class MatchHostnameTests(tests.TestCase):
