@@ -2739,18 +2739,6 @@ class TipChangeRejected(BzrError):
         self.msg = msg
 
 
-class DecompressCorruption(BzrError):
-
-    _fmt = "Corruption while decompressing repository file%(orig_error)s"
-
-    def __init__(self, orig_error=None):
-        if orig_error is not None:
-            self.orig_error = ", %s" % (orig_error,)
-        else:
-            self.orig_error = ""
-        BzrError.__init__(self)
-
-
 class JailBreak(BzrError):
 
     _fmt = "An attempt to access a url outside the server jail was made: '%(url)s'."
