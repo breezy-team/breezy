@@ -22,14 +22,14 @@ from .. import (
     transport,
     )
 from ..bzr import (
-    index,
+    index as _mod_index,
     )
 
 
 class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
 
     def test_build_index_empty(self):
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual(
@@ -37,7 +37,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             contents)
 
     def test_build_index_empty_two_element_keys(self):
-        builder = index.GraphIndexBuilder(key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(key_elements=2)
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual(
@@ -45,7 +45,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             contents)
 
     def test_build_index_one_reference_list_empty(self):
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual(
@@ -53,7 +53,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             contents)
 
     def test_build_index_two_reference_list_empty(self):
-        builder = index.GraphIndexBuilder(reference_lists=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
         stream = builder.finish()
         contents = stream.read()
         self.assertEqual(
@@ -61,7 +61,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             contents)
 
     def test_build_index_one_node_no_refs(self):
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         builder.add_node(('akey', ), 'data')
         stream = builder.finish()
         contents = stream.read()
@@ -70,7 +70,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "akey\x00\x00\x00data\n\n", contents)
 
     def test_build_index_one_node_no_refs_accepts_empty_reflist(self):
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         builder.add_node(('akey', ), 'data', ())
         stream = builder.finish()
         contents = stream.read()
@@ -82,7 +82,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
         # multipart keys are separated by \x00 - because they are fixed length,
         # not variable this does not cause any issues, and seems clearer to the
         # author.
-        builder = index.GraphIndexBuilder(key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(key_elements=2)
         builder.add_node(('akey', 'secondpart'), 'data')
         stream = builder.finish()
         contents = stream.read()
@@ -91,7 +91,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "akey\x00secondpart\x00\x00\x00data\n\n", contents)
 
     def test_add_node_empty_value(self):
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         builder.add_node(('akey', ), '')
         stream = builder.finish()
         contents = stream.read()
@@ -101,7 +101,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
 
     def test_build_index_nodes_sorted(self):
         # the highest sorted node comes first.
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         # use three to have a good chance of glitching dictionary hash
         # lookups etc. Insert in randomish order that is not correct
         # and not the reverse of the correct order.
@@ -119,7 +119,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
 
     def test_build_index_2_element_key_nodes_sorted(self):
         # multiple element keys are sorted first-key, second-key.
-        builder = index.GraphIndexBuilder(key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(key_elements=2)
         # use three values of each key element, to have a good chance of
         # glitching dictionary hash lookups etc. Insert in randomish order that
         # is not correct and not the reverse of the correct order.
@@ -148,7 +148,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_build_index_reference_lists_are_included_one(self):
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         builder.add_node(('key', ), 'data', ([], ))
         stream = builder.finish()
         contents = stream.read()
@@ -158,7 +158,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_build_index_reference_lists_with_2_element_keys(self):
-        builder = index.GraphIndexBuilder(reference_lists=1, key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1, key_elements=2)
         builder.add_node(('key', 'key2'), 'data', ([], ))
         stream = builder.finish()
         contents = stream.read()
@@ -168,7 +168,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_build_index_reference_lists_are_included_two(self):
-        builder = index.GraphIndexBuilder(reference_lists=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
         builder.add_node(('key', ), 'data', ([], []))
         stream = builder.finish()
         contents = stream.read()
@@ -178,12 +178,12 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_clear_cache(self):
-        builder = index.GraphIndexBuilder(reference_lists=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
         # This is a no-op, but the api should exist
         builder.clear_cache()
 
     def test_node_references_are_byte_offsets(self):
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         builder.add_node(('reference', ), 'data', ([], ))
         builder.add_node(('key', ), 'data', ([('reference', )], ))
         stream = builder.finish()
@@ -195,7 +195,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_node_references_are_cr_delimited(self):
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         builder.add_node(('reference', ), 'data', ([], ))
         builder.add_node(('reference2', ), 'data', ([], ))
         builder.add_node(('key', ), 'data',
@@ -210,7 +210,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_multiple_reference_lists_are_tab_delimited(self):
-        builder = index.GraphIndexBuilder(reference_lists=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
         builder.add_node(('keference', ), 'data', ([], []))
         builder.add_node(('rey', ), 'data',
                          ([('keference', )], [('keference', )]))
@@ -223,7 +223,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_add_node_referencing_missing_key_makes_absent(self):
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         builder.add_node(('rey', ), 'data',
                          ([('beference', ), ('aeference2', )], ))
         stream = builder.finish()
@@ -237,7 +237,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
 
     def test_node_references_three_digits(self):
         # test the node digit expands as needed.
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         references = [(str(val), ) for val in range(8, -1, -1)]
         builder.add_node(('2-key', ), '', (references, ))
         stream = builder.finish()
@@ -259,7 +259,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
     def test_absent_has_no_reference_overhead(self):
         # the offsets after an absent record should be correct when there are
         # >1 reference lists.
-        builder = index.GraphIndexBuilder(reference_lists=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
         builder.add_node(('parent', ), '', ([('aail', ), ('zther', )], []))
         stream = builder.finish()
         contents = stream.read()
@@ -271,99 +271,99 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             "\n", contents)
 
     def test_add_node_bad_key(self):
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         for bad_char in '\t\n\x0b\x0c\r\x00 ':
-            self.assertRaises(errors.BadIndexKey, builder.add_node,
+            self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 ('a%skey' % bad_char, ), 'data')
-        self.assertRaises(errors.BadIndexKey, builder.add_node,
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 ('', ), 'data')
-        self.assertRaises(errors.BadIndexKey, builder.add_node,
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 'not-a-tuple', 'data')
         # not enough length
-        self.assertRaises(errors.BadIndexKey, builder.add_node,
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 (), 'data')
         # too long
-        self.assertRaises(errors.BadIndexKey, builder.add_node,
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 ('primary', 'secondary'), 'data')
         # secondary key elements get checked too:
-        builder = index.GraphIndexBuilder(key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(key_elements=2)
         for bad_char in '\t\n\x0b\x0c\r\x00 ':
-            self.assertRaises(errors.BadIndexKey, builder.add_node,
+            self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 ('prefix', 'a%skey' % bad_char), 'data')
 
     def test_add_node_bad_data(self):
-        builder = index.GraphIndexBuilder()
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        builder = _mod_index.GraphIndexBuilder()
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data\naa')
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data\x00aa')
 
     def test_add_node_bad_mismatched_ref_lists_length(self):
-        builder = index.GraphIndexBuilder()
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        builder = _mod_index.GraphIndexBuilder()
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa', ([], ))
-        builder = index.GraphIndexBuilder(reference_lists=1)
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa')
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa', (), )
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa', ([], []))
-        builder = index.GraphIndexBuilder(reference_lists=2)
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa')
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa', ([], ))
-        self.assertRaises(errors.BadIndexValue, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexValue, builder.add_node, ('akey', ),
             'data aa', ([], [], []))
 
     def test_add_node_bad_key_in_reference_lists(self):
         # first list, first key - trivial
-        builder = index.GraphIndexBuilder(reference_lists=1)
-        self.assertRaises(errors.BadIndexKey, builder.add_node, ('akey', ),
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node, ('akey', ),
             'data aa', ([('a key', )], ))
         # references keys must be tuples too
-        self.assertRaises(errors.BadIndexKey, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node, ('akey', ),
             'data aa', (['not-a-tuple'], ))
         # not enough length
-        self.assertRaises(errors.BadIndexKey, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node, ('akey', ),
             'data aa', ([()], ))
         # too long
-        self.assertRaises(errors.BadIndexKey, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node, ('akey', ),
             'data aa', ([('primary', 'secondary')], ))
         # need to check more than the first key in the list
-        self.assertRaises(errors.BadIndexKey, builder.add_node, ('akey', ),
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node, ('akey', ),
             'data aa', ([('agoodkey', ), ('that is a bad key', )], ))
         # and if there is more than one list it should be getting checked
         # too
-        builder = index.GraphIndexBuilder(reference_lists=2)
-        self.assertRaises(errors.BadIndexKey, builder.add_node, ('akey', ),
+        builder = _mod_index.GraphIndexBuilder(reference_lists=2)
+        self.assertRaises(_mod_index.BadIndexKey, builder.add_node, ('akey', ),
             'data aa', ([], ['a bad key']))
 
     def test_add_duplicate_key(self):
-        builder = index.GraphIndexBuilder()
+        builder = _mod_index.GraphIndexBuilder()
         builder.add_node(('key', ), 'data')
-        self.assertRaises(errors.BadIndexDuplicateKey,
+        self.assertRaises(_mod_index.BadIndexDuplicateKey,
                           builder.add_node, ('key', ), 'data')
 
     def test_add_duplicate_key_2_elements(self):
-        builder = index.GraphIndexBuilder(key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(key_elements=2)
         builder.add_node(('key', 'key'), 'data')
-        self.assertRaises(errors.BadIndexDuplicateKey, builder.add_node,
+        self.assertRaises(_mod_index.BadIndexDuplicateKey, builder.add_node,
             ('key', 'key'), 'data')
 
     def test_add_key_after_referencing_key(self):
-        builder = index.GraphIndexBuilder(reference_lists=1)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1)
         builder.add_node(('key', ), 'data', ([('reference', )], ))
         builder.add_node(('reference', ), 'data', ([],))
 
     def test_add_key_after_referencing_key_2_elements(self):
-        builder = index.GraphIndexBuilder(reference_lists=1, key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1, key_elements=2)
         builder.add_node(('k', 'ey'), 'data', ([('reference', 'tokey')], ))
         builder.add_node(('reference', 'tokey'), 'data', ([],))
 
     def test_set_optimize(self):
-        builder = index.GraphIndexBuilder(reference_lists=1, key_elements=2)
+        builder = _mod_index.GraphIndexBuilder(reference_lists=1, key_elements=2)
         builder.set_optimize(for_size=True)
         self.assertTrue(builder._optimize_for_size)
         builder.set_optimize(for_size=False)
@@ -387,24 +387,24 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         return nodes
 
     def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
-        builder = index.GraphIndexBuilder(ref_lists, key_elements=key_elements)
+        builder = _mod_index.GraphIndexBuilder(ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
         trans = transport.get_transport_from_url('trace+' + self.get_url())
         size = trans.put_file('index', stream)
-        return index.GraphIndex(trans, 'index', size)
+        return _mod_index.GraphIndex(trans, 'index', size)
 
     def make_index_with_offset(self, ref_lists=0, key_elements=1, nodes=[],
                                offset=0):
-        builder = index.GraphIndexBuilder(ref_lists, key_elements=key_elements)
+        builder = _mod_index.GraphIndexBuilder(ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         content = builder.finish().read()
         size = len(content)
         trans = self.get_transport()
         trans.put_bytes('index', (' '*offset) + content)
-        return index.GraphIndex(trans, 'index', size, offset=offset)
+        return _mod_index.GraphIndex(trans, 'index', size, offset=offset)
 
     def test_clear_cache(self):
         index = self.make_index()
@@ -415,7 +415,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_open_bad_index_no_error(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
-        idx = index.GraphIndex(trans, 'name', 13)
+        idx = _mod_index.GraphIndex(trans, 'name', 13)
 
     def test_with_offset(self):
         nodes = self.make_nodes(200)
@@ -838,22 +838,22 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_iter_missing_entry_empty_no_size(self):
         idx = self.make_index()
-        idx = index.GraphIndex(idx._transport, 'index', None)
+        idx = _mod_index.GraphIndex(idx._transport, 'index', None)
         self.assertEqual([], list(idx.iter_entries([('a', )])))
 
     def test_iter_key_prefix_1_element_key_None(self):
         index = self.make_index()
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([(None, )]))
 
     def test_iter_key_prefix_wrong_length(self):
         index = self.make_index()
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([('foo', None)]))
         index = self.make_index(key_elements=2)
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([('foo', )]))
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([('foo', None, None)]))
 
     def test_iter_key_prefix_1_key_element_no_refs(self):
@@ -935,8 +935,8 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_validate_bad_index_errors(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
-        idx = index.GraphIndex(trans, 'name', 13)
-        self.assertRaises(errors.BadIndexFormatSignature, idx.validate)
+        idx = _mod_index.GraphIndex(trans, 'name', 13)
+        self.assertRaises(_mod_index.BadIndexFormatSignature, idx.validate)
 
     def test_validate_bad_node_refs(self):
         idx = self.make_index(2)
@@ -945,7 +945,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # change the options line to end with a rather than a parseable number
         new_content = content[:-2] + 'a\n\n'
         trans.put_bytes('index', new_content)
-        self.assertRaises(errors.BadIndexOptions, idx.validate)
+        self.assertRaises(_mod_index.BadIndexOptions, idx.validate)
 
     def test_validate_missing_end_line_empty(self):
         index = self.make_index(2)
@@ -953,7 +953,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         content = trans.get_bytes('index')
         # truncate the last byte
         trans.put_bytes('index', content[:-1])
-        self.assertRaises(errors.BadIndexData, index.validate)
+        self.assertRaises(_mod_index.BadIndexData, index.validate)
 
     def test_validate_missing_end_line_nonempty(self):
         index = self.make_index(2, nodes=[(('key', ), '', ([], []))])
@@ -961,7 +961,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         content = trans.get_bytes('index')
         # truncate the last byte
         trans.put_bytes('index', content[:-1])
-        self.assertRaises(errors.BadIndexData, index.validate)
+        self.assertRaises(_mod_index.BadIndexData, index.validate)
 
     def test_validate_empty(self):
         index = self.make_index()
@@ -1056,25 +1056,25 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual(set(), search_keys)
 
     def test_supports_unlimited_cache(self):
-        builder = index.GraphIndexBuilder(0, key_elements=1)
+        builder = _mod_index.GraphIndexBuilder(0, key_elements=1)
         stream = builder.finish()
         trans = self.get_transport()
         size = trans.put_file('index', stream)
         # It doesn't matter what unlimited_cache does here, just that it can be
         # passed
-        idx = index.GraphIndex(trans, 'index', size, unlimited_cache=True)
+        idx = _mod_index.GraphIndex(trans, 'index', size, unlimited_cache=True)
 
 
 class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def make_index(self, name, ref_lists=0, key_elements=1, nodes=[]):
-        builder = index.GraphIndexBuilder(ref_lists, key_elements=key_elements)
+        builder = _mod_index.GraphIndexBuilder(ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
         trans = self.get_transport()
         size = trans.put_file(name, stream)
-        return index.GraphIndex(trans, name, size)
+        return _mod_index.GraphIndex(trans, name, size)
 
     def make_combined_index_with_missing(self, missing=['1', '2']):
         """Create a CombinedGraphIndex which will have missing indexes.
@@ -1103,7 +1103,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
             reload_counter[1] += 1
             idx._indices[:] = new_indices
             return True
-        idx = index.CombinedGraphIndex([idx1, idx2], reload_func=reload)
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2], reload_func=reload)
         trans = self.get_transport()
         for fname in missing:
             trans.delete(fname)
@@ -1111,11 +1111,11 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_open_missing_index_no_error(self):
         trans = self.get_transport()
-        idx1 = index.GraphIndex(trans, 'missing', 100)
-        idx = index.CombinedGraphIndex([idx1])
+        idx1 = _mod_index.GraphIndex(trans, 'missing', 100)
+        idx = _mod_index.CombinedGraphIndex([idx1])
 
     def test_add_index(self):
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         idx1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
         idx.insert_index(0, idx1)
         self.assertEqual([(idx1, ('key', ), '')],
@@ -1136,7 +1136,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
                 log.append(self._index)
                 return self._index.clear_cache()
 
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         idx1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
         idx.insert_index(0, ClearCacheProxy(idx1))
         idx2 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
@@ -1146,24 +1146,24 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual(sorted([idx1, idx2]), sorted(log))
 
     def test_iter_all_entries_empty(self):
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         self.assertEqual([], list(idx.iter_all_entries()))
 
     def test_iter_all_entries_children_empty(self):
         idx1 = self.make_index('name')
-        idx = index.CombinedGraphIndex([idx1])
+        idx = _mod_index.CombinedGraphIndex([idx1])
         self.assertEqual([], list(idx.iter_all_entries()))
 
     def test_iter_all_entries_simple(self):
         idx1 = self.make_index('name', nodes=[(('name', ), 'data', ())])
-        idx = index.CombinedGraphIndex([idx1])
+        idx = _mod_index.CombinedGraphIndex([idx1])
         self.assertEqual([(idx1, ('name', ), 'data')],
             list(idx.iter_all_entries()))
 
     def test_iter_all_entries_two_indices(self):
         idx1 = self.make_index('name1', nodes=[(('name', ), 'data', ())])
         idx2 = self.make_index('name2', nodes=[(('2', ), '', ())])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual([(idx1, ('name', ), 'data'),
                           (idx2, ('2', ), '')],
                          list(idx.iter_all_entries()))
@@ -1171,14 +1171,14 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_iter_entries_two_indices_dup_key(self):
         idx1 = self.make_index('name1', nodes=[(('name', ), 'data', ())])
         idx2 = self.make_index('name2', nodes=[(('name', ), 'data', ())])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual([(idx1, ('name', ), 'data')],
                          list(idx.iter_entries([('name', )])))
 
     def test_iter_all_entries_two_indices_dup_key(self):
         idx1 = self.make_index('name1', nodes=[(('name', ), 'data', ())])
         idx2 = self.make_index('name2', nodes=[(('name', ), 'data', ())])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual([(idx1, ('name', ), 'data')],
                          list(idx.iter_all_entries()))
 
@@ -1188,7 +1188,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         idx2 = self.make_index('2', 1, key_elements=2, nodes=[
                 (('name', 'fin2'), 'beta', ([], )),
                 (('ref', 'erence'), 'refdata', ([], ))])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual({(idx1, ('name', 'fin1'), 'data',
                                ((('ref', 'erence'),),)),
                               (idx2, ('ref', 'erence'), 'refdata', ((), ))},
@@ -1200,19 +1200,19 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
                          set(idx.iter_entries_prefix([('name', None)])))
 
     def test_iter_nothing_empty(self):
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         self.assertEqual([], list(idx.iter_entries([])))
 
     def test_iter_nothing_children_empty(self):
         idx1 = self.make_index('name')
-        idx = index.CombinedGraphIndex([idx1])
+        idx = _mod_index.CombinedGraphIndex([idx1])
         self.assertEqual([], list(idx.iter_entries([])))
 
     def test_iter_all_keys(self):
         idx1 = self.make_index('1', 1, nodes=[(('name', ), 'data',
                                                ([('ref', )], ))])
         idx2 = self.make_index('2', 1, nodes=[(('ref', ), 'refdata', ((), ))])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual({(idx1, ('name', ), 'data', ((('ref', ), ), )),
                               (idx2, ('ref', ), 'refdata', ((), ))},
                          set(idx.iter_entries([('name', ), ('ref', )])))
@@ -1222,41 +1222,41 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
                                                  ([('ref', )], )),
                                                 (('ref', ), 'refdata', ([], ))])
         idx2 = self.make_index('2', 1, nodes=[(('ref', ), 'refdata', ([], ))])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual({(idx1, ('name', ), 'data', ((('ref',),),)),
                               (idx1, ('ref', ), 'refdata', ((), ))},
                          set(idx.iter_entries([('name', ), ('ref', )])))
 
     def test_iter_missing_entry_empty(self):
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         self.assertEqual([], list(idx.iter_entries([('a', )])))
 
     def test_iter_missing_entry_one_index(self):
         idx1 = self.make_index('1')
-        idx = index.CombinedGraphIndex([idx1])
+        idx = _mod_index.CombinedGraphIndex([idx1])
         self.assertEqual([], list(idx.iter_entries([('a', )])))
 
     def test_iter_missing_entry_two_index(self):
         idx1 = self.make_index('1')
         idx2 = self.make_index('2')
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual([], list(idx.iter_entries([('a', )])))
 
     def test_iter_entry_present_one_index_only(self):
         idx1 = self.make_index('1', nodes=[(('key', ), '', ())])
         idx2 = self.make_index('2', nodes=[])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual([(idx1, ('key', ), '')],
                          list(idx.iter_entries([('key', )])))
         # and in the other direction
-        idx = index.CombinedGraphIndex([idx2, idx1])
+        idx = _mod_index.CombinedGraphIndex([idx2, idx1])
         self.assertEqual([(idx1, ('key', ), '')],
                          list(idx.iter_entries([('key', )])))
 
     def test_key_count_empty(self):
         idx1 = self.make_index('1', nodes=[])
         idx2 = self.make_index('2', nodes=[])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual(0, idx.key_count())
 
     def test_key_count_sums_index_keys(self):
@@ -1264,18 +1264,18 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
             (('1',), '', ()),
             (('2',), '', ())])
         idx2 = self.make_index('2', nodes=[(('1',), '', ())])
-        idx = index.CombinedGraphIndex([idx1, idx2])
+        idx = _mod_index.CombinedGraphIndex([idx1, idx2])
         self.assertEqual(3, idx.key_count())
 
     def test_validate_bad_child_index_errors(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
-        idx1 = index.GraphIndex(trans, 'name', 13)
-        idx = index.CombinedGraphIndex([idx1])
-        self.assertRaises(errors.BadIndexFormatSignature, idx.validate)
+        idx1 = _mod_index.GraphIndex(trans, 'name', 13)
+        idx = _mod_index.CombinedGraphIndex([idx1])
+        self.assertRaises(_mod_index.BadIndexFormatSignature, idx.validate)
 
     def test_validate_empty(self):
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         idx.validate()
 
     def test_key_count_reloads(self):
@@ -1403,7 +1403,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_reorder_after_iter_entries(self):
         # Four indices: [key1] in idx1, [key2,key3] in idx2, [] in idx3,
         # [key4] in idx4.
-        idx = index.CombinedGraphIndex([])
+        idx = _mod_index.CombinedGraphIndex([])
         idx.insert_index(0, self.make_index_with_simple_nodes('1'), '1')
         idx.insert_index(1, self.make_index_with_simple_nodes('2'), '2')
         idx.insert_index(2, self.make_index_with_simple_nodes('3'), '3')
@@ -1420,8 +1420,8 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_reorder_propagates_to_siblings(self):
         # Two CombinedGraphIndex objects, with the same number of indicies with
         # matching names.
-        cgi1 = index.CombinedGraphIndex([])
-        cgi2 = index.CombinedGraphIndex([])
+        cgi1 = _mod_index.CombinedGraphIndex([])
+        cgi2 = _mod_index.CombinedGraphIndex([])
         cgi1.insert_index(0, self.make_index_with_simple_nodes('1-1'), 'one')
         cgi1.insert_index(1, self.make_index_with_simple_nodes('1-2'), 'two')
         cgi2.insert_index(0, self.make_index_with_simple_nodes('2-1'), 'one')
@@ -1465,7 +1465,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
             (key3, 'value', ([key2],)),
             (key4, 'value', ([key3],)),
             ])
-        c_index = index.CombinedGraphIndex([index1, index2])
+        c_index = _mod_index.CombinedGraphIndex([index1, index2])
         parent_map, missing_keys = c_index.find_ancestry([key1], 0)
         self.assertEqual({key1: ()}, parent_map)
         self.assertEqual(set(), missing_keys)
@@ -1488,7 +1488,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index2 = self.make_index('34', ref_lists=1, nodes=[
             (key3, 'value', ([key2],)),
             ])
-        c_index = index.CombinedGraphIndex([index1, index2])
+        c_index = _mod_index.CombinedGraphIndex([index1, index2])
         # Searching for a key which is actually not present at all should
         # eventually converge
         parent_map, missing_keys = c_index.find_ancestry([key4], 0)
@@ -1496,7 +1496,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual({key4}, missing_keys)
 
     def test_find_ancestors_no_indexes(self):
-        c_index = index.CombinedGraphIndex([])
+        c_index = _mod_index.CombinedGraphIndex([])
         key1 = ('key-1',)
         parent_map, missing_keys = c_index.find_ancestry([key1], 0)
         self.assertEqual({}, parent_map)
@@ -1514,7 +1514,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index2 = self.make_index('34', ref_lists=1, nodes=[
             (key4, 'value', ([key2, key3],)),
             ])
-        c_index = index.CombinedGraphIndex([index1, index2])
+        c_index = _mod_index.CombinedGraphIndex([index1, index2])
         # Searching for a key which is actually not present at all should
         # eventually converge
         parent_map, missing_keys = c_index.find_ancestry([key4], 0)
@@ -1536,7 +1536,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 class TestInMemoryGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
-        result = index.InMemoryGraphIndex(ref_lists, key_elements=key_elements)
+        result = _mod_index.InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
         return result
 
@@ -1667,13 +1667,13 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
 
     def make_index(self, ref_lists=1, key_elements=2, nodes=[],
                    add_callback=False):
-        result = index.InMemoryGraphIndex(ref_lists, key_elements=key_elements)
+        result = _mod_index.InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
         if add_callback:
             add_nodes_callback = result.add_nodes
         else:
             add_nodes_callback = None
-        adapter = index.GraphIndexPrefixAdapter(
+        adapter = _mod_index.GraphIndexPrefixAdapter(
             result, ('prefix', ), key_elements - 1,
             add_nodes_callback=add_nodes_callback)
         return result, adapter
@@ -1698,18 +1698,18 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
             set(index.iter_all_entries()))
 
     def test_construct(self):
-        idx = index.InMemoryGraphIndex()
-        adapter = index.GraphIndexPrefixAdapter(idx, ('prefix', ), 1)
+        idx = _mod_index.InMemoryGraphIndex()
+        adapter = _mod_index.GraphIndexPrefixAdapter(idx, ('prefix', ), 1)
 
     def test_construct_with_callback(self):
-        idx = index.InMemoryGraphIndex()
-        adapter = index.GraphIndexPrefixAdapter(idx, ('prefix', ), 1,
+        idx = _mod_index.InMemoryGraphIndex()
+        adapter = _mod_index.GraphIndexPrefixAdapter(idx, ('prefix', ), 1,
                                                 idx.add_nodes)
 
     def test_iter_all_entries_cross_prefix_map_errors(self):
         index, adapter = self.make_index(nodes=[
             (('prefix', 'key1'), 'data1', ((('prefixaltered', 'key2'),),))])
-        self.assertRaises(errors.BadIndexData, list, adapter.iter_all_entries())
+        self.assertRaises(_mod_index.BadIndexData, list, adapter.iter_all_entries())
 
     def test_iter_all_entries(self):
         index, adapter = self.make_index(nodes=[

@@ -313,62 +313,6 @@ class NotWriteLocked(BzrError):
         self.not_locked = not_locked
 
 
-class BadIndexFormatSignature(BzrError):
-
-    _fmt = "%(value)s is not an index of type %(_type)s."
-
-    def __init__(self, value, _type):
-        BzrError.__init__(self)
-        self.value = value
-        self._type = _type
-
-
-class BadIndexData(BzrError):
-
-    _fmt = "Error in data for index %(value)s."
-
-    def __init__(self, value):
-        BzrError.__init__(self)
-        self.value = value
-
-
-class BadIndexDuplicateKey(BzrError):
-
-    _fmt = "The key '%(key)s' is already in index '%(index)s'."
-
-    def __init__(self, key, index):
-        BzrError.__init__(self)
-        self.key = key
-        self.index = index
-
-
-class BadIndexKey(BzrError):
-
-    _fmt = "The key '%(key)s' is not a valid key."
-
-    def __init__(self, key):
-        BzrError.__init__(self)
-        self.key = key
-
-
-class BadIndexOptions(BzrError):
-
-    _fmt = "Could not parse options for index %(value)s."
-
-    def __init__(self, value):
-        BzrError.__init__(self)
-        self.value = value
-
-
-class BadIndexValue(BzrError):
-
-    _fmt = "The value '%(value)s' is not a valid value."
-
-    def __init__(self, value):
-        BzrError.__init__(self)
-        self.value = value
-
-
 class StrictCommitFailed(BzrError):
 
     _fmt = "Commit refused because there are unknown files in the tree"
