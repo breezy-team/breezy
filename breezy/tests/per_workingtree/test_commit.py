@@ -29,6 +29,11 @@ from breezy import (
     transport as _mod_transport,
     ui,
     )
+from breezy.commit import (
+    CannotCommitSelectedFileMerge,
+    ExcludesUnsupported,
+    PointlessCommit,
+    )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 from breezy.tests.testui import ProgressRecordingUIFactory
 
@@ -149,9 +154,9 @@ class TestCommit(TestCaseWithWorkingTree):
         wt2.commit('change_right')
         wt.merge_from_branch(wt2.branch)
         try:
-            self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            self.assertRaises(CannotCommitSelectedFileMerge,
                 wt.commit, 'test', exclude=['foo'])
-        except errors.ExcludesUnsupported:
+        except ExcludesUnsupported:
             raise tests.TestNotApplicable("excludes not supported by this "
                 "repository format")
 
@@ -162,9 +167,9 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.commit('setup test')
         self.build_tree_contents([('a', 'new contents for "a"\n')])
         try:
-            self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
+            self.assertRaises(PointlessCommit, tree.commit, 'test',
                 exclude=['a'], allow_pointless=False)
-        except errors.ExcludesUnsupported:
+        except ExcludesUnsupported:
             raise tests.TestNotApplicable("excludes not supported by this "
                 "repository format")
 
@@ -174,7 +179,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.smart_add(['.'])
         try:
             tree.commit('test', exclude=['b', 'c'])
-        except errors.ExcludesUnsupported:
+        except ExcludesUnsupported:
             raise tests.TestNotApplicable("excludes not supported by this "
                 "repository format")
         # If b was excluded it will still be 'added' in status.
@@ -458,7 +463,7 @@ class TestCommit(TestCaseWithWorkingTree):
         rev_id = tree.commit('added reference')
         child_revid = subtree.last_revision()
         # now do a no-op commit with allow_pointless=False
-        self.assertRaises(errors.PointlessCommit, tree.commit, '',
+        self.assertRaises(PointlessCommit, tree.commit, '',
             allow_pointless=False)
         self.assertEqual(child_revid, subtree.last_revision())
         self.assertEqual(rev_id, tree.last_revision())

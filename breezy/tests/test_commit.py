@@ -26,12 +26,13 @@ from .. import (
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
 from ..commit import (
+    CannotCommitSelectedFileMerge,
     Commit,
     NullCommitReporter,
+    PointlessCommit,
     filter_excluded,
     )
 from ..errors import (
-    PointlessCommit,
     BzrError,
     LockContention,
     )
@@ -763,7 +764,7 @@ create_signatures=always
         tree.add_parent_tree_id('example')
         self.build_tree(['foo/bar', 'foo/baz'])
         tree.add(['bar', 'baz'])
-        err = self.assertRaises(errors.CannotCommitSelectedFileMerge,
+        err = self.assertRaises(CannotCommitSelectedFileMerge,
             tree.commit, 'commit 2', specific_files=['bar', 'baz'])
         self.assertEqual(['bar', 'baz'], err.files)
         self.assertEqual('Selected-file commit of merges is not supported'

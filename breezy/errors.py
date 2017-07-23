@@ -957,36 +957,6 @@ class TokenMismatch(LockBroken):
         self.lock_token = lock_token
 
 
-class PointlessCommit(BzrError):
-
-    _fmt = "No changes to commit"
-
-
-class CannotCommitSelectedFileMerge(BzrError):
-
-    _fmt = 'Selected-file commit of merges is not supported yet:'\
-        ' files %(files_str)s'
-
-    def __init__(self, files):
-        files_str = ', '.join(files)
-        BzrError.__init__(self, files=files, files_str=files_str)
-
-
-class ExcludesUnsupported(BzrError):
-
-    _fmt = ('Excluding paths during commit is not supported by '
-            'repository at %(repository)r.')
-
-    def __init__(self, repository):
-        BzrError.__init__(self, repository=repository)
-
-
-class BadCommitMessageEncoding(BzrError):
-
-    _fmt = 'The specified commit message contains characters unsupported by '\
-        'the current encoding.'
-
-
 class UpgradeReadonly(BzrError):
 
     _fmt = "Upgrade URL cannot work with readonly URLs."
