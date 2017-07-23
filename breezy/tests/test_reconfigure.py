@@ -62,7 +62,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_branch_to_branch(self):
         branch = self.make_branch('branch')
-        self.assertRaises(errors.AlreadyBranch,
+        self.assertRaises(reconfigure.AlreadyBranch,
                           reconfigure.Reconfigure.to_branch, branch.controldir)
 
     def test_repo_to_branch(self):
@@ -142,13 +142,13 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_tree_to_tree(self):
         tree = self.make_branch_and_tree('tree')
-        self.assertRaises(errors.AlreadyTree, reconfigure.Reconfigure.to_tree,
-                          tree.controldir)
+        self.assertRaises(reconfigure.AlreadyTree,
+                          reconfigure.Reconfigure.to_tree, tree.controldir)
 
     def test_select_bind_location(self):
         branch = self.make_branch('branch')
         reconfiguration = reconfigure.Reconfigure(branch.controldir)
-        self.assertRaises(errors.NoBindLocation,
+        self.assertRaises(reconfigure.NoBindLocation,
                           reconfiguration._select_bind_location)
         branch.set_parent('http://parent')
         reconfiguration = reconfigure.Reconfigure(branch.controldir)
@@ -189,7 +189,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
         tree = self.make_branch_and_tree('tree')
         reconfiguration = reconfigure.Reconfigure.to_checkout(tree.controldir)
-        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        self.assertRaises(reconfigure.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
         tree.branch.set_parent(parent.base)
         reconfiguration = reconfigure.Reconfigure.to_checkout(tree.controldir)
@@ -208,7 +208,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             tree.controldir)
-        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        self.assertRaises(reconfigure.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
         tree.branch.set_parent(parent.base)
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
@@ -223,7 +223,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_checkout_to_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout')
-        self.assertRaises(errors.AlreadyCheckout,
+        self.assertRaises(reconfigure.AlreadyCheckout,
                           reconfigure.Reconfigure.to_checkout, checkout.controldir)
 
     def make_unsynced_checkout(self):
@@ -236,7 +236,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_unsynced_checkout_to_lightweight(self):
         checkout, parent, reconfiguration = self.make_unsynced_checkout()
-        self.assertRaises(errors.UnsyncedBranches, reconfiguration.apply)
+        self.assertRaises(reconfigure.UnsyncedBranches, reconfiguration.apply)
 
     def test_synced_checkout_to_lightweight(self):
         checkout, parent, reconfiguration = self.make_unsynced_checkout()
@@ -294,7 +294,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_lightweight_checkout_to_lightweight_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout', lightweight=True)
-        self.assertRaises(errors.AlreadyLightweightCheckout,
+        self.assertRaises(reconfigure.AlreadyLightweightCheckout,
                           reconfigure.Reconfigure.to_lightweight_checkout,
                           checkout.controldir)
 
@@ -308,7 +308,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         repo = self.make_repository('repo', shared=True)
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.controldir)
-        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        self.assertRaises(reconfigure.NoBindLocation, reconfiguration.apply)
         branch = self.make_branch('branch')
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.controldir, 'branch')
@@ -364,7 +364,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_use_shared_to_use_shared(self):
         tree = self.make_repository_tree()
-        self.assertRaises(errors.AlreadyUsingShared,
+        self.assertRaises(reconfigure.AlreadyUsingShared,
                           reconfigure.Reconfigure.to_use_shared, tree.controldir)
 
     def test_use_shared_to_standalone(self):
@@ -389,7 +389,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_standalone_to_standalone(self):
         tree = self.make_branch_and_tree('tree')
-        self.assertRaises(errors.AlreadyStandalone,
+        self.assertRaises(reconfigure.AlreadyStandalone,
                           reconfigure.Reconfigure.to_standalone, tree.controldir)
 
     def make_unsynced_branch_reconfiguration(self):
@@ -401,7 +401,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_unsynced_branch_to_lightweight_checkout_unforced(self):
         reconfiguration = self.make_unsynced_branch_reconfiguration()
-        self.assertRaises(errors.UnsyncedBranches, reconfiguration.apply)
+        self.assertRaises(reconfigure.UnsyncedBranches, reconfiguration.apply)
 
     def test_unsynced_branch_to_lightweight_checkout_forced(self):
         reconfiguration = self.make_unsynced_branch_reconfiguration()
@@ -428,21 +428,21 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_make_with_trees_already_with_trees(self):
         repo = self.make_repository_with_without_trees(True)
-        e = self.assertRaises(errors.AlreadyWithTrees,
+        e = self.assertRaises(reconfiure.AlreadyWithTrees,
            reconfigure.Reconfigure.set_repository_trees, repo.controldir, True)
         self.assertContainsRe(str(e),
             r"Shared repository '.*' already creates working trees.")
 
     def test_make_without_trees_already_no_trees(self):
         repo = self.make_repository_with_without_trees(False)
-        e = self.assertRaises(errors.AlreadyWithNoTrees,
+        e = self.assertRaises(reconfigure.AlreadyWithNoTrees,
             reconfigure.Reconfigure.set_repository_trees, repo.controldir, False)
         self.assertContainsRe(str(e),
             r"Shared repository '.*' already doesn't create working trees.")
 
     def test_repository_tree_reconfiguration_not_supported(self):
         tree = self.make_branch_and_tree('tree')
-        e = self.assertRaises(errors.ReconfigurationNotSupported,
+        e = self.assertRaises(reconfigure.ReconfigurationNotSupported,
             reconfigure.Reconfigure.set_repository_trees, tree.controldir, None)
         self.assertContainsRe(str(e),
             r"Requested reconfiguration of '.*' is not supported.")
