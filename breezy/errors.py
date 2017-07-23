@@ -146,11 +146,6 @@ class InternalBzrError(BzrError):
     internal_error = True
 
 
-class AlreadyBuilding(BzrError):
-
-    _fmt = "The tree builder is already building a tree."
-
-
 class BranchError(BzrError):
     """Base class for concrete 'errors about a branch'."""
 
@@ -290,11 +285,6 @@ class NoWorkingTree(BzrError):
     def __init__(self, base):
         BzrError.__init__(self)
         self.base = base
-
-
-class NotBuilding(BzrError):
-
-    _fmt = "Not currently building a tree."
 
 
 class NotLocalUrl(BzrError):
