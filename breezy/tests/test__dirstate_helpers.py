@@ -21,7 +21,6 @@ import os
 import time
 
 from .. import (
-    errors,
     osutils,
     tests,
     )
@@ -724,7 +723,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
         finally:
             f.close()
             state.lock_read()
-        e = self.assertRaises(errors.DirstateCorrupt,
+        e = self.assertRaises(dirstate.DirstateCorrupt,
                               state._read_dirblocks_if_needed)
         # Make sure we mention the bogus characters in the error
         self.assertContainsRe(str(e), 'bogus')

@@ -28,8 +28,8 @@ import os
 import stat
 import sys
 
-from .. import cache_utf8, errors, osutils
-from .dirstate import DirState
+from .. import cache_utf8, osutils
+from .dirstate import DirState, DirstateCorrupt
 from ..osutils import parent_directories, pathjoin, splitpath
 
 
@@ -561,7 +561,7 @@ cdef class Reader:
         self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr - next)
         if self.cur_cstr == NULL:
             extra_len = self.end_cstr - next
-            raise errors.DirstateCorrupt(self.state,
+            raise DirstateCorrupt(self.state,
                 'failed to find trailing NULL (\\0).'
                 ' Trailing garbage: %r'
                 % safe_string_from_size(next, extra_len))
@@ -720,7 +720,7 @@ cdef class Reader:
         # marker.
         trailing = self.get_next(&cur_size)
         if cur_size != 1 or trailing[0] != c'\n':
-            raise errors.DirstateCorrupt(self.state,
+            raise DirstateCorrupt(self.state,
                 'Bad parse, we expected to end on \\n, not: %d %s: %s'
                 % (cur_size, safe_string_from_size(trailing, cur_size),
                    ret))
@@ -767,7 +767,7 @@ cdef class Reader:
             PyList_Append(current_block, entry)
             entry_count = entry_count + 1
         if entry_count != expected_entry_count:
-            raise errors.DirstateCorrupt(self.state,
+            raise DirstateCorrupt(self.state,
                     'We read the wrong number of entries.'
                     ' We expected to read %s, but read %s'
                     % (expected_entry_count, entry_count))
@@ -1326,7 +1326,7 @@ cdef class ProcessEntryC:
             parent_entry = self.state._get_entry(self.target_index,
                                                  path_utf8=entry[0][0])
             if parent_entry is None:
-                raise errors.DirstateCorrupt(self.state,
+                raise DirstateCorrupt(self.state,
                     "We could not find the parent entry in index %d"
                     " for the entry: %s"
                     % (self.target_index, entry[0]))

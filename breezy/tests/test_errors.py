@@ -63,20 +63,6 @@ class TestErrors(tests.TestCase):
             "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
             " filesystem encoding UTF-8$")
 
-    def test_corrupt_dirstate(self):
-        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
-        self.assertEqualDiff(
-            "Inconsistency in dirstate file path/to/dirstate.\n"
-            "Error: the reason why",
-            str(error))
-
-    def test_dirstate_corrupt(self):
-        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
-                                       'trailing garbage: "x"')
-        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
-            " appears to be corrupt: trailing garbage: \"x\"",
-            str(error))
-
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'

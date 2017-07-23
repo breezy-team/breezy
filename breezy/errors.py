@@ -162,16 +162,6 @@ class BzrCheckError(InternalBzrError):
         self.msg = msg
 
 
-class DirstateCorrupt(BzrError):
-
-    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
-
-    def __init__(self, state, msg):
-        BzrError.__init__(self)
-        self.state = state
-        self.msg = msg
-
-
 class IncompatibleVersion(BzrError):
 
     _fmt = 'API %(api)s is not compatible; one of versions %(wanted)r '\
@@ -2005,17 +1995,6 @@ class MergeModifiedFormatError(BzrError):
 class ConflictFormatError(BzrError):
 
     _fmt = "Format error in conflict listings"
-
-
-class CorruptDirstate(BzrError):
-
-    _fmt = ("Inconsistency in dirstate file %(dirstate_path)s.\n"
-            "Error: %(description)s")
-
-    def __init__(self, dirstate_path, description):
-        BzrError.__init__(self)
-        self.dirstate_path = dirstate_path
-        self.description = description
 
 
 class CorruptRepository(BzrError):

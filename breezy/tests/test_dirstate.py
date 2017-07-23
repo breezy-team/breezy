@@ -54,6 +54,16 @@ from .scenarios import load_tests_apply_scenarios
 # set_path_id  setting id when state is in memory modified
 
 
+class ErrorTests(tests.TestCase):
+
+    def test_dirstate_corrupt(self):
+        error = dirstate.DirstateCorrupt('.bzr/checkout/dirstate',
+                                       'trailing garbage: "x"')
+        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
+            " appears to be corrupt: trailing garbage: \"x\"",
+            str(error))
+
+
 load_tests = load_tests_apply_scenarios
 
 
