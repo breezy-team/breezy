@@ -1001,11 +1001,6 @@ class UpToDateFormat(BzrError):
         self.format = format
 
 
-class StrictCommitFailed(Exception):
-
-    _fmt = "Commit refused because there are unknowns in the tree."
-
-
 class NoSuchRevision(InternalBzrError):
 
     _fmt = "%(branch)s has no revision %(revision)s"
