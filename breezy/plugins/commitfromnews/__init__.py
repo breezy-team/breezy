@@ -33,7 +33,7 @@ including sections from a NEWS or ChangeLog file.
 
 from __future__ import absolute_import
 
-from ... import msgeditor
+from ... import hooks
 
 
 def commit_template(commit, message):
@@ -53,13 +53,18 @@ def load_tests(loader, basic_tests, pattern):
 
 
 _registered = False
+
+
 def register():
     """Register the plugin."""
     global _registered
     # Does not check registered because only tests call this, and they are
     # isolated.
     _registered = True
-    msgeditor.hooks.install_named_hook('commit_message_template',
+    hooks.install_lazy_named_hook(
+        'breezy.msgeditor', 'hooks',
+        'commit_message_template',
         commit_template, 'commitfromnews template')
+
 
 register()
