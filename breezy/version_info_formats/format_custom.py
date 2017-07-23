@@ -30,6 +30,19 @@ from breezy.version_info_formats import (
    )
 
 
+class MissingTemplateVariable(errors.BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
+
+
+class NoTemplate(errors.BzrError):
+
+    _fmt = 'No template specified.'
+
+
 class Template(object):
     """A simple template engine.
 

@@ -2516,19 +2516,6 @@ class ShelvedChanges(UncommittedChanges):
             ' (See brz shelve --list).%(more)s')
 
 
-class MissingTemplateVariable(BzrError):
-
-    _fmt = 'Variable {%(name)s} is not available.'
-
-    def __init__(self, name):
-        self.name = name
-
-
-class NoTemplate(BzrError):
-
-    _fmt = 'No template specified.'
-
-
 class UnableCreateSymlink(BzrError):
 
     _fmt = 'Unable to create symlink %(path_str)son this platform'

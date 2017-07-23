@@ -37,12 +37,13 @@ from .i18n import gettext
 # assumptions about what kind of change will be done.
 
 
-class BzrDirError(BzrError):
+class BzrDirError(errors.BzrError):
 
     def __init__(self, controldir):
         display_url = urlutils.unescape_for_display(controldir.user_url,
                                                     'ascii')
-        BzrError.__init__(self, controldir=controldir, display_url=display_url)
+        errors.BzrError.__init__(self, controldir=controldir,
+                                 display_url=display_url)
 
 
 class NoBindLocation(BzrDirError):
