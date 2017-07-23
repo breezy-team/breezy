@@ -26,16 +26,16 @@ _BUG_MATCH = re.compile(r'lp:(\d+)')
 
 class CommitTemplate(object):
 
-    def __init__(self, commit, message, filespec):
+    def __init__(self, commit, message, file_matches):
         """Create a commit template for commit with initial message message.
 
         :param commit: A Commit object for the in progress commit.
         :param message: The current message (which may be None).
-        :param filespec: File specification list
+        :param file_matches: Check whether file matches
         """
         self.commit = commit
         self.message = message
-        self.filespec = filespec
+        self.file_matches = file_matches
 
     def make(self):
         """Make the template.
@@ -48,7 +48,7 @@ class CommitTemplate(object):
         found_old_path = None
         found_entry = None
         for old_path, new_path, fileid, entry in delta:
-            if new_path in self.filespec:
+            if self.file_matches(new_path):
                 found_entry = entry
                 found_old_path = old_path
                 break

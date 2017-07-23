@@ -18,10 +18,12 @@
 
 commitfromnews is enabled by default when installed.
 
-To use, just do a commit where the NEWS file for your project has a new section
+To use, set the ``commit.template_from_files`` setting to a path and
+just do a commit where the NEWS file for your project has a new section
 added without providing a message to commit.
 
 E.g.::
+  $ echo "commit.template_from_files = NEWS" >> .bzr/branch/branch.conf
   $ echo "\n* new thing\n" >> NEWS
   $ bzr commit
   # editor pops open to let you tweak the message, and it starts with
@@ -40,13 +42,16 @@ from ...config import (
     )
 
 option_registry.register(
-    ListOption('commit.templatefromfiles'))
+    ListOption('commit.template_from_files', default=[], help="""\
+List of fnmatch(2)-style shell file patterns to use when creating commit
+templates.
+"""))
 
 
 def commit_template(commit, message):
     """Create a commit message for commit based on changes in the tree."""
     config_stack = commit.work_tree.get_config_stack()
-    filespec = config_stack.get('commit.templatefromfiles')
+    filespec = config_stack.get('commit.template_from_files')
     if filespec:
         from .committemplate import CommitTemplate
         template = CommitTemplate(commit, message, filespec)
