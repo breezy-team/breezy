@@ -501,10 +501,6 @@ class TestErrors(tests.TestCase):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEqual("Unknown foo format: 'bar'", str(err))
 
-    def test_unknown_rules(self):
-        err = errors.UnknownRules(['foo', 'bar'])
-        self.assertEqual("Unknown rules detected: foo, bar.", str(err))
-
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
         self.assertEqual(

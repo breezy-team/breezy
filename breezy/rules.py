@@ -43,6 +43,14 @@ FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
 _per_user_searcher = None
 
 
+class UnknownRules(errors.BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        errors.BzrError.__init__(self, unknowns_str=", ".join(unknowns))
+
+
 class _RulesSearcher(object):
     """An object that provides rule-based preferences."""
 

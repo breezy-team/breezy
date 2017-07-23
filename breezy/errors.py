@@ -2720,14 +2720,6 @@ class CannotBindAddress(BzrError):
             orig_error=repr(orig_error.args))
 
 
-class UnknownRules(BzrError):
-
-    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
-
-    def __init__(self, unknowns):
-        BzrError.__init__(self, unknowns_str=", ".join(unknowns))
-
-
 class TipChangeRejected(BzrError):
     """A pre_change_branch_tip hook function may raise this to cleanly and
     explicitly abort a change to a branch tip.

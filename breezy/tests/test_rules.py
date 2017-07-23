@@ -19,10 +19,16 @@
 import sys
 
 from breezy import (
-    errors,
     rules,
     tests,
     )
+
+
+class ErrorTests(tests.TestCase):
+
+    def test_unknown_rules(self):
+        err = rules.UnknownRules(['foo', 'bar'])
+        self.assertEqual("Unknown rules detected: foo, bar.", str(err))
 
 
 class TestIniBasedRulesSearcher(tests.TestCase):
@@ -36,8 +42,8 @@ class TestIniBasedRulesSearcher(tests.TestCase):
         return rules._IniBasedRulesSearcher(lines)
 
     def test_unknown_namespace(self):
-        self.assertRaises(errors.UnknownRules, rules._IniBasedRulesSearcher,
-            ["[junk]", "foo=bar"])
+        self.assertRaises(rules.UnknownRules, rules._IniBasedRulesSearcher,
+                          ["[junk]", "foo=bar"])
 
     def test_get_items_file_missing(self):
         rs = self.make_searcher(None)
