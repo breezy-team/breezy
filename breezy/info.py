@@ -22,6 +22,7 @@ import time
 import sys
 
 from . import (
+    branch as _mod_branch,
     controldir,
     errors,
     hooks as _mod_hooks,
@@ -162,7 +163,7 @@ def _gather_related_branches(branch):
     locs.add_url('submit branch', branch.get_submit_branch())
     try:
         locs.add_url('stacked on', branch.get_stacked_on_url())
-    except (errors.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
+    except (_mod_branch.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
         errors.NotStacked):
         pass
     return locs

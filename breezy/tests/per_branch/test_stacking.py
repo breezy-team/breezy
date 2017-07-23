@@ -28,7 +28,7 @@ from breezy.tests.per_branch import TestCaseWithBranch
 
 
 unstackable_format_errors = (
-    errors.UnstackableBranchFormat,
+    branch.UnstackableBranchFormat,
     errors.UnstackableRepositoryFormat,
     )
 
@@ -309,14 +309,14 @@ class TestStacking(TestCaseWithBranch):
         cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
             preserve_stacking=False)
         unstacked_branch = cloned_unstacked_bzrdir.open_branch()
-        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+        self.assertRaises((errors.NotStacked, branch.UnstackableBranchFormat),
                           unstacked_branch.get_stacked_on_url)
 
     def test_no_op_preserve_stacking(self):
         """With no stacking, preserve_stacking should be a no-op."""
         branch = self.make_branch('source')
         cloned_bzrdir = branch.controldir.clone('cloned', preserve_stacking=True)
-        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+        self.assertRaises((errors.NotStacked, branch.UnstackableBranchFormat),
                           cloned_bzrdir.open_branch().get_stacked_on_url)
 
     def make_stacked_on_matching(self, source):
@@ -344,7 +344,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
-                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+                branch.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
@@ -361,7 +361,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
-                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+                branch.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def test_sprout_to_smart_server_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
@@ -379,7 +379,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
-                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+                branch.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def prepare_stacked_on_fetch(self):
         stack_on = self.make_branch_and_tree('stack-on')

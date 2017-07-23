@@ -34,6 +34,7 @@ import os
 import warnings
 
 from breezy import (
+    branch as _mod_branch,,
     errors,
     graph,
     lockable_files,
@@ -903,7 +904,7 @@ class BzrDirPreSplitOut(BzrDir):
                     "source branch %r is not within %r with branch %r" %
                     (source_branch, self, my_branch))
         if stacked:
-            raise errors.UnstackableBranchFormat(
+            raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.root_transport.base)
         if not create_tree_if_local:
             raise errors.MustHaveWorkingTree(

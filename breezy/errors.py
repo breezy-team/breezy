@@ -526,17 +526,6 @@ class UnsupportedProtocol(PathError):
         PathError.__init__(self, url, extra=extra)
 
 
-class UnstackableBranchFormat(BzrError):
-
-    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
-        "You will need to upgrade the branch to permit branch stacking.")
-
-    def __init__(self, format, url):
-        BzrError.__init__(self)
-        self.format = format
-        self.url = url
-
-
 class UnstackableLocationError(BzrError):
 
     _fmt = "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."

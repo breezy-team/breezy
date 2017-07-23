@@ -101,7 +101,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
                 stacked_on=trunk.base)
-        except errors.UnstackableBranchFormat:
+        except branch.UnstackableBranchFormat:
             if not trunk.repository._format.supports_full_versioned_files:
                 raise tests.TestNotApplicable("can not stack on format")
             raise
@@ -142,7 +142,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
                 stacked_on=trunk.base)
-        except errors.UnstackableBranchFormat:
+        except branch.UnstackableBranchFormat:
             if not trunk.repository._format.supports_full_versioned_files:
                 raise tests.TestNotApplicable("can not stack on format")
             raise

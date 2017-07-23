@@ -33,6 +33,7 @@ from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import breezy
 from breezy import (
+    branch as _mod_branch,
     cleanup,
     fetch,
     graph,
@@ -185,7 +186,7 @@ class BzrDir(controldir.ControlDir):
             if preserve_stacking:
                 try:
                     stacked_on = local_branch.get_stacked_on_url()
-                except (errors.UnstackableBranchFormat,
+                except (_mod_branch.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
                     pass
@@ -1864,7 +1865,7 @@ class RepositoryAcquisitionPolicy(object):
                 stack_on = self._get_full_stack_on()
         try:
             branch.set_stacked_on_url(stack_on)
-        except (errors.UnstackableBranchFormat,
+        except (_mod_branch.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise

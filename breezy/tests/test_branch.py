@@ -44,6 +44,18 @@ from ..sixish import (
     )
 
 
+class ErrorTests(tests.TestCase):
+
+    def test_unstackable_branch_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = _mod_branch.UnstackableBranchFormat(format, url)
+        self.assertEqualDiff(
+            "The branch '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
+
+
 class TestDefaultFormat(tests.TestCase):
 
     def test_default_format(self):
@@ -356,12 +368,12 @@ class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
 
     def test_set_stacked_on_url_errors(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(_mod_branch.UnstackableBranchFormat,
             branch.set_stacked_on_url, None)
 
     def test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on_url)
+        self.assertRaises(_mod_branch.UnstackableBranchFormat, branch.get_stacked_on_url)
 
 
 class TestBranch7(TestBranch67, tests.TestCaseWithTransport):

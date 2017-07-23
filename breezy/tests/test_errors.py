@@ -249,15 +249,6 @@ class TestErrors(tests.TestCase):
             " of breezy.",
             str(error))
 
-    def test_unstackable_branch_format(self):
-        format = u'foo'
-        url = "/foo"
-        error = errors.UnstackableBranchFormat(format, url)
-        self.assertEqualDiff(
-            "The branch '/foo'(foo) is not a stackable format. "
-            "You will need to upgrade the branch to permit branch stacking.",
-            str(error))
-
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
