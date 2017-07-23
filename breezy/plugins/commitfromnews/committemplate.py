@@ -18,21 +18,24 @@
 
 from __future__ import absolute_import
 
-from ... import bugtracker, errors, osutils, patiencediff
+from ... import bugtracker, osutils, patiencediff
 import re
 
 _BUG_MATCH = re.compile(r'lp:(\d+)')
 
+
 class CommitTemplate(object):
 
-    def __init__(self, commit, message):
+    def __init__(self, commit, message, filespec):
         """Create a commit template for commit with initial message message.
 
         :param commit: A Commit object for the in progress commit.
         :param message: The current message (which may be None).
+        :param filespec: File specification list
         """
         self.commit = commit
         self.message = message
+        self.filespec = filespec
 
     def make(self):
         """Make the template.
@@ -41,16 +44,11 @@ class CommitTemplate(object):
         returned unaltered. Otherwise the changes from NEWS are concatenated
         with whatever message was provided to __init__.
         """
-        try:
-            delta = self.commit.builder.get_basis_delta()
-        except AssertionError:
-            # Not 2a, someone can write a slow-format code path if they want
-            # to.
-            return self.messsage
+        delta = self.commit.builder.get_basis_delta()
         found_old_path = None
         found_entry = None
         for old_path, new_path, fileid, entry in delta:
-            if new_path == 'NEWS':
+            if new_path in self.filespec:
                 found_entry = entry
                 found_old_path = old_path
                 break
@@ -58,8 +56,9 @@ class CommitTemplate(object):
             return self.message
         if found_old_path is None:
             # New file
-            _, new_chunks = list(self.commit.builder.repository.iter_files_bytes(
-                [(found_entry.file_id, found_entry.revision, None)]))[0]
+            _, new_chunks = list(
+                self.commit.builder.repository.iter_files_bytes(
+                    [(found_entry.file_id, found_entry.revision, None)]))[0]
             content = ''.join(new_chunks)
             return self.merge_message(content)
         else:
@@ -69,7 +68,8 @@ class CommitTemplate(object):
             # final diff: because we want to grab the sections for regions 
             # changed in new version of the file. So for now a direct diff
             # using patiencediff is done.
-            old_revision = self.commit.basis_tree.get_file_revision(found_entry.file_id)
+            old_revision = self.commit.basis_tree.get_file_revision(
+                found_entry.file_id)
             needed = [(found_entry.file_id, found_entry.revision, 'new'),
                       (found_entry.file_id, old_revision, 'old')]
             contents = self.commit.builder.repository.iter_files_bytes(needed)
@@ -101,7 +101,7 @@ class CommitTemplate(object):
 
     def merge_message(self, new_message):
         """Merge new_message with self.message.
-        
+
         :param new_message: A string message to merge with self.message.
         :return: A string with the merged messages.
         """

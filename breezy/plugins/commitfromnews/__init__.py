@@ -34,13 +34,24 @@ including sections from a NEWS or ChangeLog file.
 from __future__ import absolute_import
 
 from ... import hooks
+from ...config import (
+    option_registry,
+    ListOption,
+    )
+
+option_registry.register(
+    ListOption('commit.templatefromfiles'))
 
 
 def commit_template(commit, message):
     """Create a commit message for commit based on changes in the tree."""
-    from .committemplate import CommitTemplate
-    template = CommitTemplate(commit, message)
-    return template.make()
+    config_stack = commit.work_tree.get_config_stack()
+    filespec = config_stack.get('commit.templatefromfiles')
+    if filespec:
+        from .committemplate import CommitTemplate
+        template = CommitTemplate(commit, message, filespec)
+        return template.make()
+    return message
 
 
 def load_tests(loader, basic_tests, pattern):
