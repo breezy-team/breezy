@@ -85,6 +85,14 @@ class MissingFeature(errors.BzrError):
         self.feature = feature
 
 
+class FeatureAlreadyRegistered(errors.BzrError):
+
+    _fmt = 'The feature %(feature)s has already been registered.'
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
 class BzrDir(controldir.ControlDir):
     """A .bzr control diretory.
 

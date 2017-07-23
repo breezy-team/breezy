@@ -1556,7 +1556,7 @@ class TestBzrFormat(TestCase):
         # a feature can only be registered once
         self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
         SampleBzrFormat.register_feature("nested-trees")
-        self.assertRaises(errors.FeatureAlreadyRegistered,
+        self.assertRaises(bzrdir.FeatureAlreadyRegistered,
             SampleBzrFormat.register_feature, "nested-trees")
 
     def test_feature_with_space(self):
