@@ -29,7 +29,6 @@ lazy_import(globals(), """
 import textwrap
 
 from breezy import (
-    errors,
     hooks,
     revision as _mod_revision,
     transport as _mod_transport,
@@ -45,7 +44,18 @@ from breezy.push import (
 from breezy.i18n import gettext
 """)
 
-from . import registry
+from . import (
+    errors,
+    registry,
+    )
+
+
+class MustHaveWorkingTree(errors.BzrError):
+
+    _fmt = ("Branching '%(url)s'(%(format)s) must create a working tree.")
+
+    def __init__(self, format, url):
+        errors.BzrError.__init__(self, format=format, url=url)
 
 
 class ControlComponent(object):

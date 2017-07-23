@@ -2712,14 +2712,6 @@ class UserAbort(BzrError):
     _fmt = 'The user aborted the operation.'
 
 
-class MustHaveWorkingTree(BzrError):
-
-    _fmt = ("Branching '%(url)s'(%(format)s) must create a working tree.")
-
-    def __init__(self, format, url):
-        BzrError.__init__(self, format=format, url=url)
-
-
 class UnresumableWriteGroup(BzrError):
 
     _fmt = ("Repository %(repository)s cannot resume write group "

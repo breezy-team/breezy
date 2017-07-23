@@ -26,7 +26,11 @@ from ...bzr.bzrdir import (
 from ...controldir import (
     ControlDir,
     Converter,
+    MustHaveWorkingTree,
     format_registry,
+    )
+from ... import (
+    errors,
     )
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
@@ -35,7 +39,6 @@ import warnings
 
 from breezy import (
     branch as _mod_branch,,
-    errors,
     graph,
     lockable_files,
     lockdir,
@@ -907,7 +910,7 @@ class BzrDirPreSplitOut(BzrDir):
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.root_transport.base)
         if not create_tree_if_local:
-            raise errors.MustHaveWorkingTree(
+            raise MustHaveWorkingTree(
                 self._format, self.root_transport.base)
         from .workingtree import WorkingTreeFormat2
         self._make_tail(url)

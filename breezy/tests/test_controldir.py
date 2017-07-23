@@ -31,6 +31,14 @@ from .scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
+class ErrorTests(tests.TestCase):
+
+    def test_must_have_working_tree(self):
+        err = controldir.MustHaveWorkingTree('foo', 'bar')
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
+
+
 class SampleComponentFormat(controldir.ControlComponentFormat):
 
     def get_format_string(self):

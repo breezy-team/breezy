@@ -511,11 +511,6 @@ class TestErrors(tests.TestCase):
         finally:
             del err
 
-    def test_must_have_working_tree(self):
-        err = errors.MustHaveWorkingTree('foo', 'bar')
-        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
-                                   " working tree.")
-
     def test_unresumable_write_group(self):
         repo = "dummy repo"
         wg_tokens = ['token']

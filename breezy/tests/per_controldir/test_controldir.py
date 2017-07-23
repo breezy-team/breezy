@@ -996,7 +996,7 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             target = dir.sprout(self.get_url('target'),
                 create_tree_if_local=False)
-        except errors.MustHaveWorkingTree:
+        except controldir.MustHaveWorkingTree:
             raise TestNotApplicable("control dir format requires working tree")
         self.assertPathDoesNotExist('target/foo')
         self.assertEqual(tree.branch.last_revision(),
