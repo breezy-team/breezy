@@ -225,16 +225,6 @@ class TestErrors(tests.TestCase):
             "('key',) which is encoded as 'fulltext'.",
             str(error))
 
-    def test_unknown_hook(self):
-        error = errors.UnknownHook("branch", "foo")
-        self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
-            " of breezy.",
-            str(error))
-        error = errors.UnknownHook("tree", "bar")
-        self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
-            " of breezy.",
-            str(error))
-
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",

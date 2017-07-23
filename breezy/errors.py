@@ -498,16 +498,6 @@ class UnavailableRepresentation(InternalBzrError):
         self.key = key
 
 
-class UnknownHook(BzrError):
-
-    _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of breezy."
-
-    def __init__(self, hook_type, hook_name):
-        BzrError.__init__(self)
-        self.type = hook_type
-        self.hook = hook_name
-
-
 class UnsupportedProtocol(PathError):
 
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
@@ -2645,28 +2635,6 @@ class NoSuchAlias(BzrError):
 
     def __init__(self, alias_name):
         BzrError.__init__(self, alias_name=alias_name)
-
-
-class DirectoryLookupFailure(BzrError):
-    """Base type for lookup errors."""
-
-    pass
-
-
-class InvalidLocationAlias(DirectoryLookupFailure):
-
-    _fmt = '"%(alias_name)s" is not a valid location alias.'
-
-    def __init__(self, alias_name):
-        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
-
-
-class UnsetLocationAlias(DirectoryLookupFailure):
-
-    _fmt = 'No %(alias_name)s location assigned.'
-
-    def __init__(self, alias_name):
-        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
 
 
 class CannotBindAddress(BzrError):
