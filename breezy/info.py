@@ -61,7 +61,7 @@ class LocationList(object):
             return
         try:
             path = urlutils.local_path_from_url(url)
-        except errors.InvalidURL:
+        except urlutils.InvalidURL:
             self.locs.append((label, url))
         else:
             self.add_path(label, path)

@@ -59,7 +59,7 @@ class TestParent(TestCaseWithTransport):
         self.assertEqual(path, b.get_parent())
 
 
-        self.assertRaises(breezy.errors.InvalidURL, b.set_parent, u'\xb5')
+        self.assertRaises(urlutils.InvalidURL, b.set_parent, u'\xb5')
         b.set_parent(urlutils.escape(u'\xb5'))
         self.assertEqual('%C2%B5', b._get_parent_location())
 

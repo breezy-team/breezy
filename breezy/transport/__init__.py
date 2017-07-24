@@ -1537,7 +1537,7 @@ class ConnectedTransport(Transport):
         """
         try:
             parsed_url = self._split_url(other_base)
-        except errors.InvalidURL:
+        except urlutils.InvalidURL:
             # No hope in trying to reuse an existing transport for an invalid
             # URL
             return None
@@ -1591,7 +1591,7 @@ def location_to_url(location):
         location = location.encode('ascii')
     except UnicodeError:
         if urlutils.is_url(location):
-            raise errors.InvalidURL(path=location,
+            raise urlutils.InvalidURL(path=location,
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
     if PY3:
@@ -1647,7 +1647,7 @@ def get_transport_from_url(url, possible_transports=None):
                     possible_transports.append(transport)
                 return transport
     if not urlutils.is_url(url):
-        raise errors.InvalidURL(path=url)
+        raise urlutils.InvalidURL(path=url)
     raise errors.UnsupportedProtocol(url, last_err)
 
 

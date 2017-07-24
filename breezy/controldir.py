@@ -770,7 +770,7 @@ class ControlDir(ControlComponent):
                 pass
             try:
                 new_t = a_transport.clone('..')
-            except errors.InvalidURLJoin:
+            except urlutils.InvalidURLJoin:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
             if new_t.base == a_transport.base:

@@ -404,32 +404,6 @@ class PermissionDenied(PathError):
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
 
 
-class InvalidURL(PathError):
-
-    _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
-
-
-class InvalidURLJoin(PathError):
-
-    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
-
-    def __init__(self, reason, base, join_args):
-        self.reason = reason
-        self.base = base
-        self.join_args = join_args
-        PathError.__init__(self, base, reason)
-
-
-class InvalidRebaseURLs(PathError):
-
-    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
-
-    def __init__(self, from_, to):
-        self.from_ = from_
-        self.to = to
-        PathError.__init__(self, from_, 'URLs differ by more than path.')
-
-
 class UnavailableRepresentation(InternalBzrError):
 
     _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "

@@ -34,7 +34,6 @@ from .. import (
     )
 from ..errors import (ConnectionError,
                       FileExists,
-                      InvalidURL,
                       NoSuchFile,
                       PathError,
                       TransportNotPossible,
@@ -1554,7 +1553,7 @@ class TransportTests(TestTransportImplementation):
 
         # A plain unicode string is not a valid url
         for fname in files:
-            self.assertRaises(InvalidURL, t.get, fname)
+            self.assertRaises(urlutils.InvalidURL, t.get, fname)
 
         for fname in files:
             fname_utf8 = fname.encode('utf-8')
