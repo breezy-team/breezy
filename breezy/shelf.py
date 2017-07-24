@@ -19,11 +19,11 @@ from __future__ import absolute_import
 import errno
 import re
 
+from . import errors
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     bencode,
-    errors,
     merge,
     merge3,
     transform,
@@ -32,6 +32,27 @@ from breezy.bzr import (
     pack,
     )
 """)
+
+
+class ShelfCorrupt(errors.BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(errors.BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        errors.BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class InvalidShelfId(errors.BzrError):
+
+    _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
+
+    def __init__(self, invalid_id):
+        errors.BzrError.__init__(self, invalid_id=invalid_id)
 
 
 class ShelfCreator(object):
@@ -318,7 +339,7 @@ class Unshelver(object):
     def parse_metadata(records):
         names, metadata_bytes = next(records)
         if names[0] != ('metadata',):
-            raise errors.ShelfCorrupt
+            raise ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)
         message = metadata.get('message')
         if message is not None:
@@ -409,8 +430,7 @@ class ShelfManager(object):
         except IOError as e:
             if e.errno != errno.ENOENT:
                 raise
-            from . import errors
-            raise errors.NoSuchShelfId(shelf_id)
+            raise NoSuchShelfId(shelf_id)
 
     def get_unshelver(self, shelf_id):
         """Return an unshelver for a given shelf_id.

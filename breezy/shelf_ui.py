@@ -398,7 +398,7 @@ class Unshelver(object):
                 try:
                     shelf_id = int(shelf_id)
                 except ValueError:
-                    raise errors.InvalidShelfId(shelf_id)
+                    raise shelf.InvalidShelfId(shelf_id)
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:

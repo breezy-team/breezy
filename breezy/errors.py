@@ -146,11 +146,6 @@ class InternalBzrError(BzrError):
     internal_error = True
 
 
-class AlreadyBuilding(BzrError):
-
-    _fmt = "The tree builder is already building a tree."
-
-
 class BranchError(BzrError):
     """Base class for concrete 'errors about a branch'."""
 
@@ -175,15 +170,6 @@ class DirstateCorrupt(BzrError):
         BzrError.__init__(self)
         self.state = state
         self.msg = msg
-
-
-class DisabledMethod(InternalBzrError):
-
-    _fmt = "The smart server method '%(class_name)s' is disabled."
-
-    def __init__(self, class_name):
-        BzrError.__init__(self)
-        self.class_name = class_name
 
 
 class IncompatibleVersion(BzrError):
@@ -299,11 +285,6 @@ class NoWorkingTree(BzrError):
     def __init__(self, base):
         BzrError.__init__(self)
         self.base = base
-
-
-class NotBuilding(BzrError):
-
-    _fmt = "Not currently building a tree."
 
 
 class NotLocalUrl(BzrError):
@@ -2503,59 +2484,12 @@ class DuplicateRecordNameError(ContainerError):
         self.name = name.decode("utf-8")
 
 
-class NoDestinationAddress(InternalBzrError):
-
-    _fmt = "Message does not have a destination address."
-
-
 class RepositoryDataStreamError(BzrError):
 
     _fmt = "Corrupt or incompatible data stream: %(reason)s"
 
     def __init__(self, reason):
         self.reason = reason
-
-
-class SMTPError(BzrError):
-
-    _fmt = "SMTP error: %(error)s"
-
-    def __init__(self, error):
-        self.error = error
-
-
-class NoMessageSupplied(BzrError):
-
-    _fmt = "No message supplied."
-
-
-class NoMailAddressSpecified(BzrError):
-
-    _fmt = "No mail-to address (--mail-to) or output (-o) specified."
-
-
-class MailClientNotFound(BzrError):
-
-    _fmt = "Unable to find mail client with the following names:"\
-        " %(mail_command_list_string)s"
-
-    def __init__(self, mail_command_list):
-        mail_command_list_string = ', '.join(mail_command_list)
-        BzrError.__init__(self, mail_command_list=mail_command_list,
-                          mail_command_list_string=mail_command_list_string)
-
-class SMTPConnectionRefused(SMTPError):
-
-    _fmt = "SMTP connection to %(host)s refused"
-
-    def __init__(self, error, host):
-        self.error = error
-        self.host = host
-
-
-class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
-
-    _fmt = "Please specify smtp_server.  No server at default %(host)s."
 
 
 class BzrDirError(BzrError):
@@ -2708,31 +2642,6 @@ class UnsupportedTimezoneFormat(BzrError):
         self.timezone = timezone
 
 
-class CommandAvailableInPlugin(Exception):
-
-    internal_error = False
-
-    def __init__(self, cmd_name, plugin_metadata, provider):
-
-        self.plugin_metadata = plugin_metadata
-        self.cmd_name = cmd_name
-        self.provider = provider
-
-    def __str__(self):
-
-        _fmt = ('"%s" is not a standard brz command. \n'
-                'However, the following official plugin provides this command: %s\n'
-                'You can install it by going to: %s'
-                % (self.cmd_name, self.plugin_metadata['name'],
-                    self.plugin_metadata['url']))
-
-        return _fmt
-
-
-class NoPluginAvailable(BzrError):
-    pass
-
-
 class UnableEncodePath(BzrError):
 
     _fmt = ('Unable to encode %(kind)s path %(path)r in '
@@ -2804,11 +2713,6 @@ class TipChangeRejected(BzrError):
         self.msg = msg
 
 
-class ShelfCorrupt(BzrError):
-
-    _fmt = "Shelf corrupt."
-
-
 class DecompressCorruption(BzrError):
 
     _fmt = "Corruption while decompressing repository file%(orig_error)s"
@@ -2819,22 +2723,6 @@ class DecompressCorruption(BzrError):
         else:
             self.orig_error = ""
         BzrError.__init__(self)
-
-
-class NoSuchShelfId(BzrError):
-
-    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
-
-    def __init__(self, shelf_id):
-        BzrError.__init__(self, shelf_id=shelf_id)
-
-
-class InvalidShelfId(BzrError):
-
-    _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
-
-    def __init__(self, invalid_id):
-        BzrError.__init__(self, invalid_id=invalid_id)
 
 
 class JailBreak(BzrError):
@@ -2856,37 +2744,6 @@ class MustHaveWorkingTree(BzrError):
 
     def __init__(self, format, url):
         BzrError.__init__(self, format=format, url=url)
-
-
-class NoSuchView(BzrError):
-    """A view does not exist.
-    """
-
-    _fmt = u"No such view: %(view_name)s."
-
-    def __init__(self, view_name):
-        self.view_name = view_name
-
-
-class ViewsNotSupported(BzrError):
-    """Views are not supported by a tree format.
-    """
-
-    _fmt = ("Views are not supported by %(tree)s;"
-            " use 'brz upgrade' to change your tree to a later format.")
-
-    def __init__(self, tree):
-        self.tree = tree
-
-
-class FileOutsideView(BzrError):
-
-    _fmt = ('Specified file "%(file_name)s" is outside the current view: '
-            '%(view_str)s')
-
-    def __init__(self, file_name, view_files):
-        self.file_name = file_name
-        self.view_str = ", ".join(view_files)
 
 
 class UnresumableWriteGroup(BzrError):
@@ -2951,16 +2808,6 @@ class RecursiveBind(BzrError):
 
     def __init__(self, branch_url):
         self.branch_url = branch_url
-
-
-class HpssVfsRequestNotAllowed(BzrError):
-
-    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
-            "%(method)s, %(arguments)s.")
-
-    def __init__(self, method, arguments):
-        self.method = method
-        self.arguments = arguments
 
 
 class UnsupportedKindChange(BzrError):

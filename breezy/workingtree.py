@@ -327,7 +327,7 @@ class WorkingTree(mutabletree.MutableTree,
         for filename in file_list:
             relpath = fixer(osutils.dereference_path(filename))
             if view_files and not osutils.is_inside_any(view_files, relpath):
-                raise errors.FileOutsideView(filename, view_files)
+                raise views.FileOutsideView(filename, view_files)
             new_list.append(relpath)
         return new_list
 
