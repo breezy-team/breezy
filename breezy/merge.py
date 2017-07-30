@@ -207,7 +207,7 @@ class ConfigurableFileMerger(PerFileMerger):
             config = self.merger.this_branch.get_config()
             # Until bzr provides a better policy for caching the config, we
             # just add the part we're interested in to the params to avoid
-            # reading the config files repeatedly (bazaar.conf, location.conf,
+            # reading the config files repeatedly (breezy.conf, location.conf,
             # branch.conf).
             config_key = self.name_prefix + '_merge_files'
             affected_files = config.get_user_option_as_list(config_key)

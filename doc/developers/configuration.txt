@@ -1,10 +1,10 @@
-Configuring Bazaar
+Configuring Breezy
 ==================
 
 .. contents::
    :depth: 2
 
-As a Bazaar developer there are a few things you need to know about
+As a Breezy developer there are a few things you need to know about
 configuration:
 
 * how to add a new option,
@@ -63,7 +63,7 @@ option. Both methods are provided by the ``Stack`` object.
 
 But before doing that, you must be sure that the stack you're using have a
 writable section (this is true for ``GlobalStack`` which uses the
-``DEFAULT`` section in ``bazaar.conf`` and for ``BranchStack``which uses the
+``DEFAULT`` section in ``breezy.conf`` and for ``BranchStack``which uses the
 no-name section in ``branch.conf``).
 
 Old and new configuration code
@@ -112,7 +112,7 @@ Stacks capture the various places an option can be declared by the user with
 associated levels of generality and query them in the appropriate order
 returning the first definition found. For example, the
 ``append_revisions_only`` option may be declared for all branches of a user
-in ``bazaar.conf``, or for a hierarchy of branches in ``locations.conf`` or
+in ``breezy.conf``, or for a hierarchy of branches in ``locations.conf`` or
 in a single branch in ``branch.conf``.
 
 Defining a new stack means you need a new way to expose these levels to the
@@ -138,7 +138,7 @@ Adding a new store
 The following stores are used by ``brz`` in ways that illustrate various
 uses of sections.
 
-bazaar.conf
+breezy.conf
 ===========
 
 ``brz`` itself defines two sections here:
@@ -261,7 +261,7 @@ Depending on the object it is associated with (or not) a ``Store`` also needs
 to implement a locking mechanism. ``LockableIniFileStore`` implements such a
 mechanism for ``IniFileStore`` based stores.
 
-Classes are provided for the usual Bazaar configuration files and could be
+Classes are provided for the usual Breezy configuration files and could be
 used as examples to define new ones if needed. The associated tests provides a
 basis for new classes which only need to register themselves in the right
 places to inherit from the existing basic tests and add their own specific

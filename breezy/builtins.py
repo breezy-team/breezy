@@ -2612,7 +2612,7 @@ class cmd_log(Command):
       Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and
       <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
-      You may find it useful to add the aliases below to ``bazaar.conf``::
+      You may find it useful to add the aliases below to ``breezy.conf``::
 
         [ALIASES]
         tip = log -r-1

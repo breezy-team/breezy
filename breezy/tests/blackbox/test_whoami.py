@@ -136,7 +136,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         c = branch.Branch.open(url).get_config_stack()
         self.assertEqual('Changed Identity <changed@identi.ty>',
                           c.get('email'))
-        # Ensuring that the value does not come from the bazaar.conf file
+        # Ensuring that the value does not come from the breezy.conf file
         # itself requires some isolation setup
         self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', None)

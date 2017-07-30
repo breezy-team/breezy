@@ -84,7 +84,7 @@ it.
 
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
-can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
+can go into ``breezy.conf``, ``branch.conf`` or into a branch-specific
 configuration section in ``locations.conf``.  You can set up these values
 for each of the projects you work on.
 

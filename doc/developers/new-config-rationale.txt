@@ -1,5 +1,5 @@
 ================================
-Simplifying Bazaar Configuration
+Simplifying Breezy Configuration
 ================================
 
 Goal
@@ -49,10 +49,10 @@ Current issues
   approximated today by *not* defining these options in ``branch.conf`` but
   in ``locations.conf`` instead. This workaround doesn't allow a user to
   define defaults in ``locations.conf`` and override them in
-  ``branch.conf``. (Allowing sections in 'bazaar.conf' (or introducing a new
+  ``branch.conf``. (Allowing sections in 'breezy.conf' (or introducing a new
   defaults.conf' allowing sections) can now address that. Defining and using
   a new file is easier as it avoids handling a migration path for
-  bazaar.conf and doesn't require banning the use of sections for special
+  breezy.conf and doesn't require banning the use of sections for special
   purpose needs (ALIASES and BOOKMARKS for example)).
 
 * Defining a new option requires adding a new method in the ``Config``
@@ -88,10 +88,10 @@ Current issues
 
 * Rules for configuration options are not clearly defined for remote
   branches (they may differ between dumb and smart servers the former will
-  use the local ``bazaar.conf`` and ``locations.conf`` files while the later
+  use the local ``breezy.conf`` and ``locations.conf`` files while the later
   will use (or ignore ?) the remote ones).
 
-* The features offered by the Bazaar configuration files should be easily
+* The features offered by the Breezy configuration files should be easily
   accessible to plugin authors either by supporting plugin configuration
   options in the configuration files or allowing the plugins to define their
   own configuration files. (Separating Section, Store and Stack starts
@@ -102,7 +102,7 @@ Current issues
   mutually exclusive ways that make it impossible to offer the same set of
   features to all configuration files:
 
-  * ``bazaar.conf`` use arbitrary names for sections. ``DEFAULT`` is used
+  * ``breezy.conf`` use arbitrary names for sections. ``DEFAULT`` is used
     for global options, ``ALIASES`` are used to define command aliases,
     plugins can define their own sections, some plugins do that
     (``bzr-bookmarks`` use ``BOOKMARKS`` for example), some other define
@@ -118,7 +118,7 @@ Current issues
 
   This is addressed by defining different stacks selecting the relevant
   sections from the stores involved. ``ALIASES`` for example can define a
-  stack that select only the ``ALIASES`` section from ``bazaar.conf``.
+  stack that select only the ``ALIASES`` section from ``breezy.conf``.
 
 * There is no easy way to get configuration options for a given repository
   or an arbitrary path. Working trees and branches are generally organized
@@ -147,7 +147,7 @@ Current issues
   them. See also http://pad.lv/832046 asking for a less magical section
   matcher).
 
-* Internally, configuration files (and their fallbacks, ``bazaar.conf`` and
+* Internally, configuration files (and their fallbacks, ``breezy.conf`` and
   ``locations.conf`` for ``branch.conf``) are read every time *one* option is
   queried. Likewise, setting or deleting a configuration option implies
   writing the configuration file *immediately* after re-reading the file to
@@ -187,7 +187,7 @@ Configuration files definition
 
 While of course configurations files can be versioned they are not intended
 to be accessed in sync with the files they refer to (one can imagine
-handling versioned properties this way but this is *not* what the bazaar
+handling versioned properties this way but this is *not* what the breezy
 configuration files are targeted at). ``bzr`` will always refer to
 configuration files as they exist on disk when an option is queried or set.
 
@@ -199,7 +199,7 @@ Naming
 ------
 
 Option names are organized into a name space for a given stack. One such set
-includes ``bazaar.conf``, ``locations.conf``, ``branch.conf``, etc. Plugins
+includes ``breezy.conf``, ``locations.conf``, ``branch.conf``, etc. Plugins
 can define their own sets for their own needs. While it is conceivable that
 the same option name can be used in unrelated configuration stacks, it seems
 better to define a single name space for all options if only to avoid
@@ -294,7 +294,7 @@ an expansion, the fallback sections or files can be queried for its value.
 This allows list values to refer to the definition in the less specific
 configurations::
 
-  bazaar.conf:
+  breezy.conf:
     debug_flags = hpss
 
   branch.conf for mybranch:
@@ -324,7 +324,7 @@ repositories (or any kind of context) or part of them. The relationship
 between a given context and the sections it applies to is defined by the
 config file.
 
-So far, Bazaar uses a glob in ``locations.conf`` and select the sections
+So far, Breezy uses a glob in ``locations.conf`` and select the sections
 that apply to a given url (or a local path).
 
 The subset is defined by the common leading path or a glob.
@@ -394,10 +394,10 @@ user (http://pad.lv/832046).
 The context here is a local path, absolute or relative. If the path is
 relative it is interpreted from the file base directory.
 
-Note that 'base directory' for configuration files in Bazaar directories is
+Note that 'base directory' for configuration files in Breezy directories is
 really:
 
-* the home directory for files under ``~/.bazaar``,
+* the home directory for files under ``~/.breezy``,
 
 * the ``.bzr`` base directory for files under ``.bzr``.
 
@@ -501,7 +501,7 @@ Depending on the files involved, a working tree, branch or repository object
 configuration files. Note that providing a working tree object also
 implicitly provides the associated branch and repository object so only one
 of them is required (or none for configuration files specific to the user
-like ``bazaar.conf``).
+like ``breezy.conf``).
 
 Getting an option value
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -517,7 +517,7 @@ express that an option is not set).
 * command-line
   ``-Ooption=value`` see http://pad.lv/491196.
 
-* ``~/.bazaar/locations.conf``
+* ``~/.config/breezy/locations.conf``
 
   When an option is set in ``locations.conf`` it overrides any other
   configuration file. This should be used with care as it allows setting a
@@ -564,10 +564,10 @@ express that an option is not set).
 
   The options common to all users of a system (may be /etc/bzr/defaults
   or /usr/local/etc/bzr/defaults or
-  /Library/Preferences/com.canonical.defaults  or c:\windows\bazaar.conf
+  /Library/Preferences/com.canonical.defaults  or c:\windows\breezy.conf
   (someone fix this one please ;) depending on the OS).
 
-* ``bazaar.conf``
+* ``breezy.conf``
 
   The options the user has selected for the host he is using.
 
@@ -605,7 +605,7 @@ Obvious at this point:
   sharing is implemented, we may want to use an attribute for the stack and
   deprecate both ``get_config`` and ``get_config_stack``.
 
-* Sections names in ``bazaar.conf`` are arbitrary (except ``DEFAULT``) so
+* Sections names in ``breezy.conf`` are arbitrary (except ``DEFAULT``) so
   it's easier to leave the file untouched and let plugin authors and users
   migrate away (or not) from them. For ``bzr`` itself, that means
   ``DEFAULT`` is the only section used for most of the options and provides
@@ -668,7 +668,7 @@ Option
 ~~~~~~
 
 * list of allowed Config IDs (this allows a list of possible config files in
-  bazaar.conf only option and use it while bootstrapping the config
+  breezy.conf only option and use it while bootstrapping the config
   creations). 
 
 * blacklist of config IDs (some options *can't* be stored (modified) by the
@@ -712,9 +712,9 @@ Examples
 store examples:
 ~~~~~~~~~~~~~~~
 
-* ConfigObj (bazaar.conf)
+* ConfigObj (breezy.conf)
 
-* DB (<scheme>://bazaar.launchpad.net/bazaar.conf)
+* DB (<scheme>://breezy.launchpad.net/breezy.conf)
 
 
 Why and when locking config files matter

@@ -16,12 +16,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Configuration that affects the behaviour of Bazaar.
+"""Configuration that affects the behaviour of Breezy.
 
-Currently this configuration resides in ~/.bazaar/bazaar.conf
-and ~/.bazaar/locations.conf, which is written to by brz.
+Currently this configuration resides in ~/.config/breezy/breezy.conf
+and ~/.config/breezy/locations.conf, which is written to by brz.
 
-In bazaar.conf the following options may be set:
+If the first location doesn't exist, then brz falls back to reading
+Bazaar configuration files in ~/.bazaar or ~/.config/bazaar.
+
+In breezy.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
@@ -34,7 +37,7 @@ gpg_signing_key=amy@example.com
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
-set in both bazaar.conf and locations.conf are overridden by the locations.conf
+set in both breezy.conf and locations.conf are overridden by the locations.conf
 setting.
 [/home/robertc/source]
 recurse=False|True(default)
@@ -62,7 +65,7 @@ validate_signatures_in_log - show GPG signature validity in log output
 acceptable_keys - comma separated list of key patterns acceptable for
                   verify-signatures command
 
-In bazaar.conf you can also define aliases in the ALIASES sections, example
+In breezy.conf you can also define aliases in the ALIASES sections, example
 
 [ALIASES]
 lastlog=log --line -r-10..-1
@@ -1023,7 +1026,7 @@ class GlobalConfig(LockableConfig):
         super(GlobalConfig, self).__init__(file_name=config_filename())
 
     def config_id(self):
-        return 'bazaar'
+        return 'breezy'
 
     @classmethod
     def from_string(cls, str_or_unicode, save=False):
@@ -1458,8 +1461,6 @@ def bazaar_config_dir():
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
-        # GZ 2012-02-01: Really the two level subdirs only make sense inside
-        #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
         xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
@@ -1474,42 +1475,53 @@ def bazaar_config_dir():
     return osutils.pathjoin(base, ".bazaar")
 
 
-def config_dir():
+def _config_dir():
     """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
     Mac OS X and Linux. If the breezy config directory doesn't exist but
     the bazaar one (see bazaar_config_dir()) does, use that instead.
-
-    TODO: Global option --config-dir to override this.
     """
+    # TODO: Global option --config-dir to override this.
     base = osutils.path_from_environ('BRZ_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
-        # GZ 2012-02-01: Really the two level subdirs only make sense inside
-        #                APPDATA, but hard to move. See bug 348640 for more.
     if base is None:
         base = osutils.path_from_environ('XDG_CONFIG_HOME')
         if base is None:
             base = osutils.pathjoin(osutils._get_home_dir(), ".config")
     breezy_dir = osutils.pathjoin(base, 'breezy')
     if osutils.isdir(breezy_dir):
-        return breezy_dir
+        return (breezy_dir, 'breezy')
     # If the breezy directory doesn't exist, but the bazaar one does, use that:
     bazaar_dir = bazaar_config_dir()
     if osutils.isdir(bazaar_dir):
         trace.mutter(
             "Using Bazaar configuration directory (%s)", bazaar_dir)
-        return bazaar_dir
-    return breezy_dir
+        return (bazaar_dir, 'bazaar')
+    return (breezy_dir, 'breezy')
+
+
+def config_dir():
+    """Return per-user configuration directory as unicode string
+
+    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
+    Mac OS X and Linux. If the breezy config directory doesn't exist but
+    the bazaar one (see bazaar_config_dir()) does, use that instead.
+    """
+    return _config_dir()[0]
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'bazaar.conf')
+    path, kind = _config_dir()
+    if kind == 'bazaar':
+        return osutils.pathjoin(path, 'bazaar.conf')
+    else:
+        return osutils.pathjoin(path, 'breezy.conf')
 
 
 def locations_config_filename():
@@ -3410,7 +3422,7 @@ class LockableIniFileStore(TransportIniFileStore):
         super(LockableIniFileStore, self).save()
 
 
-# FIXME: global, bazaar, shouldn't that be 'user' instead or even
+# FIXME: global, breezy, shouldn't that be 'user' instead or even
 # 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
 # (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
 
@@ -3425,10 +3437,12 @@ class GlobalStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
+        (path, kind) = _config_dir()
         t = transport.get_transport_from_path(
-            config_dir(), possible_transports=possible_transports)
-        super(GlobalStore, self).__init__(t, 'bazaar.conf')
-        self.id = 'bazaar'
+            path, possible_transports=possible_transports)
+        filename = {'bazaar': 'bazaar.conf', 'breezy': 'breezy.conf'}[kind]
+        super(GlobalStore, self).__init__(t, filename)
+        self.id = 'breezy'
 
 
 class LocationStore(LockableIniFileStore):
@@ -4184,7 +4198,7 @@ class cmd_config(commands.Command):
         # reduced to the plugin-specific store), related to
         # http://pad.lv/788991 -- vila 2011-11-15
         if scope is not None:
-            if scope == 'bazaar':
+            if scope == 'breezy':
                 return GlobalStack()
             elif scope == 'locations':
                 return LocationStack(directory)

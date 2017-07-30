@@ -73,7 +73,7 @@ will disable the feature for that branch.
 Since the auto hook is triggered automatically, you can't use the --quiet
 option available for the upload command. Instead, you can set the
 'upload_auto_quiet' configuration variable to True or False in either
-bazaar.conf, locations.conf or branch.conf.
+breezy.conf, locations.conf or branch.conf.
 
 
 Storing the '.bzr-upload.revid' file

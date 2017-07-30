@@ -2,7 +2,7 @@ Debug Flags
 ===========
 
 These flags can be passed on the brz command line or (without the ``-D``
-prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
+prefix) put in the ``debug_flags`` variable in ``breezy.conf``.
 
 -Dauth            Trace authentication sections used.
 -Dbytes           Print out how many bytes were transferred

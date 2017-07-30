@@ -225,7 +225,7 @@ helps people work together in a team.
 man_foot = """\
 .SH "FILES"
 .TP
-.I "~/.bazaar/bazaar.conf"
+.I "~/.config/breezy/breezy.conf"
 Contains the user's default configuration. The section
 .B [DEFAULT]
 is used to define general configuration that will be applied everywhere.

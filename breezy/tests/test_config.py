@@ -71,7 +71,7 @@ config.test_store_builder_registry.register(
     'configobj', lambda test: config.TransportIniFileStore(
         test.get_transport(), 'configobj.conf'))
 config.test_store_builder_registry.register(
-    'bazaar', lambda test: config.GlobalStore())
+    'breezy', lambda test: config.GlobalStore())
 config.test_store_builder_registry.register(
     'location', lambda test: config.LocationStore())
 
@@ -133,7 +133,7 @@ config.test_store_builder_registry.register('remote_branch',
 
 
 config.test_stack_builder_registry.register(
-    'bazaar', lambda test: config.GlobalStack())
+    'breezy', lambda test: config.GlobalStack())
 config.test_stack_builder_registry.register(
     'location', lambda test: config.LocationStack('.'))
 
@@ -253,7 +253,7 @@ def create_configs(test):
 
     - locations_config : A LocationConfig for the associated branch
 
-    - bazaar_config: A GlobalConfig.
+    - breezy_config: A GlobalConfig.
 
     The tree and branch are created in a 'tree' subdirectory so the tests can
     still use the test directory to stay outside of the branch.
@@ -262,7 +262,7 @@ def create_configs(test):
     test.tree = tree
     test.branch_config = config.BranchConfig(tree.branch)
     test.locations_config = config.LocationConfig(tree.basedir)
-    test.bazaar_config = config.GlobalConfig()
+    test.breezy_config = config.GlobalConfig()
 
 
 def create_configs_with_file_option(test):
@@ -272,7 +272,7 @@ def create_configs_with_file_option(test):
     configuration with a value which allows identifying the configuration file.
     """
     create_configs(test)
-    test.bazaar_config.set_user_option('file', 'bazaar')
+    test.breezy_config.set_user_option('file', 'breezy')
     test.locations_config.set_user_option('file', 'locations')
     test.branch_config.set_user_option('file', 'branch')
 
@@ -525,7 +525,7 @@ class TestConfigPath(tests.TestCase):
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
-                         self.brz_home + '/bazaar.conf')
+                         self.brz_home + '/breezy.conf')
 
     def test_locations_config_filename(self):
         self.assertEqual(config.locations_config_filename(),
@@ -538,6 +538,38 @@ class TestConfigPath(tests.TestCase):
     def test_xdg_cache_dir(self):
         self.assertEqual(config.xdg_cache_dir(),
             '/home/bogus/.cache')
+
+
+class TestConfigPathFallback(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestConfigPathFallback, self).setUp()
+        self.overrideEnv('HOME', self.test_dir)
+        self.overrideEnv('XDG_CACHE_HOME', '')
+        self.bzr_home = os.path.join(self.test_dir, '.bazaar')
+        os.mkdir(self.bzr_home)
+
+    def test_config_dir(self):
+        self.assertEqual(config.config_dir(), self.bzr_home)
+
+    def test_config_dir_is_unicode(self):
+        self.assertIsInstance(config.config_dir(), unicode)
+
+    def test_config_filename(self):
+        self.assertEqual(config.config_filename(),
+                         self.bzr_home + '/bazaar.conf')
+
+    def test_locations_config_filename(self):
+        self.assertEqual(config.locations_config_filename(),
+                         self.bzr_home + '/locations.conf')
+
+    def test_authentication_config_filename(self):
+        self.assertEqual(config.authentication_config_filename(),
+                         self.bzr_home + '/authentication.conf')
+
+    def test_xdg_cache_dir(self):
+        self.assertEqual(config.xdg_cache_dir(),
+            os.path.join(self.test_dir, '.cache'))
 
 
 class TestXDGConfigDir(tests.TestCaseInTempDir):
@@ -1685,8 +1717,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         self.assertEqual((conf, name, value), calls[0])
 
-    def test_get_hook_bazaar(self):
-        self.assertGetHook(self.bazaar_config, 'file', 'bazaar')
+    def test_get_hook_breezy(self):
+        self.assertGetHook(self.breezy_config, 'file', 'breezy')
 
     def test_get_hook_locations(self):
         self.assertGetHook(self.locations_config, 'file', 'locations')
@@ -1711,8 +1743,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         # coverage here.
         self.assertEqual((name, value), calls[0][1:])
 
-    def test_set_hook_bazaar(self):
-        self.assertSetHook(self.bazaar_config, 'foo', 'bazaar')
+    def test_set_hook_breezy(self):
+        self.assertSetHook(self.breezy_config, 'foo', 'breezy')
 
     def test_set_hook_locations(self):
         self.assertSetHook(self.locations_config, 'foo', 'locations')
@@ -1735,8 +1767,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         # coverage here.
         self.assertEqual((name,), calls[0][1:])
 
-    def test_remove_hook_bazaar(self):
-        self.assertRemoveHook(self.bazaar_config, 'file')
+    def test_remove_hook_breezy(self):
+        self.assertRemoveHook(self.breezy_config, 'file')
 
     def test_remove_hook_locations(self):
         self.assertRemoveHook(self.locations_config, 'file',
@@ -1760,7 +1792,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         # Since we can't assert about conf, we just use the number of calls ;-/
 
-    def test_load_hook_bazaar(self):
+    def test_load_hook_breezy(self):
         self.assertLoadHook('file', config.GlobalConfig)
 
     def test_load_hook_locations(self):
@@ -1782,8 +1814,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         # Since we can't assert about conf, we just use the number of calls ;-/
 
-    def test_save_hook_bazaar(self):
-        self.assertSaveHook(self.bazaar_config)
+    def test_save_hook_breezy(self):
+        self.assertSaveHook(self.breezy_config)
 
     def test_save_hook_locations(self):
         self.assertSaveHook(self.locations_config)
@@ -3050,8 +3082,8 @@ class TestConcurrentStoreUpdates(TestStore):
 
     # FIXME: It may be worth looking into removing the lock dir when it's not
     # needed anymore and look at possible fallouts for concurrent lockers. This
-    # will matter if/when we use config files outside of bazaar directories
-    # (.bazaar or .bzr) -- vila 20110-04-111
+    # will matter if/when we use config files outside of breezy directories
+    # (.config/breezy or .bzr) -- vila 20110-04-111
 
 
 class TestSectionMatcher(TestStore):
@@ -3960,13 +3992,13 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         create_configs(self)
 
     def test_no_variable(self):
-        # Using branch should query branch, locations and bazaar
+        # Using branch should query branch, locations and breezy
         self.assertOptions([], self.branch_config)
 
-    def test_option_in_bazaar(self):
-        self.bazaar_config.set_user_option('file', 'bazaar')
-        self.assertOptions([('file', 'bazaar', 'DEFAULT', 'bazaar')],
-                           self.bazaar_config)
+    def test_option_in_breezy(self):
+        self.breezy_config.set_user_option('file', 'breezy')
+        self.assertOptions([('file', 'breezy', 'DEFAULT', 'breezy')],
+                           self.breezy_config)
 
     def test_option_in_locations(self):
         self.locations_config.set_user_option('file', 'locations')
@@ -3979,11 +4011,11 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         self.assertOptions([('file', 'branch', 'DEFAULT', 'branch')],
                            self.branch_config)
 
-    def test_option_in_bazaar_and_branch(self):
-        self.bazaar_config.set_user_option('file', 'bazaar')
+    def test_option_in_breezy_and_branch(self):
+        self.breezy_config.set_user_option('file', 'breezy')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions([('file', 'branch', 'DEFAULT', 'branch'),
-                            ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+                            ('file', 'breezy', 'DEFAULT', 'breezy'),],
                            self.branch_config)
 
     def test_option_in_branch_and_locations(self):
@@ -3995,14 +4027,14 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
              ('file', 'branch', 'DEFAULT', 'branch'),],
             self.branch_config)
 
-    def test_option_in_bazaar_locations_and_branch(self):
-        self.bazaar_config.set_user_option('file', 'bazaar')
+    def test_option_in_breezy_locations_and_branch(self):
+        self.breezy_config.set_user_option('file', 'breezy')
         self.locations_config.set_user_option('file', 'locations')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
              ('file', 'branch', 'DEFAULT', 'branch'),
-             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'),],
             self.branch_config)
 
 
@@ -4016,18 +4048,18 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
         self.locations_config.remove_user_option('file', self.tree.basedir)
         self.assertOptions(
             [('file', 'branch', 'DEFAULT', 'branch'),
-             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'),],
             self.branch_config)
 
     def test_remove_in_branch(self):
         self.branch_config.remove_user_option('file')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
-             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'),],
             self.branch_config)
 
-    def test_remove_in_bazaar(self):
-        self.bazaar_config.remove_user_option('file')
+    def test_remove_in_breezy(self):
+        self.breezy_config.remove_user_option('file')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
              ('file', 'branch', 'DEFAULT', 'branch'),],
@@ -4056,8 +4088,8 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         self.assertLength(len(expected), sections)
         self.assertEqual(expected, [n for n, _, _ in sections])
 
-    def test_bazaar_default_section(self):
-        self.assertSectionNames(['DEFAULT'], self.bazaar_config)
+    def test_breezy_default_section(self):
+        self.assertSectionNames(['DEFAULT'], self.breezy_config)
 
     def test_locations_default_section(self):
         # No sections are defined in an empty file
@@ -4097,16 +4129,16 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         self.assertSectionNames([self.tree.basedir, None, 'DEFAULT'],
                                 self.branch_config)
 
-    def test_bazaar_named_section(self):
+    def test_breezy_named_section(self):
         # We need to cheat as the API doesn't give direct access to sections
         # other than DEFAULT.
-        self.bazaar_config.set_alias('bazaar', 'bzr')
-        self.assertSectionNames(['ALIASES'], self.bazaar_config, 'ALIASES')
+        self.breezy_config.set_alias('breezy', 'bzr')
+        self.assertSectionNames(['ALIASES'], self.breezy_config, 'ALIASES')
 
 
 class TestSharedStores(tests.TestCaseInTempDir):
 
-    def test_bazaar_conf_shared(self):
+    def test_breezy_conf_shared(self):
         g1 = config.GlobalStack()
         g2 = config.GlobalStack()
         # The two stacks share the same store

@@ -59,11 +59,11 @@ be made persistent by recording them in a configuration file.
 Configuration files
 -------------------
 
-Configuration files are located in ``$HOME/.bazaar`` on Unix and
+Configuration files are located in ``$HOME/.config/breezy`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0`` on
 Windows. There are three primary configuration files in this location:
 
-* ``bazaar.conf`` describes default configuration options,
+* ``breezy.conf`` describes default configuration options,
 
 * ``locations.conf`` describes configuration information for
   specific branch locations,
@@ -77,7 +77,7 @@ branch. This file is visible to **all users of a branch**. If you wish to
 override one of the values for a branch with a setting that is specific to you,
 then you can do so in ``locations.conf``.
 
-Here is sample content of ``bazaar.conf`` after setting an email address using
+Here is sample content of ``breezy.conf`` after setting an email address using
 the ``whoami`` command::
 
   [DEFAULT]
@@ -107,7 +107,7 @@ given order for matching definitions.
 
   * the current ``branch.conf`` is searched next,
 
-  * ``bazaar.conf`` is searched next,
+  * ``breezy.conf`` is searched next,
 
   * finally, some options can have default values generally defined in the
     code itself and not displayed by ``brz config`` (see `Configuration
@@ -123,7 +123,7 @@ will display some output of the form::
     parent_location = bzr+ssh://bazaar.launchpad.net/+branch/brz/
     nickname = config-modify
     push_location = bzr+ssh://bazaar.launchpad.net/~vila/brz/config-modify/
-  bazaar:
+  breezy:
     debug_flags = hpss,
 
 Each configuration file is associated with a given scope whose name is
@@ -157,7 +157,7 @@ reflect the content of the config files and make it easier to organize them::
 
   brz config --all .*opt
 
-  bazaar:
+  breezy:
     [DEFAULT]
     opt = {other_opt}/subdir
     other_opt = root
