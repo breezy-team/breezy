@@ -31,7 +31,7 @@ from breezy.tree import (
     )
 
 
-class ErrorTests(TestCase):
+class TestErrors(TestCase):
 
     def test_file_timestamp_unavailable(self):
         e = FileTimestampUnavailable("/path/foo")

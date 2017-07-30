@@ -54,7 +54,7 @@ from .scenarios import load_tests_apply_scenarios
 # set_path_id  setting id when state is in memory modified
 
 
-class ErrorTests(tests.TestCase):
+class TestErrors(tests.TestCase):
 
     def test_dirstate_corrupt(self):
         error = dirstate.DirstateCorrupt('.bzr/checkout/dirstate',

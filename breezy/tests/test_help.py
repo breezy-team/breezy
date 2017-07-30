@@ -34,7 +34,7 @@ from .test_i18n import ZzzTranslations
 import re
 
 
-class ErrorTests(tests.TestCase):
+class TestErrors(tests.TestCase):
 
     def test_no_help_topic(self):
         error = help.NoHelpTopic("topic")

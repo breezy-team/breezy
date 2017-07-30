@@ -31,7 +31,7 @@ from .scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
-class ErrorTests(tests.TestCase):
+class TestErrors(tests.TestCase):
 
     def test_must_have_working_tree(self):
         err = controldir.MustHaveWorkingTree('foo', 'bar')

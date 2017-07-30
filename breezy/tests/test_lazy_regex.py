@@ -26,7 +26,7 @@ from .. import (
     )
 
 
-class ErrorTests(tests.TestCase):
+class TestErrors(tests.TestCase):
 
     def test_invalid_pattern(self):
         error = lazy_regex.InvalidPattern('Bad pattern msg.')

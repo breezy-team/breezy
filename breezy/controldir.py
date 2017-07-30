@@ -52,7 +52,7 @@ from . import (
 
 class MustHaveWorkingTree(errors.BzrError):
 
-    _fmt = ("Branching '%(url)s'(%(format)s) must create a working tree.")
+    _fmt = "Branching '%(url)s'(%(format)s) must create a working tree."
 
     def __init__(self, format, url):
         errors.BzrError.__init__(self, format=format, url=url)

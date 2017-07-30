@@ -24,7 +24,7 @@ from breezy import (
     )
 
 
-class ErrorTests(tests.TestCase):
+class TestErrors(tests.TestCase):
 
     def test_unknown_rules(self):
         err = rules.UnknownRules(['foo', 'bar'])

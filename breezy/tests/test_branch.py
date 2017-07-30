@@ -44,7 +44,7 @@ from ..sixish import (
     )
 
 
-class ErrorTests(tests.TestCase):
+class TestErrors(tests.TestCase):
 
     def test_unstackable_branch_format(self):
         format = u'foo'
