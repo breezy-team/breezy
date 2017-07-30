@@ -190,6 +190,7 @@ class KnitHeaderError(KnitError):
         self.badline = badline
         self.filename = filename
 
+
 class KnitIndexUnknownMethod(KnitError):
     """Raised when we don't understand the storage method.
 
@@ -203,8 +204,6 @@ class KnitIndexUnknownMethod(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.options = options
-
-
 
 
 class KnitAdapter(object):
@@ -1148,7 +1147,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             if self._index.get_method(key) != 'fulltext':
                 compression_parent = parent_map[key][0]
                 if compression_parent not in parent_map:
-                    raise errors.KnitCorrupt(self,
+                    raise KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
         for fallback_vfs in self._immediate_fallback_vfs:
@@ -2638,7 +2637,7 @@ class _KndxIndex(object):
         elif 'line-delta' in options:
             return 'line-delta'
         else:
-            raise errors.KnitIndexUnknownMethod(self, options)
+            raise KnitIndexUnknownMethod(self, options)
 
     def get_options(self, key):
         """Return a list representing options.

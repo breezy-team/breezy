@@ -166,31 +166,6 @@ class TestErrors(tests.TestCase):
             "Use 'brz break-lock' to clear it",
             str(error))
 
-    def test_knit_data_stream_incompatible(self):
-        error = errors.KnitDataStreamIncompatible(
-            'stream format', 'target format')
-        self.assertEqual('Cannot insert knit data stream of format '
-                         '"stream format" into knit of format '
-                         '"target format".', str(error))
-
-    def test_knit_data_stream_unknown(self):
-        error = errors.KnitDataStreamUnknown(
-            'stream format')
-        self.assertEqual('Cannot parse knit data stream of format '
-                         '"stream format".', str(error))
-
-    def test_knit_header_error(self):
-        error = errors.KnitHeaderError('line foo\n', 'path/to/file')
-        self.assertEqual("Knit header error: 'line foo\\n' unexpected"
-                         " for file \"path/to/file\".", str(error))
-
-    def test_knit_index_unknown_method(self):
-        error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
-                                              ['bad', 'no-eol'])
-        self.assertEqual("Knit index http://host/foo.kndx does not have a"
-                         " known method in options: ['bad', 'no-eol']",
-                         str(error))
-
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
