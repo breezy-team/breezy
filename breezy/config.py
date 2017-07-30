@@ -18,10 +18,13 @@
 
 """Configuration that affects the behaviour of Bazaar.
 
-Currently this configuration resides in ~/.bazaar/bazaar.conf
-and ~/.bazaar/locations.conf, which is written to by brz.
+Currently this configuration resides in ~/.config/breezy/breezy.conf
+and ~/.config/breezy/locations.conf, which is written to by brz.
 
-In bazaar.conf the following options may be set:
+If the first location doesn't exist, then brz falls back to reading
+Bazaar configuration files in ~/.bazaar or ~/.config/bazaar.
+
+In breezy.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
@@ -34,7 +37,7 @@ gpg_signing_key=amy@example.com
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
-set in both bazaar.conf and locations.conf are overridden by the locations.conf
+set in both breezy.conf and locations.conf are overridden by the locations.conf
 setting.
 [/home/robertc/source]
 recurse=False|True(default)
@@ -62,7 +65,7 @@ validate_signatures_in_log - show GPG signature validity in log output
 acceptable_keys - comma separated list of key patterns acceptable for
                   verify-signatures command
 
-In bazaar.conf you can also define aliases in the ALIASES sections, example
+In breezy.conf you can also define aliases in the ALIASES sections, example
 
 [ALIASES]
 lastlog=log --line -r-10..-1
@@ -1474,15 +1477,14 @@ def bazaar_config_dir():
     return osutils.pathjoin(base, ".bazaar")
 
 
-def config_dir():
+def _config_dir():
     """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
     Mac OS X and Linux. If the breezy config directory doesn't exist but
     the bazaar one (see bazaar_config_dir()) does, use that instead.
-
-    TODO: Global option --config-dir to override this.
     """
+    # TODO: Global option --config-dir to override this.
     base = osutils.path_from_environ('BRZ_HOME')
     if sys.platform == 'win32':
         if base is None:
@@ -1497,19 +1499,33 @@ def config_dir():
             base = osutils.pathjoin(osutils._get_home_dir(), ".config")
     breezy_dir = osutils.pathjoin(base, 'breezy')
     if osutils.isdir(breezy_dir):
-        return breezy_dir
+        return (breezy_dir, 'breezy')
     # If the breezy directory doesn't exist, but the bazaar one does, use that:
     bazaar_dir = bazaar_config_dir()
     if osutils.isdir(bazaar_dir):
         trace.mutter(
             "Using Bazaar configuration directory (%s)", bazaar_dir)
-        return bazaar_dir
-    return breezy_dir
+        return (bazaar_dir, 'bazaar')
+    return (breezy_dir, 'breezy')
+
+
+def config_dir():
+    """Return per-user configuration directory as unicode string
+
+    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
+    Mac OS X and Linux. If the breezy config directory doesn't exist but
+    the bazaar one (see bazaar_config_dir()) does, use that instead.
+    """
+    return _config_dir()[0]
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'bazaar.conf')
+    path, kind = _config_dir()
+    if kind == 'bazaar':
+        return osutils.pathjoin(path, 'bazaar.conf')
+    else:
+        return osutils.pathjoin(path, 'breezy.conf')
 
 
 def locations_config_filename():

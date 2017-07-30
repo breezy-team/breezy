@@ -207,7 +207,7 @@ def _write_apport_report_to_file(exc_info):
     # TODO: strip that out and attach the rest
     #
     #attach_file_if_exists(report,
-    #   os.path.join(dot_brz, 'bazaar.conf', 'BrzConfig')
+    #   os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
     #attach_file_if_exists(report,
     #   os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
 

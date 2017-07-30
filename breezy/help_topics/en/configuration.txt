@@ -203,7 +203,7 @@ Windows. (You can check the location for your system by using
 
 There are three primary configuration files in this location:
 
-* ``bazaar.conf`` describes default configuration options,
+* ``breezy.conf`` describes default configuration options,
 
 * ``locations.conf`` describes configuration information for
   specific branch locations,
@@ -238,7 +238,7 @@ of a line.  A typical section header looks like this::
 
     [DEFAULT]
 
-The only valid section headers for bazaar.conf currently are [DEFAULT] and
+The only valid section headers for breezy.conf currently are [DEFAULT] and
 [ALIASES].  Section headers are case sensitive. The default section provides for
 setting options which can be overridden with the branch config file.
 
@@ -350,15 +350,15 @@ values in any other section from the same ``Store`` nor from any other
 ``Store``.
 
 
-The main configuration file, bazaar.conf
+The main configuration file, breezy.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``bazaar.conf`` allows two sections: ``[DEFAULT]`` and ``[ALIASES]``.
+``breezy.conf`` allows two sections: ``[DEFAULT]`` and ``[ALIASES]``.
 The default section contains the default
 configuration options for all branches. The default section can be
 overriden by providing a branch-specific section in ``locations.conf``.
 
-A typical ``bazaar.conf`` section often looks like the following::
+A typical ``breezy.conf`` section often looks like the following::
 
     [DEFAULT]
     email             = John Doe <jdoe@isp.com>
@@ -371,7 +371,7 @@ The branch location configuration file, locations.conf
 
 ``locations.conf`` allows one to specify overriding settings for
 a specific branch. The format is almost identical to the default section in
-bazaar.conf with one significant change: The section header, instead of saying
+breezy.conf with one significant change: The section header, instead of saying
 default, will be the path to a branch that you wish to override a value
 for. The '?' and '*' wildcards are supported::
 
@@ -618,7 +618,7 @@ Branch type specific options
 These options apply only to branches that use the ``dirstate-tags`` or
 later format.  They
 are usually set in ``.bzr/branch/branch.conf`` automatically, but may be
-manually set in ``locations.conf`` or ``bazaar.conf``.
+manually set in ``locations.conf`` or ``breezy.conf``.
 
 append_revisions_only
 ~~~~~~~~~~~~~~~~~~~~~

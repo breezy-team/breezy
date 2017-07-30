@@ -17,7 +17,7 @@
 """Set of flags that enable different debug behaviour.
 
 These are set with eg ``-Dlock`` on the bzr command line or in
-~/.bazaar/bazaar.conf debug_flags.
+~/.config/breezy/breezy.conf debug_flags.
 
 See `bzr help debug-flags` or `breezy/help_topics/en/debug-flags.txt`
 for a list of the available options.
