@@ -172,6 +172,11 @@ API Changes
  * A new ``Repository.iter_revisions`` method has been added.
    (Jelmer Vernooĳ)
 
+ * A new ``WorkingTreeFormat.supports_setting_file_ids`` property
+   has been added that can be set to False to indicate a working tree
+   doesn't support e.g. passing a file_id into ``WorkingTree.mkdir``.
+   (Jelmer Vernooĳ, #1707533)
+
 Internals
 *********
 

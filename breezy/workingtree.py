@@ -76,6 +76,11 @@ from .trace import mutter, note
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
+class SettingFileIdUnsupported(errors.BzrError):
+
+    _fmt = "This format does not support setting file ids."""
+
+
 class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
 
@@ -228,6 +233,9 @@ class WorkingTree(mutabletree.MutableTree,
 
     def supports_views(self):
         return self.views.supports_views()
+
+    def supports_setting_file_ids(self):
+        return self._format.supports_setting_file_ids
 
     def get_config_stack(self):
         """Retrieve the config stack for this tree.
@@ -771,6 +779,8 @@ class WorkingTree(mutabletree.MutableTree,
         """See MutableTree.mkdir()."""
         if file_id is None:
             file_id = generate_ids.gen_file_id(os.path.basename(path))
+        elif not self.supports_setting_file_ids():
+            raise SettingFileIdUnsupported()
         os.mkdir(self.abspath(path))
         self.add(path, file_id, 'directory')
         return file_id
@@ -1296,6 +1306,8 @@ class WorkingTree(mutabletree.MutableTree,
     @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
+        if not self.supports_setting_file_ids():
+            raise SettingFileIdUnsupported()
         # for compatability
         if file_id is None:
             raise ValueError(
@@ -1731,6 +1743,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     """If this format supports missing parent conflicts."""
 
     supports_versioned_directories = None
+
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
 
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

@@ -1232,3 +1232,8 @@ class TestFormatAttributes(TestCaseWithWorkingTree):
         self.assertSubset(
             [self.workingtree_format.supports_versioned_directories],
             (True, False))
+
+    def test_supports_setting_file_ids(self):
+        self.assertSubset(
+            [self.workingtree_format.supports_setting_file_ids],
+            (True, False))
