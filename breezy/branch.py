@@ -59,6 +59,17 @@ from .sixish import (
 from .trace import mutter, mutter_callsite, note, is_quiet
 
 
+class UnstackableBranchFormat(errors.BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the branch to permit branch stacking.")
+
+    def __init__(self, format, url):
+        errors.BzrError.__init__(self)
+        self.format = format
+        self.url = url
+
+
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
@@ -816,7 +827,7 @@ class Branch(controldir.ControlComponent):
             stacking.
         """
         if not self._format.supports_stacking():
-            raise errors.UnstackableBranchFormat(self._format, self.user_url)
+            raise UnstackableBranchFormat(self._format, self.user_url)
         # XXX: Changing from one fallback repository to another does not check
         # that all the data you need is present in the new fallback.
         # Possibly it should.
@@ -824,7 +835,7 @@ class Branch(controldir.ControlComponent):
         if not url:
             try:
                 old_url = self.get_stacked_on_url()
-            except (errors.NotStacked, errors.UnstackableBranchFormat,
+            except (errors.NotStacked, UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
                 return
             self._unstack()

@@ -17,7 +17,7 @@
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
 from breezy import (
-    branch,
+    branch as _mod_branch,
     controldir,
     check,
     errors,
@@ -28,7 +28,7 @@ from breezy.tests.per_branch import TestCaseWithBranch
 
 
 unstackable_format_errors = (
-    errors.UnstackableBranchFormat,
+    _mod_branch.UnstackableBranchFormat,
     errors.UnstackableRepositoryFormat,
     )
 
@@ -309,14 +309,14 @@ class TestStacking(TestCaseWithBranch):
         cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
             preserve_stacking=False)
         unstacked_branch = cloned_unstacked_bzrdir.open_branch()
-        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+        self.assertRaises((errors.NotStacked, _mod_branch.UnstackableBranchFormat),
                           unstacked_branch.get_stacked_on_url)
 
     def test_no_op_preserve_stacking(self):
         """With no stacking, preserve_stacking should be a no-op."""
         branch = self.make_branch('source')
         cloned_bzrdir = branch.controldir.clone('cloned', preserve_stacking=True)
-        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+        self.assertRaises((errors.NotStacked, _mod_branch.UnstackableBranchFormat),
                           cloned_bzrdir.open_branch().get_stacked_on_url)
 
     def make_stacked_on_matching(self, source):
@@ -344,7 +344,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
-                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+                branch.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
@@ -361,7 +361,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
-                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+                _mod_branch.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def test_sprout_to_smart_server_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
@@ -379,7 +379,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
-                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+                _mod_branch.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def prepare_stacked_on_fetch(self):
         stack_on = self.make_branch_and_tree('stack-on')
@@ -503,9 +503,9 @@ class TestStacking(TestCaseWithBranch):
         def hook(stacked_branch, url):
             hook_calls.append(url)
             return '../new-stack-on'
-        branch.Branch.hooks.install_named_hook(
+        _mod_branch.Branch.hooks.install_named_hook(
             'transform_fallback_location', hook, None)
-        branch.Branch.open('stacked')
+        _mod_branch.Branch.open('stacked')
         self.assertEqual(['../stack-on'], hook_calls)
 
     def test_stack_on_repository_branch(self):
@@ -526,7 +526,7 @@ class TestStacking(TestCaseWithBranch):
         transport = self.get_transport('stacked')
         b.controldir.clone_on_transport(transport, stacked_on=b.base)
         # Ensure that opening the branch doesn't raise.
-        branch.Branch.open(transport.base)
+        _mod_branch.Branch.open(transport.base)
 
     def test_revision_history_of_stacked(self):
         # See <https://launchpad.net/bugs/380314>.
@@ -579,11 +579,11 @@ class TestStackingConnections(
         self.start_logging_connections()
 
     def test_open_stacked(self):
-        b = branch.Branch.open(self.get_url('stacked'))
+        b = _mod_branch.Branch.open(self.get_url('stacked'))
         rev = b.repository.get_revision('rev-base')
         self.assertEqual(1, len(self.connections))
 
     def test_open_stacked_relative(self):
-        b = branch.Branch.open(self.get_url('stacked_relative'))
+        b = _mod_branch.Branch.open(self.get_url('stacked_relative'))
         rev = b.repository.get_revision('rev-base')
         self.assertEqual(1, len(self.connections))

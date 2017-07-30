@@ -3362,7 +3362,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # the vfs branch.
         try:
             fallback_url = self.get_stacked_on_url()
-        except (errors.NotStacked, errors.UnstackableBranchFormat,
+        except (errors.NotStacked, branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             return
         self._is_stacked = True
@@ -4234,7 +4234,7 @@ no_context_error_translators.register('LockFailed',
 no_context_error_translators.register('TipChangeRejected',
     lambda err: errors.TipChangeRejected(err.error_args[0].decode('utf8')))
 no_context_error_translators.register('UnstackableBranchFormat',
-    lambda err: errors.UnstackableBranchFormat(*err.error_args))
+    lambda err: branch.UnstackableBranchFormat(*err.error_args))
 no_context_error_translators.register('UnstackableRepositoryFormat',
     lambda err: errors.UnstackableRepositoryFormat(*err.error_args))
 no_context_error_translators.register('FileExists',

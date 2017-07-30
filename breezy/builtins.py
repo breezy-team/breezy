@@ -60,7 +60,7 @@ from breezy import (
 from breezy.bzr import (
     btree_index,
     )
-from breezy.branch import Branch
+from breezy.branch import Branch, UnstackableBranchFormat
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.revisionspec import RevisionSpec, RevisionInfo
@@ -1524,7 +1524,7 @@ class cmd_branch(Command):
         try:
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
-        except (errors.NotStacked, errors.UnstackableBranchFormat,
+        except (errors.NotStacked, UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
@@ -3559,8 +3559,10 @@ class cmd_commit(Command):
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
-        from .errors import (
+        from .commit import (
             PointlessCommit,
+            )
+        from .errors import (
             ConflictsInTree,
             StrictCommitFailed
         )

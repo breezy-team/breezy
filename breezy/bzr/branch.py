@@ -42,6 +42,7 @@ from ..branch import (
     BranchFormat,
     BranchWriteLockResult,
     format_registry,
+    UnstackableBranchFormat,
     )
 from ..decorators import (
     needs_read_lock,
@@ -260,7 +261,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return None
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.user_url)
+        raise UnstackableBranchFormat(self._format, self.user_url)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -409,7 +410,7 @@ class BzrBranch8(BzrBranch):
         try:
             url = self.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
-            errors.UnstackableBranchFormat):
+            UnstackableBranchFormat):
             pass
         else:
             for hook in Branch.hooks['transform_fallback_location']:
@@ -650,7 +651,7 @@ class BzrBranch6(BzrBranch7):
     """
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.user_url)
+        raise UnstackableBranchFormat(self._format, self.user_url)
 
 
 class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):

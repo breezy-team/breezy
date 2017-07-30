@@ -24,8 +24,7 @@ import struct
 
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
-from breezy import errors
-from .dirstate import DirState
+from .dirstate import DirState, DirstateCorrupt
 from ..sixish import (
     range,
     )
@@ -229,7 +228,7 @@ def _read_dirblocks(state):
     # Remove the last blank entry
     trailing = fields.pop()
     if trailing != b'':
-        raise errors.DirstateCorrupt(state,
+        raise DirstateCorrupt(state,
             'trailing garbage: %r' % (trailing,))
     # consider turning fields into a tuple.
 
@@ -248,7 +247,7 @@ def _read_dirblocks(state):
     field_count = len(fields)
     # this checks our adjustment, and also catches file too short.
     if field_count - cur != expected_field_count:
-        raise errors.DirstateCorrupt(state,
+        raise DirstateCorrupt(state,
             'field count incorrect %s != %s, entry_size=%s, '\
             'num_entries=%s fields=%r' % (
             field_count - cur, expected_field_count, entry_size,

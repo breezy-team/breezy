@@ -60,7 +60,7 @@ from . import (
 from .branch import Branch
 from .cleanup import OperationWithCleanups
 import breezy.config
-from .errors import (BzrError, PointlessCommit,
+from .errors import (BzrError,
                      ConflictsInTree,
                      StrictCommitFailed
                      )
@@ -73,6 +73,30 @@ from .trace import mutter, note, is_quiet
 from .bzr.inventory import Inventory, InventoryEntry, make_entry
 from .urlutils import unescape_for_display
 from .i18n import gettext
+
+
+class PointlessCommit(BzrError):
+
+    _fmt = "No changes to commit"
+
+
+class CannotCommitSelectedFileMerge(BzrError):
+
+    _fmt = 'Selected-file commit of merges is not supported yet:'\
+        ' files %(files_str)s'
+
+    def __init__(self, files):
+        files_str = ', '.join(files)
+        BzrError.__init__(self, files=files, files_str=files_str)
+
+
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
 
 
 def filter_excluded(iter_changes, exclude):

@@ -560,14 +560,14 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         child_branch, new_child_transport = self.prepare_default_stacking(
             child_format='pack-0.92')
         new_child = child_branch.controldir.clone_on_transport(new_child_transport)
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(branch.UnstackableBranchFormat,
                           new_child.open_branch().get_stacked_on_url)
 
     def test_sprout_ignores_policy_for_unsupported_formats(self):
         child_branch, new_child_transport = self.prepare_default_stacking(
             child_format='pack-0.92')
         new_child = child_branch.controldir.sprout(new_child_transport.base)
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(branch.UnstackableBranchFormat,
                           new_child.open_branch().get_stacked_on_url)
 
     def test_sprout_upgrades_format_if_stacked_specified(self):
@@ -1556,7 +1556,7 @@ class TestBzrFormat(TestCase):
         # a feature can only be registered once
         self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
         SampleBzrFormat.register_feature("nested-trees")
-        self.assertRaises(errors.FeatureAlreadyRegistered,
+        self.assertRaises(bzrdir.FeatureAlreadyRegistered,
             SampleBzrFormat.register_feature, "nested-trees")
 
     def test_feature_with_space(self):

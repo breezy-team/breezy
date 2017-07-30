@@ -63,20 +63,6 @@ class TestErrors(tests.TestCase):
             "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
             " filesystem encoding UTF-8$")
 
-    def test_corrupt_dirstate(self):
-        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
-        self.assertEqualDiff(
-            "Inconsistency in dirstate file path/to/dirstate.\n"
-            "Error: the reason why",
-            str(error))
-
-    def test_dirstate_corrupt(self):
-        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
-                                       'trailing garbage: "x"')
-        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
-            " appears to be corrupt: trailing garbage: \"x\"",
-            str(error))
-
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'
@@ -239,25 +225,6 @@ class TestErrors(tests.TestCase):
             "('key',) which is encoded as 'fulltext'.",
             str(error))
 
-    def test_unknown_hook(self):
-        error = errors.UnknownHook("branch", "foo")
-        self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
-            " of breezy.",
-            str(error))
-        error = errors.UnknownHook("tree", "bar")
-        self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
-            " of breezy.",
-            str(error))
-
-    def test_unstackable_branch_format(self):
-        format = u'foo'
-        url = "/foo"
-        error = errors.UnstackableBranchFormat(format, url)
-        self.assertEqualDiff(
-            "The branch '/foo'(foo) is not a stackable format. "
-            "You will need to upgrade the branch to permit branch stacking.",
-            str(error))
-
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
@@ -283,36 +250,6 @@ class TestErrors(tests.TestCase):
         path = u'a path'
         error = errors.ReadError(path)
         self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
-
-    def test_bad_index_format_signature(self):
-        error = errors.BadIndexFormatSignature("foo", "bar")
-        self.assertEqual("foo is not an index of type bar.",
-            str(error))
-
-    def test_bad_index_data(self):
-        error = errors.BadIndexData("foo")
-        self.assertEqual("Error in data for index foo.",
-            str(error))
-
-    def test_bad_index_duplicate_key(self):
-        error = errors.BadIndexDuplicateKey("foo", "bar")
-        self.assertEqual("The key 'foo' is already in index 'bar'.",
-            str(error))
-
-    def test_bad_index_key(self):
-        error = errors.BadIndexKey("foo")
-        self.assertEqual("The key 'foo' is not a valid key.",
-            str(error))
-
-    def test_bad_index_options(self):
-        error = errors.BadIndexOptions("foo")
-        self.assertEqual("Could not parse options for index foo.",
-            str(error))
-
-    def test_bad_index_value(self):
-        error = errors.BadIndexValue("foo")
-        self.assertEqual("The value 'foo' is not a valid value.",
-            str(error))
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
@@ -501,10 +438,6 @@ class TestErrors(tests.TestCase):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEqual("Unknown foo format: 'bar'", str(err))
 
-    def test_unknown_rules(self):
-        err = errors.UnknownRules(['foo', 'bar'])
-        self.assertEqual("Unknown rules detected: foo, bar.", str(err))
-
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
         self.assertEqual(
@@ -537,11 +470,6 @@ class TestErrors(tests.TestCase):
             self.assertEndsWith(str(err), "Exception: example error\n")
         finally:
             del err
-
-    def test_must_have_working_tree(self):
-        err = errors.MustHaveWorkingTree('foo', 'bar')
-        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
-                                   " working tree.")
 
     def test_unresumable_write_group(self):
         repo = "dummy repo"

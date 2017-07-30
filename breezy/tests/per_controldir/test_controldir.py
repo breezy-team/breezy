@@ -18,6 +18,7 @@
 
 import breezy.branch
 from breezy import (
+    branch as _mod_branch,
     check,
     controldir,
     errors,
@@ -428,7 +429,7 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             child = branch.controldir.clone_on_transport(child_transport,
                                                      stacked_on=branch.base)
-        except (errors.UnstackableBranchFormat,
+        except (_mod_branch.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
             raise TestNotApplicable("branch or repository format does "
                 "not support stacking")
@@ -995,7 +996,7 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             target = dir.sprout(self.get_url('target'),
                 create_tree_if_local=False)
-        except errors.MustHaveWorkingTree:
+        except controldir.MustHaveWorkingTree:
             raise TestNotApplicable("control dir format requires working tree")
         self.assertPathDoesNotExist('target/foo')
         self.assertEqual(tree.branch.last_revision(),
