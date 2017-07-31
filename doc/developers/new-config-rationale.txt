@@ -397,7 +397,7 @@ relative it is interpreted from the file base directory.
 Note that 'base directory' for configuration files in Breezy directories is
 really:
 
-* the home directory for files under ``~/.breezy``,
+* the home directory for files under ``~/.config/breezy``,
 
 * the ``.bzr`` base directory for files under ``.bzr``.
 
