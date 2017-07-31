@@ -20,6 +20,7 @@ import re
 
 from ... import (
     branch as _mod_branch,
+    commit,
     controldir,
     delta as _mod_delta,
     errors,
@@ -454,7 +455,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.PointlessCommit, tree.commit, 'pointless',
+        self.assertRaises(commit.PointlessCommit, tree.commit, 'pointless',
                           allow_pointless=False)
         tree.commit('pointless', allow_pointless=True)
 

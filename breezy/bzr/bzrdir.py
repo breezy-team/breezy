@@ -1150,7 +1150,7 @@ class BzrFormat(object):
         if " " in name:
             raise ValueError("spaces are not allowed in feature names")
         if name in cls._present_features:
-            raise errors.FeatureAlreadyRegistered(name)
+            raise FeatureAlreadyRegistered(name)
         cls._present_features.add(name)
 
     @classmethod

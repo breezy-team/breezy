@@ -57,7 +57,7 @@ class UnsyncedBranches(BzrDirError):
             " brz help sync-for-reconfigure.")
 
     def __init__(self, controldir, target_branch):
-        BzrError.__init__(self, controldir)
+        errors.BzrError.__init__(self, controldir)
         from . import urlutils
         self.target_url = urlutils.unescape_for_display(target_branch.base,
                                                         'ascii')
@@ -345,7 +345,7 @@ class Reconfigure(object):
             reference_branch = branch.Branch.open(self._select_bind_location())
             if (reference_branch.last_revision() !=
                 self.local_branch.last_revision()):
-                raise errors.UnsyncedBranches(self.controldir, reference_branch)
+                raise UnsyncedBranches(self.controldir, reference_branch)
 
     def _select_bind_location(self):
         """Select a location to bind or create a reference to.

@@ -34,10 +34,11 @@ from breezy import (
     tsort,
     )
 from breezy.bzr import (
+    knit,
     pack,
+    pack_repo,
     )
 
-from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
 
@@ -2024,7 +2025,7 @@ class _GCGraphIndex(object):
                 if refs:
                     for ref in refs:
                         if ref:
-                            raise errors.KnitCorrupt(self,
+                            raise knit.KnitCorrupt(self,
                                 "attempt to add node with parents "
                                 "in parentless index.")
                     refs = ()
@@ -2040,7 +2041,7 @@ class _GCGraphIndex(object):
                 if node_refs != passed[1]:
                     details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
-                        raise errors.KnitCorrupt(self, "inconsistent details"
+                        raise knit.KnitCorrupt(self, "inconsistent details"
                                                  " in add_records: %s" %
                                                  details)
                     else:

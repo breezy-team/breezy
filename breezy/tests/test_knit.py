@@ -30,14 +30,15 @@ from ..bzr import (
     knit,
     pack,
     )
-from ..errors import (
-    KnitHeaderError,
-    NoSuchFile,
-    )
 from ..bzr.index import *
 from ..bzr.knit import (
     AnnotatedKnitContent,
     KnitContent,
+    KnitCorrupt,
+    KnitDataStreamIncompatible,
+    KnitDataStreamUnknown,
+    KnitHeaderError,
+    KnitIndexUnknownMethod,
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
@@ -73,6 +74,34 @@ from . import (
 
 compiled_knit_feature = features.ModuleAvailableFeature(
     'breezy.bzr._knit_load_data_pyx')
+
+
+class ErrorTests(TestCase):
+
+    def test_knit_data_stream_incompatible(self):
+        error = KnitDataStreamIncompatible(
+            'stream format', 'target format')
+        self.assertEqual('Cannot insert knit data stream of format '
+                         '"stream format" into knit of format '
+                         '"target format".', str(error))
+
+    def test_knit_data_stream_unknown(self):
+        error = KnitDataStreamUnknown(
+            'stream format')
+        self.assertEqual('Cannot parse knit data stream of format '
+                         '"stream format".', str(error))
+
+    def test_knit_header_error(self):
+        error = KnitHeaderError('line foo\n', 'path/to/file')
+        self.assertEqual("Knit header error: 'line foo\\n' unexpected"
+                         " for file \"path/to/file\".", str(error))
+
+    def test_knit_index_unknown_method(self):
+        error = KnitIndexUnknownMethod('http://host/foo.kndx',
+                                       ['bad', 'no-eol'])
+        self.assertEqual("Knit index http://host/foo.kndx does not have a"
+                         " known method in options: ['bad', 'no-eol']",
+                         str(error))
 
 
 class KnitContentTestsMixin(object):
@@ -248,7 +277,7 @@ class MockTransport(object):
 
     def get(self, filename):
         if self.file_lines is None:
-            raise NoSuchFile(filename)
+            raise errors.NoSuchFile(filename)
         else:
             return BytesIO(b"\n".join(self.file_lines))
 
@@ -806,7 +835,7 @@ class LowLevelKnitDataTests(TestCase):
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
         records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
@@ -825,7 +854,7 @@ class LowLevelKnitDataTests(TestCase):
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
         records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
@@ -844,11 +873,11 @@ class LowLevelKnitDataTests(TestCase):
         knit = KnitVersionedFiles(None, access)
         # We are asking for rev-id-2, but the data is rev-id-1
         records = [(('rev-id-2',), (('rev-id-2',), 0, len(gz_txt)))]
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
         # read_records_iter_raw detects mismatches in the header
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
@@ -864,11 +893,11 @@ class LowLevelKnitDataTests(TestCase):
         records = [(('rev-id-1',), (('rev-id-1',), 0, len(txt)))]
 
         # We don't have valid gzip data ==> corrupt
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
         # read_records_iter_raw will notice the bad data
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter_raw(records))
 
     def test_corrupted_data(self):
@@ -884,10 +913,10 @@ class LowLevelKnitDataTests(TestCase):
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
         records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
         # read_records_iter_raw will barf on bad gz data
-        self.assertRaises(errors.KnitCorrupt, list,
+        self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter_raw(records))
 
 
@@ -1160,7 +1189,7 @@ class LowLevelKnitIndexTests(TestCase):
 
         self.assertEqual("fulltext", index.get_method("a"))
         self.assertEqual("line-delta", index.get_method("b"))
-        self.assertRaises(errors.KnitIndexUnknownMethod, index.get_method, "c")
+        self.assertRaises(knit.KnitIndexUnknownMethod, index.get_method, "c")
 
     def test_get_options(self):
         transport = MockTransport([
@@ -1196,7 +1225,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 0 1 4 :"  # We don't have a 4th record
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        self.assertRaises(errors.KnitCorrupt, index.keys)
+        self.assertRaises(KnitCorrupt, index.keys)
 
     def test_corrupted_parent(self):
         transport = MockTransport([
@@ -1206,7 +1235,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1v :", # Can't have a parent of '1v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        self.assertRaises(errors.KnitCorrupt, index.keys)
+        self.assertRaises(KnitCorrupt, index.keys)
 
     def test_corrupted_parent_in_list(self):
         transport = MockTransport([
@@ -1216,7 +1245,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1 v :", # Can't have a parent of 'v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        self.assertRaises(errors.KnitCorrupt, index.keys)
+        self.assertRaises(KnitCorrupt, index.keys)
 
     def test_invalid_position(self):
         transport = MockTransport([
@@ -1224,7 +1253,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 1v 1 :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        self.assertRaises(errors.KnitCorrupt, index.keys)
+        self.assertRaises(KnitCorrupt, index.keys)
 
     def test_invalid_size(self):
         transport = MockTransport([
@@ -1232,7 +1261,7 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 1 1v :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
-        self.assertRaises(errors.KnitCorrupt, index.keys)
+        self.assertRaises(KnitCorrupt, index.keys)
 
     def test_scan_unvalidated_index_not_implemented(self):
         transport = MockTransport()
@@ -1477,7 +1506,7 @@ class TestBadShaError(KnitTests):
         target.add_lines(basis, (), ['gam\n'])
         target.insert_record_stream(
             source.get_record_stream([broken], 'unordered', False))
-        err = self.assertRaises(errors.KnitCorrupt,
+        err = self.assertRaises(KnitCorrupt,
             target.get_record_stream([broken], 'unordered', True
             ).next().get_bytes_as, 'chunked')
         self.assertEqual(['gam\n', 'bar\n'], err.content)
@@ -1673,7 +1702,7 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_add_version_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('new',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
@@ -1694,12 +1723,12 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_version_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext', (None, 0, 100), [('parent',)])])
         # parents
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
@@ -1727,7 +1756,7 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('new',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
@@ -1754,15 +1783,15 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext', (None, 0, 100), [('parent',)])])
         # parents
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [])])
         # change options in the second record
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)]),
              (('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
@@ -1895,7 +1924,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
     def test_parents_deltas_incompatible(self):
         index = CombinedGraphIndex([])
-        self.assertRaises(errors.KnitError, _KnitGraphIndex, lambda:True,
+        self.assertRaises(knit.KnitError, _KnitGraphIndex, lambda:True,
             index, deltas=True, parents=False)
 
     def two_graph_index(self, catch_adds=False):
@@ -1964,7 +1993,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
     def test_add_version_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('new',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
@@ -1983,14 +2012,14 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_version_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'line-delta,no-eol', (None, 0, 100), [])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext', (None, 0, 100), [])])
         # parents
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
@@ -2006,13 +2035,13 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('new',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_parents_not_parents_index(self):
         index = self.two_graph_index(catch_adds=True)
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('new',), 'no-eol,fulltext', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
@@ -2035,17 +2064,17 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'line-delta,no-eol', (None, 0, 100), [])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext', (None, 0, 100), [])])
         # parents
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
         # change options in the second record
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
+        self.assertRaises(KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), []),
              (('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)

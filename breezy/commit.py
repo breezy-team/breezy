@@ -412,10 +412,10 @@ class Commit(object):
         # After a merge, a selected file commit is not supported.
         # See 'bzr help merge' for an explanation as to why.
         if len(self.parents) > 1 and self.specific_files is not None:
-            raise errors.CannotCommitSelectedFileMerge(self.specific_files)
+            raise CannotCommitSelectedFileMerge(self.specific_files)
         # Excludes are a form of selected file commit.
         if len(self.parents) > 1 and self.exclude:
-            raise errors.CannotCommitSelectedFileMerge(self.exclude)
+            raise CannotCommitSelectedFileMerge(self.exclude)
 
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
@@ -771,7 +771,7 @@ class Commit(object):
                 allow_pointless=self.allow_pointless,
                 strict=self.strict, verbose=self.verbose,
                 local=self.local, reporter=self.reporter)
-        except errors.PointlessCommit:
+        except PointlessCommit:
             return self.work_tree.get_reference_revision(file_id)
 
     def _set_progress_stage(self, name, counter=False):

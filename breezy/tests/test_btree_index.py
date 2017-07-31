@@ -30,6 +30,7 @@ from .. import (
     )
 from ..bzr import (
     btree_index,
+    index as _mod_index,
     )
 from ..tests import (
     TestCaseWithTransport,
@@ -611,7 +612,7 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[0])
         builder.add_node(*nodes[1])
         builder.add_node(*nodes[0])
-        self.assertRaises(errors.BadIndexDuplicateKey, builder.finish)
+        self.assertRaises(_mod_index.BadIndexDuplicateKey, builder.finish)
 
 
 class TestBTreeIndex(BTreeTestCase):
@@ -850,7 +851,7 @@ class TestBTreeIndex(BTreeTestCase):
         # the size that matters here is the _compressed_ size of the key, so we can't
         # do a simple character repeat.
         bigKey = b''.join(b'%d' % n for n in range(btree_index._PAGE_SIZE))
-        self.assertRaises(errors.BadIndexKey,
+        self.assertRaises(_mod_index.BadIndexKey,
                           self.make_index,
                           nodes=[((bigKey,), b'value', ())])
 
@@ -941,17 +942,17 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_iter_key_prefix_1_element_key_None(self):
         index = self.make_index()
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([(None, )]))
 
     def test_iter_key_prefix_wrong_length(self):
         index = self.make_index()
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([(b'foo', None)]))
         index = self.make_index(key_elements=2)
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([(b'foo', )]))
-        self.assertRaises(errors.BadIndexKey, list,
+        self.assertRaises(_mod_index.BadIndexKey, list,
             index.iter_entries_prefix([(b'foo', None, None)]))
 
     def test_iter_key_prefix_1_key_element_no_refs(self):

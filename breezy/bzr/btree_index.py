@@ -30,7 +30,6 @@ import zlib
 from .. import (
     chunk_writer,
     debug,
-    errors,
     fifo_cache,
     lru_cache,
     osutils,
@@ -179,7 +178,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
-            raise errors.BadIndexDuplicateKey(key, self)
+            raise index.BadIndexDuplicateKey(key, self)
         self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
@@ -285,7 +284,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # undecorate back to (pos, node)
             selected = selected[1]
             if last == selected[1][1]:
-                raise errors.BadIndexDuplicateKey(last, self)
+                raise index.BadIndexDuplicateKey(last, self)
             last = selected[1][1]
             # Yield, with self as the index
             yield (self,) + selected[1][1:]
@@ -336,7 +335,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # then line is too big. raising the error avoids infinite recursion
             # searching for a suitably large page that will not be found.
             if new_leaf:
-                raise errors.BadIndexKey(string_key)
+                raise index.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + b"\n"
@@ -1411,38 +1410,38 @@ class BTreeGraphIndex(object):
         """
         signature = bytes[0:len(self._signature())]
         if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, BTreeGraphIndex)
+            raise index.BadIndexFormatSignature(self._name, BTreeGraphIndex)
         lines = bytes[len(self._signature()):].splitlines()
         options_line = lines[0]
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         options_line = lines[3]
         if not options_line.startswith(_OPTION_ROW_LENGTHS):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self._row_lengths = [int(length) for length in
                 options_line[len(_OPTION_ROW_LENGTHS):].split(b',')
                 if length]
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         self._compute_row_offsets()
 
         # calculate the bytes we have processed
