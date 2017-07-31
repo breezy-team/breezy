@@ -637,7 +637,7 @@ _files = \
 r"""Files
 
 :On Unix:   ~/.config/breezy/breezy.conf
-:On Windows: C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\breezy.conf
+:On Windows: C:\\Documents and Settings\\username\\Application Data\\Breezy\\2.0\\breezy.conf
 
 Contains the user's default configuration. The section ``[DEFAULT]`` is
 used to define general configuration that will be applied everywhere.
