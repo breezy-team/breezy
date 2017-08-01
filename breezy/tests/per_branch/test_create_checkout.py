@@ -45,10 +45,10 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
         """Test that we can create a checkout from an earlier revision."""
         tree1 = self.make_branch_and_tree('base')
         self.build_tree(['base/a'])
-        tree1.add(['a'], ['a-id'])
+        tree1.add(['a'])
         tree1.commit('first', rev_id='rev-1')
         self.build_tree(['base/b'])
-        tree1.add(['b'], ['b-id'])
+        tree1.add(['b'])
         tree1.commit('second', rev_id='rev-2')
 
         tree2 = tree1.branch.create_checkout('checkout', revision_id='rev-1')

@@ -1553,7 +1553,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_backup_copies_existing(self):
         tree = self.make_branch_and_tree('test')
         self.build_tree(['test/a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'])
         tree.commit('some data to be copied.')
         old_url, new_url = tree.controldir.backup_bzrdir()
         old_path = urlutils.local_path_from_url(old_url)

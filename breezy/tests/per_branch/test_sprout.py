@@ -168,7 +168,7 @@ class TestSprout(TestCaseWithBranch):
         target = u'\u03a9'
         link_name = u'\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
-        tree.add([link_name],['link-id'])
+        tree.add([link_name])
 
         revision = tree.commit('added a link to a Unicode target')
         tree.controldir.sprout('dest')
@@ -176,9 +176,12 @@ class TestSprout(TestCaseWithBranch):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Check that the symlink target is safely round-tripped in the trees.
-        self.assertEqual(target, tree.get_symlink_target('link-id'))
-        self.assertEqual(target,
-                         tree.basis_tree().get_symlink_target('link-id'))
+        self.assertEqual(
+            target,
+            tree.get_symlink_target(tree.path2id(link_name)))
+        self.assertEqual(
+            target,
+            tree.basis_tree().get_symlink_target(tree.path2id(link_name)))
 
     def test_sprout_with_ghost_in_mainline(self):
         tree = self.make_branch_and_tree('tree1')
@@ -224,4 +227,3 @@ class TestSprout(TestCaseWithBranch):
         else:
             expected_calls = 1
         self.assertEqual(expected_calls, len(self.hook_calls))
-

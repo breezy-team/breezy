@@ -100,7 +100,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
-        wt.add(['foo'], ['foo-id'])
+        wt.add(['foo'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         b2 = self.make_branch('b2')
@@ -110,7 +110,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = b2.repository.revision_tree('revision-1')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo-id'), 'hello')
+        self.assertEqual(tree.get_file_text(tree.path2id('foo')), 'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""

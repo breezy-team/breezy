@@ -29,7 +29,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         wt = self.make_from_branch_and_tree('b1')
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
-        wt.add(['foo'], ['foo-id'])
+        wt.add(['foo'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         b2 = self.make_to_branch('b2')
@@ -42,7 +42,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         tree = b2.repository.revision_tree('revision-1')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo-id'), 'hello')
+        self.assertEqual(
+                tree.get_file_text(tree.path2id('foo'), 'foo'),
+                'hello')
 
     def test_fetch_revisions_limit(self):
         """Test fetch-revision operation."""
@@ -70,7 +72,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         wt = self.make_from_branch_and_tree('b1')
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
-        wt.add(['foo'], ['foo-id'])
+        wt.add(['foo'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         b2 = self.make_to_branch('b2')

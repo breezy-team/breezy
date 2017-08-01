@@ -26,7 +26,7 @@ class TestPush(TestCaseWithControlDir):
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'])
         tree.commit('one', rev_id='r1')
         return tree
 
