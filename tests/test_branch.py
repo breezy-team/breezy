@@ -38,6 +38,7 @@ from .... import (
 from ....branch import (
     Branch,
     InterBranch,
+    UnstackableBranchFormat,
     )
 from ....controldir import (
     ControlDir,
@@ -157,7 +158,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
         self.assertIs(None, self.git_branch.get_parent())
 
     def test_get_stacked_on_url(self):
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(UnstackableBranchFormat,
             self.git_branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):

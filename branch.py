@@ -435,7 +435,7 @@ class GitBranch(ForeignBranch):
 
     def get_stacked_on_url(self):
         # Git doesn't do stacking (yet...)
-        raise errors.UnstackableBranchFormat(self._format, self.base)
+        raise branch.UnstackableBranchFormat(self._format, self.base)
 
     def get_parent(self):
         """See Branch.get_parent()."""
@@ -826,7 +826,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             try:
                 relpath = self.source.user_transport.relpath(normalized)
                 source_is_master = (relpath == '')
-            except (errors.PathNotChild, errors.InvalidURL):
+            except (errors.PathNotChild, urlutils.InvalidURL):
                 source_is_master = False
         if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.
