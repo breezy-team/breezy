@@ -192,17 +192,16 @@ class GitWorkingTree(workingtree.WorkingTree):
                 continue
             yield self.path2id(path)
 
-    def _index_add_entry(self, path, file_id, kind):
+    def _index_add_entry(self, path, kind):
         assert self._lock_mode is not None
         assert isinstance(path, basestring)
-        assert type(file_id) == str or file_id is None
         if kind == "directory":
             # Git indexes don't contain directories
             return
         if kind == "file":
             blob = Blob()
             try:
-                file, stat_val = self.get_file_with_stat(file_id, path)
+                file, stat_val = self.get_file_with_stat(None, path)
             except (errors.NoSuchFile, IOError):
                 # TODO: Rather than come up with something here, use the old index
                 file = StringIO()
@@ -219,7 +218,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(
-                self.get_symlink_target(file_id, path).encode("utf-8"))
+                self.get_symlink_target(None, path).encode("utf-8"))
         else:
             raise AssertionError("unknown kind '%s'" % kind)
         # Add object to the repository if it didn't exist yet
@@ -342,10 +341,8 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
             if file_id is not None:
-                self._fileid_map.set_file_id(path.encode("utf-8"), file_id)
-            else:
-                file_id = self._fileid_map.lookup_file_id(path.encode("utf-8"))
-            self._index_add_entry(path, file_id, kind)
+                raise workingtree.SettingFileIdUnsupported()
+            self._index_add_entry(path, kind)
 
     @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
