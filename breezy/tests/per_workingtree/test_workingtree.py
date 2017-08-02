@@ -127,15 +127,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_list_files_kind_change(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
-        tree.add('filename', 'file-id')
+        tree.add('filename')
         os.unlink('tree/filename')
         self.build_tree(['tree/filename/'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
         result = list(tree.list_files())
         self.assertEqual(1, len(result))
-        self.assertEqual(('filename', 'V', 'directory', 'file-id'),
-                         result[0][:4])
+        self.assertEqual(
+                ('filename', 'V', 'directory', tree.path2id('filename')),
+                result[0][:4])
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config
@@ -424,7 +425,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_basis_tree_returns_last_revision(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        wt.add('foo', 'foo-id')
+        wt.add('foo')
         wt.commit('A', rev_id='A')
         wt.rename_one('foo', 'bar')
         wt.commit('B', rev_id='B')
@@ -679,11 +680,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_merge_modified(self):
         # merge_modified stores a map from file id to hash
         tree = self.make_branch_and_tree('tree')
-        d = {'file-id': osutils.sha_string('hello')}
         self.build_tree_contents([('tree/somefile', 'hello')])
         tree.lock_write()
         try:
-            tree.add(['somefile'], ['file-id'])
+            tree.add(['somefile'])
+            d = {tree.path2id('somefile'): osutils.sha_string('hello')}
             tree.set_merge_modified(d)
             mm = tree.merge_modified()
             self.assertEqual(mm, d)
@@ -869,12 +870,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # smoke test for path2id
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
-        self.assertEqual('foo-id', tree.path2id('foo'))
-        # the next assertion is for backwards compatability with WorkingTree3,
-        # though its probably a bad idea, it makes things work. Perhaps
-        # it should raise a deprecation warning?
-        self.assertEqual('foo-id', tree.path2id('foo/'))
+        if tree.supports_setting_file_ids():
+            tree.add(['foo'], ['foo-id'])
+            self.assertEqual('foo-id', tree.path2id('foo'))
+            # the next assertion is for backwards compatability with
+            # WorkingTree3, though its probably a bad idea, it makes things
+            # work. Perhaps it should raise a deprecation warning?
+            self.assertEqual('foo-id', tree.path2id('foo/'))
+        else:
+            tree.add(['foo'])
+            self.assertIsInstance(str, tree.path2id('foo'))
 
     def test_filter_unversioned_files(self):
         # smoke test for filter_unversioned_files
@@ -924,11 +929,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/a', 'tree/b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
         os.unlink('tree/a')
         os.rmdir('tree/b')
-        self.assertEqual('file', tree.stored_kind('a-id'))
-        self.assertEqual('directory', tree.stored_kind('b-id'))
+        self.assertEqual('file', tree.stored_kind(tree.path2id('a')))
+        self.assertEqual('directory', tree.stored_kind(tree.path2id('b')))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
@@ -936,22 +941,25 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['file'])
-        tree.add('file', 'file-id')
+        tree.add('file')
         tree.commit('file added')
         os.unlink('file')
-        self.assertIs(None, tree.get_file_sha1('file-id'))
+        self.assertIs(None, tree.get_file_sha1(tree.path2id('file')))
 
     def test_no_file_sha1(self):
         """If a file is not present, get_file_sha1 should raise NoSuchId"""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
+                          'nonexistant')
         self.build_tree(['file'])
-        tree.add('file', 'file-id')
+        tree.add('file')
+        file_id = tree.path2id('file')
         tree.commit('foo')
         tree.remove('file')
-        self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+        self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
+                          file_id)
 
     def test_case_sensitive(self):
         """If filesystem is case-sensitive, tree should report this.
@@ -1003,10 +1011,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/a', 'tree/b'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
         os.unlink('tree/a')
-        self.assertEqual({'a-id', 'b-id', tree.get_root_id()},
-                         tree.all_file_ids())
+        self.assertEqual(
+                {tree.path2id('a'), tree.path2id('b'), tree.get_root_id()},
+                tree.all_file_ids())
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)

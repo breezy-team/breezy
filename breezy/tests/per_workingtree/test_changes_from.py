@@ -27,7 +27,7 @@ class TestChangesFrom(TestCaseWithWorkingTree):
         self.tree = self.make_branch_and_tree('tree')
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, transport=self.tree.controldir.root_transport)
-        self.tree.add(files, ['a-id', 'b-id', 'c-id'])
+        self.tree.add(files)
         self.tree.commit('initial tree')
 
     def test_unknown(self):

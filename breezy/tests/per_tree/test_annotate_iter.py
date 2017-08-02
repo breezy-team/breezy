@@ -24,7 +24,7 @@ class TestAnnotate(TestCaseWithTree):
     def get_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/one', 'first\ncontent\n')])
-        tree.add(['one'], ['one-id'])
+        tree.add(['one'])
         tree.commit('one', rev_id='one')
         self.build_tree_contents([('tree/one', 'second\ncontent\n')])
         tree.commit('two', rev_id='two')
@@ -33,7 +33,7 @@ class TestAnnotate(TestCaseWithTree):
     def get_tree_with_ghost(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/one', 'first\ncontent\n')])
-        tree.add(['one'], ['one-id'])
+        tree.add(['one'])
         tree.commit('one', rev_id='one')
         tree.set_parent_ids(['one', 'ghost-one'])
         self.build_tree_contents([('tree/one', 'second\ncontent\n')])
@@ -45,11 +45,11 @@ class TestAnnotate(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([('two', 'second\n'), ('one', 'content\n')],
-                         list(tree.annotate_iter('one-id')))
+                         list(tree.annotate_iter(tree.path2id('one'))))
 
     def test_annotate_with_ghost(self):
         tree = self.get_tree_with_ghost()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([('two', 'second\n'), ('one', 'content\n')],
-                         list(tree.annotate_iter('one-id')))
+                         list(tree.annotate_iter(tree.path2id('one'))))

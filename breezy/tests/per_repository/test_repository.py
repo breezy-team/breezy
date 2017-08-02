@@ -128,14 +128,15 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # when changing to the current default format.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
+        tree_a.add('foo')
+        file_id = tree_a.path2id('foo')
         tree_a.commit('rev1', rev_id='rev1')
         bzrdirb = self.make_controldir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
-        tree_b.get_file_text('file1')
+        tree_b.get_file_text(file_id)
         rev1 = repo_b.get_revision('rev1')
 
     def test_supports_rich_root(self):
@@ -274,18 +275,20 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
+        tree_a.add('foo')
+        file1_id = tree_a.path2id('foo')
         tree_a.commit('rev1', rev_id='rev1')
         self.build_tree(['a/vla'])
-        tree_a.add('vla', 'file2')
+        tree_a.add('vla')
+        file2_id = tree_a.path2id('vla')
         tree_a.commit('rev2', rev_id='rev2')
 
         delta = tree_a.branch.repository.get_revision_delta('rev1')
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('foo', 'file1', 'file')], delta.added)
+        self.assertEqual([('foo', file1_id, 'file')], delta.added)
         delta = tree_a.branch.repository.get_revision_delta('rev2')
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('vla', 'file2', 'file')], delta.added)
+        self.assertEqual([('vla', file2_id, 'file')], delta.added)
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
@@ -471,7 +474,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file1', 'foo'),
                                   ('tree/file2', 'bar')])
-        tree.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        tree.add(['file1', 'file2'])
+        file1_id = tree.path2id('file1')
+        file2_id = tree.path2id('file2')
         tree.commit('rev1', rev_id='rev1')
         self.build_tree_contents([('tree/file1', 'baz')])
         tree.commit('rev2', rev_id='rev2')
@@ -480,16 +485,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.addCleanup(repository.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
                          repository.iter_files_bytes(
-                         [('file1-id', 'rev1', 'file1-old'),
-                          ('file1-id', 'rev2', 'file1-new'),
-                          ('file2-id', 'rev1', 'file2'),
+                         [(file1_id, 'rev1', 'file1-old'),
+                          (file1_id, 'rev2', 'file1-new'),
+                          (file2_id, 'rev1', 'file2'),
                          ]))
         self.assertEqual('foo', extracted['file1-old'])
         self.assertEqual('bar', extracted['file2'])
         self.assertEqual('baz', extracted['file1-new'])
         self.assertRaises(errors.RevisionNotPresent, list,
                           repository.iter_files_bytes(
-                          [('file1-id', 'rev3', 'file1-notpresent')]))
+                          [(file1_id, 'rev3', 'file1-notpresent')]))
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
@@ -920,6 +925,8 @@ class TestEscaping(tests.TestCaseWithTransport):
         # it should be a TestCaseWithRepository in order to get the
         # default format.
         wt = self.make_branch_and_tree('repo')
+        if not wt.supports_setting_file_ids():
+            self.skip("format does not support setting file ids")
         self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
         wt.add(['foo'], [FOO_ID])
@@ -959,24 +966,25 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def setUp(self):
         super(TestDeltaRevisionFiltered, self).setUp()
-        tree_a = self.make_branch_and_tree('a')
+        self.tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
-        tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
+        self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
                    ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
-        tree_a.commit('rev1', rev_id='rev1')
+        self.tree_a.commit('rev1', rev_id='rev1')
         self.build_tree(['a/bar/b3'])
-        tree_a.add('bar/b3', 'b3-id')
-        tree_a.commit('rev2', rev_id='rev2')
-        self.repository = tree_a.branch.repository
+        self.tree_a.add('bar/b3', 'b3-id')
+        self.tree_a.commit('rev2', rev_id='rev2')
+        self.repository = self.tree_a.branch.repository
 
     def test_multiple_files(self):
         # Test multiple files
         delta = self.repository.get_revision_delta('rev1',
-            specific_fileids=['foo-id', 'baz-id'])
+            specific_fileids=[self.tree_a.path2id('foo'),
+                              self.tree_a.path2id('baz')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('baz', 'baz-id', 'file'),
-            ('foo', 'foo-id', 'file'),
+            ('baz', self.tree_a.path2id('baz'), 'file'),
+            ('foo', self.tree_a.path2id('foo'), 'file'),
             ], delta.added)
 
     def test_directory(self):
@@ -985,37 +993,37 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
             specific_fileids=['bar-id'])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('bar', 'bar-id', 'directory'),
-            ('bar/b1', 'b1-id', 'file'),
-            ('bar/b2', 'b2-id', 'file'),
+            ('bar', self.tree_a.path2id('bar'), 'directory'),
+            ('bar/b1', self.tree_a.path2id('bar/b1'), 'file'),
+            ('bar/b2', self.tree_a.path2id('bar/b2'), 'file'),
             ], delta.added)
 
     def test_unrelated(self):
         # Try another revision
         delta = self.repository.get_revision_delta('rev2',
-                specific_fileids=['foo-id'])
+                specific_fileids=[self.tree_a.path2id('foo')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([], delta.added)
 
     def test_file_in_directory(self):
         # Test a file in a directory, both of which were added
         delta = self.repository.get_revision_delta('rev1',
-            specific_fileids=['b2-id'])
+            specific_fileids=[self.tree_a.path2id('bar/b2')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('bar', 'bar-id', 'directory'),
-            ('bar/b2', 'b2-id', 'file'),
+            ('bar', self.tree_a.path2id('bar'), 'directory'),
+            ('bar/b2', self.tree_a.path2id('bar/b2'), 'file'),
             ], delta.added)
 
     def test_file_in_unchanged_directory(self):
         delta = self.repository.get_revision_delta('rev2',
-            specific_fileids=['b3-id'])
+            specific_fileids=[self.tree_a.path2id('bar/b3')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         if delta.added == [
-            ('bar', 'bar-id', 'directory'),
-            ('bar/b3', 'b3-id', 'file')]:
+            ('bar', self.tree_a.path2id('bar'), 'directory'),
+            ('bar/b3', self.tree_a.path2id('bar/b3'), 'file')]:
             self.knownFailure("bzr incorrectly reports 'bar' as added - "
                               "bug 878217")
         self.assertEqual([
-            ('bar/b3', 'b3-id', 'file'),
+            ('bar/b3', self.tree_a.path2id('bar/b3'), 'file'),
             ], delta.added)

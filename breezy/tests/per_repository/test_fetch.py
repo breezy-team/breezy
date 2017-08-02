@@ -41,7 +41,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
+        tree_a.add('foo')
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         repo = self.make_repository('b')
@@ -66,7 +66,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # create a repository of the sort we are testing.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
+        tree_a.add('foo')
         tree_a.commit('rev1', rev_id='rev1')
         # create a knit-3 based format to fetch into
         f = controldir.format_registry.make_controldir('development-subtree')

@@ -43,7 +43,7 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_autodelete_renamed(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2'])
-        tree_a.add(['dir', 'dir/f1', 'dir/f2'], ['dir-id', 'f1-id', 'f2-id'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2'])
         rev_id1 = tree_a.commit('init')
         # Start off by renaming entries,
         # but then actually auto delete the whole tree
@@ -375,12 +375,12 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.commit('first')
         wt2 = wt.controldir.sprout('second').open_workingtree()
         self.build_tree(['second/name1'])
-        wt2.add('name1', 'name1-id')
+        wt2.add('name1')
         wt2.commit('second')
         wt.merge_from_branch(wt2.branch)
         wt.rename_one('name1', 'name2')
         wt.commit('third')
-        wt.path2id('name1-id')
+        wt.path2id('name1')
 
     def test_nested_commit(self):
         """Commit in multiply-nested trees"""
@@ -429,7 +429,7 @@ class TestCommit(TestCaseWithWorkingTree):
         subtree = self.make_branch_and_tree('subtree')
         tree.add(['subtree'])
         self.build_tree(['subtree/file'])
-        subtree.add(['file'], ['file-id'])
+        subtree.add(['file'])
         rev_id = tree.commit('added reference', allow_pointless=False)
         tree.get_reference_revision(tree.path2id('subtree'))
         child_revid = subtree.last_revision()
