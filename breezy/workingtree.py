@@ -1308,7 +1308,7 @@ class WorkingTree(mutabletree.MutableTree,
         """Set the root id for this tree."""
         if not self.supports_setting_file_ids():
             raise SettingFileIdUnsupported()
-        # for compatability
+        # for compatibility
         if file_id is None:
             raise ValueError(
                 'WorkingTree.set_root_id with fileid=None')

@@ -41,7 +41,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
             url, format=BzrDirFormat6())
 
     def test_conflicts(self):
-        # test backwards compatability
+        # test backwards compatibility
         tree = self.create_format2_tree('.')
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
                           None)
