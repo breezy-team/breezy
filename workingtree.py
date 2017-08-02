@@ -358,7 +358,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 file_id = None
             if kind in ("file", "symlink"):
                 if save:
-                    self._index_add_entry(filepath, file_id, kind)
+                    self._index_add_entry(filepath, kind)
                 added.append(filepath)
             elif kind == "directory":
                 if recurse:
@@ -385,7 +385,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     else:
                         file_id = None
                     if save:
-                        self._index_add_entry(subp, file_id, kind)
+                        self._index_add_entry(subp, kind)
         if added and save:
             self.flush()
         return added, ignored
