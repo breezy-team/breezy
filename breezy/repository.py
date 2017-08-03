@@ -65,9 +65,9 @@ class IsInWriteGroupError(errors.InternalBzrError):
         errors.InternalBzrError.__init__(self, repo=repo)
 
 
-class SettingRevisionIdUnsupported(errors.BzrError):
+class CannotSetRevisionId(errors.BzrError):
 
-    _fmt = "This format does not support setting revision ids."""
+    _fmt = "Repository format does not support setting revision ids."
 
 
 class CommitBuilder(object):
@@ -126,10 +126,7 @@ class CommitBuilder(object):
         else:
             self._timezone = int(timezone)
 
-        if self.repository._format.supports_setting_revision_ids:
-            self._generate_revision_if_needed(revision_id)
-        elif revision_id is not None:
-            raise SettingRevisionIdUnsupported()
+        self._generate_revision_if_needed(revision_id)
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -200,6 +197,10 @@ class CommitBuilder(object):
 
         :raises: CannotSetRevisionId
         """
+        if not self.repository._format.supports_setting_revision_ids:
+            if revision_id is not None:
+                raise CannotSetRevisionId()
+            return
         if revision_id is None:
             self._new_revision_id = self._gen_revision_id()
             self.random_revid = True

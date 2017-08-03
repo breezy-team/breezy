@@ -136,10 +136,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
         self.build_tree(['a/two'])
         wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
+        wt_a.commit('commit two')
         # Now make a copy of the repository.
         repo_b = self.make_repository('b')
         wt_a.branch.repository.copy_content_into(repo_b)
@@ -149,16 +149,16 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch = wt_a.branch.controldir.open_branch()
         # Then make a branch where the new repository is, but specify a revision
         # ID.  The new branch's history will stop at the specified revision.
-        br_b = branch.clone(repo_b.controldir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
+        br_b = branch.clone(repo_b.controldir, revision_id=rev1)
+        self.assertEqual(rev1, br_b.last_revision())
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
 
-        branch_b = wt_a.branch.controldir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
