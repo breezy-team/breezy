@@ -65,6 +65,11 @@ class IsInWriteGroupError(errors.InternalBzrError):
         errors.InternalBzrError.__init__(self, repo=repo)
 
 
+class CannotSetRevisionId(errors.BzrError):
+
+    _fmt = "Repository format does not support setting revision ids."
+
+
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
@@ -91,7 +96,7 @@ class CommitBuilder(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         :param lossy: Whether to discard data that can not be natively
-            represented, when pushing to a foreign VCS 
+            represented, when pushing to a foreign VCS
         """
         self._config_stack = config_stack
         self._lossy = lossy
@@ -103,7 +108,6 @@ class CommitBuilder(object):
         else:
             self._committer = committer
 
-        self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
 
@@ -122,7 +126,7 @@ class CommitBuilder(object):
         else:
             self._timezone = int(timezone)
 
-        self._generate_revision_if_needed()
+        self._generate_revision_if_needed(revision_id)
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -184,7 +188,7 @@ class CommitBuilder(object):
         """Return new revision-id."""
         return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
-    def _generate_revision_if_needed(self):
+    def _generate_revision_if_needed(self, revision_id):
         """Create a revision id if None was supplied.
 
         If the repository can not support user-specified revision ids
@@ -193,10 +197,15 @@ class CommitBuilder(object):
 
         :raises: CannotSetRevisionId
         """
-        if self._new_revision_id is None:
+        if not self.repository._format.supports_setting_revision_ids:
+            if revision_id is not None:
+                raise CannotSetRevisionId()
+            return
+        if revision_id is None:
             self._new_revision_id = self._gen_revision_id()
             self.random_revid = True
         else:
+            self._new_revision_id = revision_id
             self.random_revid = False
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
@@ -1301,6 +1310,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_revision_signatures = True
     # Can the revision graph have incorrect parents?
     revision_graph_can_have_wrong_parents = None
+    # Does this format support setting revision ids?
+    supports_setting_revision_ids = True
     # Does this format support rich root data?
     rich_root_data = None
     # Does this format support explicitly versioned directories?

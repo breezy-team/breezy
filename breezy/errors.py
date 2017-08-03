@@ -1867,10 +1867,6 @@ class UnsupportedOperation(BzrError):
         self.tname = type(method_self).__name__
 
 
-class CannotSetRevisionId(UnsupportedOperation):
-    """Raised when a commit is attempting to set a revision id but cant."""
-
-
 class NonAsciiRevisionId(UnsupportedOperation):
     """Raised when a commit is attempting to set a non-ascii revision id
        but cant.

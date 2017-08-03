@@ -125,13 +125,14 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6,foreign.ForeignBranch):
 
 class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
 
-    def _generate_revision_if_needed(self):
+    def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
                 (str(self._timestamp), str(self._timezone), "UNKNOWN"))
             self.random_revid = False
-        elif self._new_revision_id is not None:
+        elif revid is not None:
+            self._new_revision_id = revid
             self.random_revid = False
         else:
             self._new_revision_id = self._gen_revision_id()
