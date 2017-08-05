@@ -1593,16 +1593,16 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                            _controldir=a_controldir,
                            _control_files=control_files)
 
-    def __get_matchingbzrdir(self):
-        return self._get_matchingbzrdir()
+    def __get_matchingcontroldir(self):
+        return self._get_matchingcontroldir()
 
-    def _get_matchingbzrdir(self):
+    def _get_matchingcontroldir(self):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return controldir.format_registry.make_controldir(
             'development-subtree')
 
-    _matchingbzrdir = property(__get_matchingbzrdir)
+    _matchingcontroldir = property(__get_matchingcontroldir)
 
 
 class WorkingTreeFormat4(DirStateWorkingTreeFormat):
@@ -1680,7 +1680,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
     def supports_views(self):
         return True
 
-    def _get_matchingbzrdir(self):
+    def _get_matchingcontroldir(self):
         """Overrideable method to get a bzrdir for testing."""
         # We use 'development-subtree' instead of '2a', because we have a
         # few tests that want to test tree references

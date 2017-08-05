@@ -236,7 +236,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
         return "Branch for Testing"
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         return DummyForeignVcsDirFormat()
 
     def open(self, a_controldir, name=None, _found=False, ignore_fallbacks=False,

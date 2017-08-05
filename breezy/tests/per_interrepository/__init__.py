@@ -161,9 +161,9 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def get_default_format(self):
         self.assertEqual(
-            self.repository_format._matchingbzrdir.repository_format,
+            self.repository_format._matchingcontroldir.repository_format,
             self.repository_format)
-        return self.repository_format._matchingbzrdir
+        return self.repository_format._matchingcontroldir
 
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=format)
@@ -181,7 +181,7 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
                 except FileExists:
                     pass
             if format is None:
-                format = self.repository_format._matchingbzrdir
+                format = self.repository_format._matchingcontroldir
             return format.initialize(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
@@ -192,7 +192,7 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def make_to_repository(self, relpath):
         made_control = self.make_controldir(relpath,
-            self.repository_format_to._matchingbzrdir)
+            self.repository_format_to._matchingcontroldir)
         return self.repository_format_to.initialize(made_control)
 
 

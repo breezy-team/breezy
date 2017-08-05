@@ -200,7 +200,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            dir = format._matchingbzrdir.initialize(url)
+            dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(dir)

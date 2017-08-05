@@ -1456,7 +1456,7 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         This is to support testing of working tree formats that can not exist
         in the same control directory as a branch.
         """
-        return self._matchingbzrdir
+        return self._matchingcontroldir
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

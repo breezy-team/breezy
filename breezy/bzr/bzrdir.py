@@ -737,7 +737,7 @@ class BzrDir(controldir.ControlDir):
                 return format
             # We have a repository, so set a working tree? (Why? This seems to
             # contradict the stated return value in the docstring).
-            tree_format = repository._format._matchingbzrdir.workingtree_format
+            tree_format = repository._format._matchingcontroldir.workingtree_format
             format.workingtree_format = tree_format.__class__()
         if require_stacking:
             format.require_stacking()

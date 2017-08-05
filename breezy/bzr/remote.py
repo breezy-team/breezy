@@ -939,7 +939,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         to obtain data like the network name.
     """
 
-    _matchingbzrdir = RemoteBzrDirFormat()
+    _matchingcontroldir = RemoteBzrDirFormat()
     supports_full_versioned_files = True
     supports_leaving_lock = True
 
@@ -3071,8 +3071,8 @@ class RemoteBranchFormat(branch.BranchFormat):
 
     def __init__(self, network_name=None):
         super(RemoteBranchFormat, self).__init__()
-        self._matchingbzrdir = RemoteBzrDirFormat()
-        self._matchingbzrdir.set_branch_format(self)
+        self._matchingcontroldir = RemoteBzrDirFormat()
+        self._matchingcontroldir.set_branch_format(self)
         self._custom_format = None
         self._network_name = network_name
 

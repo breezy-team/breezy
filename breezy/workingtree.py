@@ -1797,7 +1797,7 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         This is to support testing of working tree formats that can not exist
         in the same control directory as a branch.
         """
-        return self._matchingbzrdir
+        return self._matchingcontroldir
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",

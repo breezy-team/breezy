@@ -171,10 +171,10 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
 
     _tree_class = WorkingTree3
 
-    def __get_matchingbzrdir(self):
+    def __get_matchingcontroldir(self):
         return bzrdir.BzrDirMetaFormat1()
 
-    _matchingbzrdir = property(__get_matchingbzrdir)
+    _matchingcontroldir = property(__get_matchingcontroldir)
 
     def _open_control_files(self, a_controldir):
         transport = a_controldir.get_workingtree_transport(None)

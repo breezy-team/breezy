@@ -189,9 +189,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(self.repository_format,
              bzrrepository.RepositoryFormatMetaDir.find_format(opened_control))
 
-    def test_format_matchingbzrdir(self):
+    def test_format_matchingcontroldir(self):
         self.assertEqual(self.repository_format,
-            self.repository_format._matchingbzrdir.repository_format)
+            self.repository_format._matchingcontroldir.repository_format)
         self.assertEqual(self.repository_format,
             self.bzrdir_format.repository_format)
 
@@ -696,7 +696,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                       knitpack_repo.RepositoryFormatKnitPack5RichRootBroken):
             raise tests.TestNotApplicable("unsupported format")
         # Make a source branch in 'repo' in an unstackable branch format
-        bzrdir_format = self.repository_format._matchingbzrdir
+        bzrdir_format = self.repository_format._matchingcontroldir
         transport = self.get_transport('repo/branch')
         transport.mkdir('.')
         target_bzrdir = bzrdir_format.initialize_on_transport(transport)
