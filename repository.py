@@ -564,9 +564,10 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_nesting_repositories = False
     revision_graph_can_have_wrong_parents = False
     supports_unreferenced_revisions = True
+    supports_setting_revision_ids = False
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 

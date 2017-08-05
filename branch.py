@@ -297,7 +297,7 @@ class GitBranchFormat(branch.BranchFormat):
         return False
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 

@@ -63,23 +63,11 @@ class GitCommitBuilder(CommitBuilder):
         self.store = self.repository._git.object_store
         self._blobs = {}
         self._any_changes = False
-        self._will_record_deletes = False
         self._override_fileids = {}
         self._mapping = self.repository.get_mapping()
 
     def any_changes(self):
         return self._any_changes
-
-    def record_entry_contents(self, ie, parent_invs, path, tree,
-        content_summary):
-        raise NotImplementedError(self.record_entry_contents)
-
-    def record_delete(self, kind, path, file_id):
-        assert type(path) == str
-        if kind != 'directory':
-            self._override_fileids[path] = None
-            self._blobs[path] = None
-        self._any_changes = True
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         def link_sha1(path, file_id):
@@ -97,14 +85,15 @@ class GitCommitBuilder(CommitBuilder):
         seen_root = False
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
+            self._any_changes = True
             if kind[1] in ("directory",):
                 if kind[0] in ("file", "symlink"):
-                    self.record_delete(kind[0], path[0].encode("utf-8"), file_id)
+                    self._blobs[path[0].encode("utf-8")] = None
                 if path[1] == "":
                     seen_root = True
                 continue
             if path[1] is None:
-                self.record_delete(kind[0], path[0].encode("utf-8"), file_id)
+                self._blobs[path[0].encode("utf-8")] = None
                 continue
             if kind[1] == "file":
                 mode = stat.S_IFREG
@@ -119,14 +108,13 @@ class GitCommitBuilder(CommitBuilder):
                 raise AssertionError("Unknown kind %r" % kind[1])
             if executable[1]:
                 mode |= 0111
-            self._any_changes = True
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
             file_sha1 = workingtree.get_file_sha1(file_id, path[1])
             if file_sha1 is None:
                 # File no longer exists
                 if path[0] is not None:
-                    self.record_delete(kind[0], path[0].encode("utf-8"), file_id)
+                    self._blobs[path[0].encode("utf-8")] = None
                 continue
             _, st = workingtree.get_file_with_stat(file_id, path[1])
             yield file_id, path[1], (file_sha1, st)
@@ -179,8 +167,7 @@ class GitCommitBuilder(CommitBuilder):
         self.new_inventory = None
 
     def get_basis_delta(self):
-        if not self._will_record_deletes:
-            raise AssertionError
+        raise NotImplementedError(self.get_basis_delta)
         # FIXME
         return []
 
@@ -210,24 +197,19 @@ class GitCommitBuilder(CommitBuilder):
         c.message = message.encode(c.encoding)
         if not self._lossy:
             commit_supplement = CommitSupplement()
-            commit_supplement.revision_id = self._new_revision_id
+            commit_supplement.revision_id = None
             commit_supplement.properties = self._revprops
             commit_supplement.explicit_parent_ids = self.parents
             if commit_supplement:
                 c.message = inject_bzr_metadata(c.message, commit_supplement, "utf-8")
 
         assert len(c.id) == 40
-        if self._new_revision_id is None or self._lossy:
-            self._new_revision_id = self._mapping.revision_id_foreign_to_bzr(c.id)
         self.store.add_object(c)
         self.repository.commit_write_group()
-        return self._new_revision_id
+        return self._mapping.revision_id_foreign_to_bzr(c.id)
 
     def abort(self):
         self.repository.abort_write_group()
-
-    def will_record_deletes(self):
-        self._will_record_deletes = True
 
     def revision_tree(self):
         return self.repository.revision_tree(self._new_revision_id)

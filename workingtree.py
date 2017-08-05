@@ -861,7 +861,7 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     supports_setting_file_ids = False
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 
