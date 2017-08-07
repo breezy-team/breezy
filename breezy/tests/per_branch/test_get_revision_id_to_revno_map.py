@@ -22,14 +22,16 @@ from breezy.tests.per_branch import TestCaseWithBranch
 class TestRevisionIdToDottedRevno(TestCaseWithBranch):
 
     def test_simple_revno(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         # Re-open the branch so we make sure we start fresh.
         # see bug #162486
         the_branch = tree.controldir.open_branch()
 
-        self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
-                          'rev-1.1.1':(1,1,1)
-                         }, the_branch.get_revision_id_to_revno_map())
+        self.assertEqual({revmap['1']: (1, ),
+                          revmap['2']: (2, ),
+                          revmap['3']: (3, ),
+                          revmap['1.1.1']: (1, 1, 1)
+                          }, the_branch.get_revision_id_to_revno_map())
 
 
 class TestCaching(TestCaseWithBranch):
@@ -50,18 +52,19 @@ class TestCaching(TestCaseWithBranch):
 
         :returns: a tuple of (the branch, list that calls will be logged to)
         """
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         calls = []
         real_func = tree.branch._gen_revno_map
+
         def wrapper():
             calls.append('_gen_revno_map')
             return real_func()
         tree.branch._gen_revno_map = wrapper
-        return tree.branch, calls
+        return tree.branch, revmap, calls
 
     def test_unlocked(self):
         """Repeated calls will call _gen_revno_map each time."""
-        branch, calls = self.get_instrumented_branch()
+        branch, revmap, calls = self.get_instrumented_branch()
         # Repeatedly call revision_history.
         branch.get_revision_id_to_revno_map()
         branch.get_revision_id_to_revno_map()
@@ -71,7 +74,7 @@ class TestCaching(TestCaseWithBranch):
     def test_locked(self):
         """Repeated calls will only call _gen_revno_map once.
         """
-        branch, calls = self.get_instrumented_branch()
+        branch, revmap, calls = self.get_instrumented_branch()
         # Lock the branch, then repeatedly call revision_history.
         branch.lock_read()
         try:
@@ -82,16 +85,19 @@ class TestCaching(TestCaseWithBranch):
 
     def test_set_last_revision_info_when_locked(self):
         """Calling set_last_revision_info should reset the cache."""
-        branch, calls = self.get_instrumented_branch()
+        branch, revmap, calls = self.get_instrumented_branch()
         branch.lock_write()
         try:
-            self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
-                              'rev-1.1.1':(1,1,1)
-                             }, branch.get_revision_id_to_revno_map())
+            self.assertEqual({revmap['1']: (1,),
+                              revmap['2']: (2, ),
+                              revmap['3']: (3, ),
+                              revmap['1.1.1']: (1, 1, 1)
+                              }, branch.get_revision_id_to_revno_map())
             branch.set_last_revision_info(2, 'rev-2')
-            self.assertEqual({'rev-1':(1,), 'rev-2':(2,)},
+            self.assertEqual({revmap['1']: (1, ),
+                              revmap['2']: (2, )},
                              branch.get_revision_id_to_revno_map())
-            self.assertEqual({'rev-1':(1,), 'rev-2':(2,)},
+            self.assertEqual({revmap['1']: (1, ), revmap['2']: (2, )},
                              branch.get_revision_id_to_revno_map())
             self.assertEqual(['_gen_revno_map']*2, calls)
         finally:

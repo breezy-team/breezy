@@ -64,17 +64,17 @@ class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
 class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({'rev-1':('null:',),
-                          'rev-2':('rev-1', ),
-                          'rev-1.1.1':('rev-1', ),
-                          'rev-3':('rev-2', 'rev-1.1.1', ),
-                         }, ancestry_graph)
+        self.assertEqual({revmap['1']: ('null:',),
+                          revmap['2']: (revmap['1'], ),
+                          revmap['1.1.1']: (revmap['1'], ),
+                          revmap['3']: (revmap['2'], revmap['1.1.1'], ),
+                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
         wt = self.make_branch_and_tree('tree')

@@ -137,31 +137,24 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def test_unicode_tag(self):
         tag_name = u'\u3070'
-        # in anticipation of the planned change to treating revision ids as
-        # just 8bit strings
-        revid = ('revid' + tag_name).encode('utf-8')
-        b1 = self.make_branch_with_revisions('b', [revid])
+        b1, [revid] = self.make_branch_with_revision_tuple('b', 1)
         b1.tags.set_tag(tag_name, revid)
         self.assertEqual(b1.tags.lookup_tag(tag_name), revid)
 
     def test_delete_tag(self):
         tag_name = u'\N{GREEK SMALL LETTER ALPHA}'
-        revid = ('revid' + tag_name).encode('utf-8')
-        b = self.make_branch_with_revisions('b', [revid])
+        b, [revid] = self.make_branch_with_revision_tuple('b', 1)
         b.tags.set_tag(tag_name, revid)
         # now try to delete it
         b.tags.delete_tag(tag_name)
         # now you can't look it up
-        self.assertRaises(errors.NoSuchTag,
-            b.tags.lookup_tag, tag_name)
+        self.assertRaises(errors.NoSuchTag, b.tags.lookup_tag, tag_name)
         # and it's not in the dictionary
         self.assertEqual(b.tags.get_tag_dict(), {})
         # and you can't remove it a second time
-        self.assertRaises(errors.NoSuchTag,
-            b.tags.delete_tag, tag_name)
+        self.assertRaises(errors.NoSuchTag, b.tags.delete_tag, tag_name)
         # or remove a tag that never existed
-        self.assertRaises(errors.NoSuchTag,
-            b.tags.delete_tag, tag_name + '2')
+        self.assertRaises(errors.NoSuchTag, b.tags.delete_tag, tag_name + '2')
 
     def test_merge_empty_tags(self):
         # you can merge tags between two instances, since neither have tags
@@ -266,7 +259,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
     decides to commit, will update the master).  Also, merge_to in bzr < 2.3
     didn't propagate changes to the master, and current bzr versions may find
     themselves operating on checkouts touched by older bzrs
-    
+
     So we need to make sure bzr copes gracefully with differing tags in the
     master versus the child.
 
