@@ -183,8 +183,7 @@ class TestStacking(TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
         # We have a mainline
-        trunk = fixtures.build_branch_with_non_ancestral_rev(builder)
-        mainline_revid = 'rev-1'
+        trunk, mainline_revid, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         # and make branch from it which is stacked (with no tags)
         try:
             new_dir = trunk.controldir.sprout(self.get_url('newbranch'), stacked=True)
@@ -201,7 +200,7 @@ class TestStacking(TestCaseWithBranch):
         # the branch will still work
         new_branch = new_dir.open_branch()
         try:
-            new_branch.tags.set_tag('tag-a', 'rev-2')
+            new_branch.tags.set_tag('tag-a', rev2)
         except errors.TagsNotSupported:
             tags_supported = False
         else:
@@ -212,7 +211,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionInRepository('trunk', mainline_revid)
         if tags_supported:
             # the tagged revision in trunk is now in newbranch too
-            self.assertRevisionInRepository('newbranch', 'rev-2')
+            self.assertRevisionInRepository('newbranch', rev2)
         # and now we're no longer stacked
         self.assertRaises(errors.NotStacked, new_branch.get_stacked_on_url)
 
