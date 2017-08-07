@@ -59,6 +59,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def __init__(self, *args, **kwargs):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
+        self.random_revid = True
         self._validate_revprops(self._revprops)
         self.store = self.repository._git.object_store
         self._blobs = {}
@@ -167,7 +168,6 @@ class GitCommitBuilder(CommitBuilder):
         self.new_inventory = None
 
     def get_basis_delta(self):
-        raise NotImplementedError(self.get_basis_delta)
         # FIXME
         return []
 
@@ -206,7 +206,8 @@ class GitCommitBuilder(CommitBuilder):
         assert len(c.id) == 40
         self.store.add_object(c)
         self.repository.commit_write_group()
-        return self._mapping.revision_id_foreign_to_bzr(c.id)
+        self._new_revision_id = self._mapping.revision_id_foreign_to_bzr(c.id)
+        return self._new_revision_id
 
     def abort(self):
         self.repository.abort_write_group()
