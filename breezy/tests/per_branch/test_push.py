@@ -57,7 +57,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         mine.merge_from_branch(other.branch)
         p2 = mine.commit('merge my change')
         result = mine.branch.push(other.branch)
-        self.assertEqual('P2', other.branch.last_revision())
+        self.assertEqual(p2, other.branch.last_revision())
         # result object contains some structured data
         self.assertEqual(result.old_revid, m1)
         self.assertEqual(result.new_revid, p2)

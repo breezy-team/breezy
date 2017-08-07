@@ -869,11 +869,11 @@ class TestControlDir(TestCaseWithControlDir):
         rev_a1 = builder.build_commit(message="Rev A1")
         rev_a2 = builder.build_commit(message="Rev A2")
         rev_a3 = builder.build_commit(message="Rev A3")
-        source.set_last_revision_info(1, 'base-rev')
+        source.set_last_revision_info(1, base_rev)
         rev_b1 = builder.build_commit(message="Rev B1")
         rev_b2 = builder.build_commit(message="Rev B2")
         rev_b3 = builder.build_commit(message="Rev B3")
-        source.set_last_revision_info(1, 'base-rev')
+        source.set_last_revision_info(1, base_rev)
         rev_c1 = builder.build_commit(message="Rev C1")
         rev_c2 = builder.build_commit(message="Rev C2")
         rev_c3 = builder.build_commit(message="Rev C3")
@@ -907,7 +907,7 @@ class TestControlDir(TestCaseWithControlDir):
         # And the revs for A2, B2 and C2's ancestries are present, but no
         # others.
         self.assertEqual(
-            [base_rev, rev_b1, rev_b2, rev_c1, rev_c2],
+            sorted([base_rev, rev_b1, rev_b2, rev_c1, rev_c2]),
             sorted(new_branch.repository.all_revision_ids()))
 
     def test_sprout_bzrdir_tree_branch_reference(self):

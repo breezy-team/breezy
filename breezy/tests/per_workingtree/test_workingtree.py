@@ -361,7 +361,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # set it back to None for an empty tree.
         wt.set_last_revision('null:')
         a = wt.commit('A', allow_pointless=True)
-        self.assertEqual(['A'], wt.get_parent_ids())
+        self.assertEqual([a], wt.get_parent_ids())
         # null: is aways in the branch
         wt.set_last_revision('null:')
         self.assertEqual([], wt.get_parent_ids())
@@ -371,9 +371,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if getattr(wt.branch, "_set_revision_history", None) is None:
             raise TestSkipped("Branch format does not permit arbitrary"
                               " history")
-        wt.branch._set_revision_history(['A', 'B'])
-        wt.set_last_revision('A')
-        self.assertEqual(['A'], wt.get_parent_ids())
+        wt.branch._set_revision_history([a, 'B'])
+        wt.set_last_revision(a)
+        self.assertEqual([a], wt.get_parent_ids())
         self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
 
     def test_set_last_revision_different_to_branch(self):
