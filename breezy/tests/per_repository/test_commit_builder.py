@@ -138,7 +138,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     revision_id = 'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
-            except errors.CannotSetRevisionId:
+            except repository.CannotSetRevisionId:
                 # This format doesn't support supplied revision ids
                 return
             self.assertFalse(builder.random_revid)
