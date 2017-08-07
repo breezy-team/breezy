@@ -93,7 +93,7 @@ class TestCaching(TestCaseWithBranch):
                               revmap['3']: (3, ),
                               revmap['1.1.1']: (1, 1, 1)
                               }, branch.get_revision_id_to_revno_map())
-            branch.set_last_revision_info(2, 'rev-2')
+            branch.set_last_revision_info(2, revmap['2'])
             self.assertEqual({revmap['1']: (1, ),
                               revmap['2']: (2, )},
                              branch.get_revision_id_to_revno_map())
