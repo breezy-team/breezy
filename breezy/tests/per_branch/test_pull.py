@@ -147,19 +147,19 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.controldir.sprout('target').open_branch()
         # Add a tag to the source, then pull from source
         try:
-            source.tags.set_tag('tag-a', 'rev-2')
+            source.tags.set_tag('tag-a', rev2)
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
-        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-a', rev2)
         source.get_config_stack().set('branch.fetch_tags', True)
         target.pull(source)
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
-        target.repository.get_revision('rev-2')
+        self.assertEqual(rev2, target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision(rev2)
 
     def test_pull_stop_revision_merges_and_fetches_tags(self):
         """br.pull(source, stop_revision=REV) updates and fetches tags."""
@@ -168,20 +168,20 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.controldir.sprout('target').open_branch()
         # Add a new commit to the ancestry
         rev_2_again = builder.build_commit(message="Rev 2 again")
         # Add a tag to the source, then pull rev_2_again from source
         try:
-            source.tags.set_tag('tag-a', 'rev-2')
+            source.tags.set_tag('tag-a', rev2)
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
         source.get_config_stack().set('branch.fetch_tags', True)
         target.pull(source, rev_2_again)
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
-        target.repository.get_revision('rev-2')
+        self.assertEqual(rev2, target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision(rev2)
 
 
 class TestPullHook(per_branch.TestCaseWithBranch):

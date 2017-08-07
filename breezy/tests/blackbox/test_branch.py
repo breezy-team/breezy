@@ -349,15 +349,15 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_fetches_all_tags(self):
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.tags.set_tag('tag-a', 'rev-2')
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', rev2)
         source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
-        new_branch.repository.get_revision('rev-2')
+        self.assertEqual(rev2, new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision(rev2)
 
 
 class TestBranchStacked(tests.TestCaseWithTransport):
@@ -551,9 +551,9 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
-        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-a', rev2)
         source.tags.set_tag('tag-missing', 'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.reset_smart_call_log()

@@ -51,39 +51,44 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         builder.finish_series()
         return builder.get_branch()
 
+    def make_branch_with_revision_tuple(self, relpath, count):
+        builder = self.make_branch_builder(relpath)
+        builder.start_series()
+        revids = [builder.build_commit() for i in range(count)]
+        builder.finish_series()
+        return builder.get_branch(), revids
+
     def test_tags_initially_empty(self):
         b = self.make_branch('b')
         tags = b.tags.get_tag_dict()
         self.assertEqual(tags, {})
 
     def test_make_and_lookup_tag(self):
-        b = self.make_branch_with_revisions('b',
-            ['target-revid-1', 'target-revid-2'])
-        b.tags.set_tag('tag-name', 'target-revid-1')
-        b.tags.set_tag('other-name', 'target-revid-2')
+        b, target_revids = self.make_branch_with_revision_tuple('b', 2)
+        b.tags.set_tag('tag-name', target_revids[0])
+        b.tags.set_tag('other-name', target_revids[1])
         # then reopen the branch and see they're still there
         b = branch.Branch.open('b')
         self.assertEqual(b.tags.get_tag_dict(),
-            {'tag-name': 'target-revid-1',
-             'other-name': 'target-revid-2',
+            {'tag-name': target_revids[0],
+             'other-name': target_revids[1],
             })
         # read one at a time
         result = b.tags.lookup_tag('tag-name')
-        self.assertEqual(result, 'target-revid-1')
+        self.assertEqual(result, target_revids[0])
         # and try has_tag
         self.assertTrue(b.tags.has_tag('tag-name'))
         self.assertFalse(b.tags.has_tag('imaginary'))
 
     def test_reverse_tag_dict(self):
-        b = self.make_branch_with_revisions('b',
-            ['target-revid-1', 'target-revid-2'])
-        b.tags.set_tag('tag-name', 'target-revid-1')
-        b.tags.set_tag('other-name', 'target-revid-2')
+        b, target_revids = self.make_branch_with_revision_tuple('b', 2)
+        b.tags.set_tag('tag-name', target_revids[0])
+        b.tags.set_tag('other-name', target_revids[1])
         # then reopen the branch and check reverse map id->tags list
         b = branch.Branch.open('b')
         self.assertEqual(dict(b.tags.get_reverse_tag_dict()),
-            {'target-revid-1': ['tag-name'],
-             'target-revid-2': ['other-name'],
+            {target_revids[0]: ['tag-name'],
+             target_revids[1]: ['other-name'],
             })
 
     def test_ghost_tag(self):
@@ -125,8 +130,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b1.tags.set_tag('conflicts', 'revid-1')
         b2.tags.set_tag('conflicts', 'revid-2')
         updates, conflicts = b1.tags.merge_to(b2.tags)
-        self.assertEqual(list(conflicts),
-            [('conflicts', 'revid-1', 'revid-2')])
+        self.assertEqual(list(conflicts), [('conflicts', 'revid-1', 'revid-2')])
         # and it keeps the same value
         self.assertEqual(updates, {})
         self.assertEqual(b2.tags.lookup_tag('conflicts'), 'revid-2')
@@ -170,93 +174,91 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # Open the same branch twice.  Read-lock one, and then mutate the tags
         # in the second.  The read-locked branch never re-reads the tags, so it
         # never observes the changed/new tags.
-        b1 = self.make_branch_with_revisions('b',
-            ['rev-1', 'rev-1-changed', 'rev-2'])
-        b1.tags.set_tag('one', 'rev-1')
+        b1, [rev1, rev1changed, rev2] = self.make_branch_with_revision_tuple(
+                'b', 3)
+        b1.tags.set_tag('one', rev1)
         b2 = controldir.ControlDir.open('b').open_branch()
         b1.lock_read()
-        self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
+        self.assertEqual({'one': rev1}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 is read-locked and has already
         # read the tags, so it is unaffected.
-        b2.tags.set_tag('one', 'rev-1-changed')
-        b2.tags.set_tag('two', 'rev-2')
-        self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
+        b2.tags.set_tag('one', rev1changed)
+        b2.tags.set_tag('two', rev2)
+        self.assertEqual({'one': rev1}, b1.tags.get_tag_dict())
         b1.unlock()
         # Once unlocked the cached value is forgotten, so now the latest tags
         # will be retrieved.
         self.assertEqual(
-            {'one': 'rev-1-changed', 'two': 'rev-2'}, b1.tags.get_tag_dict())
+            {'one': rev1changed, 'two': rev2}, b1.tags.get_tag_dict())
 
     def test_unlocked_does_not_cache_tags(self):
         """Unlocked branches do not cache tags."""
         # Open the same branch twice.
-        b1 = self.make_branch_with_revisions('b',
-            ['rev-1', 'rev-1-changed', 'rev-2'])
-        b1.tags.set_tag('one', 'rev-1')
+        b1, [rev1, rev1changed, rev2] = self.make_branch_with_revision_tuple(
+                'b', 3)
+        b1.tags.set_tag('one', rev1)
         b2 = b1.controldir.open_branch()
-        self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
+        self.assertEqual({'one': rev1}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 isn't locked, so it will
         # immediately return the new tags too.
-        b2.tags.set_tag('one', 'rev-1-changed')
-        b2.tags.set_tag('two', 'rev-2')
+        b2.tags.set_tag('one', rev1changed)
+        b2.tags.set_tag('two', rev2)
         self.assertEqual(
-            {'one': 'rev-1-changed', 'two': 'rev-2'}, b1.tags.get_tag_dict())
+            {'one': rev1changed, 'two': rev2}, b1.tags.get_tag_dict())
 
     def test_cached_tag_dict_not_accidentally_mutable(self):
         """When there's a cached version of the tags, b.tags.get_tag_dict
         returns a copy of the cached data so that callers cannot accidentally
         corrupt the cache.
         """
-        b = self.make_branch_with_revisions('b',
-            ['rev-1', 'rev-2', 'rev-3'])
-        b.tags.set_tag('one', 'rev-1')
+        b, [rev1, rev2, rev3] = self.make_branch_with_revision_tuple('b', 3)
+        b.tags.set_tag('one', rev1)
         self.addCleanup(b.lock_read().unlock)
         # The first time the data returned will not be in the cache
         tags_dict = b.tags.get_tag_dict()
-        tags_dict['two'] = 'rev-2'
+        tags_dict['two'] = rev2
         # The second time the data comes from the cache
         tags_dict = b.tags.get_tag_dict()
-        tags_dict['three'] = 'rev-3'
+        tags_dict['three'] = rev3
         # The get_tag_dict() result should still be unchanged, even though we
         # mutated its earlier return values.
-        self.assertEqual({'one': 'rev-1'}, b.tags.get_tag_dict())
+        self.assertEqual({'one': rev1}, b.tags.get_tag_dict())
 
     def make_write_locked_branch_with_one_tag(self):
-        b = self.make_branch_with_revisions('b',
-            ['rev-1', 'rev-1-changed', 'rev-2'])
-        b.tags.set_tag('one', 'rev-1')
+        b, revids = self.make_branch_with_revision_tuple('b', 3)
+        b.tags.set_tag('one', revids[0])
         self.addCleanup(b.lock_write().unlock)
         # Populate the cache
         b.tags.get_tag_dict()
-        return b
+        return b, revids
 
     def test_set_tag_invalides_cache(self):
-        b = self.make_write_locked_branch_with_one_tag()
-        b.tags.set_tag('one', 'rev-1-changed')
-        self.assertEqual({'one': 'rev-1-changed'}, b.tags.get_tag_dict())
+        b, revids = self.make_write_locked_branch_with_one_tag()
+        b.tags.set_tag('one', revids[1])
+        self.assertEqual({'one': revids[1]}, b.tags.get_tag_dict())
 
     def test_delete_tag_invalides_cache(self):
-        b = self.make_write_locked_branch_with_one_tag()
+        b, revids = self.make_write_locked_branch_with_one_tag()
         b.tags.delete_tag('one')
         self.assertEqual({}, b.tags.get_tag_dict())
 
     def test_merge_to_invalides_cache(self):
-        b1 = self.make_write_locked_branch_with_one_tag()
-        b2 = self.make_branch_with_revisions('b2', ['rev-2', 'rev-1'])
-        b2.tags.set_tag('two', 'rev-2')
+        b1, revids = self.make_write_locked_branch_with_one_tag()
+        b2 = self.make_branch_with_revisions('b2', [revids[1], revids[0]])
+        b2.tags.set_tag('two', revids[1])
         b2.tags.merge_to(b1.tags)
         self.assertEqual(
-            {'one': 'rev-1', 'two': 'rev-2'}, b1.tags.get_tag_dict())
+            {'one': revids[0], 'two': revids[1]}, b1.tags.get_tag_dict())
 
     def test_rename_revisions_invalides_cache(self):
-        b = self.make_write_locked_branch_with_one_tag()
-        b.tags.rename_revisions({'rev-1': 'rev-1-changed'})
-        self.assertEqual({'one': 'rev-1-changed'}, b.tags.get_tag_dict())
+        b, revids = self.make_write_locked_branch_with_one_tag()
+        b.tags.rename_revisions({'rev-1': revids[1]})
+        self.assertEqual({'one': revids[1]}, b.tags.get_tag_dict())
 
 
 class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
     """Tests for checkout.branch.tags.merge_to.
-    
+
     In particular this exercises variations in tag conflicts in the master
     branch and/or the checkout (child).  It may seem strange to have different
     tags in the child and master, but 'bzr merge' intentionally updates the

@@ -127,15 +127,15 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree.add('goodbye2')
         a_tree.commit(message="setup")
 
-        b_tree = a_tree.controldir.sprout('b',
-                   revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
+        b_tree = a_tree.controldir.sprout(
+                'b', revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
         self.run_bzr('pull -r 2', working_dir='b')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
-        self.assertEqual(a.revno(),4)
-        self.assertEqual(b.revno(),2)
+        self.assertEqual(a.revno(), 4)
+        self.assertEqual(b.revno(), 2)
         self.run_bzr('pull -r 3', working_dir='b')
-        self.assertEqual(b.revno(),3)
+        self.assertEqual(b.revno(), 3)
         self.run_bzr('pull -r 4', working_dir='b')
         self.assertEqual(a.last_revision(), b.last_revision())
 
@@ -145,16 +145,16 @@ class TestPull(tests.TestCaseWithTransport):
         """
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
         target_bzrdir = source.controldir.sprout('target')
-        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-a', rev2)
         # Pull from source
         self.run_bzr('pull -d target source')
         target = target_bzrdir.open_branch()
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
-        target.repository.get_revision('rev-2')
+        self.assertEqual(rev2, target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision(rev2)
 
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites

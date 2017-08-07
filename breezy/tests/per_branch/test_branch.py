@@ -300,6 +300,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
+        # TODO(jelmer): Only set branch nick on bzr branches
         self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
