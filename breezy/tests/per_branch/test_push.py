@@ -51,16 +51,16 @@ class TestPush(per_branch.TestCaseWithBranch):
         # when revisions are pushed, the left-most accessible parents must
         # become the revision-history.
         mine = self.make_branch_and_tree('mine')
-        mine.commit('1st post', rev_id='P1', allow_pointless=True)
+        mine.commit('1st post', allow_pointless=True)
         other = mine.controldir.sprout('other').open_workingtree()
-        other.commit('my change', rev_id='M1', allow_pointless=True)
+        m1 = other.commit('my change', allow_pointless=True)
         mine.merge_from_branch(other.branch)
-        mine.commit('merge my change', rev_id='P2')
+        p2 = mine.commit('merge my change')
         result = mine.branch.push(other.branch)
         self.assertEqual('P2', other.branch.last_revision())
         # result object contains some structured data
-        self.assertEqual(result.old_revid, 'M1')
-        self.assertEqual(result.new_revid, 'P2')
+        self.assertEqual(result.old_revid, m1)
+        self.assertEqual(result.new_revid, p2)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -68,16 +68,16 @@ class TestPush(per_branch.TestCaseWithBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         mine = self.make_branch_and_tree('mine')
-        mine.commit('1st post', rev_id='P1', allow_pointless=True)
+        mine.commit('1st post', allow_pointless=True)
         target = mine.controldir.sprout('target').open_workingtree()
-        target.commit('my change', rev_id='M1', allow_pointless=True)
+        target.commit('my change', allow_pointless=True)
         other = mine.controldir.sprout('other').open_workingtree()
         other.merge_from_branch(target.branch)
-        other.commit('merge my change', rev_id='O2')
+        other.commit('merge my change')
         mine.merge_from_branch(other.branch)
-        mine.commit('merge other', rev_id='P2')
+        p2 = mine.commit('merge other')
         mine.branch.push(target.branch)
-        self.assertEqual('P2', target.branch.last_revision())
+        self.assertEqual(p2, target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
         """Pushing into a checkout updates the checkout and the master branch"""
@@ -197,11 +197,11 @@ class TestPush(per_branch.TestCaseWithBranch):
         target = self.make_branch('target')
 
         source.commit('1st commit')
-        source.commit('2nd commit', rev_id='rev-2')
+        rev2 = source.commit('2nd commit')
         source.commit('3rd commit')
         source.branch.push(target)
-        source.branch.push(target, stop_revision='rev-2', overwrite=True)
-        self.assertEqual('rev-2', target.last_revision())
+        source.branch.push(target, stop_revision=rev2, overwrite=True)
+        self.assertEqual(rev2, target.last_revision())
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
@@ -213,11 +213,11 @@ class TestPush(per_branch.TestCaseWithBranch):
 
         source.commit('1st commit')
         source.branch.push(target)
-        source.commit('2nd commit', rev_id='rev-2')
+        rev2 = source.commit('2nd commit')
         source.commit('3rd commit')
 
-        source.branch.push(target, stop_revision='rev-2', overwrite=True)
-        self.assertEqual('rev-2', target.last_revision())
+        source.branch.push(target, stop_revision=rev2, overwrite=True)
+        self.assertEqual(rev2, target.last_revision())
 
     def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
         # See https://bugs.launchpad.net/bzr/+bug/465517
