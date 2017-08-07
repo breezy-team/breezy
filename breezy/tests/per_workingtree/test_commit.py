@@ -208,10 +208,13 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        committed_id = tree.commit('foo', rev_id='foo')
-        self.assertEqual(['foo'], tree.get_parent_ids())
-        # the commit should have returned the same id we asked for.
-        self.assertEqual('foo', committed_id)
+        if tree.branch.repository._format.supports_setting_revision_ids:
+            committed_id = tree.commit('foo', rev_id='foo')
+            # the commit should have returned the same id we asked for.
+            self.assertEqual('foo', committed_id)
+        else:
+            committed_id = tree.commit('foo')
+        self.assertEqual([committed_id], tree.get_parent_ids())
 
     def test_commit_returns_revision_id(self):
         tree = self.make_branch_and_tree('.')
@@ -272,7 +275,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertRaises(errors.UnknownFormatError,
                           controldir.ControlDir.open,
                           'master')
-        tree.commit('foo', rev_id='foo', local=True)
+        tree.commit('foo', local=True)
 
     def test_local_commit_does_not_push_to_master(self):
         # a --local commit does not require access to the master branch
@@ -285,8 +288,8 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        tree.commit('foo', rev_id='foo', local=True)
-        self.assertFalse(master.repository.has_revision('foo'))
+        committed_id = tree.commit('foo', local=True)
+        self.assertFalse(master.repository.has_revision(committed_id))
         self.assertEqual(_mod_revision.NULL_REVISION,
                          (_mod_revision.ensure_null(master.last_revision())))
 

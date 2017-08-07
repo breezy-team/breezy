@@ -383,28 +383,28 @@ class TestStacking(TestCaseWithBranch):
 
     def prepare_stacked_on_fetch(self):
         stack_on = self.make_branch_and_tree('stack-on')
-        stack_on.commit('first commit', rev_id='rev1')
+        rev1 = stack_on.commit('first commit')
         try:
             stacked_dir = stack_on.controldir.sprout('stacked', stacked=True)
         except unstackable_format_errors as e:
             raise TestNotApplicable('Format does not support stacking.')
         unstacked = self.make_repository('unstacked')
-        return stacked_dir.open_workingtree(), unstacked
+        return stacked_dir.open_workingtree(), unstacked, rev1
 
     def test_fetch_copies_from_stacked_on(self):
-        stacked, unstacked = self.prepare_stacked_on_fetch()
-        unstacked.fetch(stacked.branch.repository, 'rev1')
-        unstacked.get_revision('rev1')
+        stacked, unstacked, rev1 = self.prepare_stacked_on_fetch()
+        unstacked.fetch(stacked.branch.repository, rev1)
+        unstacked.get_revision(rev1)
 
     def test_fetch_copies_from_stacked_on_and_stacked(self):
-        stacked, unstacked = self.prepare_stacked_on_fetch()
+        stacked, unstacked, rev1 = self.prepare_stacked_on_fetch()
         tree = stacked.branch.create_checkout('local')
-        tree.commit('second commit', rev_id='rev2')
-        unstacked.fetch(stacked.branch.repository, 'rev2')
-        unstacked.get_revision('rev1')
-        unstacked.get_revision('rev2')
-        self.check_lines_added_or_present(stacked.branch, 'rev1')
-        self.check_lines_added_or_present(stacked.branch, 'rev2')
+        rev2 = tree.commit('second commit')
+        unstacked.fetch(stacked.branch.repository, rev2)
+        unstacked.get_revision(rev1)
+        unstacked.get_revision(rev2)
+        self.check_lines_added_or_present(stacked.branch, rev1)
+        self.check_lines_added_or_present(stacked.branch, rev2)
 
     def test_autopack_when_stacked(self):
         # in bzr.dev as of 20080730, autopack was reported to fail in stacked
@@ -477,17 +477,17 @@ class TestStacking(TestCaseWithBranch):
 
         # Change the source branch.
         self.build_tree_contents([('src/a', 'new content')])
-        src_tree.commit('second commit', rev_id='rev2')
+        rev2 = src_tree.commit('second commit')
 
         # Fetch changes to the target.
         target.fetch(src_tree.branch)
-        rtree = target.repository.revision_tree('rev2')
+        rtree = target.repository.revision_tree(rev2)
         rtree.lock_read()
         self.addCleanup(rtree.unlock)
         self.assertEqual(
             'new content',
             rtree.get_file_text(rtree.path2id('a'), 'a'))
-        self.check_lines_added_or_present(target, 'rev2')
+        self.check_lines_added_or_present(target, rev2)
 
     def test_transform_fallback_location_hook(self):
         # The 'transform_fallback_location' branch hook allows us to inspect
@@ -531,7 +531,7 @@ class TestStacking(TestCaseWithBranch):
     def test_revision_history_of_stacked(self):
         # See <https://launchpad.net/bugs/380314>.
         stack_on = self.make_branch_and_tree('stack-on')
-        stack_on.commit('first commit', rev_id='rev1')
+        rev1 = stack_on.commit('first commit')
         try:
             stacked_dir = stack_on.controldir.sprout(
                 self.get_url('stacked'), stacked=True)
@@ -543,20 +543,20 @@ class TestStacking(TestCaseWithBranch):
             stacked = stacked_dir.open_branch().create_checkout(
                 'stacked-checkout', lightweight=True)
         tree = stacked.branch.create_checkout('local')
-        tree.commit('second commit', rev_id='rev2')
+        rev2 = tree.commit('second commit')
         # Sanity check: stacked's repo should not contain rev1, otherwise this
         # test isn't testing what it's supposed to.
         repo = stacked.branch.repository.controldir.open_repository()
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({}, repo.get_parent_map(['rev1']))
+        self.assertEqual({}, repo.get_parent_map([rev1]))
         # revision_history should work, even though the history is spread over
         # multiple repositories.
-        self.assertEqual((2, 'rev2'), stacked.branch.last_revision_info())
+        self.assertEqual((2, rev2), stacked.branch.last_revision_info())
 
 
 class TestStackingConnections(
-    transport_util.TestCaseWithConnectionHookedTransport):
+        transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestStackingConnections, self).setUp()
@@ -570,20 +570,20 @@ class TestStackingConnections(
             stacked.set_stacked_on_url(base_tree.branch.base)
         except unstackable_format_errors as e:
             raise TestNotApplicable(e)
-        base_tree.commit('first', rev_id='rev-base')
-        stacked.set_last_revision_info(1, 'rev-base')
+        self.rev_base = base_tree.commit('first')
+        stacked.set_last_revision_info(1, self.rev_base)
         stacked_relative = self.make_branch('stacked_relative',
                                             format=self.bzrdir_format)
         stacked_relative.set_stacked_on_url(base_tree.branch.user_url)
-        stacked.set_last_revision_info(1, 'rev-base')
+        stacked.set_last_revision_info(1, self.rev_base)
         self.start_logging_connections()
 
     def test_open_stacked(self):
         b = _mod_branch.Branch.open(self.get_url('stacked'))
-        rev = b.repository.get_revision('rev-base')
+        rev = b.repository.get_revision(self.rev_base)
         self.assertEqual(1, len(self.connections))
 
     def test_open_stacked_relative(self):
         b = _mod_branch.Branch.open(self.get_url('stacked_relative'))
-        rev = b.repository.get_revision('rev-base')
+        rev = b.repository.get_revision(self.rev_base)
         self.assertEqual(1, len(self.connections))
