@@ -174,7 +174,7 @@ class TestGitBlackBox(ExternalBase):
             'index 0000000..c197bd8 100644\n'
             '--- /dev/null\n'
             '+++ b/a\n'
-            '@@ -1,0 +1,1 @@\n'
+            '@@ -0,0 +1 @@\n'
             '+contents of a\n')
 
     def test_git_import_uncolocated(self):
