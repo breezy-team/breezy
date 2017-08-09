@@ -52,13 +52,15 @@ class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
 
     def test_branch_format_matches_bzrdir_branch_format(self):
         bzrdir_branch_format = self.bzrdir_format.get_branch_format()
-        self.assertIs(self.branch_format.__class__,
-                      bzrdir_branch_format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                bzrdir_branch_format.__class__)
 
     def test_make_branch_gets_expected_format(self):
         branch = self.make_branch('.')
-        self.assertIs(self.branch_format.__class__,
-                      branch._format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                branch._format.__class__)
 
 
 class TestBranch(per_branch.TestCaseWithBranch):
