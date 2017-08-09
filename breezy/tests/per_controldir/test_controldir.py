@@ -806,9 +806,9 @@ class TestControlDir(TestCaseWithControlDir):
         # when sprouting a branch all revisions named in the tags are copied
         # too.
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         try:
-            source.tags.set_tag('tag-a', 'rev-2')
+            source.tags.set_tag('tag-a', rev2)
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
         source.get_config_stack().set('branch.fetch_tags', True)
@@ -817,8 +817,8 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.sprout(self.get_url('target'))
         # The tag is present, and so is its revision.
         new_branch = target.open_branch()
-        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
-        new_branch.repository.get_revision('rev-2')
+        self.assertEqual(rev2, new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision(rev2)
 
     def test_sprout_bzrdir_branch_with_absent_tag(self):
         # tags referencing absent revisions are copied (and those absent
