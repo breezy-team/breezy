@@ -64,38 +64,43 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual(tags, {})
 
     def test_make_and_lookup_tag(self):
-        b, target_revids = self.make_branch_with_revision_tuple('b', 2)
-        b.tags.set_tag('tag-name', target_revids[0])
-        b.tags.set_tag('other-name', target_revids[1])
+        b, [target_revid1,
+            target_revid2] = self.make_branch_with_revision_tuple('b', 2)
+        b.tags.set_tag('tag-name', target_revid1)
+        b.tags.set_tag('other-name', target_revid2)
         # then reopen the branch and see they're still there
         b = branch.Branch.open('b')
-        self.assertEqual(b.tags.get_tag_dict(),
-            {'tag-name': target_revids[0],
-             'other-name': target_revids[1],
-            })
+        self.assertEqual(
+                b.tags.get_tag_dict(),
+                {'tag-name': target_revid1,
+                 'other-name': target_revid2,
+                 })
         # read one at a time
         result = b.tags.lookup_tag('tag-name')
-        self.assertEqual(result, target_revids[0])
+        self.assertEqual(result, target_revid1)
         # and try has_tag
         self.assertTrue(b.tags.has_tag('tag-name'))
         self.assertFalse(b.tags.has_tag('imaginary'))
 
     def test_reverse_tag_dict(self):
-        b, target_revids = self.make_branch_with_revision_tuple('b', 2)
-        b.tags.set_tag('tag-name', target_revids[0])
-        b.tags.set_tag('other-name', target_revids[1])
+        b, [target_revid1,
+            target_revid2] = self.make_branch_with_revision_tuple('b', 2)
+        b.tags.set_tag('tag-name', target_revid1)
+        b.tags.set_tag('other-name', target_revid2)
         # then reopen the branch and check reverse map id->tags list
         b = branch.Branch.open('b')
-        self.assertEqual(dict(b.tags.get_reverse_tag_dict()),
-            {target_revids[0]: ['tag-name'],
-             target_revids[1]: ['other-name'],
-            })
+        self.assertEqual(
+                dict(b.tags.get_reverse_tag_dict()),
+                {target_revid1: ['tag-name'],
+                 target_revid2: ['other-name'],
+                 })
 
     def test_ghost_tag(self):
         b = self.make_branch('b')
         if not b._format.supports_tags_referencing_ghosts():
-            self.assertRaises(errors.GhostTagsNotSupported,
-                b.tags.set_tag, "ghost", "idontexist")
+            self.assertRaises(
+                    errors.GhostTagsNotSupported,
+                    b.tags.set_tag, "ghost", "idontexist")
         else:
             b.tags.set_tag("ghost", "idontexist")
             self.assertEqual("idontexist", b.tags.lookup_tag("ghost"))
@@ -152,16 +157,13 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # now try to delete it
         b.tags.delete_tag(tag_name)
         # now you can't look it up
-        self.assertRaises(errors.NoSuchTag,
-            b.tags.lookup_tag, tag_name)
+        self.assertRaises(errors.NoSuchTag, b.tags.lookup_tag, tag_name)
         # and it's not in the dictionary
         self.assertEqual(b.tags.get_tag_dict(), {})
         # and you can't remove it a second time
-        self.assertRaises(errors.NoSuchTag,
-            b.tags.delete_tag, tag_name)
+        self.assertRaises(errors.NoSuchTag, b.tags.delete_tag, tag_name)
         # or remove a tag that never existed
-        self.assertRaises(errors.NoSuchTag,
-            b.tags.delete_tag, tag_name + '2')
+        self.assertRaises(errors.NoSuchTag, b.tags.delete_tag, tag_name + '2')
 
     def test_merge_empty_tags(self):
         # you can merge tags between two instances, since neither have tags
@@ -174,37 +176,33 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # Open the same branch twice.  Read-lock one, and then mutate the tags
         # in the second.  The read-locked branch never re-reads the tags, so it
         # never observes the changed/new tags.
-        b1, [rev1, rev1changed, rev2] = self.make_branch_with_revision_tuple(
-                'b', 3)
+        b1, [rev1, rev2, rev3] = self.make_branch_with_revision_tuple('b', 3)
         b1.tags.set_tag('one', rev1)
         b2 = controldir.ControlDir.open('b').open_branch()
         b1.lock_read()
         self.assertEqual({'one': rev1}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 is read-locked and has already
         # read the tags, so it is unaffected.
-        b2.tags.set_tag('one', rev1changed)
-        b2.tags.set_tag('two', rev2)
+        b2.tags.set_tag('one', rev2)
+        b2.tags.set_tag('two', rev3)
         self.assertEqual({'one': rev1}, b1.tags.get_tag_dict())
         b1.unlock()
         # Once unlocked the cached value is forgotten, so now the latest tags
         # will be retrieved.
-        self.assertEqual(
-            {'one': rev1changed, 'two': rev2}, b1.tags.get_tag_dict())
+        self.assertEqual({'one': rev2, 'two': rev3}, b1.tags.get_tag_dict())
 
     def test_unlocked_does_not_cache_tags(self):
         """Unlocked branches do not cache tags."""
         # Open the same branch twice.
-        b1, [rev1, rev1changed, rev2] = self.make_branch_with_revision_tuple(
-                'b', 3)
+        b1, [rev1, rev2, rev3] = self.make_branch_with_revision_tuple('b', 3)
         b1.tags.set_tag('one', rev1)
         b2 = b1.controldir.open_branch()
         self.assertEqual({'one': rev1}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 isn't locked, so it will
         # immediately return the new tags too.
-        b2.tags.set_tag('one', rev1changed)
-        b2.tags.set_tag('two', rev2)
-        self.assertEqual(
-            {'one': rev1changed, 'two': rev2}, b1.tags.get_tag_dict())
+        b2.tags.set_tag('one', rev2)
+        b2.tags.set_tag('two', rev3)
+        self.assertEqual({'one': rev2, 'two': rev3}, b1.tags.get_tag_dict())
 
     def test_cached_tag_dict_not_accidentally_mutable(self):
         """When there's a cached version of the tags, b.tags.get_tag_dict
@@ -266,7 +264,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
     decides to commit, will update the master).  Also, merge_to in bzr < 2.3
     didn't propagate changes to the master, and current bzr versions may find
     themselves operating on checkouts touched by older bzrs
-    
+
     So we need to make sure bzr copes gracefully with differing tags in the
     master versus the child.
 
