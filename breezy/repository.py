@@ -1268,7 +1268,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     created.
 
     Common instance attributes:
-    _matchingbzrdir - the controldir format that the repository format was
+    _matchingcontroldir - the controldir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
     parameterization.

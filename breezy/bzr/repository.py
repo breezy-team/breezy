@@ -109,7 +109,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
     supports_nesting_repositories = True
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         matching = bzrdir.BzrDirMetaFormat1()
         matching.repository_format = self
         return matching

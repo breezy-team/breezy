@@ -197,7 +197,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         # create a branch with a few known format objects.
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            dir = format._matchingbzrdir.initialize(url)
+            dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             dir.create_branch()
             format.initialize(dir)

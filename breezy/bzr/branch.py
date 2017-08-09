@@ -748,7 +748,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             raise errors.NotBranchError(path=transport.base, controldir=a_controldir)
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         ret = bzrdir.BzrDirMetaFormat1()
         ret.set_branch_format(self)
         return ret

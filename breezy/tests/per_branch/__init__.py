@@ -119,7 +119,7 @@ def branch_scenarios():
     """ """
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
-    combinations = [(format, format._matchingbzrdir) for format in
+    combinations = [(format, format._matchingcontroldir) for format in
          format_registry._get_all()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
@@ -133,7 +133,7 @@ def branch_scenarios():
     scenarios.extend(make_scenarios(
         test_server.SmartTCPServer_for_testing,
         test_server.ReadonlySmartTCPServer_for_testing,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        [(remote_branch_format, remote_branch_format._matchingcontroldir)],
         memory.MemoryServer,
         name_suffix='-default'))
     # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
@@ -141,7 +141,7 @@ def branch_scenarios():
     scenarios.extend(make_scenarios(
         test_server.SmartTCPServer_for_testing_v2_only,
         test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        [(remote_branch_format, remote_branch_format._matchingcontroldir)],
         memory.MemoryServer,
         name_suffix='-v2'))
     return scenarios

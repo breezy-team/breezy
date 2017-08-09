@@ -64,7 +64,7 @@ def delta_application_scenarios():
                 'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
                 'format':format}))
     for format in workingtree.format_registry._get_all():
-        repo_fmt = format._matchingbzrdir.repository_format
+        repo_fmt = format._matchingcontroldir.repository_format
         if not repo_fmt.supports_full_versioned_files:
             continue
         scenarios.append(
@@ -107,7 +107,7 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = self.make_controldir('tree', format=self.format._matchingbzrdir)
+    control = self.make_controldir('tree', format=self.format._matchingcontroldir)
     control.create_repository()
     control.create_branch()
     tree = self.format.initialize(control)
@@ -198,7 +198,7 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = test.make_controldir('tree', format=test.format._matchingbzrdir)
+    control = test.make_controldir('tree', format=test.format._matchingcontroldir)
     control.create_repository()
     control.create_branch()
     tree = test.format.initialize(control)
@@ -245,7 +245,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     :return: An inventory resulting from the application.
     """
     format = self.format()
-    control = self.make_controldir('tree', format=format._matchingbzrdir)
+    control = self.make_controldir('tree', format=format._matchingcontroldir)
     repo = format.initialize(control)
     repo.lock_write()
     try:
