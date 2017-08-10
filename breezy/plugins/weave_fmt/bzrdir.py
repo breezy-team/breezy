@@ -26,7 +26,11 @@ from ...bzr.bzrdir import (
 from ...controldir import (
     ControlDir,
     Converter,
+    MustHaveWorkingTree,
     format_registry,
+    )
+from ... import (
+    errors,
     )
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
@@ -34,7 +38,7 @@ import os
 import warnings
 
 from breezy import (
-    errors,
+    branch as _mod_branch,,
     graph,
     lockable_files,
     lockdir,
@@ -903,10 +907,10 @@ class BzrDirPreSplitOut(BzrDir):
                     "source branch %r is not within %r with branch %r" %
                     (source_branch, self, my_branch))
         if stacked:
-            raise errors.UnstackableBranchFormat(
+            raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.root_transport.base)
         if not create_tree_if_local:
-            raise errors.MustHaveWorkingTree(
+            raise MustHaveWorkingTree(
                 self._format, self.root_transport.base)
         from .workingtree import WorkingTreeFormat2
         self._make_tail(url)

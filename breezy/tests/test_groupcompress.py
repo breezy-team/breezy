@@ -28,6 +28,7 @@ from .. import (
 from ..bzr import (
     btree_index,
     groupcompress,
+    knit,
     index as _mod_index,
     versionedfile,
     )
@@ -772,7 +773,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                          warnings)
 
     def test_inconsistent_redundant_inserts_raises(self):
-        e = self.assertRaises(errors.KnitCorrupt, self.do_inconsistent_inserts,
+        e = self.assertRaises(knit.KnitCorrupt, self.do_inconsistent_inserts,
                               inconsistency_fatal=True)
         self.assertContainsRe(str(e), "Knit.* corrupt: inconsistent details"
                               " in add_records:"

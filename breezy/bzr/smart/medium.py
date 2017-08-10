@@ -41,7 +41,6 @@ import weakref
 
 from breezy import (
     debug,
-    errors,
     trace,
     transport,
     ui,
@@ -51,13 +50,27 @@ from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
 """)
-from ... import osutils
+from ... import (
+    errors,
+    osutils,
+    )
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
 # For this module's purposes, MAX_SOCKET_CHUNK is a reasonable size for reads
 # from non-sockets as well.
 _MAX_READ_SIZE = osutils.MAX_SOCKET_CHUNK
+
+
+class HpssVfsRequestNotAllowed(errors.BzrError):
+
+    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
+            "%(method)s, %(arguments)s.")
+
+    def __init__(self, method, arguments):
+        self.method = method
+        self.arguments = arguments
+
 
 def _get_protocol_factory_for_bytes(bytes):
     """Determine the right protocol factory for 'bytes'.
@@ -656,7 +669,7 @@ class _VfsRefuser(object):
             # A method we don't know about doesn't count as a VFS method.
             return
         if issubclass(request_method, vfs.VfsRequest):
-            raise errors.HpssVfsRequestNotAllowed(params.method, params.args)
+            raise HpssVfsRequestNotAllowed(params.method, params.args)
 
 
 class _DebugCounter(object):

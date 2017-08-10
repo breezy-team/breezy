@@ -129,7 +129,7 @@ class GioTransport(ConnectedTransport):
         #so a hardcoded list it is then.
         gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
         if scheme not in gio_backends:
-            raise errors.InvalidURL(base,
+            raise urlutils.InvalidURL(base,
                     extra="GIO support is only available for " + \
                     ', '.join(gio_backends))
 
@@ -145,7 +145,7 @@ class GioTransport(ConnectedTransport):
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
         if isinstance(full_url, unicode):
-            raise errors.InvalidURL(full_url)
+            raise urlutils.InvalidURL(full_url)
         return full_url
 
     def _get_GIO(self, relpath):

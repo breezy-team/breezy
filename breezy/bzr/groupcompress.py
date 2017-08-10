@@ -27,7 +27,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    errors,
     graph as _mod_graph,
     osutils,
     static_tuple,
@@ -35,13 +34,17 @@ from breezy import (
     tsort,
     )
 from breezy.bzr import (
+    knit,
     pack,
+    pack_repo,
     )
 
-from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
 
+from .. import (
+    errors,
+    )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
 from ..sixish import (
@@ -90,6 +93,18 @@ def sort_gc_optimal(parent_map):
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
+
+
+class DecompressCorruption(errors.BzrError):
+
+    _fmt = "Corruption while decompressing repository file%(orig_error)s"
+
+    def __init__(self, orig_error=None):
+        if orig_error is not None:
+            self.orig_error = ", %s" % (orig_error,)
+        else:
+            self.orig_error = ""
+        errors.BzrError.__init__(self)
 
 
 # The max zlib window size is 32kB, so if we set 'max_size' output of the
@@ -457,7 +472,7 @@ class _LazyGroupCompressFactory(object):
                 try:
                     self._manager._prepare_for_extract()
                 except zlib.error as value:
-                    raise errors.DecompressCorruption("zlib: " + str(value))
+                    raise DecompressCorruption("zlib: " + str(value))
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
                 # There are code paths that first extract as fulltext, and then
@@ -2010,7 +2025,7 @@ class _GCGraphIndex(object):
                 if refs:
                     for ref in refs:
                         if ref:
-                            raise errors.KnitCorrupt(self,
+                            raise knit.KnitCorrupt(self,
                                 "attempt to add node with parents "
                                 "in parentless index.")
                     refs = ()
@@ -2026,7 +2041,7 @@ class _GCGraphIndex(object):
                 if node_refs != passed[1]:
                     details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
-                        raise errors.KnitCorrupt(self, "inconsistent details"
+                        raise knit.KnitCorrupt(self, "inconsistent details"
                                                  " in add_records: %s" %
                                                  details)
                     else:

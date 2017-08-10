@@ -939,7 +939,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         to obtain data like the network name.
     """
 
-    _matchingbzrdir = RemoteBzrDirFormat()
+    _matchingcontroldir = RemoteBzrDirFormat()
     supports_full_versioned_files = True
     supports_leaving_lock = True
 
@@ -2658,42 +2658,29 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             yield serializer.read_revision_from_string("".join(chunks))
 
     @needs_read_lock
-    def get_revisions(self, revision_ids):
-        if revision_ids is None:
-            revision_ids = self.all_revision_ids()
-        else:
-            for rev_id in revision_ids:
-                if not rev_id or not isinstance(rev_id, bytes):
-                    raise errors.InvalidRevisionId(
-                        revision_id=rev_id, branch=self)
+    def iter_revisions(self, revision_ids):
+        for rev_id in revision_ids:
+            if not rev_id or not isinstance(rev_id, bytes):
+                raise errors.InvalidRevisionId(
+                    revision_id=rev_id, branch=self)
         try:
             missing = set(revision_ids)
-            revs = {}
             for rev in self._iter_revisions_rpc(revision_ids):
                 missing.remove(rev.revision_id)
-                revs[rev.revision_id] = rev
+                yield (rev.revision_id, rev)
+            for fallback in self._fallback_repositories:
+                if not missing:
+                    break
+                for (revid, rev) in fallback.iter_revisions(missing):
+                    if rev is not None:
+                        yield (revid, rev)
+                        missing.remove(revid)
+            for revid in missing:
+                yield (revid, None)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            return self._real_repository.get_revisions(revision_ids)
-        for fallback in self._fallback_repositories:
-            if not missing:
-                break
-            for revid in list(missing):
-                # XXX JRV 2011-11-20: It would be nice if there was a
-                # public method on Repository that could be used to query
-                # for revision objects *without* failing completely if one
-                # was missing. There is VersionedFileRepository._iter_revisions,
-                # but unfortunately that's private and not provided by
-                # all repository implementations.
-                try:
-                    revs[revid] = fallback.get_revision(revid)
-                except errors.NoSuchRevision:
-                    pass
-                else:
-                    missing.remove(revid)
-        if missing:
-            raise errors.NoSuchRevision(self, list(missing)[0])
-        return [revs[revid] for revid in revision_ids]
+            for entry in self._real_repository.iter_revisions(revision_ids):
+                yield entry
 
     def supports_rich_root(self):
         return self._format.rich_root_data
@@ -3084,8 +3071,8 @@ class RemoteBranchFormat(branch.BranchFormat):
 
     def __init__(self, network_name=None):
         super(RemoteBranchFormat, self).__init__()
-        self._matchingbzrdir = RemoteBzrDirFormat()
-        self._matchingbzrdir.set_branch_format(self)
+        self._matchingcontroldir = RemoteBzrDirFormat()
+        self._matchingcontroldir.set_branch_format(self)
         self._custom_format = None
         self._network_name = network_name
 
@@ -3375,7 +3362,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # the vfs branch.
         try:
             fallback_url = self.get_stacked_on_url()
-        except (errors.NotStacked, errors.UnstackableBranchFormat,
+        except (errors.NotStacked, branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             return
         self._is_stacked = True
@@ -4247,7 +4234,7 @@ no_context_error_translators.register('LockFailed',
 no_context_error_translators.register('TipChangeRejected',
     lambda err: errors.TipChangeRejected(err.error_args[0].decode('utf8')))
 no_context_error_translators.register('UnstackableBranchFormat',
-    lambda err: errors.UnstackableBranchFormat(*err.error_args))
+    lambda err: branch.UnstackableBranchFormat(*err.error_args))
 no_context_error_translators.register('UnstackableRepositoryFormat',
     lambda err: errors.UnstackableRepositoryFormat(*err.error_args))
 no_context_error_translators.register('FileExists',

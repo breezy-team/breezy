@@ -77,11 +77,11 @@ from .. import (
     errors,
     osutils,
     )
-from ..errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
-        RevisionAlreadyPresent,
-        RevisionNotPresent,
-        UnavailableRepresentation,
-        )
+from ..errors import (
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+    UnavailableRepresentation,
+    )
 from ..osutils import dirname, sha, sha_strings, split_lines
 from .. import patiencediff
 from ..revision import NULL_REVISION
@@ -97,6 +97,79 @@ from .versionedfile import (
     VersionedFile,
     )
 from .weavefile import _read_weave_v5, write_weave_v5
+
+
+class WeaveError(errors.BzrError):
+
+    _fmt = "Error in processing weave: %(msg)s"
+
+    def __init__(self, msg=None):
+        errors.BzrError.__init__(self)
+        self.msg = msg
+
+
+class WeaveRevisionAlreadyPresent(WeaveError):
+
+    _fmt = "Revision {%(revision_id)s} already present in %(weave)s"
+
+    def __init__(self, revision_id, weave):
+
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave = weave
+
+
+class WeaveRevisionNotPresent(WeaveError):
+
+    _fmt = "Revision {%(revision_id)s} not present in %(weave)s"
+
+    def __init__(self, revision_id, weave):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave = weave
+
+
+class WeaveFormatError(WeaveError):
+
+    _fmt = "Weave invariant violated: %(what)s"
+
+    def __init__(self, what):
+        WeaveError.__init__(self)
+        self.what = what
+
+
+class WeaveParentMismatch(WeaveError):
+
+    _fmt = "Parents are mismatched between two revisions. %(msg)s"
+
+
+class WeaveInvalidChecksum(WeaveError):
+
+    _fmt = "Text did not match its checksum: %(msg)s"
+
+
+class WeaveTextDiffers(WeaveError):
+
+    _fmt = ("Weaves differ on text content. Revision:"
+            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
+class WeaveTextDiffers(WeaveError):
+
+    _fmt = ("Weaves differ on text content. Revision:"
+            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
 
 
 class WeaveContentFactory(ContentFactory):
@@ -751,7 +824,7 @@ class Weave(VersionedFile):
         expected_sha1 = self._sha1s[int_index]
         measured_sha1 = sha_strings(result)
         if measured_sha1 != expected_sha1:
-            raise errors.WeaveInvalidChecksum(
+            raise WeaveInvalidChecksum(
                     'file %s, revision %s, expected: %s, measured %s'
                     % (self._weave_name, version_id,
                        expected_sha1, measured_sha1))
@@ -828,7 +901,7 @@ class Weave(VersionedFile):
             hd = sha1s[version].hexdigest()
             expected = self._sha1s[i]
             if hd != expected:
-                raise errors.WeaveInvalidChecksum(
+                raise WeaveInvalidChecksum(
                         "mismatched sha1 for version %s: "
                         "got %s, expected %s"
                         % (version, hd, expected))
@@ -864,7 +937,7 @@ class Weave(VersionedFile):
         this_idx = self._name_map.get(name, -1)
         if this_idx != -1:
             if self._sha1s[this_idx] != other._sha1s[other_idx]:
-                raise errors.WeaveTextDiffers(name, self, other)
+                raise WeaveTextDiffers(name, self, other)
             self_parents = self._parents[this_idx]
             other_parents = other._parents[other_idx]
             n1 = {self._names[i] for i in self_parents}
@@ -999,7 +1072,7 @@ def _reweave(wa, wb, pb=None, msg=None):
                     lines = list(difflib.unified_diff(lines, lines_b,
                             wa._weave_name, wb._weave_name))
                     mutter('lines:\n%s', ''.join(lines))
-                    raise errors.WeaveTextDiffers(name, wa, wb)
+                    raise WeaveTextDiffers(name, wa, wb)
         else:
             lines = wb.get_lines(name)
         wr._add(name, lines, [wr._lookup(i) for i in combined_parents[name]])

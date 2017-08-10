@@ -1136,7 +1136,7 @@ class CHKInventoryRepository(PackRepository):
             raise AssertionError()
         vf = self.revisions
         if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
+            revisions_iterator = self.iter_revisions(self.all_revision_ids())
         for revid, revision in revisions_iterator:
             if revision is None:
                 pass
@@ -1396,7 +1396,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -1419,7 +1419,7 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):

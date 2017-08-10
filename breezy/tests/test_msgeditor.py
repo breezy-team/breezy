@@ -339,7 +339,7 @@ if len(sys.argv) == 2:
         self.make_fake_editor(message=char)
 
         working_tree = self.make_uncommitted_tree()
-        self.assertRaises(errors.BadCommitMessageEncoding,
+        self.assertRaises(msgeditor.BadCommitMessageEncoding,
                           msgeditor.edit_commit_message, '')
 
     def test_set_commit_message_no_hooks(self):

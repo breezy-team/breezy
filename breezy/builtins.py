@@ -40,6 +40,7 @@ from breezy import (
     errors,
     globbing,
     hooks,
+    lazy_regex,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -59,7 +60,7 @@ from breezy import (
 from breezy.bzr import (
     btree_index,
     )
-from breezy.branch import Branch
+from breezy.branch import Branch, UnstackableBranchFormat
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.revisionspec import RevisionSpec, RevisionInfo
@@ -244,7 +245,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
-                        raise errors.FileOutsideView(filename, view_files)
+                        raise views.FileOutsideView(filename, view_files)
         file_list = file_list[:]
         file_list[0] = tree.abspath(relpath)
     else:
@@ -298,7 +299,7 @@ def _get_view_info_for_change_reporter(tree):
         current_view = tree.views.get_view_info()[0]
         if current_view is not None:
             view_info = (current_view, tree.views.lookup_view())
-    except errors.ViewsNotSupported:
+    except views.ViewsNotSupported:
         pass
     return view_info
 
@@ -1411,8 +1412,6 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1525,7 +1524,7 @@ class cmd_branch(Command):
         try:
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
-        except (errors.NotStacked, errors.UnstackableBranchFormat,
+        except (errors.NotStacked, UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
@@ -2066,7 +2065,7 @@ class cmd_init(Command):
                 'See "help formats".',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
-                value_switches=True,
+                value_switches=False,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
@@ -2145,7 +2144,7 @@ class cmd_init(Command):
                 url = repository.controldir.root_transport.external_url()
                 try:
                     url = urlutils.local_path_from_url(url)
-                except errors.InvalidURL:
+                except urlutils.InvalidURL:
                     pass
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
@@ -2185,7 +2184,7 @@ class cmd_init_repository(Command):
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=True, title='Repository format'),
+                            value_switches=False, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
@@ -2613,7 +2612,7 @@ class cmd_log(Command):
       Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and
       <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
-      You may find it useful to add the aliases below to ``bazaar.conf``::
+      You may find it useful to add the aliases below to ``breezy.conf``::
 
         [ALIASES]
         tip = log -r-1
@@ -3041,7 +3040,7 @@ class cmd_ls(Command):
                     else:
                         fullpath = fp
                     views.check_path_in_view(tree, fullpath)
-                except errors.FileOutsideView:
+                except views.FileOutsideView:
                     continue
 
             # Output the entry
@@ -3192,7 +3191,7 @@ class cmd_ignore(Command):
                             'Invalid ignore patterns found. %s',
                             bad_patterns_count) % bad_patterns)
             ui.ui_factory.show_error(msg)
-            raise errors.InvalidPattern('')
+            raise lazy_regex.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
@@ -3549,10 +3548,10 @@ class cmd_commit(Command):
                 tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id)
-            except errors.UnknownBugTrackerAbbreviation:
+            except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
-            except errors.MalformedBugIdentifier as e:
+            except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     "%s\nCommit refused.") % (str(e),))
 
@@ -3560,8 +3559,10 @@ class cmd_commit(Command):
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
-        from .errors import (
+        from .commit import (
             PointlessCommit,
+            )
+        from .errors import (
             ConflictsInTree,
             StrictCommitFailed
         )
@@ -3865,7 +3866,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except errors.NoEmailInUsername as e:
+        except _mod_config.NoEmailInUsername as e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
@@ -4406,7 +4407,7 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(gettext(
                         'Cannot use -r with merge directives or bundles'))
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, None)
+                   mergeable)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
@@ -4561,7 +4562,7 @@ class cmd_merge(Command):
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
         other_branch.tags.merge_to(tree.branch.tags, ignore_master=True)
-        merger = _mod_merge.Merger.from_revision_ids(pb, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
             allow_pending = False
@@ -4713,7 +4714,7 @@ class cmd_remerge(Command):
         # have not yet been seen.
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base

@@ -28,7 +28,7 @@ class TestGetFileMTime(TestCaseWithTree):
     def get_basic_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/one'])
-        tree.add(['one'], ['one-id'])
+        tree.add(['one'])
         return self._convert_tree(tree)
 
     def test_get_file_mtime(self):
@@ -38,11 +38,12 @@ class TestGetFileMTime(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         # Committed trees return the time of the commit that last changed the
         # file, working trees return the on-disk time.
-        mtime_file_id = tree.get_file_mtime(file_id='one-id')
+        mtime_file_id = tree.get_file_mtime(file_id=tree.path2id('one'))
         self.assertIsInstance(mtime_file_id, (float, int))
         self.assertTrue(now - 5 < mtime_file_id < now + 5,
                         'now: %f, mtime_file_id: %f' % (now, mtime_file_id ))
-        mtime_path = tree.get_file_mtime(file_id='one-id', path='one')
+        mtime_path = tree.get_file_mtime(
+                file_id=tree.path2id('one'), path='one')
         self.assertEqual(mtime_file_id, mtime_path)
 
     def test_nonexistant(self):

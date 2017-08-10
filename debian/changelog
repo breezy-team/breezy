@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr6753-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 10 Aug 2017 21:08:44 +0000
+
 breezy (3.0.0~bzr6706-1) unstable; urgency=medium
 
   * Mark as supporting only Python >= 2.7.

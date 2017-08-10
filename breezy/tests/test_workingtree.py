@@ -197,7 +197,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         # create a branch with a few known format objects.
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            dir = format._matchingbzrdir.initialize(url)
+            dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             dir.create_branch()
             format.initialize(dir)
@@ -228,7 +228,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             tree.controldir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
         self.assertEqual(found_format.features.get("name"), "necessity")
-        self.assertRaises(errors.MissingFeature, found_format.check_support_status,
+        self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(bzrworkingtree.WorkingTreeFormatMetaDir.unregister_feature,
             "name")

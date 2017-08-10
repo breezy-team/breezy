@@ -25,20 +25,20 @@ from breezy.tests.per_branch import TestCaseWithBranch
 class TestRevisionIdToRevno(TestCaseWithBranch):
 
     def test_simple_revno(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         the_branch = tree.branch
 
         self.assertEqual(0, the_branch.revision_id_to_revno('null:'))
-        self.assertEqual(1, the_branch.revision_id_to_revno('rev-1'))
-        self.assertEqual(2, the_branch.revision_id_to_revno('rev-2'))
-        self.assertEqual(3, the_branch.revision_id_to_revno('rev-3'))
+        self.assertEqual(1, the_branch.revision_id_to_revno(revmap['1']))
+        self.assertEqual(2, the_branch.revision_id_to_revno(revmap['2']))
+        self.assertEqual(3, the_branch.revision_id_to_revno(revmap['3']))
 
         self.assertRaises(errors.NoSuchRevision,
                           the_branch.revision_id_to_revno, 'rev-none')
         # revision_id_to_revno is defined as returning only integer revision
         # numbers, so non-mainline revisions get NoSuchRevision raised
         self.assertRaises(errors.NoSuchRevision,
-                          the_branch.revision_id_to_revno, 'rev-1.1.1')
+                          the_branch.revision_id_to_revno, revmap['1.1.1'])
 
     def test_mainline_ghost(self):
         tree = self.make_branch_and_tree('tree1')

@@ -128,7 +128,7 @@ class OptionTests(TestCase):
         self.assertEqual({'format':'one'}, opts)
         opts, args = self.parse(options, ['--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
-        self.assertRaises(errors.BadOptionValue, self.parse, options,
+        self.assertRaises(option.BadOptionValue, self.parse, options,
                           ['--format', 'three'])
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--two'])
@@ -172,7 +172,7 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertEqual({'format': 'knit'}, opts)
         self.assertRaises(
-            errors.BadOptionValue, self.parse, options, ['--format', 'BAD'])
+            option.BadOptionValue, self.parse, options, ['--format', 'BAD'])
 
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',

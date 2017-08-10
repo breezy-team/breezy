@@ -64,7 +64,7 @@ def make_scenario(transport_server, transport_readonly_server,
     return {
         "transport_server": transport_server,
         "transport_readonly_server": transport_readonly_server,
-        "bzrdir_format": workingtree_format._matchingbzrdir,
+        "bzrdir_format": workingtree_format._matchingcontroldir,
         "workingtree_format": workingtree_format,
         }
 

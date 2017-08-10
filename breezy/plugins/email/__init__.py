@@ -1,4 +1,3 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +32,7 @@ in the configuration.
 
 If you are using a bzr release from before 0.15, you need to manually tell
 bzr about the commit action, by setting
-post_commit=breezy.plugins.email.post_commit in bazaar.conf or locations.conf.
+post_commit=breezy.plugins.email.post_commit in breezy.conf or locations.conf.
 
 The URL of the branch is determined from the following checks (in order):
  - If the configuration value 'post_commit_url' is set, it is used.

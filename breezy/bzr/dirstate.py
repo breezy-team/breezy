@@ -258,6 +258,16 @@ ERROR_PATH_NOT_FOUND = 3
 ERROR_DIRECTORY = 267
 
 
+class DirstateCorrupt(errors.BzrError):
+
+    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
+
+    def __init__(self, state, msg):
+        errors.BzrError.__init__(self)
+        self.state = state
+        self.msg = msg
+
+
 class SHA1Provider(object):
     """An interface for getting sha1s of a file."""
 
@@ -3583,7 +3593,7 @@ class ProcessEntryPython(object):
                 # update the source details variable to be the real
                 # location.
                 if old_entry == (None, None):
-                    raise errors.CorruptDirstate(self.state._filename,
+                    raise DirstateCorrupt(self.state._filename,
                         "entry '%s/%s' is considered renamed from %r"
                         " but source does not exist\n"
                         "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))

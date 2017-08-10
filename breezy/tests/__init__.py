@@ -1033,7 +1033,7 @@ class TestCase(testtools.TestCase):
                                   % (counter_name,))
         _counters[counter_name] = 0
         self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
-            lambda: ['%d' % (_counters[counter_name],)]))
+            lambda: [b'%d' % (_counters[counter_name],)]))
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
         label = 'count %s calls' % (counter_name,)
@@ -1880,8 +1880,8 @@ class TestCase(testtools.TestCase):
         self._benchcalls.
         """
         if self._benchtime is None:
-            self.addDetail('benchtime', content.Content(content.ContentType(
-                "text", "plain"), lambda:[str(self._benchtime)]))
+            self.addDetail('benchtime', content.Content(content.UTF8_TEXT,
+                lambda:[str(self._benchtime).encode('utf-8')]))
             self._benchtime = 0
         start = time.time()
         try:
@@ -4053,6 +4053,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_version_info',
         'breezy.tests.test_versionedfile',
         'breezy.tests.test_vf_search',
+        'breezy.tests.test_views',
         'breezy.tests.test_weave',
         'breezy.tests.test_whitebox',
         'breezy.tests.test_win32utils',

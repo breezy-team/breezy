@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from . import (
+    branch as _mod_branch,
     controldir,
     errors,
     revision as _mod_revision,
@@ -125,7 +126,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # TODO: Some more useful message about what was copied
         try:
             push_result.stacked_on = br_to.get_stacked_on_url()
-        except (errors.UnstackableBranchFormat,
+        except (_mod_branch.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat,
                 errors.NotStacked):
             push_result.stacked_on = None

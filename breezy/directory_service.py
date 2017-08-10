@@ -36,6 +36,26 @@ from breezy import (
 """)
 
 
+class DirectoryLookupFailure(errors.BzrError):
+    """Base type for lookup errors."""
+
+
+class InvalidLocationAlias(DirectoryLookupFailure):
+
+    _fmt = '"%(alias_name)s" is not a valid location alias.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
+
+
+class UnsetLocationAlias(DirectoryLookupFailure):
+
+    _fmt = 'No %(alias_name)s location assigned.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
+
+
 class DirectoryServiceRegistry(registry.Registry):
     """This object maintains and uses a list of directory services.
 
@@ -99,11 +119,11 @@ class AliasDirectory(object):
         try:
             method = self.branch_aliases.get(name[1:])
         except KeyError:
-            raise errors.InvalidLocationAlias(url)
+            raise InvalidLocationAlias(url)
         else:
             result = method(branch)
         if result is None:
-            raise errors.UnsetLocationAlias(url)
+            raise UnsetLocationAlias(url)
         if extra is not None:
             result = urlutils.join(result, extra)
         return result

@@ -1796,7 +1796,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         # set environment variable after construction to make sure it's
         # examined.
         self.overrideEnv('BRZ_NO_SMART_VFS', '')
-        self.assertRaises(errors.DisabledMethod, handler.execute)
+        self.assertRaises(_mod_request.DisabledMethod, handler.execute)
 
     def test_readonly_exception_becomes_transport_not_possible(self):
         """The response for a read-only error is ('ReadOnlyError')."""

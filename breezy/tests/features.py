@@ -17,6 +17,8 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
+from __future__ import absolute_import
+
 import os
 import subprocess
 import stat
@@ -373,7 +375,7 @@ class _NotRunningAsRoot(Feature):
 not_running_as_root = _NotRunningAsRoot()
 
 apport = ModuleAvailableFeature('apport')
-gpgme = ModuleAvailableFeature('gpgme')
+gpg = ModuleAvailableFeature('gpg')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae.scanner')
 paramiko = ModuleAvailableFeature('paramiko')

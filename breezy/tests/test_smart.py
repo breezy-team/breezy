@@ -167,7 +167,7 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         request = smart_req.SmartServerRequest(transport, 'foo/')
         self.assertEqual('./', request.translate_client_path('foo/'))
         self.assertRaises(
-            errors.InvalidURLJoin, request.translate_client_path, 'foo/..')
+            urlutils.InvalidURLJoin, request.translate_client_path, 'foo/..')
         self.assertRaises(
             errors.PathNotChild, request.translate_client_path, '/')
         self.assertRaises(

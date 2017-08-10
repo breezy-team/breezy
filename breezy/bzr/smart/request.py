@@ -36,6 +36,7 @@ from __future__ import absolute_import
 import threading
 
 from ... import (
+    branch as _mod_branch,
     debug,
     errors,
     osutils,
@@ -56,6 +57,15 @@ import thread
 
 jail_info = threading.local()
 jail_info.transports = None
+
+
+class DisabledMethod(errors.InternalBzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    def __init__(self, class_name):
+        errors.BzrError.__init__(self)
+        self.class_name = class_name
 
 
 def _install_hook():
@@ -421,7 +431,7 @@ def _translate_error(err):
         return ('RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return (('UnstackableRepositoryFormat', str(err.format), err.url))
-    elif isinstance(err, errors.UnstackableBranchFormat):
+    elif isinstance(err, _mod_branch.UnstackableBranchFormat):
         return ('UnstackableBranchFormat', str(err.format), err.url)
     elif isinstance(err, errors.NotStacked):
         return ('NotStacked',)

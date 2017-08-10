@@ -33,8 +33,8 @@ from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import breezy
 from breezy import (
+    branch as _mod_branch,
     cleanup,
-    errors,
     fetch,
     graph,
     lockable_files,
@@ -72,8 +72,26 @@ from ..trace import (
 from .. import (
     config,
     controldir,
+    errors,
     registry,
     )
+
+
+class MissingFeature(errors.BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
+class FeatureAlreadyRegistered(errors.BzrError):
+
+    _fmt = 'The feature %(feature)s has already been registered.'
+
+    def __init__(self, feature):
+        self.feature = feature
 
 
 class BzrDir(controldir.ControlDir):
@@ -168,7 +186,7 @@ class BzrDir(controldir.ControlDir):
             if preserve_stacking:
                 try:
                     stacked_on = local_branch.get_stacked_on_url()
-                except (errors.UnstackableBranchFormat,
+                except (_mod_branch.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
                     pass
@@ -719,7 +737,7 @@ class BzrDir(controldir.ControlDir):
                 return format
             # We have a repository, so set a working tree? (Why? This seems to
             # contradict the stated return value in the docstring).
-            tree_format = repository._format._matchingbzrdir.workingtree_format
+            tree_format = repository._format._matchingcontroldir.workingtree_format
             format.workingtree_format = tree_format.__class__()
         if require_stacking:
             format.require_stacking()
@@ -1132,7 +1150,7 @@ class BzrFormat(object):
         if " " in name:
             raise ValueError("spaces are not allowed in feature names")
         if name in cls._present_features:
-            raise errors.FeatureAlreadyRegistered(name)
+            raise FeatureAlreadyRegistered(name)
         cls._present_features.add(name)
 
     @classmethod
@@ -1149,11 +1167,11 @@ class BzrFormat(object):
                 mutter("ignoring optional missing feature %s", name)
                 continue
             elif necessity == "required":
-                raise errors.MissingFeature(name)
+                raise MissingFeature(name)
             else:
                 mutter("treating unknown necessity as require for %s",
                        name)
-                raise errors.MissingFeature(name)
+                raise MissingFeature(name)
 
     @classmethod
     def get_format_string(cls):
@@ -1843,11 +1861,11 @@ class RepositoryAcquisitionPolicy(object):
                 stack_on = urlutils.rebase_url(self._stack_on,
                     self._stack_on_pwd,
                     branch.user_url)
-            except errors.InvalidRebaseURLs:
+            except urlutils.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:
             branch.set_stacked_on_url(stack_on)
-        except (errors.UnstackableBranchFormat,
+        except (_mod_branch.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise

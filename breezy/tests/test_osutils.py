@@ -404,7 +404,7 @@ class TestDateTime(tests.TestCase):
         self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_format_date(self):
-        self.assertRaises(errors.UnsupportedTimezoneFormat,
+        self.assertRaises(osutils.UnsupportedTimezoneFormat,
             osutils.format_date, 0, timezone='foo')
         self.assertIsInstance(osutils.format_date(0), str)
         self.assertIsInstance(osutils.format_local_date(0), unicode)

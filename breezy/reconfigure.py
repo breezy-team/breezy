@@ -37,6 +37,79 @@ from .i18n import gettext
 # assumptions about what kind of change will be done.
 
 
+class BzrDirError(errors.BzrError):
+
+    def __init__(self, controldir):
+        display_url = urlutils.unescape_for_display(controldir.user_url,
+                                                    'ascii')
+        errors.BzrError.__init__(self, controldir=controldir,
+                                 display_url=display_url)
+
+
+class NoBindLocation(BzrDirError):
+
+    _fmt = "No location could be found to bind to at %(display_url)s."
+
+
+class UnsyncedBranches(BzrDirError):
+
+    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
+            " brz help sync-for-reconfigure.")
+
+    def __init__(self, controldir, target_branch):
+        errors.BzrError.__init__(self, controldir)
+        from . import urlutils
+        self.target_url = urlutils.unescape_for_display(target_branch.base,
+                                                        'ascii')
+
+
+class AlreadyBranch(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a branch."
+
+
+class AlreadyTree(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a tree."
+
+
+class AlreadyCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a checkout."
+
+
+class AlreadyLightweightCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
+
+
+class AlreadyWithTrees(BzrDirError):
+
+    _fmt = ("Shared repository '%(display_url)s' already creates "
+            "working trees.")
+
+
+class AlreadyWithNoTrees(BzrDirError):
+
+    _fmt = ("Shared repository '%(display_url)s' already doesn't create "
+            "working trees.")
+
+
+class ReconfigurationNotSupported(BzrDirError):
+
+    _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
+
+
 class ReconfigureStackedOn(object):
     """Reconfigures a branch to be stacked on another branch."""
 
@@ -120,13 +193,13 @@ class Reconfigure(object):
         """Return a Reconfiguration to convert this controldir into a branch
 
         :param controldir: The controldir to reconfigure
-        :raise errors.AlreadyBranch: if controldir is already a branch
+        :raise AlreadyBranch: if controldir is already a branch
         """
         reconfiguration = Reconfigure(controldir)
         reconfiguration._plan_changes(want_tree=False, want_branch=True,
                                       want_bound=False, want_reference=False)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadyBranch(controldir)
+            raise AlreadyBranch(controldir)
         return reconfiguration
 
     @staticmethod
@@ -134,13 +207,13 @@ class Reconfigure(object):
         """Return a Reconfiguration to convert this controldir into a tree
 
         :param controldir: The controldir to reconfigure
-        :raise errors.AlreadyTree: if controldir is already a tree
+        :raise AlreadyTree: if controldir is already a tree
         """
         reconfiguration = Reconfigure(controldir)
         reconfiguration._plan_changes(want_tree=True, want_branch=True,
                                       want_bound=False, want_reference=False)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadyTree(controldir)
+            raise AlreadyTree(controldir)
         return reconfiguration
 
     @staticmethod
@@ -149,13 +222,13 @@ class Reconfigure(object):
 
         :param controldir: The controldir to reconfigure
         :param bound_location: The location the checkout should be bound to.
-        :raise errors.AlreadyCheckout: if controldir is already a checkout
+        :raise AlreadyCheckout: if controldir is already a checkout
         """
         reconfiguration = Reconfigure(controldir, bound_location)
         reconfiguration._plan_changes(want_tree=True, want_branch=True,
                                       want_bound=True, want_reference=False)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadyCheckout(controldir)
+            raise AlreadyCheckout(controldir)
         return reconfiguration
 
     @classmethod
@@ -164,14 +237,14 @@ class Reconfigure(object):
 
         :param controldir: The controldir to reconfigure
         :param bound_location: The location the checkout should be bound to.
-        :raise errors.AlreadyLightweightCheckout: if controldir is already a
+        :raise AlreadyLightweightCheckout: if controldir is already a
             lightweight checkout
         """
         reconfiguration = klass(controldir, reference_location)
         reconfiguration._plan_changes(want_tree=True, want_branch=False,
                                       want_bound=False, want_reference=True)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadyLightweightCheckout(controldir)
+            raise AlreadyLightweightCheckout(controldir)
         return reconfiguration
 
     @classmethod
@@ -180,7 +253,7 @@ class Reconfigure(object):
         reconfiguration = klass(controldir)
         reconfiguration._set_use_shared(use_shared=True)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadyUsingShared(controldir)
+            raise AlreadyUsingShared(controldir)
         return reconfiguration
 
     @classmethod
@@ -189,7 +262,7 @@ class Reconfigure(object):
         reconfiguration = klass(controldir)
         reconfiguration._set_use_shared(use_shared=False)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadyStandalone(controldir)
+            raise AlreadyStandalone(controldir)
         return reconfiguration
 
     @classmethod
@@ -197,12 +270,12 @@ class Reconfigure(object):
         """Adjust a repository's working tree presence default"""
         reconfiguration = klass(controldir)
         if not reconfiguration.repository.is_shared():
-            raise errors.ReconfigurationNotSupported(reconfiguration.controldir)
+            raise ReconfigurationNotSupported(reconfiguration.controldir)
         if with_trees and reconfiguration.repository.make_working_trees():
-            raise errors.AlreadyWithTrees(controldir)
+            raise AlreadyWithTrees(controldir)
         elif (not with_trees
               and not reconfiguration.repository.make_working_trees()):
-            raise errors.AlreadyWithNoTrees(controldir)
+            raise AlreadyWithNoTrees(controldir)
         else:
             reconfiguration._repository_trees = with_trees
         return reconfiguration
@@ -211,9 +284,9 @@ class Reconfigure(object):
                       want_reference):
         """Determine which changes are needed to assume the configuration"""
         if not want_branch and not want_reference:
-            raise errors.ReconfigurationNotSupported(self.controldir)
+            raise ReconfigurationNotSupported(self.controldir)
         if want_branch and want_reference:
-            raise errors.ReconfigurationNotSupported(self.controldir)
+            raise ReconfigurationNotSupported(self.controldir)
         if self.repository is None:
             if not want_reference:
                 self._create_repository = True
@@ -272,7 +345,7 @@ class Reconfigure(object):
             reference_branch = branch.Branch.open(self._select_bind_location())
             if (reference_branch.last_revision() !=
                 self.local_branch.last_revision()):
-                raise errors.UnsyncedBranches(self.controldir, reference_branch)
+                raise UnsyncedBranches(self.controldir, reference_branch)
 
     def _select_bind_location(self):
         """Select a location to bind or create a reference to.
@@ -302,7 +375,7 @@ class Reconfigure(object):
                 return parent
         elif self.referenced_branch is not None:
             return self.referenced_branch.base
-        raise errors.NoBindLocation(self.controldir)
+        raise NoBindLocation(self.controldir)
 
     def apply(self, force=False):
         """Apply the reconfiguration
@@ -311,7 +384,7 @@ class Reconfigure(object):
             destroy local changes.
         :raise errors.UncommittedChanges: if the local tree is to be destroyed
             but contains uncommitted changes.
-        :raise errors.NoBindLocation: if no bind location was specified and
+        :raise NoBindLocation: if no bind location was specified and
             none could be autodetected.
         """
         if not force:

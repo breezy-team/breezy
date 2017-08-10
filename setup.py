@@ -285,6 +285,9 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
         include_dirs=include_dirs))
 
 
+add_cython_extension('breezy._simple_set_pyx')
+ext_modules.append(Extension('breezy._static_tuple_c',
+                             ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy._annotator_pyx')
 add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
@@ -303,9 +306,6 @@ else:
 add_cython_extension('breezy.bzr._chk_map_pyx')
 ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
-add_cython_extension('breezy._simple_set_pyx')
-ext_modules.append(Extension('breezy._static_tuple_c',
-                             ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 

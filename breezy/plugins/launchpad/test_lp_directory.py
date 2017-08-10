@@ -129,7 +129,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         :seealso: http://pad.lv/843900
         """
         # This ought to be natty-updates.
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
             self.assertResolve,
             '',
             'ubuntu:natty/updates/smartpm')
@@ -287,7 +287,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
             self, 'apt', dict(urls=[
                     'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
 
     def test_directory_fault(self):
@@ -297,7 +297,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
             raise xmlrpclib.Fault(42, 'something went wrong')
         factory.submit = submit
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
 
     def test_skip_bzr_ssh_launchpad_net_when_anonymous(self):
@@ -350,7 +350,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_url(self):
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
             directory._resolve, 'lp://ratotehunoahu')
 
     def test_resolve_tilde_to_user(self):
@@ -373,7 +373,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
         self.assertIs(None, get_lp_login())
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:~/apt/test', factory)
 
 
@@ -545,15 +545,15 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     # Bogus distro.
 
     def test_bogus_distro(self):
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           self.directory._resolve, 'gentoo:foo')
 
     def test_trick_bogus_distro_u(self):
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           self.directory._resolve, 'utube:foo')
 
     def test_trick_bogus_distro_d(self):
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           self.directory._resolve, 'debuntu:foo')
 
     def test_missing_ubuntu_distroseries_without_project(self):

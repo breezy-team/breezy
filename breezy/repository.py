@@ -65,6 +65,11 @@ class IsInWriteGroupError(errors.InternalBzrError):
         errors.InternalBzrError.__init__(self, repo=repo)
 
 
+class CannotSetRevisionId(errors.BzrError):
+
+    _fmt = "Repository format does not support setting revision ids."
+
+
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
@@ -74,8 +79,6 @@ class CommitBuilder(object):
 
     # all clients should supply tree roots.
     record_root_entry = True
-    # whether this commit builder supports the record_entry_contents interface
-    supports_record_entry_contents = False
     # whether this commit builder will automatically update the branch that is
     # being committed to
     updates_branch = False
@@ -93,7 +96,7 @@ class CommitBuilder(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         :param lossy: Whether to discard data that can not be natively
-            represented, when pushing to a foreign VCS 
+            represented, when pushing to a foreign VCS
         """
         self._config_stack = config_stack
         self._lossy = lossy
@@ -105,7 +108,6 @@ class CommitBuilder(object):
         else:
             self._committer = committer
 
-        self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
 
@@ -124,7 +126,7 @@ class CommitBuilder(object):
         else:
             self._timezone = int(timezone)
 
-        self._generate_revision_if_needed()
+        self._generate_revision_if_needed(revision_id)
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -186,7 +188,7 @@ class CommitBuilder(object):
         """Return new revision-id."""
         return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
-    def _generate_revision_if_needed(self):
+    def _generate_revision_if_needed(self, revision_id):
         """Create a revision id if None was supplied.
 
         If the repository can not support user-specified revision ids
@@ -195,20 +197,16 @@ class CommitBuilder(object):
 
         :raises: CannotSetRevisionId
         """
-        if self._new_revision_id is None:
+        if not self.repository._format.supports_setting_revision_ids:
+            if revision_id is not None:
+                raise CannotSetRevisionId()
+            return
+        if revision_id is None:
             self._new_revision_id = self._gen_revision_id()
             self.random_revid = True
         else:
+            self._new_revision_id = revision_id
             self.random_revid = False
-
-    def will_record_deletes(self):
-        """Tell the commit builder that deletes are being notified.
-
-        This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid, deletes against the basis MUST be recorded via
-        builder.record_delete().
-        """
-        raise NotImplementedError(self.will_record_deletes)
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
         """Record a new tree via iter_changes.
@@ -833,11 +831,29 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def get_revisions(self, revision_ids):
         """Get many revisions at once.
-        
-        Repositories that need to check data on every revision read should 
+
+        Repositories that need to check data on every revision read should
         subclass this method.
         """
-        raise NotImplementedError(self.get_revisions)
+        revs = {}
+        for revid, rev in self.iter_revisions(revision_ids):
+            if rev is None:
+                raise errors.NoSuchRevision(self, revid)
+            revs[revid] = rev
+        return [revs[revid] for revid in revision_ids]
+
+    def iter_revisions(self, revision_ids):
+        """Iterate over revision objects.
+
+        :param revision_ids: An iterable of revisions to examine. None may be
+            passed to request all revisions known to the repository. Note that
+            not all repositories can find unreferenced revisions; for those
+            repositories only referenced ones will be returned.
+        :return: An iterator of (revid, revision) tuples. Absent revisions (
+            those asked for but not available) are returned as (revid, None).
+            N.B.: Revisions are not necessarily yielded in order.
+        """
+        raise NotImplementedError(self.iter_revisions)
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
@@ -1252,7 +1268,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     created.
 
     Common instance attributes:
-    _matchingbzrdir - the controldir format that the repository format was
+    _matchingcontroldir - the controldir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
     parameterization.
@@ -1294,6 +1310,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_revision_signatures = True
     # Can the revision graph have incorrect parents?
     revision_graph_can_have_wrong_parents = None
+    # Does this format support setting revision ids?
+    supports_setting_revision_ids = True
     # Does this format support rich root data?
     rich_root_data = None
     # Does this format support explicitly versioned directories?

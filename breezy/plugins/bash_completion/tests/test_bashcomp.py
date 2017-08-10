@@ -120,7 +120,7 @@ _brz() {
 
     def test_init_opts(self):
         self.complete(['brz', 'init', '-'])
-        self.assertCompletionContains('-h', '--2a', '--format=2a')
+        self.assertCompletionContains('-h', '--format=2a')
 
     def test_global_opts(self):
         self.complete(['brz', '-', 'init'], cword=1)

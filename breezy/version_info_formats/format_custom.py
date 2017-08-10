@@ -30,6 +30,19 @@ from breezy.version_info_formats import (
    )
 
 
+class MissingTemplateVariable(errors.BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
+
+
+class NoTemplate(errors.BzrError):
+
+    _fmt = 'No template specified.'
+
+
 class Template(object):
     """A simple template engine.
 
@@ -74,7 +87,7 @@ class Template(object):
             try:
                 data = self._data[name]
             except KeyError:
-                raise errors.MissingTemplateVariable(name)
+                raise MissingTemplateVariable(name)
             if not isinstance(data, str):
                 data = str(data)
             yield data
@@ -85,7 +98,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
 
     def generate(self, to_file):
         if self._template is None:
-            raise errors.NoTemplate()
+            raise NoTemplate()
 
         info = Template()
         info.add('build_date', create_date_str())
