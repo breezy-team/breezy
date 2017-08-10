@@ -46,13 +46,13 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
         tree1 = self.make_branch_and_tree('base')
         self.build_tree(['base/a'])
         tree1.add(['a'])
-        tree1.commit('first', rev_id='rev-1')
+        rev1 = tree1.commit('first')
         self.build_tree(['base/b'])
         tree1.add(['b'])
-        tree1.commit('second', rev_id='rev-2')
+        tree1.commit('second')
 
-        tree2 = tree1.branch.create_checkout('checkout', revision_id='rev-1')
-        self.assertEqual('rev-1', tree2.last_revision())
+        tree2 = tree1.branch.create_checkout('checkout', revision_id=rev1)
+        self.assertEqual(rev1, tree2.last_revision())
         self.assertPathExists('checkout/a')
         self.assertPathDoesNotExist('checkout/b')
 

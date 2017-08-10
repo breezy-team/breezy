@@ -41,7 +41,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'a', 'not-a-dir/b')
@@ -50,7 +50,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/'])
         tree.add(['a'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'not-a-file', 'a/failure')
         self.assertRaises(errors.BzrMoveFailedError,
@@ -60,7 +60,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'b'])
         tree.add(['b'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'b', 'a/b')
 
@@ -68,7 +68,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'b'])
         tree.add(['a'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'b', 'a/b')
 
@@ -76,7 +76,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         a_contents = tree.get_file_text('a-id')
@@ -92,7 +92,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         a_contents = tree.get_file_text('a-id')
@@ -108,7 +108,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree)
@@ -127,7 +127,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         c_contents = tree.get_file_text('c-id')
         tree.rename_one('b/c', 'd')
@@ -142,7 +142,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/a', 'c'])
         tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         # Target already exists
         self.assertRaises(errors.RenameFailedFilesExist,
@@ -156,7 +156,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'a', 'b')
@@ -165,7 +165,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['b/', 'b/a'])
         tree.add(['b', 'b/a'], ['b-id', 'a-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'b/a', 'b/a')
@@ -174,7 +174,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'], ['a-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'a', 'a')
@@ -183,7 +183,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
 
@@ -201,7 +201,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
 
@@ -218,7 +218,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'], ['a-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b')
         tree.add(['b'], ['b-id'])
@@ -234,7 +234,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.unlink('a')
 
@@ -249,7 +249,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'], ['a-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b')
         tree.add(['b'], ['b-id'])
@@ -264,7 +264,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
         tree.remove(['a'])
@@ -282,7 +282,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         # Passing after when the file hasn't been rename_one raises an exception
@@ -297,7 +297,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/foo'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         # TODO: jam 20070225 I would usually use 'rb', but assertFileEqual
@@ -336,7 +336,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c/', 'a/c/d', 'e/'])
         tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'],
                  ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a', 'e/f')
@@ -352,7 +352,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'c/'])
         tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'c/foo')
