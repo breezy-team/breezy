@@ -134,14 +134,14 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.build_tree(['a/foo'])
         tree_a.add('foo')
         file_id = tree_a.path2id('foo')
-        tree_a.commit('rev1', rev_id='rev1')
+        rev1 = tree_a.commit('rev1')
         bzrdirb = self.make_controldir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
-        tree_b = repo_b.revision_tree('rev1')
+        tree_b = repo_b.revision_tree(rev1)
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
         tree_b.get_file_text(file_id)
-        rev1 = repo_b.get_revision('rev1')
+        repo_b.get_revision(rev1)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
@@ -256,14 +256,14 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
         wt.set_root_id('fixed-root')
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
-        tree = wt.branch.repository.revision_tree('revision-1')
+        rev1 = wt.commit('lala!', allow_pointless=True)
+        tree = wt.branch.repository.revision_tree(rev1)
         tree.lock_read()
         try:
-            self.assertEqual('revision-1',
+            self.assertEqual(rev1,
                 tree.get_file_revision(tree.get_root_id()))
             expected = inventory.InventoryDirectory('fixed-root', '', None)
-            expected.revision = 'revision-1'
+            expected.revision = rev1
             self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
                              list(tree.list_files(include_root=True)))
         finally:
@@ -281,16 +281,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.build_tree(['a/foo'])
         tree_a.add('foo')
         file1_id = tree_a.path2id('foo')
-        tree_a.commit('rev1', rev_id='rev1')
+        rev1 = tree_a.commit('rev1')
         self.build_tree(['a/vla'])
         tree_a.add('vla')
         file2_id = tree_a.path2id('vla')
-        tree_a.commit('rev2', rev_id='rev2')
+        rev2 = tree_a.commit('rev2')
 
-        delta = tree_a.branch.repository.get_revision_delta('rev1')
+        delta = tree_a.branch.repository.get_revision_delta(rev1)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('foo', file1_id, 'file')], delta.added)
-        delta = tree_a.branch.repository.get_revision_delta('rev2')
+        delta = tree_a.branch.repository.get_revision_delta(rev2)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('vla', file2_id, 'file')], delta.added)
 
@@ -333,18 +333,18 @@ class TestRepository(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "repository does not support signing revisions")
         wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
+        a = wt.commit('A', allow_pointless=True)
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
         try:
-            repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+            repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
             raise tests.TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
-        old_signature = repo.get_signature_text('A')
+        old_signature = repo.get_signature_text(a)
         try:
             old_format = controldir.ControlDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
@@ -358,7 +358,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.BadConversionTarget as e:
             raise tests.TestSkipped(str(e))
         wt = workingtree.WorkingTree.open(wt.basedir)
-        new_signature = wt.branch.repository.get_signature_text('A')
+        new_signature = wt.branch.repository.get_signature_text(a)
         self.assertEqual(old_signature, new_signature)
 
     def test_format_description(self):
@@ -374,8 +374,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
-        tree.commit(message, rev_id='a', allow_pointless=True)
-        rev = tree.branch.repository.get_revision('a')
+        a = tree.commit(message, allow_pointless=True)
+        rev = tree.branch.repository.get_revision(a)
         serializer = getattr(tree.branch.repository, "_serializer", None)
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
@@ -407,8 +407,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_check_repository(self):
         """Check a fairly simple repository's history"""
         tree = self.make_branch_and_tree('.')
-        tree.commit('initial empty commit', rev_id='a-rev',
-                    allow_pointless=True)
+        a_rev = tree.commit('initial empty commit', allow_pointless=True)
         result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
@@ -416,14 +415,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_get_revisions(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('initial empty commit', rev_id='a-rev',
-                    allow_pointless=True)
-        tree.commit('second empty commit', rev_id='b-rev',
-                    allow_pointless=True)
-        tree.commit('third empty commit', rev_id='c-rev',
-                    allow_pointless=True)
+        a_rev = tree.commit('initial empty commit', allow_pointless=True)
+        b_rev = tree.commit('second empty commit', allow_pointless=True)
+        c_rev = tree.commit('third empty commit', allow_pointless=True)
         repo = tree.branch.repository
-        revision_ids = ['a-rev', 'b-rev', 'c-rev']
+        revision_ids = [a_rev, b_rev, c_rev]
         revisions = repo.get_revisions(revision_ids)
         self.assertEqual(len(revisions), 3)
         zipped = list(zip(revisions, revision_ids))
@@ -434,31 +430,29 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_iter_revisions(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('initial empty commit', rev_id='a-rev',
-                    allow_pointless=True)
-        tree.commit('second empty commit', rev_id='b-rev',
-                    allow_pointless=True)
-        tree.commit('third empty commit', rev_id='c-rev',
-                    allow_pointless=True)
+        a_rev = tree.commit('initial empty commit', allow_pointless=True)
+        b_rev = tree.commit('second empty commit', allow_pointless=True)
+        c_rev = tree.commit('third empty commit', allow_pointless=True)
+        d_rev = 'd-rev'
         repo = tree.branch.repository
-        revision_ids = ['a-rev', 'c-rev', 'b-rev', 'd-rev']
+        revision_ids = [a_rev, c_rev, b_rev, d_rev]
         revid_with_rev = repo.iter_revisions(revision_ids)
         self.assertEqual(
             set((revid, rev.revision_id if rev is not None else None)
                 for (revid, rev) in revid_with_rev),
-            {('a-rev', 'a-rev'),
-             ('b-rev', 'b-rev'),
-             ('c-rev', 'c-rev'),
-             ('d-rev', None)})
+            {(a_rev, a_rev),
+             (b_rev, b_rev),
+             (c_rev, c_rev),
+             (d_rev, None)})
 
     def test_root_entry_has_revision(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('message', rev_id='rev_id')
+        revid = tree.commit('message')
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         root_id = rev_tree.get_root_id()
-        self.assertEqual('rev_id', rev_tree.get_file_revision(root_id))
+        self.assertEqual(revid, rev_tree.get_file_revision(root_id))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
@@ -481,17 +475,17 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree.add(['file1', 'file2'])
         file1_id = tree.path2id('file1')
         file2_id = tree.path2id('file2')
-        tree.commit('rev1', rev_id='rev1')
+        rev1 = tree.commit('rev1')
         self.build_tree_contents([('tree/file1', 'baz')])
-        tree.commit('rev2', rev_id='rev2')
+        rev2 = tree.commit('rev2')
         repository = tree.branch.repository
         repository.lock_read()
         self.addCleanup(repository.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
                          repository.iter_files_bytes(
-                         [(file1_id, 'rev1', 'file1-old'),
-                          (file1_id, 'rev2', 'file1-new'),
-                          (file2_id, 'rev1', 'file2'),
+                         [(file1_id, rev1, 'file1-old'),
+                          (file1_id, rev2, 'file1-new'),
+                          (file2_id, rev1, 'file2'),
                          ]))
         self.assertEqual('foo', extracted['file1-old'])
         self.assertEqual('bar', extracted['file2'])
@@ -514,13 +508,13 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('here')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('initial commit', rev_id='rev1')
+        rev1 = tree.commit('initial commit')
         tree.add_parent_tree_id('ghost')
-        tree.commit('commit-with-ghost', rev_id='rev2')
+        rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
-        parents = graph.get_parent_map(['ghost', 'rev2'])
+        parents = graph.get_parent_map(['ghost', rev2])
         self.assertTrue('ghost' not in parents)
-        self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
+        self.assertEqual(parents[rev2], (rev1, 'ghost'))
 
     def test_get_known_graph_ancestry(self):
         tree = self.make_branch_and_tree('here')
@@ -531,25 +525,25 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # | B
         # |/
         # C
-        tree.commit('initial commit', rev_id='A')
+        a = tree.commit('initial commit')
         tree_other = tree.controldir.sprout('there').open_workingtree()
-        tree_other.commit('another', rev_id='B')
+        b = tree_other.commit('another')
         tree.merge_from_branch(tree_other.branch)
-        tree.commit('another', rev_id='C')
+        c = tree.commit('another')
         kg = tree.branch.repository.get_known_graph_ancestry(
-            ['C'])
-        self.assertEqual(['C'], list(kg.heads(['A', 'B', 'C'])))
-        self.assertEqual(['A', 'B', 'C'], list(kg.topo_sort()))
+            [c])
+        self.assertEqual([c], list(kg.heads([a, b, c])))
+        self.assertEqual([a, b, c], list(kg.topo_sort()))
 
     def test_parent_map_type(self):
         tree = self.make_branch_and_tree('here')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('initial commit', rev_id='rev1')
-        tree.commit('next commit', rev_id='rev2')
+        rev1 = tree.commit('initial commit')
+        rev2 = tree.commit('next commit')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map(
-            [_mod_revision.NULL_REVISION, 'rev1', 'rev2'])
+            [_mod_revision.NULL_REVISION, rev1, rev2])
         for value in parents.values():
             self.assertIsInstance(value, tuple)
 
@@ -924,7 +918,6 @@ class TestEscaping(tests.TestCaseWithTransport):
             return
         self.transport_server = test_server.FakeVFATServer
         FOO_ID = 'foo<:>ID'
-        REV_ID = 'revid-1'
         # this makes a default format repository always, which is wrong:
         # it should be a TestCaseWithRepository in order to get the
         # default format.
@@ -934,10 +927,10 @@ class TestEscaping(tests.TestCaseWithTransport):
         self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
         wt.add(['foo'], [FOO_ID])
-        wt.commit('this is my new commit', rev_id=REV_ID)
+        rev1 = wt.commit('this is my new commit')
         # now access over vfat; should be safe
         branch = controldir.ControlDir.open(self.get_url('repo')).open_branch()
-        revtree = branch.repository.revision_tree(REV_ID)
+        revtree = branch.repository.revision_tree(rev1)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(FOO_ID)
@@ -947,10 +940,10 @@ class TestEscaping(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('repo')
         self.build_tree(['repo/file1'])
         wt.add('file1')
-        wt.commit('file1', rev_id='rev1')
+        rev1 = wt.commit('file1')
         fileobj = BytesIO()
         wt.branch.repository.create_bundle(
-            'rev1', _mod_revision.NULL_REVISION, fileobj)
+            rev1, _mod_revision.NULL_REVISION, fileobj)
 
 
 class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
@@ -973,16 +966,16 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
         self.tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
         self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
-                   ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
-        self.tree_a.commit('rev1', rev_id='rev1')
+                        ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
+        self.rev1 = self.tree_a.commit('rev1')
         self.build_tree(['a/bar/b3'])
         self.tree_a.add('bar/b3', 'b3-id')
-        self.tree_a.commit('rev2', rev_id='rev2')
+        self.rev2 = self.tree_a.commit('rev2')
         self.repository = self.tree_a.branch.repository
 
     def test_multiple_files(self):
         # Test multiple files
-        delta = self.repository.get_revision_delta('rev1',
+        delta = self.repository.get_revision_delta(self.rev1,
             specific_fileids=[self.tree_a.path2id('foo'),
                               self.tree_a.path2id('baz')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
@@ -993,7 +986,7 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_directory(self):
         # Test a directory
-        delta = self.repository.get_revision_delta('rev1',
+        delta = self.repository.get_revision_delta(self.rev1,
             specific_fileids=['bar-id'])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
@@ -1004,14 +997,14 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_unrelated(self):
         # Try another revision
-        delta = self.repository.get_revision_delta('rev2',
+        delta = self.repository.get_revision_delta(self.rev2,
                 specific_fileids=[self.tree_a.path2id('foo')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([], delta.added)
 
     def test_file_in_directory(self):
         # Test a file in a directory, both of which were added
-        delta = self.repository.get_revision_delta('rev1',
+        delta = self.repository.get_revision_delta(self.rev1,
             specific_fileids=[self.tree_a.path2id('bar/b2')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
@@ -1020,7 +1013,7 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
             ], delta.added)
 
     def test_file_in_unchanged_directory(self):
-        delta = self.repository.get_revision_delta('rev2',
+        delta = self.repository.get_revision_delta(self.rev2,
             specific_fileids=[self.tree_a.path2id('bar/b3')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         if delta.added == [

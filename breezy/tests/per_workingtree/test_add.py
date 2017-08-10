@@ -59,7 +59,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         file_id = tree.path2id('a')
-        tree.commit('first', rev_id='rev-1')
+        tree.commit('first')
         root_id = tree.get_root_id()
         # And the entry should not have been added.
         tree.unversion([file_id])
@@ -165,7 +165,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
         root_id = tree.get_root_id()
         tree.add(['dir'])
-        tree.commit('dir', rev_id='rev-1')
+        tree.commit('dir')
         tree.unversion([tree.path2id('dir')])
         self.assertRaises(errors.NotVersionedError,
                           tree.add, ['dir/subdir'])

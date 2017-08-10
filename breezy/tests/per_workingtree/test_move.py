@@ -77,7 +77,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'not-a-dir')
@@ -87,7 +87,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/'])
         tree.add(['a'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['not-a-file'], 'a')
         self.assertRaises(errors.BzrMoveFailedError,
@@ -98,7 +98,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'b'])
         tree.add(['b'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b'], 'a')
         tree._validate()
@@ -107,7 +107,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'b'])
         tree.add(['a'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b'], 'a')
         tree._validate()
@@ -116,7 +116,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'b', 'c', 'd'])
         tree.add(['a', 'c', 'd'], ['a-id', 'c-id', 'd-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['c', 'b', 'd'], 'a')
@@ -139,7 +139,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'b'])
         tree.add(['a', 'a/b', 'b'], ['a-id', 'ab-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         root_id = tree.get_root_id()
         tree.remove(['a/b'], keep_files=False)
@@ -154,7 +154,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree)
@@ -175,7 +175,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         c_contents = tree.get_file_text('c-id')
         self.assertEqual([('b/c', 'c')],
@@ -192,7 +192,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/a', 'c'])
         tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         # Target already exists
         self.assertRaises(errors.RenameFailedFilesExist,
@@ -214,7 +214,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['b/', 'b/a'])
         tree.add(['b', 'b/a'], ['b-id', 'a-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b/a'], 'b')
@@ -224,7 +224,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'], ['a-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'a')
@@ -234,7 +234,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/a')
 
@@ -254,7 +254,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/a')
 
@@ -273,7 +273,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         # Passing after when the file hasn't been move raises an exception
@@ -287,7 +287,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/a'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         # TODO: jam 20070225 I would usually use 'rb', but assertFileEqual
@@ -328,7 +328,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c/', 'a/c/d', 'e/'])
         tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'],
                  ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('a', 'e/a')],
@@ -349,7 +349,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['c/', 'c/b/', 'c/b/d/'])
         tree.add(['c', 'c/b', 'c/b/d'],
                  ['c-id', 'b-id', 'd-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('c/b', 'b')],
@@ -366,7 +366,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c/', 'd/'])
         tree.add(['a', 'a/b', 'a/c', 'd'],
                  ['a-id', 'b-id', 'c-id', 'd-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'a/c/b')
@@ -391,7 +391,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d', 'b/'])
         tree.add(['a', 'b', 'a/b', 'a/c', 'a/d'],
                  ['a-id', 'b-id', 'ab-id', 'ac-id', 'ad-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.remove(['a/b', 'a/d'])
@@ -409,7 +409,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/c', 'b/'])
         tree.add(['a', 'b', 'a/c'], ['a-id', 'b-id', 'ac-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.build_tree(['a/b', 'a/d'])
@@ -431,7 +431,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c', 'd', 'e/'])
         tree.add(['a', 'a/b', 'a/c', 'd', 'e'],
                  ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('a/b', 'b')],
@@ -468,7 +468,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c', 'd/'])
         tree.add(['a', 'a/b', 'a/c', 'd'],
                  ['a-id', 'b-id', 'c-id', 'd-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'a/d')
@@ -493,7 +493,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d', 'e/'])
         tree.add(['a', 'a/b', 'a/c', 'a/d', 'e'],
                  ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'a/bb')
@@ -522,7 +522,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'c/'])
         tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('a/b', 'c/b')],

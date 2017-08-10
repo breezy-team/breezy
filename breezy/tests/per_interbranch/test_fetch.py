@@ -30,7 +30,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
         wt.add(['foo'])
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_to_branch('b2')
         b2.fetch(b1)
@@ -38,8 +38,8 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         # fetch does not update the last revision
         self.assertEqual(NULL_REVISION, b2.last_revision())
 
-        rev = b2.repository.get_revision('revision-1')
-        tree = b2.repository.revision_tree('revision-1')
+        b2.repository.get_revision(rev1)
+        tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
@@ -51,9 +51,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         builder = self.make_branch_builder('b1',
             format=self.branch_format_from._matchingcontroldir)
         builder.start_series()
-        builder.build_commit(rev_id='revision-1')
-        builder.build_commit(rev_id='revision-2')
-        builder.build_commit(rev_id='revision-3')
+        rev1 = builder.build_commit()
+        rev2 = builder.build_commit()
+        rev3 = builder.build_commit()
         builder.finish_series()
         b1 = builder.get_branch()
         b2 = self.make_to_branch('b2')
@@ -62,10 +62,8 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         # fetch does not update the last revision
         self.assertEqual(NULL_REVISION, b2.last_revision())
 
-        self.assertEqual(
-            {'revision-1'},
-            b2.repository.has_revisions(
-                ['revision-1', 'revision-2', 'revision-3']))
+        self.assertEqual({rev1},
+                         b2.repository.has_revisions([rev1, rev2, rev3]))
 
     def test_fetch_revisions_limit_incremental(self):
         """Test incremental fetch-revision operation with limit."""
@@ -73,18 +71,18 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
         wt.add(['foo'])
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_to_branch('b2')
         b2.fetch(b1, limit=1)
 
         self.assertEqual(
-            {'revision-1'},
+            {rev1},
             b2.repository.has_revisions(
-                ['revision-1', 'revision-2', 'revision-3']))
+                [rev1, 'revision-2', 'revision-3']))
 
-        wt.commit('hmm', rev_id='revision-2')
-        wt.commit('hmmm', rev_id='revision-3')
+        rev2 = wt.commit('hmm')
+        rev3 = wt.commit('hmmm')
 
         b2.fetch(b1, limit=1)
 
@@ -92,6 +90,5 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.assertEqual(NULL_REVISION, b2.last_revision())
 
         self.assertEqual(
-            {'revision-1', 'revision-2'},
-            b2.repository.has_revisions(
-                ['revision-1', 'revision-2', 'revision-3']))
+            {rev1, rev2},
+            b2.repository.has_revisions([rev1, rev2, rev3]))
