@@ -17,7 +17,7 @@ update the tree. To do this you will need some build dependencies installed
 including make, a C compiler, and the Python header files.
 
 3. If you can't or don't want to build the extensions, add this line to
-bazaar.conf (whose location is shown by 'brz --version')::
+breezy.conf (whose location is shown by 'brz --version')::
 
   suppress_warnings=missing_extensions
 

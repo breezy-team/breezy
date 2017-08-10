@@ -182,13 +182,13 @@ class BzrBranchFormat4(BranchFormat):
         from .bzrdir import (
             BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
             )
-        self._matchingbzrdir = BzrDirFormat6()
+        self._matchingcontroldir = BzrDirFormat6()
         self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
             BzrDirFormat6]
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
+        return self._matchingcontroldir.get_format_string()
 
     def get_format_description(self):
         return "Branch format 4"

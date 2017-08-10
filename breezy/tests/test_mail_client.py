@@ -118,7 +118,7 @@ class TestXDGEmail(tests.TestCase):
 
     def test_commandline(self):
         xdg_email = mail_client.XDGEmail(None)
-        self.assertRaises(errors.NoMailAddressSpecified,
+        self.assertRaises(mail_client.NoMailAddressSpecified,
                           xdg_email._get_compose_commandline,
                           None, None, 'file%')
         commandline = xdg_email._get_compose_commandline(
@@ -233,7 +233,7 @@ class TestClaws(tests.TestCase):
 
     def test_to_required(self):
         claws = mail_client.Claws(None)
-        self.assertRaises(errors.NoMailAddressSpecified,
+        self.assertRaises(mail_client.NoMailAddressSpecified,
                           claws._get_compose_commandline,
                           None, None, 'file%')
 

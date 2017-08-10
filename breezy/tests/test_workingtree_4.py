@@ -782,7 +782,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
             state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
                                             [('f', '', 0, False, ''),
                                              ('r', 'bar', 0 , False, '')]))
-            self.assertListRaises(errors.CorruptDirstate,
+            self.assertListRaises(dirstate.DirstateCorrupt,
                                   tree.iter_changes, tree.basis_tree())
         finally:
             tree.unlock()

@@ -25,6 +25,16 @@ from __future__ import absolute_import
 from . import errors
 
 
+class AlreadyBuilding(errors.BzrError):
+
+    _fmt = "The tree builder is already building a tree."
+
+
+class NotBuilding(errors.BzrError):
+
+    _fmt = "Not currently building a tree."
+
+
 class TreeBuilder(object):
     """A TreeBuilder allows the creation of specific content in one tree at a
     time.
@@ -59,7 +69,7 @@ class TreeBuilder(object):
     def _ensure_building(self):
         """Raise NotBuilding if there is no current tree being built."""
         if self._tree is None:
-            raise errors.NotBuilding
+            raise NotBuilding
 
     def finish_tree(self):
         """Finish building the current tree."""
@@ -75,6 +85,6 @@ class TreeBuilder(object):
             MutableTree interface.
         """
         if self._tree is not None:
-            raise errors.AlreadyBuilding
+            raise AlreadyBuilding
         self._tree = tree
         self._tree.lock_tree_write()

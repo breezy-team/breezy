@@ -604,8 +604,8 @@ known_env_variables = [
     ("BRZ_PLUGIN_PATH", "Paths where brz should look for plugins."),
     ("BRZ_DISABLE_PLUGINS", "Plugins that brz should not load."),
     ("BRZ_PLUGINS_AT", "Plugins to load from a directory not in BRZ_PLUGIN_PATH."),
-    ("BRZ_HOME", "Directory holding .bazaar config dir. Overrides HOME."),
-    ("BRZ_HOME (Win32)", "Directory holding bazaar config dir. Overrides APPDATA and HOME."),
+    ("BRZ_HOME", "Directory holding breezy config dir. Overrides HOME."),
+    ("BRZ_HOME (Win32)", "Directory holding breezy config dir. Overrides APPDATA and HOME."),
     ("BZR_REMOTE_PATH", "Full name of remote 'brz' command (for brz+ssh:// URLs)."),
     ("BRZ_SSH", "Path to SSH client, or one of paramiko, openssh, sshcorp, plink or lsh."),
     ("BRZ_LOG", "Location of .brz.log (use '/dev/null' to suppress log)."),
@@ -636,8 +636,8 @@ def _env_variables(topic):
 _files = \
 r"""Files
 
-:On Unix:   ~/.bazaar/bazaar.conf
-:On Windows: C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf
+:On Unix:   ~/.config/breezy/breezy.conf
+:On Windows: C:\\Documents and Settings\\username\\Application Data\\Breezy\\2.0\\breezy.conf
 
 Contains the user's default configuration. The section ``[DEFAULT]`` is
 used to define general configuration that will be applied everywhere.

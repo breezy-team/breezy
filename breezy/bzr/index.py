@@ -28,7 +28,6 @@ __all__ = [
 
 from bisect import bisect_right
 import re
-import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -54,6 +53,62 @@ _OPTION_KEY_ELEMENTS = b"key_elements="
 _OPTION_LEN = b"len="
 _OPTION_NODE_REFS = b"node_ref_lists="
 _SIGNATURE = b"Bazaar Graph Index 1\n"
+
+
+class BadIndexFormatSignature(errors.BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        errors.BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
+class BadIndexData(errors.BzrError):
+
+    _fmt = "Error in data for index %(value)s."
+
+    def __init__(self, value):
+        errors.BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexDuplicateKey(errors.BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        errors.BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
+class BadIndexKey(errors.BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        errors.BzrError.__init__(self)
+        self.key = key
+
+
+class BadIndexOptions(errors.BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        errors.BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(errors.BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
+
+    def __init__(self, value):
+        errors.BzrError.__init__(self)
+        self.value = value
 
 
 _whitespace_re = re.compile(b'[\t\n\x0b\x0c\r\x00 ]')
@@ -112,12 +167,12 @@ class GraphIndexBuilder(object):
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
         if type(key) not in (tuple, StaticTuple):
-            raise errors.BadIndexKey(key)
+            raise BadIndexKey(key)
         if self._key_length != len(key):
-            raise errors.BadIndexKey(key)
+            raise BadIndexKey(key)
         for element in key:
             if not element or _whitespace_re.search(element) is not None:
-                raise errors.BadIndexKey(element)
+                raise BadIndexKey(element)
 
     def _external_references(self):
         """Return references that are not present in this index.
@@ -201,9 +256,9 @@ class GraphIndexBuilder(object):
         as_st = StaticTuple.from_sequence
         self._check_key(key)
         if _newline_null_re.search(value) is not None:
-            raise errors.BadIndexValue(value)
+            raise BadIndexValue(value)
         if len(references) != self.reference_lists:
-            raise errors.BadIndexValue(references)
+            raise BadIndexValue(references)
         node_refs = []
         absent_references = []
         for reference_list in references:
@@ -232,7 +287,7 @@ class GraphIndexBuilder(object):
         (node_refs,
          absent_references) = self._check_key_ref_value(key, references, value)
         if key in self._nodes and self._nodes[key][0] != 'a':
-            raise errors.BadIndexDuplicateKey(key, self)
+            raise BadIndexDuplicateKey(key, self)
         for reference in absent_references:
             # There may be duplicates, but I don't think it is worth worrying
             # about
@@ -492,7 +547,7 @@ class GraphIndex(object):
         # cache the keys for quick set intersections
         if trailers != 1:
             # there must be one line - the empty trailer line.
-            raise errors.BadIndexData(self)
+            raise BadIndexData(self)
 
     def clear_cache(self):
         """Clear out any cached/memoized values.
@@ -558,28 +613,28 @@ class GraphIndex(object):
     def _read_prefix(self, stream):
         signature = stream.read(len(self._signature()))
         if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+            raise BadIndexFormatSignature(self._name, GraphIndex)
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):-1])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_LEN):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):-1])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
 
     def _resolve_references(self, references):
         """Return the resolved key references for references.
@@ -906,29 +961,29 @@ class GraphIndex(object):
         """
         signature = bytes[0:len(self._signature())]
         if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+            raise BadIndexFormatSignature(self._name, GraphIndex)
         lines = bytes[len(self._signature()):].splitlines()
         options_line = lines[0]
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         # calculate the bytes we have processed
         header_end = (len(signature) + len(lines[0]) + len(lines[1]) +
             len(lines[2]) + 3)
@@ -1087,7 +1142,7 @@ class GraphIndex(object):
                 continue
             elements = line.split('\0')
             if len(elements) != self._expected_elements:
-                raise errors.BadIndexData(self)
+                raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
             key = tuple([intern(element) for element in elements[:self._key_length]])
@@ -1739,11 +1794,11 @@ class GraphIndexPrefixAdapter(object):
         for node in an_iter:
             # cross checks
             if node[1][:self.prefix_len] != self.prefix:
-                raise errors.BadIndexData(self)
+                raise BadIndexData(self)
             for ref_list in node[3]:
                 for ref_node in ref_list:
                     if ref_node[:self.prefix_len] != self.prefix:
-                        raise errors.BadIndexData(self)
+                        raise BadIndexData(self)
             yield node[0], node[1][self.prefix_len:], node[2], (
                 tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
                 for ref_list in node[3]))
@@ -1807,9 +1862,9 @@ class GraphIndexPrefixAdapter(object):
 def _sanity_check_key(index_or_builder, key):
     """Raise BadIndexKey if key cannot be used for prefix matching."""
     if key[0] is None:
-        raise errors.BadIndexKey(key)
+        raise BadIndexKey(key)
     if len(key) != index_or_builder._key_length:
-        raise errors.BadIndexKey(key)
+        raise BadIndexKey(key)
 
 
 def _iter_entries_prefix(index_or_builder, nodes_by_key, keys):

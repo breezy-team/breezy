@@ -586,7 +586,7 @@ class ConnectionHandler(urllib2.BaseHandler):
         if not host:
             # Just a bit of paranoia here, this should have been
             # handled in the higher levels
-            raise errors.InvalidURL(request.get_full_url(), 'no host given.')
+            raise urlutils.InvalidURL(request.get_full_url(), 'no host given.')
 
         # We create a connection (but it will not connect until the first
         # request is made)
@@ -597,7 +597,7 @@ class ConnectionHandler(urllib2.BaseHandler):
                 ca_certs=self.ca_certs)
         except httplib.InvalidURL as exception:
             # There is only one occurrence of InvalidURL in httplib
-            raise errors.InvalidURL(request.get_full_url(),
+            raise urlutils.InvalidURL(request.get_full_url(),
                                     extra='nonnumeric port')
 
         return connection
@@ -1127,7 +1127,7 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         parsed_url = transport.ConnectedTransport._split_url(proxy)
         if not parsed_url.host:
-            raise errors.InvalidURL(proxy, 'No host component')
+            raise urlutils.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first

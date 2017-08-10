@@ -70,7 +70,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file1'])
-        tree.add('file1', 'file1-id')
+        tree.add('file1')
         tree.set_root_id('root-id')
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
         sub_tree.set_root_id('root-id')

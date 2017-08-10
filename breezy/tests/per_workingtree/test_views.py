@@ -21,7 +21,7 @@ The views are actually in the WorkingTree.views namespace, but these are
 """
 
 
-from breezy import views, errors
+from breezy import views as _mod_views
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.workingtree import WorkingTree
 
@@ -64,7 +64,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertEqual(view_current, current)
         self.assertEqual(view_dict, views)
         # test setting a current view which does not exist
-        self.assertRaises(errors.NoSuchView,
+        self.assertRaises(_mod_views.NoSuchView,
             wt.views.set_view_info, 'yet-another', view_dict)
         current, views = wt.views.get_view_info()
         self.assertEqual(view_current, current)
@@ -116,7 +116,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('wt')
         try:
             wt.views.lookup_view('opaque')
-        except errors.NoSuchView as e:
+        except _mod_views.NoSuchView as e:
             self.assertEqual(e.view_name, 'opaque')
             self.assertEqual(str(e), 'No such view: opaque.')
         else:
@@ -130,15 +130,15 @@ class TestTreeViews(TestCaseWithWorkingTree):
         # now try to delete it
         wt.views.delete_view(view_name)
         # now you can't look it up
-        self.assertRaises(errors.NoSuchView,
+        self.assertRaises(_mod_views.NoSuchView,
             wt.views.lookup_view, view_name)
         # and it's not in the dictionary
         self.assertEqual(wt.views.get_view_info()[1], {})
         # and you can't remove it a second time
-        self.assertRaises(errors.NoSuchView,
+        self.assertRaises(_mod_views.NoSuchView,
             wt.views.delete_view, view_name)
         # or remove a view that never existed
-        self.assertRaises(errors.NoSuchView,
+        self.assertRaises(_mod_views.NoSuchView,
             wt.views.delete_view, view_name + '2')
 
     def test_check_path_in_view(self):
@@ -148,14 +148,14 @@ class TestTreeViews(TestCaseWithWorkingTree):
             view_current: ['dir-1'],
             'other-name': ['dir-2']}
         wt.views.set_view_info(view_current, view_dict)
-        self.assertEqual(views.check_path_in_view(wt, 'dir-1'), None)
-        self.assertEqual(views.check_path_in_view(wt, 'dir-1/sub'), None)
-        self.assertRaises(errors.FileOutsideView,
-                          views.check_path_in_view, wt, 'dir-2')
-        self.assertRaises(errors.FileOutsideView,
-                          views.check_path_in_view, wt, 'dir-2/sub')
-        self.assertRaises(errors.FileOutsideView,
-                          views.check_path_in_view, wt, 'other')
+        self.assertEqual(_mod_views.check_path_in_view(wt, 'dir-1'), None)
+        self.assertEqual(_mod_views.check_path_in_view(wt, 'dir-1/sub'), None)
+        self.assertRaises(_mod_views.FileOutsideView,
+                          _mod_views.check_path_in_view, wt, 'dir-2')
+        self.assertRaises(_mod_views.FileOutsideView,
+                          _mod_views.check_path_in_view, wt, 'dir-2/sub')
+        self.assertRaises(_mod_views.FileOutsideView,
+                          _mod_views.check_path_in_view, wt, 'other')
 
 
 class TestUnsupportedViews(TestCaseWithWorkingTree):
@@ -176,13 +176,13 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
 
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')
-        self.assertRaises(errors.ViewsNotSupported,
+        self.assertRaises(_mod_views.ViewsNotSupported,
                 wt.views.set_view_info, 'bar', {'bar': ['bars/']})
-        self.assertRaises(errors.ViewsNotSupported,
+        self.assertRaises(_mod_views.ViewsNotSupported,
                 wt.views.get_view_info)
-        self.assertRaises(errors.ViewsNotSupported,
+        self.assertRaises(_mod_views.ViewsNotSupported,
             wt.views.lookup_view, 'foo')
-        self.assertRaises(errors.ViewsNotSupported,
+        self.assertRaises(_mod_views.ViewsNotSupported,
             wt.views.set_view, 'foo', 'bar')
-        self.assertRaises(errors.ViewsNotSupported,
+        self.assertRaises(_mod_views.ViewsNotSupported,
             wt.views.delete_view, 'foo')

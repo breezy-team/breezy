@@ -31,11 +31,17 @@ from . import (
     transport,
     ui,
     )
-from .errors import BzrError, BadCommitMessageEncoding
+from .errors import BzrError
 from .hooks import Hooks
 from .sixish import (
     StringIO,
     )
+
+
+class BadCommitMessageEncoding(BzrError):
+
+    _fmt = 'The specified commit message contains characters unsupported by '\
+        'the current encoding.'
 
 
 def _get_editor():

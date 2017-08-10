@@ -86,8 +86,8 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
         The graph should look like:
             digraph H {
-                "rev-1" -> "rev-2" -> "rev-3";
-                "rev-1" -> "rev-1.1.1" -> "rev-3";
+                "1" -> "2" -> "3";
+                "1" -> "1.1.1" -> "3";
             }
 
         Or in ASCII:
@@ -97,29 +97,30 @@ class TestCaseWithBranch(TestCaseWithControlDir):
             |/
             3
         """
+        revmap = {}
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         try:
             tree.add('')
-            tree.commit('first', rev_id='rev-1')
-            tree.commit('second', rev_id='rev-1.1.1')
+            revmap['1'] = tree.commit('first')
+            revmap['1.1.1'] = tree.commit('second')
             # Uncommit that last commit and switch to the other line
-            tree.branch.set_last_revision_info(1, 'rev-1')
-            tree.set_parent_ids(['rev-1'])
-            tree.commit('alt-second', rev_id='rev-2')
-            tree.set_parent_ids(['rev-2', 'rev-1.1.1'])
-            tree.commit('third', rev_id='rev-3')
+            tree.branch.set_last_revision_info(1, revmap['1'])
+            tree.set_parent_ids([revmap['1']])
+            revmap['2'] = tree.commit('alt-second')
+            tree.set_parent_ids([revmap['2'], revmap['1.1.1']])
+            revmap['3'] = tree.commit('third')
         finally:
             tree.unlock()
 
-        return tree
+        return tree, revmap
 
 
 def branch_scenarios():
     """ """
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
-    combinations = [(format, format._matchingbzrdir) for format in
+    combinations = [(format, format._matchingcontroldir) for format in
          format_registry._get_all()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
@@ -133,7 +134,7 @@ def branch_scenarios():
     scenarios.extend(make_scenarios(
         test_server.SmartTCPServer_for_testing,
         test_server.ReadonlySmartTCPServer_for_testing,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        [(remote_branch_format, remote_branch_format._matchingcontroldir)],
         memory.MemoryServer,
         name_suffix='-default'))
     # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
@@ -141,7 +142,7 @@ def branch_scenarios():
     scenarios.extend(make_scenarios(
         test_server.SmartTCPServer_for_testing_v2_only,
         test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        [(remote_branch_format, remote_branch_format._matchingcontroldir)],
         memory.MemoryServer,
         name_suffix='-v2'))
     return scenarios

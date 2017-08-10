@@ -561,7 +561,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
         b = branch.Branch.open('to')
-        self.assertRaises(errors.UnstackableBranchFormat, b.get_stacked_on_url)
+        self.assertRaises(branch.UnstackableBranchFormat, b.get_stacked_on_url)
 
     def test_push_doesnt_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default

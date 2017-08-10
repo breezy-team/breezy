@@ -27,20 +27,46 @@ try:
 except ImportError:
     from urllib import parse as urlparse
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from posixpath import split as _posix_split
-
-from breezy import (
+from . import (
     errors,
     osutils,
     )
+
+from .lazy_import import lazy_import
+lazy_import(globals(), """
+from posixpath import split as _posix_split
 """)
 
 from .sixish import (
     PY3,
     text_type,
     )
+
+
+class InvalidURL(errors.PathError):
+
+    _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
+
+
+class InvalidURLJoin(errors.PathError):
+
+    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
+
+    def __init__(self, reason, base, join_args):
+        self.reason = reason
+        self.base = base
+        self.join_args = join_args
+        errors.PathError.__init__(self, base, reason)
+
+
+class InvalidRebaseURLs(errors.PathError):
+
+    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
+
+    def __init__(self, from_, to):
+        self.from_ = from_
+        self.to = to
+        errors.PathError.__init__(self, from_, 'URLs differ by more than path.')
 
 
 def basename(url, exclude_trailing_slash=True):
@@ -231,7 +257,7 @@ def joinpath(base, *args):
                 continue
             elif chunk == '..':
                 if path == ['']:
-                    raise errors.InvalidURLJoin('Cannot go above root',
+                    raise InvalidURLJoin('Cannot go above root',
                             base, args)
                 path.pop()
             else:
@@ -250,7 +276,7 @@ def _posix_local_path_from_url(url):
     if url.startswith(file_localhost_prefix):
         path = url[len(file_localhost_prefix) - 1:]
     elif not url.startswith('file:///'):
-        raise errors.InvalidURL(
+        raise InvalidURL(
             url, 'local urls must start with file:/// or file://localhost/')
     else:
         path = url[len('file://'):]
@@ -271,7 +297,7 @@ def _posix_local_path_to_url(path):
 def _win32_local_path_from_url(url):
     """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
     if not url.startswith('file://'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///, '
+        raise InvalidURL(url, 'local urls must start with file:///, '
                                      'UNC path urls must start with file://')
     url = split_segment_parameters_raw(url)[0]
     # We strip off all 3 slashes
@@ -280,7 +306,7 @@ def _win32_local_path_from_url(url):
     if not win32_url.startswith('///'):
         if (win32_url[2] == '/'
             or win32_url[3] in '|:'):
-            raise errors.InvalidURL(url, 'Win32 UNC path urls'
+            raise InvalidURL(url, 'Win32 UNC path urls'
                 ' have form file://HOST/path')
         return unescape(win32_url)
 
@@ -294,7 +320,7 @@ def _win32_local_path_from_url(url):
                                 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         or win32_url[4] not in  '|:'
         or win32_url[5] != '/'):
-        raise errors.InvalidURL(url, 'Win32 file urls start with'
+        raise InvalidURL(url, 'Win32 file urls start with'
                 ' file:///x:/, where x is a valid drive letter')
     return win32_url[3].upper() + u':' + unescape(win32_url[5:])
 
@@ -377,7 +403,7 @@ def normalize_url(url):
     if not isinstance(url, text_type):
         for c in url:
             if c not in _url_safe_characters:
-                raise errors.InvalidURL(url, 'URLs can only contain specific'
+                raise InvalidURL(url, 'URLs can only contain specific'
                                             ' safe characters (not %r)' % c)
         path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
         return str(prefix + ''.join(path))
@@ -452,7 +478,7 @@ def _win32_extract_drive_letter(url_base, path):
     # Strip off the drive letter
     # path is currently /C:/foo
     if len(path) < 4 or path[2] not in ':|' or path[3] != '/':
-        raise errors.InvalidURL(url_base + path,
+        raise InvalidURL(url_base + path,
             'win32 file:/// paths need a drive letter')
     url_base += path[0:3] # file:// + /C:
     path = path[3:] # /foo
@@ -544,7 +570,7 @@ def join_segment_parameters_raw(base, *subsegments):
         if not isinstance(subsegment, str):
             raise TypeError("Subsegment %r is not a bytestring" % subsegment)
         if "," in subsegment:
-            raise errors.InvalidURLJoin(", exists in subsegments",
+            raise InvalidURLJoin(", exists in subsegments",
                                         base, subsegments)
     return ",".join((base,) + subsegments)
 
@@ -568,7 +594,7 @@ def join_segment_parameters(url, parameters):
             raise TypeError("parameter value %r for %s is not a bytestring" %
                 (key, value))
         if "=" in key:
-            raise errors.InvalidURLJoin("= exists in parameter key", url,
+            raise InvalidURLJoin("= exists in parameter key", url,
                 parameters)
         new_parameters[key] = value
     return join_segment_parameters_raw(base, 
@@ -640,7 +666,7 @@ def unescape(url):
         try:
             url = url.encode("ascii")
         except UnicodeError as e:
-            raise errors.InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
+            raise InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
     if PY3:
         unquoted = urlparse.unquote_to_bytes(url)
     else:
@@ -648,7 +674,7 @@ def unescape(url):
     try:
         unicode_path = unquoted.decode('utf-8')
     except UnicodeError as e:
-        raise errors.InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
+        raise InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
     return unicode_path
 
 
@@ -778,7 +804,7 @@ def rebase_url(url, old_base, new_base):
     old_parsed = urlparse.urlparse(old_base)
     new_parsed = urlparse.urlparse(new_base)
     if (old_parsed[:2]) != (new_parsed[:2]):
-        raise errors.InvalidRebaseURLs(old_base, new_base)
+        raise InvalidRebaseURLs(old_base, new_base)
     return determine_relative_path(new_parsed[2],
                                    join(old_parsed[2], url))
 
@@ -846,7 +872,7 @@ class URL(object):
         """
         # GZ 2017-06-09: Actually validate ascii-ness
         if not isinstance(url, str):
-            raise errors.InvalidURL('should be ascii:\n%r' % url)
+            raise InvalidURL('should be ascii:\n%r' % url)
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         user = password = host = port = None
@@ -863,8 +889,8 @@ class URL(object):
             try:
                 port = int(port)
             except ValueError:
-                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                        (port, url))
+                raise InvalidURL('invalid port number %s in url:\n%s' %
+                                 (port, url))
         if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
             host = host[1:-1]
 
@@ -905,7 +931,7 @@ class URL(object):
         :return: urlencoded string for final path.
         """
         if not isinstance(relpath, str):
-            raise errors.InvalidURL(relpath)
+            raise InvalidURL(relpath)
         relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
             base_parts = []

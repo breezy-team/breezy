@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from . import (
+    errors,
     registry,
     )
 from .lazy_import import lazy_import
@@ -27,11 +28,20 @@ import textwrap
 
 from breezy import (
     _format_version_tuple,
-    errors,
     pyutils,
     )
 from breezy.i18n import gettext
 """)
+
+
+class UnknownHook(errors.BzrError):
+
+    _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of breezy."
+
+    def __init__(self, hook_type, hook_name):
+        errors.BzrError.__init__(self)
+        self.type = hook_type
+        self.hook = hook_name
 
 
 class KnownHooksRegistry(registry.Registry):
@@ -204,7 +214,7 @@ class Hooks(dict):
         try:
             hook = self[hook_name]
         except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+            raise UnknownHook(self.__class__.__name__, hook_name)
         try:
             hook_lazy = getattr(hook, "hook_lazy")
         except AttributeError:
@@ -229,7 +239,7 @@ class Hooks(dict):
         try:
             hook = self[hook_name]
         except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+            raise UnknownHook(self.__class__.__name__, hook_name)
         try:
             # list hooks, old-style, not yet deprecated but less useful.
             hook.append(a_callable)
@@ -247,7 +257,7 @@ class Hooks(dict):
         try:
             hook = self[hook_name]
         except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+            raise UnknownHook(self.__class__.__name__, hook_name)
         try:
             uninstall = getattr(hook, "uninstall")
         except AttributeError:

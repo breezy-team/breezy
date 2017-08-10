@@ -92,7 +92,7 @@ class LaunchpadAccountTests(TestCaseInTempDir):
         account._set_global_option('bar')
         e = self.assertRaises(account.MismatchedUsernames,
                               account.get_lp_login)
-        self.assertEqual('bazaar.conf and authentication.conf disagree about'
+        self.assertEqual('breezy.conf and authentication.conf disagree about'
             ' launchpad account name.  Please re-run launchpad-login.', str(e))
 
 

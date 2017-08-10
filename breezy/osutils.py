@@ -47,7 +47,6 @@ import unicodedata
 
 from breezy import (
     config,
-    errors,
     trace,
     win32utils,
     )
@@ -66,7 +65,10 @@ from hashlib import (
 
 
 import breezy
-from . import _fs_enc
+from . import (
+    _fs_enc,
+    errors,
+    )
 
 
 # Cross platform wall-clock time functionality with decent resolution.
@@ -87,6 +89,15 @@ if sys.platform == 'win32':
 O_BINARY = getattr(os, 'O_BINARY', 0)
 O_TEXT = getattr(os, 'O_TEXT', 0)
 O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
+
+
+class UnsupportedTimezoneFormat(errors.BzrError):
+
+    _fmt = ('Unsupported timezone format "%(timezone)s", '
+            'options are "utc", "original", "local".')
+
+    def __init__(self, timezone):
+        self.timezone = timezone
 
 
 def get_unicode_argv():
@@ -899,7 +910,7 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise errors.UnsupportedTimezoneFormat(timezone)
+        raise UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:

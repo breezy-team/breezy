@@ -309,6 +309,25 @@ class TestGetCommandHook(tests.TestCase):
         self.assertIsInstance(hook_calls[0][1], builtins.cmd_info)
 
 
+class TestCommandNotFound(tests.TestCase):
+
+    def setUp(self):
+        super(TestCommandNotFound, self).setUp()
+        commands._register_builtin_commands()
+        commands.install_bzr_command_hooks()
+
+    def test_not_found_no_suggestion(self):
+        e = self.assertRaises(errors.BzrCommandError,
+            commands.get_cmd_object, 'idontexistand')
+        self.assertEqual('unknown command "idontexistand"', str(e))
+
+    def test_not_found_with_suggestion(self):
+        e = self.assertRaises(errors.BzrCommandError,
+            commands.get_cmd_object, 'statue')
+        self.assertEqual('unknown command "statue". Perhaps you meant "status"',
+            str(e))
+
+
 class TestGetMissingCommandHook(tests.TestCase):
 
     def hook_missing(self):
@@ -429,7 +448,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         def pre_command(cmd):
             hook_calls.append('pre')
             # verify that all subclasses of BzrCommandError caught too
-            raise errors.BzrOptionError()
+            raise commands.BzrOptionError()
 
         def post_command(cmd, e):
             self.fail('post_command should not be called')
@@ -449,3 +468,20 @@ class TestPreAndPostCommandHooks(tests.TestCase):
                           commands.run_bzr, [u'rocks'])
         self.assertEqual(['pre'], hook_calls)
 
+
+class GuessCommandTests(tests.TestCase):
+
+    def setUp(self):
+        super(GuessCommandTests, self).setUp()
+        commands._register_builtin_commands()
+        commands.install_bzr_command_hooks()
+
+    def test_guess_override(self):
+        self.assertEqual('ci', commands.guess_command('ic'))
+
+    def test_guess(self):
+        commands.get_cmd_object('status')
+        self.assertEqual('status', commands.guess_command('statue'))
+
+    def test_none(self):
+        self.assertIs(None, commands.guess_command('nothingisevenclose'))

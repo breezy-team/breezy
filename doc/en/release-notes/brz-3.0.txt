@@ -51,6 +51,18 @@ External Compatibility Breaks
    ``ignore_missing_extensions=True`` to
    ``suppress_warnings=missing_extensions``. (Jelmer Vernooĳ)
 
+ * Remove format names as options to ``brz init`` and ``brz
+   init-repository``.. Now you must use ``brz init --format=...``.
+   This simplifies ``brz init --help``.
+   (Neil Martinsen-Burrell, #330494)
+
+ * ``python-gpg`` is now used for checking GPG signatures rather than
+   ``python-gpgme``. (Jelmer Vernooĳ, #1702308)
+
+ * ``python-gpg`` is now used for signing commits, rather than shelling
+   out to the gnupg command. The ``gpg_signing_command`` option has been
+   removed.  (Jelmer Vernooĳ, #847388)
+
 New Features
 ************
 
@@ -74,6 +86,14 @@ New Features
  * The 'fetch-ghosts' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
+ * The 'commitfromnews' plugin is now bundled and
+   can be enabled by setting ``commit.template_from_files = NEWS``.
+   (Jelmer Vernooĳ)
+
+ * The functionality from ``bzr-guess`` is now merged into Breezy.
+   It will provide suggestions if the user typoes a command.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 
@@ -96,6 +116,12 @@ Bug Fixes
   accessible for other users when it starts.
   (Joke de Buhr, Jelmer Vernooĳ, #475501)
 
+* Support ``brz commit -x`` in combination with iter_changes.
+  (Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)
+
+* Print a proper error when encountering ghost revisions in
+  mainline in ``bzr log``. (Jelmer Vernooĳ, #726466)
+
 Documentation
 *************
 
@@ -112,6 +138,9 @@ API Changes
 
  * All previously deprecated functionality has been removed.
    (Jelmer Vernooĳ)
+
+ * ``CommitBuilder.record_entry_contents`` has been removed.
+   (Jelmer Vernooĳ, #731433, #604953)
 
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
@@ -136,6 +165,22 @@ API Changes
 
  * ``ControlDir.find_bzrdirs`` has been renamed to
    ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
+
+ * ``Repository.get_revisions`` no longer accepts ``None`` as
+   argument. (Jelmer Vernooĳ)
+
+ * A new ``Repository.iter_revisions`` method has been added.
+   (Jelmer Vernooĳ)
+
+ * A new ``WorkingTreeFormat.supports_setting_file_ids`` property
+   has been added that can be set to False to indicate a working tree
+   doesn't support e.g. passing a file_id into ``WorkingTree.mkdir``.
+   (Jelmer Vernooĳ, #1707533)
+
+ * A new ``RepositoryFormat.supports_setting_revision_ids`` property
+   has been added that can be set to False to indicate a repository
+   doesn't support passing revision ids to ``CommitBuilder.commit``.
+   (Jelmer Vernooĳ)
 
 Internals
 *********

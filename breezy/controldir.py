@@ -29,7 +29,6 @@ lazy_import(globals(), """
 import textwrap
 
 from breezy import (
-    errors,
     hooks,
     revision as _mod_revision,
     transport as _mod_transport,
@@ -45,7 +44,18 @@ from breezy.push import (
 from breezy.i18n import gettext
 """)
 
-from . import registry
+from . import (
+    errors,
+    registry,
+    )
+
+
+class MustHaveWorkingTree(errors.BzrError):
+
+    _fmt = "Branching '%(url)s'(%(format)s) must create a working tree."
+
+    def __init__(self, format, url):
+        errors.BzrError.__init__(self, format=format, url=url)
 
 
 class ControlComponent(object):
@@ -760,7 +770,7 @@ class ControlDir(ControlComponent):
                 pass
             try:
                 new_t = a_transport.clone('..')
-            except errors.InvalidURLJoin:
+            except urlutils.InvalidURLJoin:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
             if new_t.base == a_transport.base:

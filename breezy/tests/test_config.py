@@ -71,7 +71,7 @@ config.test_store_builder_registry.register(
     'configobj', lambda test: config.TransportIniFileStore(
         test.get_transport(), 'configobj.conf'))
 config.test_store_builder_registry.register(
-    'bazaar', lambda test: config.GlobalStore())
+    'breezy', lambda test: config.GlobalStore())
 config.test_store_builder_registry.register(
     'location', lambda test: config.LocationStore())
 
@@ -133,7 +133,7 @@ config.test_store_builder_registry.register('remote_branch',
 
 
 config.test_stack_builder_registry.register(
-    'bazaar', lambda test: config.GlobalStack())
+    'breezy', lambda test: config.GlobalStack())
 config.test_stack_builder_registry.register(
     'location', lambda test: config.LocationStack('.'))
 
@@ -176,7 +176,6 @@ sample_config_text = u"""
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
 change_editor=vimdiff -of @new_path @old_path
-gpg_signing_command=gnome-gpg
 gpg_signing_key=DD4D5088
 log_format=short
 validate_signatures_in_log=true
@@ -232,7 +231,6 @@ check_signatures=require
 # test trailing / matching with no children
 [/a/]
 check_signatures=check-available
-gpg_signing_command=false
 gpg_signing_key=default
 user_local_option=local
 # test trailing / matching
@@ -255,7 +253,7 @@ def create_configs(test):
 
     - locations_config : A LocationConfig for the associated branch
 
-    - bazaar_config: A GlobalConfig.
+    - breezy_config: A GlobalConfig.
 
     The tree and branch are created in a 'tree' subdirectory so the tests can
     still use the test directory to stay outside of the branch.
@@ -264,7 +262,7 @@ def create_configs(test):
     test.tree = tree
     test.branch_config = config.BranchConfig(tree.branch)
     test.locations_config = config.LocationConfig(tree.basedir)
-    test.bazaar_config = config.GlobalConfig()
+    test.breezy_config = config.GlobalConfig()
 
 
 def create_configs_with_file_option(test):
@@ -274,7 +272,7 @@ def create_configs_with_file_option(test):
     configuration with a value which allows identifying the configuration file.
     """
     create_configs(test)
-    test.bazaar_config.set_user_option('file', 'bazaar')
+    test.breezy_config.set_user_option('file', 'breezy')
     test.locations_config.set_user_option('file', 'locations')
     test.branch_config.set_user_option('file', 'branch')
 
@@ -527,7 +525,7 @@ class TestConfigPath(tests.TestCase):
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
-                         self.brz_home + '/bazaar.conf')
+                         self.brz_home + '/breezy.conf')
 
     def test_locations_config_filename(self):
         self.assertEqual(config.locations_config_filename(),
@@ -540,6 +538,38 @@ class TestConfigPath(tests.TestCase):
     def test_xdg_cache_dir(self):
         self.assertEqual(config.xdg_cache_dir(),
             '/home/bogus/.cache')
+
+
+class TestConfigPathFallback(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestConfigPathFallback, self).setUp()
+        self.overrideEnv('HOME', self.test_dir)
+        self.overrideEnv('XDG_CACHE_HOME', '')
+        self.bzr_home = os.path.join(self.test_dir, '.bazaar')
+        os.mkdir(self.bzr_home)
+
+    def test_config_dir(self):
+        self.assertEqual(config.config_dir(), self.bzr_home)
+
+    def test_config_dir_is_unicode(self):
+        self.assertIsInstance(config.config_dir(), unicode)
+
+    def test_config_filename(self):
+        self.assertEqual(config.config_filename(),
+                         self.bzr_home + '/bazaar.conf')
+
+    def test_locations_config_filename(self):
+        self.assertEqual(config.locations_config_filename(),
+                         self.bzr_home + '/locations.conf')
+
+    def test_authentication_config_filename(self):
+        self.assertEqual(config.authentication_config_filename(),
+                         self.bzr_home + '/authentication.conf')
+
+    def test_xdg_cache_dir(self):
+        self.assertEqual(config.xdg_cache_dir(),
+            os.path.join(self.test_dir, '.cache'))
 
 
 class TestXDGConfigDir(tests.TestCaseInTempDir):
@@ -656,7 +686,7 @@ class TestIniConfigOptionExpansion(tests.TestCase):
 
     def test_unknown_ref(self):
         c = self.get_config('')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           c.expand_options, '{foo}')
 
     def test_indirect_ref(self):
@@ -675,14 +705,15 @@ bar=foo
 
     def test_simple_loop(self):
         c = self.get_config('foo={foo}')
-        self.assertRaises(errors.OptionExpansionLoop, c.expand_options, '{foo}')
+        self.assertRaises(config.OptionExpansionLoop, c.expand_options,
+                          '{foo}')
 
     def test_indirect_loop(self):
         c = self.get_config('''
 foo={bar}
 bar={baz}
 baz={foo}''')
-        e = self.assertRaises(errors.OptionExpansionLoop,
+        e = self.assertRaises(config.OptionExpansionLoop,
                               c.expand_options, '{foo}')
         self.assertEqual('foo->bar->baz', e.refs)
         self.assertEqual('{foo}', e.string)
@@ -741,7 +772,7 @@ bar = {foo}/2
 [/another/branch/path]
 bar = {foo}/2
 ''')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           c.get_user_option, 'bar', expand=True)
 
     def test_cross_related_sections(self):
@@ -1536,7 +1567,7 @@ class TestMailAddressExtraction(tests.TestCase):
     def test_extract_email_address(self):
         self.assertEqual('jane@test.com',
                          config.extract_email_address('Jane <jane@test.com>'))
-        self.assertRaises(errors.NoEmailInUsername,
+        self.assertRaises(config.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
 
     def test_parse_username(self):
@@ -1597,14 +1628,14 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#\xff\n')
         conf = config.TransportConfig(t, 'foo.conf')
-        self.assertRaises(errors.ConfigContentError, conf._get_configobj)
+        self.assertRaises(config.ConfigContentError, conf._get_configobj)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
         t.put_bytes('foo.conf', '[open_section\n')
         conf = config.TransportConfig(t, 'foo.conf')
-        self.assertRaises(errors.ParseConfigError, conf._get_configobj)
+        self.assertRaises(config.ParseConfigError, conf._get_configobj)
 
     def test_load_permission_denied(self):
         """Ensure we get an empty config file if the file is inaccessible."""
@@ -1686,8 +1717,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         self.assertEqual((conf, name, value), calls[0])
 
-    def test_get_hook_bazaar(self):
-        self.assertGetHook(self.bazaar_config, 'file', 'bazaar')
+    def test_get_hook_breezy(self):
+        self.assertGetHook(self.breezy_config, 'file', 'breezy')
 
     def test_get_hook_locations(self):
         self.assertGetHook(self.locations_config, 'file', 'locations')
@@ -1712,8 +1743,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         # coverage here.
         self.assertEqual((name, value), calls[0][1:])
 
-    def test_set_hook_bazaar(self):
-        self.assertSetHook(self.bazaar_config, 'foo', 'bazaar')
+    def test_set_hook_breezy(self):
+        self.assertSetHook(self.breezy_config, 'foo', 'breezy')
 
     def test_set_hook_locations(self):
         self.assertSetHook(self.locations_config, 'foo', 'locations')
@@ -1736,8 +1767,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         # coverage here.
         self.assertEqual((name,), calls[0][1:])
 
-    def test_remove_hook_bazaar(self):
-        self.assertRemoveHook(self.bazaar_config, 'file')
+    def test_remove_hook_breezy(self):
+        self.assertRemoveHook(self.breezy_config, 'file')
 
     def test_remove_hook_locations(self):
         self.assertRemoveHook(self.locations_config, 'file',
@@ -1761,7 +1792,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         # Since we can't assert about conf, we just use the number of calls ;-/
 
-    def test_load_hook_bazaar(self):
+    def test_load_hook_breezy(self):
         self.assertLoadHook('file', config.GlobalConfig)
 
     def test_load_hook_locations(self):
@@ -1783,8 +1814,8 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         # Since we can't assert about conf, we just use the number of calls ;-/
 
-    def test_save_hook_bazaar(self):
-        self.assertSaveHook(self.bazaar_config)
+    def test_save_hook_breezy(self):
+        self.assertSaveHook(self.breezy_config)
 
     def test_save_hook_locations(self):
         self.assertSaveHook(self.locations_config)
@@ -2014,7 +2045,7 @@ class TestOptionConverter(tests.TestCase):
             warnings[0])
 
     def assertCallsError(self, opt, value):
-        self.assertRaises(errors.ConfigOptionValueError,
+        self.assertRaises(config.ConfigOptionValueError,
                           opt.convert_from_unicode, None, value)
 
     def assertConvertInvalid(self, opt, invalid_value):
@@ -2181,9 +2212,9 @@ class TestOptionRegistry(tests.TestCase):
         self.assertEqual('A simple option', self.registry.get_help('foo'))
 
     def test_dont_register_illegal_name(self):
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register, config.Option(' foo'))
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register, config.Option('bar,'))
 
     lazy_option = config.Option('lazy_foo', help='Lazy help')
@@ -2204,10 +2235,10 @@ class TestOptionRegistry(tests.TestCase):
         # the option name which indirectly requires that the option name is a
         # valid python identifier. We violate that rule here (using a key that
         # doesn't match the option name) to test the option name checking.
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register_lazy, ' foo', self.__module__,
                           'TestOptionRegistry.lazy_option')
-        self.assertRaises(errors.IllegalOptionName,
+        self.assertRaises(config.IllegalOptionName,
                           self.registry.register_lazy, '1,2', self.__module__,
                           'TestOptionRegistry.lazy_option')
 
@@ -2521,14 +2552,14 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         store = config.TransportIniFileStore(t, 'foo.conf')
-        self.assertRaises(errors.ConfigContentError, store.load)
+        self.assertRaises(config.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
         t.put_bytes('foo.conf', '[open_section\n')
         store = config.TransportIniFileStore(t, 'foo.conf')
-        self.assertRaises(errors.ParseConfigError, store.load)
+        self.assertRaises(config.ParseConfigError, store.load)
 
     def test_load_permission_denied(self):
         """Ensure we get warned when trying to load an inaccessible file."""
@@ -2578,14 +2609,14 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
         with open('foo.conf', 'wb') as f:
             f.write('user=foo\n#%s\n' % (self.invalid_utf8_char,))
         conf = config.IniBasedConfig(file_name='foo.conf')
-        self.assertRaises(errors.ConfigContentError, conf._get_parser)
+        self.assertRaises(config.ConfigContentError, conf._get_parser)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         with open('foo.conf', 'wb') as f:
             f.write('[open_section\n')
         conf = config.IniBasedConfig(file_name='foo.conf')
-        self.assertRaises(errors.ParseConfigError, conf._get_parser)
+        self.assertRaises(config.ParseConfigError, conf._get_parser)
 
 
 class TestMutableStore(TestStore):
@@ -2870,7 +2901,7 @@ class TestTransportIniFileStore(TestStore):
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         self.assertEqual(False, store.is_loaded())
         exc = self.assertRaises(
-            errors.ParseConfigError, store._load_from_string,
+            config.ParseConfigError, store._load_from_string,
             'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
@@ -3051,8 +3082,8 @@ class TestConcurrentStoreUpdates(TestStore):
 
     # FIXME: It may be worth looking into removing the lock dir when it's not
     # needed anymore and look at possible fallouts for concurrent lockers. This
-    # will matter if/when we use config files outside of bazaar directories
-    # (.bazaar or .bzr) -- vila 20110-04-111
+    # will matter if/when we use config files outside of breezy directories
+    # (.config/breezy or .bzr) -- vila 20110-04-111
 
 
 class TestSectionMatcher(TestStore):
@@ -3670,7 +3701,7 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         self.assertExpansion('xxx', '{foo}')
 
     def test_unknown_ref(self):
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           self.conf.expand_options, '{foo}')
 
     def test_illegal_def_is_ignored(self):
@@ -3694,7 +3725,7 @@ bar=foo
 
     def test_simple_loop(self):
         self.conf.store._load_from_string('foo={foo}')
-        self.assertRaises(errors.OptionExpansionLoop,
+        self.assertRaises(config.OptionExpansionLoop,
                           self.conf.expand_options, '{foo}')
 
     def test_indirect_loop(self):
@@ -3702,7 +3733,7 @@ bar=foo
 foo={bar}
 bar={baz}
 baz={foo}''')
-        e = self.assertRaises(errors.OptionExpansionLoop,
+        e = self.assertRaises(config.OptionExpansionLoop,
                               self.conf.expand_options, '{foo}')
         self.assertEqual('foo->bar->baz', e.refs)
         self.assertEqual('{foo}', e.string)
@@ -3773,7 +3804,7 @@ bar = {foo}/2
 [/another/branch/path]
 bar = {foo}/2
 ''')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           c.get, 'bar', expand=True)
 
     def test_cross_related_sections(self):
@@ -3861,7 +3892,7 @@ gfoo = {relpath}
 ''')
         g_store.save()
         stack = config.LocationStack('/home/user/project/branch')
-        self.assertRaises(errors.ExpandingUnknownOption,
+        self.assertRaises(config.ExpandingUnknownOption,
                           stack.get, 'gfoo', expand=True)
 
     def test_expand_local_option_locally(self):
@@ -3961,13 +3992,13 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         create_configs(self)
 
     def test_no_variable(self):
-        # Using branch should query branch, locations and bazaar
+        # Using branch should query branch, locations and breezy
         self.assertOptions([], self.branch_config)
 
-    def test_option_in_bazaar(self):
-        self.bazaar_config.set_user_option('file', 'bazaar')
-        self.assertOptions([('file', 'bazaar', 'DEFAULT', 'bazaar')],
-                           self.bazaar_config)
+    def test_option_in_breezy(self):
+        self.breezy_config.set_user_option('file', 'breezy')
+        self.assertOptions([('file', 'breezy', 'DEFAULT', 'breezy')],
+                           self.breezy_config)
 
     def test_option_in_locations(self):
         self.locations_config.set_user_option('file', 'locations')
@@ -3980,11 +4011,11 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         self.assertOptions([('file', 'branch', 'DEFAULT', 'branch')],
                            self.branch_config)
 
-    def test_option_in_bazaar_and_branch(self):
-        self.bazaar_config.set_user_option('file', 'bazaar')
+    def test_option_in_breezy_and_branch(self):
+        self.breezy_config.set_user_option('file', 'breezy')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions([('file', 'branch', 'DEFAULT', 'branch'),
-                            ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+                            ('file', 'breezy', 'DEFAULT', 'breezy'),],
                            self.branch_config)
 
     def test_option_in_branch_and_locations(self):
@@ -3996,14 +4027,14 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
              ('file', 'branch', 'DEFAULT', 'branch'),],
             self.branch_config)
 
-    def test_option_in_bazaar_locations_and_branch(self):
-        self.bazaar_config.set_user_option('file', 'bazaar')
+    def test_option_in_breezy_locations_and_branch(self):
+        self.breezy_config.set_user_option('file', 'breezy')
         self.locations_config.set_user_option('file', 'locations')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
              ('file', 'branch', 'DEFAULT', 'branch'),
-             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'),],
             self.branch_config)
 
 
@@ -4017,18 +4048,18 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
         self.locations_config.remove_user_option('file', self.tree.basedir)
         self.assertOptions(
             [('file', 'branch', 'DEFAULT', 'branch'),
-             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'),],
             self.branch_config)
 
     def test_remove_in_branch(self):
         self.branch_config.remove_user_option('file')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
-             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'),],
             self.branch_config)
 
-    def test_remove_in_bazaar(self):
-        self.bazaar_config.remove_user_option('file')
+    def test_remove_in_breezy(self):
+        self.breezy_config.remove_user_option('file')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
              ('file', 'branch', 'DEFAULT', 'branch'),],
@@ -4057,8 +4088,8 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         self.assertLength(len(expected), sections)
         self.assertEqual(expected, [n for n, _, _ in sections])
 
-    def test_bazaar_default_section(self):
-        self.assertSectionNames(['DEFAULT'], self.bazaar_config)
+    def test_breezy_default_section(self):
+        self.assertSectionNames(['DEFAULT'], self.breezy_config)
 
     def test_locations_default_section(self):
         # No sections are defined in an empty file
@@ -4098,16 +4129,16 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         self.assertSectionNames([self.tree.basedir, None, 'DEFAULT'],
                                 self.branch_config)
 
-    def test_bazaar_named_section(self):
+    def test_breezy_named_section(self):
         # We need to cheat as the API doesn't give direct access to sections
         # other than DEFAULT.
-        self.bazaar_config.set_alias('bazaar', 'bzr')
-        self.assertSectionNames(['ALIASES'], self.bazaar_config, 'ALIASES')
+        self.breezy_config.set_alias('breezy', 'bzr')
+        self.assertSectionNames(['ALIASES'], self.breezy_config, 'ALIASES')
 
 
 class TestSharedStores(tests.TestCaseInTempDir):
 
-    def test_bazaar_conf_shared(self):
+    def test_breezy_conf_shared(self):
         g1 = config.GlobalStack()
         g2 = config.GlobalStack()
         # The two stacks share the same store
@@ -4168,7 +4199,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
 
     def test_non_utf8_config(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b'foo = bar\xff'))
-        self.assertRaises(errors.ConfigContentError, conf._get_config)
+        self.assertRaises(config.ConfigContentError, conf._get_config)
 
     def test_missing_auth_section_header(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b'foo = bar'))
@@ -4176,7 +4207,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
 
     def test_auth_section_header_not_closed(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b'[DEF'))
-        self.assertRaises(errors.ParseConfigError, conf._get_config)
+        self.assertRaises(config.ParseConfigError, conf._get_config)
 
     def test_auth_value_not_boolean(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b"""\
@@ -4767,5 +4798,5 @@ class MailClientOptionTests(tests.TestCase):
 
     def test_unknown(self):
         conf = config.MemoryStack('mail_client=firebird')
-        self.assertRaises(errors.ConfigOptionValueError, conf.get,
+        self.assertRaises(config.ConfigOptionValueError, conf.get,
                 'mail_client')

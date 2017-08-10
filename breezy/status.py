@@ -297,7 +297,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
     log_formatter = log.LineLogFormatter(to_file)
     for merge in pending:
         try:
-            rev = branch.repository.get_revisions([merge])[0]
+            rev = branch.repository.get_revision(merge)
         except errors.NoSuchRevision:
             # If we are missing a revision, just print out the revision id
             to_file.write(first_prefix + '(ghost) ' + merge + '\n')
@@ -316,19 +316,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         merge_extra.discard(_mod_revision.NULL_REVISION)
 
         # Get a handle to all of the revisions we will need
-        try:
-            revisions = dict((rev.revision_id, rev) for rev in
-                             branch.repository.get_revisions(merge_extra))
-        except errors.NoSuchRevision:
-            # One of the sub nodes is a ghost, check each one
-            revisions = {}
-            for revision_id in merge_extra:
-                try:
-                    rev = branch.repository.get_revisions([revision_id])[0]
-                except errors.NoSuchRevision:
-                    revisions[revision_id] = None
-                else:
-                    revisions[revision_id] = rev
+        revisions = dict(branch.repository.iter_revisions(merge_extra))
 
         # Display the revisions brought in by this merge.
         rev_id_iterator = _get_sorted_revisions(merge, merge_extra,

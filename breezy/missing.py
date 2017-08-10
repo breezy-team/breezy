@@ -30,14 +30,7 @@ def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
 
     if rev_tag_dict is None:
         rev_tag_dict = {}
-    for rev in revisions:
-        # We need the following for backward compatibilty (hopefully
-        # this will be deprecated soon :-/) -- vila 080911
-        if len(rev) == 2:
-            revno, rev_id = rev
-            merge_depth = 0
-        else:
-            revno, rev_id, merge_depth = rev
+    for revno, rev_id, merge_depth in revisions:
         rev = revision_source.get_revision(rev_id)
         if verbose:
             delta = revision_source.get_revision_delta(rev_id)
@@ -97,7 +90,7 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
     :param tip: The tip of mainline
     :param backward: Show oldest versions first when True, newest versions
         first when False.
-    :return: [(revno, revision_id)] for all revisions in ancestry that
+    :return: [(revno, revision_id, 0)] for all revisions in ancestry that
         are left-hand parents from tip, or None if ancestry is None.
     """
     if ancestry is None:
@@ -117,7 +110,7 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
         parents = parent_map.get(cur)
         if not parents:
             break # Ghost, we are done
-        mainline.append((str(cur_revno), cur))
+        mainline.append((str(cur_revno), cur, 0))
         cur = parents[0]
         cur_revno -= 1
     if not backward:

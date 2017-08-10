@@ -50,8 +50,6 @@ from breezy import (
     errors,
     filters as _mod_filters,
     generate_ids,
-    globbing,
-    ignores,
     merge,
     revision as _mod_revision,
     shelf,
@@ -76,6 +74,11 @@ from .trace import mutter, note
 
 
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
+
+
+class SettingFileIdUnsupported(errors.BzrError):
+
+    _fmt = "This format does not support setting file ids."""
 
 
 class TreeEntry(object):
@@ -231,6 +234,9 @@ class WorkingTree(mutabletree.MutableTree,
     def supports_views(self):
         return self.views.supports_views()
 
+    def supports_setting_file_ids(self):
+        return self._format.supports_setting_file_ids
+
     def get_config_stack(self):
         """Retrieve the config stack for this tree.
 
@@ -329,7 +335,7 @@ class WorkingTree(mutabletree.MutableTree,
         for filename in file_list:
             relpath = fixer(osutils.dereference_path(filename))
             if view_files and not osutils.is_inside_any(view_files, relpath):
-                raise errors.FileOutsideView(filename, view_files)
+                raise views.FileOutsideView(filename, view_files)
             new_list.append(relpath)
         return new_list
 
@@ -398,9 +404,6 @@ class WorkingTree(mutabletree.MutableTree,
             # the basis tree is a ghost so return an empty tree.
             return self.branch.repository.revision_tree(
                        _mod_revision.NULL_REVISION)
-
-    def _cleanup(self):
-        self._flush_ignore_list_cache()
 
     def relpath(self, path):
         """Return the local path portion from a given path.
@@ -776,6 +779,8 @@ class WorkingTree(mutabletree.MutableTree,
         """See MutableTree.mkdir()."""
         if file_id is None:
             file_id = generate_ids.gen_file_id(os.path.basename(path))
+        elif not self.supports_setting_file_ids():
+            raise SettingFileIdUnsupported()
         os.mkdir(self.abspath(path))
         self.add(path, file_id, 'directory')
         return file_id
@@ -955,7 +960,6 @@ class WorkingTree(mutabletree.MutableTree,
                                 new_basis_tree,
                                 basis_tree,
                                 this_tree=self,
-                                pb=None,
                                 change_reporter=change_reporter,
                                 show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
@@ -1013,46 +1017,10 @@ class WorkingTree(mutabletree.MutableTree,
             if pat is not None:
                 yield subp, pat
 
-    def get_ignore_list(self):
-        """Return list of ignore patterns.
-
-        Cached in the Tree object after the first call.
-        """
-        ignoreset = getattr(self, '_ignoreset', None)
-        if ignoreset is not None:
-            return ignoreset
-
-        ignore_globs = set()
-        ignore_globs.update(ignores.get_runtime_ignores())
-        ignore_globs.update(ignores.get_user_ignores())
-        if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file_byname(breezy.IGNORE_FILENAME)
-            try:
-                ignore_globs.update(ignores.parse_ignore_file(f))
-            finally:
-                f.close()
-        self._ignoreset = ignore_globs
-        return ignore_globs
-
-    def _flush_ignore_list_cache(self):
-        """Resets the cached ignore list to force a cache rebuild."""
-        self._ignoreset = None
-        self._ignoreglobster = None
-
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
-
-        Patterns containing '/' or '\' need to match the whole path;
-        others match against only the last component.  Patterns starting
-        with '!' are ignore exceptions.  Exceptions take precedence
-        over regular patterns and cause the filename to not be ignored.
-
-        If the file is ignored, returns the pattern which caused it to
-        be ignored, otherwise None.  So this can simply be used as a
-        boolean if desired."""
-        if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = globbing.ExceptionGlobster(self.get_ignore_list())
-        return self._ignoreglobster.match(filename)
+        """
+        raise NotImplementedError(self.is_ignored)
 
     def kind(self, file_id):
         return osutils.file_kind(self.id2abspath(file_id))
@@ -1338,6 +1306,8 @@ class WorkingTree(mutabletree.MutableTree,
     @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
+        if not self.supports_setting_file_ids():
+            raise SettingFileIdUnsupported()
         # for compatability
         if file_id is None:
             raise ValueError(
@@ -1774,6 +1744,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_versioned_directories = None
 
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
+
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.
@@ -1824,7 +1797,7 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         This is to support testing of working tree formats that can not exist
         in the same control directory as a branch.
         """
-        return self._matchingbzrdir
+        return self._matchingcontroldir
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",

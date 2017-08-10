@@ -166,11 +166,6 @@ class AllInOneRepository(VersionedFileRepository):
         self.start_write_group()
         return result
 
-    @needs_read_lock
-    def get_revisions(self, revision_ids):
-        revs = self._get_revisions(revision_ids)
-        return revs
-
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):
         """Store lines in inv_vf and return the sha1 of the inventory."""
@@ -357,7 +352,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = weave_bzrdir.BzrDirFormat4()
+    _matchingcontroldir = weave_bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -405,7 +400,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = weave_bzrdir.BzrDirFormat5()
+    _matchingcontroldir = weave_bzrdir.BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -418,7 +413,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
+        return self._matchingcontroldir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -452,7 +447,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = weave_bzrdir.BzrDirFormat6()
+    _matchingcontroldir = weave_bzrdir.BzrDirFormat6()
     supports_funky_characters = False
     @property
     def _serializer(self):
@@ -464,7 +459,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
+        return self._matchingcontroldir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)

@@ -17,13 +17,14 @@
 """Test directory service implementation"""
 
 from .. import (
-    errors,
     transport,
     urlutils,
     )
 from ..directory_service import (
     AliasDirectory,
     DirectoryServiceRegistry,
+    InvalidLocationAlias,
+    UnsetLocationAlias,
     directories,
     )
 from . import TestCase, TestCaseWithTransport
@@ -101,13 +102,13 @@ class TestAliasDirectory(TestCaseWithTransport):
                          directories.dereference(':this/arg'))
 
     def test_lookup_badname(self):
-        e = self.assertRaises(errors.InvalidLocationAlias,
+        e = self.assertRaises(InvalidLocationAlias,
                               directories.dereference, ':booga')
         self.assertEqual('":booga" is not a valid location alias.',
                          str(e))
 
     def test_lookup_badvalue(self):
-        e = self.assertRaises(errors.UnsetLocationAlias,
+        e = self.assertRaises(UnsetLocationAlias,
                               directories.dereference, ':parent')
         self.assertEqual('No parent location assigned.', str(e))
 

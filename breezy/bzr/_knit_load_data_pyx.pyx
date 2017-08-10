@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 import sys
 
-from .. import errors
+from .knit import KnitCorrupt
 
 
 cdef extern from "stdlib.h":
@@ -228,8 +228,7 @@ cdef class KnitIndexReader:
             parents = self.process_parents(parent_str, end)
         except (ValueError, IndexError), e:
             py_line = PyString_FromStringAndSize(start, end - start)
-            raise errors.KnitCorrupt(self.kndx._filename,
-                                     "line %r: %s" % (py_line, e))
+            raise KnitCorrupt(self.kndx._filename, "line %r: %s" % (py_line, e))
 
         cache_entry = PyDict_GetItem_void(self.cache, version_id)
         if cache_entry == NULL:

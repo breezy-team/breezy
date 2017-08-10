@@ -59,6 +59,17 @@ from .sixish import (
 from .trace import mutter, mutter_callsite, note, is_quiet
 
 
+class UnstackableBranchFormat(errors.BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the branch to permit branch stacking.")
+
+    def __init__(self, format, url):
+        errors.BzrError.__init__(self)
+        self.format = format
+        self.url = url
+
+
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
@@ -800,7 +811,7 @@ class Branch(controldir.ControlComponent):
                 try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
-                    raise errors.InvalidURL(url,
+                    raise urlutils.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
                         "use breezy.urlutils.escape")
             url = urlutils.relative_url(self.base, url)
@@ -816,7 +827,7 @@ class Branch(controldir.ControlComponent):
             stacking.
         """
         if not self._format.supports_stacking():
-            raise errors.UnstackableBranchFormat(self._format, self.user_url)
+            raise UnstackableBranchFormat(self._format, self.user_url)
         # XXX: Changing from one fallback repository to another does not check
         # that all the data you need is present in the new fallback.
         # Possibly it should.
@@ -824,7 +835,7 @@ class Branch(controldir.ControlComponent):
         if not url:
             try:
                 old_url = self.get_stacked_on_url()
-            except (errors.NotStacked, errors.UnstackableBranchFormat,
+            except (errors.NotStacked, UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
                 return
             self._unstack()
@@ -1112,7 +1123,7 @@ class Branch(controldir.ControlComponent):
             parent = urlutils.local_path_to_url(parent.decode('utf8'))
         try:
             return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin as e:
+        except urlutils.InvalidURLJoin as e:
             raise errors.InaccessibleParent(parent, self.user_url)
 
     def _get_parent_location(self):
@@ -2259,7 +2270,7 @@ class GenericInterBranch(InterBranch):
             try:
                 relpath = self.source.user_transport.relpath(normalized)
                 source_is_master = (relpath == '')
-            except (errors.PathNotChild, errors.InvalidURL):
+            except (errors.PathNotChild, urlutils.InvalidURL):
                 source_is_master = False
         if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.

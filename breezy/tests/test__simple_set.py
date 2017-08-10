@@ -35,7 +35,7 @@ class _Hashable(object):
     """A simple object which has a fixed hash value.
 
     We could have used an 'int', but it turns out that Int objects don't
-    implement tp_richcompare...
+    implement tp_richcompare in Python 2.
     """
 
     def __init__(self, the_hash):
@@ -69,11 +69,15 @@ class _BadCompare(_Hashable):
     def __eq__(self, other):
         raise RuntimeError('I refuse to play nice')
 
+    __hash__ = _Hashable.__hash__
+
 
 class _NoImplementCompare(_Hashable):
 
     def __eq__(self, other):
         return NotImplemented
+
+    __hash__ = _Hashable.__hash__
 
 
 # Even though this is an extension, we don't permute the tests for a python
@@ -86,14 +90,6 @@ class TestSimpleSet(tests.TestCase):
 
     _test_needs_features = [compiled_simpleset_feature]
     module = _simple_set_pyx
-
-    def assertIn(self, obj, container):
-        self.assertTrue(obj in container,
-            '%s not found in %s' % (obj, container))
-
-    def assertNotIn(self, obj, container):
-        self.assertTrue(obj not in container,
-            'We found %s in %s' % (obj, container))
 
     def assertFillState(self, used, fill, mask, obj):
         self.assertEqual((used, fill, mask), (obj.used, obj.fill, obj.mask))
@@ -281,9 +277,10 @@ class TestSimpleSet(tests.TestCase):
 
     def test__resize(self):
         obj = self.module.SimpleSet()
-        k1 = ('foo',)
-        k2 = ('bar',)
-        k3 = ('baz',)
+        # Need objects with exact hash as checking offset of <null> later
+        k1 = _Hashable(501)
+        k2 = _Hashable(591)
+        k3 = _Hashable(2051)
         obj.add(k1)
         obj.add(k2)
         obj.add(k3)
@@ -373,7 +370,7 @@ class TestSimpleSet(tests.TestCase):
             all.add(key)
         self.assertEqual(sorted([k1, k2, k3]), sorted(all))
         iterator = iter(obj)
-        next(iterator)
+        self.assertIn(next(iterator), all)
         obj.add(('foo',))
         # Set changed size
         self.assertRaises(RuntimeError, next, iterator)

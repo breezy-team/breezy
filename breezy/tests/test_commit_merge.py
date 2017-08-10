@@ -21,7 +21,7 @@ from .. import (
     check,
     osutils,
     )
-from ..errors import PointlessCommit
+from ..commit import PointlessCommit
 from . import (
     TestCaseWithTransport,
     )

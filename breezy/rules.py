@@ -43,6 +43,14 @@ FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
 _per_user_searcher = None
 
 
+class UnknownRules(errors.BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        errors.BzrError.__init__(self, unknowns_str=", ".join(unknowns))
+
+
 class _RulesSearcher(object):
     """An object that provides rule-based preferences."""
 
@@ -69,7 +77,7 @@ class _RulesSearcher(object):
 
     def get_single_value(self, path, preference_name):
         """Get a single preference for a single file.
-        
+
         :returns: The string preference value, or None.
         """
         for key, value in self.get_selected_items(path, [preference_name]):
@@ -99,7 +107,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if len(patterns) < len(sections):
             unknowns = [s for s in sections
                 if not s.startswith(FILE_PREFS_PREFIX)]
-            raise errors.UnknownRules(unknowns)
+            raise UnknownRules(unknowns)
         elif patterns:
             self._globster = globbing._OrderedGlobster(patterns)
         else:

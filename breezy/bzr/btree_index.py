@@ -17,7 +17,7 @@
 
 """B+Tree indices"""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -30,7 +30,6 @@ import zlib
 from .. import (
     chunk_writer,
     debug,
-    errors,
     fifo_cache,
     lru_cache,
     osutils,
@@ -84,7 +83,7 @@ class _BuilderRow(object):
         if self.nodes == 0:
             self.spool = BytesIO()
             # padded note:
-            self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
+            self.spool.write(b"\x00" * _RESERVED_HEADER_BYTES)
         elif self.nodes == 1:
             # We got bigger than 1 node, switch to a temp file
             spool = tempfile.TemporaryFile(prefix='bzr-index-row-')
@@ -179,7 +178,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
-            raise errors.BadIndexDuplicateKey(key, self)
+            raise index.BadIndexDuplicateKey(key, self)
         self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
@@ -285,7 +284,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # undecorate back to (pos, node)
             selected = selected[1]
             if last == selected[1][1]:
-                raise errors.BadIndexDuplicateKey(last, self)
+                raise index.BadIndexDuplicateKey(last, self)
             last = selected[1][1]
             # Yield, with self as the index
             yield (self,) + selected[1][1:]
@@ -323,7 +322,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                         optimize_for_size=optimize_for_size)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET +
-                        str(rows[pos + 1].nodes) + "\n")
+                        b"%d\n" % rows[pos + 1].nodes)
             # add a new leaf
             length = _PAGE_SIZE
             if rows[-1].nodes == 0:
@@ -336,10 +335,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # then line is too big. raising the error avoids infinite recursion
             # searching for a suitably large page that will not be found.
             if new_leaf:
-                raise errors.BadIndexKey(string_key)
+                raise index.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
-            key_line = string_key + "\n"
+            key_line = string_key + b"\n"
             new_row = True
             for row in reversed(rows[:-1]):
                 # Mark the start of the next node in the node above. If it
@@ -367,7 +366,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     optimize_for_size=self._optimize_for_size)
                 new_row.writer.write(_INTERNAL_FLAG)
                 new_row.writer.write(_INTERNAL_OFFSET +
-                    str(rows[1].nodes - 1) + "\n")
+                    b"%d\n" % (rows[1].nodes - 1))
                 new_row.writer.write(key_line)
             self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
 
@@ -435,7 +434,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             node = row.spool.read(_PAGE_SIZE)
             result.write(node[reserved:])
             if len(node) == _PAGE_SIZE:
-                result.write("\x00" * (reserved - position))
+                result.write(b"\x00" * (reserved - position))
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
@@ -626,14 +625,14 @@ class _InternalNode(object):
     def __init__(self, bytes):
         """Parse bytes to create an internal node object."""
         # splitlines mangles the \r delimiters.. don't use it.
-        self.keys = self._parse_lines(bytes.split('\n'))
+        self.keys = self._parse_lines(bytes.split(b'\n'))
 
     def _parse_lines(self, lines):
         nodes = []
         self.offset = int(lines[1][7:])
         as_st = static_tuple.StaticTuple.from_sequence
         for line in lines[2:]:
-            if line == '':
+            if line == b'':
                 break
             # GZ 2017-05-24: Used to intern() each chunk of line as well, need
             # to recheck performance and perhaps adapt StaticTuple to adjust.
@@ -688,6 +687,9 @@ class BTreeGraphIndex(object):
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
 
+    def __hash__(self):
+        return id(self)
+
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
         return (
@@ -734,8 +736,7 @@ class BTreeGraphIndex(object):
         pages fit in that length.
         """
         recommended_read = self._transport.recommended_page_size()
-        recommended_pages = int(math.ceil(recommended_read /
-                                          float(_PAGE_SIZE)))
+        recommended_pages = int(math.ceil(recommended_read / _PAGE_SIZE))
         return recommended_pages
 
     def _compute_total_pages_in_index(self):
@@ -752,7 +753,7 @@ class BTreeGraphIndex(object):
             return self._row_offsets[-1]
         # This is the number of pages as defined by the size of the index. They
         # should be indentical.
-        total_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        total_pages = int(math.ceil(self._size / _PAGE_SIZE))
         return total_pages
 
     def _expand_offsets(self, offsets):
@@ -1409,38 +1410,38 @@ class BTreeGraphIndex(object):
         """
         signature = bytes[0:len(self._signature())]
         if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, BTreeGraphIndex)
+            raise index.BadIndexFormatSignature(self._name, BTreeGraphIndex)
         lines = bytes[len(self._signature()):].splitlines()
         options_line = lines[0]
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         options_line = lines[3]
         if not options_line.startswith(_OPTION_ROW_LENGTHS):
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         try:
             self._row_lengths = [int(length) for length in
                 options_line[len(_OPTION_ROW_LENGTHS):].split(b',')
                 if length]
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise index.BadIndexOptions(self)
         self._compute_row_offsets()
 
         # calculate the bytes we have processed
@@ -1516,7 +1517,7 @@ class BTreeGraphIndex(object):
                 node = _InternalNode(bytes)
             else:
                 raise AssertionError("Unknown node type for %r" % bytes)
-            yield offset / _PAGE_SIZE, node
+            yield offset // _PAGE_SIZE, node
 
     def _signature(self):
         """The file signature for this index type."""

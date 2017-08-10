@@ -30,9 +30,9 @@ WorkingTree.open(dir).
 """
 
 
-
 from __future__ import absolute_import
 
+import breezy
 import collections
 import errno
 import os
@@ -48,7 +48,9 @@ from breezy import (
     cache_utf8,
     conflicts as _mod_conflicts,
     errors,
+    globbing,
     graph as _mod_graph,
+    ignores,
     osutils,
     revision as _mod_revision,
     revisiontree,
@@ -71,6 +73,7 @@ from ..sixish import (
     text_type,
     )
 from ..trace import mutter
+from ..tree import FileTimestampUnavailable
 from ..workingtree import (
     TreeDirectory,
     TreeFile,
@@ -394,6 +397,50 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         finally:
             confile.close()
 
+    def get_ignore_list(self):
+        """Return list of ignore patterns.
+
+        Cached in the Tree object after the first call.
+        """
+        ignoreset = getattr(self, '_ignoreset', None)
+        if ignoreset is not None:
+            return ignoreset
+
+        ignore_globs = set()
+        ignore_globs.update(ignores.get_runtime_ignores())
+        ignore_globs.update(ignores.get_user_ignores())
+        if self.has_filename(breezy.IGNORE_FILENAME):
+            f = self.get_file_byname(breezy.IGNORE_FILENAME)
+            try:
+                ignore_globs.update(ignores.parse_ignore_file(f))
+            finally:
+                f.close()
+        self._ignoreset = ignore_globs
+        return ignore_globs
+
+    def _cleanup(self):
+        self._flush_ignore_list_cache()
+
+    def _flush_ignore_list_cache(self):
+        """Resets the cached ignore list to force a cache rebuild."""
+        self._ignoreset = None
+        self._ignoreglobster = None
+
+    def is_ignored(self, filename):
+        r"""Check whether the filename matches an ignore pattern.
+
+        Patterns containing '/' or '\' need to match the whole path;
+        others match against only the last component.  Patterns starting
+        with '!' are ignore exceptions.  Exceptions take precedence
+        over regular patterns and cause the filename to not be ignored.
+
+        If the file is ignored, returns the pattern which caused it to
+        be ignored, otherwise None.  So this can simply be used as a
+        boolean if desired."""
+        if getattr(self, '_ignoreglobster', None) is None:
+            self._ignoreglobster = globbing.ExceptionGlobster(self.get_ignore_list())
+        return self._ignoreglobster.match(filename)
+
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
@@ -533,7 +580,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise errors.FileTimestampUnavailable(path)
+                raise FileTimestampUnavailable(path)
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
@@ -1409,7 +1456,7 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         This is to support testing of working tree formats that can not exist
         in the same control directory as a branch.
         """
-        return self._matchingbzrdir
+        return self._matchingcontroldir
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

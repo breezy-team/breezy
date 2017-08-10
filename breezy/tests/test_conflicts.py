@@ -1178,7 +1178,7 @@ class TestResolveActionOption(tests.TestCase):
         return self.parser.parse_args(args)
 
     def test_unknown_action(self):
-        self.assertRaises(errors.BadOptionValue,
+        self.assertRaises(option.BadOptionValue,
                           self.parse, ['--action', 'take-me-to-the-moon'])
 
     def test_done(self):

@@ -398,7 +398,7 @@ class Unshelver(object):
                 try:
                     shelf_id = int(shelf_id)
                 except ValueError:
-                    raise errors.InvalidShelfId(shelf_id)
+                    raise shelf.InvalidShelfId(shelf_id)
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
@@ -466,7 +466,7 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note(gettext('Message: %s') % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                merger = unshelver.make_merger(None)
+                merger = unshelver.make_merger()
                 merger.change_reporter = change_reporter
                 if self.apply_changes:
                     merger.do_merge()

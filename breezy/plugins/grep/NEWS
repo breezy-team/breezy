@@ -6,7 +6,7 @@ bzr-grep 0.5.0-final - Unreleased
 * ``bzr grep`` now supports ``--diff|-p`` option to search through
   changesets. (Parth Malwankar, #540705)
 
-* Option ``grep_color`` can be set in ``bazaar.conf`` instead of using
+* Option ``grep_color`` can be set in ``breezy.conf`` instead of using
   the option ``--color`` from the command line. (Johan Dahlin)
 
 bzr-grep 0.4.0-final - 08-Jun-2010

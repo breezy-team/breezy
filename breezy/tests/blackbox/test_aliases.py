@@ -65,7 +65,8 @@ c2=cat -r 1 -r2
         # So we need to catch the output as well
         self.assertEqual(bzr_catch_error('--no-aliases c a',
                                           retcode=None),
-                          'brz: ERROR: unknown command "c"\n')
+                          'brz: ERROR: unknown command "c". '
+                          'Perhaps you meant "ci"\n')
 
         bzr('c -r1 -r2', retcode=3)
         bzr('c1 -r1 -r2', retcode=3)

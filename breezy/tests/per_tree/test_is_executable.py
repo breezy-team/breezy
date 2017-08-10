@@ -29,7 +29,7 @@ class TestIsExecutable(per_tree.TestCaseWithTree):
             False)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(False, tree.is_executable('1top-dir'))
+        self.assertEqual(False, tree.is_executable(tree.path2id('1top-dir')))
 
     def test_is_executable_symlink(self):
         self.requireFeature(SymlinkFeature)

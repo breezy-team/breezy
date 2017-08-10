@@ -52,47 +52,49 @@ class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
 
     def test_branch_format_matches_bzrdir_branch_format(self):
         bzrdir_branch_format = self.bzrdir_format.get_branch_format()
-        self.assertIs(self.branch_format.__class__,
-                      bzrdir_branch_format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                bzrdir_branch_format.__class__)
 
     def test_make_branch_gets_expected_format(self):
         branch = self.make_branch('.')
-        self.assertIs(self.branch_format.__class__,
-            branch._format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                branch._format.__class__)
 
 
 class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({'rev-1':('null:',),
-                          'rev-2':('rev-1', ),
-                          'rev-1.1.1':('rev-1', ),
-                          'rev-3':('rev-2', 'rev-1.1.1', ),
-                         }, ancestry_graph)
+        self.assertEqual({revmap['1']: ('null:',),
+                          revmap['2']: (revmap['1'], ),
+                          revmap['1.1.1']: (revmap['1'], ),
+                          revmap['3']: (revmap['2'], revmap['1.1.1'], ),
+                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
         wt = self.make_branch_and_tree('tree')
-        wt.commit('f', rev_id='rev1')
-        wt.commit('f', rev_id='rev2')
-        wt.commit('f', rev_id='rev3')
+        rev1 = wt.commit('f')
+        rev2 = wt.commit('f')
+        rev3 = wt.commit('f')
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.generate_revision_history('rev3')
-        for revision_id in ['rev3', 'rev2', 'rev1']:
+        br.generate_revision_history(rev3)
+        for revision_id in [rev3, rev2, rev1]:
             self.assertIsInstance(revision_id, str)
         last = br.last_revision()
-        self.assertEqual('rev3', last)
+        self.assertEqual(rev3, last)
         self.assertIsInstance(last, str)
         revno, last = br.last_revision_info()
         self.assertEqual(3, revno)
-        self.assertEqual('rev3', last)
+        self.assertEqual(rev3, last)
         self.assertIsInstance(last, str)
 
     def test_fetch_revisions(self):
@@ -100,24 +102,24 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
-        wt.add(['foo'], ['foo-id'])
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        wt.add(['foo'])
+        rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_branch('b2')
         b2.fetch(b1)
 
-        rev = b2.repository.get_revision('revision-1')
-        tree = b2.repository.revision_tree('revision-1')
+        rev = b2.repository.get_revision(rev1)
+        tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo-id'), 'hello')
+        self.assertEqual(tree.get_file_text(tree.path2id('foo')), 'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         tree_a = self.make_branch_and_tree('a')
         self.build_tree_contents([('a/b', 'b')])
         tree_a.add('b')
-        tree_a.commit("silly commit", rev_id='A')
+        tree_a.commit("silly commit")
 
         tree_b = self.make_branch_and_tree('b')
         return tree_a, tree_b
@@ -136,10 +138,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
         self.build_tree(['a/two'])
         wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
+        wt_a.commit('commit two')
         # Now make a copy of the repository.
         repo_b = self.make_repository('b')
         wt_a.branch.repository.copy_content_into(repo_b)
@@ -149,16 +151,16 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch = wt_a.branch.controldir.open_branch()
         # Then make a branch where the new repository is, but specify a revision
         # ID.  The new branch's history will stop at the specified revision.
-        br_b = branch.clone(repo_b.controldir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
+        br_b = branch.clone(repo_b.controldir, revision_id=rev1)
+        self.assertEqual(rev1, br_b.last_revision())
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
 
-        branch_b = wt_a.branch.controldir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
@@ -300,6 +302,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
+        # TODO(jelmer): Only set branch nick on bzr branches
         self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
@@ -418,20 +421,20 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
         self.assertEqual('null:', checkout_b.last_revision())
-        checkout_b.commit('rev1', rev_id='rev1')
-        self.assertEqual('rev1', branch_a.last_revision())
+        rev1 = checkout_b.commit('rev1')
+        self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
         checkout_c = branch_a.create_checkout('c', lightweight=True)
-        self.assertEqual('rev1', checkout_c.last_revision())
-        checkout_c.commit('rev2', rev_id='rev2')
-        self.assertEqual('rev2', branch_a.last_revision())
+        self.assertEqual(rev1, checkout_c.last_revision())
+        rev2 = checkout_c.commit('rev2')
+        self.assertEqual(rev2, branch_a.last_revision())
         self.assertEqual(checkout_c.branch.base, branch_a.base)
 
         checkout_d = branch_a.create_checkout('d', lightweight=True)
-        self.assertEqual('rev2', checkout_d.last_revision())
+        self.assertEqual(rev2, checkout_d.last_revision())
         checkout_e = branch_a.create_checkout('e')
-        self.assertEqual('rev2', checkout_e.last_revision())
+        self.assertEqual(rev2, checkout_e.last_revision())
 
     def test_create_anonymous_lightweight_checkout(self):
         """A lightweight checkout from a readonly branch should succeed."""
@@ -473,10 +476,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # (In native formats, this is the tip + tags, but other formats may
         # have other revs needed)
         tree = self.make_branch_and_tree('a')
-        tree.commit('first commit', rev_id='rev1')
-        tree.commit('second commit', rev_id='rev2')
+        tree.commit('first commit')
+        rev2 = tree.commit('second commit')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertTrue('rev2' in must_fetch)
+        self.assertTrue(rev2 in must_fetch)
 
     def test_heads_to_fetch_not_null_revision(self):
         # NULL_REVISION does not appear in the result of heads_to_fetch, even
@@ -1028,7 +1031,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         checkout.commit('bar')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        merger = merge.Merger.from_revision_ids(None, tree,
+        merger = merge.Merger.from_revision_ids(tree,
                                                 branch.last_revision(),
                                                 other_branch=branch)
         merger.merge_type = merge.Merge3Merger

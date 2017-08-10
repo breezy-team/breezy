@@ -294,7 +294,7 @@ class MemoryTree(MutableInventoryTree):
             self._branch_revision_id = revision_ids[0]
         self._allow_leftmost_as_ghost = allow_leftmost_as_ghost
         self._set_basis()
-    
+
     def _set_basis(self):
         try:
             self._basis_tree = self.branch.repository.revision_tree(

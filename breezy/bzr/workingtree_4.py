@@ -81,6 +81,7 @@ from ..sixish import (
     )
 from ..transport.local import LocalTransport
 from ..tree import (
+    FileTimestampUnavailable,
     InterTree,
     )
 from ..workingtree import (
@@ -1592,16 +1593,16 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                            _controldir=a_controldir,
                            _control_files=control_files)
 
-    def __get_matchingbzrdir(self):
-        return self._get_matchingbzrdir()
+    def __get_matchingcontroldir(self):
+        return self._get_matchingcontroldir()
 
-    def _get_matchingbzrdir(self):
+    def _get_matchingcontroldir(self):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return controldir.format_registry.make_controldir(
             'development-subtree')
 
-    _matchingbzrdir = property(__get_matchingbzrdir)
+    _matchingcontroldir = property(__get_matchingcontroldir)
 
 
 class WorkingTreeFormat4(DirStateWorkingTreeFormat):
@@ -1679,7 +1680,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
     def supports_views(self):
         return True
 
-    def _get_matchingbzrdir(self):
+    def _get_matchingcontroldir(self):
         """Overrideable method to get a bzrdir for testing."""
         # We use 'development-subtree' instead of '2a', because we have a
         # few tests that want to test tree references
@@ -1868,7 +1869,7 @@ class DirStateRevisionTree(InventoryTree):
         try:
             rev = self._repository.get_revision(last_changed_revision)
         except errors.NoSuchRevision:
-            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+            raise FileTimestampUnavailable(self.id2path(file_id))
         return rev.timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
