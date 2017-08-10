@@ -86,8 +86,8 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
         The graph should look like:
             digraph H {
-                "rev-1" -> "rev-2" -> "rev-3";
-                "rev-1" -> "rev-1.1.1" -> "rev-3";
+                "1" -> "2" -> "3";
+                "1" -> "1.1.1" -> "3";
             }
 
         Or in ASCII:
@@ -97,22 +97,23 @@ class TestCaseWithBranch(TestCaseWithControlDir):
             |/
             3
         """
+        revmap = {}
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         try:
             tree.add('')
-            tree.commit('first', rev_id='rev-1')
-            tree.commit('second', rev_id='rev-1.1.1')
+            revmap['1'] = tree.commit('first')
+            revmap['1.1.1'] = tree.commit('second')
             # Uncommit that last commit and switch to the other line
-            tree.branch.set_last_revision_info(1, 'rev-1')
-            tree.set_parent_ids(['rev-1'])
-            tree.commit('alt-second', rev_id='rev-2')
-            tree.set_parent_ids(['rev-2', 'rev-1.1.1'])
-            tree.commit('third', rev_id='rev-3')
+            tree.branch.set_last_revision_info(1, revmap['1'])
+            tree.set_parent_ids([revmap['1']])
+            revmap['2'] = tree.commit('alt-second')
+            tree.set_parent_ids([revmap['2'], revmap['1.1.1']])
+            revmap['3'] = tree.commit('third')
         finally:
             tree.unlock()
 
-        return tree
+        return tree, revmap
 
 
 def branch_scenarios():

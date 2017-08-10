@@ -114,15 +114,15 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
-        builder.build_snapshot('rev1', None, [
+        rev1 = builder.build_snapshot(None, None, [
             ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('rev2', ['rev1'], [])
-        builder.build_snapshot('other', None, [
+        rev2 = builder.build_snapshot(None, [rev1], [])
+        other = builder.build_snapshot(None, None, [
             ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('rev3', ['rev2', 'other'], [])
+        rev3 = builder.build_snapshot(None, [rev2, other], [])
         builder.finish_series()
         local = builder.get_branch()
-        local.controldir.clone(self.get_url('remote'), revision_id='rev3')
+        local.controldir.clone(self.get_url('remote'), revision_id=rev3)
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.

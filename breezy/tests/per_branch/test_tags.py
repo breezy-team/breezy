@@ -142,17 +142,13 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def test_unicode_tag(self):
         tag_name = u'\u3070'
-        # in anticipation of the planned change to treating revision ids as
-        # just 8bit strings
-        revid = ('revid' + tag_name).encode('utf-8')
-        b1 = self.make_branch_with_revisions('b', [revid])
+        b1, [revid] = self.make_branch_with_revision_tuple('b', 1)
         b1.tags.set_tag(tag_name, revid)
         self.assertEqual(b1.tags.lookup_tag(tag_name), revid)
 
     def test_delete_tag(self):
         tag_name = u'\N{GREEK SMALL LETTER ALPHA}'
-        revid = ('revid' + tag_name).encode('utf-8')
-        b = self.make_branch_with_revisions('b', [revid])
+        b, [revid] = self.make_branch_with_revision_tuple('b', 1)
         b.tags.set_tag(tag_name, revid)
         # now try to delete it
         b.tags.delete_tag(tag_name)
