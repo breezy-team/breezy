@@ -29,7 +29,7 @@ Homepage: https://launchpad.net/brz
 XS-Testsuite: autopkgtest
 
 Package: brz
-Recommends: python-gpgme
+Recommends: python-gpg
 Architecture: all
 Depends: python-breezy (<= ${source:Version}.1~),
          python-breezy (>= ${source:Version}),
@@ -71,7 +71,7 @@ Conflicts: python-paramiko (<< 1.14.1)
 Suggests: python-breezy-dbg,
           python-breezy.tests,
           python-fastimport,
-          python-gpgme,
+          python-gpg,
           python-kerberos (>= 1.0+svn2455-1),
           python-paramiko,
           xdg-utils
@@ -95,7 +95,7 @@ Depends: python-breezy (= ${binary:Version}),
          ${shlibs:Depends}
 Provides: ${python:Provides}
 Recommends: python-dbg
-Suggests: python-gpgme-dbg,
+Suggests: python-gpg-dbgsym,
           python-lzma-dbg,
           python-meliae-dbg
 Description: distributed version control system - debug extension
