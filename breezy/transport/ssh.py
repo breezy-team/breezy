@@ -364,8 +364,8 @@ class SubprocessVendor(SSHVendor):
     # tests, but beware of using PIPE which may hang due to not being read.
     _stderr_target = None
 
-    @classmethod
-    def _check_hostname(cls, arg):
+    @staticmethod
+    def _check_hostname(arg):
         if arg.startswith('-'):
             raise StrangeHostname(hostname=arg)
 
