@@ -122,6 +122,12 @@ Bug Fixes
 * Print a proper error when encountering ghost revisions in
   mainline in ``bzr log``. (Jelmer Vernooĳ, #726466)
 
+* Security fix: hostnames starting with a dash in bzr+ssh URLs
+  are now filtered out when using a subprocess SSH client.
+  .
+  Thanks to Augie Fackler for reporting.
+  (Jelmer Vernooĳ, #1710979)
+
 Documentation
 *************
 
