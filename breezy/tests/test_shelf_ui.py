@@ -23,6 +23,7 @@ from .. import (
     errors,
     shelf_ui,
     revision,
+    shelf,
     tests,
     )
 from ..sixish import (
@@ -568,7 +569,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.write('garbage')
         finally:
             shelf_file.close()
-        self.assertRaises(errors.InvalidShelfId,
+        self.assertRaises(shelf.InvalidShelfId,
             shelf_ui.Unshelver.from_args, directory='tree',
             action='delete-only', shelf_id='foo')
 

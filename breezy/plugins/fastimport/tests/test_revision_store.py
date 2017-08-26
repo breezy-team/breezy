@@ -20,11 +20,12 @@ from __future__ import absolute_import
 from .... import (
     branch,
     errors,
-    inventory,
     osutils,
     tests,
     )
-
+from ....bzr import (
+    inventory,
+    )
 from .. import (
     revision_store,
     )

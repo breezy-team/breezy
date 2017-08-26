@@ -16,16 +16,18 @@
 
 import os
 
-from breezy import (
+from .. import (
     errors,
     osutils,
-    pack,
     shelf,
     tests,
     transform,
     workingtree,
     )
-from breezy.tests import (
+from ..bzr import (
+    pack,
+    )
+from . import (
     features,
     )
 
@@ -39,6 +41,15 @@ EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
                "d10:_id_numberi0e18:_new_executabilityde7:_new_idde"
                "9:_new_namede11:_new_parentde16:_non_present_idsde"
                "17:_removed_contentsle11:_removed_idle14:_tree_path_idsdeeE")
+
+
+class TestErrors(tests.TestCase):
+
+    def test_invalid_shelf_id(self):
+        invalid_id = "foo"
+        err = shelf.InvalidShelfId(invalid_id)
+        self.assertEqual('"foo" is not a valid shelf id, '
+                         'try a number instead.', str(err))
 
 
 class TestPrepareShelf(tests.TestCaseWithTransport):
@@ -620,7 +631,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
                                                                 'foo'))])
         shelf_file = open('shelf', 'rb')
         self.addCleanup(shelf_file.close)
-        e = self.assertRaises(errors.ShelfCorrupt,
+        e = self.assertRaises(shelf.ShelfCorrupt,
                               shelf.Unshelver.from_tree_and_shelf, tree,
                               shelf_file)
         self.assertEqual('Shelf corrupt.', str(e))
@@ -731,7 +742,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
 
     def test_read_non_existant(self):
         manager = self.get_manager()
-        e = self.assertRaises(errors.NoSuchShelfId, manager.read_shelf, 1)
+        e = self.assertRaises(shelf.NoSuchShelfId, manager.read_shelf, 1)
         self.assertEqual('No changes are shelved with id "1".', str(e))
 
     def test_shelve_changes(self):

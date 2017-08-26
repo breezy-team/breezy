@@ -422,7 +422,7 @@ class TestSource(TestSourceHelper):
         """
         missing_absolute_import = []
         for fname, text in self.get_source_file_contents(
-                extensions=('.py', )):
+                extensions=('.py', '.pyx')):
             if "/tests/" in fname or "test_" in fname:
                 # We don't really care about tests
                 continue

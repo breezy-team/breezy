@@ -59,7 +59,7 @@ class TestParent(TestCaseWithTransport):
         self.assertEqual(path, b.get_parent())
 
 
-        self.assertRaises(breezy.errors.InvalidURL, b.set_parent, u'\xb5')
+        self.assertRaises(urlutils.InvalidURL, b.set_parent, u'\xb5')
         b.set_parent(urlutils.escape(u'\xb5'))
         self.assertEqual('%C2%B5', b._get_parent_location())
 
@@ -96,7 +96,7 @@ class TestParent(TestCaseWithTransport):
         if sys.platform != 'win32':
             raise TestSkipped('windows-specific test')
         b = self.make_branch('.')
-        base_url = b.bzrdir.transport.abspath('.')
+        base_url = b.controldir.transport.abspath('.')
         if not base_url.startswith('file:///'):
             raise TestNotApplicable('this test should be run with local base')
         base = urlutils.local_path_from_url(base_url)

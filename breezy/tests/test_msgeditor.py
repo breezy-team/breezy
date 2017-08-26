@@ -83,10 +83,10 @@ added:
         config.GlobalStack().set('email', 'Bilbo Baggins <bb@hobbit.net>')
         tree = self.make_branch_and_tree('a')
         tree.commit('Initial checkin.', timestamp=1230912900, timezone=0)
-        tree2 = tree.bzrdir.clone('b').open_workingtree()
+        tree2 = tree.controldir.clone('b').open_workingtree()
         tree.commit('Minor tweak.', timestamp=1231977840, timezone=0)
         tree2.commit('Feature X work.', timestamp=1233186240, timezone=0)
-        tree3 = tree2.bzrdir.clone('c').open_workingtree()
+        tree3 = tree2.controldir.clone('c').open_workingtree()
         tree2.commit('Feature X finished.', timestamp=1233187680, timezone=0)
         tree3.commit('Feature Y, based on initial X work.',
                      timestamp=1233285960, timezone=0)
@@ -339,7 +339,7 @@ if len(sys.argv) == 2:
         self.make_fake_editor(message=char)
 
         working_tree = self.make_uncommitted_tree()
-        self.assertRaises(errors.BadCommitMessageEncoding,
+        self.assertRaises(msgeditor.BadCommitMessageEncoding,
                           msgeditor.edit_commit_message, '')
 
     def test_set_commit_message_no_hooks(self):

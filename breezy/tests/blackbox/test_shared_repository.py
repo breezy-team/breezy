@@ -18,7 +18,7 @@
 
 import os
 
-from breezy.bzrdir import BzrDirMetaFormat1
+from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.controldir import ControlDir
 import breezy.errors as errors
 from breezy.tests import TestCaseInTempDir

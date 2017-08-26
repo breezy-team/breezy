@@ -16,11 +16,12 @@
 
 """Wrapper for readdir which returns files ordered by inode."""
 
+from __future__ import absolute_import
+
 
 import os
 import sys
 
-#python2.4 support
 cdef extern from "python-compat.h":
     pass
 
@@ -80,7 +81,6 @@ cdef extern from 'fcntl.h':
 cdef extern from 'Python.h':
     int PyErr_CheckSignals() except -1
     char * PyString_AS_STRING(object)
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
         pass
     Py_ssize_t PyString_Size(object s)
@@ -166,7 +166,7 @@ cdef class _Stat:
                      self.st_mtime, self.st_ctime))
 
 
-from breezy import osutils
+from . import osutils
 
 cdef object _safe_utf8
 _safe_utf8 = osutils.safe_utf8

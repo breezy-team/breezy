@@ -29,6 +29,7 @@ import copy
 import difflib
 import doctest
 import errno
+import functools
 import itertools
 import logging
 import math
@@ -61,7 +62,6 @@ import breezy
 from .. import (
     branchbuilder,
     controldir,
-    chk_map,
     commands as _mod_commands,
     config,
     i18n,
@@ -82,6 +82,9 @@ from .. import (
     transport as _mod_transport,
     workingtree,
     )
+from breezy.bzr import (
+    chk_map,
+    )
 try:
     import breezy.lsprof
 except ImportError:
@@ -89,10 +92,11 @@ except ImportError:
     pass
 from ..sixish import (
     BytesIO,
+    PY3,
     string_types,
     text_type,
     )
-from ..smart import client, request
+from ..bzr.smart import client, request
 from ..transport import (
     memory,
     pathfilter,
@@ -151,7 +155,7 @@ isolated_environ = {
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
     # TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
-    'BRZ_PLUGIN_PATH': None,
+    'BRZ_PLUGIN_PATH': '-site',
     'BRZ_DISABLE_PLUGINS': None,
     'BRZ_PLUGINS_AT': None,
     'BRZ_CONCURRENCY': None,
@@ -595,15 +599,10 @@ class TextTestResult(ExtendedTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 pb=None,
                  strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, strict)
-        # We no longer pass them around, but just rely on the UIFactory stack
-        # for state
-        if pb is not None:
-            warnings.warn("Passing pb to TextTestResult is deprecated")
         self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
@@ -790,11 +789,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        if isinstance(codec, tuple):
-            # Python 2.4
-            encode = codec[0]
-        else:
-            encode = codec.encode
+        encode = codec.encode
         # GZ 2010-09-08: Really we don't want to be writing arbitrary bytes,
         #                so should swap to the plain codecs.StreamWriter
         stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream,
@@ -1038,7 +1033,7 @@ class TestCase(testtools.TestCase):
                                   % (counter_name,))
         _counters[counter_name] = 0
         self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
-            lambda: ['%d' % (_counters[counter_name],)]))
+            lambda: [b'%d' % (_counters[counter_name],)]))
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
         label = 'count %s calls' % (counter_name,)
@@ -1533,11 +1528,8 @@ class TestCase(testtools.TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
-        f = file(path, 'rb')
-        try:
+        with open(path, 'rb') as f:
             s = f.read()
-        finally:
-            f.close()
         self.assertEqualDiff(content, s)
 
     def assertDocstring(self, expected_docstring, obj):
@@ -1550,7 +1542,7 @@ class TestCase(testtools.TestCase):
 
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertPathExists(p)
         else:
@@ -1559,7 +1551,7 @@ class TestCase(testtools.TestCase):
 
     def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertPathDoesNotExist(p)
         else:
@@ -1888,8 +1880,8 @@ class TestCase(testtools.TestCase):
         self._benchcalls.
         """
         if self._benchtime is None:
-            self.addDetail('benchtime', content.Content(content.ContentType(
-                "text", "plain"), lambda:[str(self._benchtime)]))
+            self.addDetail('benchtime', content.Content(content.UTF8_TEXT,
+                lambda:[str(self._benchtime).encode('utf-8')]))
             self._benchtime = 0
         start = time.time()
         try:
@@ -2090,7 +2082,7 @@ class TestCase(testtools.TestCase):
         if len(args) == 1:
             if isinstance(args[0], list):
                 args = args[0]
-            elif isinstance(args[0], basestring):
+            elif isinstance(args[0], (str, text_type)):
                 args = list(shlex.split(args[0]))
         else:
             raise ValueError("passing varargs to run_bzr_subprocess")
@@ -2252,9 +2244,9 @@ class TestCase(testtools.TestCase):
         if retcode is not None and retcode != process.returncode:
             if process_args is None:
                 process_args = "(unknown args)"
-            trace.mutter('Output of brz %s:\n%s', process_args, out)
-            trace.mutter('Error for brz %s:\n%s', process_args, err)
-            self.fail('Command brz %s failed with retcode %s != %s'
+            trace.mutter('Output of brz %r:\n%s', process_args, out)
+            trace.mutter('Error for brz %r:\n%s', process_args, err)
+            self.fail('Command brz %r failed with retcode %d != %d'
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
@@ -2288,7 +2280,7 @@ class TestCase(testtools.TestCase):
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
-            stdin = BytesIO("")
+            stdin = BytesIO(b"")
         if stdout is None:
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
@@ -2332,7 +2324,7 @@ class TestCase(testtools.TestCase):
 
     def disable_verb(self, verb):
         """Disable a smart server verb for one test."""
-        from breezy.smart import request
+        from breezy.bzr.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         orig_info = request_handlers.get_info(verb)
@@ -2642,8 +2634,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False,
-                                         name=name)
+        return repo.controldir.create_branch(append_revisions_only=False, name=name)
 
     def get_default_format(self):
         return 'default'
@@ -2660,11 +2651,11 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         if format is None:
             format = self.get_default_format()
-        if isinstance(format, basestring):
-            format = controldir.format_registry.make_bzrdir(format)
+        if isinstance(format, str):
+            format = controldir.format_registry.make_controldir(format)
         return format
 
-    def make_bzrdir(self, relpath, format=None):
+    def make_controldir(self, relpath, format=None):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
@@ -2686,7 +2677,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # real format, which is incorrect.  Actually we should make sure that
         # RemoteBzrDir returns a RemoteRepository.
         # maybe  mbp 20070410
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
     def make_smart_server(self, path, backing_server=None):
@@ -2709,7 +2700,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         test_home_dir = self.test_home_dir
-        if isinstance(test_home_dir, text_type):
+        if not PY3 and isinstance(test_home_dir, text_type):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BRZ_HOME', test_home_dir)
@@ -2768,11 +2759,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        f = file(filename)
-        try:
+        with open(filename) as f:
             contents = f.read()
-        finally:
-            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
@@ -2819,11 +2807,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         # put name of test inside
-        f = file(self.test_base_dir + '/name', 'w')
-        try:
+        with open(self.test_base_dir + '/name', 'w') as f:
             f.write(self.id())
-        finally:
-            f.close()
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
@@ -2854,18 +2839,18 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
-            self.assertIsInstance(name, basestring)
+            self.assertIsInstance(name, (str, text_type))
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
                 if line_endings == 'binary':
-                    end = '\n'
+                    end = b'\n'
                 elif line_endings == 'native':
-                    end = os.linesep
+                    end = os.linesep.encode('ascii')
                 else:
                     raise errors.BzrError(
                         'Invalid line ending request %r' % line_endings)
-                content = "contents of %s%s" % (name.encode('utf-8'), end)
+                content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     build_tree_contents = staticmethod(treeshape.build_tree_contents)
@@ -2874,7 +2859,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
@@ -2885,7 +2870,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, basestring):
+        if not isinstance(path, (str, text_type)):
             for p in path:
                 self.assertNotInWorkingTree(p,tree=tree)
         else:
@@ -2953,7 +2938,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
-            return b.bzrdir.create_workingtree()
+            return b.controldir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
@@ -3004,7 +2989,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
         There is no point in forcing them to duplicate the extension related
         warning.
         """
-        config.GlobalStack().set('ignore_missing_extensions', True)
+        config.GlobalConfig().set_user_option(
+            'suppress_warnings', 'missing_extensions')
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -3673,6 +3659,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         if starting_with:
             starting_with = [test_prefix_alias_registry.resolve_alias(start)
                              for start in starting_with]
+            # Always consider 'unittest' an interesting name so that failed
+            # suites wrapped as test cases appear in the output.
+            starting_with.append('unittest')
         if test_suite_factory is None:
             # Reduce loading time by loading modules based on the starting_with
             # patterns.
@@ -3901,9 +3890,9 @@ def _test_suite_testmod_names():
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
-        'breezy.tests.test_api',
         'breezy.tests.test_atomicfile',
         'breezy.tests.test_bad_files',
+        'breezy.tests.test_bisect',
         'breezy.tests.test_bisect_multi',
         'breezy.tests.test_branch',
         'breezy.tests.test_branchbuilder',
@@ -3942,6 +3931,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_extract',
         'breezy.tests.test_features',
         'breezy.tests.test_fetch',
+        'breezy.tests.test_fetch_ghosts',
         'breezy.tests.test_fixtures',
         'breezy.tests.test_fifo_cache',
         'breezy.tests.test_filters',
@@ -4034,7 +4024,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_source',
         'breezy.tests.test_ssh_transport',
         'breezy.tests.test_status',
-        'breezy.tests.test_store',
         'breezy.tests.test_strace',
         'breezy.tests.test_subsume',
         'breezy.tests.test_switch',
@@ -4067,6 +4056,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_version_info',
         'breezy.tests.test_versionedfile',
         'breezy.tests.test_vf_search',
+        'breezy.tests.test_views',
         'breezy.tests.test_weave',
         'breezy.tests.test_whitebox',
         'breezy.tests.test_win32utils',
@@ -4085,8 +4075,8 @@ def _test_suite_modules_to_doctest():
     return [
         'breezy',
         'breezy.branchbuilder',
+        'breezy.bzr.inventory',
         'breezy.decorators',
-        'breezy.inventory',
         'breezy.iterablefile',
         'breezy.lockdir',
         'breezy.merge3',
@@ -4210,11 +4200,11 @@ def multiply_scenarios(*scenarios):
 
     It is safe to pass scenario generators or iterators.
 
-    :returns: A list of compound scenarios: the cross-product of all 
+    :returns: A list of compound scenarios: the cross-product of all
         scenarios, with the names concatenated and the parameters
         merged together.
     """
-    return reduce(_multiply_two_scenarios, map(list, scenarios))
+    return functools.reduce(_multiply_two_scenarios, map(list, scenarios))
 
 
 def _multiply_two_scenarios(scenarios_left, scenarios_right):
@@ -4226,7 +4216,7 @@ def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """
     return [
         ('%s,%s' % (left_name, right_name),
-         dict(left_dict.items() + right_dict.items()))
+         dict(left_dict, **right_dict))
         for left_name, left_dict in scenarios_left
         for right_name, right_dict in scenarios_right]
 
@@ -4373,9 +4363,9 @@ def _rmtree_temp_dir(dirname, test_id=None):
     # except on win32, where rmtree(str) will fail
     # since it doesn't have the property of byte-stream paths
     # (they are either ascii or mbcs)
-    if sys.platform == 'win32':
+    if sys.platform == 'win32' and isinstance(dirname, bytes):
         # make sure we are using the unicode win32 api
-        dirname = text_type(dirname)
+        dirname = dirname.decode('mbcs')
     else:
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:
@@ -4418,7 +4408,7 @@ def probe_bad_non_ascii(encoding):
     Return None if all non-ascii characters is valid
     for given encoding.
     """
-    for i in xrange(128, 256):
+    for i in range(128, 256):
         char = chr(i)
         try:
             char.decode(encoding)

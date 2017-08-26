@@ -26,17 +26,20 @@ from ... import (
     lru_cache,
     multiparent,
     osutils,
-    pack,
     revision as _mod_revision,
-    serializer,
     trace,
     ui,
+    )
+from ...bzr import (
+    pack,
+    serializer,
     versionedfile as _mod_versionedfile,
     )
 from ...bundle import bundle_data, serializer as bundle_serializer
 from ...i18n import ngettext
 from ...sixish import (
     BytesIO,
+    viewitems,
     )
 
 
@@ -352,7 +355,7 @@ class BundleWriteOperation(object):
         text_keys = []
         altered_fileids = self.repository.fileids_altered_by_revision_ids(
                 self.revision_ids)
-        for file_id, revision_ids in altered_fileids.iteritems():
+        for file_id, revision_ids in viewitems(altered_fileids):
             for revision_id in revision_ids:
                 text_keys.append((file_id, revision_id))
         self._add_mp_records_keys('file', self.repository.texts, text_keys)

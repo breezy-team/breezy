@@ -18,9 +18,11 @@
 
 
 from breezy import (
-    bzrdir,
     errors,
     tests,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.reconcile import reconcile, Reconciler
 from breezy.tests import per_repository
@@ -50,7 +52,7 @@ class TestReconciler(tests.TestCaseWithTransport):
 
     def test_reconciler_with_no_branch(self):
         repo = self.make_repository('repo')
-        reconciler = Reconciler(repo.bzrdir)
+        reconciler = Reconciler(repo.controldir)
         reconciler.reconcile()
         # no inconsistent parents should have been found
         # but the values should have been set.
@@ -61,7 +63,7 @@ class TestReconciler(tests.TestCaseWithTransport):
 
     def test_reconciler_finds_branch(self):
         a_branch = self.make_branch('a_branch')
-        reconciler = Reconciler(a_branch.bzrdir)
+        reconciler = Reconciler(a_branch.controldir)
         reconciler.reconcile()
 
         # It should have checked the repository, and the branch

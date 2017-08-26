@@ -30,44 +30,43 @@ class BDecoder(object):
         """
         self.yield_tuples = yield_tuples
         decode_func = {}
-        decode_func['l'] = self.decode_list
-        decode_func['d'] = self.decode_dict
-        decode_func['i'] = self.decode_int
-        decode_func['0'] = self.decode_string
-        decode_func['1'] = self.decode_string
-        decode_func['2'] = self.decode_string
-        decode_func['3'] = self.decode_string
-        decode_func['4'] = self.decode_string
-        decode_func['5'] = self.decode_string
-        decode_func['6'] = self.decode_string
-        decode_func['7'] = self.decode_string
-        decode_func['8'] = self.decode_string
-        decode_func['9'] = self.decode_string
+        decode_func[b'l'] = self.decode_list
+        decode_func[b'd'] = self.decode_dict
+        decode_func[b'i'] = self.decode_int
+        decode_func[b'0'] = self.decode_string
+        decode_func[b'1'] = self.decode_string
+        decode_func[b'2'] = self.decode_string
+        decode_func[b'3'] = self.decode_string
+        decode_func[b'4'] = self.decode_string
+        decode_func[b'5'] = self.decode_string
+        decode_func[b'6'] = self.decode_string
+        decode_func[b'7'] = self.decode_string
+        decode_func[b'8'] = self.decode_string
+        decode_func[b'9'] = self.decode_string
         self.decode_func = decode_func
 
     def decode_int(self, x, f):
         f += 1
-        newf = x.index('e', f)
+        newf = x.index(b'e', f)
         n = int(x[f:newf])
-        if x[f] == '-':
-            if x[f + 1] == '0':
-                raise ValueError
-        elif x[f] == '0' and newf != f+1:
+        if x[f:f+2] == b'-0':
+            raise ValueError
+        elif x[f:f+1] == b'0' and newf != f+1:
             raise ValueError
         return (n, newf+1)
 
     def decode_string(self, x, f):
-        colon = x.index(':', f)
+        colon = x.index(b':', f)
         n = int(x[f:colon])
-        if x[f] == '0' and colon != f+1:
+        if x[f:f+1] == b'0' and colon != f+1:
             raise ValueError
         colon += 1
         return (x[colon:colon+n], colon+n)
 
     def decode_list(self, x, f):
         r, f = [], f+1
-        while x[f] != 'e':
-            v, f = self.decode_func[x[f]](x, f)
+        while x[f:f+1] != b'e':
+            v, f = self.decode_func[x[f:f+1]](x, f)
             r.append(v)
         if self.yield_tuples:
             r = tuple(r)
@@ -76,19 +75,19 @@ class BDecoder(object):
     def decode_dict(self, x, f):
         r, f = {}, f+1
         lastkey = None
-        while x[f] != 'e':
+        while x[f:f+1] != b'e':
             k, f = self.decode_string(x, f)
-            if lastkey >= k:
+            if lastkey is not None and lastkey >= k:
                 raise ValueError
             lastkey = k
-            r[k], f = self.decode_func[x[f]](x, f)
+            r[k], f = self.decode_func[x[f:f+1]](x, f)
         return (r, f + 1)
 
     def bdecode(self, x):
         if not isinstance(x, bytes):
             raise TypeError
         try:
-            r, l = self.decode_func[x[0]](x, 0)
+            r, l = self.decode_func[x[:1]](x, 0)
         except (IndexError, KeyError, OverflowError) as e:
             raise ValueError(str(e))
         if l != len(x):
@@ -109,6 +108,7 @@ class Bencached(object):
     def __init__(self, s):
         self.bencoded = s
 
+
 def encode_bencached(x,r):
     r.append(x.bencoded)
 
@@ -116,30 +116,34 @@ def encode_bool(x,r):
     encode_int(int(x), r)
 
 def encode_int(x, r):
-    r.extend(('i', str(x), 'e'))
+    r.extend((b'i', int_to_bytes(x), b'e'))
 
 def encode_string(x, r):
-    r.extend((str(len(x)), ':', x))
+    r.extend((int_to_bytes(len(x)), b':', x))
 
 def encode_list(x, r):
-    r.append('l')
+    r.append(b'l')
     for i in x:
         encode_func[type(i)](i, r)
-    r.append('e')
+    r.append(b'e')
 
 def encode_dict(x,r):
-    r.append('d')
+    r.append(b'd')
     ilist = sorted(x.items())
     for k, v in ilist:
-        r.extend((str(len(k)), ':', k))
+        r.extend((int_to_bytes(len(k)), b':', k))
         encode_func[type(v)](v, r)
-    r.append('e')
+    r.append(b'e')
 
 encode_func = {}
 encode_func[type(Bencached(0))] = encode_bencached
 encode_func[int] = encode_int
 if sys.version_info < (3,):
     encode_func[long] = encode_int
+    int_to_bytes = str
+else:
+    def int_to_bytes(n):
+        return b'%d' % n
 encode_func[bytes] = encode_string
 encode_func[list] = encode_list
 encode_func[tuple] = encode_list
@@ -159,5 +163,5 @@ else:
 def bencode(x):
     r = []
     encode_func[type(x)](x, r)
-    return ''.join(r)
+    return b''.join(r)
 

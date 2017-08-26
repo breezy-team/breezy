@@ -37,6 +37,12 @@ from ...transport.http import _urllib2_wrappers
 export BRZ_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
 '''
 
+
+class InvalidURL(errors.PathError):
+
+    _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
+
+
 class InvalidLaunchpadInstance(errors.BzrError):
 
     _fmt = "%(lp_instance)s is not a valid Launchpad instance."
@@ -94,7 +100,7 @@ class LaunchpadService(object):
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     LAUNCHPAD_INSTANCE = {}
-    for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
+    for instance, domain in LAUNCHPAD_DOMAINS.items():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
     # We use production as the default because edge has been deprecated circa
@@ -142,7 +148,7 @@ class LaunchpadService(object):
         if lp_instance == '':
             lp_instance = None
         elif lp_instance not in cls.LAUNCHPAD_INSTANCE:
-            raise errors.InvalidURL(path=url)
+            raise InvalidURL(url)
         return cls(lp_instance=lp_instance, **kwargs)
 
     def get_proxy(self):
@@ -191,13 +197,13 @@ class LaunchpadService(object):
             try:
                 result = resolve.submit(self)
             except xmlrpclib.Fault as fault:
-                raise errors.InvalidURL(branch_url, str(fault))
+                raise InvalidURL(branch_url, str(fault))
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]
         else:
             domains = (
                 'bazaar.%s' % domain
-                for domain in self.LAUNCHPAD_DOMAINS.itervalues())
+                for domain in self.LAUNCHPAD_DOMAINS.values())
             if hostinfo not in domains:
                 raise NotLaunchpadBranch(branch_url)
         return path.lstrip('/')
@@ -205,7 +211,7 @@ class LaunchpadService(object):
     def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
         """Get the Launchpad web URL for the given branch URL.
 
-        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+        :raise InvalidURL: if 'branch_url' cannot be identified as a
             Launchpad branch URL.
         :return: The URL of the branch on Launchpad.
         """
@@ -245,8 +251,7 @@ class ResolveLaunchpadPathRequest(BaseRequest):
 
     def __init__(self, path):
         if not path:
-            raise errors.InvalidURL(path=path,
-                                    extra="You must specify a project.")
+            raise InvalidURL(url=path, extra="You must specify a project.")
         self.path = path
 
     def _request_params(self):

@@ -17,11 +17,14 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
+from __future__ import absolute_import
+
 import os
 import subprocess
 import stat
 import sys
 import tempfile
+import warnings
 
 from .. import (
     osutils,
@@ -161,19 +164,25 @@ class ModuleAvailableFeature(Feature):
     :ivar module: The module if it is available, else None.
     """
 
-    def __init__(self, module_name):
+    def __init__(self, module_name, ignore_warnings=None):
         super(ModuleAvailableFeature, self).__init__()
         self.module_name = module_name
+        if ignore_warnings is None:
+            ignore_warnings = ()
+        self.ignore_warnings = ignore_warnings
 
     def _probe(self):
         sentinel = object()
         module = sys.modules.get(self.module_name, sentinel)
         if module is sentinel:
-            try:
-                self._module = __import__(self.module_name, {}, {}, [''])
+            with warnings.catch_warnings():
+                for warning_category in self.ignore_warnings:
+                    warnings.simplefilter('ignore', warning_category)
+                try:
+                    self._module = __import__(self.module_name, {}, {}, [''])
+                except ImportError:
+                    return False
                 return True
-            except ImportError:
-                return False
         else:
             self._module = module
             return True
@@ -186,6 +195,33 @@ class ModuleAvailableFeature(Feature):
 
     def feature_name(self):
         return self.module_name
+
+
+class PluginLoadedFeature(Feature):
+    """Check whether a plugin with specific name is loaded.
+
+    This is different from ModuleAvailableFeature, because
+    plugins can be available but explicitly disabled
+    (e.g. through BRZ_DISABLE_PLUGINS=blah).
+
+    :ivar plugin_name: The name of the plugin
+    """
+
+    def __init__(self, plugin_name):
+        super(PluginLoadedFeature, self).__init__()
+        self.plugin_name = plugin_name
+
+    def _probe(self):
+        import breezy
+        return self.plugin_name in breezy.global_state.plugins
+
+    @property
+    def plugin(self):
+        import breezy
+        return breezy.global_state.plugins.get(self.plugin_name)
+
+    def feature_name(self):
+        return '%s plugin' % self.plugin_name
 
 
 class _HTTPSServerFeature(Feature):
@@ -345,12 +381,14 @@ class _NotRunningAsRoot(Feature):
 
 not_running_as_root = _NotRunningAsRoot()
 
-apport = ModuleAvailableFeature('apport')
-gpgme = ModuleAvailableFeature('gpgme')
+# Apport uses deprecated imp module on python3.
+apport = ModuleAvailableFeature(
+    'apport.report',
+    ignore_warnings=[DeprecationWarning, PendingDeprecationWarning])
+gpg = ModuleAvailableFeature('gpg')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae.scanner')
 paramiko = ModuleAvailableFeature('paramiko')
-pycurl = ModuleAvailableFeature('pycurl')
 pywintypes = ModuleAvailableFeature('pywintypes')
 subunit = ModuleAvailableFeature('subunit')
 testtools = ModuleAvailableFeature('testtools')

@@ -20,8 +20,20 @@ Based on pyftpdlib: http://code.google.com/p/pyftpdlib/
 """
 
 import errno
+import logging
 import os
-from pyftpdlib import ftpserver
+import pyftpdlib
+import sys
+from pyftpdlib.authorizers import (
+    AuthorizerError,
+    DummyAuthorizer,
+    )
+from pyftpdlib.filesystems import AbstractedFS
+from pyftpdlib.handlers import (
+    FTPHandler,
+    proto_cmds,
+    )
+from pyftpdlib.servers import FTPServer
 import select
 import threading
 
@@ -34,22 +46,31 @@ from breezy import (
 from breezy.tests import test_server
 
 
+class NullHandler(logging.Handler):
+
+    def emit(self, record):
+        pass
+
+# Shut up very verbose pyftpdlib
+logging.getLogger('pyftpdlib').addHandler(NullHandler())
+
+
 # Convert the pyftplib string version into a tuple to avoid traps in string
 # comparison.
-pyftplib_version = tuple(map(int, ftpserver.__ver__.split('.')))
+pyftplib_version = tuple(map(int, pyftpdlib.__ver__.split('.')))
 
 
-class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
+class AnonymousWithWriteAccessAuthorizer(DummyAuthorizer):
 
     def _check_permissions(self, username, perm):
         # Like base implementation but don't warn about write permissions
         # assigned to anonymous, since that's exactly our purpose.
         for p in perm:
             if p not in self.read_perms + self.write_perms:
-                raise ftpserver.AuthorizerError('No such permission "%s"' %p)
+                raise AuthorizerError('No such permission "%s"' %p)
 
 
-class BzrConformingFS(ftpserver.AbstractedFS):
+class BzrConformingFS(AbstractedFS):
 
     def chmod(self, path, mode):
         return os.chmod(path, mode)
@@ -59,19 +80,20 @@ class BzrConformingFS(ftpserver.AbstractedFS):
         return [osutils.safe_utf8(s) for s in os.listdir(path)]
 
     def fs2ftp(self, fspath):
-        p = ftpserver.AbstractedFS.fs2ftp(self, osutils.safe_unicode(fspath))
+        p = AbstractedFS.fs2ftp(self, osutils.safe_unicode(fspath))
         return osutils.safe_utf8(p)
 
     def ftp2fs(self, ftppath):
         p = osutils.safe_unicode(ftppath)
-        return ftpserver.AbstractedFS.ftp2fs(self, p)
+        return AbstractedFS.ftp2fs(self, p)
 
-class BzrConformingFTPHandler(ftpserver.FTPHandler):
+
+class BzrConformingFTPHandler(FTPHandler):
 
     abstracted_fs = BzrConformingFS
 
-    def __init__(self, conn, server):
-        ftpserver.FTPHandler.__init__(self, conn, server)
+    def __init__(self, conn, server, ioloop=None):
+        FTPHandler.__init__(self, conn, server)
         self.authorizer = server.authorizer
 
     def ftp_SIZE(self, path):
@@ -83,7 +105,7 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
             self.log('FAIL SIZE "%s". %s.' % (line, why))
             self.respond("550 %s."  %why)
         else:
-            ftpserver.FTPHandler.ftp_SIZE(self, path)
+            FTPHandler.ftp_SIZE(self, path)
 
     def ftp_NLST(self, path):
         # bzr is overly picky here, but we want to make the test suite pass
@@ -94,7 +116,7 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
             self.log('FAIL NLST "%s". %s.' % (line, why))
             self.respond("550 %s."  %why)
         else:
-            ftpserver.FTPHandler.ftp_NLST(self, path)
+            FTPHandler.ftp_NLST(self, path)
 
     def log_cmd(self, cmd, arg, respcode, respstr):
         # base class version choke on unicode, the alternative is to just
@@ -107,12 +129,12 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
 
 
 # An empty password is valid, hence the arg is neither mandatory nor forbidden
-ftpserver.proto_cmds['PASS']['arg'] = None
+proto_cmds['PASS']['arg'] = None
 
-class ftp_server(ftpserver.FTPServer):
+class ftp_server(FTPServer):
 
     def __init__(self, address, handler, authorizer):
-        ftpserver.FTPServer.__init__(self, address, handler)
+        FTPServer.__init__(self, address, handler)
         self.authorizer = authorizer
         # Worth backporting upstream ?
         self.addr = self.socket.getsockname()
@@ -155,13 +177,6 @@ class FTPTestServer(test_server.TestServer):
         authorizer.add_anonymous(self._root, perm='elradfmwM')
         self._ftp_server = ftp_server(address, BzrConformingFTPHandler,
                                       authorizer)
-        # This is hacky as hell, will not work if we need two servers working
-        # at the same time, but that's the best we can do so far...
-        # FIXME: At least log and logline could be overriden in the handler ?
-        # -- vila 20090227
-        ftpserver.log = self.log
-        ftpserver.logline = self.log
-        ftpserver.logerror = self.log
 
         self._port = self._ftp_server.socket.getsockname()[1]
         self._ftpd_starting = threading.Lock()
@@ -196,11 +211,11 @@ class FTPTestServer(test_server.TestServer):
         self._ftpd_starting.release()
         while self._ftpd_running:
             try:
-                self._ftp_server.serve_forever(timeout=0.1, count=1)
+                self._ftp_server.serve_forever(timeout=0.1)
             except select.error as e:
                 if e.args[0] != errno.EBADF:
                     raise
-        self._ftp_server.close_all(ignore_all=True)
+        self._ftp_server.close_all()
 
     def add_user(self, user, password):
         """Add a user with write access."""

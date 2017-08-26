@@ -121,7 +121,7 @@ guess that Breezy makes, then three options exist:
 
    % brz whoami --branch "Your Name <email@example.com>"
 
-#. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
+#. Setting the email address in the ``~/.config/breezy/breezy.conf`` [1]_ by
    adding the following lines.  Please note that  ``[DEFAULT]`` is case
    sensitive::
 
@@ -129,7 +129,7 @@ guess that Breezy makes, then three options exist:
        email=Your Name <email@isp.com>
 
    As above, you can override this settings on a branch by branch basis
-   by creating a branch section in ``~/.bazaar/locations.conf`` and
+   by creating a branch section in ``~/.config/breezy/locations.conf`` and
    adding the following lines::
 
        [/the/path/to/the/branch]
@@ -141,9 +141,9 @@ guess that Breezy makes, then three options exist:
    precedence) to your full email address.
 
 .. [1] On Windows, the users configuration files can be found in the
-   application data directory. So instead of ``~/.bazaar/branch.conf``
+   application data directory. So instead of ``~/.config/breezy/breezy.conf``
    the configuration file can be found as:
-   ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\branch.conf``.
+   ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\breezy.conf``.
    The same is true for ``locations.conf``, ``ignore``, and the
    ``plugins`` directory.
 
@@ -308,8 +308,8 @@ Message from an editor
 If you use neither the ``-m`` nor the ``-F`` option then brz will open an
 editor for you to enter a message.  The editor to run is controlled by
 your ``$VISUAL`` or ``$EDITOR`` environment variable, which can be overridden
-by the ``editor`` setting in ``~/.bazaar/bazaar.conf``; ``$brz_EDITOR`` will
-override either of the above mentioned editor options.  If you quit the
+by the ``editor`` setting in ``~/.config/breezy/breezy.conf``; ``$BRZ_EDITOR``
+will override either of the above mentioned editor options.  If you quit the
 editor without making any changes, the commit will be cancelled.
 
 The file that is opened in the editor contains a horizontal line. The part
@@ -449,7 +449,7 @@ Global ignores
 There are some ignored files which are not project specific, but more user
 specific. Things like editor temporary files, or personal temporary files.
 Rather than add these ignores to every project, brz supports a global
-ignore file in ``~/.bazaar/ignore`` [1]_. It has the same syntax as the
+ignore file in ``~/.config/breezy/ignore`` [1]_. It has the same syntax as the
 per-project ignore file.
 
 

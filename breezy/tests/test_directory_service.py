@@ -17,13 +17,14 @@
 """Test directory service implementation"""
 
 from .. import (
-    errors,
     transport,
     urlutils,
     )
 from ..directory_service import (
     AliasDirectory,
     DirectoryServiceRegistry,
+    InvalidLocationAlias,
+    UnsetLocationAlias,
     directories,
     )
 from . import TestCase, TestCaseWithTransport
@@ -101,13 +102,13 @@ class TestAliasDirectory(TestCaseWithTransport):
                          directories.dereference(':this/arg'))
 
     def test_lookup_badname(self):
-        e = self.assertRaises(errors.InvalidLocationAlias,
+        e = self.assertRaises(InvalidLocationAlias,
                               directories.dereference, ':booga')
         self.assertEqual('":booga" is not a valid location alias.',
                          str(e))
 
     def test_lookup_badvalue(self):
-        e = self.assertRaises(errors.UnsetLocationAlias,
+        e = self.assertRaises(UnsetLocationAlias,
                               directories.dereference, ':parent')
         self.assertEqual('No parent location assigned.', str(e))
 
@@ -122,18 +123,18 @@ class TestColocatedDirectory(TestCaseWithTransport):
 
     def test_lookup_non_default(self):
         default = self.make_branch('.')
-        non_default = default.bzrdir.create_branch(name='nondefault')
+        non_default = default.controldir.create_branch(name='nondefault')
         self.assertEqual(non_default.base, directories.dereference('co:nondefault'))
 
     def test_lookup_default(self):
         default = self.make_branch('.')
-        non_default = default.bzrdir.create_branch(name='nondefault')
-        self.assertEqual(urlutils.join_segment_parameters(default.bzrdir.user_url,
+        non_default = default.controldir.create_branch(name='nondefault')
+        self.assertEqual(urlutils.join_segment_parameters(default.controldir.user_url,
             {"branch": ""}), directories.dereference('co:'))
 
     def test_no_such_branch(self):
         # No error is raised in this case, that is up to the code that actually
         # opens the branch.
         default = self.make_branch('.')
-        self.assertEqual(urlutils.join_segment_parameters(default.bzrdir.user_url,
+        self.assertEqual(urlutils.join_segment_parameters(default.controldir.user_url,
             {"branch": "foo"}), directories.dereference('co:foo'))

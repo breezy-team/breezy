@@ -144,7 +144,7 @@ class ChunkWriter(object):
                                  % (self.bytes_out_len, self.chunk_size))
         nulls_needed = self.chunk_size - self.bytes_out_len
         if nulls_needed:
-            self.bytes_list.append("\x00" * nulls_needed)
+            self.bytes_list.append(b"\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
 
     def set_optimize(self, for_size=True):

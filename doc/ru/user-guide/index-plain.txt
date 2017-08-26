@@ -1,5 +1,5 @@
 ###############################
-Руководство пользователя Bazaar
+Руководство пользователя Breezy
 ###############################
 
 .. Пожалуйста отмечайте секции в подключаемых файлах следующим образом:
@@ -17,18 +17,18 @@
 Введение
 ########
 
-.. include:: introducing_bazaar.txt
+.. include:: introducing_breezy.txt
 .. include:: core_concepts.txt
-.. include:: ../../en/user-guide/bazaar_workflows.txt
+.. include:: ../../en/user-guide/breezy_workflows.txt
 
 
 Начинаем работать
 #################
 
-.. include:: ../../en/user-guide/installing_bazaar.txt
+.. include:: ../../en/user-guide/installing_breezy.txt
 .. include:: ../../en/user-guide/entering_commands.txt
 .. include:: ../../en/user-guide/getting_help.txt
-.. include:: ../../en/user-guide/configuring_bazaar.txt
+.. include:: ../../en/user-guide/configuring_breezy.txt
 .. include:: ../../en/user-guide/using_aliases.txt
 .. include:: ../../en/user-guide/plugins.txt
 .. include:: zen.txt
@@ -97,7 +97,7 @@
 .. include later looms_plugin.txt
 
 
-Интегрируем Bazaar в нашу среду
+Интегрируем breezy в нашу среду
 ###############################
 
 .. include:: ../../en/user-guide/web_browsing.txt

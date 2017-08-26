@@ -26,7 +26,6 @@ import sys
 
 from ... import (
     branch,
-    bzrdir,
     controldir,
     errors,
     repository,
@@ -34,10 +33,13 @@ from ... import (
     urlutils,
     workingtree,
     )
+from ...bzr import (
+    bzrdir,
+    )
 from ...osutils import (
     getcwd,
     )
-from ...tests.test_bundle import V4BundleTester
+from ...tests import test_bundle
 from ...tests.test_sftp_transport import TestCaseWithSFTPServer
 from ...tests import (
     TestCaseWithTransport,
@@ -545,7 +547,7 @@ class TestBoundBranch(TestCaseWithTransport):
         self.build_tree(['master/', 'child/'])
         self.make_branch_and_tree('master')
         self.make_branch_and_tree('child',
-                        format=controldir.format_registry.make_bzrdir('weave'))
+                        format=controldir.format_registry.make_controldir('weave'))
         os.chdir('child')
 
     def test_bind_format_6_bzrdir(self):
@@ -578,7 +580,7 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual('', err)
 
 
-class V4WeaveBundleTester(V4BundleTester):
+class V4WeaveBundleTester(test_bundle.V4BundleTester):
 
     def bzrdir_format(self):
         return 'metaweave'

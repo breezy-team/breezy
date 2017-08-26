@@ -70,7 +70,6 @@ project's main trunk branch.
   Location:
     shared repository: sample
   $ brz init sample/trunk
-  $ cd sample/trunk
   Created a repository tree (format: 2a)                                         
   Using shared repository: /home/john/sample/
 
@@ -84,11 +83,16 @@ a file ``test1.txt`` using a text editor (like emacs, nano, or notepad),
 and save it.  Then we'll "add" the file, which tells brz we want it to
 track changes::
 
-  brz add test1.txt
+  $ cd sample/trunk
+  # create the file test1.txt now
+  $ brz add test1.txt
+  adding test1.txt
 
 and then commit, which saves a snapshot of all versioned files::
 
-  brz commit -m "Added first line of text"
+  $ brz commit -m "Added first line of text"
+  added test1.txt
+  Committed revision 1.
 
 
 Making changes to your files

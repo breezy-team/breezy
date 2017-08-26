@@ -91,7 +91,7 @@ brz: ERROR: No changes to commit.\
         a_tree.add('a_file')
         self.run_bzr(['commit', '-m', 'first commit', 'a'])
 
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a_file', 'changes in b')])
         self.run_bzr(['commit', '-m', 'first commit in b', 'b'])
 
@@ -307,7 +307,7 @@ brz: ERROR: No changes to commit.\
             'filetoleave']
             )
         this_tree.commit('create_files')
-        other_dir = this_tree.bzrdir.sprout('other')
+        other_dir = this_tree.controldir.sprout('other')
         other_tree = other_dir.open_workingtree()
         other_tree.lock_write()
         # perform the needed actions on the files and dirs.

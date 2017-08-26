@@ -36,6 +36,15 @@ from . import (
     )
 
 
+class NoHelpTopic(errors.BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'brz help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
+
 def help(topic=None, outfile=None):
     """Write the help for the specific topic to outfile"""
     if outfile is None:
@@ -52,7 +61,7 @@ def help(topic=None, outfile=None):
                 topic_obj.get_help_topic()))
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
-    except errors.NoHelpTopic:
+    except NoHelpTopic:
         if alias is None:
             raise
 
@@ -143,12 +152,12 @@ class HelpIndices(object):
 
     def _check_prefix_uniqueness(self):
         """Ensure that the index collection is able to differentiate safely."""
-        prefixes = {}
+        prefixes = set()
         for index in self.search_path:
-            prefixes.setdefault(index.prefix, []).append(index)
-        for prefix, indices in prefixes.items():
-            if len(indices) > 1:
+            prefix = index.prefix
+            if prefix in prefixes:
                 raise errors.DuplicateHelpPrefix(prefix)
+            prefixes.add(prefix)
 
     def search(self, topic):
         """Search for topic across the help search path.
@@ -162,6 +171,6 @@ class HelpIndices(object):
         for index in self.search_path:
             result.extend([(index, _topic) for _topic in index.get_topics(topic)])
         if not result:
-            raise errors.NoHelpTopic(topic)
+            raise NoHelpTopic(topic)
         else:
             return result

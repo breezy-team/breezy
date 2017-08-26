@@ -22,7 +22,6 @@ import socket
 from breezy import (
     config,
     email_message,
-    errors,
     smtp_connection,
     tests,
     ui,
@@ -106,10 +105,11 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_missing_server(self):
         conn = self.get_connection('', smtp_factory=connection_refuser)
-        self.assertRaises(errors.DefaultSMTPConnectionRefused, conn._connect)
+        self.assertRaises(smtp_connection.DefaultSMTPConnectionRefused,
+                          conn._connect)
         conn = self.get_connection('smtp_server=smtp.example.com',
                                    smtp_factory=connection_refuser)
-        self.assertRaises(errors.SMTPConnectionRefused, conn._connect)
+        self.assertRaises(smtp_connection.SMTPConnectionRefused, conn._connect)
 
     def test_smtp_username(self):
         conn = self.get_connection('')
@@ -195,7 +195,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         # Check that we raise an exception if both EHLO and HELO fail.
         factory = StubSMTPFactory(fail_on=['ehlo', 'helo'])
         conn = self.get_connection('', smtp_factory=factory)
-        self.assertRaises(errors.SMTPError, conn._create_connection)
+        self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('helo',)], factory._calls)
@@ -218,7 +218,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         factory = StubSMTPFactory(fail_on=['starttls'],
                                   smtp_features=['starttls'])
         conn = self.get_connection('', smtp_factory=factory)
-        self.assertRaises(errors.SMTPError, conn._create_connection)
+        self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('has_extn', 'starttls'),
@@ -257,18 +257,18 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         msg = Message()
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
         self.assertRaises(
-            errors.NoDestinationAddress,
+            smtp_connection.NoDestinationAddress,
             smtp_connection.SMTPConnection(config.MemoryStack("")
                                            ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', '', 'subject')
         self.assertRaises(
-            errors.NoDestinationAddress,
+            smtp_connection.NoDestinationAddress,
             smtp_connection.SMTPConnection(config.MemoryStack("")
                                            ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', [], 'subject')
         self.assertRaises(
-            errors.NoDestinationAddress,
+            smtp_connection.NoDestinationAddress,
             smtp_connection.SMTPConnection(config.MemoryStack("")
                                            ).send_email, msg)

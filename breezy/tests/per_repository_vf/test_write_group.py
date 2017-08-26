@@ -23,8 +23,11 @@ from breezy import (
     controldir,
     errors,
     memorytree,
-    remote,
     tests,
+    )
+from breezy.bzr import (
+    branch as bzrbranch,
+    remote,
     versionedfile,
     )
 from breezy.tests.per_repository_vf import (
@@ -61,7 +64,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         return tree 
 
     def make_first_commit(self, repo):
-        trunk = repo.bzrdir.create_branch()
+        trunk = repo.controldir.create_branch()
         tree = memorytree.MemoryTree.create_on_branch(trunk)
         tree.lock_write()
         tree.add([''], ['TREE_ROOT'], ['directory'])
@@ -93,7 +96,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             repo = self.make_repository(relpath)
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format not stackable')
-        repo.bzrdir._format.set_branch_format(branch.BzrBranchFormat7())
+        repo.controldir._format.set_branch_format(bzrbranch.BzrBranchFormat7())
         return repo
 
     def reopen_repo_and_resume_write_group(self, repo):
@@ -106,7 +109,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             repo.unlock()
             return
         repo.unlock()
-        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo = repo.controldir.open_repository()
         reopened_repo.lock_write()
         self.addCleanup(reopened_repo.unlock)
         reopened_repo.resume_write_group(resume_tokens)
@@ -309,7 +312,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         return repo
 
     def reopen_repo(self, repo):
-        same_repo = repo.bzrdir.open_repository()
+        same_repo = repo.controldir.open_repository()
         same_repo.lock_write()
         self.addCleanup(same_repo.unlock)
         return same_repo

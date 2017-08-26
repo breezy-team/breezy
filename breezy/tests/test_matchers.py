@@ -18,7 +18,7 @@
 
 from testtools.matchers import *
 
-from ..smart.client import CallHookParams
+from ..bzr.smart.client import CallHookParams
 
 from . import (
     CapturedCall,

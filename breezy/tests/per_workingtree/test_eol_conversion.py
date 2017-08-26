@@ -90,7 +90,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         if expected_win is None:
             expected_win = expected_unix
         self.patch_rules_searcher(eol)
-        wt2 = wt.bzrdir.sprout('tree-%s' % eol).open_workingtree()
+        wt2 = wt.controldir.sprout('tree-%s' % eol).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
         content = wt2.get_file('file1-id', filtered=False).read()
         if sys.platform == 'win32':

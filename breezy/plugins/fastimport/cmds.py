@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 
-from ... import bzrdir
+from ... import controldir
 from ...commands import Command
 from ...option import Option, ListOption, RegistryOption
 
@@ -45,7 +45,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
     try:
         return proc.process(p.iter_commands)
-    except ParsingError, e:
+    except ParsingError as e:
         raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
 
 
@@ -277,8 +277,8 @@ class cmd_fast_import(Command):
                     RegistryOption('format',
                             help='Specify a format for the created repository. See'
                                  ' "bzr help formats" for details.',
-                            lazy_registry=('breezy.bzrdir', 'format_registry'),
-                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+                            lazy_registry=('breezy.controldir', 'format_registry'),
+                            converter=lambda name: controldir.format_registry.make_controldir(name),
                             value_switches=False, title='Repository format'),
                      ]
     def run(self, source, destination='.', verbose=False, info=None,
@@ -328,7 +328,7 @@ class cmd_fast_import(Command):
             p = parser.ImportParser(stream)
             try:
                 return_code = proc.process(p.iter_commands)
-            except ParsingError, e:
+            except ParsingError as e:
                 raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
             lines = output.getvalue().splitlines()
         finally:
@@ -464,7 +464,7 @@ class cmd_fast_import_filter(Command):
         p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
         try:
             return proc.process(p.iter_commands)
-        except ParsingError, e:
+        except ParsingError as e:
             raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
 
 

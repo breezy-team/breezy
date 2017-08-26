@@ -190,7 +190,7 @@ class addinfourl(urllib2.addinfourl):
     def getheaders(self):
         if self.headers is None:
             raise httplib.ResponseNotReady()
-        return self.headers.items()
+        return list(self.headers.items())
 
 
 class _ReportingFileSocket(object):
@@ -586,7 +586,7 @@ class ConnectionHandler(urllib2.BaseHandler):
         if not host:
             # Just a bit of paranoia here, this should have been
             # handled in the higher levels
-            raise errors.InvalidURL(request.get_full_url(), 'no host given.')
+            raise urlutils.InvalidURL(request.get_full_url(), 'no host given.')
 
         # We create a connection (but it will not connect until the first
         # request is made)
@@ -597,7 +597,7 @@ class ConnectionHandler(urllib2.BaseHandler):
                 ca_certs=self.ca_certs)
         except httplib.InvalidURL as exception:
             # There is only one occurrence of InvalidURL in httplib
-            raise errors.InvalidURL(request.get_full_url(),
+            raise urlutils.InvalidURL(request.get_full_url(),
                                     extra='nonnumeric port')
 
         return connection
@@ -761,7 +761,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         # before sending the request. And not all versions of python 2.5 do
         # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
         # ourself below.
-        headers = dict((name.title(), val) for name, val in headers.iteritems())
+        headers = dict((name.title(), val) for name, val in headers.items())
 
         try:
             method = request.get_method()
@@ -774,7 +774,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
-                for k,v in headers.iteritems():
+                for k,v in headers.items():
                     # People are often told to paste -Dhttp output to help
                     # debug. Don't compromise credentials.
                     if k in ('Authorization', 'Proxy-Authorization'):
@@ -1127,7 +1127,7 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         parsed_url = transport.ConnectedTransport._split_url(proxy)
         if not parsed_url.host:
-            raise errors.InvalidURL(proxy, 'No host component')
+            raise urlutils.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first

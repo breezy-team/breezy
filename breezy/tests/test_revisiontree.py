@@ -21,6 +21,7 @@ from breezy import (
     errors,
     revision,
     )
+from breezy.tree import FileTimestampUnavailable
 from breezy.tests import TestCaseWithTransport
 
 
@@ -76,5 +77,5 @@ class TestTreeWithCommits(TestCaseWithTransport):
     def test_get_file_mtime_ghost(self):
         file_id = next(iter(self.rev_tree.all_file_ids()))
         self.rev_tree.root_inventory[file_id].revision = 'ghostrev'
-        self.assertRaises(errors.FileTimestampUnavailable, 
+        self.assertRaises(FileTimestampUnavailable, 
             self.rev_tree.get_file_mtime, file_id)

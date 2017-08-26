@@ -133,7 +133,7 @@ class TestSwitch(TestCaseWithTransport):
         checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', 'branchb'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
-        checkout = checkout.bzrdir.open_workingtree()
+        checkout = checkout.controldir.open_workingtree()
         self.assertEqual(tree2.branch.base, checkout.branch.base)
 
     def test_switch_finds_relative_bound_branch(self):
@@ -154,7 +154,7 @@ class TestSwitch(TestCaseWithTransport):
         checkout = tree1.branch.create_checkout('heavyco/a', lightweight=False)
         self.run_bzr(['switch', 'branchb'], working_dir='heavyco/a')
         # Refresh checkout as 'switch' modified it
-        checkout = checkout.bzrdir.open_workingtree()
+        checkout = checkout.controldir.open_workingtree()
         self.assertEqual(branchb_id, checkout.last_revision())
         self.assertEqual(tree2.branch.base,
                          checkout.branch.get_bound_location())
@@ -171,7 +171,7 @@ class TestSwitch(TestCaseWithTransport):
         checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
-        checkout = checkout.bzrdir.open_workingtree()
+        checkout = checkout.controldir.open_workingtree()
         self.assertEqual(tree2.branch.base, checkout.branch.base)
 
     def test_switch_finds_relative_unicode_branch(self):
@@ -186,7 +186,7 @@ class TestSwitch(TestCaseWithTransport):
         checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
-        checkout = checkout.bzrdir.open_workingtree()
+        checkout = checkout.controldir.open_workingtree()
         self.assertEqual(tree2.branch.base, checkout.branch.base)
 
     def test_switch_revision(self):
@@ -207,7 +207,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr(['switch', '-b', 'anotherbranch'])
         self.assertEqual(
             {'', 'anotherbranch'},
-            set(tree.branch.bzrdir.get_branches().keys()))
+            set(tree.branch.controldir.get_branches().keys()))
 
     def test_switch_into_unrelated_colocated(self):
         # Create a new colocated branch from an existing non-colocated branch.
@@ -217,7 +217,7 @@ class TestSwitch(TestCaseWithTransport):
         revid1 = tree.commit('rev1')
         tree.add('file-2')
         revid2 = tree.commit('rev2')
-        tree.bzrdir.create_branch(name='foo')
+        tree.controldir.create_branch(name='foo')
         self.run_bzr_error(['Cannot switch a branch, only a checkout.'],
             'switch foo')
         self.run_bzr(['switch', '--force', 'foo'])
@@ -226,15 +226,15 @@ class TestSwitch(TestCaseWithTransport):
         # Create a branch branch-1 that initially is a checkout of 'foo'
         # Use switch to change it to 'anotherbranch'
         repo = self.make_repository('branch-1', format='development-colo')
-        target_branch = repo.bzrdir.create_branch(name='foo')
-        repo.bzrdir.set_branch_reference(target_branch)
-        tree = repo.bzrdir.create_workingtree()
+        target_branch = repo.controldir.create_branch(name='foo')
+        repo.controldir.set_branch_reference(target_branch)
+        tree = repo.controldir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
         revid1 = tree.commit('rev1')
         tree.add('file-2')
         revid2 = tree.commit('rev2')
-        otherbranch = tree.bzrdir.create_branch(name='anotherbranch')
+        otherbranch = tree.controldir.create_branch(name='anotherbranch')
         otherbranch.generate_revision_history(revid1)
         self.run_bzr(['switch', 'anotherbranch'], working_dir='branch-1')
         tree = WorkingTree.open("branch-1")
@@ -245,9 +245,9 @@ class TestSwitch(TestCaseWithTransport):
         # Create a branch branch-1 that initially is a checkout of 'foo'
         # Use switch to create 'anotherbranch' which derives from that
         repo = self.make_repository('branch-1', format='development-colo')
-        target_branch = repo.bzrdir.create_branch(name='foo')
-        repo.bzrdir.set_branch_reference(target_branch)
-        tree = repo.bzrdir.create_workingtree()
+        target_branch = repo.controldir.create_branch(name='foo')
+        repo.controldir.set_branch_reference(target_branch)
+        tree = repo.controldir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
         revid1 = tree.commit('rev1')
@@ -264,9 +264,9 @@ class TestSwitch(TestCaseWithTransport):
         # Use switch to create 'branch\xe9' which derives from that
         self.requireFeature(UnicodeFilenameFeature)
         repo = self.make_repository('branch-1', format='development-colo')
-        target_branch = repo.bzrdir.create_branch(name='foo')
-        repo.bzrdir.set_branch_reference(target_branch)
-        tree = repo.bzrdir.create_workingtree()
+        target_branch = repo.controldir.create_branch(name='foo')
+        repo.controldir.set_branch_reference(target_branch)
+        tree = repo.controldir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
         revid1 = tree.commit('rev1')
@@ -390,7 +390,7 @@ class TestSwitch(TestCaseWithTransport):
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a', 'initial\nmore\n')])
         b_tree.commit(message='more')
 
@@ -500,7 +500,7 @@ class TestSwitchUncommitted(TestCaseWithTransport):
     def prepare(self):
         tree = self.make_branch_and_tree('orig')
         tree.commit('')
-        tree.branch.bzrdir.sprout('new')
+        tree.branch.controldir.sprout('new')
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.build_tree(['checkout/a'])
         self.assertPathExists('checkout/a')

@@ -53,7 +53,7 @@ class TestSwitch(tests.TestCaseWithTransport):
 
     def _setup_uncommitted(self, same_revision=False):
         tree = self._setup_tree()
-        to_branch = tree.bzrdir.sprout('branch-2').open_branch()
+        to_branch = tree.controldir.sprout('branch-2').open_branch()
         self.build_tree(['branch-1/file-2'])
         if not same_revision:
             tree.add('file-2')
@@ -70,7 +70,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout, to_branch = self._setup_uncommitted()
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
-        switch.switch(checkout.bzrdir, to_branch, store_uncommitted=True)
+        switch.switch(checkout.controldir, to_branch, store_uncommitted=True)
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
         self.assertPathDoesNotExist('checkout/file-3')
@@ -82,9 +82,9 @@ class TestSwitch(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
         self.assertPathExists('checkout/file-3')
-        switch.switch(checkout.bzrdir, to_branch, store_uncommitted=True)
+        switch.switch(checkout.controldir, to_branch, store_uncommitted=True)
         checkout = workingtree.WorkingTree.open('checkout')
-        switch.switch(checkout.bzrdir, old_branch, store_uncommitted=True)
+        switch.switch(checkout.controldir, old_branch, store_uncommitted=True)
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
         self.assertPathExists('checkout/file-3')
@@ -93,9 +93,9 @@ class TestSwitch(tests.TestCaseWithTransport):
         """Test switch updates tree and restores uncommitted changes."""
         checkout, to_branch = self._setup_uncommitted(same_revision=True)
         old_branch = self._master_if_present(checkout.branch)
-        switch.switch(checkout.bzrdir, to_branch, store_uncommitted=True)
+        switch.switch(checkout.controldir, to_branch, store_uncommitted=True)
         checkout = workingtree.WorkingTree.open('checkout')
-        switch.switch(checkout.bzrdir, old_branch, store_uncommitted=True)
+        switch.switch(checkout.controldir, old_branch, store_uncommitted=True)
         self.assertPathExists('checkout/file-3')
 
     def test_switch_updates(self):
@@ -103,7 +103,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout, to_branch = self._setup_uncommitted()
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
-        switch.switch(checkout.bzrdir, to_branch)
+        switch.switch(checkout.controldir, to_branch)
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
         self.assertPathExists('checkout/file-3')
@@ -119,19 +119,19 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree.commit('rev2')
         self.build_tree(['checkout/file-3'])
         checkout.add('file-3')
-        checkout_dir = checkout.bzrdir
+        checkout_dir = checkout.controldir
         # rename the branch on disk, the checkout object is now invalid.
         os.rename('branch-1', 'branch-2')
         to_branch = branch.Branch.open('branch-2')
         # Check fails without --force
         err = self.assertRaises(
             (errors.BzrCommandError, errors.NotBranchError),
-            switch.switch, checkout.bzrdir, to_branch)
+            switch.switch, checkout.controldir, to_branch)
         if isinstance(err, errors.BzrCommandError):
             self.assertContainsRe(str(err),
                 'Unable to connect to current master branch .*'
                 'To switch anyway, use --force.')
-        switch.switch(checkout.bzrdir, to_branch, force=True)
+        switch.switch(checkout.controldir, to_branch, force=True)
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
         self.assertPathExists('checkout/file-3')
@@ -140,7 +140,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         """Test graceful failure if pending merges are outstanding."""
         # Create 2 branches and a checkout
         tree = self._setup_tree()
-        tree2 = tree.bzrdir.sprout('branch-2').open_workingtree()
+        tree2 = tree.controldir.sprout('branch-2').open_workingtree()
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
         # Change tree2 and merge it into the checkout without committing
@@ -150,7 +150,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout.merge_from_branch(tree2.branch)
         # Check the error reporting is as expected
         err = self.assertRaises(errors.BzrCommandError,
-            switch.switch, checkout.bzrdir, tree2.branch)
+            switch.switch, checkout.controldir, tree2.branch)
         self.assertContainsRe(str(err),
             "Pending merges must be committed or reverted before using switch")
 
@@ -167,7 +167,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         # Check it out and switch to revision 1
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
-        switch.switch(checkout.bzrdir, tree.branch, revision_id="rev1")
+        switch.switch(checkout.controldir, tree.branch, revision_id="rev1")
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
 
@@ -180,7 +180,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree2.commit('rev1b')
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
-        switch.switch(checkout.bzrdir, tree2.branch)
+        switch.switch(checkout.controldir, tree2.branch)
         self.assertEqual('custom-root-id', tree2.get_root_id())
 
     def test_switch_configurable_file_merger(self):
@@ -195,11 +195,11 @@ class TestSwitch(tests.TestCaseWithTransport):
         self.build_tree_contents([('checkout/file', 'a')])
         checkout.add('file')
         checkout.commit('a')
-        bar = foo.bzrdir.sprout('bar').open_workingtree()
+        bar = foo.controldir.sprout('bar').open_workingtree()
         self.build_tree_contents([('bar/file', 'b')])
         bar.commit('b')
         self.build_tree_contents([('checkout/file', 'c')])
-        switch.switch(checkout.bzrdir, bar.branch)
+        switch.switch(checkout.controldir, bar.branch)
 
 
 class TestSwitchHeavyweight(TestSwitch):
@@ -211,7 +211,7 @@ class TestSwitchHeavyweight(TestSwitch):
     def test_switch_with_local_commits(self):
         """Test switch complains about local commits unless --force given."""
         tree = self._setup_tree()
-        to_branch = tree.bzrdir.sprout('branch-2').open_branch()
+        to_branch = tree.controldir.sprout('branch-2').open_branch()
         self.build_tree(['branch-1/file-2'])
         tree.add('file-2')
         tree.remove('file-1')
@@ -223,13 +223,13 @@ class TestSwitchHeavyweight(TestSwitch):
         self.build_tree(['checkout/file-4'])
         # Check the error reporting is as expected
         err = self.assertRaises(errors.BzrCommandError,
-            switch.switch, checkout.bzrdir, to_branch)
+            switch.switch, checkout.controldir, to_branch)
         self.assertContainsRe(str(err),
             'Cannot switch as local commits found in the checkout.')
         # Check all is ok when force is given
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
-        switch.switch(checkout.bzrdir, to_branch, force=True)
+        switch.switch(checkout.controldir, to_branch, force=True)
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
         self.assertPathDoesNotExist('checkout/file-3')

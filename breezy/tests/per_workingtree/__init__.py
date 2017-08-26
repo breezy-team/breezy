@@ -64,7 +64,7 @@ def make_scenario(transport_server, transport_readonly_server,
     return {
         "transport_server": transport_server,
         "transport_readonly_server": transport_readonly_server,
-        "bzrdir_format": workingtree_format._matchingbzrdir,
+        "bzrdir_format": workingtree_format._matchingcontroldir,
         "workingtree_format": workingtree_format,
         }
 
@@ -88,7 +88,7 @@ def wt_scenarios():
 class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         made_control.create_repository()
         b = made_control.create_branch()
         if getattr(self, 'repo_is_remote', False):

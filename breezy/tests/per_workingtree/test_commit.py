@@ -29,6 +29,10 @@ from breezy import (
     transport as _mod_transport,
     ui,
     )
+from breezy.commit import (
+    CannotCommitSelectedFileMerge,
+    PointlessCommit,
+    )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 from breezy.tests.testui import ProgressRecordingUIFactory
 
@@ -38,7 +42,7 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_autodelete_renamed(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2'])
-        tree_a.add(['dir', 'dir/f1', 'dir/f2'], ['dir-id', 'f1-id', 'f2-id'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2'])
         rev_id1 = tree_a.commit('init')
         # Start off by renaming entries,
         # but then actually auto delete the whole tree
@@ -94,7 +98,7 @@ class TestCommit(TestCaseWithWorkingTree):
         finally:
             tree_a.unlock()
 
-        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        tree_b = tree_a.controldir.sprout('B').open_workingtree()
         self.build_tree(['B/xyz/'])
         tree_b.add(['xyz'], ['xyz-id'])
         tree_b.rename_one('a/m', 'xyz/m')
@@ -145,15 +149,11 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['foo'])
         wt.add('foo')
         wt.commit('commit one')
-        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2 = wt.controldir.sprout('to').open_workingtree()
         wt2.commit('change_right')
         wt.merge_from_branch(wt2.branch)
-        try:
-            self.assertRaises(errors.CannotCommitSelectedFileMerge,
-                wt.commit, 'test', exclude=['foo'])
-        except errors.ExcludesUnsupported:
-            raise tests.TestNotApplicable("excludes not supported by this "
-                "repository format")
+        self.assertRaises(CannotCommitSelectedFileMerge,
+            wt.commit, 'test', exclude=['foo'])
 
     def test_commit_exclude_exclude_changed_is_pointless(self):
         tree = self.make_branch_and_tree('.')
@@ -161,22 +161,14 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.smart_add(['.'])
         tree.commit('setup test')
         self.build_tree_contents([('a', 'new contents for "a"\n')])
-        try:
-            self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
-                exclude=['a'], allow_pointless=False)
-        except errors.ExcludesUnsupported:
-            raise tests.TestNotApplicable("excludes not supported by this "
-                "repository format")
+        self.assertRaises(PointlessCommit, tree.commit, 'test',
+            exclude=['a'], allow_pointless=False)
 
     def test_commit_exclude_excludes_modified_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
         tree.smart_add(['.'])
-        try:
-            tree.commit('test', exclude=['b', 'c'])
-        except errors.ExcludesUnsupported:
-            raise tests.TestNotApplicable("excludes not supported by this "
-                "repository format")
+        tree.commit('test', exclude=['b', 'c'])
         # If b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -189,11 +181,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         tree.smart_add(['.'])
-        try:
-            tree.commit('test', specific_files=['a'], exclude=['a/b'])
-        except errors.ExcludesUnsupported:
-            raise tests.TestNotApplicable("excludes not supported by this "
-                "repository format")
+        tree.commit('test', specific_files=['a'], exclude=['a/b'])
         # If a/b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -203,10 +191,13 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        committed_id = tree.commit('foo', rev_id='foo')
-        self.assertEqual(['foo'], tree.get_parent_ids())
-        # the commit should have returned the same id we asked for.
-        self.assertEqual('foo', committed_id)
+        if tree.branch.repository._format.supports_setting_revision_ids:
+            committed_id = tree.commit('foo', rev_id='foo')
+            # the commit should have returned the same id we asked for.
+            self.assertEqual('foo', committed_id)
+        else:
+            committed_id = tree.commit('foo')
+        self.assertEqual([committed_id], tree.get_parent_ids())
 
     def test_commit_returns_revision_id(self):
         tree = self.make_branch_and_tree('.')
@@ -233,7 +224,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['a'])
         wt.add(['a'])
         wt.commit('commit one')
-        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2 = wt.controldir.sprout('to').open_workingtree()
         os.remove('a')
         os.mkdir('a')
         wt.commit('changed kind')
@@ -261,13 +252,13 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.bzrdir.transport.put_bytes('branch-format', 'garbage')
+        master.controldir.transport.put_bytes('branch-format', 'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
                           controldir.ControlDir.open,
                           'master')
-        tree.commit('foo', rev_id='foo', local=True)
+        tree.commit('foo', local=True)
 
     def test_local_commit_does_not_push_to_master(self):
         # a --local commit does not require access to the master branch
@@ -280,8 +271,8 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        tree.commit('foo', rev_id='foo', local=True)
-        self.assertFalse(master.repository.has_revision('foo'))
+        committed_id = tree.commit('foo', local=True)
+        self.assertFalse(master.repository.has_revision(committed_id))
         self.assertEqual(_mod_revision.NULL_REVISION,
                          (_mod_revision.ensure_null(master.last_revision())))
 
@@ -317,7 +308,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.lock_write()
         self.build_tree(['a', 'b/', 'b/c', 'd'])
         wt.add(['a', 'b', 'b/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
-        this_dir = wt.bzrdir.root_transport
+        this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         this_dir.delete('d')
         # now we have a tree with a through d in the inventory, but only
@@ -335,7 +326,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.unlock()
         # the changes should have persisted to disk - reopen the workingtree
         # to be sure.
-        wt = wt.bzrdir.open_workingtree()
+        wt = wt.controldir.open_workingtree()
         wt.lock_read()
         self.assertTrue(wt.has_id('a-id'))
         self.assertFalse(wt.has_or_had_id('b-id'))
@@ -353,7 +344,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         wt.commit('first')
         wt.remove('b/c')
-        this_dir = wt.bzrdir.root_transport
+        this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
@@ -368,14 +359,14 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_move_new(self):
         wt = self.make_branch_and_tree('first')
         wt.commit('first')
-        wt2 = wt.bzrdir.sprout('second').open_workingtree()
+        wt2 = wt.controldir.sprout('second').open_workingtree()
         self.build_tree(['second/name1'])
-        wt2.add('name1', 'name1-id')
+        wt2.add('name1')
         wt2.commit('second')
         wt.merge_from_branch(wt2.branch)
         wt.rename_one('name1', 'name2')
         wt.commit('third')
-        wt.path2id('name1-id')
+        wt.path2id('name1')
 
     def test_nested_commit(self):
         """Commit in multiply-nested trees"""
@@ -420,10 +411,11 @@ class TestCommit(TestCaseWithWorkingTree):
         if not tree.supports_tree_reference():
             # inapplicable test.
             return
+        self.knownFailure('nested trees don\'t work well with iter_changes')
         subtree = self.make_branch_and_tree('subtree')
         tree.add(['subtree'])
         self.build_tree(['subtree/file'])
-        subtree.add(['file'], ['file-id'])
+        subtree.add(['file'])
         rev_id = tree.commit('added reference', allow_pointless=False)
         tree.get_reference_revision(tree.path2id('subtree'))
         child_revid = subtree.last_revision()
@@ -457,7 +449,7 @@ class TestCommit(TestCaseWithWorkingTree):
         rev_id = tree.commit('added reference')
         child_revid = subtree.last_revision()
         # now do a no-op commit with allow_pointless=False
-        self.assertRaises(errors.PointlessCommit, tree.commit, '',
+        self.assertRaises(PointlessCommit, tree.commit, '',
             allow_pointless=False)
         self.assertEqual(child_revid, subtree.last_revision())
         self.assertEqual(rev_id, tree.last_revision())

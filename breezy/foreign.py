@@ -25,6 +25,9 @@ from .branch import (
 from .commands import Command, Option
 from .repository import Repository
 from .revision import Revision
+from .sixish import (
+    text_type,
+    )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -272,7 +275,7 @@ class cmd_dpush(Command):
                help='Branch to push from, '
                'rather than the one containing the working directory.',
                short_name='d',
-               type=unicode,
+               type=text_type,
                ),
         Option('no-rebase', help="Do not rebase after push."),
         Option('strict',

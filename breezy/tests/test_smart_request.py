@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for smart server request infrastructure (breezy.smart.request)."""
+"""Tests for smart server request infrastructure (breezy.bzr.smart.request)."""
 
 import threading
 
@@ -22,8 +22,8 @@ from breezy import (
     errors,
     transport,
     )
-from breezy.bzrdir import BzrDir
-from breezy.smart import request
+from breezy.bzr.bzrdir import BzrDir
+from breezy.bzr.smart import request
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
 
 
@@ -88,6 +88,14 @@ class CheckJailRequest(request.SmartServerRequest):
 
     def do_end(self):
         self.jail_transports_log.append(request.jail_info.transports)
+
+
+class TestErrors(TestCase):
+
+    def test_disabled_method(self):
+        error = request.DisabledMethod("class name")
+        self.assertEqualDiff(
+            "The smart server method 'class name' is disabled.", str(error))
 
 
 class TestSmartRequest(TestCase):
@@ -176,7 +184,7 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
 
 
 class TestRequestHanderErrorTranslation(TestCase):
-    """Tests for breezy.smart.request._translate_error."""
+    """Tests for breezy.bzr.smart.request._translate_error."""
 
     def assertTranslationEqual(self, expected_tuple, error):
         self.assertEqual(expected_tuple, request._translate_error(error))
@@ -256,10 +264,10 @@ class TestJailHook(TestCaseWithMemoryTransport):
         """Opening a bzrdir in a non-main thread should work ok.
         
         This makes sure that the globally-installed
-        breezy.smart.request._pre_open_hook, which uses a threading.local(),
+        breezy.bzr.smart.request._pre_open_hook, which uses a threading.local(),
         works in a newly created thread.
         """
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         transport = bzrdir.root_transport
         thread_result = []
         def t():

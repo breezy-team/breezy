@@ -34,7 +34,7 @@ def _valid_tag(tag):
 def _read_stanza_utf8(line_iter):
     def iter_unicode_lines():
         for line in line_iter:
-            if not isinstance(line, str):
+            if not isinstance(line, bytes):
                 raise TypeError(line)
             yield line.decode('utf-8')
     return _read_stanza_unicode(iter_unicode_lines())

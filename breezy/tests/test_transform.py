@@ -3144,7 +3144,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
         work_a.add('file', 'file-id')
         base_id = work_a.commit('base version')
-        tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        tree_b = work_a.controldir.sprout('wtb').open_workingtree()
         preview = TransformPreview(work_a)
         self.addCleanup(preview.finalize)
         trans_id = preview.trans_id_file_id('file-id')
@@ -3167,7 +3167,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
         work_a.add('file', 'file-id')
         base_id = work_a.commit('base version')
-        tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        tree_b = work_a.controldir.sprout('wtb').open_workingtree()
         preview = TransformPreview(work_a.basis_tree())
         self.addCleanup(preview.finalize)
         trans_id = preview.trans_id_file_id('file-id')
@@ -3217,7 +3217,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/file','b\n')])
         work_tree.add('file', 'file-id')
         work_tree.commit('first commit')
-        child_tree = work_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree = work_tree.controldir.sprout('child').open_workingtree()
         self.build_tree_contents([('child/file','b\nc\n')])
         child_tree.commit('child commit')
         child_tree.lock_write()
@@ -3230,7 +3230,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.delete_contents(file_trans_id)
         preview.create_file('a\nb\n', file_trans_id)
         preview_tree = preview.get_preview_tree()
-        merger = Merger.from_revision_ids(None, preview_tree,
+        merger = Merger.from_revision_ids(preview_tree,
                                           child_tree.branch.last_revision(),
                                           other_branch=child_tree.branch,
                                           tree_branch=work_tree.branch)
@@ -3249,7 +3249,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         tree2.set_root_id('TREE_ROOT')
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
-                                         None, tree.basis_tree())
+                                         tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
 
@@ -3263,11 +3263,10 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         trans_id = tt.trans_id_file_id('foo-id')
         tt.delete_contents(trans_id)
         tt.create_file('baz', trans_id)
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree2/foo', 'qux')])
-        pb = None
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
-                                         pb, tree.basis_tree())
+                                         tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
 
@@ -3643,13 +3642,13 @@ class TestOrphan(tests.TestCaseWithTransport):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
         remaining_conflicts = resolve_conflicts(tt)
-        self.assertEqual(['dir/foo has been orphaned in bzr-orphans'],
+        self.assertEqual(['dir/foo has been orphaned in brz-orphans'],
                           warnings)
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan
         self.assertEqual('foo.~1~', tt.final_name(orphan_tid))
-        self.assertEqual('bzr-orphans',
+        self.assertEqual('brz-orphans',
                           tt.final_name(tt.final_parent(orphan_tid)))
 
     def test_never_orphan(self):

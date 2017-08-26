@@ -28,13 +28,15 @@ from ...commands import (
     )
 from ...errors import (
     BzrCommandError,
-    InvalidURL,
     NotBranchError,
     )
 from ...i18n import gettext
 from ...option import (
     Option,
     ListOption,
+    )
+from ...sixish import (
+    text_type,
     )
 
 
@@ -65,6 +67,7 @@ class cmd_launchpad_open(Command):
 
     def _get_web_url(self, service, location):
         from .lp_registration import (
+            InvalidURL,
             NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:
@@ -181,13 +184,13 @@ class cmd_lp_propose_merge(Command):
 
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
-                     Option('message', short_name='m', type=unicode,
+                     Option('message', short_name='m', type=text_type,
                             help='Commit message.'),
                      Option('approve',
                             help=('Mark the proposal as approved immediately, '
                                   'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
-                     ListOption('review', short_name='R', type=unicode,
+                     ListOption('review', short_name='R', type=text_type,
                             help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']

@@ -17,6 +17,9 @@
 
 """Black-box tests for brz log."""
 
+from __future__ import absolute_import
+
+
 import os
 
 from breezy import (
@@ -56,7 +59,7 @@ class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
 
     def make_merged_branch(self, path='.', format=None):
         tree = self.make_linear_branch(path, format)
-        tree2 = tree.bzrdir.sprout('tree2',
+        tree2 = tree.controldir.sprout('tree2',
             revision_id=tree.branch.get_rev_id(1)).open_workingtree()
         tree2.commit(message='tree2 message2')
         tree2.commit(message='tree2 message3')
@@ -459,7 +462,7 @@ class TestLogTags(TestLog):
         branch1_tree = self.make_linear_branch('branch1',
                                                format='dirstate-tags')
         branch1 = branch1_tree.branch
-        branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
+        branch2_tree = branch1_tree.controldir.sprout('branch2').open_workingtree()
         branch1_tree.commit(message='foobar', allow_pointless=True)
         branch1.tags.set_tag('tag1', branch1.last_revision())
         # tags don't propagate if we don't merge
@@ -474,7 +477,7 @@ class TestLogTags(TestLog):
 class TestLogSignatures(TestLog):
 
     def test_log_with_signatures(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
 
         tree = self.make_linear_branch(format='dirstate-tags')
 
@@ -482,7 +485,7 @@ class TestLogSignatures(TestLog):
         self.assertTrue('signature: no signature' in log)
 
     def test_log_without_signatures(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
 
         tree = self.make_linear_branch(format='dirstate-tags')
 
@@ -537,9 +540,9 @@ class TestLogMerges(TestLogWithLogCatcher):
     def make_branches_with_merges(self):
         level0 = self.make_branch_and_tree('level0')
         self.wt_commit(level0, 'in branch level0')
-        level1 = level0.bzrdir.sprout('level1').open_workingtree()
+        level1 = level0.controldir.sprout('level1').open_workingtree()
         self.wt_commit(level1, 'in branch level1')
-        level2 = level1.bzrdir.sprout('level2').open_workingtree()
+        level2 = level1.controldir.sprout('level2').open_workingtree()
         self.wt_commit(level2, 'in branch level2')
         level1.merge_from_branch(level2.branch)
         self.wt_commit(level1, 'merge branch level2')
@@ -619,7 +622,7 @@ class TestLogDiff(TestLogWithLogCatcher):
         level0.add('file2')
         self.wt_commit(level0, 'in branch level0')
 
-        level1 = level0.bzrdir.sprout('level1').open_workingtree()
+        level1 = level0.controldir.sprout('level1').open_workingtree()
         self.build_tree_contents([('level1/file2', 'hello\n')])
         self.wt_commit(level1, 'in branch level1')
         level0.merge_from_branch(level1.branch)
@@ -831,7 +834,7 @@ class TestLogFile(TestLogWithLogCatcher):
         self.build_tree(['tree/file'])
         tree.add('file')
         tree.commit('revision 1')
-        tree.bzrdir.destroy_workingtree()
+        tree.controldir.destroy_workingtree()
         self.run_bzr('log tree/file')
 
     def prepare_tree(self, complex=False):
@@ -844,7 +847,7 @@ class TestLogFile(TestLogWithLogCatcher):
         tree.commit('add file2')
         tree.add('file3')
         tree.commit('add file3')
-        child_tree = tree.bzrdir.sprout('child').open_workingtree()
+        child_tree = tree.controldir.sprout('child').open_workingtree()
         self.build_tree_contents([('child/file2', 'hello')])
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
@@ -937,7 +940,7 @@ class TestLogMultiple(TestLogWithLogCatcher):
         tree.commit('add file4')
         tree.add('dir1/file5')
         tree.commit('add file5')
-        child_tree = tree.bzrdir.sprout('child').open_workingtree()
+        child_tree = tree.controldir.sprout('child').open_workingtree()
         self.build_tree_contents([('child/file2', 'hello')])
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
@@ -995,16 +998,18 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
-        self.knownFailure("log with ghosts fails. bug #726466")
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
-        self.assertEqual("brz: ERROR: Further revision history missing.", stderr)
+        self.assertEqual("brz: ERROR: Further revision history missing.\n",
+                stderr)
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])
 
+
 class TestLogMatch(TestLogWithLogCatcher):
+
     def prepare_tree(self):
         tree = self.make_branch_and_tree('')
         self.build_tree(
@@ -1013,7 +1018,7 @@ class TestLogMatch(TestLogWithLogCatcher):
         tree.commit(message='message1', committer='committer1', authors=['author1'])
         tree.add('goodbye.txt')
         tree.commit(message='message2', committer='committer2', authors=['author2'])
-    
+
     def test_message(self):
         self.prepare_tree()
         self.assertLogRevnos(["-m", "message1"], ["1"])

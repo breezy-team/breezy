@@ -404,7 +404,7 @@ class TestDateTime(tests.TestCase):
         self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_format_date(self):
-        self.assertRaises(errors.UnsupportedTimezoneFormat,
+        self.assertRaises(osutils.UnsupportedTimezoneFormat,
             osutils.format_date, 0, timezone='foo')
         self.assertIsInstance(osutils.format_date(0), str)
         self.assertIsInstance(osutils.format_local_date(0), unicode)
@@ -971,23 +971,6 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
         self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
-    def test_win98_abspath(self):
-        self.requireFeature(features.win32_feature)
-        # absolute path
-        self.assertEqual('C:/foo', osutils._win98_abspath('C:\\foo'))
-        self.assertEqual('C:/foo', osutils._win98_abspath('C:/foo'))
-        # UNC path
-        self.assertEqual('//HOST/path', osutils._win98_abspath(r'\\HOST\path'))
-        self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
-        # relative path
-        cwd = osutils.getcwd().rstrip('/')
-        drive = osutils.ntpath.splitdrive(cwd)[0]
-        self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
-        self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
-        # unicode path
-        u = u'\u1234'
-        self.assertEqual(cwd+'/'+u, osutils._win98_abspath(u))
-
 
 class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     """Test win32 functions that create files."""
@@ -1230,7 +1213,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'UTF-8'
 
         # this should raise on error
@@ -1295,7 +1277,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        self.overrideAttr(win32utils, 'winver')
         self.overrideAttr(osutils, '_fs_enc')
         self.overrideAttr(osutils, '_selected_dir_reader')
 
@@ -1310,7 +1291,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test_force_walkdirs_utf8_fs_utf8(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'utf-8'
         self.assertDirReaderIs(
             UTF8DirReaderFeature.module.UTF8DirReader)
@@ -1318,14 +1298,12 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
             UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'iso-8859-1'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
 
@@ -1333,15 +1311,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # Disabled because the thunk of the whole walkdirs api is disabled.
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
-        win32utils.winver = 'Windows NT'
         from .._walkdirs_win32 import Win32ReadDir
         self.assertDirReaderIs(Win32ReadDir)
-
-    def test_force_walkdirs_utf8_98(self):
-        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self._save_platform_info()
-        win32utils.winver = 'Windows 98'
-        self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
@@ -2037,7 +2008,7 @@ class TestFailedToLoadExtension(tests.TestCase):
         self.assertContainsRe(
             log.getvalue(),
             r"brz: warning: some compiled extensions could not be loaded; "
-            "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
+            "see ``brz help missing-extensions``\n"
             )
 
 

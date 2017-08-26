@@ -40,7 +40,7 @@ def load_tests(loader, standard_tests, pattern):
     colo_supported_formats = []
     colo_unsupported_formats = []
     # This will always add scenarios using the smart server.
-    from breezy.remote import RemoteBzrDirFormat
+    from breezy.bzr.remote import RemoteBzrDirFormat
     for format in ControlDirFormat.known_formats():
         if isinstance(format, RemoteBzrDirFormat):
             continue

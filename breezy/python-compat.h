@@ -25,16 +25,35 @@
 #ifndef _BZR_PYTHON_COMPAT_H
 #define _BZR_PYTHON_COMPAT_H
 
-/* http://www.python.org/dev/peps/pep-0353/ */
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-    typedef int Py_ssize_t;
-    typedef Py_ssize_t (*lenfunc)(PyObject *);
-    typedef PyObject * (*ssizeargfunc)(PyObject *, Py_ssize_t);
-    typedef PyObject * (*ssizessizeargfunc)(PyObject *, Py_ssize_t, Py_ssize_t);
-    #define PY_SSIZE_T_MAX INT_MAX
-    #define PY_SSIZE_T_MIN INT_MIN
-    #define PyInt_FromSsize_t(z) PyInt_FromLong(z)
-    #define PyInt_AsSsize_t(o) PyInt_AsLong(o)
+#if PY_MAJOR_VERSION >= 3
+
+#define PyInt_FromSsize_t PyLong_FromSsize_t
+
+/* In Python 3 the Py_TPFLAGS_CHECKTYPES behaviour is on by default */
+#define Py_TPFLAGS_CHECKTYPES 0
+
+#define PYMOD_ERROR NULL
+#define PYMOD_SUCCESS(val) val
+#define PYMOD_INIT_FUNC(name) PyMODINIT_FUNC PyInit_##name(void)
+#define PYMOD_CREATE(ob, name, doc, methods) do { \
+    static struct PyModuleDef moduledef = { \
+        PyModuleDef_HEAD_INIT, name, doc, -1, methods \
+    }; \
+    ob = PyModule_Create(&moduledef); \
+    } while(0)
+
+#else
+
+#define PyBytes_Type PyString_Type
+#define PyBytes_CheckExact PyString_CheckExact
+
+#define PYMOD_ERROR
+#define PYMOD_SUCCESS(val)
+#define PYMOD_INIT_FUNC(name) void init##name(void)
+#define PYMOD_CREATE(ob, name, doc, methods) do { \
+    ob = Py_InitModule3(name, methods, doc); \
+    } while(0)
+
 #endif
 
 #if defined(_WIN32) || defined(WIN32)
@@ -77,14 +96,6 @@
 /* gcc (mingw32) has strtoll, while the MSVC compiler uses _strtoi64 */
 #define strtoll _strtoi64
 #define strtoull _strtoui64
-#endif
-
-/* Introduced in Python 2.6 */
-#ifndef Py_TYPE
-#  define Py_TYPE(o) ((o)->ob_type)
-#endif
-#ifndef Py_REFCNT
-#  define Py_REFCNT(o) ((o)->ob_refcnt)
 #endif
 
 #endif /* _BZR_PYTHON_COMPAT_H */

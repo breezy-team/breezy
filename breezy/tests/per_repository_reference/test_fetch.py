@@ -17,6 +17,8 @@
 
 from breezy import (
     branch,
+    )
+from breezy.bzr import (
     vf_search,
     )
 from breezy.tests.per_repository import TestCaseWithRepository
@@ -83,7 +85,7 @@ class TestFetch(TestFetchBase):
         transport = self.make_smart_server('server')
         transport.ensure_base()
         url = transport.abspath('')
-        stack_b = source_b.bzrdir.sprout(url + '/stack-on', revision_id='B-id')
+        stack_b = source_b.controldir.sprout(url + '/stack-on', revision_id='B-id')
         # self.make_branch only takes relative paths, so we do it the 'hard'
         # way
         target_transport = transport.clone('target')
@@ -96,13 +98,13 @@ class TestFetch(TestFetchBase):
         target_b.pull(source_b, stop_revision='C-id')
         # Now we should be able to branch from the remote location to a local
         # location
-        final_b = target_b.bzrdir.sprout('final').open_branch()
+        final_b = target_b.controldir.sprout('final').open_branch()
         self.assertEqual('C-id', final_b.last_revision())
 
         # bzrdir.sprout() has slightly different code paths if you supply a
         # revision_id versus not. If you supply revision_id, then you get a
         # PendingAncestryResult for the search, versus a SearchResult...
-        final2_b = target_b.bzrdir.sprout('final2',
+        final2_b = target_b.controldir.sprout('final2',
                                           revision_id='C-id').open_branch()
         self.assertEqual('C-id', final_b.last_revision())
 
@@ -166,7 +168,7 @@ class TestFetchFromRepoWithUnconfiguredFallbacks(TestFetchBase):
 
     def test_fetch_everything_includes_parent_invs(self):
         stacked = self.make_stacked_source_repo()
-        repo_missing_fallbacks = stacked.bzrdir.open_repository()
+        repo_missing_fallbacks = stacked.controldir.open_repository()
         self.addCleanup(repo_missing_fallbacks.lock_read().unlock)
         target = self.make_repository('target')
         self.addCleanup(target.lock_write().unlock)

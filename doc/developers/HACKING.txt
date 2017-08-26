@@ -457,10 +457,11 @@ Debug flags may have effects other than just emitting trace messages.
 Run ``bzr help global-options`` to see them all.
 
 These flags may also be set as a comma-separated list in the
-``debug_flags`` option in e.g.  ``~/.bazaar/bazaar.conf``.  (Note that it
-must be in this global file, not in the branch or location configuration,
-because it's currently only loaded at startup time.)  For instance you may
-want to always record hpss traces and to see full error tracebacks::
+``debug_flags`` option in e.g.  ``~/.config/breezy/breezy.conf``.  (Note
+that it must be in this global file, not in the branch or location
+configuration, because it's currently only loaded at startup time.)  For
+instance you may want to always record hpss traces and to see full error
+tracebacks::
 
     debug_flags = hpss, error
 
@@ -532,7 +533,7 @@ valid characters are generated where possible.
 C Extension Modules
 ===================
 
-We write some extensions in C using pyrex. We design these to work in
+We write some extensions in C using Cython. We design these to work in
 three scenarios:
 
  * User with no C compiler
@@ -543,30 +544,19 @@ The recommended way to install bzr is to have a C compiler so that the
 extensions can be built, but if no C compiler is present, the pure python
 versions we supply will work, though more slowly.
 
-For developers we recommend that pyrex be installed, so that the C
+For developers we recommend that Cython be installed, so that the C
 extensions can be changed if needed.
 
 For the C extensions, the extension module should always match the
 original python one in all respects (modulo speed). This should be
 maintained over time.
 
-To create an extension, add rules to setup.py for building it with pyrex,
+To create an extension, add rules to setup.py for building it with Cython ,
 and with distutils. Now start with an empty .pyx file. At the top add
 "include 'yourmodule.py'". This will import the contents of foo.py into this
 file at build time - remember that only one module will be loaded at
 runtime. Now you can subclass classes, or replace functions, and only your
 changes need to be present in the .pyx file.
-
-Note that pyrex does not support all 2.4 programming idioms, so some
-syntax changes may be required. I.e.
-
- - 'from foo import (bar, gam)' needs to change to not use the brackets.
- - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar'
-
-If the changes are too dramatic, consider
-maintaining the python code twice - once in the .pyx, and once in the .py,
-and no longer including the .py file.
-
 
 Making Installers for OS Windows
 ================================
@@ -616,7 +606,7 @@ and reviewed, you can keep others informed of where you're spending your
 energy by emailing the **bazaar-commits** list implicitly. To do this,
 install and configure the Email plugin. One way to do this is add these
 configuration settings to your central configuration file (e.g.
-``~/.bazaar/bazaar.conf``)::
+``~/.config/breezy/breezy.conf``)::
 
   [DEFAULT]
   email = Joe Smith <joe.smith@internode.on.net>

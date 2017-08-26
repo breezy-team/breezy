@@ -326,7 +326,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
-        wt = b.bzrdir.sprout('branch').open_workingtree()
+        wt = b.controldir.sprout('branch').open_workingtree()
         wt.merge_from_branch(b, 'other')
         return wt
 
@@ -1178,7 +1178,7 @@ class TestResolveActionOption(tests.TestCase):
         return self.parser.parse_args(args)
 
     def test_unknown_action(self):
-        self.assertRaises(errors.BadOptionValue,
+        self.assertRaises(option.BadOptionValue,
                           self.parse, ['--action', 'take-me-to-the-moon'])
 
     def test_done(self):

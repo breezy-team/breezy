@@ -28,10 +28,12 @@ from ... import (
     branch as _mod_branch,
     controldir,
     repository as _mod_repository,
-    serializer,
     workingtree as _mod_workingtree,
     )
-from ...bzrdir import (
+from ...bzr import (
+    serializer,
+    )
+from ...bzr import (
     BzrProber,
     register_metadir,
     )
@@ -86,8 +88,8 @@ controldir.format_registry.register_lazy('weave',
 register_metadir(controldir.format_registry, 'metaweave',
     'breezy.plugins.weave_fmt.repository.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
-    branch_format='breezy.branchfmt.fullhistory.BzrBranchFormat5',
-    tree_format='breezy.workingtree_3.WorkingTreeFormat3',
+    branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
+    tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
 
@@ -121,6 +123,7 @@ def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_bzrdir',
         'test_repository',
+        'test_store',
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(

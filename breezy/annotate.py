@@ -41,7 +41,11 @@ from . import (
     errors,
     osutils,
     )
-from .config import extract_email_address
+from .config import (
+    NoEmailInUsername,
+    NoWhoami,
+    extract_email_address,
+    )
 from .repository import _strip_NULL_ghosts
 from .revision import (
     CURRENT_REVISION,
@@ -82,7 +86,7 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         current_rev.parent_ids = tree.get_parent_ids()
         try:
             current_rev.committer = branch.get_config_stack().get('email')
-        except errors.NoWhoami:
+        except NoWhoami:
             current_rev.committer = 'local user'
         current_rev.message = "?"
         current_rev.timestamp = round(time.time(), 3)
@@ -188,10 +192,10 @@ def _expand_annotations(annotations, branch, current_rev=None):
         revision_id_to_revno[CURRENT_REVISION] = (
             "%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
-    revision_ids = [o for o in revision_ids if
-                    repository.has_revision(o)]
-    revisions.update((r.revision_id, r) for r in
-                     repository.get_revisions(revision_ids))
+    revisions.update(
+            entry for entry in
+            repository.iter_revisions(revision_ids)
+            if entry[1] is not None)
     for origin, text in annotations:
         text = text.rstrip('\r\n')
         if origin == last_origin:
@@ -212,7 +216,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
             author = rev.get_apparent_authors()[0]
             try:
                 author = extract_email_address(author)
-            except errors.NoEmailInUsername:
+            except NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
 
@@ -350,7 +354,7 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
         if child_idx > last_child_idx:
             output_extend(child_lines[start_child + last_child_idx
                                       :start_child + child_idx])
-        for offset in xrange(match_len):
+        for offset in range(match_len):
             left = child_lines[start_child+child_idx+offset]
             right = right_lines[start_right+right_idx+offset]
             if left[0] == right[0]:

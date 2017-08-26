@@ -45,7 +45,7 @@ from breezy.tests import (
     multiply_tests,
     )
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
-from breezy.vf_repository import (
+from breezy.bzr.vf_repository import (
     InterDifferingSerializer,
     )
 
@@ -73,7 +73,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from breezy.repofmt import (
+    from breezy.bzr import (
         groupcompress_repo,
         knitrepo,
         knitpack_repo,
@@ -161,15 +161,15 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def get_default_format(self):
         self.assertEqual(
-            self.repository_format._matchingbzrdir.repository_format,
+            self.repository_format._matchingcontroldir.repository_format,
             self.repository_format)
-        return self.repository_format._matchingbzrdir
+        return self.repository_format._matchingcontroldir
 
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
+        return repo.controldir.create_branch()
 
-    def make_bzrdir(self, relpath, format=None):
+    def make_controldir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -181,18 +181,18 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
                 except FileExists:
                     pass
             if format is None:
-                format = self.repository_format._matchingbzrdir
+                format = self.repository_format._matchingcontroldir
             return format.initialize(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         return self.repository_format.initialize(made_control)
 
     def make_to_repository(self, relpath):
-        made_control = self.make_bzrdir(relpath,
-            self.repository_format_to._matchingbzrdir)
+        made_control = self.make_controldir(relpath,
+            self.repository_format_to._matchingcontroldir)
         return self.repository_format_to.initialize(made_control)
 
 

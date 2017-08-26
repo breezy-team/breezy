@@ -116,7 +116,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.run_bzr(['whoami', '--directory', 'subdir', '--branch',
                       'Changed Identity <changed@identi.ty>'])
         # Refresh wt as 'whoami' modified it
-        wt = wt.bzrdir.open_workingtree()
+        wt = wt.controldir.open_workingtree()
         c = wt.branch.get_config_stack()
         self.assertEqual('Changed Identity <changed@identi.ty>',
                           c.get('email'))
@@ -136,13 +136,13 @@ class TestWhoami(tests.TestCaseWithTransport):
         c = branch.Branch.open(url).get_config_stack()
         self.assertEqual('Changed Identity <changed@identi.ty>',
                           c.get('email'))
-        # Ensuring that the value does not come from the bazaar.conf file
+        # Ensuring that the value does not come from the breezy.conf file
         # itself requires some isolation setup
         self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', None)
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         global_conf = config.GlobalStack()
-        self.assertRaises(errors.NoWhoami, global_conf.get, 'email')
+        self.assertRaises(config.NoWhoami, global_conf.get, 'email')
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""

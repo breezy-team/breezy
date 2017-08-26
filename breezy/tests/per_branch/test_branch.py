@@ -29,11 +29,17 @@ from breezy import (
     urlutils,
     transform,
     transport,
-    remote,
     repository,
     revision,
     shelf,
     tests,
+    )
+from breezy.bzr import (
+    branch as _mod_bzrbranch,
+    remote,
+    )
+from breezy.sixish import (
+    text_type,
     )
 from breezy.tests import (
     per_branch,
@@ -46,47 +52,49 @@ class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
 
     def test_branch_format_matches_bzrdir_branch_format(self):
         bzrdir_branch_format = self.bzrdir_format.get_branch_format()
-        self.assertIs(self.branch_format.__class__,
-                      bzrdir_branch_format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                bzrdir_branch_format.__class__)
 
     def test_make_branch_gets_expected_format(self):
         branch = self.make_branch('.')
-        self.assertIs(self.branch_format.__class__,
-            branch._format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                branch._format.__class__)
 
 
 class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({'rev-1':('null:',),
-                          'rev-2':('rev-1', ),
-                          'rev-1.1.1':('rev-1', ),
-                          'rev-3':('rev-2', 'rev-1.1.1', ),
-                         }, ancestry_graph)
+        self.assertEqual({revmap['1']: ('null:',),
+                          revmap['2']: (revmap['1'], ),
+                          revmap['1.1.1']: (revmap['1'], ),
+                          revmap['3']: (revmap['2'], revmap['1.1.1'], ),
+                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
         wt = self.make_branch_and_tree('tree')
-        wt.commit('f', rev_id='rev1')
-        wt.commit('f', rev_id='rev2')
-        wt.commit('f', rev_id='rev3')
+        rev1 = wt.commit('f')
+        rev2 = wt.commit('f')
+        rev3 = wt.commit('f')
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.generate_revision_history('rev3')
-        for revision_id in ['rev3', 'rev2', 'rev1']:
+        br.generate_revision_history(rev3)
+        for revision_id in [rev3, rev2, rev1]:
             self.assertIsInstance(revision_id, str)
         last = br.last_revision()
-        self.assertEqual('rev3', last)
+        self.assertEqual(rev3, last)
         self.assertIsInstance(last, str)
         revno, last = br.last_revision_info()
         self.assertEqual(3, revno)
-        self.assertEqual('rev3', last)
+        self.assertEqual(rev3, last)
         self.assertIsInstance(last, str)
 
     def test_fetch_revisions(self):
@@ -94,24 +102,24 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
         self.build_tree_contents([('b1/foo', 'hello')])
-        wt.add(['foo'], ['foo-id'])
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        wt.add(['foo'])
+        rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_branch('b2')
         b2.fetch(b1)
 
-        rev = b2.repository.get_revision('revision-1')
-        tree = b2.repository.revision_tree('revision-1')
+        rev = b2.repository.get_revision(rev1)
+        tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo-id'), 'hello')
+        self.assertEqual(tree.get_file_text(tree.path2id('foo')), 'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         tree_a = self.make_branch_and_tree('a')
         self.build_tree_contents([('a/b', 'b')])
         tree_a.add('b')
-        tree_a.commit("silly commit", rev_id='A')
+        tree_a.commit("silly commit")
 
         tree_b = self.make_branch_and_tree('b')
         return tree_a, tree_b
@@ -130,29 +138,29 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
         self.build_tree(['a/two'])
         wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
+        wt_a.commit('commit two')
         # Now make a copy of the repository.
         repo_b = self.make_repository('b')
         wt_a.branch.repository.copy_content_into(repo_b)
         # wt_a might be a lightweight checkout, so get a hold of the actual
         # branch (because you can't do a partial clone of a lightweight
         # checkout).
-        branch = wt_a.branch.bzrdir.open_branch()
+        branch = wt_a.branch.controldir.open_branch()
         # Then make a branch where the new repository is, but specify a revision
         # ID.  The new branch's history will stop at the specified revision.
-        br_b = branch.clone(repo_b.bzrdir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
+        br_b = branch.clone(repo_b.controldir, revision_id=rev1)
+        self.assertEqual(rev1, br_b.last_revision())
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
 
-        branch_b = wt_a.branch.bzrdir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
@@ -165,7 +173,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch_b = self.get_parented_branch()
         repo_c = self.make_repository('c')
         branch_b.repository.copy_content_into(repo_c)
-        branch_c = branch_b.clone(repo_c.bzrdir)
+        branch_c = branch_b.clone(repo_c.controldir)
         self.assertNotEqual(None, branch_c.get_parent())
         self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
 
@@ -174,7 +182,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch_b.set_parent(random_parent)
         repo_d = self.make_repository('d')
         branch_b.repository.copy_content_into(repo_d)
-        branch_d = branch_b.clone(repo_d.bzrdir)
+        branch_d = branch_b.clone(repo_d.controldir)
         self.assertEqual(random_parent, branch_d.get_parent())
 
     def test_submit_branch(self):
@@ -246,7 +254,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
-        if not isinstance(branch, _mod_branch.BzrBranch):
+        if not isinstance(branch, _mod_bzrbranch.BzrBranch):
             raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -278,12 +286,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch = self.make_branch('bzr.dev')
         # An implicit nick name is set; what it is exactly depends on the
         # format.
-        self.assertIsInstance(branch.nick, basestring)
+        self.assertIsInstance(branch.nick, text_type)
         # Set the branch nick explicitly.
-        branch.nick = "Aaron's branch"
+        branch.nick = u"Aaron's branch"
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch".
-        self.assertEqual(branch.nick, "Aaron's branch")
+        self.assertEqual(branch.nick, u"Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
 
@@ -294,6 +302,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
+        # TODO(jelmer): Only set branch nick on bzr branches
         self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
@@ -302,23 +311,23 @@ class TestBranch(per_branch.TestCaseWithBranch):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
-        if repo.bzrdir._format.colocated_branches:
+        if repo.controldir._format.colocated_branches:
             raise tests.TestNotApplicable(
                 "control dir does not support colocated branches")
-        self.assertEqual(0, len(repo.bzrdir.list_branches()))
+        self.assertEqual(0, len(repo.controldir.list_branches()))
         if not self.bzrdir_format.colocated_branches:
             raise tests.TestNotApplicable("control dir format does not support "
                 "colocated branches")
         try:
-            child_branch1 = self.branch_format.initialize(repo.bzrdir, 
+            child_branch1 = self.branch_format.initialize(repo.controldir, 
                 name='branch1')
         except errors.UninitializableFormat:
             # branch references are not default init'able and
             # not all bzrdirs support colocated branches.
             return
-        self.assertEqual(1, len(repo.bzrdir.list_branches()))
-        self.branch_format.initialize(repo.bzrdir, name='branch2')
-        self.assertEqual(2, len(repo.bzrdir.list_branches()))
+        self.assertEqual(1, len(repo.controldir.list_branches()))
+        self.branch_format.initialize(repo.controldir, name='branch2')
+        self.assertEqual(2, len(repo.controldir.list_branches()))
 
     def test_create_append_revisions_only(self):
         try:
@@ -327,14 +336,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
             return
         for val in (True, False):
             try:
-                branch = self.branch_format.initialize(repo.bzrdir,
+                branch = self.branch_format.initialize(repo.controldir,
                     append_revisions_only=True)
             except (errors.UninitializableFormat, errors.UpgradeRequired):
                 # branch references are not default init'able and
                 # not all branches support append_revisions_only
                 return
             self.assertEqual(True, branch.get_append_revisions_only())
-            repo.bzrdir.destroy_branch()
+            repo.controldir.destroy_branch()
 
     def test_get_set_append_revisions_only(self):
         branch = self.make_branch('.')
@@ -353,7 +362,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable("requires shared repository support")
-        child_transport = repo.bzrdir.root_transport.clone('child')
+        child_transport = repo.controldir.root_transport.clone('child')
         child_transport.mkdir('.')
         try:
             child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
@@ -364,11 +373,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             # branch references are not default init'able.
             return
-        self.assertEqual(repo.bzrdir.root_transport.base,
-                         child_branch.repository.bzrdir.root_transport.base)
+        self.assertEqual(repo.controldir.root_transport.base,
+                         child_branch.repository.controldir.root_transport.base)
         child_branch = _mod_branch.Branch.open(self.get_url('child'))
-        self.assertEqual(repo.bzrdir.root_transport.base,
-                         child_branch.repository.bzrdir.root_transport.base)
+        self.assertEqual(repo.controldir.root_transport.base,
+                         child_branch.repository.controldir.root_transport.base)
 
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
@@ -412,20 +421,20 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
         self.assertEqual('null:', checkout_b.last_revision())
-        checkout_b.commit('rev1', rev_id='rev1')
-        self.assertEqual('rev1', branch_a.last_revision())
+        rev1 = checkout_b.commit('rev1')
+        self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
         checkout_c = branch_a.create_checkout('c', lightweight=True)
-        self.assertEqual('rev1', checkout_c.last_revision())
-        checkout_c.commit('rev2', rev_id='rev2')
-        self.assertEqual('rev2', branch_a.last_revision())
+        self.assertEqual(rev1, checkout_c.last_revision())
+        rev2 = checkout_c.commit('rev2')
+        self.assertEqual(rev2, branch_a.last_revision())
         self.assertEqual(checkout_c.branch.base, branch_a.base)
 
         checkout_d = branch_a.create_checkout('d', lightweight=True)
-        self.assertEqual('rev2', checkout_d.last_revision())
+        self.assertEqual(rev2, checkout_d.last_revision())
         checkout_e = branch_a.create_checkout('e')
-        self.assertEqual('rev2', checkout_e.last_revision())
+        self.assertEqual(rev2, checkout_e.last_revision())
 
     def test_create_anonymous_lightweight_checkout(self):
         """A lightweight checkout from a readonly branch should succeed."""
@@ -434,7 +443,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # open the branch via a readonly transport
         url = self.get_readonly_url(urlutils.basename(tree_a.branch.base))
         t = transport.get_transport_from_url(url)
-        if not tree_a.branch.bzrdir._format.supports_transport(t):
+        if not tree_a.branch.controldir._format.supports_transport(t):
             raise tests.TestNotApplicable("format does not support transport")
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
@@ -451,7 +460,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         url = self.get_readonly_url(
             osutils.basename(tree_a.branch.base.rstrip('/')))
         t = transport.get_transport_from_url(url)
-        if not tree_a.branch.bzrdir._format.supports_transport(t):
+        if not tree_a.branch.controldir._format.supports_transport(t):
             raise tests.TestNotApplicable("format does not support transport")
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
@@ -467,10 +476,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # (In native formats, this is the tip + tags, but other formats may
         # have other revs needed)
         tree = self.make_branch_and_tree('a')
-        tree.commit('first commit', rev_id='rev1')
-        tree.commit('second commit', rev_id='rev2')
+        tree.commit('first commit')
+        rev2 = tree.commit('second commit')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertTrue('rev2' in must_fetch)
+        self.assertTrue(rev2 in must_fetch)
 
     def test_heads_to_fetch_not_null_revision(self):
         # NULL_REVISION does not appear in the result of heads_to_fetch, even
@@ -530,7 +539,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
                           _mod_branch.Branch.open_containing,
                           self.get_readonly_url('g/p/q'))
         branch = self.make_branch('.')
-        if not branch.bzrdir._format.supports_transport(
+        if not branch.controldir._format.supports_transport(
             transport.get_transport_from_url(self.get_readonly_url('.'))):
             raise tests.TestNotApplicable("format does not support transport")
         branch, relpath = _mod_branch.Branch.open_containing(
@@ -647,7 +656,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             return
         made_branch = self.make_branch('.')
         self.assertEqual(None,
-            made_branch._format.get_reference(made_branch.bzrdir))
+            made_branch._format.get_reference(made_branch.controldir))
 
     def test_set_reference(self):
         """set_reference on all regular branches should be callable."""
@@ -659,13 +668,13 @@ class TestFormat(per_branch.TestCaseWithBranch):
         this_branch = self.make_branch('this')
         other_branch = self.make_branch('other')
         try:
-            this_branch._format.set_reference(this_branch.bzrdir, None,
+            this_branch._format.set_reference(this_branch.controldir, None,
                 other_branch)
         except NotImplementedError:
             # that's ok
             pass
         else:
-            ref = this_branch._format.get_reference(this_branch.bzrdir)
+            ref = this_branch._format.get_reference(this_branch.controldir)
             self.assertEqual(ref, other_branch.base)
 
     def test_format_initialize_find_open(self):
@@ -685,7 +694,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         opened_control = controldir.ControlDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
-        self.assertEqual(opened_control, direct_opened_branch.bzrdir)
+        self.assertEqual(opened_control, direct_opened_branch.controldir)
         self.assertIsInstance(direct_opened_branch._format,
             self.branch_format.__class__)
 
@@ -732,7 +741,7 @@ class TestBound(per_branch.TestCaseWithBranch):
     def test_bind_diverged(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('rev1a')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         tree_a.commit('rev2a')
         tree_b.commit('rev2b')
         try:
@@ -794,7 +803,7 @@ class TestStrict(per_branch.TestCaseWithBranch):
         except errors.UpgradeRequired:
             raise tests.TestSkipped('Format does not support strict history')
         tree1.commit('empty commit')
-        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree1.controldir.sprout('tree2').open_workingtree()
         tree2.commit('empty commit 2')
         tree1.pull(tree2.branch)
         tree1.commit('empty commit 3')
@@ -804,7 +813,7 @@ class TestStrict(per_branch.TestCaseWithBranch):
         tree2.commit('empty commit 5')
         self.assertRaises(errors.AppendRevisionsOnlyViolation, tree1.pull,
                           tree2.branch)
-        tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
+        tree3 = tree1.controldir.sprout('tree3').open_workingtree()
         tree3.merge_from_branch(tree2.branch)
         tree3.commit('empty commit 6')
         tree2.pull(tree3.branch)
@@ -860,7 +869,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         reference_parent = tree.branch.reference_parent('subtree-id',
             urlutils.relative_url(
                 tree.branch.user_url, subtree.branch.user_url),
-            possible_transports=[subtree.bzrdir.root_transport])
+            possible_transports=[subtree.controldir.root_transport])
 
     def test_get_reference_info(self):
         branch = self.make_branch('branch')
@@ -957,19 +966,19 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
     def test_sprout_copies_reference_location(self):
         branch = self.make_branch_with_reference('branch', '../reference')
-        new_branch = branch.bzrdir.sprout('new-branch').open_branch()
+        new_branch = branch.controldir.sprout('new-branch').open_branch()
         self.assertEqual('../reference',
                          new_branch.get_reference_info('file-id')[1])
 
     def test_clone_copies_reference_location(self):
         branch = self.make_branch_with_reference('branch', '../reference')
-        new_branch = branch.bzrdir.clone('new-branch').open_branch()
+        new_branch = branch.controldir.clone('new-branch').open_branch()
         self.assertEqual('../reference',
                          new_branch.get_reference_info('file-id')[1])
 
     def test_copied_locations_are_rebased(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
         self.assertEqual('../reference',
                          new_branch.get_reference_info('file-id')[1])
 
@@ -991,7 +1000,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
     def test_update_references_skips_known_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
         new_branch.set_reference_info('file-id', '../foo', '../foo')
         new_branch.update_references(branch)
         self.assertEqual('reference',
@@ -999,7 +1008,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
     def test_pull_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
         new_branch.set_reference_info('file-id2', '../foo', '../foo')
         branch.pull(new_branch)
         self.assertEqual('foo',
@@ -1007,7 +1016,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
     def test_push_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
         new_branch.set_reference_info('file-id2', '../foo', '../foo')
         new_branch.push(branch)
         self.assertEqual('foo',
@@ -1022,7 +1031,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         checkout.commit('bar')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        merger = merge.Merger.from_revision_ids(None, tree,
+        merger = merge.Merger.from_revision_ids(tree,
                                                 branch.last_revision(),
                                                 other_branch=branch)
         merger.merge_type = merge.Merge3Merger

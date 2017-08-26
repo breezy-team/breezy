@@ -26,7 +26,7 @@ from breezy import (
     osutils,
     urlutils,
     )
-from breezy.bzrdir import BzrDirMetaFormat1
+from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.tests import TestSkipped
 from breezy.tests import TestCaseWithTransport
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -77,7 +77,7 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual("""Created a repository tree (format: %s)
 Using shared repository: %s
 """ % (self._default_label, urlutils.local_path_from_url(
-            repo.bzrdir.root_transport.external_url())), out)
+            repo.controldir.root_transport.external_url())), out)
         cwd = osutils.getcwd()
         self.assertEndsWith(out, cwd + '/repo/\n')
         self.assertEqual('', err)
@@ -187,7 +187,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
     def test_init(self):
         # init on a remote url should succeed.
-        out, err = self.run_bzr(['init', '--pack-0.92', self.get_url()])
+        out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
             """Created a standalone branch (format: pack-0.92)\n""")
         self.assertEqual('', err)
@@ -213,14 +213,14 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr_error(['Already a branch'], ['init', self.get_url()])
 
     def test_init_append_revisions_only(self):
-        self.run_bzr('init --dirstate-tags normal_branch6')
+        self.run_bzr('init --format=dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
         self.assertEqual(None, branch.get_append_revisions_only())
-        self.run_bzr('init --append-revisions-only --dirstate-tags branch6')
+        self.run_bzr('init --append-revisions-only --format=dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch.get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'],
-                           'init --append-revisions-only --knit knit')
+                           'init --append-revisions-only --format=knit knit')
 
     def test_init_without_username(self):
         """Ensure init works if username is not set.

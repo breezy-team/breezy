@@ -17,6 +17,8 @@
 from .. import (
     graph as _mod_graph,
     tests,
+    )
+from ..bzr import (
     vf_search,
     )
 from ..revision import NULL_REVISION

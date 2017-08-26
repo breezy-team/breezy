@@ -60,12 +60,12 @@ class TestCaseWithControlDir(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCaseWithControlDir, self).setUp()
-        self.bzrdir = None
+        self.controldir = None
 
     def get_bzrdir(self):
-        if self.bzrdir is None:
-            self.bzrdir = self.make_bzrdir(None)
-        return self.bzrdir
+        if self.controldir is None:
+            self.controldir = self.make_controldir(None)
+        return self.controldir
 
     def get_default_format(self):
         return self.bzrdir_format
@@ -87,7 +87,7 @@ def load_tests(loader, standard_tests, pattern):
         None,
         formats)
     # This will always add scenarios using the smart server.
-    from breezy.remote import RemoteBzrDirFormat
+    from breezy.bzr.remote import RemoteBzrDirFormat
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     scenarios.extend(make_scenarios(

@@ -359,8 +359,8 @@ class TestMergeDirectiveBranch(object):
                                   ('tree_a/file_2', 'content_x\rcontent_y\r')])
         tree_a.add(['file', 'file_2'])
         tree_a.commit('message', rev_id='rev1')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
-        branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
+        branch_c = tree_a.controldir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
         self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n'),
                                   ('tree_a/file_2', 'content_x\rcontent_z\r')])
@@ -464,8 +464,6 @@ class TestMergeDirectiveBranch(object):
         class FakeBranch(object):
             def get_config_stack(self):
                 return self
-            def gpg_signing_command(self):
-                return 'loopback'
         md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')

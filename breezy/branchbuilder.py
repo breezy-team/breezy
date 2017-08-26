@@ -25,6 +25,9 @@ from . import (
     memorytree,
     revision,
     )
+from .sixish import (
+    viewitems,
+    )
 
 
 class BranchBuilder(object):
@@ -84,7 +87,7 @@ class BranchBuilder(object):
             if format is None:
                 format = 'default'
             if isinstance(format, str):
-                format = controldir.format_registry.make_bzrdir(format)
+                format = controldir.format_registry.make_controldir(format)
             self._branch = controldir.ControlDir.create_branch_convenience(
                 transport.base, format=format, force_new_tree=False)
         self._tree = None
@@ -277,7 +280,7 @@ class BranchBuilder(object):
         if pending.to_unversion_ids:
             tree.unversion(pending.to_unversion_ids)
         tree.add(pending.to_add_files, pending.to_add_file_ids, pending.to_add_kinds)
-        for file_id, content in pending.new_contents.iteritems():
+        for file_id, content in viewitems(pending.new_contents):
             tree.put_file_bytes_non_atomic(file_id, content)
 
     def get_branch(self):

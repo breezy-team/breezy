@@ -21,7 +21,6 @@ import os
 import sys
 
 from .. import (
-    errors,
     registry,
     tests,
     version_info_formats,
@@ -32,7 +31,11 @@ from ..sixish import (
 from . import TestCaseWithTransport
 from ..rio import read_stanzas
 
-from ..version_info_formats.format_custom import CustomVersionInfoBuilder
+from ..version_info_formats.format_custom import (
+    CustomVersionInfoBuilder,
+    MissingTemplateVariable,
+    NoTemplate,
+    )
 from ..version_info_formats.format_rio import RioVersionInfoBuilder
 from ..version_info_formats.format_python import PythonVersionInfoBuilder
 
@@ -61,7 +64,7 @@ class VersionInfoTestCase(TestCaseWithTransport):
         wt.add('a')
         wt.commit('a', rev_id='r1')
 
-        other = wt.bzrdir.sprout('other').open_workingtree()
+        other = wt.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/b.a'])
         other.add(['b.a'])
         other.commit('b.a', rev_id='o2')
@@ -346,8 +349,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
             template='{revno} revid: {revision_id}')
         # revision_id is not available yet
-        self.assertRaises(errors.MissingTemplateVariable, 
-            builder.generate, sio)
+        self.assertRaises(MissingTemplateVariable, builder.generate, sio)
 
     def test_custom_dotted_revno(self):
         sio = BytesIO()
@@ -398,7 +400,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
     def test_custom_without_template(self):
         builder = CustomVersionInfoBuilder(None)
         sio = BytesIO()
-        self.assertRaises(errors.NoTemplate, builder.generate, sio)
+        self.assertRaises(NoTemplate, builder.generate, sio)
 
 
 class TestBuilder(version_info_formats.VersionInfoBuilder):

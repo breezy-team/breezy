@@ -17,7 +17,9 @@
 
 """Pyrex extensions for converting chunks to lines."""
 
-#python2.4 support
+from __future__ import absolute_import
+
+
 cdef extern from "python-compat.h":
     pass
 
@@ -25,7 +27,6 @@ cdef extern from "stdlib.h":
     ctypedef unsigned size_t
 
 cdef extern from "Python.h":
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
         pass
     int PyList_Append(object lst, object item) except -1

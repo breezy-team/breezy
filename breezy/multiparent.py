@@ -34,6 +34,7 @@ from breezy import (
 """)
 from .sixish import (
     BytesIO,
+    range,
     )
 
 
@@ -169,7 +170,7 @@ class MultiParent(object):
         mpvf = MultiMemoryVersionedFile()
         for num, parent in enumerate(parents):
             mpvf.add_version(BytesIO(parent).readlines(), num, [])
-        mpvf.add_diff(self, 'a', range(len(parents)))
+        mpvf.add_diff(self, 'a', list(range(len(parents))))
         return mpvf.get_line_list(['a'])[0]
 
     @classmethod
@@ -208,7 +209,7 @@ class MultiParent(object):
                 break
             if cur_line[0] == 'i':
                 num_lines = int(cur_line.split(' ')[1])
-                hunk_lines = [next(line_iter) for x in xrange(num_lines)]
+                hunk_lines = [next(line_iter) for _ in range(num_lines)]
                 hunk_lines[-1] = hunk_lines[-1][:-1]
                 hunks.append(NewText(hunk_lines))
             elif cur_line[0] == '\n':
@@ -338,7 +339,7 @@ class BaseVersionedFile(object):
             return False
         if len(parent_ids) == 0:
             return True
-        for ignored in xrange(self.snapshot_interval):
+        for ignored in range(self.snapshot_interval):
             if len(parent_ids) == 0:
                 return False
             version_ids = parent_ids

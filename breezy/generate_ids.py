@@ -24,12 +24,12 @@ import time
 
 from breezy import (
     config,
-    errors,
     osutils,
     )
 """)
 
 from . import (
+    errors,
     lazy_regex,
     )
 
@@ -59,10 +59,11 @@ def _next_id_suffix():
     #           suffix forever.
     global _gen_file_id_suffix, _gen_file_id_serial
     if _gen_file_id_suffix is None:
-        _gen_file_id_suffix = "-%s-%s-" % (osutils.compact_date(time.time()),
-                                           osutils.rand_chars(16))
+        _gen_file_id_suffix =  ("-%s-%s-" % (
+                osutils.compact_date(time.time()), osutils.rand_chars(16))
+            ).encode("ascii")
     _gen_file_id_serial += 1
-    return _gen_file_id_suffix + str(_gen_file_id_serial)
+    return b"%s%d" % (_gen_file_id_suffix, _gen_file_id_serial)
 
 
 def gen_file_id(name):
@@ -81,8 +82,8 @@ def gen_file_id(name):
     #    filesystems
     # 4) Removing starting '.' characters to prevent the file ids from
     #    being considered hidden.
-    ascii_word_only = str(_file_id_chars_re.sub('', name.lower()))
-    short_no_dots = ascii_word_only.lstrip('.')[:20]
+    ascii_word_only = _file_id_chars_re.sub('', name.lower()).encode('ascii')
+    short_no_dots = ascii_word_only.lstrip(b'.')[:20]
     return short_no_dots + _next_id_suffix()
 
 
@@ -102,7 +103,7 @@ def gen_revision_id(username, timestamp=None):
     """
     try:
         user_or_email = config.extract_email_address(username)
-    except errors.NoEmailInUsername:
+    except config.NoEmailInUsername:
         user_or_email = username
 
     user_or_email = user_or_email.lower()

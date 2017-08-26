@@ -31,11 +31,10 @@ class TestRevProps(TestCaseWithRepository):
                      condiment='orange\n  mint\n\tcandy',
                      empty='',
                      non_ascii=u'\xb5')
-        wt.commit(message='initial null commit',
+        rev1 = wt.commit(message='initial null commit',
                  revprops=props,
-                 allow_pointless=True,
-                 rev_id='test@user-1')
-        rev = b.repository.get_revision('test@user-1')
+                 allow_pointless=True)
+        rev = b.repository.get_revision(rev1)
         self.assertTrue('flavor' in rev.properties)
         self.assertEqual(rev.properties['flavor'], 'choc-mint')
         self.assertEqual([('branch-nick', 'Nicholas'),
@@ -104,6 +103,6 @@ class TestRevisionAttributes(TestCaseWithRepository):
         tree1 = self.make_branch_and_tree("br1")
 
         # create a revision
-        tree1.commit(message="quux", timezone=0, rev_id='r1')
-        rev_a = tree1.branch.repository.get_revision('r1')
+        r1 = tree1.commit(message="quux", timezone=0)
+        rev_a = tree1.branch.repository.get_revision(r1)
         self.assertEqual(0, rev_a.timezone)

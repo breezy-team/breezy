@@ -26,7 +26,7 @@ from .... import (
     osutils,
     progress,
     )
-from ....repofmt.knitpack_repo import KnitPackRepository
+from ....bzr.knitpack_repo import KnitPackRepository
 from ....trace import (
     mutter,
     note,
@@ -127,7 +127,7 @@ class GenericProcessor(processor.ImportProcessor):
             prune_empty_dirs=True):
         processor.ImportProcessor.__init__(self, params, verbose)
         self.prune_empty_dirs = prune_empty_dirs
-        self.bzrdir = bzrdir
+        self.controldir = bzrdir
         try:
             # Might be inside a branch
             (self.working_tree, self.branch) = bzrdir._get_tree_branch()
@@ -448,7 +448,7 @@ class GenericProcessor(processor.ImportProcessor):
                     result.append(self.working_tree)
             elif wt_expected:
                 try:
-                    result.append(br.bzrdir.open_workingtree())
+                    result.append(br.controldir.open_workingtree())
                 except errors.NoWorkingTree:
                     self.warning("No working tree for branch %s", br)
         return result

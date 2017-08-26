@@ -27,6 +27,9 @@ from breezy import (
     revisiontree,
     tests,
     )
+from breezy.bzr import (
+    inventorytree,
+    )
 from breezy.transform import TransformPreview
 from breezy.tests import (
     default_transport,
@@ -38,8 +41,8 @@ from breezy.tests.per_tree import (
     TestCaseWithTree,
     )
 from breezy.tree import InterTree
-from breezy.workingtree_3 import WorkingTreeFormat3
-from breezy.workingtree_4 import WorkingTreeFormat4
+from breezy.bzr.workingtree_3 import WorkingTreeFormat3
+from breezy.bzr.workingtree_4 import WorkingTreeFormat4
 
 
 def return_provided_trees(test_case, source, target):
@@ -68,8 +71,8 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
 
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
-        made_control = self.make_bzrdir(relpath,
-            format=self.workingtree_format_to._matchingbzrdir)
+        made_control = self.make_controldir(relpath,
+            format=self.workingtree_format_to._matchingcontroldir)
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format_to.initialize(made_control)
@@ -92,7 +95,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
         scenario = (label, {
             "transport_server": transport_server,
             "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format":workingtree_format._matchingbzrdir,
+            "bzrdir_format":workingtree_format._matchingcontroldir,
             "workingtree_format":workingtree_format,
             "intertree_class":intertree_class,
             "workingtree_format_to":workingtree_format_to,
@@ -130,19 +133,19 @@ def load_tests(loader, standard_tests, pattern):
          default_tree_format, default_tree_format,
          return_provided_trees)]
     for optimiser in InterTree._optimisers:
-        if optimiser is revisiontree.InterCHKRevisionTree:
+        if optimiser is inventorytree.InterCHKRevisionTree:
             # XXX: we shouldn't use an Intertree object to detect inventories
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
-            chk_tree_format._get_matchingbzrdir = \
-                lambda:breezy.controldir.format_registry.make_bzrdir('2a')
+            chk_tree_format._get_matchingcontroldir = \
+                lambda:breezy.controldir.format_registry.make_controldir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,
                  chk_tree_format,
                  chk_tree_format,
                  mutable_trees_to_revision_trees))
-        elif optimiser is breezy.workingtree_4.InterDirStateTree:
+        elif optimiser is breezy.bzr.workingtree_4.InterDirStateTree:
             # Its a little ugly to be conditional here, but less so than having
             # the optimiser listed twice.
             # Add once, compiled version

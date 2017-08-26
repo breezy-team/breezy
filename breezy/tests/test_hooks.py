@@ -26,10 +26,24 @@ from .. import (
 from ..hooks import (
     HookPoint,
     Hooks,
+    UnknownHook,
     install_lazy_named_hook,
     known_hooks,
     known_hooks_key_to_object,
     )
+
+
+class TestErrors(tests.TestCase):
+
+    def test_unknown_hook(self):
+        error = UnknownHook("branch", "foo")
+        self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
+            " of breezy.",
+            str(error))
+        error = UnknownHook("tree", "bar")
+        self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
+            " of breezy.",
+            str(error))
 
 
 class TestHooks(tests.TestCase):
@@ -76,7 +90,7 @@ class TestHooks(tests.TestCase):
 
     def test_install_named_hook_raises_unknown_hook(self):
         hooks = Hooks("breezy.tests.test_hooks", "some_hooks")
-        self.assertRaises(errors.UnknownHook, hooks.install_named_hook, 'silly',
+        self.assertRaises(UnknownHook, hooks.install_named_hook, 'silly',
                           None, "")
 
     def test_install_named_hook_appends_known_hook(self):
@@ -118,8 +132,7 @@ class TestHooks(tests.TestCase):
 
     def test_uninstall_named_hook_raises_unknown_hook(self):
         hooks = Hooks("breezy.tests.test_hooks", "some_hooks")
-        self.assertRaises(errors.UnknownHook, hooks.uninstall_named_hook,
-            'silly', "")
+        self.assertRaises(UnknownHook, hooks.uninstall_named_hook, 'silly', "")
 
     def test_uninstall_named_hook_old_style(self):
         hooks = Hooks("breezy.tests.test_hooks", "some_hooks")
@@ -166,7 +179,7 @@ class TestHooks(tests.TestCase):
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
         # hook points which allow lazy registration.
-        for key, callbacks in _mod_hooks._lazy_hooks.iteritems():
+        for key, callbacks in _mod_hooks._lazy_hooks.items():
             (module_name, member_name, hook_name) = key
             obj = pyutils.get_named_object(module_name, member_name)
             self.assertEqual(obj._module, module_name)

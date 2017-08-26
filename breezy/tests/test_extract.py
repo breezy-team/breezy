@@ -67,14 +67,14 @@ class TestExtract(TestCaseWithTransport):
     def test_bad_repo_format(self):
         repo = self.make_repository('branch', shared=True,
                                     format='knit')
-        a_branch = repo.bzrdir.create_branch()
+        a_branch = repo.controldir.create_branch()
         self.assertRaises(errors.RootNotRich, self.extract_in_checkout,
                           a_branch)
 
     def test_good_repo_format(self):
         repo = self.make_repository('branch', shared=True,
             format='dirstate-with-subtree')
-        a_branch = repo.bzrdir.create_branch()
+        a_branch = repo.controldir.create_branch()
         wt_b = self.extract_in_checkout(a_branch)
-        self.assertEqual(wt_b.branch.repository.bzrdir.transport.base,
-        repo.bzrdir.transport.base)
+        self.assertEqual(wt_b.branch.repository.controldir.transport.base,
+        repo.controldir.transport.base)

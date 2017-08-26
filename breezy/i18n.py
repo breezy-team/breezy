@@ -18,7 +18,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# This module is copied from Bazaar Explorer and modified for bzr.
+# This module is copied from Bazaar Explorer and modified for brz.
 
 """i18n and l10n support for Bazaar."""
 
@@ -90,14 +90,14 @@ def installed():
 
 
 def install(lang=None):
-    """Enables gettext translations in bzr."""
+    """Enables gettext translations in brz."""
     global _translations
     if installed():
         return
     _translations = install_translations(lang)
 
 
-def install_translations(lang=None, domain='bzr', locale_base=None):
+def install_translations(lang=None, domain='brz', locale_base=None):
     """Create a gettext translation object.
     
     :param lang: language to install.
@@ -206,7 +206,7 @@ def _get_current_locale():
 def load_plugin_translations(domain):
     """Load the translations for a specific plugin.
 
-    :param domain: Gettext domain name (usually 'bzr-PLUGINNAME')
+    :param domain: Gettext domain name (usually 'brz-PLUGINNAME')
     """
     locale_base = os.path.dirname(
         unicode(__file__, sys.getfilesystemencoding()))

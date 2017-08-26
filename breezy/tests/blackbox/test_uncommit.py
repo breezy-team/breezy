@@ -19,7 +19,7 @@
 import os
 
 from breezy import uncommit
-from breezy.bzrdir import BzrDirMetaFormat1
+from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.errors import BoundBranchOutOfDate
 from breezy.tests import TestCaseWithTransport
 from breezy.tests.matchers import ContainsNoVfsCalls
@@ -161,7 +161,7 @@ class TestUncommit(TestCaseWithTransport):
     def test_uncommit_merges(self):
         wt = self.create_simple_tree()
 
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = wt.controldir.sprout('tree2').open_workingtree()
 
         tree2.commit('unchanged', rev_id='b3')
         tree2.commit('unchanged', rev_id='b4')
@@ -178,7 +178,7 @@ class TestUncommit(TestCaseWithTransport):
 
     def test_uncommit_pending_merge(self):
         wt = self.create_simple_tree()
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = wt.controldir.sprout('tree2').open_workingtree()
         tree2.commit('unchanged', rev_id='b3')
 
         wt.branch.fetch(tree2.branch)
@@ -191,10 +191,10 @@ class TestUncommit(TestCaseWithTransport):
     def test_uncommit_multiple_merge(self):
         wt = self.create_simple_tree()
 
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = wt.controldir.sprout('tree2').open_workingtree()
         tree2.commit('unchanged', rev_id='b3')
 
-        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        tree3 = wt.controldir.sprout('tree3').open_workingtree()
         tree3.commit('unchanged', rev_id='c3')
 
         wt.merge_from_branch(tree2.branch)
@@ -213,9 +213,9 @@ class TestUncommit(TestCaseWithTransport):
     def test_uncommit_merge_plus_pending(self):
         wt = self.create_simple_tree()
 
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = wt.controldir.sprout('tree2').open_workingtree()
         tree2.commit('unchanged', rev_id='b3')
-        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        tree3 = wt.controldir.sprout('tree3').open_workingtree()
         tree3.commit('unchanged', rev_id='c3')
 
         wt.branch.fetch(tree2.branch)
@@ -252,8 +252,8 @@ You can restore the old tip by running:
         # though it will also filter out ones in the ancestry
         wt = self.create_simple_tree()
 
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
-        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        tree2 = wt.controldir.sprout('tree2').open_workingtree()
+        tree3 = wt.controldir.sprout('tree3').open_workingtree()
 
         tree2.commit('unchanged', rev_id='b3')
         tree3.commit('unchanged', rev_id='c3')

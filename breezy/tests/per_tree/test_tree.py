@@ -20,6 +20,8 @@ from breezy import (
     osutils,
     revisiontree,
     tests,
+    )
+from breezy.bzr import (
     workingtree_4,
     )
 from breezy.tests import TestSkipped
@@ -48,9 +50,10 @@ class TestPlanFileMerge(TestCaseWithTree):
     def test_plan_file_merge(self):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
-        work_a.add('file', 'file-id')
+        work_a.add('file')
+        file_id = work_a.path2id('file')
         work_a.commit('base version')
-        work_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        work_b = work_a.controldir.sprout('wtb').open_workingtree()
         self.build_tree_contents([('wta/file', 'b\nc\nd\ne\n')])
         tree_a = self.workingtree_to_test_tree(work_a)
         tree_a.lock_read()
@@ -66,7 +69,7 @@ class TestPlanFileMerge(TestCaseWithTree):
             ('unchanged', 'd\n'),
             ('new-a', 'e\n'),
             ('new-b', 'f\n'),
-        ], list(tree_a.plan_file_merge('file-id', tree_b)))
+        ], list(tree_a.plan_file_merge(file_id, tree_b)))
 
 
 class TestReference(TestCaseWithTree):
@@ -194,12 +197,12 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_lines_multi_line_breaks(self):
         work_tree = self.make_branch_and_tree('wt')
         self.build_tree_contents([('wt/foobar', 'a\rb\nc\r\nd')])
-        work_tree.add('foobar', 'foobar-id')
+        work_tree.add('foobar')
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(['a\rb\n', 'c\r\n', 'd'],
-                         tree.get_file_lines('foobar-id'))
+                         tree.get_file_lines(tree.path2id('foobar')))
 
 
 class TestExtractFilesBytes(TestCaseWithTree):
@@ -209,14 +212,14 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.build_tree_contents([('wt/foo', 'foo'),
                                   ('wt/bar', 'bar'),
                                   ('wt/baz', 'baz')])
-        work_tree.add(['foo', 'bar', 'baz'], ['foo-id', 'bar-id', 'baz-id'])
+        work_tree.add(['foo', 'bar', 'baz'])
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
-                         tree.iter_files_bytes([('foo-id', 'id1'),
-                                                ('bar-id', 'id2'),
-                                                ('baz-id', 'id3')]))
+                         tree.iter_files_bytes([(tree.path2id('foo'), 'id1'),
+                                                (tree.path2id('bar'), 'id2'),
+                                                (tree.path2id('baz'), 'id3')]))
         self.assertEqual('foo', extracted['id1'])
         self.assertEqual('bar', extracted['id2'])
         self.assertEqual('baz', extracted['id3'])
@@ -274,11 +277,12 @@ class TestHasId(TestCaseWithTree):
     def test_has_id(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        work_tree.add('file', 'file-id')
+        work_tree.add('file')
+        file_id = work_tree.path2id('file')
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertTrue(tree.has_id('file-id'))
+        self.assertTrue(tree.has_id(file_id))
         self.assertFalse(tree.has_id('dir-id'))
 
 
@@ -307,12 +311,12 @@ class TestGetFileSha1(TestCaseWithTree):
     def test_get_file_sha1(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'file content')])
-        work_tree.add('file', 'file-id')
+        work_tree.add('file')
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         expected = osutils.sha_strings('file content')
-        self.assertEqual(expected, tree.get_file_sha1('file-id'))
+        self.assertEqual(expected, tree.get_file_sha1(tree.path2id('file')))
 
 
 class TestGetFileVerifier(TestCaseWithTree):
@@ -322,14 +326,14 @@ class TestGetFileVerifier(TestCaseWithTree):
         self.build_tree_contents([
             ('tree/file1', 'file content'),
             ('tree/file2', 'file content')])
-        work_tree.add(['file1', 'file2'], ['file-id-1', 'file-id-2'])
+        work_tree.add(['file1', 'file2'])
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        (kind, data) = tree.get_file_verifier('file-id-1')
+        (kind, data) = tree.get_file_verifier(tree.path2id('file1'))
         self.assertEqual(
-            tree.get_file_verifier('file-id-1'),
-            tree.get_file_verifier('file-id-2'))
+            tree.get_file_verifier(tree.path2id('file1')),
+            tree.get_file_verifier(tree.path2id('file2')))
         if kind == "SHA1":
             expected = osutils.sha_strings('file content')
             self.assertEqual(expected, data)

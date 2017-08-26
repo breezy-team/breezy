@@ -32,13 +32,13 @@ We never send crash data across the network without user opt-in.
 In principle apport can run on any platform though as of Feb 2010 there seem
 to be some portability bugs.
 
-To force this off in bzr turn set APPORT_DISABLE in the environment or 
+To force this off in brz turn set APPORT_DISABLE in the environment or 
 -Dno_apport.
 """
 
 from __future__ import absolute_import
 
-# for interactive testing, try the 'bzr assert-fail' command 
+# for interactive testing, try the 'brz assert-fail' command 
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
 #
 # to test with apport it's useful to set
@@ -76,7 +76,7 @@ def report_bug(exc_info, stderr):
     except Exception as e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
-        trace.mutter("bzr: failed to report crash using apport: %r" % e)
+        trace.mutter("brz: failed to report crash using apport: %r" % e)
         trace.log_exception_quietly()
     return report_bug_legacy(exc_info, stderr)
 
@@ -89,7 +89,7 @@ def report_bug_legacy(exc_info, err_file):
     def print_wrapped(l):
         err_file.write(textwrap.fill(l,
             width=78, subsequent_indent='    ') + '\n')
-    print_wrapped('bzr %s on python %s (%s)\n' % \
+    print_wrapped('brz %s on python %s (%s)\n' % \
         (breezy.__version__,
         breezy._format_version_tuple(sys.version_info),
         platform.platform(aliased=1)))
@@ -108,7 +108,7 @@ def report_bug_legacy(exc_info, err_file):
         "\n"
         "*** Bazaar has encountered an internal error.  This probably indicates a\n"
         "    bug in Bazaar.  You can help us fix it by filing a bug report at\n"
-        "        https://bugs.launchpad.net/bzr/+filebug\n"
+        "        https://bugs.launchpad.net/brz/+filebug\n"
         "    including this traceback and a description of the problem.\n"
         )
 
@@ -130,7 +130,7 @@ def report_bug_to_apport(exc_info, stderr):
 
     if crash_filename is None:
         stderr.write("\n"
-            "apport is set to ignore crashes in this version of bzr.\n"
+            "apport is set to ignore crashes in this version of brz.\n"
             )
     else:
         trace.print_exception(exc_info, stderr)
@@ -161,34 +161,34 @@ def _write_apport_report_to_file(exc_info):
     pr.add_user_info()
 
     # Package and SourcePackage are needed so that apport will report about even
-    # non-packaged versions of bzr; also this reports on their packaged
+    # non-packaged versions of brz; also this reports on their packaged
     # dependencies which is useful.
-    pr['SourcePackage'] = 'bzr'
-    pr['Package'] = 'bzr'
+    pr['SourcePackage'] = 'brz'
+    pr['Package'] = 'brz'
 
     pr['CommandLine'] = pprint.pformat(sys.argv)
-    pr['BzrVersion'] = breezy.__version__
+    pr['BrzVersion'] = breezy.__version__
     pr['PythonVersion'] = breezy._format_version_tuple(sys.version_info)
     pr['Platform'] = platform.platform(aliased=1)
     pr['UserEncoding'] = osutils.get_user_encoding()
     pr['FileSystemEncoding'] = sys.getfilesystemencoding()
     pr['Locale'] = os.environ.get('LANG', 'C')
-    pr['BzrPlugins'] = _format_plugin_list()
+    pr['BrzPlugins'] = _format_plugin_list()
     pr['PythonLoadedModules'] = _format_module_list()
-    pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
+    pr['BrzDebugFlags'] = pprint.pformat(debug.debug_flags)
 
     # actually we'd rather file directly against the upstream product, but
     # apport does seem to count on there being one in there; we might need to
     # redirect it elsewhere anyhow
-    pr['SourcePackage'] = 'bzr'
-    pr['Package'] = 'bzr'
+    pr['SourcePackage'] = 'brz'
+    pr['Package'] = 'brz'
 
-    # tell apport to file directly against the bzr package using 
+    # tell apport to file directly against the brz package using 
     # <https://bugs.launchpad.net/bzr/+bug/391015>
     #
     # XXX: unfortunately apport may crash later if the crashdb definition
     # file isn't present
-    pr['CrashDb'] = 'bzr'
+    pr['CrashDb'] = 'brz'
 
     tb_file = StringIO()
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
@@ -196,10 +196,10 @@ def _write_apport_report_to_file(exc_info):
 
     _attach_log_tail(pr)
 
-    # We want to use the 'bzr' crashdb so that it gets sent directly upstream,
+    # We want to use the 'brz' crashdb so that it gets sent directly upstream,
     # which is a reasonable default for most internal errors.  However, if we
     # set it here then apport will crash later if it doesn't know about that
-    # crashdb.  Instead, we rely on the bzr package installing both a
+    # crashdb.  Instead, we rely on the brz package installing both a
     # source hook telling crashes to go to this crashdb, and a crashdb
     # configuration describing it.
 
@@ -207,10 +207,10 @@ def _write_apport_report_to_file(exc_info):
     # TODO: strip that out and attach the rest
     #
     #attach_file_if_exists(report,
-    #   os.path.join(dot_bzr, 'bazaar.conf', 'BzrConfig')
+    #   os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
     #attach_file_if_exists(report,
-    #   os.path.join(dot_bzr, 'locations.conf', 'BzrLocations')
-    
+    #   os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
+
     # strip username, hostname, etc
     pr.anonymize()
 
@@ -226,15 +226,15 @@ def _write_apport_report_to_file(exc_info):
 
 def _attach_log_tail(pr):
     try:
-        bzr_log = open(trace._get_bzr_log_filename(), 'rt')
+        brz_log = open(trace._get_brz_log_filename(), 'rt')
     except (IOError, OSError) as e:
-        pr['BzrLogTail'] = repr(e)
+        pr['BrzLogTail'] = repr(e)
         return
     try:
-        lines = bzr_log.readlines()
-        pr['BzrLogTail'] = ''.join(lines[-40:])
+        lines = brz_log.readlines()
+        pr['BrzLogTail'] = ''.join(lines[-40:])
     finally:
-        bzr_log.close()
+        brz_log.close()
 
 
 def _open_crash_file():
@@ -252,7 +252,7 @@ def _open_crash_file():
         user_part = '.%d' % os.getuid()
     filename = osutils.pathjoin(
         crash_dir,
-        'bzr%s.%s.crash' % (
+        'brz%s.%s.crash' % (
             user_part,
             date_string))
     # be careful here that people can't play tmp-type symlink mischief in the

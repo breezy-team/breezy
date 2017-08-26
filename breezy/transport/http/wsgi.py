@@ -25,7 +25,7 @@ from __future__ import absolute_import
 from ...sixish import (
     BytesIO,
     )
-from ...smart import medium
+from ...bzr.smart import medium
 from ...transport import chroot, get_transport
 from ...urlutils import local_path_to_url
 

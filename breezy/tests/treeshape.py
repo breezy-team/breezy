@@ -53,11 +53,8 @@ def build_tree_contents(template):
         elif name[-1] == '@':
             os.symlink(tt[1], tt[0][:-1])
         else:
-            f = file(name, 'wb')
-            try:
+            with open(name, 'wb') as f:
                 f.write(tt[1])
-            finally:
-                f.close()
 
 
 def capture_tree_contents(top):
@@ -75,7 +72,9 @@ def capture_tree_contents(top):
             if stat.S_ISLNK(info.st_mode):
                 yield (fullpath + '@', os.readlink(fullpath))
             elif stat.S_ISREG(info.st_mode):
-                yield (fullpath, file(fullpath, 'rb').read())
+                with open(fullpath, 'rb') as f:
+                    file_bytes = f.read()
+                yield (fullpath, file_bytes)
             else:
                 warning("can't capture file %s with mode %#o",
                         fullpath, info.st_mode)

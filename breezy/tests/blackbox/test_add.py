@@ -136,7 +136,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual('README\n',
                           self.run_bzr('unknowns', working_dir='src')[0])
         # reopen to see the new changes
-        t = t.bzrdir.open_workingtree('src')
+        t = t.controldir.open_workingtree('src')
         versioned = [path for path, entry in t.iter_entries_by_dir()]
         self.assertEqual(versioned, ['', 'src', 'src/foo.c'])
 
@@ -166,7 +166,7 @@ class TestAdd(tests.TestCaseWithTransport):
                              'adding b w/ file id from b\n'
                              'adding b/c w/ file id from b/c\n',
                              out)
-        new_tree = new_tree.bzrdir.open_workingtree()
+        new_tree = new_tree.controldir.open_workingtree()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
         self.assertEqual(base_tree.path2id('b'), new_tree.path2id('b'))
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('b/c'))
@@ -187,7 +187,7 @@ class TestAdd(tests.TestCaseWithTransport):
                              'adding d w/ file id from b/d\n',
                              out)
 
-        new_tree = new_tree.bzrdir.open_workingtree('new')
+        new_tree = new_tree.controldir.open_workingtree('new')
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
 

@@ -37,8 +37,10 @@ from breezy import (
     tree as _mod_tree,
     tsort,
     ui,
-    versionedfile,
     workingtree,
+    )
+from breezy.bzr import (
+    versionedfile,
     )
 from breezy.i18n import gettext
 """)
@@ -47,6 +49,9 @@ from . import (
     errors,
     hooks,
     registry,
+    )
+from .sixish import (
+    viewitems,
     )
 # TODO: Report back as changes are merged in
 
@@ -202,7 +207,7 @@ class ConfigurableFileMerger(PerFileMerger):
             config = self.merger.this_branch.get_config()
             # Until bzr provides a better policy for caching the config, we
             # just add the part we're interested in to the params to avoid
-            # reading the config files repeatedly (bazaar.conf, location.conf,
+            # reading the config files repeatedly (breezy.conf, location.conf,
             # branch.conf).
             config_key = self.name_prefix + '_merge_files'
             affected_files = config.get_user_option_as_list(config_key)
@@ -275,7 +280,7 @@ class Merger(object):
     hooks = MergeHooks()
 
     def __init__(self, this_branch, other_tree=None, base_tree=None,
-                 this_tree=None, pb=None, change_reporter=None,
+                 this_tree=None, change_reporter=None,
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
@@ -294,8 +299,6 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
-        if pb is not None:
-            warnings.warn("pb parameter to Merger() is deprecated and ignored")
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
@@ -349,30 +352,28 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb=None, base_tree=None):
+    def from_uncommitted(tree, other_tree, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into
         :param other_tree: The tree to get uncommitted changes from
-        :param pb: A progress indicator
         :param base_tree: The basis to use for the merge.  If unspecified,
             other_tree.basis_tree() will be used.
         """
         if base_tree is None:
             base_tree = other_tree.basis_tree()
-        merger = Merger(tree.branch, other_tree, base_tree, tree, pb)
+        merger = Merger(tree.branch, other_tree, base_tree, tree)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
         merger.other_basis = merger.base_rev_id
         return merger
 
     @classmethod
-    def from_mergeable(klass, tree, mergeable, pb):
+    def from_mergeable(klass, tree, mergeable):
         """Return a Merger for a bundle or merge directive.
 
         :param tree: The tree to merge changes into
         :param mergeable: A merge directive or bundle
-        :param pb: A progress indicator
         """
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
@@ -385,18 +386,17 @@ class Merger(object):
                 base_revision_id = None
             else:
                 trace.warning('Performing cherrypick')
-        merger = klass.from_revision_ids(pb, tree, other_revision_id,
+        merger = klass.from_revision_ids(tree, other_revision_id,
                                          base_revision_id, revision_graph=
                                          revision_graph)
         return merger, verified
 
     @staticmethod
-    def from_revision_ids(pb, tree, other, base=None, other_branch=None,
+    def from_revision_ids(tree, other, base=None, other_branch=None,
                           base_branch=None, revision_graph=None,
                           tree_branch=None):
         """Return a Merger for revision-ids.
 
-        :param pb: A progress indicator
         :param tree: The tree to merge changes into
         :param other: The revision-id to use as OTHER
         :param base: The revision-id to use as BASE.  If not specified, will
@@ -412,7 +412,7 @@ class Merger(object):
         """
         if tree_branch is None:
             tree_branch = tree.branch
-        merger = Merger(tree_branch, this_tree=tree, pb=pb,
+        merger = Merger(tree_branch, this_tree=tree,
                         revision_graph=revision_graph)
         if other_branch is None:
             other_branch = tree.branch
@@ -637,8 +637,7 @@ class Merger(object):
         if self._is_criss_cross and getattr(self.merge_type,
                                             'supports_lca_trees', False):
             kwargs['lca_trees'] = self._lca_trees
-        return self.merge_type(pb=None,
-                               change_reporter=self.change_reporter,
+        return self.merge_type(change_reporter=self.change_reporter,
                                **kwargs)
 
     def _do_merge_to(self):
@@ -720,8 +719,7 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=None, pp=None, change_reporter=None,
-                 interesting_files=None, do_merge=True,
+                 change_reporter=None, interesting_files=None, do_merge=True,
                  cherrypick=False, lca_trees=None, this_branch=None,
                  other_branch=None):
         """Initialize the merger object and perform the merge.
@@ -739,8 +737,6 @@ class Merge3Merger(object):
         :param: reprocess If True, perform conflict-reduction processing.
         :param show_base: If True, show the base revision in text conflicts.
             (incompatible with reprocess)
-        :param pb: ignored
-        :param pp: A ProgressPhase object
         :param change_reporter: An object that should report changes made
         :param interesting_files: The tree-relative paths of files that should
             participate in the merge.  If these paths refer to directories,
@@ -780,10 +776,6 @@ class Merge3Merger(object):
         self.cherrypick = cherrypick
         if do_merge:
             self.do_merge()
-        if pp is not None:
-            warnings.warn("pp argument to Merge3Merger is deprecated")
-        if pb is not None:
-            warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
         operation = cleanup.OperationWithCleanups(self._do_merge)
@@ -1917,7 +1909,6 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=None,
                 change_reporter=None):
     """Primary interface for merging.
 
@@ -1930,7 +1921,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         raise errors.BzrError("breezy.merge.merge_inner requires a this_tree "
                               "parameter")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
-                    pb=pb, change_reporter=change_reporter)
+                    change_reporter=change_reporter)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
@@ -2289,7 +2280,7 @@ class _PlanMerge(_PlanMergeBase):
         filtered_parent_map = {}
         child_map = {}
         tails = []
-        for key, parent_keys in parent_map.iteritems():
+        for key, parent_keys in viewitems(parent_map):
             culled_parent_keys = [p for p in parent_keys if p in parent_map]
             if not culled_parent_keys:
                 tails.append(key)
@@ -2345,7 +2336,7 @@ class _PlanMerge(_PlanMergeBase):
         return all_texts
 
     def _build_weave(self):
-        from breezy import weave
+        from .bzr import weave
         self._weave = weave.Weave(weave_name='in_memory_weave',
                                   allow_reserved=True)
         parent_map = self._find_recursive_lcas()

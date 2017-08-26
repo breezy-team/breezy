@@ -17,13 +17,15 @@
 """Tests for maps built on a CHK versionedfiles facility."""
 
 from .. import (
-    chk_map,
     errors,
-    groupcompress,
     osutils,
     tests,
     )
-from ..chk_map import (
+from ..bzr import (
+    chk_map,
+    groupcompress,
+    )
+from ..bzr.chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,

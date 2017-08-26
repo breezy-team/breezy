@@ -23,7 +23,6 @@ from __future__ import absolute_import
 
 import os
 import re
-import urlparse
 import sys
 import weakref
 
@@ -34,7 +33,7 @@ from ... import (
     ui,
     urlutils,
     )
-from ...smart import medium
+from ...bzr.smart import medium
 from ...trace import mutter
 from ...transport import (
     ConnectedTransport,
@@ -507,7 +506,7 @@ class HttpTransportBase(ConnectedTransport):
                 # credentials (if they don't apply, the redirected to server
                 # will tell us, but if they do apply, we avoid prompting the
                 # user)
-                redir_scheme = parsed_target.scheme + '+' + self._impl_name
+                redir_scheme = parsed_target.scheme
                 new_url = self._unsplit_url(redir_scheme,
                     self._parsed_url.user,
                     self._parsed_url.password,
