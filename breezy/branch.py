@@ -44,7 +44,6 @@ from . import (
     registry,
     )
 from .decorators import (
-    needs_read_lock,
     needs_write_lock,
     only_raises,
     )
@@ -271,7 +270,6 @@ class Branch(controldir.ControlComponent):
         a_branch = Branch.open(url, possible_transports=possible_transports)
         return a_branch.repository
 
-    @needs_read_lock
     def _get_tags_bytes(self):
         """Get the bytes of a serialised tags dict.
 
@@ -284,9 +282,10 @@ class Branch(controldir.ControlComponent):
         :return: The bytes of the tags file.
         :seealso: Branch._set_tags_bytes.
         """
-        if self._tags_bytes is None:
-            self._tags_bytes = self._transport.get_bytes('tags')
-        return self._tags_bytes
+        with self.lock_read():
+            if self._tags_bytes is None:
+                self._tags_bytes = self._transport.get_bytes('tags')
+            return self._tags_bytes
 
     def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
@@ -433,7 +432,6 @@ class Branch(controldir.ControlComponent):
                 raise errors.NoSuchRevision(self, revision_id)
         return result
 
-    @needs_read_lock
     def get_revision_id_to_revno_map(self):
         """Return the revision_id => dotted revno map.
 
@@ -442,16 +440,17 @@ class Branch(controldir.ControlComponent):
         :return: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
-        if self._revision_id_to_revno_cache is not None:
-            mapping = self._revision_id_to_revno_cache
-        else:
-            mapping = self._gen_revno_map()
-            self._cache_revision_id_to_revno(mapping)
-        # TODO: jam 20070417 Since this is being cached, should we be returning
-        #       a copy?
-        # I would rather not, and instead just declare that users should not
-        # modify the return value.
-        return mapping
+        with self.lock_read():
+            if self._revision_id_to_revno_cache is not None:
+                mapping = self._revision_id_to_revno_cache
+            else:
+                mapping = self._gen_revno_map()
+                self._cache_revision_id_to_revno(mapping)
+            # TODO: jam 20070417 Since this is being cached, should we be returning
+            #       a copy?
+            # I would rather not, and instead just declare that users should not
+            # modify the return value.
+            return mapping
 
     def _gen_revno_map(self):
         """Create a new mapping from revision ids to dotted revnos.
@@ -468,7 +467,6 @@ class Branch(controldir.ControlComponent):
              in self.iter_merge_sorted_revisions())
         return revision_id_to_revno
 
-    @needs_read_lock
     def iter_merge_sorted_revisions(self, start_revision_id=None,
             stop_revision_id=None, stop_rule='exclude', direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
@@ -513,27 +511,28 @@ class Branch(controldir.ControlComponent):
             * end_of_merge: When True the next node (earlier in history) is
               part of a different merge.
         """
-        # Note: depth and revno values are in the context of the branch so
-        # we need the full graph to get stable numbers, regardless of the
-        # start_revision_id.
-        if self._merge_sorted_revisions_cache is None:
-            last_revision = self.last_revision()
-            known_graph = self.repository.get_known_graph_ancestry(
-                [last_revision])
-            self._merge_sorted_revisions_cache = known_graph.merge_sort(
-                last_revision)
-        filtered = self._filter_merge_sorted_revisions(
-            self._merge_sorted_revisions_cache, start_revision_id,
-            stop_revision_id, stop_rule)
-        # Make sure we don't return revisions that are not part of the
-        # start_revision_id ancestry.
-        filtered = self._filter_start_non_ancestors(filtered)
-        if direction == 'reverse':
-            return filtered
-        if direction == 'forward':
-            return reversed(list(filtered))
-        else:
-            raise ValueError('invalid direction %r' % direction)
+        with self.lock_read():
+            # Note: depth and revno values are in the context of the branch so
+            # we need the full graph to get stable numbers, regardless of the
+            # start_revision_id.
+            if self._merge_sorted_revisions_cache is None:
+                last_revision = self.last_revision()
+                known_graph = self.repository.get_known_graph_ancestry(
+                    [last_revision])
+                self._merge_sorted_revisions_cache = known_graph.merge_sort(
+                    last_revision)
+            filtered = self._filter_merge_sorted_revisions(
+                self._merge_sorted_revisions_cache, start_revision_id,
+                stop_revision_id, stop_rule)
+            # Make sure we don't return revisions that are not part of the
+            # start_revision_id ancestry.
+            filtered = self._filter_start_non_ancestors(filtered)
+            if direction == 'reverse':
+                return filtered
+            if direction == 'forward':
+                return reversed(list(filtered))
+            else:
+                raise ValueError('invalid direction %r' % direction)
 
     def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
         start_revision_id, stop_revision_id, stop_rule):
@@ -1015,15 +1014,15 @@ class Branch(controldir.ControlComponent):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
-    @needs_read_lock
     def last_revision_info(self):
         """Return information about the last revision.
 
         :return: A tuple (revno, revision_id).
         """
-        if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._read_last_revision_info()
-        return self._last_revision_info_cache
+        with self.lock_read()
+            if self._last_revision_info_cache is None:
+                self._last_revision_info_cache = self._read_last_revision_info()
+            return self._last_revision_info_cache
 
     def _read_last_revision_info(self):
         raise NotImplementedError(self._read_last_revision_info)
@@ -1059,20 +1058,20 @@ class Branch(controldir.ControlComponent):
         except ValueError:
             raise errors.NoSuchRevision(self, revision_id)
 
-    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
-        if revno == 0:
-            return _mod_revision.NULL_REVISION
-        last_revno, last_revid = self.last_revision_info()
-        if revno == last_revno:
-            return last_revid
-        if revno <= 0 or revno > last_revno:
-            raise errors.NoSuchRevision(self, revno)
-        distance_from_last = last_revno - revno
-        if len(self._partial_revision_history_cache) <= distance_from_last:
-            self._extend_partial_history(distance_from_last)
-        return self._partial_revision_history_cache[distance_from_last]
+        with self.lock_read():
+            if revno == 0:
+                return _mod_revision.NULL_REVISION
+            last_revno, last_revid = self.last_revision_info()
+            if revno == last_revno:
+                return last_revid
+            if revno <= 0 or revno > last_revno:
+                raise errors.NoSuchRevision(self, revno)
+            distance_from_last = last_revno - revno
+            if len(self._partial_revision_history_cache) <= distance_from_last:
+                self._extend_partial_history(distance_from_last)
+            return self._partial_revision_history_cache[distance_from_last]
 
     def pull(self, source, overwrite=False, stop_revision=None,
              possible_transports=None, *args, **kwargs):
@@ -1231,7 +1230,6 @@ class Branch(controldir.ControlComponent):
         if revno < 1 or revno > self.revno():
             raise errors.InvalidRevisionNumber(revno)
 
-    @needs_read_lock
     def clone(self, to_controldir, revision_id=None, repository_policy=None):
         """Clone this branch into to_controldir preserving all semantic values.
 
@@ -1242,16 +1240,12 @@ class Branch(controldir.ControlComponent):
                      be truncated to end with revision_id.
         """
         result = to_controldir.create_branch()
-        result.lock_write()
-        try:
+        with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-        finally:
-            result.unlock()
         return result
 
-    @needs_read_lock
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
             repository=None):
         """Create a new line of development from the branch, into to_controldir.
@@ -1265,8 +1259,7 @@ class Branch(controldir.ControlComponent):
             repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
         result = to_controldir.create_branch(repository=repository)
-        result.lock_write()
-        try:
+        with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
@@ -1275,8 +1268,6 @@ class Branch(controldir.ControlComponent):
                 result.set_parent(self.controldir.root_transport.base)
             else:
                 result.set_parent(master_url)
-        finally:
-            result.unlock()
         return result
 
     def _synchronize_history(self, destination, revision_id):
@@ -1329,7 +1320,6 @@ class Branch(controldir.ControlComponent):
                 file_id, (tree_path, branch_location))
         target._set_all_reference_info(target_reference_dict)
 
-    @needs_read_lock
     def check(self, refs):
         """Check consistency of the branch.
 
@@ -1343,19 +1333,20 @@ class Branch(controldir.ControlComponent):
             branch._get_check_refs()
         :return: A BranchCheckResult.
         """
-        result = BranchCheckResult(self)
-        last_revno, last_revision_id = self.last_revision_info()
-        actual_revno = refs[('lefthand-distance', last_revision_id)]
-        if actual_revno != last_revno:
-            result.errors.append(errors.BzrCheckError(
-                'revno does not match len(mainline) %s != %s' % (
-                last_revno, actual_revno)))
-        # TODO: We should probably also check that self.revision_history
-        # matches the repository for older branch formats.
-        # If looking for the code that cross-checks repository parents against
-        # the Graph.iter_lefthand_ancestry output, that is now a repository
-        # specific check.
-        return result
+        with self.lock_read():
+            result = BranchCheckResult(self)
+            last_revno, last_revision_id = self.last_revision_info()
+            actual_revno = refs[('lefthand-distance', last_revision_id)]
+            if actual_revno != last_revno:
+                result.errors.append(errors.BzrCheckError(
+                    'revno does not match len(mainline) %s != %s' % (
+                    last_revno, actual_revno)))
+            # TODO: We should probably also check that self.revision_history
+            # matches the repository for older branch formats.
+            # If looking for the code that cross-checks repository parents against
+            # the Graph.iter_lefthand_ancestry output, that is now a repository
+            # specific check.
+            return result
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.

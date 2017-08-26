@@ -46,7 +46,6 @@ from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..decorators import needs_read_lock
 from ..sixish import (
     viewvalues,
     )
@@ -167,10 +166,10 @@ class InventoryTree(Tree):
             file_id = file_id[0]
         return self.root_inventory, file_id
 
-    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        return self._path2inv_file_id(path)[1]
+        with self.lock_read():
+            return self._path2inv_file_id(path)[1]
 
     def _path2inv_file_id(self, path):
         """Lookup a inventory and inventory file id by path.
@@ -210,7 +209,6 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
@@ -223,24 +221,25 @@ class InventoryTree(Tree):
             down to specific_file_ids that have been requested. This has no
             impact if specific_file_ids is None.
         """
-        if specific_file_ids is None:
-            inventory_file_ids = None
-        else:
-            inventory_file_ids = []
-            for tree_file_id in specific_file_ids:
-                inventory, inv_file_id = self._unpack_file_id(tree_file_id)
-                if not inventory is self.root_inventory: # for now
-                    raise AssertionError("%r != %r" % (
-                        inventory, self.root_inventory))
-                inventory_file_ids.append(inv_file_id)
-        # FIXME: Handle nested trees
-        return self.root_inventory.iter_entries_by_dir(
-            specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+        with self.lock_read():
+            if specific_file_ids is None:
+                inventory_file_ids = None
+            else:
+                inventory_file_ids = []
+                for tree_file_id in specific_file_ids:
+                    inventory, inv_file_id = self._unpack_file_id(tree_file_id)
+                    if not inventory is self.root_inventory: # for now
+                        raise AssertionError("%r != %r" % (
+                            inventory, self.root_inventory))
+                    inventory_file_ids.append(inv_file_id)
+            # FIXME: Handle nested trees
+            return self.root_inventory.iter_entries_by_dir(
+                specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
-    @needs_read_lock
     def iter_child_entries(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        return iter(viewvalues(inv[inv_file_id].children))
+        with self.lock_read():
+            inv, inv_file_id = self._unpack_file_id(file_id)
+            return iter(viewvalues(inv[inv_file_id].children))
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""

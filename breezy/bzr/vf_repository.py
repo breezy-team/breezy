@@ -55,7 +55,6 @@ from .. import (
     errors,
     )
 from ..decorators import (
-    needs_read_lock,
     needs_write_lock,
     only_raises,
     )
@@ -896,17 +895,17 @@ class VersionedFileRepository(Repository):
                 'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
                 (record.key, sha1, item_data[1], item_data[2]))
 
-    @needs_read_lock
     def _eliminate_revisions_not_present(self, revision_ids):
         """Check every revision id in revision_ids to see if we have it.
 
         Returns a set of the present revisions.
         """
-        result = []
-        graph = self.get_graph()
-        parent_map = graph.get_parent_map(revision_ids)
-        # The old API returned a list, should this actually be a set?
-        return list(parent_map)
+        with self.lock_read():
+            result = []
+            graph = self.get_graph()
+            parent_map = graph.get_parent_map(revision_ids)
+            # The old API returned a list, should this actually be a set?
+            return list(parent_map)
 
     def __init__(self, _format, a_controldir, control_files):
         """Instantiate a VersionedFileRepository.
@@ -980,19 +979,19 @@ class VersionedFileRepository(Repository):
         return inter.fetch(revision_id=revision_id,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
-    @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super(VersionedFileRepository, self).gather_stats(revid, committers)
-        # now gather global repository information
-        # XXX: This is available for many repos regardless of listability.
-        if self.user_transport.listable():
-            # XXX: do we want to __define len__() ?
-            # Maybe the versionedfiles object should provide a different
-            # method to get the number of keys.
-            result['revisions'] = len(self.revisions.keys())
-            # result['size'] = t
-        return result
+        with self.lock_read():
+            result = super(VersionedFileRepository, self).gather_stats(revid, committers)
+            # now gather global repository information
+            # XXX: This is available for many repos regardless of listability.
+            if self.user_transport.listable():
+                # XXX: do we want to __define len__() ?
+                # Maybe the versionedfiles object should provide a different
+                # method to get the number of keys.
+                result['revisions'] = len(self.revisions.keys())
+                # result['size'] = t
+            return result
 
     def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -1075,22 +1074,21 @@ class VersionedFileRepository(Repository):
         missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
         return missing_keys
 
-    @needs_read_lock
     def has_revisions(self, revision_ids):
         """Probe to find out the presence of multiple revisions.
 
         :param revision_ids: An iterable of revision_ids.
         :return: A set of the revision_ids that were present.
         """
-        parent_map = self.revisions.get_parent_map(
-            [(rev_id,) for rev_id in revision_ids])
-        result = set()
-        if _mod_revision.NULL_REVISION in revision_ids:
-            result.add(_mod_revision.NULL_REVISION)
-        result.update([key[0] for key in parent_map])
-        return result
+        with self.lock_read():
+            parent_map = self.revisions.get_parent_map(
+                [(rev_id,) for rev_id in revision_ids])
+            result = set()
+            if _mod_revision.NULL_REVISION in revision_ids:
+                result.add(_mod_revision.NULL_REVISION)
+            result.update([key[0] for key in parent_map])
+            return result
 
-    @needs_read_lock
     def get_revision_reconcile(self, revision_id):
         """'reconcile' helper routine that allows access to a revision always.
 
@@ -1099,7 +1097,8 @@ class VersionedFileRepository(Repository):
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
         """
-        return self.get_revisions([revision_id])[0]
+        with self.lock_read():
+            return self.get_revisions([revision_id])[0]
 
     def iter_revisions(self, revision_ids):
         """Iterate over revision objects.
@@ -1416,10 +1415,10 @@ class VersionedFileRepository(Repository):
         # revisions
         yield ("revisions", None, revision_ids)
 
-    @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by revision id."""
-        return next(self.iter_inventories([revision_id]))
+        with self.lock_read():
+            return next(self.iter_inventories([revision_id]))
 
     def iter_inventories(self, revision_ids, ordering=None):
         """Get many inventories by revision_ids.
@@ -1504,16 +1503,15 @@ class VersionedFileRepository(Repository):
     def get_serializer_format(self):
         return self._serializer.format_num
 
-    @needs_read_lock
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
-        texts = self._iter_inventory_xmls([revision_id], 'unordered')
-        text, revision_id = next(texts)
-        if text is None:
-            raise errors.NoSuchRevision(self, revision_id)
-        return text
+        with self.lock_read():
+            texts = self._iter_inventory_xmls([revision_id], 'unordered')
+            text, revision_id = next(texts)
+            if text is None:
+                raise errors.NoSuchRevision(self, revision_id)
+            return text
 
-    @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -1526,8 +1524,9 @@ class VersionedFileRepository(Repository):
             return inventorytree.InventoryRevisionTree(self,
                 Inventory(root_id=None), _mod_revision.NULL_REVISION)
         else:
-            inv = self.get_inventory(revision_id)
-            return inventorytree.InventoryRevisionTree(self, inv, revision_id)
+            with self.lock_read():
+                inv = self.get_inventory(revision_id)
+                return inventorytree.InventoryRevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
         """Return Trees for revisions in this repository.
@@ -1577,19 +1576,19 @@ class VersionedFileRepository(Repository):
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
 
-    @needs_read_lock
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors.
         """
         st = static_tuple.StaticTuple
         revision_keys = [st(r_id).intern() for r_id in revision_ids]
-        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
-        return graph.GraphThunkIdsToKeys(known_graph)
+        with self.lock_read():
+            known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+            return graph.GraphThunkIdsToKeys(known_graph)
 
-    @needs_read_lock
     def get_file_graph(self):
         """Return the graph walker for text revisions."""
-        return graph.Graph(self.texts)
+        with self.lock_read():
+            return graph.Graph(self.texts)
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -1618,30 +1617,30 @@ class VersionedFileRepository(Repository):
         return _VersionedFileChecker(self,
             text_key_references=text_key_references, ancestors=ancestors)
 
-    @needs_read_lock
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
-        if not self.has_revision(revision_id):
-            raise errors.NoSuchRevision(self, revision_id)
-        sig_present = (1 == len(
-            self.signatures.get_parent_map([(revision_id,)])))
-        return sig_present
+        with self.lock_read():
+            if not self.has_revision(revision_id):
+                raise errors.NoSuchRevision(self, revision_id)
+            sig_present = (1 == len(
+                self.signatures.get_parent_map([(revision_id,)])))
+            return sig_present
 
-    @needs_read_lock
     def get_signature_text(self, revision_id):
         """Return the text for a signature."""
-        stream = self.signatures.get_record_stream([(revision_id,)],
-            'unordered', True)
-        record = next(stream)
-        if record.storage_kind == 'absent':
-            raise errors.NoSuchRevision(self, revision_id)
-        return record.get_bytes_as('fulltext')
+        with self.lock_read():
+            stream = self.signatures.get_record_stream([(revision_id,)],
+                'unordered', True)
+            record = next(stream)
+            if record.storage_kind == 'absent':
+                raise errors.NoSuchRevision(self, revision_id)
+            return record.get_bytes_as('fulltext')
 
-    @needs_read_lock
     def _check(self, revision_ids, callback_refs, check_repo):
-        result = check.VersionedFileCheck(self, check_repo=check_repo)
-        result.check(callback_refs)
-        return result
+        with self.lock_read():
+            result = check.VersionedFileCheck(self, check_repo=check_repo)
+            result.check(callback_refs)
+            return result
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         """Find revisions with different parent lists in the revision object
@@ -2329,7 +2328,6 @@ class InterVersionedFileRepository(InterRepository):
         return vf_search.SearchResult(started_keys, excludes,
             len(included_keys), included_keys)
 
-    @needs_read_lock
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
@@ -2346,24 +2344,25 @@ class InterVersionedFileRepository(InterRepository):
             rather than just finding the surface difference.
         :return: A breezy.graph.SearchResult.
         """
-        # stop searching at found target revisions.
-        if not find_ghosts and (revision_ids is not None or if_present_ids is
-                not None):
-            result = self._walk_to_common_revisions(revision_ids,
-                    if_present_ids=if_present_ids)
-            if limit is None:
-                return result
-            result_set = result.get_keys()
-        else:
-            # generic, possibly worst case, slow code path.
-            target_ids = set(self.target.all_revision_ids())
-            source_ids = self._present_source_revisions_for(
-                revision_ids, if_present_ids)
-            result_set = set(source_ids).difference(target_ids)
-        if limit is not None:
-            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
-            result_set = set(itertools.islice(topo_ordered, limit))
-        return self.source.revision_ids_to_search_result(result_set)
+        with self.lock_read():
+            # stop searching at found target revisions.
+            if not find_ghosts and (revision_ids is not None or if_present_ids is
+                    not None):
+                result = self._walk_to_common_revisions(revision_ids,
+                        if_present_ids=if_present_ids)
+                if limit is None:
+                    return result
+                result_set = result.get_keys()
+            else:
+                # generic, possibly worst case, slow code path.
+                target_ids = set(self.target.all_revision_ids())
+                source_ids = self._present_source_revisions_for(
+                    revision_ids, if_present_ids)
+                result_set = set(source_ids).difference(target_ids)
+            if limit is not None:
+                topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+                result_set = set(itertools.islice(topo_ordered, limit))
+            return self.source.revision_ids_to_search_result(result_set)
 
     def _present_source_revisions_for(self, revision_ids, if_present_ids=None):
         """Returns set of all revisions in ancestry of revision_ids present in
