@@ -102,6 +102,12 @@ class LogicalLockResult(object):
     def __repr__(self):
         return "LogicalLockResult(%s)" % (self.unlock)
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.unlock()
+        return False
 
 
 def cant_unlock_not_held(locked_object):
