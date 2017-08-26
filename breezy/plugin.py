@@ -441,6 +441,18 @@ def plugins():
     return result
 
 
+def get_loaded_plugin(name):
+    """Retrieve an already loaded plugin.
+
+    Returns None if there is no such plugin loaded
+    """
+    try:
+        module = sys.modules[_MODULE_PREFIX + name]
+    except KeyError:
+        return None
+    return PlugIn(name, module)
+
+
 def format_concise_plugin_list(state=None):
     """Return a string holding a concise list of plugins and their version.
     """
