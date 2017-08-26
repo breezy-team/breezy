@@ -167,6 +167,8 @@ class ModuleAvailableFeature(Feature):
     def __init__(self, module_name, ignore_warnings=None):
         super(ModuleAvailableFeature, self).__init__()
         self.module_name = module_name
+        if ignore_warnings is None:
+            ignore_warnings = ()
         self.ignore_warnings = ignore_warnings
 
     def _probe(self):
@@ -174,13 +176,13 @@ class ModuleAvailableFeature(Feature):
         module = sys.modules.get(self.module_name, sentinel)
         if module is sentinel:
             with warnings.catch_warnings():
-                for warning_category in self.ignore_warnings or []:
+                for warning_category in self.ignore_warnings:
                     warnings.simplefilter('ignore', warning_category)
                 try:
                     self._module = __import__(self.module_name, {}, {}, [''])
-                    return True
                 except ImportError:
                     return False
+                return True
         else:
             self._module = module
             return True
