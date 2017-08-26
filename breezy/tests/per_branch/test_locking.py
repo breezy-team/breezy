@@ -495,6 +495,13 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         branch.lock_read()
         branch.unlock()
 
+    def test_lock_read_context_manager(self):
+        # Calling lock_read then unlocking should work without errors.
+        branch = self.make_branch('b')
+        self.assertFalse(branch.is_locked())
+        with branch.lock_read():
+            self.assertTrue(branch.is_locked())
+
     def test_lock_read_returns_unlockable(self):
         branch = self.make_branch('b')
         self.assertThat(branch.lock_read, ReturnsUnlockable(branch))
