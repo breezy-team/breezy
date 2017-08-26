@@ -31,8 +31,6 @@ from ... import (
 from ...revision import NULL_REVISION
 from .classify import classify_delta
 
-from itertools import izip
-
 
 def collapse_by_person(revisions, canonical_committer):
     """The committers list is sorted by email, fix it up by person.
@@ -371,7 +369,7 @@ def find_credits(repository, revid):
         revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            iterator = izip(revs, repository.get_deltas_for_revisions(revs))
+            iterator = zip(revs, repository.get_deltas_for_revisions(revs))
             for i, (rev,delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges

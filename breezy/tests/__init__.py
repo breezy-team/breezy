@@ -3659,6 +3659,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         if starting_with:
             starting_with = [test_prefix_alias_registry.resolve_alias(start)
                              for start in starting_with]
+            # Always consider 'unittest' an interesting name so that failed
+            # suites wrapped as test cases appear in the output.
+            starting_with.append('unittest')
         if test_suite_factory is None:
             # Reduce loading time by loading modules based on the starting_with
             # patterns.

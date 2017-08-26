@@ -1642,21 +1642,26 @@ def _auto_user_id():
     # /etc/passwd "should" be in utf-8, and because it's unlikely to give
     # false positives.  (many users will have their user encoding set to
     # latin-1, which cannot raise UnicodeError.)
-    try:
-        gecos = w.pw_gecos.decode('utf-8')
-        encoding = 'utf-8'
-    except UnicodeError:
+    gecos = w.pw_gecos
+    if isinstance(gecos, bytes):
         try:
-            encoding = osutils.get_user_encoding()
-            gecos = w.pw_gecos.decode(encoding)
+            gecos = gecos.decode('utf-8')
+            encoding = 'utf-8'
+        except UnicodeError:
+            try:
+                encoding = osutils.get_user_encoding()
+                gecos = gecos.decode(encoding)
+            except UnicodeError as e:
+                trace.mutter("cannot decode passwd entry %s" % w)
+                return None, None
+
+    username = w.pw_name
+    if isinstance(username, bytes):
+        try:
+            username = username.decode(encoding)
         except UnicodeError as e:
             trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
-    try:
-        username = w.pw_name.decode(encoding)
-    except UnicodeError as e:
-        trace.mutter("cannot decode passwd entry %s" % w)
-        return None, None
 
     comma = gecos.find(',')
     if comma == -1:
