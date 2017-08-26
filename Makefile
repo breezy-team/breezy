@@ -47,7 +47,6 @@ check: docs check-nodocs
 check-nodocs: check-nodocs2 check-nodocs3
 
 check-nodocs3:
-	set -e
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
@@ -63,7 +62,6 @@ check-nodocs3:
 	subunit-1to2 < selftest.log | subunit-stats
 
 check-nodocs2: extensions
-	set -e
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
