@@ -15,9 +15,9 @@ Introduction
 .. toctree::
    :maxdepth: 1
 
-   introducing_bazaar
+   introducing_breezy
    core_concepts
-   bazaar_workflows
+   breezy_workflows
 
 
 Getting started
@@ -26,10 +26,10 @@ Getting started
 .. toctree::
    :maxdepth: 1
 
-   installing_bazaar
+   installing_breezy
    entering_commands
    getting_help
-   configuring_bazaar
+   configuring_breezy
    using_aliases
    plugins
    zen
