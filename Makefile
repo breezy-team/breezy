@@ -28,7 +28,6 @@ PYTHON26=python26
 BRZ_TARGET=release
 PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
-SELFTEST_OPTS?=
 BRZ_PLUGIN_PATH=-site:-user
 
 # Shorter replacement for $(sort $(wildcard <arg>)) as $(call sw,<arg>)
@@ -43,15 +42,17 @@ extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
-check: docs check2-nodocs check3-nodocs
+check: docs check-nodocs
 
-check3-nodocs:
+check-nodocs: check-nodocs2 check-nodocs3
+
+check-nodocs3:
 	set -e
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 $(SELFTEST_OPTS) \
+	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
 	  --subunit $(tests) | tee selftest.log
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
@@ -59,15 +60,15 @@ check3-nodocs:
 	# sees the 'tee' exit code for the whole line
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
-	subunit-stats < selftest.log
+	subunit-1to2 < selftest.log | subunit-stats
 
-check2-nodocs: extensions
+check-nodocs2: extensions
 	set -e
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 $(SELFTEST_OPTS) \
+	  ./brz selftest -Oselftest.timeout=120 \
 	  --subunit $(tests) | tee selftest.log
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON)
@@ -75,7 +76,7 @@ check2-nodocs: extensions
 	# sees the 'tee' exit code for the whole line
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
-	subunit-stats < selftest.log
+	subunit-1to2 < selftest.log | subunit-stats
 
 # Run Python style checker (apt-get install pyflakes)
 #
