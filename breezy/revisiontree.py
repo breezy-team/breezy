@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 from . import (
     errors,
+    lock,
     revision,
     tree,
     )
@@ -80,7 +81,7 @@ class RevisionTree(tree.Tree):
 
     def lock_read(self):
         self._repository.lock_read()
-        return self
+        return lock.LogicalLockResult(self.unlock)
 
     def __repr__(self):
         return '<%s instance at %x, rev_id=%r>' % (

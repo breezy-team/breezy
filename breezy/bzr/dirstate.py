@@ -3358,6 +3358,7 @@ class DirState(object):
         self._lock_state = 'r'
         self._state_file = self._lock_token.f
         self._wipe_state()
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         """Acquire a write lock on the dirstate."""
@@ -3371,6 +3372,7 @@ class DirState(object):
         self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()
+        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         """Drop any locks held on the dirstate."""
@@ -3393,7 +3395,7 @@ class DirState(object):
 
 
 def py_update_entry(state, entry, abspath, stat_value,
-                 _stat_to_minikind=DirState._stat_to_minikind):
+                    _stat_to_minikind=DirState._stat_to_minikind):
     """Update the entry based on what is actually on disk.
 
     This function only calculates the sha if it needs to - if the entry is

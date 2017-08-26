@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from .errors import BzrError
+from .lock import LogicalLockResult
 
 
 class NoCompatibleInter(BzrError):
@@ -104,6 +105,7 @@ class InterObject(object):
         a read lock and the target a read lock.
         """
         self._double_lock(self.source.lock_read, self.target.lock_read)
+        return LogicalLockResult(self.unlock)
 
     def lock_write(self):
         """Take out a logical write lock.
@@ -112,6 +114,7 @@ class InterObject(object):
         a read lock and the target a write lock.
         """
         self._double_lock(self.source.lock_read, self.target.lock_write)
+        return LogicalLockResult(self.unlock)
 
     @classmethod
     def register_optimiser(klass, optimiser):

@@ -42,6 +42,7 @@ from breezy.i18n import gettext
 
 from . import (
     errors,
+    lock,
     osutils,
     )
 from .decorators import needs_read_lock
@@ -563,7 +564,7 @@ class Tree(object):
 
         :return: A breezy.lock.LogicalLockResult.
         """
-        pass
+        return lock.LogicalLockResult(self.unlock)
 
     def revision_tree(self, revision_id):
         """Obtain a revision tree for the revision revision_id.
