@@ -1019,7 +1019,7 @@ class Branch(controldir.ControlComponent):
 
         :return: A tuple (revno, revision_id).
         """
-        with self.lock_read()
+        with self.lock_read():
             if self._last_revision_info_cache is None:
                 self._last_revision_info_cache = self._read_last_revision_info()
             return self._last_revision_info_cache

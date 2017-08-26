@@ -3693,7 +3693,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     def get_rev_id(self, revno, history=None):
         if revno == 0:
             return _mod_revision.NULL_REVISION
-        with self.lock_read()
+        with self.lock_read():
             last_revision_info = self.last_revision_info()
             ok, result = self.repository.get_rev_id_for_revno(
                 revno, last_revision_info)
