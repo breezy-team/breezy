@@ -281,7 +281,7 @@ def guess_command(cmd_name):
                 distance -= 0.1 * (l2-l1)
         costs[name] = distance
     costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
-    costs = sorted((value, key) for key, value in costs.iteritems())
+    costs = sorted((costs[key], key) for key in costs)
     if not costs:
         return
     if costs[0][0] > 4:
