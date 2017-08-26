@@ -53,6 +53,7 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
 from .sixish import (
     string_types,
+    text_type,
     )
 
 
@@ -1252,18 +1253,19 @@ def _specified_or_unicode_argv(argv):
     # the process arguments in a unicode-safe way.
     if argv is None:
         return osutils.get_unicode_argv()
-    else:
-        new_argv = []
-        try:
-            # ensure all arguments are unicode strings
-            for a in argv:
-                if isinstance(a, unicode):
-                    new_argv.append(a)
-                else:
-                    new_argv.append(a.decode('ascii'))
-        except UnicodeDecodeError:
-            raise errors.BzrError("argv should be list of unicode strings.")
-        return new_argv
+    new_argv = []
+    try:
+        # ensure all arguments are unicode strings
+        for a in argv:
+            if not isinstance(a, string_types):
+                raise ValueError('not native str or unicode: %r' % (a,))
+            if isinstance(a, bytes):
+                # For Python 2 only allow ascii native strings
+                a = a.decode('ascii')
+            new_argv.append(a)
+    except (ValueError, UnicodeDecodeError):
+        raise errors.BzrError("argv should be list of unicode strings.")
+    return new_argv
 
 
 def main(argv=None):
