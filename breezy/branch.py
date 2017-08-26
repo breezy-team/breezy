@@ -368,7 +368,6 @@ class Branch(controldir.ControlComponent):
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
 
-    @needs_read_lock
     def dotted_revno_to_revision_id(self, revno, _cache_reverse=False):
         """Return the revision_id for a dotted revno.
 
@@ -380,10 +379,11 @@ class Branch(controldir.ControlComponent):
         :return: the revision_id
         :raises errors.NoSuchRevision: if the revno doesn't exist
         """
-        rev_id = self._do_dotted_revno_to_revision_id(revno)
-        if _cache_reverse:
-            self._partial_revision_id_to_revno_cache[rev_id] = revno
-        return rev_id
+        with self.lock_read():
+            rev_id = self._do_dotted_revno_to_revision_id(revno)
+            if _cache_reverse:
+                self._partial_revision_id_to_revno_cache[rev_id] = revno
+            return rev_id
 
     def _do_dotted_revno_to_revision_id(self, revno):
         """Worker function for dotted_revno_to_revision_id.
@@ -403,13 +403,13 @@ class Branch(controldir.ControlComponent):
             revno_str = '.'.join(map(str, revno))
             raise errors.NoSuchRevision(self, revno_str)
 
-    @needs_read_lock
     def revision_id_to_dotted_revno(self, revision_id):
         """Given a revision id, return its dotted revno.
 
         :return: a tuple like (1,) or (400,1,3).
         """
-        return self._do_revision_id_to_dotted_revno(revision_id)
+        with self.lock_read():
+            return self._do_revision_id_to_dotted_revno(revision_id)
 
     def _do_revision_id_to_dotted_revno(self, revision_id):
         """Worker function for revision_id_to_revno."""
