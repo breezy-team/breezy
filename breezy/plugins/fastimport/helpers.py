@@ -101,7 +101,7 @@ def open_destination_directory(location, format=None, verbose=True):
     else:
         try:
             os.mkdir(location)
-        except IOError, ex:
+        except IOError as ex:
             errors.BzrCommandError("Unable to create %s: %s" %
                 (location, ex))
 
@@ -122,9 +122,9 @@ def open_destination_directory(location, format=None, verbose=True):
 def kind_to_mode(kind, executable):
     if kind == "file":
         if executable == True:
-            return stat.S_IFREG | 0755
+            return stat.S_IFREG | 0o755
         elif executable == False:
-            return stat.S_IFREG | 0644
+            return stat.S_IFREG | 0o644
         else:
             raise AssertionError("Executable %r invalid" % executable)
     elif kind == "symlink":
@@ -132,22 +132,22 @@ def kind_to_mode(kind, executable):
     elif kind == "directory":
         return stat.S_IFDIR
     elif kind == "tree-reference":
-        return 0160000
+        return 0o160000
     else:
         raise AssertionError("Unknown file kind '%s'" % kind)
 
 
 def mode_to_kind(mode):
     # Note: Output from git-fast-export slightly different to spec
-    if mode in (0644, 0100644):
+    if mode in (0o644, 0o100644):
         return 'file', False
-    elif mode in (0755, 0100755):
+    elif mode in (0o755, 0o100755):
         return 'file', True
-    elif mode == 0040000:
+    elif mode == 0o040000:
         return 'directory', False
-    elif mode == 0120000:
+    elif mode == 0o120000:
         return 'symlink', False
-    elif mode == 0160000:
+    elif mode == 0o160000:
         return 'tree-reference', False
     else:
         raise AssertionError("invalid mode %o" % mode)
