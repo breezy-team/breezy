@@ -250,8 +250,8 @@ def _command_helps(exporter, plugin_name=None):
         note(gettext("Exporting messages from builtin command: %s"), cmd_name)
         _write_command_help(exporter, command)
 
-    plugins = breezy.global_state.plugins
-    if plugin_name is not None and plugin_name not in breezy.global_state.plugins:
+    plugins = breezy.get_global_state().plugins
+    if plugin_name is not None and plugin_name not in plugins:
         raise errors.BzrError(gettext('Plugin %s is not loaded' % plugin_name))
     core_plugins = set(name for name in plugins
         if plugins[name].path().startswith(breezy.__path__[0]))

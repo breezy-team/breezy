@@ -1141,12 +1141,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             argv_copy.append(a)
         i += 1
 
-    if breezy.global_state is None:
-        # FIXME: Workaround for users that imported breezy but didn't call
-        # breezy.initialize -- vila 2012-01-19
-        cmdline_overrides = config.CommandLineStore()
-    else:
-        cmdline_overrides = breezy.global_state.cmdline_overrides
+    cmdline_overrides = breezy.get_global_state().cmdline_overrides
     cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()

@@ -461,7 +461,7 @@ class TestXMLRPCTransport(tests.TestCase):
         # FIXME: There should be a better way but the only alternative I can
         # think of involves carrying the ca_certs through the lp_registration
         # infrastructure to _urllib2_wrappers... -- vila 2012-01-20
-        breezy.global_state.cmdline_overrides._from_cmdline(
+        breezy.get_global_state().cmdline_overrides._from_cmdline(
             ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
 
     def set_canned_response(self, server, path):

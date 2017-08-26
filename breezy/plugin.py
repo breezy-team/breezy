@@ -75,7 +75,7 @@ def disable_plugins(state=None):
     :param state: The library state object that records loaded plugins.
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     state.plugins = {}
 
 
@@ -92,7 +92,7 @@ def load_plugins(path=None, state=None):
     :param state: The library state object that records loaded plugins.
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     if getattr(state, 'plugins', None) is not None:
         # People can make sure plugins are loaded, they just won't be twice
         return
@@ -332,7 +332,7 @@ def describe_plugins(show_paths=False, state=None):
     :returns: Iterator of text lines (including newlines.)
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     all_names = sorted(set(state.plugins).union(state.plugin_warnings))
     for name in all_names:
         if name in state.plugins:
@@ -445,7 +445,7 @@ def format_concise_plugin_list(state=None):
     """Return a string holding a concise list of plugins and their version.
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     items = []
     for name, a_plugin in sorted(state.plugins.items()):
         items.append("%s[%s]" %

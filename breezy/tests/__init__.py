@@ -964,9 +964,8 @@ class TestCase(testtools.TestCase):
             self.requireFeature(feature)
         self._cleanEnvironment()
 
-        if breezy.global_state is not None:
-            self.overrideAttr(breezy.global_state, 'cmdline_overrides',
-                              config.CommandLineStore())
+        self.overrideAttr(breezy.get_global_state(), 'cmdline_overrides',
+                          config.CommandLineStore())
 
         self._silenceUI()
         self._startLogFile()
