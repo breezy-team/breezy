@@ -60,9 +60,8 @@ class BisectCurrent(object):
     def get_parent_revids(self):
         """Return the IDs of the current revision's predecessors."""
         repo = self._branch.repository
-        repo.lock_read()
-        retval = repo.get_parent_map([self._revid]).get(self._revid, None)
-        repo.unlock()
+        with repo.lock_read():
+            retval = repo.get_parent_map([self._revid]).get(self._revid, None)
         return retval
 
     def is_merge_point(self):
@@ -135,8 +134,7 @@ class BisectLog(object):
             last_revid = branch_last_rev
 
         repo = self._branch.repository
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             graph = repo.get_graph()
             rev_sequence = graph.iter_lefthand_ancestry(last_revid,
                 (_mod_revision.NULL_REVISION,))
@@ -163,8 +161,6 @@ class BisectLog(object):
                 high_revid = last_revid
             if not low_revid:
                 low_revid = self._branch.get_rev_id(1)
-        finally:
-            repo.unlock()
 
         # The spread must include the high revision, to bias
         # odd numbers of intervening revisions towards the high
@@ -240,11 +236,8 @@ class BisectLog(object):
 
     def get_parent_revids(self, revid):
         repo = self._branch.repository
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             retval = repo.get_parent_map([revid]).get(revid, None)
-        finally:
-            repo.unlock()
         return retval
 
     def bisect(self, outf):

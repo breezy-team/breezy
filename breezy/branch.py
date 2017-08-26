@@ -22,7 +22,6 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
-    cleanup,
     config as _mod_config,
     debug,
     fetch,
@@ -914,8 +913,7 @@ class Branch(controldir.ControlComponent):
             for i in range(old_lock_count-1):
                 self.repository.lock_write()
             # Fetch from the old repository into the new.
-            old_repository.lock_read()
-            try:
+            with old_repository.lock_read():
                 # XXX: If you unstack a branch while it has a working tree
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
@@ -927,8 +925,6 @@ class Branch(controldir.ControlComponent):
                     old_repository, required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
-            finally:
-                old_repository.unlock()
         finally:
             pb.finished()
 
@@ -937,13 +933,9 @@ class Branch(controldir.ControlComponent):
 
         :seealso: Branch._get_tags_bytes.
         """
-        op = cleanup.OperationWithCleanups(self._set_tags_bytes_locked)
-        op.add_cleanup(self.lock_write().unlock)
-        return op.run_simple(bytes)
-
-    def _set_tags_bytes_locked(self, bytes):
-        self._tags_bytes = bytes
-        return self._transport.put_bytes('tags', bytes)
+        with self.lock_write():
+            self._tags_bytes = bytes
+            return self._transport.put_bytes('tags', bytes)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -1451,15 +1443,12 @@ class Branch(controldir.ControlComponent):
                                            accelerator_tree=accelerator_tree,
                                            hardlink=hardlink)
         basis_tree = tree.basis_tree()
-        basis_tree.lock_read()
-        try:
+        with basis_tree.lock_read():
             for path, file_id in basis_tree.iter_references():
                 reference_parent = self.reference_parent(file_id, path)
                 reference_parent.create_checkout(tree.abspath(path),
                     basis_tree.get_reference_revision(file_id, path),
                     lightweight)
-        finally:
-            basis_tree.unlock()
         return tree
 
     @needs_write_lock
@@ -1962,18 +1951,13 @@ format_registry.set_default_key("Bazaar Branch Format 7 (needs bzr 1.6)\n")
 class BranchWriteLockResult(LogicalLockResult):
     """The result of write locking a branch.
 
-    :ivar branch_token: The token obtained from the underlying branch lock, or
+    :ivar token: The token obtained from the underlying branch lock, or
         None.
     :ivar unlock: A callable which will unlock the lock.
     """
 
-    def __init__(self, unlock, branch_token):
-        LogicalLockResult.__init__(self, unlock)
-        self.branch_token = branch_token
-
     def __repr__(self):
-        return "BranchWriteLockResult(%s, %s)" % (self.branch_token,
-            self.unlock)
+        return "BranchWriteLockResult(%r, %r)" % (self.unlock, self.token)
 
 
 ######################################################################
@@ -2194,8 +2178,7 @@ class GenericInterBranch(InterBranch):
     def fetch(self, stop_revision=None, limit=None):
         if self.target.base == self.source.base:
             return (0, [])
-        self.source.lock_read()
-        try:
+        with self.source.lock_read():
             fetch_spec_factory = fetch.FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
             fetch_spec_factory.source_branch_stop_revision_id = stop_revision
@@ -2204,10 +2187,9 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
             fetch_spec_factory.limit = limit
             fetch_spec = fetch_spec_factory.make_fetch_spec()
-            return self.target.repository.fetch(self.source.repository,
-                fetch_spec=fetch_spec)
-        finally:
-            self.source.unlock()
+            return self.target.repository.fetch(
+                    self.source.repository,
+                    fetch_spec=fetch_spec)
 
     @needs_write_lock
     def _update_revisions(self, stop_revision=None, overwrite=False,
@@ -2306,11 +2288,41 @@ class GenericInterBranch(InterBranch):
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
 
-        op = cleanup.OperationWithCleanups(self._push_with_bound_branches)
-        op.add_cleanup(self.source.lock_read().unlock)
-        op.add_cleanup(self.target.lock_write().unlock)
-        return op.run(overwrite, stop_revision,
-            _override_hook_source_branch=_override_hook_source_branch)
+        with self.source.lock_read(), self.target.lock_write():
+            def _run_hooks():
+                if _override_hook_source_branch:
+                    result.source_branch = _override_hook_source_branch
+                for hook in Branch.hooks['post_push']:
+                    hook(result)
+
+            bound_location = self.target.get_bound_location()
+            if bound_location and self.target.base != bound_location:
+                # there is a master branch.
+                #
+                # XXX: Why the second check?  Is it even supported for a branch
+                # to be bound to itself? -- mbp 20070507
+                master_branch = self.target.get_master_branch()
+                with master_branch.lock_write():
+                    # push into the master from the source branch.
+                    master_inter = InterBranch.get(self.source, master_branch)
+                    master_inter._basic_push(overwrite, stop_revision)
+                # and push into the target branch from the source. Note that
+                # we push from the source branch again, because it's considered
+                # the highest bandwidth repository.
+                result = self._basic_push(overwrite, stop_revision)
+                result.master_branch = master_branch
+                result.local_branch = self.target
+            else:
+                master_branch = None
+                # no master branch
+                result = self._basic_push(overwrite, stop_revision)
+                # TODO: Why set master_branch and local_branch if there's no
+                # binding?  Maybe cleaner to just leave them unset? -- mbp
+                # 20070504
+                result.master_branch = self.target
+                result.local_branch = None
+            _run_hooks()
+            return result
 
     def _basic_push(self, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
@@ -2335,46 +2347,6 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(
                 self.target.tags, "tags" in overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
-        return result
-
-    def _push_with_bound_branches(self, operation, overwrite, stop_revision,
-            _override_hook_source_branch=None):
-        """Push from source into target, and into target's master if any.
-        """
-        def _run_hooks():
-            if _override_hook_source_branch:
-                result.source_branch = _override_hook_source_branch
-            for hook in Branch.hooks['post_push']:
-                hook(result)
-
-        bound_location = self.target.get_bound_location()
-        if bound_location and self.target.base != bound_location:
-            # there is a master branch.
-            #
-            # XXX: Why the second check?  Is it even supported for a branch to
-            # be bound to itself? -- mbp 20070507
-            master_branch = self.target.get_master_branch()
-            master_branch.lock_write()
-            operation.add_cleanup(master_branch.unlock)
-            # push into the master from the source branch.
-            master_inter = InterBranch.get(self.source, master_branch)
-            master_inter._basic_push(overwrite, stop_revision)
-            # and push into the target branch from the source. Note that
-            # we push from the source branch again, because it's considered
-            # the highest bandwidth repository.
-            result = self._basic_push(overwrite, stop_revision)
-            result.master_branch = master_branch
-            result.local_branch = self.target
-        else:
-            master_branch = None
-            # no master branch
-            result = self._basic_push(overwrite, stop_revision)
-            # TODO: Why set master_branch and local_branch if there's no
-            # binding?  Maybe cleaner to just leave them unset? -- mbp
-            # 20070504
-            result.master_branch = self.target
-            result.local_branch = None
-        _run_hooks()
         return result
 
     def _pull(self, overwrite=False, stop_revision=None,
@@ -2406,8 +2378,7 @@ class GenericInterBranch(InterBranch):
             result.target_branch = self.target
         else:
             result.target_branch = _override_hook_target
-        self.source.lock_read()
-        try:
+        with self.source.lock_read():
             # We assume that during 'pull' the target repository is closer than
             # the source one.
             self.source.update_references(self.target)
@@ -2438,9 +2409,7 @@ class GenericInterBranch(InterBranch):
             if run_hooks:
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
-        finally:
-            self.source.unlock()
-        return result
+            return result
 
 
 InterBranch.register_optimiser(GenericInterBranch)

@@ -96,8 +96,9 @@ class LogicalLockResult(object):
     :ivar unlock: A callable which will unlock the lock.
     """
 
-    def __init__(self, unlock):
+    def __init__(self, unlock, token=None):
         self.unlock = unlock
+        self.token = token
 
     def __repr__(self):
         return "LogicalLockResult(%s)" % (self.unlock)

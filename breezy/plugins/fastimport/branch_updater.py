@@ -155,12 +155,9 @@ class BranchUpdater(object):
         :return: whether the branch was changed or not
         """
         last_rev_id = self.cache_mgr.lookup_committish(last_mark)
-        self.repo.lock_read()
-        try:
+        with self.repo.lock_read():
             graph = self.repo.get_graph()
             revno = graph.find_distance_to_null(last_rev_id, [])
-        finally:
-            self.repo.unlock()
         existing_revno, existing_last_rev_id = br.last_revision_info()
         changed = False
         if revno != existing_revno or last_rev_id != existing_last_rev_id:

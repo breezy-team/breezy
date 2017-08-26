@@ -731,8 +731,7 @@ class VersionedFileRepository(Repository):
             raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = self.revision_tree(basis_revision_id)
-        basis_tree.lock_read()
-        try:
+        with basis_tree.lock_read():
             # Note that this mutates the inventory of basis_tree, which not all
             # inventory implementations may support: A better idiom would be to
             # return a new inventory, but as there is no revision tree cache in
@@ -743,8 +742,6 @@ class VersionedFileRepository(Repository):
             basis_inv.revision_id = new_revision_id
             return (self.add_inventory(new_revision_id, basis_inv, parents),
                     basis_inv)
-        finally:
-            basis_tree.unlock()
 
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):
@@ -1114,8 +1111,7 @@ class VersionedFileRepository(Repository):
         :return: An iterator of (revid, revision) tuples. Absent revisions (
             those asked for but not available) are returned as (revid, None).
         """
-        self.lock_read()
-        try:
+        with self.lock_read():
             for rev_id in revision_ids:
                 if not rev_id or not isinstance(rev_id, bytes):
                     raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
@@ -1129,8 +1125,6 @@ class VersionedFileRepository(Repository):
                     text = record.get_bytes_as('fulltext')
                     rev = self._serializer.read_revision_from_string(text)
                     yield (revid, rev)
-        finally:
-            self.unlock()
 
     @needs_write_lock
     def add_signature_text(self, revision_id, signature):

@@ -228,8 +228,7 @@ class BzrFastExporter(object):
 
     def run(self):
         # Export the data
-        self.branch.repository.lock_read()
-        try:
+        with self.branch.repository.lock_read():
             interesting = self.interesting_history()
             self._commit_total = len(interesting)
             self.note("Starting export of %d revisions ..." %
@@ -242,8 +241,6 @@ class BzrFastExporter(object):
                 self.emit_commit(revid, self.ref)
             if self.branch.supports_tags() and not self.no_tags:
                 self.emit_tags()
-        finally:
-            self.branch.repository.unlock()
 
         # Save the marks if requested
         self._save_marks()

@@ -1299,21 +1299,20 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
             sha1_provider=sha1_provider)
         try:
-            tree.lock_read()
-            try:
-                parent_ids = tree.get_parent_ids()
-                num_parents = len(parent_ids)
-                parent_trees = []
-                for parent_id in parent_ids:
-                    parent_tree = tree.branch.repository.revision_tree(parent_id)
-                    parent_trees.append((parent_id, parent_tree))
-                    parent_tree.lock_read()
-                result.set_parent_trees(parent_trees, [])
-                result.set_state_from_inventory(tree.root_inventory)
-            finally:
-                for revid, parent_tree in parent_trees:
-                    parent_tree.unlock()
-                tree.unlock()
+            with tree.lock_read():
+                try:
+                    parent_ids = tree.get_parent_ids()
+                    num_parents = len(parent_ids)
+                    parent_trees = []
+                    for parent_id in parent_ids:
+                        parent_tree = tree.branch.repository.revision_tree(parent_id)
+                        parent_trees.append((parent_id, parent_tree))
+                        parent_tree.lock_read()
+                    result.set_parent_trees(parent_trees, [])
+                    result.set_state_from_inventory(tree.root_inventory)
+                finally:
+                    for revid, parent_tree in parent_trees:
+                        parent_tree.unlock()
         except:
             # The caller won't have a chance to unlock this, so make sure we
             # cleanup ourselves
@@ -3372,7 +3371,7 @@ class DirState(object):
         self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()
-        return lock.LogicalLockResult(self.unlock)
+        return lock.LogicalLockResult(self.unlock, self._lock_token)
 
     def unlock(self):
         """Drop any locks held on the dirstate."""

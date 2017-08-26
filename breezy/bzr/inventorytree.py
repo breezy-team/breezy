@@ -341,12 +341,11 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         # generic implementation based on Inventory manipulation. See
         # WorkingTree classes for optimised versions for specific format trees.
         basis = self.basis_tree()
-        basis.lock_read()
-        # TODO: Consider re-evaluating the need for this with CHKInventory
-        # we don't strictly need to mutate an inventory for this
-        # it only makes sense when apply_delta is cheaper than get_inventory()
-        inventory = _mod_inventory.mutable_inventory_from_tree(basis)
-        basis.unlock()
+        with basis.lock_read():
+            # TODO: Consider re-evaluating the need for this with CHKInventory
+            # we don't strictly need to mutate an inventory for this
+            # it only makes sense when apply_delta is cheaper than get_inventory()
+            inventory = _mod_inventory.mutable_inventory_from_tree(basis)
         inventory.apply_delta(delta)
         rev_tree = InventoryRevisionTree(self.branch.repository,
                                          inventory, new_revid)

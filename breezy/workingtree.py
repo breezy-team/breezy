@@ -937,8 +937,7 @@ class WorkingTree(mutabletree.MutableTree,
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
              show_base=False):
-        source.lock_read()
-        try:
+        with source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
@@ -952,8 +951,7 @@ class WorkingTree(mutabletree.MutableTree,
                     if parent_ids:
                         basis_id = parent_ids[0]
                         basis_tree = repository.revision_tree(basis_id)
-                basis_tree.lock_read()
-                try:
+                with basis_tree.lock_read():
                     new_basis_tree = self.branch.basis_tree()
                     merge.merge_inner(
                                 self.branch,
@@ -966,8 +964,6 @@ class WorkingTree(mutabletree.MutableTree,
                     new_root_id = new_basis_tree.get_root_id()
                     if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
-                finally:
-                    basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
                 # tree data.
@@ -986,8 +982,6 @@ class WorkingTree(mutabletree.MutableTree,
                      parent in merges])
                 self.set_parent_trees(parent_trees)
             return count
-        finally:
-            source.unlock()
 
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
@@ -1435,13 +1429,10 @@ class WorkingTree(mutabletree.MutableTree,
             to_root_id = to_tree.get_root_id()
 
             basis = self.basis_tree()
-            basis.lock_read()
-            try:
+            with basis.lock_read():
                 if (basis.get_root_id() is None or basis.get_root_id() != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-            finally:
-                basis.unlock()
 
             # determine the branch point
             graph = self.branch.repository.get_graph()

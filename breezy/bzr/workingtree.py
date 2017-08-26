@@ -522,15 +522,12 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             the repository.
         """
         tree_basis = self.basis_tree()
-        tree_basis.lock_read()
-        try:
+        with tree_basis.lock_read():
             repo_basis = references[('trees', self.last_revision())]
             if len(list(repo_basis.iter_changes(tree_basis))) > 0:
                 raise errors.BzrCheckError(
                     "Mismatched basis inventory content.")
             self._validate()
-        finally:
-            tree_basis.unlock()
 
     @needs_read_lock
     def check_state(self):
@@ -665,8 +662,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                 parent_tree = self.revision_tree(parent_id)
             except errors.NoSuchRevisionInTree:
                 parent_tree = self.branch.repository.revision_tree(parent_id)
-            parent_tree.lock_read()
-            try:
+            with parent_tree.lock_read():
                 try:
                     kind = parent_tree.kind(file_id)
                 except errors.NoSuchId:
@@ -680,8 +676,6 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                     file_id, parent_tree.get_file_revision(file_id))
                 if parent_text_key not in maybe_file_parent_keys:
                     maybe_file_parent_keys.append(parent_text_key)
-            finally:
-                parent_tree.unlock()
         graph = _mod_graph.Graph(self.branch.repository.texts)
         heads = graph.heads(maybe_file_parent_keys)
         file_parent_keys = []
@@ -1177,13 +1171,10 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                 # allow it with --after but only if dest is newly added
                 if after:
                     basis = self.basis_tree()
-                    basis.lock_read()
-                    try:
+                    with basis.lock_read():
                         if not basis.has_id(to_id):
                             rename_entry.change_id = True
                             allowed = True
-                    finally:
-                        basis.unlock()
                 if not allowed:
                     raise errors.BzrMoveFailedError(from_rel,to_rel,
                         errors.AlreadyVersionedError(path=to_rel))
