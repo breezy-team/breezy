@@ -374,7 +374,7 @@ class _NotRunningAsRoot(Feature):
 
 not_running_as_root = _NotRunningAsRoot()
 
-apport = ModuleAvailableFeature('apport')
+apport = ModuleAvailableFeature('apport.report')
 gpg = ModuleAvailableFeature('gpg')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae.scanner')
