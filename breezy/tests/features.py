@@ -172,7 +172,7 @@ class ModuleAvailableFeature(Feature):
         module = sys.modules.get(self.module_name, sentinel)
         if module is sentinel:
             try:
-                self._module = __import__(self.module_name, {}, {}, [''])
+                self._module = __import__(self.module_name)
                 return True
             except ImportError:
                 return False
