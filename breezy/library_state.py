@@ -41,11 +41,9 @@ class BzrLibraryState(object):
     """The state about how breezy has been configured.
 
     This is the core state needed to make use of bzr. The current instance is
-    currently always exposed as breezy.global_state, but we desired to move
+    currently always exposed as breezy._global_state, but we desired to move
     to a point where no global state is needed at all.
 
-    :ivar saved_state: The breezy.global_state at the time __enter__ was
-        called.
     :ivar cleanups: An ObjectWithCleanups which can be used for cleanups that
         should occur when the use of breezy is completed. This is initialised
         in __enter__ and executed in __exit__.
@@ -103,8 +101,9 @@ class BzrLibraryState(object):
         breezy.ui.ui_factory = self._ui
         self._ui.__enter__()
 
-        self.saved_state = breezy.global_state
-        breezy.global_state = self
+        if breezy._global_state is not None:
+            raise RuntimeError("Breezy already initialized")
+        breezy._global_state = self
         self.started = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -119,5 +118,5 @@ class BzrLibraryState(object):
         self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
         ui.ui_factory = self._orig_ui
-        breezy.global_state = self.saved_state
+        breezy._global_state = None
         return False # propogate exceptions.
