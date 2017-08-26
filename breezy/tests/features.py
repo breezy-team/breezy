@@ -379,6 +379,7 @@ class _NotRunningAsRoot(Feature):
 
 not_running_as_root = _NotRunningAsRoot()
 
+# Apport uses deprecated imp module on python3.
 apport = ModuleAvailableFeature(
     'apport.report',
     ignore_warnings=[DeprecationWarning, PendingDeprecationWarning])
