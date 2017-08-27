@@ -1817,7 +1817,7 @@ class TestCase(testtools.TestCase):
         if not callable(addSkip):
             result.addSuccess(result)
         else:
-            addSkip(self, reason)
+            addSkip(self, str(reason))
 
     @staticmethod
     def _do_known_failure(self, result, e):
@@ -3264,8 +3264,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         # to take effect, though that is of marginal benefit.
         if verbosity >= 2:
             stream.write("Listing tests only ...\n")
-        for t in iter_suite_tests(suite):
-            stream.write("%s\n" % (t.id()))
+        if getattr(runner, 'list', None) is not None:
+            runner.list(suite)
+        else:
+            for t in iter_suite_tests(suite):
+                stream.write("%s\n" % (t.id()))
         return True
     result = runner.run(suite)
     if strict:
