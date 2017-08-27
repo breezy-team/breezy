@@ -444,10 +444,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             mini_commit=self.mini_commit_record_iter_changes)
 
     def _add_commit_change_check_changed(self, tree, name, changer,
-        expect_fs_hash=False, mini_commit=None, file_id=None):
-        if file_id is None:
-            file_id = name + 'id'
-        tree.add([name], [file_id])
+            expect_fs_hash=False, mini_commit=None):
+        tree.add([name])
+        file_id = tree.path2id(name)
         self._commit_change_check_changed(
             tree, name, file_id,
             changer, expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
@@ -556,15 +555,13 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         def change_file():
-            tree.put_file_bytes_non_atomic('fileid', 'new content')
+            tree.put_file_bytes_non_atomic(tree.path2id('file'), 'new content')
         self._add_commit_change_check_changed(tree, 'file', change_file,
             expect_fs_hash=True,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def _test_last_mod_rev_after_content_link_changes(
-        self, link, target, newtarget, file_id=None):
-        if file_id is None:
-            file_id = link
+        self, link, target, newtarget):
         # changing a link changes the last modified.
         self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
@@ -574,8 +571,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             os.symlink(newtarget, link)
         self._add_commit_change_check_changed(
             tree, link, change_link,
-            mini_commit=self.mini_commit_record_iter_changes,
-            file_id=file_id)
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_rev_after_content_link_changes(self):
         self._test_last_mod_rev_after_content_link_changes(
@@ -584,9 +580,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_rev_after_content_unicode_link_changes(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_last_mod_rev_after_content_link_changes(
-            u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget',
-
-            file_id=u'li\u1234nk'.encode('UTF-8'))
+            u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget')
 
     def _commit_sprout(self, tree, name):
         tree.add([name], [name + 'id'])
