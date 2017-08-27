@@ -311,7 +311,7 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
         self.overrideAttr(repo, 'has_signature_for_revision_id',
                 self.has_signature_for_revision_id)
         self.overrideAttr(repo, 'get_signature_text', self.get_signature_text)
-        out = log.format_signature_validity(revid, repo)
+        out = log.format_signature_validity(revid, wt.branch)
         self.assertEqual(
 u'valid signature from UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>',
                 out)
