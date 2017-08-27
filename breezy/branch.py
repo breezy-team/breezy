@@ -45,7 +45,6 @@ from . import (
     registry,
     )
 from .decorators import (
-    needs_write_lock,
     only_raises,
     )
 from .hooks import Hooks
@@ -699,7 +698,6 @@ class Branch(controldir.ControlComponent):
         """Get the tree_path and branch_location for a tree reference."""
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
-    @needs_write_lock
     def fetch(self, from_branch, last_revision=None, limit=None):
         """Copy revisions from from_branch into this branch.
 
@@ -709,7 +707,9 @@ class Branch(controldir.ControlComponent):
         :param limit: Optional rough limit of revisions to fetch
         :return: None
         """
-        return InterBranch.get(from_branch, self).fetch(last_revision, limit=limit)
+        with self.lock_write():
+            return InterBranch.get(from_branch, self).fetch(
+                    last_revision, limit=limit)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -763,7 +763,6 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.get_stacked_on_url)
 
-    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
 
@@ -777,24 +776,23 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.set_last_revision_info)
 
-    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
         """See Branch.generate_revision_history"""
-        graph = self.repository.get_graph()
-        (last_revno, last_revid) = self.last_revision_info()
-        known_revision_ids = [
-            (last_revid, last_revno),
-            (_mod_revision.NULL_REVISION, 0),
-            ]
-        if last_rev is not None:
-            if not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
-        revno = graph.find_distance_to_null(revision_id, known_revision_ids)
-        self.set_last_revision_info(revno, revision_id)
+        with self.lock_write():
+            graph = self.repository.get_graph()
+            (last_revno, last_revid) = self.last_revision_info()
+            known_revision_ids = [
+                (last_revid, last_revno),
+                (_mod_revision.NULL_REVISION, 0),
+                ]
+            if last_rev is not None:
+                if not graph.is_ancestor(last_rev, revision_id):
+                    # our previous tip is not merged into stop_revision
+                    raise errors.DivergedBranches(self, other_branch)
+            revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            self.set_last_revision_info(revno, revision_id)
 
-    @needs_write_lock
     def set_parent(self, url):
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
@@ -810,9 +808,9 @@ class Branch(controldir.ControlComponent):
                         "Urls must be 7-bit ascii, "
                         "use breezy.urlutils.escape")
             url = urlutils.relative_url(self.base, url)
-        self._set_parent_location(url)
+        with self.lock_write():
+            self._set_parent_location(url)
 
-    @needs_write_lock
     def set_stacked_on_url(self, url):
         """Set the URL this branch is stacked against.
 
@@ -823,23 +821,24 @@ class Branch(controldir.ControlComponent):
         """
         if not self._format.supports_stacking():
             raise UnstackableBranchFormat(self._format, self.user_url)
-        # XXX: Changing from one fallback repository to another does not check
-        # that all the data you need is present in the new fallback.
-        # Possibly it should.
-        self._check_stackable_repo()
-        if not url:
-            try:
-                old_url = self.get_stacked_on_url()
-            except (errors.NotStacked, UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
-                return
-            self._unstack()
-        else:
-            self._activate_fallback_location(url,
-                possible_transports=[self.controldir.root_transport])
-        # write this out after the repository is stacked to avoid setting a
-        # stacked config that doesn't work.
-        self._set_config_location('stacked_on_location', url)
+        with self.lock_write():
+            # XXX: Changing from one fallback repository to another does not check
+            # that all the data you need is present in the new fallback.
+            # Possibly it should.
+            self._check_stackable_repo()
+            if not url:
+                try:
+                    old_url = self.get_stacked_on_url()
+                except (errors.NotStacked, UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat):
+                    return
+                self._unstack()
+            else:
+                self._activate_fallback_location(url,
+                    possible_transports=[self.controldir.root_transport])
+            # write this out after the repository is stacked to avoid setting a
+            # stacked config that doesn't work.
+            self._set_config_location('stacked_on_location', url)
 
     def _unstack(self):
         """Change a branch to be unstacked, copying data as needed.
@@ -1203,7 +1202,6 @@ class Branch(controldir.ControlComponent):
         for hook in hooks:
             hook(params)
 
-    @needs_write_lock
     def update(self):
         """Synchronise this branch with the master branch if any.
 
@@ -1439,13 +1437,13 @@ class Branch(controldir.ControlComponent):
                     lightweight)
         return tree
 
-    @needs_write_lock
     def reconcile(self, thorough=True):
         """Make sure the data stored in this branch is consistent."""
         from breezy.reconcile import BranchReconciler
-        reconciler = BranchReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = BranchReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
@@ -2076,7 +2074,6 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(klass._get_branch_formats_to_test)
 
-    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
         """Mirror source into target branch.
@@ -2087,7 +2084,6 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.pull)
 
-    @needs_write_lock
     def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
@@ -2096,7 +2092,6 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.push)
 
-    @needs_write_lock
     def copy_content_into(self, revision_id=None):
         """Copy the content of source into target
 
@@ -2105,7 +2100,6 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.copy_content_into)
 
-    @needs_write_lock
     def fetch(self, stop_revision=None, limit=None):
         """Fetch revisions.
 
@@ -2143,30 +2137,29 @@ class GenericInterBranch(InterBranch):
             return format._custom_format
         return format
 
-    @needs_write_lock
     def copy_content_into(self, revision_id=None):
         """Copy the content of source into target
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        self.source.update_references(self.target)
-        self.source._synchronize_history(self.target, revision_id)
-        try:
-            parent = self.source.get_parent()
-        except errors.InaccessibleParent as e:
-            mutter('parent was not accessible to copy: %s', e)
-        else:
-            if parent:
-                self.target.set_parent(parent)
-        if self.source._push_should_merge_tags():
-            self.source.tags.merge_to(self.target.tags)
+        with self.source.lock_read(), self.target.lock_write():
+            self.source.update_references(self.target)
+            self.source._synchronize_history(self.target, revision_id)
+            try:
+                parent = self.source.get_parent()
+            except errors.InaccessibleParent as e:
+                mutter('parent was not accessible to copy: %s', e)
+            else:
+                if parent:
+                    self.target.set_parent(parent)
+            if self.source._push_should_merge_tags():
+                self.source.tags.merge_to(self.target.tags)
 
-    @needs_write_lock
     def fetch(self, stop_revision=None, limit=None):
         if self.target.base == self.source.base:
             return (0, [])
-        with self.source.lock_read():
+        with self.source.lock_read(), self.target.lock_write():
             fetch_spec_factory = fetch.FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
             fetch_spec_factory.source_branch_stop_revision_id = stop_revision
@@ -2179,46 +2172,45 @@ class GenericInterBranch(InterBranch):
                     self.source.repository,
                     fetch_spec=fetch_spec)
 
-    @needs_write_lock
     def _update_revisions(self, stop_revision=None, overwrite=False,
             graph=None):
-        other_revno, other_last_revision = self.source.last_revision_info()
-        stop_revno = None # unknown
-        if stop_revision is None:
-            stop_revision = other_last_revision
-            if _mod_revision.is_null(stop_revision):
-                # if there are no commits, we're done.
-                return
-            stop_revno = other_revno
+        with self.source.lock_read(), self.target.lock_write():
+            other_revno, other_last_revision = self.source.last_revision_info()
+            stop_revno = None # unknown
+            if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+                stop_revno = other_revno
 
-        # what's the current last revision, before we fetch [and change it
-        # possibly]
-        last_rev = _mod_revision.ensure_null(self.target.last_revision())
-        # we fetch here so that we don't process data twice in the common
-        # case of having something to pull, and so that the check for
-        # already merged can operate on the just fetched graph, which will
-        # be cached in memory.
-        self.fetch(stop_revision=stop_revision)
-        # Check to see if one is an ancestor of the other
-        if not overwrite:
-            if graph is None:
-                graph = self.target.repository.get_graph()
-            if self.target._check_if_descendant_or_diverged(
-                    stop_revision, last_rev, graph, self.source):
-                # stop_revision is a descendant of last_rev, but we aren't
-                # overwriting, so we're done.
-                return
-        if stop_revno is None:
-            if graph is None:
-                graph = self.target.repository.get_graph()
-            this_revno, this_last_revision = \
-                    self.target.last_revision_info()
-            stop_revno = graph.find_distance_to_null(stop_revision,
-                            [(other_last_revision, other_revno),
-                             (this_last_revision, this_revno)])
-        self.target.set_last_revision_info(stop_revno, stop_revision)
+            # what's the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = _mod_revision.ensure_null(self.target.last_revision())
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
+            self.fetch(stop_revision=stop_revision)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                if self.target._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, self.source):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                this_revno, this_last_revision = \
+                        self.target.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.target.set_last_revision_info(stop_revno, stop_revision)
 
-    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,
              _override_hook_target=None, local=False):
@@ -2228,37 +2220,38 @@ class GenericInterBranch(InterBranch):
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         """
-        bound_location = self.target.get_bound_location()
-        if local and not bound_location:
-            raise errors.LocalRequiresBoundBranch()
-        master_branch = None
-        source_is_master = False
-        if bound_location:
-            # bound_location comes from a config file, some care has to be
-            # taken to relate it to source.user_url
-            normalized = urlutils.normalize_url(bound_location)
+        with self.target.lock_write():
+            bound_location = self.target.get_bound_location()
+            if local and not bound_location:
+                raise errors.LocalRequiresBoundBranch()
+            master_branch = None
+            source_is_master = False
+            if bound_location:
+                # bound_location comes from a config file, some care has to be
+                # taken to relate it to source.user_url
+                normalized = urlutils.normalize_url(bound_location)
+                try:
+                    relpath = self.source.user_transport.relpath(normalized)
+                    source_is_master = (relpath == '')
+                except (errors.PathNotChild, urlutils.InvalidURL):
+                    source_is_master = False
+            if not local and bound_location and not source_is_master:
+                # not pulling from master, so we need to update master.
+                master_branch = self.target.get_master_branch(possible_transports)
+                master_branch.lock_write()
             try:
-                relpath = self.source.user_transport.relpath(normalized)
-                source_is_master = (relpath == '')
-            except (errors.PathNotChild, urlutils.InvalidURL):
-                source_is_master = False
-        if not local and bound_location and not source_is_master:
-            # not pulling from master, so we need to update master.
-            master_branch = self.target.get_master_branch(possible_transports)
-            master_branch.lock_write()
-        try:
-            if master_branch:
-                # pull from source into master.
-                master_branch.pull(self.source, overwrite, stop_revision,
-                    run_hooks=False)
-            return self._pull(overwrite,
-                stop_revision, _hook_master=master_branch,
-                run_hooks=run_hooks,
-                _override_hook_target=_override_hook_target,
-                merge_tags_to_master=not source_is_master)
-        finally:
-            if master_branch:
-                master_branch.unlock()
+                if master_branch:
+                    # pull from source into master.
+                    master_branch.pull(self.source, overwrite, stop_revision,
+                        run_hooks=False)
+                return self._pull(overwrite,
+                    stop_revision, _hook_master=master_branch,
+                    run_hooks=run_hooks,
+                    _override_hook_target=_override_hook_target,
+                    merge_tags_to_master=not source_is_master)
+            finally:
+                if master_branch:
+                    master_branch.unlock()
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
