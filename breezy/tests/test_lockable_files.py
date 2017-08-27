@@ -113,13 +113,13 @@ class _TestLockableFiles_mixin(object):
         self.assertEqual(token, token_from_new_lockable)
 
     def test_lock_write_raises_on_token_mismatch(self):
-        lock = self.lockable.lock_write()
+        token = self.lockable.lock_write()
         self.addCleanup(self.lockable.unlock)
-        if lock is None:
+        if token is None:
             # This test does not apply, because this lockable refuses
             # tokens.
             return
-        different_token = lock.token + 'xxx'
+        different_token = token + 'xxx'
         # Re-using the same lockable instance with a different token will
         # raise TokenMismatch.
         self.assertRaises(errors.TokenMismatch,
@@ -137,33 +137,33 @@ class _TestLockableFiles_mixin(object):
 
     def test_lock_write_with_matching_token(self):
         # If the token matches, so no exception is raised by lock_write.
-        lock = self.lockable.lock_write()
+        token = self.lockable.lock_write()
         self.addCleanup(self.lockable.unlock)
-        if lock is None:
+        if token is None:
             # This test does not apply, because this lockable refuses
             # tokens.
             return
         # The same instance will accept a second lock_write if the specified
         # token matches.
-        self.lockable.lock_write(token=lock.token)
+        self.lockable.lock_write(token=token)
         self.lockable.unlock()
         # Calling lock_write on a new instance for the same lockable will
         # also succeed.
         new_lockable = self.get_lockable()
-        new_lockable.lock_write(token=lock.token)
+        new_lockable.lock_write(token=token)
         new_lockable.unlock()
 
     def test_unlock_after_lock_write_with_token(self):
         # If lock_write did not physically acquire the lock (because it was
         # passed a token), then unlock should not physically release it.
-        lock = self.lockable.lock_write()
+        token = self.lockable.lock_write()
         self.addCleanup(self.lockable.unlock)
-        if lock is None:
+        if token is None:
             # This test does not apply, because this lockable refuses
             # tokens.
             return
         new_lockable = self.get_lockable()
-        new_lockable.lock_write(token=lock.token)
+        new_lockable.lock_write(token=token)
         new_lockable.unlock()
         self.assertTrue(self.lockable.get_physical_lock_status())
 
@@ -172,28 +172,31 @@ class _TestLockableFiles_mixin(object):
         # likely programming error, where a caller accidentally tries to lock
         # with a token that is no longer valid (because the original lock was
         # released).
-        lock = self.lockable.lock_write()
+        token = self.lockable.lock_write()
         self.lockable.unlock()
-        if lock is None:
+        if token is None:
             # This test does not apply, because this lockable refuses
             # tokens.
             return
 
         self.assertRaises(errors.TokenMismatch,
-                          self.lockable.lock_write, token=lock.token)
+                          self.lockable.lock_write, token=token)
 
     def test_lock_write_reenter_with_token(self):
-        with self.lockable.lock_write() as lock:
-            if lock is None:
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
                 # This test does not apply, because this lockable refuses
                 # tokens.
                 return
             # Relock with a token.
-            token_from_reentry = self.lockable.lock_write(token=lock.token)
+            token_from_reentry = self.lockable.lock_write(token=token)
             try:
-                self.assertEqual(lock.token, token_from_reentry)
+                self.assertEqual(token, token_from_reentry)
             finally:
                 self.lockable.unlock()
+        finally:
+            self.lockable.unlock()
         # The lock should be unlocked on disk.  Verify that with a new lock
         # instance.
         new_lockable = self.get_lockable()
