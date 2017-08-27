@@ -40,8 +40,8 @@ class TestLinkTreeCommand(tests.TestCaseWithTransport):
         self.build_tree_contents([('parent/foo', 'bar')])
         self.parent_tree.add('foo', 'foo-id')
         self.parent_tree.commit('added foo')
-        child_bzrdir = self.parent_tree.bzrdir.sprout('child')
-        self.child_tree = child_bzrdir.open_workingtree()
+        child_controldir = self.parent_tree.controldir.sprout('child')
+        self.child_tree = child_controldir.open_workingtree()
 
     def hardlinked(self):
         parent_stat = os.lstat(self.parent_tree.abspath('foo'))
