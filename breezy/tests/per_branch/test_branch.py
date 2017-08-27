@@ -24,6 +24,7 @@ from breezy import (
     config,
     delta as _mod_delta,
     errors,
+    lock,
     merge,
     osutils,
     urlutils,
@@ -566,20 +567,22 @@ class TestDecorator(object):
 
     def lock_read(self):
         self._calls.append('lr')
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         self._calls.append('lw')
+        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         self._calls.append('ul')
 
-    @_mod_branch.needs_read_lock
     def do_with_read(self):
-        return 1
+        with self.lock_read():
+            return 1
 
-    @_mod_branch.needs_read_lock
     def except_with_read(self):
-        raise RuntimeError
+        with self.lock_read():
+            raise RuntimeError
 
     @_mod_branch.needs_write_lock
     def do_with_write(self):

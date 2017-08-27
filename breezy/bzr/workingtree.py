@@ -764,8 +764,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         # RepositoryKnit2 guarantees that.
         if not self.branch.repository.supports_rich_root():
             raise errors.SubsumeTargetNeedsUpgrade(other_tree)
-        other_tree.lock_tree_write()
-        try:
+        with other_tree.lock_tree_write():
             new_parents = other_tree.get_parent_ids()
             other_root = other_tree.root_inventory.root
             other_root.parent_id = new_root_parent
@@ -778,8 +777,6 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             for parent_id in other_tree.get_parent_ids():
                 self.branch.fetch(other_tree.branch, parent_id)
                 self.add_parent_tree_id(parent_id)
-        finally:
-            other_tree.unlock()
         other_tree.controldir.retire_bzrdir()
 
     @needs_tree_write_lock

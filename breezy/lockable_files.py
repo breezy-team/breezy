@@ -16,16 +16,14 @@
 
 from __future__ import absolute_import
 
-from . import (
-    errors,
-    lock,
-    )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import warnings
 
 from breezy import (
     counted_lock,
+    errors,
+    lock,
     osutils,
     transactions,
     urlutils,
@@ -280,11 +278,9 @@ class TransportLock(object):
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
         self._lock = self._transport.lock_write(self._escaped_name)
-        return lock.LogicalLockResult(self.unlock)
 
     def lock_read(self):
         self._lock = self._transport.lock_read(self._escaped_name)
-        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         self._lock.unlock()

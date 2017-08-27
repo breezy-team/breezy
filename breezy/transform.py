@@ -1552,7 +1552,6 @@ class TreeTransform(DiskTreeTransform):
         TreeTransform.apply() called).
         """
         tree.lock_tree_write()
-
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))

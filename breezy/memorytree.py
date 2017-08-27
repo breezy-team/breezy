@@ -205,6 +205,7 @@ class MemoryTree(MutableInventoryTree):
         except:
             self._locks -= 1
             raise
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         """See MutableTree.lock_write()."""

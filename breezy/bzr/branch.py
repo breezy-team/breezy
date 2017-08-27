@@ -179,7 +179,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             took_lock = False
         try:
-            return BranchWriteLockResult(self.unlock,
+            return BranchWriteLockResult(
+                self.unlock,
                 self.control_files.lock_write(token=token))
         except:
             if took_lock:
