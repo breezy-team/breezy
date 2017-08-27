@@ -45,7 +45,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
     try:
         return proc.process(p.iter_commands)
-    except ParsingError, e:
+    except ParsingError as e:
         raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
 
 
@@ -328,7 +328,7 @@ class cmd_fast_import(Command):
             p = parser.ImportParser(stream)
             try:
                 return_code = proc.process(p.iter_commands)
-            except ParsingError, e:
+            except ParsingError as e:
                 raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
             lines = output.getvalue().splitlines()
         finally:
@@ -464,7 +464,7 @@ class cmd_fast_import_filter(Command):
         p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
         try:
             return proc.process(p.iter_commands)
-        except ParsingError, e:
+        except ParsingError as e:
             raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
 
 

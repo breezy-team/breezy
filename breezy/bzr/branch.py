@@ -228,11 +228,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
 
-    @needs_read_lock
-    def print_file(self, file, revision_id):
-        """See Branch.print_file."""
-        return self.repository.print_file(file, revision_id)
-
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         if not revision_id or not isinstance(revision_id, bytes):

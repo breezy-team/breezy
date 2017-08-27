@@ -22,6 +22,7 @@ from breezy.transport.ssh import (
     SSHCorpSubprocessVendor,
     LSHSubprocessVendor,
     SSHVendorManager,
+    StrangeHostname,
     )
 
 
@@ -161,6 +162,19 @@ class SSHVendorManagerTests(TestCase):
 
 class SubprocessVendorsTests(TestCase):
 
+    def test_openssh_command_tricked(self):
+        vendor = OpenSSHSubprocessVendor()
+        self.assertEqual(
+            vendor._get_vendor_specific_argv(
+                "user", "-oProxyCommand=blah", 100, command=["bzr"]),
+            ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
+                "-oClearAllForwardings=yes",
+                "-oNoHostAuthenticationForLocalhost=yes",
+                "-p", "100",
+                "-l", "user",
+                "--",
+                "-oProxyCommand=blah", "bzr"])
+
     def test_openssh_command_arguments(self):
         vendor = OpenSSHSubprocessVendor()
         self.assertEqual(
@@ -171,6 +185,7 @@ class SubprocessVendorsTests(TestCase):
                 "-oNoHostAuthenticationForLocalhost=yes",
                 "-p", "100",
                 "-l", "user",
+                "--",
                 "host", "bzr"]
             )
 
@@ -184,8 +199,15 @@ class SubprocessVendorsTests(TestCase):
                 "-oNoHostAuthenticationForLocalhost=yes",
                 "-p", "100",
                 "-l", "user",
-                "-s", "host", "sftp"]
+                "-s", "--", "host", "sftp"]
             )
+
+    def test_openssh_command_tricked(self):
+        vendor = SSHCorpSubprocessVendor()
+        self.assertRaises(
+            StrangeHostname,
+            vendor._get_vendor_specific_argv,
+                "user", "-oProxyCommand=host", 100, command=["bzr"])
 
     def test_sshcorp_command_arguments(self):
         vendor = SSHCorpSubprocessVendor()
@@ -209,6 +231,13 @@ class SubprocessVendorsTests(TestCase):
                 "-s", "sftp", "host"]
             )
 
+    def test_lsh_command_tricked(self):
+        vendor = LSHSubprocessVendor()
+        self.assertRaises(
+            StrangeHostname,
+            vendor._get_vendor_specific_argv,
+                "user", "-oProxyCommand=host", 100, command=["bzr"])
+
     def test_lsh_command_arguments(self):
         vendor = LSHSubprocessVendor()
         self.assertEqual(
@@ -230,6 +259,13 @@ class SubprocessVendorsTests(TestCase):
                 "-l", "user",
                 "--subsystem", "sftp", "host"]
             )
+
+    def test_plink_command_tricked(self):
+        vendor = PLinkSubprocessVendor()
+        self.assertRaises(
+            StrangeHostname,
+            vendor._get_vendor_specific_argv,
+                "user", "-oProxyCommand=host", 100, command=["bzr"])
 
     def test_plink_command_arguments(self):
         vendor = PLinkSubprocessVendor()
