@@ -204,5 +204,10 @@ Testing
  * Newer versions of ``pyftpdlib`` are now supported for running FTP tests.
    (Jelmer Vernooĳ)
 
+ * The ``--subunit`` argument for ``brz selftest`` has been renamed to
+   ``--subunit1``, and a new argument ``--subunit2`` has been added that
+   outputs subunit v2.
+   (Jelmer Vernooĳ, #1699346, #661205)
+
 ..
    vim: tw=74 ft=rst ff=unix
