@@ -52,7 +52,7 @@ check-nodocs3:
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
-	  --subunit $(tests) | tee selftest.log
+	  --subunit1 $(tests) | tee selftest.log
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
 	# command above (the '|' swallow any errors since 'make'
@@ -67,7 +67,7 @@ check-nodocs2: extensions
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 \
-	  --subunit $(tests) | tee selftest.log
+	  --subunit1 $(tests) | tee selftest.log
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'

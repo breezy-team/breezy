@@ -2122,7 +2122,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def test_runner_class(self):
         self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=self.factory)
         test = ProtocolTestCase(stream)
         result = unittest.TestResult()
@@ -2192,7 +2193,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         from subunit import ProtocolTestCase
         def factory():
             return TestUtil.TestSuite([_get_test(test_name)])
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=factory)
         test = ProtocolTestCase(stream)
         result = testtools.TestResult()
@@ -3499,8 +3501,8 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
     _test_needs_features = [features.subunit]
 
     def _run_selftest_with_suite(self, **kwargs):
-        return TestUncollectedWarnings._run_selftest_with_suite(self,
-            runner_class=tests.SubUnitBzrRunner, **kwargs)
+        return TestUncollectedWarnings._run_selftest_with_suite(
+            self, runner_class=tests.SubUnitBzrRunnerv1, **kwargs)
 
 
 class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):
