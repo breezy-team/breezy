@@ -206,18 +206,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_record_delete_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["foo"])
-        tree.add(["foo"], ["foo-id"])
+        tree.add(["foo"])
+        foo_id = tree.path2id('foo')
         rev_id = tree.commit("added foo")
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = ('foo-id', ('foo', None), True, (True, False),
+                delete_change = (foo_id, ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
                 list(builder.record_iter_changes(tree, rev_id,
                     [delete_change]))
-                self.assertEqual(("foo", None, "foo-id", None),
+                self.assertEqual(("foo", None, foo_id, None),
                     builder.get_basis_delta()[0])
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
@@ -670,8 +671,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree2 = tree1.controldir.sprout('t2').open_workingtree()
         # make and commit on the other side to merge back
         make('t2/name')
-        file_id = 'nameid'
-        tree2.add(['name'], [file_id])
+        tree2.add(['name'])
+        file_id = tree2.path2id('name')
         rev2 = tree2.commit('')
         tree1.merge_from_branch(tree2.branch)
         rev3 = mini_commit(tree1, None, 'name', False)
