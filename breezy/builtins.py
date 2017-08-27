@@ -6709,6 +6709,29 @@ class cmd_import(Command):
         do_import(source, tree)
 
 
+class cmd_link_tree(Command):
+    __doc__ = """Hardlink matching files to another tree.
+
+    Only files with identical content and execute bit will be linked.
+    """
+
+    takes_args = ['location']
+
+    def run(self, location):
+        from .transform import link_tree
+        target_tree = WorkingTree.open_containing(".")[0]
+        source_tree = WorkingTree.open(location)
+        target_tree.lock_write()
+        try:
+            source_tree.lock_read()
+            try:
+                link_tree(target_tree, source_tree)
+            finally:
+                source_tree.unlock()
+        finally:
+            target_tree.unlock()
+
+
 class cmd_fetch_ghosts(Command):
     __doc__ = """Attempt to retrieve ghosts from another branch.
 

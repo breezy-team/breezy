@@ -83,6 +83,9 @@ New Features
  * The 'import' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)
 
+ * The 'link-tree' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
+
  * The 'fetch-ghosts' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
