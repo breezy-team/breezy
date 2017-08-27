@@ -3727,3 +3727,47 @@ class TestTransformHooks(tests.TestCaseWithTransport):
         transform.apply()
         self.assertEqual(old_root_id, self.wt.get_root_id())
         self.assertEqual([(self.wt, transform)], calls)
+
+
+class TestLinkTree(tests.TestCaseWithTransport):
+
+    _test_needs_features = [HardlinkFeature]
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.parent_tree = self.make_branch_and_tree('parent')
+        self.parent_tree.lock_write()
+        self.addCleanup(self.parent_tree.unlock)
+        self.build_tree_contents([('parent/foo', 'bar')])
+        self.parent_tree.add('foo', 'foo-id')
+        self.parent_tree.commit('added foo')
+        child_controldir = self.parent_tree.controldir.sprout('child')
+        self.child_tree = child_controldir.open_workingtree()
+
+    def hardlinked(self):
+        parent_stat = os.lstat(self.parent_tree.abspath('foo'))
+        child_stat = os.lstat(self.child_tree.abspath('foo'))
+        return parent_stat.st_ino == child_stat.st_ino
+
+    def test_link_fails_if_modified(self):
+        """If the file to be linked has modified text, don't link."""
+        self.build_tree_contents([('child/foo', 'baz')])
+        transform.link_tree(self.child_tree, self.parent_tree)
+        self.assertFalse(self.hardlinked())
+
+    def test_link_fails_if_execute_bit_changed(self):
+        """If the file to be linked has modified execute bit, don't link."""
+        tt = TreeTransform(self.child_tree)
+        try:
+            trans_id = tt.trans_id_tree_file_id('foo-id')
+            tt.set_executability(True, trans_id)
+            tt.apply()
+        finally:
+            tt.finalize()
+        transform.link_tree(self.child_tree, self.parent_tree)
+        self.assertFalse(self.hardlinked())
+
+    def test_link_succeeds_if_unmodified(self):
+        """If the file to be linked is unmodified, link"""
+        transform.link_tree(self.child_tree, self.parent_tree)
+        self.assertTrue(self.hardlinked())

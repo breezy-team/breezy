@@ -47,20 +47,18 @@ from . import (
 from .scenarios import load_tests_apply_scenarios
 
 
-class _UTF8DirReaderFeature(features.Feature):
+class _UTF8DirReaderFeature(features.ModuleAvailableFeature):
 
     def _probe(self):
         try:
             from .. import _readdir_pyx
+            self._module = _readdir_pyx
             self.reader = _readdir_pyx.UTF8DirReader
             return True
         except ImportError:
             return False
 
-    def feature_name(self):
-        return 'breezy._readdir_pyx'
-
-UTF8DirReaderFeature = features.ModuleAvailableFeature('breezy._readdir_pyx')
+UTF8DirReaderFeature = _UTF8DirReaderFeature('breezy._readdir_pyx')
 
 term_ios_feature = features.ModuleAvailableFeature('termios')
 

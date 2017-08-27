@@ -3197,3 +3197,28 @@ class _FileMover(object):
         # after apply_deletions, don't reuse _FileMover
         past_renames = None
         pending_deletions = None
+
+
+def link_tree(target_tree, source_tree):
+    """Where possible, hard-link files in a tree to those in another tree.
+
+    :param target_tree: Tree to change
+    :param source_tree: Tree to hard-link from
+    """
+    tt = TreeTransform(target_tree)
+    try:
+        for (file_id, paths, changed_content, versioned, parent, name, kind,
+             executable) in target_tree.iter_changes(source_tree,
+             include_unchanged=True):
+            if changed_content:
+                continue
+            if kind != ('file', 'file'):
+                continue
+            if executable[0] != executable[1]:
+                continue
+            trans_id = tt.trans_id_tree_file_id(file_id)
+            tt.delete_contents(trans_id)
+            tt.create_hardlink(source_tree.id2abspath(file_id), trans_id)
+        tt.apply()
+    finally:
+        tt.finalize()

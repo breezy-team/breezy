@@ -762,10 +762,6 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.get_stacked_on_url)
 
-    def print_file(self, file, revision_id):
-        """Print `file` to stdout."""
-        raise NotImplementedError(self.print_file)
-
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.

@@ -4079,8 +4079,10 @@ class cmd_selftest(Command):
                                 short_name='x',
                                 help='Exclude tests that match this regular'
                                 ' expression.'),
-                     Option('subunit',
-                        help='Output test progress via subunit.'),
+                     Option('subunit1',
+                            help='Output test progress via subunit v1.'),
+                     Option('subunit2',
+                            help='Output test progress via subunit v2.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
                      Option('load-list', type=str, argname='TESTLISTFILE',
@@ -4106,9 +4108,8 @@ class cmd_selftest(Command):
             lsprof_timed=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
-            load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None, lsprof_tests=False,
-            sync=False):
+            load_list=None, debugflag=None, starting_with=None, subunit1=False,
+            subunit2=False, parallel=None, lsprof_tests=False, sync=False):
 
         # During selftest, disallow proxying, as it can cause severe
         # performance penalties and is only needed for thread
@@ -4124,13 +4125,14 @@ class cmd_selftest(Command):
             pattern = '|'.join(testspecs_list)
         else:
             pattern = ".*"
-        if subunit:
+        if subunit1:
             try:
-                from .tests import SubUnitBzrRunner
+                from .tests import SubUnitBzrRunnerv1
             except ImportError:
-                raise errors.BzrCommandError(gettext("subunit not available. subunit "
-                    "needs to be installed to use --subunit."))
-            self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
+                raise errors.BzrCommandError(gettext(
+                    "subunit not available. subunit needs to be installed "
+                    "to use --subunit."))
+            self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv1
             # On Windows, disable automatic conversion of '\n' to '\r\n' in
             # stdout, which would corrupt the subunit stream. 
             # FIXME: This has been fixed in subunit trunk (>0.0.5) so the
@@ -4140,6 +4142,15 @@ class cmd_selftest(Command):
                 and getattr(sys.stdout, 'fileno', None) is not None):
                 import msvcrt
                 msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+        if subunit2:
+            try:
+                from .tests import SubUnitBzrRunnerv2
+            except ImportError:
+                raise errors.BzrCommandError(gettext(
+                    "subunit not available. subunit "
+                    "needs to be installed to use --subunit2."))
+            self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv2
+
         if parallel:
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
@@ -6704,6 +6715,29 @@ class cmd_import(Command):
     def run(self, source, tree=None):
         from .upstream_import import do_import
         do_import(source, tree)
+
+
+class cmd_link_tree(Command):
+    __doc__ = """Hardlink matching files to another tree.
+
+    Only files with identical content and execute bit will be linked.
+    """
+
+    takes_args = ['location']
+
+    def run(self, location):
+        from .transform import link_tree
+        target_tree = WorkingTree.open_containing(".")[0]
+        source_tree = WorkingTree.open(location)
+        target_tree.lock_write()
+        try:
+            source_tree.lock_read()
+            try:
+                link_tree(target_tree, source_tree)
+            finally:
+                source_tree.unlock()
+        finally:
+            target_tree.unlock()
 
 
 class cmd_fetch_ghosts(Command):
