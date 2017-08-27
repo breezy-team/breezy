@@ -89,10 +89,15 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             'selftest --starting-with foo --starting-with bar')
         self.assertEqual(['foo', 'bar'], params[1]['starting_with'])
 
-    def test_subunit(self):
+    def test_subunitv1(self):
         self.requireFeature(features.subunit)
         params = self.get_params_passed_to_core('selftest --subunit1')
         self.assertEqual(tests.SubUnitBzrRunnerv1, params[1]['runner_class'])
+
+    def test_subunitv2(self):
+        self.requireFeature(features.subunit)
+        params = self.get_params_passed_to_core('selftest --subunit2')
+        self.assertEqual(tests.SubUnitBzrRunnerv2, params[1]['runner_class'])
 
     def _parse_test_list(self, lines, newlines_in_header=0):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."

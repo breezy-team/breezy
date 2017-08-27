@@ -3491,7 +3491,7 @@ def fork_for_tests(suite):
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 subunit_result = AutoTimingTestResultDecorator(
-                    SubUnitBzrProtocolClient(stream))
+                    SubUnitBzrProtocolClientv1(stream))
                 process_suite.run(subunit_result)
             except:
                 # Try and report traceback on stream, but exit with error even

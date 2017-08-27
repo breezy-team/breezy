@@ -1813,8 +1813,8 @@ class TestTestCaseLogDetails(tests.TestCase):
         # considered as a skip
         result = self._run_test('test_missing_feature')
         reasons = _get_skip_reasons(result)
-        self.assertEqual({missing_feature}, set(reasons))
-        skips = reasons[missing_feature]
+        self.assertEqual({str(missing_feature)}, set(reasons))
+        skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
         test = skips[0]
         self.assertFalse('log' in test.getDetails())
