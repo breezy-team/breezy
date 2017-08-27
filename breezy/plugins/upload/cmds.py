@@ -40,6 +40,10 @@ from breezy import (
     )
 """)
 
+from ...sixish import (
+    text_type,
+    )
+
 auto_option = config.Option(
     'upload_auto', default=False, from_unicode=config.bool_from_store,
     help="""\
@@ -174,9 +178,9 @@ class BzrUploader(object):
     def upload_file(self, relpath, id, mode=None):
         if mode is None:
             if self.tree.is_executable(id):
-                mode = 0775
+                mode = 0o775
             else:
-                mode = 0664
+                mode = 0o664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % relpath)
         self._up_put_bytes(relpath, self.tree.get_file_text(id), mode)
@@ -201,7 +205,7 @@ class BzrUploader(object):
 
     def make_remote_dir(self, relpath, mode=None):
         if mode is None:
-            mode = 0775
+            mode = 0o775
         self._up_mkdir(relpath, mode)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
@@ -460,7 +464,7 @@ class cmd_upload(commands.Command):
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
                       short_name='d',
-                      type=unicode,
+                      type=text_type,
                       ),
         option.Option('auto',
                       'Trigger an upload from this branch whenever the tip '
