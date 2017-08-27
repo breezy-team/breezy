@@ -188,6 +188,9 @@ API Changes
    doesn't support passing revision ids to ``CommitBuilder.commit``.
    (Jelmer Vernooĳ)
 
+ * ``Repository.print_file`` and ``Branch.print_file`` have been removed.
+   (Jelmer Vernooĳ)
+
 Internals
 *********
 
