@@ -16,6 +16,7 @@
 
 """Tests for BzrLibraryState."""
 
+import breezy
 from .. import (
     library_state,
     tests,
@@ -28,6 +29,7 @@ from . import fixtures
 class TestLibraryState(tests.TestCaseWithTransport):
 
     def test_ui_is_used(self):
+        self.overrideAttr(breezy, '_global_state', None)
         ui = _mod_ui.SilentUIFactory()
         state = library_state.BzrLibraryState(
             ui=ui, trace=fixtures.RecordingContextManager())
@@ -40,6 +42,7 @@ class TestLibraryState(tests.TestCaseWithTransport):
             self.assertEqual(orig_ui, _mod_ui.ui_factory)
 
     def test_trace_context(self):
+        self.overrideAttr(breezy, '_global_state', None)
         tracer = fixtures.RecordingContextManager()
         ui = _mod_ui.SilentUIFactory()
         state = library_state.BzrLibraryState(ui=ui, trace=tracer)

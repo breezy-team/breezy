@@ -334,7 +334,7 @@ def describe_plugins(show_paths=False, state=None):
     if state is None:
         state = breezy.get_global_state()
     loaded_plugins = plugins()
-    plugin_warnings = getattr(state, 'plugin_warnings', [])
+    plugin_warnings = set(getattr(state, 'plugin_warnings', []))
     all_names = sorted(set(loaded_plugins.keys())).union(plugin_warnings)
     for name in all_names:
         if name in loaded_plugins:
