@@ -179,7 +179,7 @@ class ModuleAvailableFeature(Feature):
                 for warning_category in self.ignore_warnings:
                     warnings.simplefilter('ignore', warning_category)
                 try:
-                    self._module = __import__(self.module_name, {}, {}, [''])
+                    self._module = __import__(self.module_name)
                 except ImportError:
                     return False
                 return True
