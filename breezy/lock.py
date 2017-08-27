@@ -107,7 +107,12 @@ class LogicalLockResult(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.unlock()
+        # If there was an error raised, prefer the original one
+        try:
+            self.unlock()
+        except:
+            if exc_type is None:
+                raise
         return False
 
 

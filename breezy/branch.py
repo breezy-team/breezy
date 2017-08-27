@@ -22,6 +22,7 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
+    cleanup,
     config as _mod_config,
     debug,
     fetch,
@@ -2275,41 +2276,11 @@ class GenericInterBranch(InterBranch):
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
 
-        with self.source.lock_read(), self.target.lock_write():
-            def _run_hooks():
-                if _override_hook_source_branch:
-                    result.source_branch = _override_hook_source_branch
-                for hook in Branch.hooks['post_push']:
-                    hook(result)
-
-            bound_location = self.target.get_bound_location()
-            if bound_location and self.target.base != bound_location:
-                # there is a master branch.
-                #
-                # XXX: Why the second check?  Is it even supported for a branch
-                # to be bound to itself? -- mbp 20070507
-                master_branch = self.target.get_master_branch()
-                with master_branch.lock_write():
-                    # push into the master from the source branch.
-                    master_inter = InterBranch.get(self.source, master_branch)
-                    master_inter._basic_push(overwrite, stop_revision)
-                # and push into the target branch from the source. Note that
-                # we push from the source branch again, because it's considered
-                # the highest bandwidth repository.
-                result = self._basic_push(overwrite, stop_revision)
-                result.master_branch = master_branch
-                result.local_branch = self.target
-            else:
-                master_branch = None
-                # no master branch
-                result = self._basic_push(overwrite, stop_revision)
-                # TODO: Why set master_branch and local_branch if there's no
-                # binding?  Maybe cleaner to just leave them unset? -- mbp
-                # 20070504
-                result.master_branch = self.target
-                result.local_branch = None
-            _run_hooks()
-            return result
+        op = cleanup.OperationWithCleanups(self._push_with_bound_branches)
+        op.add_cleanup(self.source.lock_read().unlock)
+        op.add_cleanup(self.target.lock_write().unlock)
+        return op.run(overwrite, stop_revision,
+            _override_hook_source_branch=_override_hook_source_branch)
 
     def _basic_push(self, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
@@ -2334,6 +2305,46 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(
                 self.target.tags, "tags" in overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
+        return result
+
+    def _push_with_bound_branches(self, operation, overwrite, stop_revision,
+            _override_hook_source_branch=None):
+        """Push from source into target, and into target's master if any.
+        """
+        def _run_hooks():
+            if _override_hook_source_branch:
+                result.source_branch = _override_hook_source_branch
+            for hook in Branch.hooks['post_push']:
+                hook(result)
+
+        bound_location = self.target.get_bound_location()
+        if bound_location and self.target.base != bound_location:
+            # there is a master branch.
+            #
+            # XXX: Why the second check?  Is it even supported for a branch to
+            # be bound to itself? -- mbp 20070507
+            master_branch = self.target.get_master_branch()
+            master_branch.lock_write()
+            operation.add_cleanup(master_branch.unlock)
+            # push into the master from the source branch.
+            master_inter = InterBranch.get(self.source, master_branch)
+            master_inter._basic_push(overwrite, stop_revision)
+            # and push into the target branch from the source. Note that
+            # we push from the source branch again, because it's considered
+            # the highest bandwidth repository.
+            result = self._basic_push(overwrite, stop_revision)
+            result.master_branch = master_branch
+            result.local_branch = self.target
+        else:
+            master_branch = None
+            # no master branch
+            result = self._basic_push(overwrite, stop_revision)
+            # TODO: Why set master_branch and local_branch if there's no
+            # binding?  Maybe cleaner to just leave them unset? -- mbp
+            # 20070504
+            result.master_branch = self.target
+            result.local_branch = None
+        _run_hooks()
         return result
 
     def _pull(self, overwrite=False, stop_revision=None,
