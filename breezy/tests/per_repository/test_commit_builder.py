@@ -322,18 +322,18 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # of the dir even the dirs contents are changed.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/'])
-        tree.add(['dir'], ['dirid'])
+        tree.add(['dir'])
+        dir_id = tree.path2id('dir')
         rev1 = tree.commit('')
         self.build_tree(['dir/content'])
-        tree.add(['dir/content'], ['contentid'])
+        tree.add(['dir/content'])
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.get_file_revision('dirid'))
-        self.assertEqual(rev1, tree2.get_file_revision('dirid'))
-        file_id = 'dirid'
+        self.assertEqual(rev1, tree1.get_file_revision(dir_id))
+        self.assertEqual(rev1, tree2.get_file_revision(dir_id))
         expected_graph = {}
-        expected_graph[(file_id, rev1)] = ()
-        self.assertFileGraph(expected_graph, tree, (file_id, rev1))
+        expected_graph[(dir_id, rev1)] = ()
+        self.assertFileGraph(expected_graph, tree, (dir_id, rev1))
 
     def test_last_modified_revision_after_commit_file_unchanged(self):
         # committing without changing a file does not change the last modified.
