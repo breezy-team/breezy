@@ -1,9 +1,0 @@
-bzr-cvs
-+++++++
-
-This is a small plugin that makes bzr aware of CVS control directories. This is
-mainly useful to make the error of running a bzr command in a CVS tree more
-clear.
-
-Enjoy,
-Robert Collins
