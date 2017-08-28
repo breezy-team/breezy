@@ -24,6 +24,7 @@ from __future__ import absolute_import
 from ... import version_info
 
 from ... import (
+    branch as _mod_branch,
     controldir,
     errors,
     )
@@ -75,7 +76,7 @@ class MonotoneProber(controldir.Prober):
         """Our format is present if the transport has a '_MTN/' subdir."""
         if transport.has('_MTN'):
             return MonotoneDirFormat()
-        raise errors.NotBranchError(path=transport.base)
+        raise _mod_branch.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
