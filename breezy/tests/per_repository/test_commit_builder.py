@@ -296,8 +296,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 tree2.get_file_revision(tree2.get_root_id()))
 
     def _add_commit_check_unchanged(self, tree, name, mini_commit=None):
-        tree.add([name], [name + 'id'])
-        self._commit_check_unchanged(tree, name, name + 'id',
+        tree.add([name])
+        self._commit_check_unchanged(tree, name, tree.path2id(name),
             mini_commit=mini_commit)
 
     def _commit_check_unchanged(self, tree, name, file_id, mini_commit=None):
@@ -584,7 +584,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget')
 
     def _commit_sprout(self, tree, name):
-        tree.add([name], [name + 'id'])
+        tree.add([name])
         rev_id = tree.commit('')
         return rev_id, tree.controldir.sprout('t2').open_workingtree()
 
@@ -596,6 +596,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         mini_commit=None):
         """Do a rename in both trees."""
         rev1, tree2 = self._commit_sprout(tree1, name)
+        file_id = tree2.path2id(name)
         # change both sides equally
         rev2 = self._rename_in_tree(tree1, name)
         rev3 = self._rename_in_tree(tree2, name)
@@ -603,8 +604,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev4 = mini_commit(tree1, 'new_' + name, 'new_' + name,
             expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
-        self.assertEqual(rev4, tree3.get_file_revision(name + 'id'))
-        file_id = name + 'id'
+        self.assertEqual(rev4, tree3.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
@@ -641,6 +641,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # in the inventory.
         # Part 1: change in the merged branch.
         rev1, tree2 = self._commit_sprout(tree1, name)
+        file_id = tree2.path2id(name)
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
@@ -648,8 +649,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             rev3 = mini_commit(in_tree, name, 'new_' + name, False,
                 delta_against_basis=changed_in_tree)
             tree3, = self._get_revtrees(in_tree, [rev2])
-            self.assertEqual(rev2, tree3.get_file_revision(name + 'id'))
-            file_id = name + 'id'
+            self.assertEqual(rev2, tree3.get_file_revision(file_id))
             expected_graph = {}
             expected_graph[(file_id, rev1)] = ()
             expected_graph[(file_id, rev2)] = ((file_id, rev1),)
