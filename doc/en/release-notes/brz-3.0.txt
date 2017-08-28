@@ -215,5 +215,9 @@ Testing
    outputs subunit v2.
    (Jelmer Vernooĳ, #1699346, #661205)
 
+ * Set the ``GPGHOME`` environment variable during testing, to prevent
+   e.g. leaking keys into the users' GNUPG directory.
+   (Jelmer Vernooĳ, #843885)
+
 ..
    vim: tw=74 ft=rst ff=unix
