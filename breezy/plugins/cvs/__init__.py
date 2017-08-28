@@ -21,7 +21,11 @@ Currently limited to telling you you want to run CVS commands.
 
 from __future__ import absolute_import
 
-from ... import version_info
+from ... import (
+    branch as _mod_branch,
+    errors,
+    version_info,
+    )
 from ...controldir import (
     ControlDirFormat,
     ControlDir,
@@ -38,7 +42,7 @@ class CVSUnsupportedError(errors.UnsupportedFormatError):
             "https://launchpad.net/launchpad-bazaar/+faq/26.")
 
     def __init__(self, format):
-        bzrlib.errors.BzrError.__init__(self)
+        errors.BzrError.__init__(self)
         self.format = format
 
 
@@ -52,7 +56,7 @@ class CVSDirFormat(ControlDirFormat):
         return "CVS control directory."
 
     def initialize_on_transport(self, transport):
-        raise bzrlib.errors.UninitializableFormat(self)
+        raise errors.UninitializableFormat(self)
 
     def is_supported(self):
         return False
@@ -77,9 +81,9 @@ class CVSProber(Prober):
         # little ugly, but works
         # try a manual probe first, its a little faster perhaps ?
         if not transport.has('CVS'):
-            raise bzrlib.errors.NotBranchError(path=transport.base)
+            raise mod_branch.NotBranchError(path=transport.base)
         if not transport.has('CVS/Repository'):
-            raise bzrlib.errors.NotBranchError(path=transport.base)
+            raise mod_branch.NotBranchError(path=transport.base)
         return CVSDirFormat()
 
     @classmethod
