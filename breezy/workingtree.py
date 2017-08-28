@@ -696,14 +696,13 @@ class WorkingTree(mutabletree.MutableTree,
 
         self._set_merges_from_parent_ids(revision_ids)
 
-    @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
-        parents = self.get_parent_ids()
-        leftmost = parents[:1]
-        new_parents = leftmost + rev_list
-        self.set_parent_ids(new_parents)
+        with self.lock_tree_write():
+            parents = self.get_parent_ids()
+            leftmost = parents[:1]
+            new_parents = leftmost + rev_list
+            self.set_parent_ids(new_parents)
 
-    @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
         """Set the merge modified hashes."""
         raise NotImplementedError(self.set_merge_modified)
@@ -885,7 +884,6 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.move)
 
-    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
         """Rename one file.
 
@@ -1118,9 +1116,8 @@ class WorkingTree(mutabletree.MutableTree,
             self.branch._set_revision_history([new_revision])
         return True
 
-    @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
-        force=False):
+               force=False):
         """Remove nominated files from the working tree metadata.
 
         :files: File paths relative to the basedir.
@@ -1128,114 +1125,7 @@ class WorkingTree(mutabletree.MutableTree,
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
-        if isinstance(files, (str, text_type)):
-            files = [files]
-
-        inv_delta = []
-
-        all_files = set() # specified and nested files 
-        unknown_nested_files=set()
-        if to_file is None:
-            to_file = sys.stdout
-
-        files_to_backup = []
-
-        def recurse_directory_to_add_files(directory):
-            # Recurse directory and add all files
-            # so we can check if they have changed.
-            for parent_info, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, fileid, kind in file_infos:
-                    # Is it versioned or ignored?
-                    if self.path2id(relpath):
-                        # Add nested content for deletion.
-                        all_files.add(relpath)
-                    else:
-                        # Files which are not versioned
-                        # should be treated as unknown.
-                        files_to_backup.append(relpath)
-
-        for filename in files:
-            # Get file name into canonical form.
-            abspath = self.abspath(filename)
-            filename = self.relpath(abspath)
-            if len(filename) > 0:
-                all_files.add(filename)
-                recurse_directory_to_add_files(filename)
-
-        files = list(all_files)
-
-        if len(files) == 0:
-            return # nothing to do
-
-        # Sort needed to first handle directory content before the directory
-        files.sort(reverse=True)
-
-        # Bail out if we are going to delete files we shouldn't
-        if not keep_files and not force:
-            for (file_id, path, content_change, versioned, parent_id, name,
-                 kind, executable) in self.iter_changes(self.basis_tree(),
-                     include_unchanged=True, require_versioned=False,
-                     want_unversioned=True, specific_files=files):
-                if versioned[0] == False:
-                    # The record is unknown or newly added
-                    files_to_backup.append(path[1])
-                elif (content_change and (kind[1] is not None) and
-                        osutils.is_inside_any(files, path[1])):
-                    # Versioned and changed, but not deleted, and still
-                    # in one of the dirs to be deleted.
-                    files_to_backup.append(path[1])
-
-        def backup(file_to_backup):
-            backup_name = self.controldir._available_backup_name(file_to_backup)
-            osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed %s (but kept a copy: %s)" % (file_to_backup,
-                                                         backup_name)
-
-        # Build inv_delta and delete files where applicable,
-        # do this before any modifications to meta data.
-        for f in files:
-            fid = self.path2id(f)
-            message = None
-            if not fid:
-                message = "%s is not versioned." % (f,)
-            else:
-                if verbose:
-                    # having removed it, it must be either ignored or unknown
-                    if self.is_ignored(f):
-                        new_status = 'I'
-                    else:
-                        new_status = '?'
-                    # XXX: Really should be a more abstract reporter interface
-                    kind_ch = osutils.kind_marker(self.kind(fid))
-                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
-                # Unversion file
-                inv_delta.append((f, None, fid, None))
-                message = "removed %s" % (f,)
-
-            if not keep_files:
-                abs_path = self.abspath(f)
-                if osutils.lexists(abs_path):
-                    if (osutils.isdir(abs_path) and
-                        len(os.listdir(abs_path)) > 0):
-                        if force:
-                            osutils.rmtree(abs_path)
-                            message = "deleted %s" % (f,)
-                        else:
-                            message = backup(f)
-                    else:
-                        if f in files_to_backup:
-                            message = backup(f)
-                        else:
-                            osutils.delete_any(abs_path)
-                            message = "deleted %s" % (f,)
-                elif message is not None:
-                    # Only care if we haven't done anything yet.
-                    message = "%s does not exist." % (f,)
-
-            # Print only one message (if any) per file.
-            if message is not None:
-                note(message)
-        self.apply_inventory_delta(inv_delta)
+        raise NotImplementedError(self.remove)
 
     @needs_tree_write_lock
     def revert(self, filenames=None, old_tree=None, backups=True,
