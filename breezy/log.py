@@ -323,17 +323,17 @@ def _apply_log_request_defaults(rqst):
     return result
 
 
-def format_signature_validity(rev_id, repo):
+def format_signature_validity(rev_id, branch):
     """get the signature validity
 
     :param rev_id: revision id to validate
-    :param repo: repository of revision
+    :param branch: branch of revision
     :return: human readable string to print to log
     """
     from breezy import gpg
 
-    gpg_strategy = gpg.GPGStrategy(None)
-    result = repo.verify_revision_signature(rev_id, gpg_strategy)
+    gpg_strategy = gpg.GPGStrategy(branch.get_config_stack())
+    result = branch.repository.verify_revision_signature(rev_id, gpg_strategy)
     if result[0] == gpg.SIGNATURE_VALID:
         return u"valid signature from {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_KEY_MISSING:
@@ -467,8 +467,7 @@ class _DefaultLogGenerator(LogGenerator):
                 else:
                     diff = self._format_diff(rev, rev_id, diff_type)
                 if show_signature:
-                    signature = format_signature_validity(rev_id,
-                                                self.branch.repository)
+                    signature = format_signature_validity(rev_id, self.branch)
                 else:
                     signature = None
                 yield LogRevision(rev, revno, merge_depth, delta,
