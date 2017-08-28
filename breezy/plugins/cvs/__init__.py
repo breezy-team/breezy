@@ -16,7 +16,7 @@
 
 """CVS working tree support for bzr.
 
-Currently limited to telling you you want to run CVS commands.
+Currently limited to referencing tools for migration.
 """
 
 from __future__ import absolute_import
