@@ -81,9 +81,9 @@ class CVSProber(Prober):
         # little ugly, but works
         # try a manual probe first, its a little faster perhaps ?
         if not transport.has('CVS'):
-            raise mod_branch.NotBranchError(path=transport.base)
+            raise _mod_branch.NotBranchError(path=transport.base)
         if not transport.has('CVS/Repository'):
-            raise mod_branch.NotBranchError(path=transport.base)
+            raise _mod_branch.NotBranchError(path=transport.base)
         return CVSDirFormat()
 
     @classmethod
