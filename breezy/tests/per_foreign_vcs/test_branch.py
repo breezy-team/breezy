@@ -17,10 +17,11 @@
 
 """Tests specific to Branch implementations that use foreign VCS'es."""
 
-
+from breezy.branch import (
+    UnstackableBranchFormat,
+    )
 from breezy.errors import (
     IncompatibleFormat,
-    UnstackableBranchFormat,
     )
 from breezy.revision import (
     NULL_REVISION,
@@ -135,7 +136,7 @@ class ForeignBranchFormatTests(TestCaseWithTransport):
         Remote branches may be initializable on their own, but none currently
         support living in .bzr/branch.
         """
-        bzrdir = self.make_bzrdir('dir')
+        bzrdir = self.make_controldir('dir')
         self.assertRaises(IncompatibleFormat, self.branch_format.initialize, bzrdir)
 
     def test_get_format_description_type(self):

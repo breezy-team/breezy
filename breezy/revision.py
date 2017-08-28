@@ -26,11 +26,14 @@ from breezy import bugtracker
 """)
 from . import (
     errors,
+    osutils,
     )
-from .osutils import contains_whitespace
+from .sixish import (
+    text_type,
+    )
 
-NULL_REVISION="null:"
-CURRENT_REVISION="current:"
+NULL_REVISION=b"null:"
+CURRENT_REVISION=b"current:"
 
 
 class Revision(object):
@@ -85,10 +88,12 @@ class Revision(object):
 
     def _check_properties(self):
         """Verify that all revision properties are OK."""
-        for name, value in self.properties.iteritems():
-            if not isinstance(name, basestring) or contains_whitespace(name):
+        for name, value in self.properties.items():
+            # GZ 2017-06-10: What sort of string are properties exactly?
+            not_text = not isinstance(name, (text_type, str))
+            if not_text or osutils.contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
-            if not isinstance(value, basestring):
+            if not isinstance(value, (text_type, bytes)):
                 raise ValueError("invalid property value %r for %r" %
                                  (value, name))
 
@@ -147,9 +152,9 @@ class Revision(object):
             try:
                 url, status = line.split(None, 2)
             except ValueError:
-                raise errors.InvalidLineInBugsProperty(line)
+                raise bugtracker.InvalidLineInBugsProperty(line)
             if status not in bugtracker.ALLOWED_BUG_STATUSES:
-                raise errors.InvalidBugStatus(status)
+                raise bugtracker.InvalidBugStatus(status)
             yield url, status
 
 
@@ -205,7 +210,7 @@ def is_reserved_id(revision_id):
 
     :return: True if the revision is reserved, False otherwise
     """
-    return isinstance(revision_id, basestring) and revision_id.endswith(':')
+    return isinstance(revision_id, bytes) and revision_id.endswith(b':')
 
 
 def check_not_reserved_id(revision_id):

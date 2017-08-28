@@ -23,9 +23,9 @@ from breezy import (
 from breezy.tests import (
     per_tree,
     )
+from breezy.bzr.inventorytree import InventoryTree
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
-from breezy.tree import InventoryTree
 from breezy.transform import _PreviewTree
 from breezy.uncommit import uncommit
 from breezy.tests import (
@@ -74,16 +74,17 @@ class TestInventory(per_tree.TestCaseWithTree):
     def test_paths2ids_recursive(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
-        work_tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        work_tree.add(['dir', 'dir/file'])
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual({'dir-id', 'file-id'}, tree.paths2ids(['dir']))
+        self.assertEqual({tree.path2id('dir'), tree.path2id('dir/file')},
+                         tree.paths2ids(['dir']))
 
     def test_paths2ids_forget_old(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        work_tree.add('file', 'first-id')
+        work_tree.add('file')
         work_tree.commit('commit old state')
         work_tree.remove('file')
         tree = self._convert_tree(work_tree)
@@ -114,8 +115,9 @@ class TestInventory(per_tree.TestCaseWithTree):
     def test_canonical_path_before_commit(self):
         work_tree = self._make_canonical_test_tree(False)
         if not isinstance(work_tree, InventoryTree):
+            # note: not committed.
             raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")        # note: not committed.
+                "test not applicable on non-inventory tests")
         self.assertEqual('dir/file',
                          work_tree.get_canonical_inventory_path('Dir/File'))
 

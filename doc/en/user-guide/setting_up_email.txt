@@ -21,7 +21,7 @@ hostname if none is set.  This will probably not be what you want, so three
 ways exist to tell Breezy what email to use:
 
 You can set your email in one of several configuration files.  Like
-other configuration values, you can set it in ``bazaar.conf`` as a
+other configuration values, you can set it in ``breezy.conf`` as a
 general setting.  If you want to override the value for a particular
 branch, or set of branches, you can use ``locations.conf``.
 ``.brz/branch/branch.conf`` will also work, but will cause all commits
@@ -35,7 +35,7 @@ The order of precedence is
     file.
  #. If an email is set four your current branch in the
     ``.brz/branch/branch.conf`` file.
- #. If an email is set in the ``bazaar.conf`` default configuration file.
+ #. If an email is set in the ``breezy.conf`` default configuration file.
  #. If the `EMAIL` environment variable is set.
  #. Breezy will try to guess based on your username and the hostname.
 
@@ -56,13 +56,13 @@ or only for the current branch::
 
     % brz whoami --branch "Joe Cool <joe@example.com>"
 
-These modify your global ``bazaar.conf`` or branch ``branch.conf`` file, respectively.
+These modify your global ``breezy.conf`` or branch ``branch.conf`` file, respectively.
 
 Setting email via default configuration file
 --------------------------------------------
 
-To use the default ini file, create or edit the ``bazaar.conf`` file (in
-``~/.bazaar/`` on Unix and in ``%APPDATA%\bazaar\2.0\`` in Windows)
+To use the default ini file, create or edit the ``breezy.conf`` file (in
+``~/.config/breezy/`` on Unix and in ``%APPDATA%\breezy\2.0\`` in Windows)
 and set an email address as shown below.  Please note that the word DEFAULT
 is case sensitive, and must be in upper-case.
 ::
@@ -86,7 +86,7 @@ using the ``locations.conf`` configuration file like this::
     email=Your Name <name@other-isp.com>
 
 This will set your email address in the branch at ``/some/branch/location``,
-overriding the default specified in the ``bazaar.conf`` above.
+overriding the default specified in the ``breezy.conf`` above.
 
 Setting email via environment variable
 --------------------------------------

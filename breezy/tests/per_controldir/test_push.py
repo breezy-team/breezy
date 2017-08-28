@@ -26,13 +26,13 @@ class TestPush(TestCaseWithControlDir):
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='r1')
-        return tree
+        tree.add(['a'])
+        rev_1 = tree.commit('one')
+        return tree, rev_1
 
     def test_push_new_branch(self):
-        tree = self.create_simple_tree()
-        dir = self.make_repository('dir').bzrdir
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.branch, result.source_branch)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
@@ -41,19 +41,19 @@ class TestPush(TestCaseWithControlDir):
 
     def test_push_new_empty(self):
         tree = self.make_branch_and_tree('tree')
-        dir = self.make_repository('dir').bzrdir
+        dir = self.make_repository('dir').controldir
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.branch.base, result.source_branch.base)
         self.assertEqual(dir.open_branch().base,
             result.target_branch.base)
 
     def test_push_incremental(self):
-        tree = self.create_simple_tree()
-        dir = self.make_repository('dir').bzrdir
+        tree, rev1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
         dir.push_branch(tree.branch)
         self.build_tree(['tree/b'])
         tree.add(['b'])
-        tree.commit('two', rev_id='r2')
+        rev_2 = tree.commit('two')
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.last_revision(),
             result.branch_push_result.new_revid)

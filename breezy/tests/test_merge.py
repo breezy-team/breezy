@@ -21,14 +21,16 @@ from .. import (
     cleanup,
     conflicts,
     errors,
-    inventory,
-    knit,
     memorytree,
     merge as _mod_merge,
     option,
     revision as _mod_revision,
     tests,
     transform,
+    )
+from ..bzr import (
+    inventory,
+    knit,
     versionedfile,
     )
 from ..conflicts import ConflictList, TextConflict
@@ -176,7 +178,7 @@ class TestMerge(TestCaseWithTransport):
         # Test that merge_inner's ignore zero parameter is effective
         tree_a =self.make_branch_and_tree('a')
         tree_a.commit(message="hello")
-        dir_b = tree_a.bzrdir.sprout('b')
+        dir_b = tree_a.controldir.sprout('b')
         tree_b = dir_b.open_workingtree()
         tree_b.lock_write()
         self.addCleanup(tree_b.unlock)
@@ -205,7 +207,7 @@ class TestMerge(TestCaseWithTransport):
         # the basis tree. This mutates the tree after grabbing basis, so go to
         # the repository.
         base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
-        tree_z = tree_a.bzrdir.sprout('z').open_workingtree()
+        tree_z = tree_a.controldir.sprout('z').open_workingtree()
         self.build_tree(['a/b/c'])
         tree_a.add('b/c')
         tree_a.commit('added c')
@@ -224,6 +226,8 @@ class TestMerge(TestCaseWithTransport):
             tree_a.conflicts())
 
     def test_nested_merge(self):
+        self.knownFailure(
+            'iter_changes doesn\'t work with changes in nested trees')
         tree = self.make_branch_and_tree('tree',
             format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree/sub-tree',
@@ -234,7 +238,7 @@ class TestMerge(TestCaseWithTransport):
         sub_tree.commit('foo')
         tree.add_reference(sub_tree)
         tree.commit('set text to 1')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         # modify the file in the subtree
         self.build_tree_contents([('tree2/sub-tree/file', 'text2')])
         # and merge the changes from the diverged subtree into the containing
@@ -252,7 +256,7 @@ class TestMerge(TestCaseWithTransport):
         # the basis tree. This test commits to the tree after grabbing basis,
         # so we go to the repository.
         base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         self.build_tree_contents([('tree_a/file', 'content_2')])
         tree_a.commit('commit other')
         other_tree = tree_a.basis_tree()
@@ -266,7 +270,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree_contents([('tree_a/file', 'content_1')])
         tree_a.add('file', 'file-id')
         tree_a.commit('added file')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')
         self.build_tree(['tree_a/file/'])
         tree_a.commit('changed file to directory')
@@ -304,7 +308,7 @@ class TestMerge(TestCaseWithTransport):
         tree_a.flush()
         tree_a.rename_one('a', 'b')
         tree_a.commit('2')
-        bzrdir_b = tree_a.bzrdir.sprout('B', revision_id='rev-1')
+        bzrdir_b = tree_a.controldir.sprout('B', revision_id='rev-1')
         tree_b = bzrdir_b.open_workingtree()
         tree_b.lock_write()
         self.addCleanup(tree_b.unlock)
@@ -322,7 +326,7 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit('commit 1')
         tree_a.add(['file_2'])
         tree_a.commit('commit 2')
-        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('b').open_workingtree()
         tree_b.rename_one('file_1', 'renamed')
         merger = _mod_merge.Merger.from_uncommitted(tree_a, tree_b)
         merger.merge_type = _mod_merge.Merge3Merger
@@ -336,7 +340,7 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit('commit 1')
         tree_a.add(['file_2'])
         tree_a.commit('commit 2')
-        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('b').open_workingtree()
         tree_b.rename_one('file_1', 'renamed')
         merger = _mod_merge.Merger.from_uncommitted(tree_a, tree_b)
         merger.merge_type = _mod_merge.WeaveMerger
@@ -358,7 +362,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree_contents([('this/file', "a\n")])
         this_tree.add('file')
         this_tree.commit('rev1')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/file', "a\nb\n")])
         other_tree.commit('rev2b', rev_id='rev2b')
         self.build_tree_contents([('other/file', "c\na\nb\n")])
@@ -369,7 +373,7 @@ class TestMerge(TestCaseWithTransport):
 
     def test_weave_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
@@ -377,14 +381,14 @@ class TestMerge(TestCaseWithTransport):
 
     def test_weave_cannot_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', 'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         self.assertRaises(errors.CannotReverseCherrypick, merger.do_merge)
 
     def test_merge3_can_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', 'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
@@ -394,7 +398,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree_contents([('this/file', "a\n")])
         this_tree.add('file')
         this_tree.commit('rev1')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/file', "a\nb\n")])
         other_tree.commit('rev2b', rev_id='rev2b')
         self.build_tree_contents([('other/file', "a\nb\nc\n")])
@@ -402,7 +406,7 @@ class TestMerge(TestCaseWithTransport):
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
@@ -420,7 +424,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a'])
         tree.add('a')
         first_rev = tree.commit("added a")
-        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
         merger.merge_type = _mod_merge.Merge3Merger
@@ -435,12 +439,12 @@ class TestMerge(TestCaseWithTransport):
     def test_make_merger(self):
         this_tree = self.make_branch_and_tree('this')
         this_tree.commit('rev1', rev_id='rev1')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         this_tree.commit('rev2', rev_id='rev2a')
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
@@ -456,14 +460,14 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree_contents([('this/file', '1\n')])
         this_tree.add('file', 'file-id')
         this_tree.commit('rev1', rev_id='rev1')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('this/file', '1\n2a\n')])
         this_tree.commit('rev2', rev_id='rev2a')
         self.build_tree_contents([('other/file', '2b\n1\n')])
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
@@ -486,14 +490,14 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree_contents([('this/file', '1\n')])
         this_tree.add('file', 'file-id')
         this_tree.commit('rev1', rev_id='rev1')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('this/file', '1\n2a\n')])
         this_tree.commit('rev2', rev_id='rev2a')
         self.build_tree_contents([('other/file', '2b\n1\n')])
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
@@ -512,7 +516,7 @@ class TestMerge(TestCaseWithTransport):
         tree.add('a')
         first_rev = tree.commit("added a")
         old_root_id = tree.get_root_id()
-        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
         merger.merge_type = _mod_merge.Merge3Merger
@@ -527,7 +531,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['source/foo/'])
         source.add('foo', 'foo-id')
         source.commit('Add foo')
-        target = source.bzrdir.sprout('target').open_workingtree()
+        target = source.controldir.sprout('target').open_workingtree()
         subtree = target.extract('foo-id')
         subtree.commit('Delete root')
         self.build_tree(['source/bar'])
@@ -544,7 +548,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['target/bla'])
         target.add('bla')
         target.commit('Add bla')
-        nested = source.bzrdir.sprout('target/subtree').open_workingtree()
+        nested = source.controldir.sprout('target/subtree').open_workingtree()
         target.subsume(nested)
         target.commit('Join nested')
         self.build_tree(['source/bar'])
@@ -1043,7 +1047,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def assertPruneTails(self, pruned_map, tails, parent_map):
         child_map = {}
-        for key, parent_keys in parent_map.iteritems():
+        for key, parent_keys in parent_map.items():
             child_map.setdefault(key, [])
             for pkey in parent_keys:
                 child_map.setdefault(pkey, []).append(key)
@@ -1266,7 +1270,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
         mem_tree.lock_write()
         self.addCleanup(mem_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             mem_tree, other_revision_id)
         merger.set_interesting_files(interesting_files)
         # It seems there is no matching function for set_interesting_ids
@@ -2056,7 +2060,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def get_wt_from_builder(self, builder):
         """Get a real WorkingTree from the builder."""
         the_branch = builder.get_branch()
-        wt = the_branch.bzrdir.create_workingtree()
+        wt = the_branch.controldir.create_workingtree()
         # Note: This is a little bit ugly, but we are holding the branch
         #       write-locked as part of the build process, and we would like to
         #       maintain that. So we just force the WT to re-use the same
@@ -2068,7 +2072,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def do_merge(self, builder, other_revision_id):
         wt = self.get_wt_from_builder(builder)
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             wt, other_revision_id)
         merger.merge_type = _mod_merge.Merge3Merger
         return wt, merger.do_merge()
@@ -2334,8 +2338,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('D merges B & C', rev_id='D-id')
         self.assertEqual('barry', wt.id2path('foo-id'))
         # Check the output of the Merger object directly
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'F-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'F-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         root_id = wt.path2id('')
@@ -2390,8 +2393,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('F foo => bing', rev_id='F-id')
 
         # Check the output of the Merger object directly
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         # Nothing interesting happened in OTHER relative to BASE
@@ -2441,8 +2443,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         list(wt.iter_changes(wt.basis_tree()))
         wt.commit('D merges B & C, makes it a file', rev_id='D-id')
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2492,16 +2493,16 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.merge_from_branch(wt.branch, 'C-id')
         wt.commit('D merges B & C', rev_id='D-id')
-        wt_base = wt.bzrdir.sprout('base', 'A-id').open_workingtree()
+        wt_base = wt.controldir.sprout('base', 'A-id').open_workingtree()
         wt_base.lock_read()
         self.addCleanup(wt_base.unlock)
-        wt_lca1 = wt.bzrdir.sprout('b-tree', 'B-id').open_workingtree()
+        wt_lca1 = wt.controldir.sprout('b-tree', 'B-id').open_workingtree()
         wt_lca1.lock_read()
         self.addCleanup(wt_lca1.unlock)
-        wt_lca2 = wt.bzrdir.sprout('c-tree', 'C-id').open_workingtree()
+        wt_lca2 = wt.controldir.sprout('c-tree', 'C-id').open_workingtree()
         wt_lca2.lock_read()
         self.addCleanup(wt_lca2.unlock)
-        wt_other = wt.bzrdir.sprout('other', 'F-id').open_workingtree()
+        wt_other = wt.controldir.sprout('other', 'F-id').open_workingtree()
         wt_other.lock_read()
         self.addCleanup(wt_other.unlock)
         merge_obj = _mod_merge.Merge3Merger(wt, wt, wt_base,
@@ -2602,16 +2603,16 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot('D-id', ['B-id', 'C-id'],
             [('rename', ('a', 'b'))]) # merged change
         wt_this = self.get_wt_from_builder(builder)
-        wt_base = wt_this.bzrdir.sprout('base', 'A-id').open_workingtree()
+        wt_base = wt_this.controldir.sprout('base', 'A-id').open_workingtree()
         wt_base.lock_read()
         self.addCleanup(wt_base.unlock)
-        wt_lca1 = wt_this.bzrdir.sprout('b-tree', 'B-id').open_workingtree()
+        wt_lca1 = wt_this.controldir.sprout('b-tree', 'B-id').open_workingtree()
         wt_lca1.lock_read()
         self.addCleanup(wt_lca1.unlock)
-        wt_lca2 = wt_this.bzrdir.sprout('c-tree', 'C-id').open_workingtree()
+        wt_lca2 = wt_this.controldir.sprout('c-tree', 'C-id').open_workingtree()
         wt_lca2.lock_read()
         self.addCleanup(wt_lca2.unlock)
-        wt_other = wt_this.bzrdir.sprout('other', 'E-id').open_workingtree()
+        wt_other = wt_this.controldir.sprout('other', 'E-id').open_workingtree()
         wt_other.lock_read()
         self.addCleanup(wt_other.unlock)
         merge_obj = _mod_merge.Merge3Merger(wt_this, wt_this, wt_base,
@@ -2656,8 +2657,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2693,8 +2693,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2733,8 +2732,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2778,8 +2776,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, 'B-id')
         wt.commit('D', rev_id='D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(None,
-            wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -3255,12 +3252,12 @@ class TestMergeHooks(TestCaseWithTransport):
         self.tree_a.add('file', 'file-id')
         self.tree_a.commit('added file')
 
-        self.tree_b = self.tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.tree_b = self.tree_a.controldir.sprout('tree_b').open_workingtree()
         self.build_tree_contents([('tree_b/file', 'content_2')])
         self.tree_b.commit('modify file')
 
     def test_pre_merge_hook_inject_different_tree(self):
-        tree_c = self.tree_b.bzrdir.sprout('tree_c').open_workingtree()
+        tree_c = self.tree_b.controldir.sprout('tree_c').open_workingtree()
         self.build_tree_contents([('tree_c/file', 'content_3')])
         tree_c.commit("more content")
         calls = []

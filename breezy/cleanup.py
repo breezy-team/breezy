@@ -54,7 +54,7 @@ def _log_cleanup_error(exc):
     trace.mutter('Cleanup failed:')
     trace.log_exception_quietly()
     if 'cleanup' in debug.debug_flags:
-        trace.warning('bzr: warning: Cleanup failed: %s', exc)
+        trace.warning('brz: warning: Cleanup failed: %s', exc)
 
 
 def _run_cleanup(func, *args, **kwargs):

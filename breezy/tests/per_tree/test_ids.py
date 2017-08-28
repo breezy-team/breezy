@@ -25,6 +25,8 @@ class IdTests(TestCaseWithTree):
     def setUp(self):
         super(IdTests, self).setUp()
         work_a = self.make_branch_and_tree('wta')
+        if not work_a.supports_setting_file_ids():
+            self.skip("working tree does not support setting file ids")
         self.build_tree(['wta/bla', 'wta/dir/', 'wta/dir/file'])
         work_a.add(['bla', 'dir', 'dir/file'], ['bla-id', 'dir-id', 'file-id'])
         work_a.commit('add files')

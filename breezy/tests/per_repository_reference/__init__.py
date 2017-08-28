@@ -24,8 +24,10 @@ this.
 
 from breezy import (
     errors,
-    remote,
     urlutils,
+    )
+from breezy.bzr import (
+    remote,
     )
 from breezy.controldir import ControlDir
 from breezy.tests import multiply_tests
@@ -48,7 +50,7 @@ class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):
         return repo
 
     def readonly_repository(self, repo):
-        relpath = urlutils.basename(repo.bzrdir.user_url.rstrip('/'))
+        relpath = urlutils.basename(repo.controldir.user_url.rstrip('/'))
         return ControlDir.open_from_transport(
             self.get_readonly_transport(relpath)).open_repository()
 

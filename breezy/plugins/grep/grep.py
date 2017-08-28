@@ -23,7 +23,7 @@ from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
 
-from breezy._termcolor import color_string, re_color_string, FG
+from breezy._termcolor import color_string, FG
 
 from breezy.revisionspec import (
     RevisionSpec,
@@ -31,7 +31,7 @@ from breezy.revisionspec import (
     RevisionSpec_revno,
     )
 from breezy import (
-    bzrdir,
+    controldir,
     diff,
     errors,
     lazy_regex,
@@ -215,7 +215,7 @@ class _GrepDiffOutputter(object):
 
 def grep_diff(opts):
     wt, branch, relpath = \
-        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+        controldir.ControlDir.open_containing_tree_or_branch('.')
     branch.lock_read()
     try:
         if opts.revision:
@@ -307,7 +307,7 @@ def grep_diff(opts):
 
 def versioned_grep(opts):
     wt, branch, relpath = \
-        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+        controldir.ControlDir.open_containing_tree_or_branch('.')
     branch.lock_read()
     try:
         start_rev = opts.revision[0]
@@ -379,7 +379,7 @@ def workingtree_grep(opts):
     revno = opts.print_revno = None # for working tree set revno to None
 
     tree, branch, relpath = \
-        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+        controldir.ControlDir.open_containing_tree_or_branch('.')
     if not tree:
         msg = ('Cannot search working tree. Working tree not found.\n'
             'To search for specific revision in history use the -r option.')
@@ -653,15 +653,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
 
     if opts.files_with_matches or opts.files_without_match:
         if opts.fixed_string:
-            if sys.platform > (2, 5):
-                found = pattern in file_text
-            else:
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        found = True
-                        break
-                else:
-                    found = False
+            found = pattern in file_text
         else:
             search = opts.patternc.search
             if "$" not in pattern:

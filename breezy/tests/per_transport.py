@@ -34,7 +34,6 @@ from .. import (
     )
 from ..errors import (ConnectionError,
                       FileExists,
-                      InvalidURL,
                       NoSuchFile,
                       PathError,
                       TransportNotPossible,
@@ -44,7 +43,7 @@ from ..sixish import (
     BytesIO,
     zip,
     )
-from ..smart import medium
+from ..bzr.smart import medium
 from . import (
     TestSkipped,
     TestNotApplicable,
@@ -642,6 +641,8 @@ class TransportTests(TestTransportImplementation):
                                               transport_from, f)
 
         t = self.get_transport()
+        if t.__class__.__name__ == "SFTPTransport":
+            self.skipTest("SFTP copy_to currently too flakey to use")
         temp_transport = MemoryTransport('memory:///')
         simple_copy_files(t, temp_transport)
         if not t.is_readonly():
@@ -1552,7 +1553,7 @@ class TransportTests(TestTransportImplementation):
 
         # A plain unicode string is not a valid url
         for fname in files:
-            self.assertRaises(InvalidURL, t.get, fname)
+            self.assertRaises(urlutils.InvalidURL, t.get, fname)
 
         for fname in files:
             fname_utf8 = fname.encode('utf-8')

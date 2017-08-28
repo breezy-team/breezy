@@ -17,8 +17,10 @@
 """Tests for the python and pyrex extensions of groupcompress"""
 
 from .. import (
-    _groupcompress_py,
     tests,
+    )
+from ..bzr import (
+    _groupcompress_py,
     )
 from .scenarios import (
     load_tests_apply_scenarios,
@@ -61,7 +63,7 @@ load_tests = load_tests_apply_scenarios
 
 
 compiled_groupcompress_feature = features.ModuleAvailableFeature(
-    'breezy._groupcompress_pyx')
+    'breezy.bzr._groupcompress_pyx')
 
 _text1 = """\
 This is a bit

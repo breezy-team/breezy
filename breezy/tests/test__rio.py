@@ -16,9 +16,14 @@
 
 """Tests for _rio_*."""
 
-from breezy import (
+from __future__ import absolute_import
+
+from .. import (
     rio,
     tests,
+    )
+from ..sixish import (
+    text_type,
     )
 
 
@@ -43,7 +48,7 @@ class TestValidTag(tests.TestCase):
 
     def test_no_colon(self):
         self.assertFalse(self.module._valid_tag("foo:bla"))
-    
+
     def test_type_error(self):
         self.assertRaises(TypeError, self.module._valid_tag, 423)
 
@@ -51,7 +56,11 @@ class TestValidTag(tests.TestCase):
         self.assertFalse(self.module._valid_tag(""))
 
     def test_unicode(self):
-        self.assertRaises(TypeError, self.module._valid_tag, u"foo")
+        if text_type is str:
+            # When str is a unicode type, it is valid for a tag
+            self.assertTrue(self.module._valid_tag(u"foo"))
+        else:
+            self.assertRaises(TypeError, self.module._valid_tag, u"foo")
 
     def test_non_ascii_char(self):
         self.assertFalse(self.module._valid_tag("\xb5"))
@@ -67,7 +76,7 @@ class TestReadUTF8Stanza(tests.TestCase):
         if s is not None:
             for tag, value in s.iter_pairs():
                 self.assertIsInstance(tag, str)
-                self.assertIsInstance(value, unicode)
+                self.assertIsInstance(value, text_type)
 
     def assertReadStanzaRaises(self, exception, line_iter):
         self.assertRaises(exception, self.module._read_stanza_utf8, line_iter)
@@ -79,34 +88,34 @@ class TestReadUTF8Stanza(tests.TestCase):
         self.assertReadStanza(None, [])
 
     def test_none(self):
-        self.assertReadStanza(None, [""])
+        self.assertReadStanza(None, [b""])
 
     def test_simple(self):
-        self.assertReadStanza(rio.Stanza(foo="bar"), ["foo: bar\n", ""])
+        self.assertReadStanza(rio.Stanza(foo="bar"), [b"foo: bar\n", b""])
 
     def test_multi_line(self):
-        self.assertReadStanza(rio.Stanza(foo="bar\nbla"), 
-                ["foo: bar\n", "\tbla\n"])
+        self.assertReadStanza(
+            rio.Stanza(foo="bar\nbla"), [b"foo: bar\n", b"\tbla\n"])
 
     def test_repeated(self):
         s = rio.Stanza()
         s.add("foo", "bar")
         s.add("foo", "foo")
-        self.assertReadStanza(s, ["foo: bar\n", "foo: foo\n"])
+        self.assertReadStanza(s, [b"foo: bar\n", b"foo: foo\n"])
 
     def test_invalid_early_colon(self):
-        self.assertReadStanzaRaises(ValueError, ["f:oo: bar\n"])
+        self.assertReadStanzaRaises(ValueError, [b"f:oo: bar\n"])
 
     def test_invalid_tag(self):
-        self.assertReadStanzaRaises(ValueError, ["f%oo: bar\n"])
+        self.assertReadStanzaRaises(ValueError, [b"f%oo: bar\n"])
 
     def test_continuation_too_early(self):
-        self.assertReadStanzaRaises(ValueError, ["\tbar\n"])
+        self.assertReadStanzaRaises(ValueError, [b"\tbar\n"])
 
     def test_large(self):
-        value = "bla" * 9000
+        value = b"bla" * 9000
         self.assertReadStanza(rio.Stanza(foo=value),
-            ["foo: %s\n" % value])
+            [b"foo: %s\n" % value])
 
     def test_non_ascii_char(self):
         self.assertReadStanza(rio.Stanza(foo=u"n\xe5me"),
@@ -123,7 +132,7 @@ class TestReadUnicodeStanza(tests.TestCase):
         if s is not None:
             for tag, value in s.iter_pairs():
                 self.assertIsInstance(tag, str)
-                self.assertIsInstance(value, unicode)
+                self.assertIsInstance(value, text_type)
 
     def assertReadStanzaRaises(self, exception, line_iter):
         self.assertRaises(exception, self.module._read_stanza_unicode,

@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
+from breezy.bzr import (
     inventory,
     )
 from breezy.tests import TestNotApplicable
@@ -40,7 +40,7 @@ class TestNestedSupport(TestCaseWithWorkingTree):
             'subtree-id')
         transform.set_tree_reference('subtree-revision', trans_id)
         transform.apply()
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual('subtree-revision',

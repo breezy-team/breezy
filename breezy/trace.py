@@ -82,6 +82,8 @@ from breezy import (
 
 from .sixish import (
     BytesIO,
+    PY3,
+    StringIO,
     text_type,
     )
 
@@ -173,7 +175,7 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param fmt: The format string to pass to mutter.
     :param args: A list of substitution variables.
     """
-    outf = BytesIO()
+    outf = StringIO()
     if stacklevel is None:
         limit = None
     else:
@@ -252,9 +254,9 @@ def _open_brz_log():
         brz_log_file = _open_or_create_log_file(_brz_log_filename)
         brz_log_file.write(b'\n')
         if brz_log_file.tell() <= 2:
-            brz_log_file.write("this is a debug log for diagnosing/reporting problems in brz\n")
-            brz_log_file.write("you can delete or truncate this file, or include sections in\n")
-            brz_log_file.write("bug reports to https://bugs.launchpad.net/brz/+filebug\n\n")
+            brz_log_file.write(b"this is a debug log for diagnosing/reporting problems in brz\n")
+            brz_log_file.write(b"you can delete or truncate this file, or include sections in\n")
+            brz_log_file.write(b"bug reports to https://bugs.launchpad.net/brz/+filebug\n\n")
 
         return brz_log_file
 
@@ -469,7 +471,7 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
     """
     class_name = eclass.__name__
     module_name = eclass.__module__
-    if module_name in ("exceptions", "__main__") or (
+    if module_name in ("builtins", "exceptions", "__main__") or (
             unqualified_breezy_errors and module_name == "breezy.errors"):
         return class_name
     return "%s.%s" % (module_name, class_name)
@@ -521,8 +523,8 @@ def report_exception(exc_info, err_file):
 
 def print_exception(exc_info, err_file):
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write("brz: ERROR: %s.%s: %s\n" % (
-        exc_type.__module__, exc_type.__name__, exc_object))
+    err_file.write("brz: ERROR: %s: %s\n" % (
+        _qualified_exception_name(exc_type), exc_object))
     err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
 
@@ -539,7 +541,7 @@ def report_user_error(exc_info, err_file, advice=None):
     """
     err_file.write("brz: ERROR: %s\n" % (exc_info[1],))
     if advice:
-        err_file.write("%s\n" % (advice,))
+        err_file.write("%s\n" % advice)
 
 
 def report_bug(exc_info, err_file):
@@ -597,6 +599,10 @@ class EncodedStreamHandler(logging.Handler):
 
     def emit(self, record):
         try:
+            if not isinstance(record.msg, text_type):
+                msg = record.msg.decode("utf-8")
+                if PY3:
+                    record.msg = msg
             line = self.format(record)
             if not isinstance(line, text_type):
                 line = line.decode("utf-8")
@@ -606,8 +612,8 @@ class EncodedStreamHandler(logging.Handler):
             # Try saving the details that would have been logged in some form
             msg = args = "<Unformattable>"
             try:
-                msg = repr(record.msg).encode("ascii")
-                args = repr(record.args).encode("ascii")
+                msg = repr(record.msg).encode("ascii", "backslashescape")
+                args = repr(record.args).encode("ascii", "backslashescape")
             except Exception:
                 pass
             # Using mutter() bypasses the logging module and writes directly

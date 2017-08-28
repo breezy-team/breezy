@@ -34,13 +34,13 @@ class TestPull(TestCaseWithInterBranch):
         # when revisions are pulled, the left-most accessible parents must
         # become the revision-history.
         parent = self.make_from_branch_and_tree('parent')
-        parent.commit('1st post', rev_id='P1', allow_pointless=True)
-        mine = self.sprout_to(parent.bzrdir, 'mine').open_workingtree()
-        mine.commit('my change', rev_id='M1', allow_pointless=True)
+        parent.commit('1st post', allow_pointless=True)
+        mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
+        mine.commit('my change', allow_pointless=True)
         parent.merge_from_branch(mine.branch)
-        parent.commit('merge my change', rev_id='P2')
+        p2 = parent.commit('merge my change')
         mine.pull(parent.branch)
-        self.assertEqual('P2', mine.branch.last_revision())
+        self.assertEqual(p2, mine.branch.last_revision())
 
     def test_pull_merged_indirect(self):
         # it should be possible to do a pull from one branch into another
@@ -48,23 +48,23 @@ class TestPull(TestCaseWithInterBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         parent = self.make_from_branch_and_tree('parent')
-        parent.commit('1st post', rev_id='P1', allow_pointless=True)
-        mine = self.sprout_to(parent.bzrdir, 'mine').open_workingtree()
-        mine.commit('my change', rev_id='M1', allow_pointless=True)
-        other = self.sprout_to(parent.bzrdir, 'other').open_workingtree()
+        parent.commit('1st post', allow_pointless=True)
+        mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
+        mine.commit('my change', allow_pointless=True)
+        other = self.sprout_to(parent.controldir, 'other').open_workingtree()
         other.merge_from_branch(mine.branch)
-        other.commit('merge my change', rev_id='O2')
+        other.commit('merge my change')
         parent.merge_from_branch(other.branch)
-        parent.commit('merge other', rev_id='P2')
+        p2 = parent.commit('merge other')
         mine.pull(parent.branch)
-        self.assertEqual('P2', mine.branch.last_revision())
+        self.assertEqual(p2, mine.branch.last_revision())
 
     def test_pull_updates_checkout_and_master(self):
         """Pulling into a checkout updates the checkout and the master branch"""
         master_tree = self.make_from_branch_and_tree('master')
-        rev1 = master_tree.commit('master')
+        master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_workingtree()
+        other = self.sprout_to(master_tree.branch.controldir, 'other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
@@ -74,19 +74,19 @@ class TestPull(TestCaseWithInterBranch):
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_from_branch_and_tree('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_branch()
+        other = self.sprout_to(master_tree.branch.controldir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
-        master_tree.branch.bzrdir.destroy_branch()
+        master_tree.branch.controldir.destroy_branch()
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
-                checkout.branch.pull, other)
+                          checkout.branch.pull, other)
 
     def test_pull_returns_result(self):
         parent = self.make_from_branch_and_tree('parent')
-        parent.commit('1st post', rev_id='P1')
-        mine = self.sprout_to(parent.bzrdir, 'mine').open_workingtree()
-        mine.commit('my change', rev_id='M1')
+        p1 = parent.commit('1st post')
+        mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
+        m1 = mine.commit('my change')
         result = parent.branch.pull(mine.branch)
         self.assertIsNot(None, result)
         self.assertIs(mine.branch, result.source_branch)
@@ -94,29 +94,29 @@ class TestPull(TestCaseWithInterBranch):
         self.assertIs(parent.branch, result.master_branch)
         self.assertIs(None, result.local_branch)
         self.assertEqual(1, result.old_revno)
-        self.assertEqual('P1', result.old_revid)
+        self.assertEqual(p1, result.old_revid)
         self.assertEqual(2, result.new_revno)
-        self.assertEqual('M1', result.new_revid)
+        self.assertEqual(m1, result.new_revid)
         self.assertEqual([], result.tag_conflicts)
 
     def test_pull_overwrite(self):
         tree_a = self.make_from_branch_and_tree('tree_a')
         tree_a.commit('message 1')
-        tree_b = self.sprout_to(tree_a.bzrdir, 'tree_b').open_workingtree()
-        tree_a.commit('message 2', rev_id='rev2a')
-        tree_b.commit('message 2', rev_id='rev2b')
+        tree_b = self.sprout_to(tree_a.controldir, 'tree_b').open_workingtree()
+        rev2a = tree_a.commit('message 2')
+        rev2b = tree_b.commit('message 2')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
         self.assertRaises(errors.DivergedBranches,
                           tree_a.branch.pull, tree_b.branch,
-                          overwrite=False, stop_revision='rev2b')
+                          overwrite=False, stop_revision=rev2b)
         # It should not have updated the branch tip, but it should have fetched
         # the revision if the repository supports "invisible" revisions.
-        self.assertEqual('rev2a', tree_a.branch.last_revision())
+        self.assertEqual(rev2a, tree_a.branch.last_revision())
         if tree_a.branch.repository._format.supports_unreferenced_revisions:
-            self.assertTrue(tree_a.branch.repository.has_revision('rev2b'))
+            self.assertTrue(tree_a.branch.repository.has_revision(rev2b))
         tree_a.branch.pull(tree_b.branch, overwrite=True,
-                           stop_revision='rev2b')
-        self.assertEqual('rev2b', tree_a.branch.last_revision())
+                           stop_revision=rev2b)
+        self.assertEqual(rev2b, tree_a.branch.last_revision())
         self.assertEqual(tree_b.branch.last_revision(),
                          tree_a.branch.last_revision())
 
@@ -195,7 +195,7 @@ class TestPullHook(TestCaseWithInterBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.controldir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_pull',

@@ -31,7 +31,8 @@ from .. import (
     trace,
     )
 from ..sixish import (
-    BytesIO,
+    PY3,
+    StringIO,
     )
 from . import features, TestCaseInTempDir, TestCase
 from ..trace import (
@@ -46,7 +47,7 @@ from ..trace import (
 
 def _format_exception():
     """Format an exception as it would normally be displayed to the user"""
-    buf = BytesIO()
+    buf = StringIO()
     report_exception(sys.exc_info(), buf)
     return buf.getvalue()
 
@@ -61,10 +62,9 @@ class TestTrace(TestCase):
         try:
             raise NotImplementedError("time travel")
         except NotImplementedError:
-            pass
-        err = _format_exception()
-        self.assertEqualDiff(err.splitlines()[0],
-                'brz: ERROR: exceptions.NotImplementedError: time travel')
+            err = _format_exception()
+        self.assertContainsRe(err,
+                '^brz: ERROR: NotImplementedError: time travel')
         self.assertContainsRe(err,
             'Bazaar has encountered an internal error.')
 
@@ -73,17 +73,14 @@ class TestTrace(TestCase):
             raise KeyboardInterrupt()
         except KeyboardInterrupt:
             # XXX: Some risk that a *real* keyboard interrupt won't be seen
-            pass
-        msg = _format_exception()
-        self.assertTrue(len(msg) > 0)
-        self.assertEqualDiff(msg, 'brz: interrupted\n')
+            msg = _format_exception()
+        self.assertEqual(msg, 'brz: interrupted\n')
 
     def test_format_memory_error(self):
         try:
             raise MemoryError()
         except MemoryError:
-            pass
-        msg = _format_exception()
+            msg = _format_exception()
         self.assertEqual(msg,
             "brz: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
@@ -93,8 +90,7 @@ class TestTrace(TestCase):
         try:
             raise MemoryError()
         except MemoryError:
-            pass
-        msg = _format_exception()
+            msg = _format_exception()
         self.assertStartsWith(msg,
             "brz: out of memory\nMemory dumped to ")
 
@@ -103,22 +99,21 @@ class TestTrace(TestCase):
             os.rmdir('nosuchfile22222')
         except OSError as e:
             e_str = str(e)
-        msg = _format_exception()
+            msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
         # cannot find the file specified".
         self.assertEqual('brz: ERROR: %s\n' % (e_str,), msg)
 
     def test_format_io_error(self):
         try:
-            file('nosuchfile22222')
+            open('nosuchfile22222')
         except IOError:
-            pass
-        msg = _format_exception()
+            msg = _format_exception()
         # Even though Windows and Linux differ for 'os.rmdir', they both give
         # 'No such file' for open()
         # However it now gets translated so we can not test for a specific message
         self.assertContainsRe(msg,
-            r'^brz: ERROR: \[Errno .*\] .*nosuchfile')
+            '^brz: ERROR: \\[Errno .*\\] .*nosuchfile')
 
     def test_format_pywintypes_error(self):
         self.requireFeature(features.pywintypes)
@@ -126,63 +121,62 @@ class TestTrace(TestCase):
         try:
             win32file.RemoveDirectory('nosuchfile22222')
         except pywintypes.error:
-            pass
-        msg = _format_exception()
+            msg = _format_exception()
         # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
         #                with errno, function name, and locale error message
         self.assertContainsRe(msg,
-            r"^brz: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
-            
+            "^brz: ERROR: \\(2, 'RemoveDirectory[AW]?', .*\\)")
+
     def test_format_sockets_error(self):
         try:
             import socket
             sock = socket.socket()
-            sock.send("This should fail.")
+            sock.send(b"This should fail.")
         except socket.error:
-            pass
-        msg = _format_exception()
-        
+            msg = _format_exception()
+
         self.assertNotContainsRe(msg,
-            r"Traceback (most recent call last):")
+            "Traceback \\(most recent call last\\):")
 
     def test_format_unicode_error(self):
         try:
             raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
         except errors.BzrCommandError:
-            pass
-        msg = _format_exception()
+            msg = _format_exception()
+        if PY3:
+            expected = 'brz: ERROR: argument foo\xb5 does not exist\n'
+        else:
+            # GZ 2017-06-10: Pretty bogus, should encode per the output stream
+            expected = 'brz: ERROR: argument foo\xc2\xb5 does not exist\n'
+        self.assertEqual(msg, expected)
 
     def test_format_exception(self):
         """Short formatting of brz exceptions"""
         try:
             raise errors.NotBranchError('wibble')
         except errors.NotBranchError:
-            pass
-        msg = _format_exception()
-        self.assertTrue(len(msg) > 0)
-        self.assertEqualDiff(msg, 'brz: ERROR: Not a branch: \"wibble\".\n')
+            msg = _format_exception()
+        self.assertEqual(msg, 'brz: ERROR: Not a branch: \"wibble\".\n')
 
     def test_report_external_import_error(self):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
         except ImportError as e:
-            pass
+            msg = _format_exception()
         else:
             self.fail("somehow succeeded in importing %r" % ImaginaryModule)
-        msg = _format_exception()
-        self.assertEqual(msg,
-            'brz: ERROR: No module named ImaginaryModule\n'
-            'You may need to install this Python library separately.\n')
+        self.assertContainsRe(msg,
+            "^brz: ERROR: No module named '?ImaginaryModule'?\n"
+            "You may need to install this Python library separately.\n$")
 
     def test_report_import_syntax_error(self):
         try:
             raise ImportError("syntax error")
         except ImportError as e:
-            pass
-        msg = _format_exception()
+            msg = _format_exception()
         self.assertContainsRe(msg,
-            r'Bazaar has encountered an internal error')
+            'Bazaar has encountered an internal error')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
@@ -212,17 +206,18 @@ class TestTrace(TestCase):
         else:
             self.fail("expected error not raised")
 
-    def assertLogStartsWith(self, log, string):
-        """Like assertStartsWith, but skips the log timestamp."""
+    def assertLogContainsLine(self, log, string):
+        """Assert log contains a line including log timestamp."""
+        # Does not check absolute position in log as there may be kipple.
         self.assertContainsRe(log,
-            '^\\d+\\.\\d+  ' + re.escape(string))
+            '(?m)^\\d+\\.\\d+  ' + re.escape(string))
 
     def test_mutter_callsite_1(self):
         """mutter_callsite can capture 1 level of stack frame."""
         mutter_callsite(1, "foo %s", "a string")
         log = self.get_log()
         # begin with the message
-        self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
+        self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
         self.assertContainsRe(log,
             'test_trace\\.py", line \\d+, in test_mutter_callsite_1\n')
@@ -234,7 +229,7 @@ class TestTrace(TestCase):
         mutter_callsite(2, "foo %s", "a string")
         log = self.get_log()
         # begin with the message
-        self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
+        self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
         self.assertContainsRe(log,
             'test_trace.py", line \d+, in test_mutter_callsite_2\n')
@@ -247,15 +242,15 @@ class TestTrace(TestCase):
         # This test checks that mutter doesn't fail; the current behaviour
         # is that it doesn't fail *and writes non-utf8*.
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
-        mutter('But fails in an ascii string \xb5')
-        mutter('and in an ascii argument: %s', '\xb5')
+        mutter(b'But fails in an ascii string \xb5')
+        mutter(b'and in an ascii argument: %s', b'\xb5')
         log = self.get_log()
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
         # However, the log content object does unicode replacement on reading
         # to let it get unicode back where good data has been written. So we
         # have to do a replaceent here as well.
-        self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
+        self.assertContainsRe(log, b"ascii argument: \xb5".decode('utf8',
             'replace'))
 
     def test_show_error(self):
@@ -303,10 +298,11 @@ class TestTrace(TestCase):
             # as there's a timestamp at the front.
             tmp1.seek(0)
             self.assertContainsRe(tmp1.read(),
-                r"\d+\.\d+  comment to file1\n\d+\.\d+  again to file1\n")
+                b"\\d+\\.\\d+  comment to file1\n"
+                b"\\d+\\.\\d+  again to file1\n")
             tmp2.seek(0)
             self.assertContainsRe(tmp2.read(),
-                r"\d+\.\d+  comment to file2\n")
+                b"\\d+\\.\\d+  comment to file2\n")
         finally:
             tmp1.close()
             tmp2.close()
@@ -315,7 +311,7 @@ class TestTrace(TestCase):
         # If _open_brz_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
-        self.overrideAttr(sys, 'stderr', BytesIO())
+        self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
         self.overrideEnv('BRZ_LOG', '/no-such-dir/brz.log')
         self.overrideAttr(trace, '_brz_log_filename')
@@ -378,33 +374,43 @@ class TestLogging(TestCase):
         self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
 
     def test_log_utf8_msg(self):
-        logging.getLogger("brz").debug("\xc2\xa7")
+        logging.getLogger("brz").debug(b"\xc2\xa7")
         self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
 
     def test_log_utf8_arg(self):
-        logging.getLogger("brz").debug("%s", "\xc2\xa7")
-        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+        logging.getLogger("brz").debug(b"%s", b"\xc2\xa7")
+        if PY3:
+            expected = u"   DEBUG  b'\\xc2\\xa7'\n"
+        else:
+            expected = u"   DEBUG  \xa7\n"
+        self.assertEqual(expected, self.get_log())
 
     def test_log_bytes_msg(self):
-        logging.getLogger("brz").debug("\xa7")
+        logging.getLogger("brz").debug(b"\xa7")
         log = self.get_log()
         self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsString(log,
-            "Logging record unformattable: '\\xa7' % ()\n")
+        self.assertContainsRe(log,
+            "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n")
 
     def test_log_bytes_arg(self):
-        logging.getLogger("brz").debug("%s", "\xa7")
+        logging.getLogger("brz").debug(b"%s", b"\xa7")
         log = self.get_log()
-        self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsString(log,
-            "Logging record unformattable: '%s' % ('\\xa7',)\n")
+        if PY3:
+            self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
+        else:
+            self.assertContainsString(log, "UnicodeDecodeError: ")
+            self.assertContainsRe(log,
+                "Logging record unformattable: ?'%s' % \\(b?'\\\\xa7',\\)\n")
 
     def test_log_mixed_strings(self):
-        logging.getLogger("brz").debug(u"%s", "\xa7")
+        logging.getLogger("brz").debug(u"%s", b"\xa7")
         log = self.get_log()
-        self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsString(log,
-            "Logging record unformattable: u'%s' % ('\\xa7',)\n")
+        if PY3:
+            self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
+        else:
+            self.assertContainsString(log, "UnicodeDecodeError: ")
+            self.assertContainsRe(log,
+                "Logging record unformattable: u'%s' % \\('\\\\xa7',\\)\n")
 
     def test_log_repr_broken(self):
         class BadRepr(object):

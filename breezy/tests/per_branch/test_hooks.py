@@ -19,9 +19,11 @@
 from breezy import (
     branch as _mod_branch,
     errors,
-    remote,
     revision,
     tests,
+    )
+from breezy.bzr import (
+    remote,
     )
 from breezy.tests import test_server
 
@@ -104,7 +106,7 @@ class TestOpen(tests.TestCaseWithMemoryTransport):
             self.assertEqual([b], self.hook_calls)
 
     def test_open(self):
-        branch_url = self.make_branch('.').bzrdir.root_transport.base
+        branch_url = self.make_branch('.').controldir.root_transport.base
         self.install_hook()
         b = _mod_branch.Branch.open(branch_url)
         if isinstance(b, remote.RemoteBranch):

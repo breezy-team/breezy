@@ -40,7 +40,7 @@ def load_tests(loader, standard_tests, pattern):
         ('1.9-rich-root', {'branch_format': '1.9-rich-root'}),
     ]
     try:
-        from ....repofmt.groupcompress_repo import RepositoryFormat2a
+        from ....bzr.groupcompress_repo import RepositoryFormat2a
         scenarios.append(('2a', {'branch_format': '2a'}))
     except ImportError:
         pass
@@ -60,7 +60,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             generic_processor,
             )
         branch = self.make_branch('.', format=self.branch_format)
-        handler = generic_processor.GenericProcessor(branch.bzrdir)
+        handler = generic_processor.GenericProcessor(branch.controldir)
         return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want

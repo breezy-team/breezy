@@ -37,7 +37,6 @@ from breezy import (
     cleanup,
     cmdline,
     debug,
-    errors,
     i18n,
     option,
     osutils,
@@ -50,11 +49,38 @@ from .hooks import Hooks
 from .i18n import gettext
 # Compatibility - Option used to be in commands.
 from .option import Option
-from .plugin import disable_plugins, load_plugins
-from . import registry
+from .plugin import disable_plugins, load_plugins, plugin_name
+from . import errors, registry
 from .sixish import (
     string_types,
+    text_type,
     )
+
+
+class BzrOptionError(errors.BzrCommandError):
+
+    _fmt = "Error in command line options"
+
+
+class CommandAvailableInPlugin(Exception):
+
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard brz command. \n'
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'],
+                    self.plugin_metadata['url']))
+
+        return _fmt
 
 
 class CommandInfo(object):
@@ -169,18 +195,16 @@ def _register_builtin_commands():
         # only load once
         return
     import breezy.builtins
-    for cmd_class in _scan_module_for_commands(breezy.builtins).values():
+    for cmd_class in _scan_module_for_commands(breezy.builtins):
         builtin_command_registry.register(cmd_class)
     breezy.builtins._register_lazy_builtins()
 
 
 def _scan_module_for_commands(module):
-    r = {}
-    for name, obj in module.__dict__.items():
+    module_dict = module.__dict__
+    for name in module_dict:
         if name.startswith("cmd_"):
-            real_name = _unsquish_command_name(name)
-            r[real_name] = obj
-    return r
+            yield module_dict[name]
 
 
 def _list_bzr_commands(names):
@@ -220,6 +244,52 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
+# Overrides for common mispellings that heuristics get wrong
+_GUESS_OVERRIDES = {
+    'ic': {'ci': 0}, # heuristic finds nick
+    }
+
+
+def guess_command(cmd_name):
+    """Guess what command a user typoed.
+
+    :param cmd_name: Command to search for
+    :return: None if no command was found, name of a command otherwise
+    """
+    names = set()
+    for name in all_command_names():
+        names.add(name)
+        cmd = get_cmd_object(name)
+        names.update(cmd.aliases)
+    # candidate: modified levenshtein distance against cmd_name.
+    costs = {}
+    from . import patiencediff
+    for name in sorted(names):
+        matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
+        distance = 0.0
+        opcodes = matcher.get_opcodes()
+        for opcode, l1, l2, r1, r2 in opcodes:
+            if opcode == 'delete':
+                distance += l2-l1
+            elif opcode == 'replace':
+                distance += max(l2-l1, r2-l1)
+            elif opcode == 'insert':
+                distance += r2-r1
+            elif opcode == 'equal':
+                # Score equal ranges lower, making similar commands of equal
+                # length closer than arbitrary same length commands.
+                distance -= 0.1 * (l2-l1)
+        costs[name] = distance
+    costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
+    costs = sorted((costs[key], key) for key in costs)
+    if not costs:
+        return
+    if costs[0][0] > 4:
+        return
+    candidate = costs[0][1]
+    return candidate
+
+
 def get_cmd_object(cmd_name, plugins_override=True):
     """Return the command object for a command.
 
@@ -229,7 +299,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     try:
         return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
-        raise errors.BzrCommandError(gettext('unknown command "%s"') % cmd_name)
+        # No command found, see if this was a typo
+        candidate = guess_command(cmd_name)
+        if candidate is not None:
+            raise errors.BzrCommandError(
+                    gettext('unknown command "%s". Perhaps you meant "%s"')
+                    % (cmd_name, candidate))
+        raise errors.BzrCommandError(gettext('unknown command "%s"')
+                % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -270,13 +347,16 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     return cmd
 
 
+class NoPluginAvailable(errors.BzrError):
+    pass
+
+
 def _try_plugin_provider(cmd_name):
     """Probe for a plugin provider having cmd_name."""
     try:
         plugin_metadata, provider = probe_for_provider(cmd_name)
-        raise errors.CommandAvailableInPlugin(cmd_name,
-            plugin_metadata, provider)
-    except errors.NoPluginAvailable:
+        raise CommandAvailableInPlugin(cmd_name, plugin_metadata, provider)
+    except NoPluginAvailable:
         pass
 
 
@@ -291,9 +371,9 @@ def probe_for_provider(cmd_name):
     for provider in command_providers_registry:
         try:
             return provider.plugin_for_command(cmd_name), provider
-        except errors.NoPluginAvailable:
+        except NoPluginAvailable:
             pass
-    raise errors.NoPluginAvailable(cmd_name)
+    raise NoPluginAvailable(cmd_name)
 
 
 def _get_bzr_command(cmd_or_None, cmd_name):
@@ -628,7 +708,7 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = Option.STD_OPTIONS.copy()
-        std_names = r.keys()
+        std_names = set(r)
         for o in self.takes_options:
             if isinstance(o, string_types):
                 o = option.Option.OPTIONS[o]
@@ -755,11 +835,7 @@ class Command(object):
 
         :return: The name of the plugin or None if the command is builtin.
         """
-        mod_parts = self.__module__.split('.')
-        if len(mod_parts) >= 3 and mod_parts[1] == 'plugins':
-            return mod_parts[2]
-        else:
-            return None
+        return plugin_name(self.__module__)
 
 
 class CommandHooks(Hooks):
@@ -828,8 +904,8 @@ def parse_args(command, argv, alias_argv=None):
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
-    opts = dict([(k, v) for k, v in options.__dict__.items() if
-                 v is not option.OptionParser.DEFAULT_VALUE])
+    opts = dict((k, v) for k, v in options.__dict__.items() if
+                v is not option.OptionParser.DEFAULT_VALUE)
     return args, opts
 
 
@@ -880,11 +956,9 @@ def _match_argform(cmd, takes_args, args):
 
     return argdict
 
-def apply_coveraged(dirname, the_callable, *args, **kwargs):
-    # Cannot use "import trace", as that would import breezy.trace instead of
-    # the standard library's trace.
-    trace = __import__('trace')
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    import trace
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
     threading.settrace(tracer.globaltrace)
@@ -1177,18 +1251,19 @@ def _specified_or_unicode_argv(argv):
     # the process arguments in a unicode-safe way.
     if argv is None:
         return osutils.get_unicode_argv()
-    else:
-        new_argv = []
-        try:
-            # ensure all arguments are unicode strings
-            for a in argv:
-                if isinstance(a, unicode):
-                    new_argv.append(a)
-                else:
-                    new_argv.append(a.decode('ascii'))
-        except UnicodeDecodeError:
-            raise errors.BzrError("argv should be list of unicode strings.")
-        return new_argv
+    new_argv = []
+    try:
+        # ensure all arguments are unicode strings
+        for a in argv:
+            if not isinstance(a, string_types):
+                raise ValueError('not native str or unicode: %r' % (a,))
+            if isinstance(a, bytes):
+                # For Python 2 only allow ascii native strings
+                a = a.decode('ascii')
+            new_argv.append(a)
+    except (ValueError, UnicodeDecodeError):
+        raise errors.BzrError("argv should be list of unicode strings.")
+    return new_argv
 
 
 def main(argv=None):

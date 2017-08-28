@@ -16,7 +16,7 @@
 
 """A simple first-in-first-out (FIFO) cache."""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from collections import deque
 
@@ -28,7 +28,7 @@ class FIFOCache(dict):
         dict.__init__(self)
         self._max_cache = max_cache
         if after_cleanup_count is None:
-            self._after_cleanup_count = self._max_cache * 8 / 10
+            self._after_cleanup_count = self._max_cache * 8 // 10
         else:
             self._after_cleanup_count = min(after_cleanup_count,
                                             self._max_cache)
@@ -41,16 +41,7 @@ class FIFOCache(dict):
 
     def __delitem__(self, key):
         # Remove the key from an arbitrary location in the queue
-        remove = getattr(self._queue, 'remove', None)
-        # Python2.5's has deque.remove, but Python2.4 does not
-        if remove is not None:
-            remove(key)
-        else:
-            # TODO: It would probably be faster to pop()/popleft() until we get to the
-            #       key, and then insert those back into the queue. We know
-            #       the key should only be present in one position, and we
-            #       wouldn't need to rebuild the whole queue.
-            self._queue = deque([k for k in self._queue if k != key])
+        self._queue.remove(key)
         self._remove(key)
 
     def add(self, key, value, cleanup=None):
@@ -123,7 +114,7 @@ class FIFOCache(dict):
         """
         self._max_cache = max_cache
         if after_cleanup_count is None:
-            self._after_cleanup_count = max_cache * 8 / 10
+            self._after_cleanup_count = max_cache * 8 // 10
         else:
             self._after_cleanup_count = min(max_cache, after_cleanup_count)
         if len(self) > self._max_cache:
@@ -158,8 +149,8 @@ class FIFOCache(dict):
         if len(args) == 1:
             arg = args[0]
             if isinstance(arg, dict):
-                for key, val in arg.iteritems():
-                    self.add(key, val)
+                for key in arg:
+                    self.add(key, arg[key])
             else:
                 for key, val in args[0]:
                     self.add(key, val)
@@ -167,8 +158,8 @@ class FIFOCache(dict):
             raise TypeError('update expected at most 1 argument, got %d'
                             % len(args))
         if kwargs:
-            for key, val in kwargs.iteritems():
-                self.add(key, val)
+            for key in kwargs:
+                self.add(key, kwargs[key])
 
 
 class FIFOSizeCache(FIFOCache):
@@ -193,7 +184,7 @@ class FIFOSizeCache(FIFOCache):
         FIFOCache.__init__(self, max_cache=max_size)
         self._max_size = max_size
         if after_cleanup_size is None:
-            self._after_cleanup_size = self._max_size * 8 / 10
+            self._after_cleanup_size = self._max_size * 8 // 10
         else:
             self._after_cleanup_size = min(after_cleanup_size, self._max_size)
 
@@ -262,7 +253,7 @@ class FIFOSizeCache(FIFOCache):
         FIFOCache.resize(self, max_size)
         self._max_size = max_size
         if after_cleanup_size is None:
-            self._after_cleanup_size = max_size * 8 / 10
+            self._after_cleanup_size = max_size * 8 // 10
         else:
             self._after_cleanup_size = min(max_size, after_cleanup_size)
         if self._value_size > self._max_size:

@@ -21,8 +21,10 @@ repository effects the final bundle.
 """
 
 from breezy import (
-    chk_map,
     merge_directive,
+    )
+from breezy.bzr import (
+    chk_map,
     )
 
 from breezy.tests.scenarios import load_tests_apply_scenarios
@@ -50,7 +52,7 @@ class TestMergeDirective(TestCaseWithRepository):
             ])
         builder.finish_series()
         b1 = builder.get_branch()
-        b2 = b1.bzrdir.sprout('target', revision_id='A').open_branch()
+        b2 = b1.controldir.sprout('target', revision_id='A').open_branch()
         return b1, b2
 
     def create_merge_directive(self, source_branch, submit_url):

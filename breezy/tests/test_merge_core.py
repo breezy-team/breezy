@@ -179,7 +179,7 @@ class MergeBuilder(object):
 
     def apply_inv_change(self, inventory_change, orig_inventory):
         orig_inventory_by_path = {}
-        for file_id, path in orig_inventory.iteritems():
+        for file_id, path in orig_inventory.items():
             orig_inventory_by_path[path] = file_id
 
         def parent_id(file_id):
@@ -203,13 +203,13 @@ class MergeBuilder(object):
                 return pathjoin(dirname, os.path.basename(orig_inventory[file_id]))
 
         new_inventory = {}
-        for file_id in orig_inventory.iterkeys():
+        for file_id in orig_inventory:
             path = new_path(file_id)
             if path is None:
                 continue
             new_inventory[file_id] = path
 
-        for file_id, path in inventory_change.iteritems():
+        for file_id, path in inventory_change.items():
             if file_id in orig_inventory:
                 continue
             new_inventory[file_id] = path
@@ -463,7 +463,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        branch.bzrdir.clone("mary")
+        branch.controldir.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
@@ -488,7 +488,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree_contents([('a/file', 'contents\n')])
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        d_b = wta.branch.bzrdir.clone('b')
+        d_b = wta.branch.controldir.clone('b')
         self.build_tree_contents([('a/file', 'other contents\n')])
         wta.commit('other revision', allow_pointless=False)
         self.build_tree_contents([('b/file', 'this contents contents\n')])
@@ -765,7 +765,7 @@ class TestMerger(TestCaseWithTransport):
     def set_up_trees(self):
         this = self.make_branch_and_tree('this')
         this.commit('rev1', rev_id='rev1')
-        other = this.bzrdir.sprout('other').open_workingtree()
+        other = this.controldir.sprout('other').open_workingtree()
         this.commit('rev2a', rev_id='rev2a')
         other.commit('rev2b', rev_id='rev2b')
         return this, other
@@ -773,14 +773,14 @@ class TestMerger(TestCaseWithTransport):
     def test_from_revision_ids(self):
         this, other = self.set_up_trees()
         self.assertRaises(errors.NoSuchRevision, Merger.from_revision_ids,
-                          None, this, 'rev2b')
+                          this, 'rev2b')
         this.lock_write()
         self.addCleanup(this.unlock)
-        merger = Merger.from_revision_ids(None, this,
+        merger = Merger.from_revision_ids(this,
             'rev2b', other_branch=other.branch)
         self.assertEqual('rev2b', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)
-        merger = Merger.from_revision_ids(None, this,
+        merger = Merger.from_revision_ids(this,
             'rev2b', 'rev2a', other_branch=other.branch)
         self.assertEqual('rev2a', merger.base_rev_id)
 
@@ -804,17 +804,14 @@ class TestMerger(TestCaseWithTransport):
             other.branch.repository, 'rev3', 0, 0, 'this')
         other.lock_read()
         self.addCleanup(other.unlock)
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         md.patch = None
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual('inapplicable', verified)
         self.assertEqual('rev3', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)
         md.base_revision_id = 'rev2b'
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual('rev2b', merger.base_rev_id)
 
     def test_from_mergeable_old_merge_directive(self):
@@ -823,7 +820,6 @@ class TestMerger(TestCaseWithTransport):
         self.addCleanup(other.unlock)
         md = merge_directive.MergeDirective.from_objects(
             other.branch.repository, 'rev3', 0, 0, 'this')
-        merger, verified = Merger.from_mergeable(this, md,
-            None)
+        merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual('rev3', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)

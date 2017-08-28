@@ -31,9 +31,9 @@ import sys
 import stat
 
 from breezy import tests
-from breezy.branch import BzrBranch
+from breezy.bzr.branch import BzrBranch
 from breezy.controldir import ControlDir
-from breezy.remote import RemoteBranchFormat
+from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests.test_permissions import check_mode_r
 
 
@@ -67,16 +67,16 @@ class TestPermissions(tests.TestCaseWithTransport):
             raise tests.TestNotApplicable(
                 "Only applicable to bzr branches")
         b = t.branch
-        self.assertEqualMode(mode, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(mode & ~0o7111, b.bzrdir._get_file_mode())
+        self.assertEqualMode(mode, b.controldir._get_dir_mode())
+        self.assertEqualMode(mode & ~0o7111, b.controldir._get_file_mode())
         self.assertEqualMode(mode, b.control_files._dir_mode)
         self.assertEqualMode(mode & ~0o7111, b.control_files._file_mode)
 
         os.mkdir('d')
         os.chmod('d', 0o700)
         b = self.make_branch('d')
-        self.assertEqualMode(0o700, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o600, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o700, b.controldir._get_dir_mode())
+        self.assertEqualMode(0o600, b.controldir._get_file_mode())
         self.assertEqualMode(0o700, b.control_files._dir_mode)
         self.assertEqualMode(0o600, b.control_files._file_mode)
         check_mode_r(self, 'd/.bzr', 0o0600, 0o0700)
@@ -103,8 +103,8 @@ class TestPermissions(tests.TestCaseWithTransport):
         os.mkdir('b')
         os.chmod('b', 0o2777)
         b = self.make_branch('b')
-        self.assertEqualMode(0o2777, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o0666, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o2777, b.controldir._get_dir_mode())
+        self.assertEqualMode(0o0666, b.controldir._get_file_mode())
         self.assertEqualMode(0o2777, b.control_files._dir_mode)
         self.assertEqualMode(0o0666, b.control_files._file_mode)
         check_mode_r(self, 'b/.bzr', 0o0666, 0o2777)
@@ -112,8 +112,8 @@ class TestPermissions(tests.TestCaseWithTransport):
         os.mkdir('c')
         os.chmod('c', 0o2750)
         b = self.make_branch('c')
-        self.assertEqualMode(0o2750, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0o0640, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o2750, b.controldir._get_dir_mode())
+        self.assertEqualMode(0o0640, b.controldir._get_file_mode())
         self.assertEqualMode(0o2750, b.control_files._dir_mode)
         self.assertEqualMode(0o0640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 0o0640, 0o2750)

@@ -22,7 +22,7 @@ import errno
 import os
 import sys
 
-import breezy.bzrdir
+import breezy.bzr
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -32,7 +32,6 @@ import breezy
 from breezy import (
     bugtracker,
     bundle,
-    btree_index,
     cache_utf8,
     controldir,
     directory_service,
@@ -41,6 +40,7 @@ from breezy import (
     errors,
     globbing,
     hooks,
+    lazy_regex,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -57,7 +57,10 @@ from breezy import (
     views,
     gpg,
     )
-from breezy.branch import Branch
+from breezy.bzr import (
+    btree_index,
+    )
+from breezy.branch import Branch, UnstackableBranchFormat
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.revisionspec import RevisionSpec, RevisionInfo
@@ -81,6 +84,8 @@ from .option import (
 from .sixish import (
     BytesIO,
     text_type,
+    viewitems,
+    viewvalues,
 )
 from .trace import mutter, note, warning, is_quiet, get_verbosity_level
 
@@ -201,7 +206,7 @@ def iter_sibling_branches(control_dir, possible_transports=None):
         reference = control_dir.get_branch_reference()
     except errors.NotBranchError:
         # There is no active branch, just return the colocated branches.
-        for name, branch in control_dir.get_branches().iteritems():
+        for name, branch in viewitems(control_dir.get_branches()):
             yield name, branch
         return
     if reference is not None:
@@ -211,11 +216,11 @@ def iter_sibling_branches(control_dir, possible_transports=None):
         ref_branch = None
     if ref_branch is None or ref_branch.name:
         if ref_branch is not None:
-            control_dir = ref_branch.bzrdir
-        for name, branch in control_dir.get_branches().iteritems():
+            control_dir = ref_branch.controldir
+        for name, branch in viewitems(control_dir.get_branches()):
             yield name, branch
     else:
-        repo = ref_branch.bzrdir.find_repository()
+        repo = ref_branch.controldir.find_repository()
         for branch in repo.find_branches(using=True):
             name = urlutils.relative_url(repo.user_url,
                 branch.user_url).rstrip("/")
@@ -240,7 +245,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
-                        raise errors.FileOutsideView(filename, view_files)
+                        raise views.FileOutsideView(filename, view_files)
         file_list = file_list[:]
         file_list[0] = tree.abspath(relpath)
     else:
@@ -294,7 +299,7 @@ def _get_view_info_for_change_reporter(tree):
         current_view = tree.views.get_view_info()[0]
         if current_view is not None:
             view_info = (current_view, tree.views.lookup_view())
-    except errors.ViewsNotSupported:
+    except views.ViewsNotSupported:
         pass
     return view_info
 
@@ -520,8 +525,8 @@ class cmd_dump_btree(Command):
         # This is because the first page of every row starts with an
         # uncompressed header.
         bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(xrange(0, len(bytes),
-                                                     btree_index._PAGE_SIZE)):
+        for page_idx, page_start in enumerate(range(0, len(bytes),
+                                                    btree_index._PAGE_SIZE)):
             page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
             page_bytes = bytes[page_start:page_end]
             if page_idx == 0:
@@ -845,7 +850,7 @@ class cmd_add(Command):
         self.cleanup_now()
         if len(ignored) > 0:
             if verbose:
-                for glob in sorted(ignored.keys()):
+                for glob in sorted(ignored):
                     for path in ignored[glob]:
                         self.outf.write(
                          gettext("ignored {0} matching \"{1}\"\n").format(
@@ -1407,8 +1412,6 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1436,19 +1439,12 @@ class cmd_branch(Command):
         Option('bind',
             help="Bind new branch to from location."),
         ]
-    aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
             files_from=None):
         from breezy import switch as _mod_switch
-        if self.invoked_as in ['get', 'clone']:
-            ui.ui_factory.show_user_warning(
-                'deprecated_command',
-                deprecated_name=self.invoked_as,
-                recommended_name='branch',
-                deprecated_in_version='2.4')
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
@@ -1499,16 +1495,15 @@ class cmd_branch(Command):
         if to_dir is None:
             try:
                 # preserve whatever source format we have.
-                to_dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport],
-                                            accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, stacked=stacked,
-                                            force_new_repo=standalone,
-                                            create_tree_if_local=not no_tree,
-                                            source_branch=br_from)
+                to_dir = br_from.controldir.sprout(
+                    to_transport.base, revision_id,
+                    possible_transports=[to_transport],
+                    accelerator_tree=accelerator_tree, hardlink=hardlink,
+                    stacked=stacked, force_new_repo=standalone,
+                    create_tree_if_local=not no_tree, source_branch=br_from)
                 branch = to_dir.open_branch(
                     possible_transports=[
-                        br_from.bzrdir.root_transport, to_transport])
+                        br_from.controldir.root_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(
@@ -1529,7 +1524,7 @@ class cmd_branch(Command):
         try:
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
-        except (errors.NotStacked, errors.UnstackableBranchFormat,
+        except (errors.NotStacked, UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
@@ -1540,7 +1535,7 @@ class cmd_branch(Command):
         if switch:
             # Switch to the new branch
             wt, _ = WorkingTree.open_containing('.')
-            _mod_switch.switch(wt.bzrdir, branch)
+            _mod_switch.switch(wt.controldir, branch)
             note(gettext('Switched to branch: %s'),
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
 
@@ -1583,9 +1578,9 @@ class cmd_branches(Command):
                 names[name] = active
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
-            if not any(names.values()) and active_branch is not None:
+            if not any(viewvalues(names)) and active_branch is not None:
                 self.outf.write("* %s\n" % gettext("(default)"))
-            for name in sorted(names.keys()):
+            for name in sorted(names):
                 active = names[name]
                 if active:
                     prefix = "*"
@@ -1661,9 +1656,9 @@ class cmd_checkout(Command):
         if (osutils.abspath(to_location) ==
             osutils.abspath(branch_location)):
             try:
-                source.bzrdir.open_workingtree()
+                source.controldir.open_workingtree()
             except errors.NoWorkingTree:
-                source.bzrdir.create_workingtree(revision_id)
+                source.controldir.create_workingtree(revision_id)
                 return
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
@@ -2069,8 +2064,8 @@ class cmd_init(Command):
                 help='Specify a format for this branch. '
                 'See "help formats".',
                 lazy_registry=('breezy.controldir', 'format_registry'),
-                converter=lambda name: controldir.format_registry.make_bzrdir(name),
-                value_switches=True,
+                converter=lambda name: controldir.format_registry.make_controldir(name),
+                value_switches=False,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
@@ -2082,7 +2077,7 @@ class cmd_init(Command):
     def run(self, location=None, format=None, append_revisions_only=False,
             create_prefix=False, no_tree=False):
         if format is None:
-            format = controldir.format_registry.make_bzrdir('default')
+            format = controldir.format_registry.make_controldir('default')
         if location is None:
             location = u'.'
 
@@ -2105,7 +2100,7 @@ class cmd_init(Command):
             to_transport.create_prefix()
 
         try:
-            a_bzrdir = controldir.ControlDir.open_from_transport(to_transport)
+            a_controldir = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = controldir.ControlDir.create_branch_convenience
@@ -2116,17 +2111,17 @@ class cmd_init(Command):
             branch = create_branch(to_transport.base, format=format,
                                    possible_transports=[to_transport],
                                    force_new_tree=force_new_tree)
-            a_bzrdir = branch.bzrdir
+            a_controldir = branch.controldir
         else:
             from .transport.local import LocalTransport
-            if a_bzrdir.has_branch():
+            if a_controldir.has_branch():
                 if (isinstance(to_transport, LocalTransport)
-                    and not a_bzrdir.has_workingtree()):
+                    and not a_controldir.has_workingtree()):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
-            branch = a_bzrdir.create_branch()
-            if not no_tree and not a_bzrdir.has_workingtree():
-                a_bzrdir.create_workingtree()
+            branch = a_controldir.create_branch()
+            if not no_tree and not a_controldir.has_workingtree():
+                a_controldir.create_workingtree()
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
@@ -2136,20 +2131,20 @@ class cmd_init(Command):
         if not is_quiet():
             from .info import describe_layout, describe_format
             try:
-                tree = a_bzrdir.open_workingtree(recommend_upgrade=False)
+                tree = a_controldir.open_workingtree(recommend_upgrade=False)
             except (errors.NoWorkingTree, errors.NotLocalUrl):
                 tree = None
             repository = branch.repository
             layout = describe_layout(repository, branch, tree).lower()
-            format = describe_format(a_bzrdir, repository, branch, tree)
+            format = describe_format(a_controldir, repository, branch, tree)
             self.outf.write(gettext("Created a {0} (format: {1})\n").format(
                   layout, format))
             if repository.is_shared():
                 #XXX: maybe this can be refactored into transport.path_or_url()
-                url = repository.bzrdir.root_transport.external_url()
+                url = repository.controldir.root_transport.external_url()
                 try:
                     url = urlutils.local_path_from_url(url)
-                except errors.InvalidURL:
+                except urlutils.InvalidURL:
                     pass
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
@@ -2188,8 +2183,8 @@ class cmd_init_repository(Command):
                             help='Specify a format for this repository. See'
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
-                            converter=lambda name: controldir.format_registry.make_bzrdir(name),
-                            value_switches=True, title='Repository format'),
+                            converter=lambda name: controldir.format_registry.make_controldir(name),
+                            value_switches=False, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
@@ -2198,7 +2193,7 @@ class cmd_init_repository(Command):
 
     def run(self, location, format=None, no_trees=False):
         if format is None:
-            format = controldir.format_registry.make_bzrdir('default')
+            format = controldir.format_registry.make_controldir('default')
 
         if location is None:
             location = '.'
@@ -2617,7 +2612,7 @@ class cmd_log(Command):
       Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and
       <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
-      You may find it useful to add the aliases below to ``bazaar.conf``::
+      You may find it useful to add the aliases below to ``breezy.conf``::
 
         [ALIASES]
         tip = log -r-1
@@ -3045,7 +3040,7 @@ class cmd_ls(Command):
                     else:
                         fullpath = fp
                     views.check_path_in_view(tree, fullpath)
-                except errors.FileOutsideView:
+                except views.FileOutsideView:
                     continue
 
             # Output the entry
@@ -3196,7 +3191,7 @@ class cmd_ignore(Command):
                             'Invalid ignore patterns found. %s',
                             bad_patterns_count) % bad_patterns)
             ui.ui_factory.show_error(msg)
-            raise errors.InvalidPattern('')
+            raise lazy_regex.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
@@ -3553,10 +3548,10 @@ class cmd_commit(Command):
                 tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id)
-            except errors.UnknownBugTrackerAbbreviation:
+            except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
-            except errors.MalformedBugIdentifier as e:
+            except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     "%s\nCommit refused.") % (str(e),))
 
@@ -3564,8 +3559,10 @@ class cmd_commit(Command):
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
-        from .errors import (
+        from .commit import (
             PointlessCommit,
+            )
+        from .errors import (
             ConflictsInTree,
             StrictCommitFailed
         )
@@ -3802,7 +3799,7 @@ class cmd_upgrade(Command):
             help='Upgrade to a specific format.  See "brz help'
                  ' formats" for details.',
             lazy_registry=('breezy.controldir', 'format_registry'),
-            converter=lambda name: controldir.format_registry.make_bzrdir(name),
+            converter=lambda name: controldir.format_registry.make_controldir(name),
             value_switches=True, title='Branch format'),
         Option('clean',
             help='Remove the backup.bzr directory if successful.'),
@@ -3869,7 +3866,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except errors.NoEmailInUsername as e:
+        except _mod_config.NoEmailInUsername as e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
@@ -3963,7 +3960,7 @@ class cmd_alias(Command):
     def print_aliases(self):
         """Print out the defined aliases in a similar format to bash."""
         aliases = _mod_config.GlobalConfig().get_aliases()
-        for key, value in sorted(aliases.iteritems()):
+        for key, value in sorted(viewitems(aliases)):
             self.outf.write('brz alias %s="%s"\n' % (key, value))
 
     @display_command
@@ -4085,8 +4082,10 @@ class cmd_selftest(Command):
                                 short_name='x',
                                 help='Exclude tests that match this regular'
                                 ' expression.'),
-                     Option('subunit',
-                        help='Output test progress via subunit.'),
+                     Option('subunit1',
+                            help='Output test progress via subunit v1.'),
+                     Option('subunit2',
+                            help='Output test progress via subunit v2.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
                      Option('load-list', type=str, argname='TESTLISTFILE',
@@ -4112,9 +4111,8 @@ class cmd_selftest(Command):
             lsprof_timed=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
-            load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None, lsprof_tests=False,
-            sync=False):
+            load_list=None, debugflag=None, starting_with=None, subunit1=False,
+            subunit2=False, parallel=None, lsprof_tests=False, sync=False):
 
         # During selftest, disallow proxying, as it can cause severe
         # performance penalties and is only needed for thread
@@ -4130,13 +4128,14 @@ class cmd_selftest(Command):
             pattern = '|'.join(testspecs_list)
         else:
             pattern = ".*"
-        if subunit:
+        if subunit1:
             try:
-                from .tests import SubUnitBzrRunner
+                from .tests import SubUnitBzrRunnerv1
             except ImportError:
-                raise errors.BzrCommandError(gettext("subunit not available. subunit "
-                    "needs to be installed to use --subunit."))
-            self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
+                raise errors.BzrCommandError(gettext(
+                    "subunit not available. subunit needs to be installed "
+                    "to use --subunit."))
+            self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv1
             # On Windows, disable automatic conversion of '\n' to '\r\n' in
             # stdout, which would corrupt the subunit stream. 
             # FIXME: This has been fixed in subunit trunk (>0.0.5) so the
@@ -4146,6 +4145,15 @@ class cmd_selftest(Command):
                 and getattr(sys.stdout, 'fileno', None) is not None):
                 import msvcrt
                 msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+        if subunit2:
+            try:
+                from .tests import SubUnitBzrRunnerv2
+            except ImportError:
+                raise errors.BzrCommandError(gettext(
+                    "subunit not available. subunit "
+                    "needs to be installed to use --subunit2."))
+            self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv2
+
         if parallel:
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
@@ -4410,7 +4418,7 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(gettext(
                         'Cannot use -r with merge directives or bundles'))
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, None)
+                   mergeable)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
@@ -4565,7 +4573,7 @@ class cmd_merge(Command):
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
         other_branch.tags.merge_to(tree.branch.tags, ignore_master=True)
-        merger = _mod_merge.Merger.from_revision_ids(pb, tree,
+        merger = _mod_merge.Merger.from_revision_ids(tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
             allow_pending = False
@@ -4717,7 +4725,7 @@ class cmd_remerge(Command):
         # have not yet been seen.
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
@@ -5213,6 +5221,7 @@ class cmd_re_sign(Command):
             b.repository.start_write_group()
             try:
                 for revision_id in revision_id_list:
+                    revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
             except:
                 b.repository.abort_write_group()
@@ -6004,7 +6013,7 @@ class cmd_tags(Command):
         from .tag import tag_sort_methods
         branch, relpath = Branch.open_containing(directory)
 
-        tags = branch.tags.get_tag_dict().items()
+        tags = list(viewitems(branch.tags.get_tag_dict()))
         if not tags:
             return
 
@@ -6236,7 +6245,7 @@ class cmd_switch(Command):
                     gettext('cannot create branch without source branch'))
             to_location = lookup_new_sibling_branch(control_dir, to_location,
                  possible_transports=possible_transports)
-            to_branch = branch.bzrdir.sprout(to_location,
+            to_branch = branch.controldir.sprout(to_location,
                  possible_transports=possible_transports,
                  source_branch=branch).open_branch()
         else:
@@ -6456,16 +6465,16 @@ class cmd_remove_branch(Command):
 
     def run(self, directory=None, location=None, force=False):
         br = open_nearby_branch(near=directory, location=location)
-        if not force and br.bzrdir.has_workingtree():
+        if not force and br.controldir.has_workingtree():
             try:
-                active_branch = br.bzrdir.open_branch(name="")
+                active_branch = br.controldir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             if (active_branch is not None and
                 br.control_url == active_branch.control_url):
                 raise errors.BzrCommandError(
                     gettext("Branch is active. Use --force to remove it."))
-        br.bzrdir.destroy_branch(br.name)
+        br.controldir.destroy_branch(br.name)
 
 
 class cmd_shelve(Command):
@@ -6648,7 +6657,7 @@ class cmd_reference(Command):
         if tree is None:
             tree = branch.basis_tree()
         if path is None:
-            info = branch._get_all_reference_info().iteritems()
+            info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
             file_id = tree.path2id(path)
@@ -6711,17 +6720,67 @@ class cmd_import(Command):
         do_import(source, tree)
 
 
+class cmd_link_tree(Command):
+    __doc__ = """Hardlink matching files to another tree.
+
+    Only files with identical content and execute bit will be linked.
+    """
+
+    takes_args = ['location']
+
+    def run(self, location):
+        from .transform import link_tree
+        target_tree = WorkingTree.open_containing(".")[0]
+        source_tree = WorkingTree.open(location)
+        target_tree.lock_write()
+        try:
+            source_tree.lock_read()
+            try:
+                link_tree(target_tree, source_tree)
+            finally:
+                source_tree.unlock()
+        finally:
+            target_tree.unlock()
+
+
+class cmd_fetch_ghosts(Command):
+    __doc__ = """Attempt to retrieve ghosts from another branch.
+
+    If the other branch is not supplied, the last-pulled branch is used.
+    """
+
+    hidden = True
+    aliases = ['fetch-missing']
+    takes_args = ['branch?']
+    takes_options = [Option('no-fix', help="Skip additional synchonization.")]
+
+    def run(self, branch=None, no_fix=False):
+        from .fetch_ghosts import GhostFetcher
+        installed, failed = GhostFetcher.from_cmdline(branch).run()
+        if len(installed) > 0:
+            self.outf.write("Installed:\n")
+            for rev in installed:
+                self.outf.write(rev + "\n")
+        if len(failed) > 0:
+            self.outf.write("Still missing:\n")
+            for rev in failed:
+                self.outf.write(rev + "\n")
+        if not no_fix and len(installed) > 0:
+            cmd_reconcile().run(".")
+
+
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
     for (name, aliases, module_name) in [
+        ('cmd_bisect', [], 'breezy.bisect'),
         ('cmd_bundle_info', [], 'breezy.bundle.commands'),
         ('cmd_config', [], 'breezy.config'),
         ('cmd_dpush', [], 'breezy.foreign'),
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
         ('cmd_conflicts', [], 'breezy.conflicts'),
-        ('cmd_ping', [], 'breezy.smart.ping'),
+        ('cmd_ping', [], 'breezy.bzr.smart.ping'),
         ('cmd_sign_my_commits', [], 'breezy.commit_signature_commands'),
         ('cmd_verify_signatures', [], 'breezy.commit_signature_commands'),
         ('cmd_test_script', [], 'breezy.cmd_test_script'),

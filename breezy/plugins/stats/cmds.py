@@ -31,8 +31,6 @@ from ... import (
 from ...revision import NULL_REVISION
 from .classify import classify_delta
 
-from itertools import izip
-
 
 def collapse_by_person(revisions, canonical_committer):
     """The committers list is sorted by email, fix it up by person.
@@ -60,7 +58,7 @@ def collapse_by_person(revisions, canonical_committer):
             info[1][email] = info[1].setdefault(email, 0) + 1
             info[2][username] = info[2].setdefault(username, 0) + 1
     res = [(len(revs), revs, emails, fnames)
-           for revs, emails, fnames in committer_to_info.itervalues()]
+           for revs, emails, fnames in committer_to_info.values()]
     res.sort(reverse=True)
     return res
 
@@ -89,7 +87,7 @@ def collapse_email_and_users(email_users, combo_count):
                 old_email_id = email_to_id[old_email]
                 assert old_email_id in (old_id, new_id)
                 email_to_id[old_email] = cur_id
-    for email, usernames in email_users.iteritems():
+    for email, usernames in email_users.items():
         assert email not in email_to_id
         if not email:
             # We use a different algorithm for usernames that have no email
@@ -131,7 +129,7 @@ def collapse_email_and_users(email_users, combo_count):
                     collapse_ids(user_id, cur_id, id_combos)
             username_to_id[low_user] = cur_id
     combo_to_best_combo = {}
-    for cur_id, combos in id_to_combos.iteritems():
+    for cur_id, combos in id_to_combos.items():
         best_combo = sorted(combos,
                             key=lambda x:combo_count[x],
                             reverse=True)[0]
@@ -148,8 +146,8 @@ def get_revisions_and_committers(a_repo, revids):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         trace.note('getting revisions')
-        revisions = a_repo.get_revisions(revids)
-        for count, rev in enumerate(revisions):
+        revisions = a_repo.iter_revisions(revids)
+        for count, (revid, rev) in enumerate(revisions):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
                 # XXX: There is a chance sometimes with svn imports that the
@@ -206,10 +204,10 @@ def display_info(info, to_file, gather_class_stats=None):
     for count, revs, emails, fullnames in info:
         # Get the most common email name
         sorted_emails = sorted(((count, email)
-                               for email,count in emails.iteritems()),
+                               for email, count in emails.items()),
                                reverse=True)
         sorted_fullnames = sorted(((count, fullname)
-                                  for fullname,count in fullnames.iteritems()),
+                                  for fullname, count in fullnames.items()),
                                   reverse=True)
         if sorted_fullnames[0][1] == '' and sorted_emails[0][1] == '':
             to_file.write('%4d %s\n'
@@ -237,7 +235,7 @@ def display_info(info, to_file, gather_class_stats=None):
         if gather_class_stats is not None:
             to_file.write('     Contributions:\n')
             classes, total = gather_class_stats(revs)
-            for name,count in sorted(classes.items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0]))):
+            for name, count in sorted(classes.items(), key=classify_key):
                 if name is None:
                     name = "Unknown"
                 to_file.write("     %4.0f%% %s\n" % ((float(count) / total) * 100.0, name))
@@ -342,6 +340,11 @@ def gather_class_stats(repository, revs):
     return ret, total
 
 
+def classify_key(item):
+    """Sort key for item of (author, count) from classify_delta."""
+    return -item[1], item[0]
+
+
 def display_credits(credits, to_file):
     (coders, documenters, artists, translators) = credits
     def print_section(name, lst):
@@ -376,7 +379,7 @@ def find_credits(repository, revid):
         revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            iterator = izip(revs, repository.get_deltas_for_revisions(revs))
+            iterator = zip(revs, repository.get_deltas_for_revisions(revs))
             for i, (rev,delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges
@@ -392,8 +395,8 @@ def find_credits(repository, revid):
     finally:
         repository.unlock()
     def sort_class(name):
-        return map(lambda (x,y): x,
-               sorted(ret[name].items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0])), reverse=True))
+        return [author
+            for author, _  in sorted(ret[name].items(), key=classify_key)]
     return (sort_class("code"), sort_class("documentation"), sort_class("art"), sort_class("translation"))
 
 

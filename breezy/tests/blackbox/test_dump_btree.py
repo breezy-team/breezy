@@ -18,8 +18,10 @@
 """Tests of the 'brz dump-btree' command."""
 
 from breezy import (
-    btree_index,
     tests,
+    )
+from breezy.bzr import (
+    btree_index,
     )
 from breezy.tests import (
     http_server,

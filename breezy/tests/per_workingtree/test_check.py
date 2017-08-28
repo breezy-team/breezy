@@ -18,7 +18,7 @@
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
-from breezy.workingtree import InventoryWorkingTree
+from breezy.bzr.workingtree import InventoryWorkingTree
 from breezy.tests import TestNotApplicable
 
 

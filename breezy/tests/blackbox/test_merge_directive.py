@@ -48,7 +48,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
             'email', 'J. Random Hacker <jrandom@example.com>')
         self.tree1.add('file')
         self.tree1.commit('foo', rev_id='foo-id')
-        self.tree2 = self.tree1.bzrdir.sprout('tree2').open_workingtree()
+        self.tree2 = self.tree1.controldir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
         self.tree1.commit('bar', rev_id='bar-id')
         os.chdir('tree1')

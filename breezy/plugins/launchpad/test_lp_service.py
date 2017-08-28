@@ -21,7 +21,11 @@ import xmlrpclib
 
 from ... import errors
 from .lp_registration import (
-    InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
+    InvalidURL,
+    InvalidLaunchpadInstance,
+    LaunchpadService,
+    NotLaunchpadBranch,
+    )
 from .test_lp_directory import FakeResolveFactory
 from ...tests import TestCase
 
@@ -156,7 +160,7 @@ class TestURLInference(TestCase):
             raise xmlrpclib.Fault(42, 'something went wrong')
         factory.submit = submit
         self.assertRaises(
-            errors.InvalidURL, service.get_web_url_from_branch_url, 'lp:foo',
+            InvalidURL, service.get_web_url_from_branch_url, 'lp:foo',
             factory)
 
     def test_staging_url(self):

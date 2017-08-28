@@ -21,10 +21,6 @@ from breezy import (
     bugtracker,
     revision,
     )
-from breezy.errors import (
-    InvalidBugStatus,
-    InvalidLineInBugsProperty,
-    )
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.tests.matchers import MatchesAncestry
@@ -62,7 +58,7 @@ def make_branches(self, format=None):
     tree1.commit("Commit two", rev_id="a@u-0-1")
     tree1.commit("Commit three", rev_id="a@u-0-2")
 
-    tree2 = tree1.bzrdir.sprout("branch2").open_workingtree()
+    tree2 = tree1.controldir.sprout("branch2").open_workingtree()
     br2 = tree2.branch
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
@@ -132,8 +128,8 @@ class TestIntermediateRevisions(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
-        wt1 = self.br1.bzrdir.open_workingtree()
-        wt2 = self.br2.bzrdir.open_workingtree()
+        wt1 = self.br1.controldir.open_workingtree()
+        wt2 = self.br2.controldir.open_workingtree()
         wt2.commit("Commit eleven", rev_id="b@u-0-7")
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
@@ -244,14 +240,16 @@ class TestRevisionBugs(TestCase):
     def test_no_status(self):
         r = revision.Revision(
             '1', properties={'bugs': 'http://example.com/bugs/1'})
-        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
+                r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
             '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
-        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
+                r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(
             '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
-        self.assertRaises(InvalidBugStatus, list, r.iter_bugs())
+        self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())

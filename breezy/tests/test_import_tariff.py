@@ -26,30 +26,26 @@ from .. import (
     trace,
     )
 from ..controldir import ControlDir
-from ..smart import medium
+from ..bzr.smart import medium
 from ..transport import remote
-
-from ..plugin import (
-    are_plugins_disabled,
-    )
 
 from . import (
     TestCaseWithTransport,
     )
 
 old_format_modules = [
-    'breezy.repofmt.knitrepo',
-    'breezy.repofmt.knitpack_repo',
+    'breezy.bzr.knitrepo',
+    'breezy.bzr.knitpack_repo',
     'breezy.plugins.weave_fmt.branch',
     'breezy.plugins.weave_fmt.bzrdir',
     'breezy.plugins.weave_fmt.repository',
     'breezy.plugins.weave_fmt.workingtree',
-    'breezy.weave',
-    'breezy.weavefile',
-    'breezy.xml4',
-    'breezy.xml5',
-    'breezy.xml6',
-    'breezy.xml7',
+    'breezy.bzr.weave',
+    'breezy.bzr.weavefile',
+    'breezy.bzr.xml4',
+    'breezy.bzr.xml5',
+    'breezy.bzr.xml6',
+    'breezy.bzr.xml7',
     ]
 
 
@@ -88,8 +84,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
         trace.mutter('Setting env for bzr subprocess: %r', env_changes)
-        kwargs = dict(env_changes=env_changes,
-                      allow_plugins=(not are_plugins_disabled()))
+        kwargs = dict(env_changes=env_changes, allow_plugins=False)
         if stderr_file:
             # We don't want to update the whole call chain so we insert stderr
             # *iff* we need to
@@ -172,22 +167,22 @@ class TestImportTariffs(ImportTariffTestCase):
             # breezy.foreign so it can't be blacklisted
             'breezy.gpg',
             'breezy.info',
-            'breezy.knit',
+            'breezy.bzr.knit',
             'breezy.merge3',
             'breezy.merge_directive',
             'breezy.msgeditor',
             'breezy.patiencediff',
-            'breezy.remote',
+            'breezy.bzr.remote',
             'breezy.rules',
             'breezy.sign_my_commits',
-            'breezy.smart',
-            'breezy.smart.client',
-            'breezy.smart.medium',
-            'breezy.smart.server',
+            'breezy.bzr.smart',
+            'breezy.bzr.smart.client',
+            'breezy.bzr.smart.medium',
+            'breezy.bzr.smart.server',
             'breezy.transform',
             'breezy.version_info_formats.format_rio',
-            'breezy.xml_serializer',
-            'breezy.xml8',
+            'breezy.bzr.xml_serializer',
+            'breezy.bzr.xml8',
             'getpass',
             'kerberos',
             'ssl',
@@ -238,9 +233,9 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.bugtracker',
             'breezy.bundle.commands',
             'breezy.cmd_version_info',
-            'breezy.dirstate',
-            'breezy._dirstate_helpers_py',
-            'breezy._dirstate_helpers_pyx',
+            'breezy.bzr.dirstate',
+            'breezy.bzr._dirstate_helpers_py',
+            'breezy.bzr._dirstate_helpers_pyx',
             'breezy.externalcommand',
             'breezy.filters',
             'breezy.hashcache',
@@ -248,20 +243,20 @@ class TestImportTariffs(ImportTariffTestCase):
             # breezy.foreign so it can't be blacklisted
             'breezy.gpg',
             'breezy.info',
-            'breezy.knit',
+            'breezy.bzr.knit',
             'breezy.merge3',
             'breezy.merge_directive',
             'breezy.msgeditor',
             'breezy.patiencediff',
-            'breezy.remote',
+            'breezy.bzr.remote',
             'breezy.rules',
             'breezy.sign_my_commits',
-            'breezy.smart.client',
+            'breezy.bzr.smart.client',
             'breezy.transform',
             'breezy.version_info_formats.format_rio',
-            'breezy.workingtree_4',
-            'breezy.xml_serializer',
-            'breezy.xml8',
+            'breezy.bzr.workingtree_4',
+            'breezy.bzr.xml_serializer',
+            'breezy.bzr.xml8',
             'getpass',
             'kerberos',
             'smtplib',

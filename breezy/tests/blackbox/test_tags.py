@@ -252,7 +252,7 @@ class TestTagging(TestCaseWithTransport):
             u'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
 
         # now test dotted revnos
-        tree2 = tree1.bzrdir.sprout('branch2').open_workingtree()
+        tree2 = tree1.controldir.sprout('branch2').open_workingtree()
         tree1.commit(allow_pointless=True, message='revision 3 in branch1',
                 rev_id='revid-3a')
         tree2.commit(allow_pointless=True, message='revision 3 in branch2',

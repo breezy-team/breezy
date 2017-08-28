@@ -187,7 +187,7 @@ class TestCat(tests.TestCaseWithTransport):
         self.build_tree(['README'])
         wt.add('README')
         wt.commit('Making sure there is a basis_tree available')
-        wt.branch.bzrdir.destroy_workingtree()
+        wt.branch.controldir.destroy_workingtree()
 
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr(['cat', url])

@@ -20,7 +20,6 @@
 
 from .. import (
     branch,
-    bzrdir,
     controldir,
     errors,
     foreign,
@@ -30,10 +29,14 @@ from .. import (
     revision,
     tests,
     trace,
+    )
+from ..bzr import (
+    branch as bzrbranch,
+    bzrdir,
     vf_repository,
     )
 
-from ..repofmt import groupcompress_repo
+from ..bzr import groupcompress_repo
 
 # This is the dummy foreign revision control system, used 
 # mainly here in the testsuite to test the foreign VCS infrastructure.
@@ -88,28 +91,28 @@ class DummyForeignVcs(foreign.ForeignVcs):
         return "%s|%s|%s" % foreign_revid
 
 
-class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
+class DummyForeignVcsBranch(bzrbranch.BzrBranch6,foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
     @property
     def user_transport(self):
-        return self.bzrdir.user_transport
+        return self.controldir.user_transport
 
-    def __init__(self, _format, _control_files, a_bzrdir, *args, **kwargs):
+    def __init__(self, _format, _control_files, a_controldir, *args, **kwargs):
         self._format = _format
-        self._base = a_bzrdir.transport.base
+        self._base = a_controldir.transport.base
         self._ignore_fallbacks = False
-        self.bzrdir = a_bzrdir
+        self.controldir = a_controldir
         foreign.ForeignBranch.__init__(self,
             DummyForeignVcsMapping(DummyForeignVcs()))
-        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
+        bzrbranch.BzrBranch6.__init__(self, _format, _control_files, a_controldir,
             *args, **kwargs)
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        return self.bzrdir.checkout_metadir()
+        return self.controldir.checkout_metadir()
 
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
@@ -122,13 +125,14 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
 
 class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
 
-    def _generate_revision_if_needed(self):
+    def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
                 (str(self._timestamp), str(self._timezone), "UNKNOWN"))
             self.random_revid = False
-        elif self._new_revision_id is not None:
+        elif revid is not None:
+            self._new_revision_id = revid
             self.random_revid = False
         else:
             self._new_revision_id = self._gen_revision_id()
@@ -200,28 +204,24 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                     parent_revids = []
                 else:
                     parent_revids = [parent_revid]
-                builder = self.target.get_commit_builder(parent_revids, 
+                builder = self.target.get_commit_builder(parent_revids,
                         self.target.get_config_stack(), rev.timestamp,
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
                     parent_tree = self.target.repository.revision_tree(
                         parent_revid)
-                    for path, ie in tree.iter_entries_by_dir():
-                        new_ie = ie.copy()
-                        new_ie.revision = None
-                        builder.record_entry_contents(new_ie, 
-                            [parent_tree.root_inventory],
-                            path, tree, 
-                            (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
+                    iter_changes = tree.iter_changes(parent_tree)
+                    list(builder.record_iter_changes(
+                        tree, parent_revid, iter_changes))
                     builder.finish_inventory()
                 except:
                     builder.abort()
                     raise
                 revidmap[revid] = builder.commit(rev.message)
-                self.target.set_last_revision_info(parent_revno+1, 
+                self.target.set_last_revision_info(parent_revno+1,
                     revidmap[revid])
-                trace.mutter('lossily pushed revision %s -> %s', 
+                trace.mutter('lossily pushed revision %s -> %s',
                     revid, revidmap[revid])
         finally:
             self.source.unlock()
@@ -230,31 +230,31 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
         return result
 
 
-class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
+class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
 
     @classmethod
     def get_format_string(cls):
         return "Branch for Testing"
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         return DummyForeignVcsDirFormat()
 
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
+    def open(self, a_controldir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
         if name is None:
-            name = a_bzrdir._get_selected_branch()
+            name = a_controldir._get_selected_branch()
         if not _found:
             raise NotImplementedError
         try:
-            transport = a_bzrdir.get_branch_transport(None, name=name)
+            transport = a_controldir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             if found_repository is None:
-                found_repository = a_bzrdir.find_repository()
+                found_repository = a_controldir.find_repository()
             return DummyForeignVcsBranch(_format=self,
                               _control_files=control_files,
-                              a_bzrdir=a_bzrdir,
+                              a_controldir=a_controldir,
                               _repository=found_repository,
                               name=name)
         except errors.NoSuchFile:
@@ -330,7 +330,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
-        return controldir.format_registry.make_bzrdir("default")
+        return controldir.format_registry.make_controldir("default")
 
     def checkout_metadir(self):
         return self.cloning_metadir()
@@ -422,7 +422,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         wt.add('bla', 'bla-a')
         wt.commit('bla-a')
         root_id = wt.get_root_id()
-        target = wt.bzrdir.sprout('br2').open_workingtree()
+        target = wt.controldir.sprout('br2').open_workingtree()
         target.unversion(['bla-a'])
         target.add('bla', 'bla-b')
         target.commit('bla-b')

@@ -18,7 +18,7 @@
 
 import breezy.bundle
 from ..bundle.serializer import write_bundle
-import breezy.bzrdir
+import breezy.bzr.bzrdir
 from .. import errors
 from ..sixish import (
     BytesIO,
@@ -37,12 +37,12 @@ load_tests = load_tests_apply_scenarios
 def create_bundle_file(test_case):
     test_case.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
 
-    format = breezy.bzrdir.BzrDirFormat.get_default_format()
+    format = breezy.bzr.bzrdir.BzrDirFormat.get_default_format()
 
     bzrdir = format.initialize('tree')
     repo = bzrdir.create_repository()
-    branch = repo.bzrdir.create_branch()
-    wt = branch.bzrdir.create_workingtree()
+    branch = repo.controldir.create_branch()
+    wt = branch.controldir.create_workingtree()
 
     wt.add(['a', 'subdir/'])
     wt.commit('new project', rev_id='commit-1')

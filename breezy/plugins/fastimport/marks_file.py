@@ -74,6 +74,6 @@ def export_marks(filename, revision_ids):
         return
 
     # Write the revision info
-    for mark, revid in revision_ids.iteritems():
-        f.write(':%s %s\n' % (str(mark).lstrip(':'), revid))
+    for mark in revision_ids:
+        f.write(':%s %s\n' % (str(mark).lstrip(':'), revision_ids[mark]))
     f.close()

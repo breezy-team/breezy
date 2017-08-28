@@ -22,7 +22,6 @@ import sys
 
 from breezy import (
     branch,
-    bzrdir,
     controldir,
     errors,
     info,
@@ -30,6 +29,9 @@ from breezy import (
     tests,
     upgrade,
     urlutils,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.tests.matchers import ContainsNoVfsCalls
 from breezy.transport import memory
@@ -49,7 +51,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(err, 'brz: ERROR: Not a branch: "%s".\n' % location)
 
     def test_info_empty_controldir(self):
-        self.make_bzrdir('ctrl')
+        self.make_controldir('ctrl')
         out, err = self.run_bzr('info ctrl')
         self.assertEqual(out,
             'Empty control directory (format: 2a or pack-0.92)\n'
@@ -58,7 +60,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(err, '')
 
     def test_info_empty_controldir_verbose(self):
-        self.make_bzrdir('ctrl')
+        self.make_controldir('ctrl')
         out, err = self.run_bzr('info -v ctrl')
         self.assertEqualDiff(out,
             'Empty control directory (format: 2a or pack-0.92)\n'
@@ -172,8 +174,8 @@ Repository:
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
-        branch2 = branch1.bzrdir.sprout('branch').open_branch()
-        branch2.set_push_location(branch1.bzrdir.root_transport.base)
+        branch2 = branch1.controldir.sprout('branch').open_branch()
+        branch2.set_push_location(branch1.controldir.root_transport.base)
 
         out, err = self.run_bzr('info branch')
         self.assertEqualDiff(
@@ -230,12 +232,12 @@ Repository:
 
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
-        branch1.bzrdir.sprout('bound')
-        knit1_format = controldir.format_registry.make_bzrdir('knit')
+        branch1.controldir.sprout('bound')
+        knit1_format = controldir.format_registry.make_controldir('knit')
         upgrade.upgrade('bound', knit1_format)
         branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
-        bound_tree = branch3.bzrdir.open_workingtree()
+        bound_tree = branch3.controldir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
         self.assertEqualDiff(
 """Checkout (format: knit)
@@ -284,7 +286,7 @@ Repository:
         branch4 = controldir.ControlDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
-        branch4.bzrdir.open_workingtree().update()
+        branch4.controldir.open_workingtree().update()
         out, err = self.run_bzr('info checkout --verbose')
         self.assertEqualDiff(
 """Checkout (format: knit)
@@ -546,7 +548,7 @@ Repository:
 
     def test_info_standalone_no_tree(self):
         # create standalone branch without a working tree
-        format = controldir.format_registry.make_bzrdir('default')
+        format = controldir.format_registry.make_controldir('default')
         branch = self.make_branch('branch')
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
@@ -568,14 +570,14 @@ Branch history:
 
 Repository:
          0 revisions
-""" % (info.describe_format(repo.bzrdir, repo, branch, None),
+""" % (info.describe_format(repo.controldir, repo, branch, None),
        format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         transport = self.get_transport()
 
         # Create shared repository
@@ -601,7 +603,7 @@ Repository:
         self.assertEqual('', err)
 
         # Create branch inside shared repository
-        repo.bzrdir.root_transport.mkdir('branch')
+        repo.controldir.root_transport.mkdir('branch')
         branch1 = controldir.ControlDir.create_branch_convenience(
             'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
@@ -871,7 +873,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -899,10 +901,10 @@ Repository:
         self.assertEqual('', err)
 
         # Create two branches
-        repo.bzrdir.root_transport.mkdir('branch1')
+        repo.controldir.root_transport.mkdir('branch1')
         branch1 = controldir.ControlDir.create_branch_convenience('repo/branch1',
             format=format)
-        branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
+        branch2 = branch1.controldir.sprout('repo/branch2').open_branch()
 
         # Empty first branch
         out, err = self.run_bzr('info repo/branch1 --verbose')
@@ -943,7 +945,7 @@ Repository:
 
         # Update first branch
         self.build_tree(['repo/branch1/a'])
-        tree1 = branch1.bzrdir.open_workingtree()
+        tree1 = branch1.controldir.open_workingtree()
         tree1.add('a')
         tree1.commit('commit one')
         rev = repo.get_revision(branch1.last_revision())
@@ -1029,7 +1031,7 @@ Repository:
         self.assertEqual('', err)
 
         # Update second branch
-        tree2 = branch2.bzrdir.open_workingtree()
+        tree2 = branch2.controldir.open_workingtree()
         tree2.pull(branch1)
         out, err = self.run_bzr('info -v repo/branch2')
         self.assertEqualDiff(
@@ -1098,7 +1100,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_tree_in_root(self):
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1126,7 +1128,7 @@ Repository:
         self.assertEqual('', err)
 
         # Create branch in root of repository
-        control = repo.bzrdir
+        control = repo.controldir
         branch = control.create_branch()
         control.create_workingtree()
         out, err = self.run_bzr('info -v repo')
@@ -1166,7 +1168,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_repository_hook(self):
-        format = controldir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_controldir('knit')
         def repo_info(repo, stats, outf):
             outf.write("more info\n")
         info.hooks.install_named_hook('repository', repo_info, None)
@@ -1195,13 +1197,13 @@ more info
         self.assertEqual('', err)
 
     def test_info_unshared_repository_with_colocated_branches(self):
-        format = controldir.format_registry.make_bzrdir('development-colo')
+        format = controldir.format_registry.make_controldir('development-colo')
         transport = self.get_transport()
 
         # Create unshared repository
         repo = self.make_repository('repo', shared=False, format=format)
         repo.set_make_working_trees(True)
-        repo.bzrdir.create_branch(name='foo')
+        repo.controldir.create_branch(name='foo')
         out, err = self.run_bzr('info repo')
         self.assertEqualDiff(
 """Unshared repository with trees and colocated branches (format: development-colo)
@@ -1289,25 +1291,25 @@ Location:
         extra_space = ''
         if light_checkout:
             tree_data = ("  light checkout root: %s\n" %
-                friendly_location(lco_tree.bzrdir.root_transport.base))
+                friendly_location(lco_tree.controldir.root_transport.base))
             extra_space = ' '
         if lco_tree.branch.get_bound_location() is not None:
             tree_data += ("%s       checkout root: %s\n" % (extra_space,
-                friendly_location(lco_tree.branch.bzrdir.root_transport.base)))
+                friendly_location(lco_tree.branch.controldir.root_transport.base)))
         if shared_repo is not None:
             branch_data = (
                 "   checkout of branch: %s\n"
                 "    shared repository: %s\n" %
-                (friendly_location(repo_branch.bzrdir.root_transport.base),
-                 friendly_location(shared_repo.bzrdir.root_transport.base)))
+                (friendly_location(repo_branch.controldir.root_transport.base),
+                 friendly_location(shared_repo.controldir.root_transport.base)))
         elif repo_branch is not None:
             branch_data = (
                 "%s  checkout of branch: %s\n" %
                 (extra_space,
-                 friendly_location(repo_branch.bzrdir.root_transport.base)))
+                 friendly_location(repo_branch.controldir.root_transport.base)))
         else:
             branch_data = ("   checkout of branch: %s\n" %
-                lco_tree.branch.bzrdir.root_transport.base)
+                lco_tree.branch.controldir.root_transport.base)
 
         if verbose >= 2:
             verbose_info = '         0 committers\n'
@@ -1360,7 +1362,7 @@ Repository:
         repo = self.make_repository('repo', shared=True,
                                     format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
-        repo.bzrdir.root_transport.mkdir('branch')
+        repo.controldir.root_transport.mkdir('branch')
         repo_branch = controldir.ControlDir.create_branch_convenience(
             'repo/branch', format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
@@ -1472,7 +1474,7 @@ Repository:
             format='1.6')
         trunk_tree.commit('mainline')
         # and a branch from it which is stacked
-        new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        new_dir = trunk_tree.controldir.sprout('newbranch', stacked=True)
         out, err = self.run_bzr('info newbranch')
         self.assertEqual(
 """Standalone tree (format: 1.6)
@@ -1519,7 +1521,7 @@ In the working tree:
         self.assertEqual("", err)
 
     def test_info_shows_colocated_branches(self):
-        bzrdir = self.make_branch('.', format='development-colo').bzrdir
+        bzrdir = self.make_branch('.', format='development-colo').controldir
         bzrdir.create_branch(name="colo1")
         bzrdir.create_branch(name="colo2")
         bzrdir.create_branch(name="colo3")

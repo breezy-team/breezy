@@ -21,11 +21,13 @@ import os
 import time
 
 from .. import (
+    errors,
+    osutils,
+    )
+from ..bzr import (
     bzrdir,
     dirstate,
-    errors,
     inventory,
-    osutils,
     workingtree_4,
     )
 from ..lockdir import LockDir
@@ -127,13 +129,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree.add(['file-a'], ['id-a'])
         rev1 = subtree.commit('commit in subdir')
 
-        subtree2 = subtree.bzrdir.sprout('subdir2').open_workingtree()
+        subtree2 = subtree.controldir.sprout('subdir2').open_workingtree()
         self.build_tree(['subdir2/file-b'])
         subtree2.add(['file-b'], ['id-b'])
         rev2 = subtree2.commit('commit in subdir2')
 
         subtree.flush()
-        subtree3 = subtree.bzrdir.sprout('subdir3').open_workingtree()
+        subtree3 = subtree.controldir.sprout('subdir3').open_workingtree()
         rev3 = subtree3.commit('merge from subdir2')
 
         repo = tree.branch.repository
@@ -329,10 +331,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # This is reproducing some of what 'switch' does, just to isolate the
         # set_parent_trees() step.
         wt = b_b.create_checkout('tree', lightweight=True)
-        fmt = wt.bzrdir.find_branch_format()
-        fmt.set_reference(wt.bzrdir, None, b_c)
+        fmt = wt.controldir.find_branch_format()
+        fmt.set_reference(wt.controldir, None, b_c)
         # Re-open with the new reference
-        wt = wt.bzrdir.open_workingtree()
+        wt = wt.controldir.open_workingtree()
         wt.set_parent_trees([('C', b_c.repository.revision_tree('C'))])
         self.assertEqual(None, wt.basis_tree().path2id('b'))
 
@@ -524,7 +526,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
         # when you branch, it inherits the same root id
         rev1 = tree1.commit('first post')
-        tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
+        tree3 = tree1.controldir.sprout('tree3').open_workingtree()
         self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
 
     def test_set_root_id(self):
@@ -717,7 +719,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual(statvalue.st_size, entry_state[2])
         tree.unlock()
         tree.lock_read()
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         entry = tree._get_entry(path="foo")
@@ -780,7 +782,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
             state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
                                             [('f', '', 0, False, ''),
                                              ('r', 'bar', 0 , False, '')]))
-            self.assertListRaises(errors.CorruptDirstate,
+            self.assertListRaises(dirstate.DirstateCorrupt,
                                   tree.iter_changes, tree.basis_tree())
         finally:
             tree.unlock()

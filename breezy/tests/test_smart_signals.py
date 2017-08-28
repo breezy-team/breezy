@@ -21,7 +21,7 @@ import threading
 import weakref
 
 from breezy import tests, transport
-from breezy.smart import client, medium, server, signals
+from breezy.bzr.smart import client, medium, server, signals
 
 # Windows doesn't define SIGHUP. And while we could just skip a lot of these
 # tests, we often don't actually care about interaction with 'signal', so we
@@ -119,7 +119,7 @@ class TestSignalHandlers(tests.TestCase):
         self.assertEqual([], calls)
 
     def test_not_installed(self):
-        # If you haven't called breezy.smart.signals.install_sighup_handler,
+        # If you haven't called breezy.bzr.smart.signals.install_sighup_handler,
         # then _on_sighup should be None, and all the calls become no-ops.
         signals._on_sighup = None
         calls = []

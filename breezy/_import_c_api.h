@@ -44,36 +44,28 @@ static int _import_function(PyObject *module, const char *funcname,
                             void **func, const char *signature)
 {
     PyObject *d = NULL;
-    PyObject *c_obj = NULL;
-    const char *desc = NULL;
+    PyObject *capsule = NULL;
+    void *pointer;
 
-    /* (char *) because Python2.4 defines this as (char *) rather than
-     * (const char *)
-     */
-    d = PyObject_GetAttrString(module, (char *)_C_API_NAME);
+    d = PyObject_GetAttrString(module, _C_API_NAME);
     if (!d) {
         // PyObject_GetAttrString sets an appropriate exception
         goto bad;
     }
-    c_obj = PyDict_GetItemString(d, funcname);
-    if (!c_obj) {
+    capsule = PyDict_GetItemString(d, funcname);
+    if (!capsule) {
         // PyDict_GetItemString does not set an exception
         PyErr_Format(PyExc_AttributeError,
             "Module %s did not export a function named %s\n",
             PyModule_GetName(module), funcname);
         goto bad;
     }
-    desc = (char *)PyCObject_GetDesc(c_obj);
-    if (!desc || strcmp(desc, signature) != 0) {
-        if (desc == NULL) {
-            desc = "<null>";
-        }
-        PyErr_Format(PyExc_TypeError,
-            "C function %s.%s has wrong signature (expected %s, got %s)",
-                PyModule_GetName(module), funcname, signature, desc);
+    pointer = PyCapsule_GetPointer(capsule, signature);
+    if (!pointer) {
+	// PyCapsule_GetPointer sets an error with a little context
         goto bad;
     }
-    *func = PyCObject_AsVoidPtr(c_obj);
+    *func = pointer;
     Py_DECREF(d);
     return 0;
 bad:

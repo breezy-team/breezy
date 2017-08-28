@@ -22,12 +22,15 @@ import time
 import sys
 
 from . import (
-    bzrdir,
+    branch as _mod_branch,
     controldir,
     errors,
     hooks as _mod_hooks,
     osutils,
     urlutils,
+    )
+from .bzr import (
+    bzrdir,
     )
 from .errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
@@ -58,7 +61,7 @@ class LocationList(object):
             return
         try:
             path = urlutils.local_path_from_url(url)
-        except errors.InvalidURL:
+        except urlutils.InvalidURL:
             self.locs.append((label, url))
         else:
             self.add_path(label, path)
@@ -160,7 +163,7 @@ def _gather_related_branches(branch):
     locs.add_url('submit branch', branch.get_submit_branch())
     try:
         locs.add_url('stacked on', branch.get_stacked_on_url())
-    except (errors.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
+    except (_mod_branch.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
         errors.NotStacked):
         pass
     return locs
@@ -345,21 +348,21 @@ def _show_repository_stats(repository, stats, outfile):
         outfile.write(f.getvalue())
 
 
-def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
-    """Output to stdout the 'info' for a_bzrdir."""
+def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
+    """Output to stdout the 'info' for a_controldir."""
     if outfile is None:
         outfile = sys.stdout
     try:
-        tree = a_bzrdir.open_workingtree(
+        tree = a_controldir.open_workingtree(
             recommend_upgrade=False)
     except (NoWorkingTree, NotLocalUrl, NotBranchError):
         tree = None
         try:
-            branch = a_bzrdir.open_branch(name="")
+            branch = a_controldir.open_branch(name="")
         except NotBranchError:
             branch = None
             try:
-                repository = a_bzrdir.open_repository()
+                repository = a_controldir.open_repository()
             except NoRepositoryPresent:
                 lockable = None
                 repository = None
@@ -376,7 +379,7 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
     if lockable is not None:
         lockable.lock_read()
     try:
-        show_component_info(a_bzrdir, repository, branch, tree, verbose,
+        show_component_info(a_controldir, repository, branch, tree, verbose,
                             outfile)
     finally:
         if lockable is not None:
@@ -498,7 +501,7 @@ def describe_format(control, repository, branch, tree):
     non_aliases = set(controldir.format_registry.keys())
     non_aliases.difference_update(controldir.format_registry.aliases())
     for key in non_aliases:
-        format = controldir.format_registry.make_bzrdir(key)
+        format = controldir.format_registry.make_controldir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
             if (tree and format.workingtree_format !=
                 tree._format):

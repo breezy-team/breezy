@@ -37,11 +37,14 @@ from .. import (
     debug,
     errors,
     osutils,
-    remote as _mod_remote,
     tests,
     trace,
     transport,
     ui,
+    urlutils,
+    )
+from ..bzr import (
+    remote as _mod_remote,
     )
 from . import (
     features,
@@ -63,25 +66,16 @@ from ..transport.http import (
     )
 
 
-if features.pycurl.available():
-    from ..transport.http._pycurl import PyCurlTransport
-
-
 load_tests = load_tests_apply_scenarios
 
 
 def vary_by_http_client_implementation():
-    """Test the two libraries we can use, pycurl and urllib."""
+    """Test the libraries we can use, currently just urllib."""
     transport_scenarios = [
         ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
                         _server=http_server.HttpServer_urllib,
                         _url_protocol='http+urllib',)),
         ]
-    if features.pycurl.available():
-        transport_scenarios.append(
-            ('pycurl', dict(_transport=PyCurlTransport,
-                            _server=http_server.HttpServer_PyCurl,
-                            _url_protocol='http+pycurl',)))
     return transport_scenarios
 
 
@@ -128,14 +122,10 @@ def vary_by_http_activity():
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
                             _transport=_urllib.HttpTransport_urllib,)),
         ]
-    if features.pycurl.available():
-        activity_scenarios.append(
-            ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
-                                _transport=PyCurlTransport,)),)
     if features.HTTPSServerFeature.available():
         # FIXME: Until we have a better way to handle self-signed certificates
         # (like allowing them in a test specific authentication.conf for
-        # example), we need some specialized pycurl/urllib transport for tests.
+        # example), we need some specialized urllib transport for tests.
         # -- vila 2012-01-20
         from . import (
             ssl_certs,
@@ -150,17 +140,6 @@ def vary_by_http_activity():
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
                                   _transport=HTTPS_urllib_transport,)),)
-        if features.pycurl.available():
-            class HTTPS_pycurl_transport(PyCurlTransport):
-
-                def __init__(self, base, _from_transport=None):
-                    super(HTTPS_pycurl_transport, self).__init__(
-                        base, _from_transport)
-                    self.cabundle = str(ssl_certs.build_path('ca.crt'))
-
-            activity_scenarios.append(
-                ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
-                                    _transport=HTTPS_pycurl_transport,)),)
     return activity_scenarios
 
 
@@ -385,16 +364,6 @@ class TestHTTPServer(tests.TestCase):
                               http_server.TestingHTTPServer)
 
 
-class TestWithTransport_pycurl(object):
-    """Test case to inherit from if pycurl is present"""
-
-    def _get_pycurl_maybe(self):
-        self.requireFeature(features.pycurl)
-        return PyCurlTransport
-
-    _transport = property(_get_pycurl_maybe)
-
-
 class TestHttpTransportUrls(tests.TestCase):
     """Test the http urls."""
 
@@ -413,7 +382,7 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
         self._transport('http://example.com/bzr/bzr.dev/')
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           self._transport,
                           'http://http://example.com/bzr/bzr.dev/')
 
@@ -433,42 +402,6 @@ class TestHttpTransportUrls(tests.TestCase):
             self.assertTrue(url.startswith('%s://' % self._url_protocol))
         finally:
             server.stop_server()
-
-
-class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
-
-    # TODO: This should really be moved into another pycurl
-    # specific test. When https tests will be implemented, take
-    # this one into account.
-    def test_pycurl_without_https_support(self):
-        """Test that pycurl without SSL do not fail with a traceback.
-
-        For the purpose of the test, we force pycurl to ignore
-        https by supplying a fake version_info that do not
-        support it.
-        """
-        self.requireFeature(features.pycurl)
-        # Import the module locally now that we now it's available.
-        pycurl = features.pycurl.module
-
-        self.overrideAttr(pycurl, 'version_info',
-                          # Fake the pycurl version_info This was taken from
-                          # a windows pycurl without SSL (thanks to bialix)
-                          lambda : (2,
-                                    '7.13.2',
-                                    462082,
-                                    'i386-pc-win32',
-                                    2576,
-                                    None,
-                                    0,
-                                    None,
-                                    ('ftp', 'gopher', 'telnet',
-                                     'dict', 'ldap', 'http', 'file'),
-                                    None,
-                                    0,
-                                    None))
-        self.assertRaises(errors.DependencyNotPresent, self._transport,
-                          'https://launchpad.net')
 
 
 class TestHTTPConnections(http_utils.TestCaseWithWebserver):
@@ -613,11 +546,6 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
         server._url_protocol = self._url_protocol
         return server
 
-    def _testing_pycurl(self):
-        # TODO: This is duplicated for lots of the classes in this file
-        return (features.pycurl.available()
-                and self._transport == PyCurlTransport)
-
 
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
     """Whatever request comes in, close the connection"""
@@ -638,10 +566,9 @@ class TestWallServer(TestSpecificRequestHandler):
         # for details) make no distinction between a closed
         # socket and badly formatted status line, so we can't
         # just test for ConnectionError, we have to test
-        # InvalidHttpResponse too. And pycurl may raise ConnectionReset
-        # instead of ConnectionError too.
-        self.assertRaises(( errors.ConnectionError, errors.ConnectionReset,
-                            errors.InvalidHttpResponse),
+        # InvalidHttpResponse too.
+        self.assertRaises((errors.ConnectionError,
+                           errors.InvalidHttpResponse),
                           t.has, 'foo/bar')
 
     def test_http_get(self):
@@ -732,12 +659,6 @@ class TestBadProtocolServer(TestSpecificRequestHandler):
     """Tests bad protocol from server."""
 
     _req_handler_class = BadProtocolRequestHandler
-
-    def setUp(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                "pycurl doesn't check the protocol version")
-        super(TestBadProtocolServer, self).setUp()
 
     def test_http_has(self):
         t = self.get_readonly_transport()
@@ -1047,16 +968,12 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
         ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
         self.assertEqual((0, '0'), next(ireadv))
         self.assertEqual((2, '2'), next(ireadv))
-        if not self._testing_pycurl():
-            # Only one request have been issued so far (except for pycurl that
-            # try to read the whole response at once)
-            self.assertEqual(1, server.GET_request_nb)
+        # Only one request have been issued so far
+        self.assertEqual(1, server.GET_request_nb)
         self.assertEqual((4, '45'), next(ireadv))
         self.assertEqual((9, '9'), next(ireadv))
-        # Both implementations issue 3 requests but:
-        # - urllib does two multiple (4 ranges, then 2 ranges) then a single
-        #   range,
-        # - pycurl does two multiple (4 ranges, 4 ranges) then a single range
+        # We issue 3 requests: two multiple (4 ranges, then 2 ranges) then a
+        # single range.
         self.assertEqual(3, server.GET_request_nb)
         # Finally the client have tried a single range request and stays in
         # that mode
@@ -1228,7 +1145,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
         self.overrideEnv('http_proxy', 'host:1234')
-        self.assertRaises(errors.InvalidURL, self._proxied_request)
+        self.assertRaises(urlutils.InvalidURL, self._proxied_request)
 
     def test_evaluate_proxy_bypass_true(self):
         """The host is not proxied"""
@@ -1276,21 +1193,9 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         # Let's setup some attributes for tests
         server = self.get_readonly_server()
         self.server_host_port = '%s:%d' % (server.host, server.port)
-        if self._testing_pycurl():
-            # Oh my ! pycurl does not check for the port as part of
-            # no_proxy :-( So we just test the host part
-            self.no_proxy_host = server.host
-        else:
-            self.no_proxy_host = self.server_host_port
+        self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
         self.proxy_url = self.get_secondary_url()
-        if self._testing_pycurl():
-            self.proxy_url = self.proxy_url.replace('+pycurl', '')
-
-    def _testing_pycurl(self):
-        # TODO: This is duplicated for lots of the classes in this file
-        return (features.pycurl.available()
-                and self._transport == PyCurlTransport)
 
     def assertProxied(self):
         t = self.get_readonly_transport()
@@ -1305,12 +1210,6 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         self.assertProxied()
 
     def test_HTTP_PROXY(self):
-        if self._testing_pycurl():
-            # pycurl does not check HTTP_PROXY for security reasons
-            # (for use in a CGI context that we do not care
-            # about. Should we ?)
-            raise tests.TestNotApplicable(
-                'pycurl does not check HTTP_PROXY for security reasons')
         self.overrideEnv('HTTP_PROXY', self.proxy_url)
         self.assertProxied()
 
@@ -1328,9 +1227,6 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         self.assertNotProxied()
 
     def test_HTTP_PROXY_with_NO_PROXY(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl does not check HTTP_PROXY for security reasons')
         self.overrideEnv('NO_PROXY', self.no_proxy_host)
         self.overrideEnv('HTTP_PROXY', self.proxy_url)
         self.assertNotProxied()
@@ -1347,13 +1243,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def test_http_proxy_without_scheme(self):
         self.overrideEnv('http_proxy', self.server_host_port)
-        if self._testing_pycurl():
-            # pycurl *ignores* invalid proxy env variables. If that ever change
-            # in the future, this test will fail indicating that pycurl do not
-            # ignore anymore such variables.
-            self.assertNotProxied()
-        else:
-            self.assertRaises(errors.InvalidURL, self.assertProxied)
+        self.assertRaises(urlutils.InvalidURL, self.assertProxied)
 
 
 class TestRanges(http_utils.TestCaseWithWebserver):
@@ -1475,11 +1365,6 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     do not redirect at all in fact). The mechanism is still in
     place at the _urllib2_wrappers.Request level and these tests
     exercise it.
-
-    For the pycurl implementation
-    the redirection have been deleted as we may deprecate pycurl
-    and I have no place to keep a working implementation.
-    -- vila 20070212
     """
 
     scenarios = multiply_scenarios(
@@ -1488,10 +1373,6 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         )
 
     def setUp(self):
-        if (features.pycurl.available()
-            and self._transport == PyCurlTransport):
-            raise tests.TestNotApplicable(
-                "pycurl doesn't redirect silently anymore")
         super(TestHTTPSilentRedirections, self).setUp()
         install_redirected_request(self)
         cleanup_http_redirection_connections(self)
@@ -1635,11 +1516,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         server._url_protocol = self._url_protocol
         return server
 
-    def _testing_pycurl(self):
-        # TODO: This is duplicated for lots of the classes in this file
-        return (features.pycurl.available()
-                and self._transport == PyCurlTransport)
-
     def get_user_url(self, user, password):
         """Build an url embedding user and password"""
         url = '%s://' % self.server._url_protocol
@@ -1695,11 +1571,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(2, self.server.auth_required_errors)
 
     def test_prompt_for_username(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl cannot prompt, it handles auth by embedding'
-                ' user:pass in urls only')
-
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport(None, None)
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
@@ -1715,11 +1586,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                     stderr.readline())
 
     def test_prompt_for_password(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl cannot prompt, it handles auth by embedding'
-                ' user:pass in urls only')
-
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
         ui.ui_factory = tests.TestUIFactory(stdin='foo\n')
@@ -1754,11 +1620,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                  self.server.auth_realm))
 
     def test_no_prompt_for_password_when_using_auth_config(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl does not support authentication.conf'
-                ' since it cannot prompt')
-
         user =' joe'
         password = 'foo'
         stdin_content = 'bar\n'  # Not the right password
@@ -1779,9 +1640,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         if self._auth_server not in (http_utils.HTTPDigestAuthServer,
                                      http_utils.ProxyDigestAuthServer):
             raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
-        if self._testing_pycurl():
-            self.knownFailure(
-                'pycurl does not handle a nonce change')
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'foo')
         self.assertEqual('contents of a\n', t.get('a').read())
@@ -1797,9 +1655,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(2, self.server.auth_required_errors)
 
     def test_user_from_auth_conf(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl does not support authentication.conf')
         user = 'joe'
         password = 'foo'
         self.server.add_user(user, password)
@@ -1862,18 +1717,8 @@ class TestProxyAuth(TestAuth):
 
     def get_user_transport(self, user, password):
         proxy_url = self.get_user_url(user, password)
-        if self._testing_pycurl():
-            proxy_url = proxy_url.replace('+pycurl', '')
         self.overrideEnv('all_proxy', proxy_url)
         return TestAuth.get_user_transport(self, user, password)
-
-    def test_empty_pass(self):
-        if self._testing_pycurl():
-            import pycurl
-            if pycurl.version_info()[1] < '7.16.0':
-                self.knownFailure(
-                    'pycurl < 7.16.0 does not handle empty proxy passwords')
-        super(TestProxyAuth, self).test_empty_pass()
 
 
 class NonClosingBytesIO(io.BytesIO):

@@ -18,9 +18,11 @@
 
 from .. import (
     errors,
-    groupcompress,
     multiparent,
     tests,
+    )
+from ..bzr import (
+    groupcompress,
     versionedfile,
     )
 
@@ -94,9 +96,9 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         # such, it should end up in the various caches
         gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # The chunks should be cached, the refcount untouched
-        self.assertEqual([('one',)], gen.chunks.keys())
+        self.assertEqual({('one',)}, set(gen.chunks))
         self.assertEqual({('one',): 2, ('two',): 1}, gen.refcounts)
-        self.assertEqual([], gen.diffs.keys())
+        self.assertEqual(set(), set(gen.diffs))
         # Next we get 'two', which is something we output, but also needed for
         # three
         record = next(stream)
@@ -105,10 +107,9 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         # Both are now cached, and the diff for two has been extracted, and
         # one's refcount has been updated. two has been removed from the
         # parent_map
-        self.assertEqual(sorted([('one',), ('two',)]),
-                         sorted(gen.chunks.keys()))
+        self.assertEqual({('one',), ('two',)}, set(gen.chunks))
         self.assertEqual({('one',): 1, ('two',): 1}, gen.refcounts)
-        self.assertEqual([('two',)], gen.diffs.keys())
+        self.assertEqual({('two',)}, set(gen.diffs))
         self.assertEqual({('three',): (('one',), ('two',))},
                          gen.parent_map)
         # Finally 'three', which allows us to remove all parents from the
@@ -118,10 +119,9 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # Both are now cached, and the diff for two has been extracted, and
         # one's refcount has been updated
-        self.assertEqual([], gen.chunks.keys())
+        self.assertEqual(set(), set(gen.chunks))
         self.assertEqual({}, gen.refcounts)
-        self.assertEqual(sorted([('two',), ('three',)]),
-                         sorted(gen.diffs.keys()))
+        self.assertEqual({('two',), ('three',)}, set(gen.diffs))
 
     def test_compute_diffs(self):
         vf = self.make_three_vf()

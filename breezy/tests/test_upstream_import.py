@@ -26,7 +26,7 @@ from .. import (
     revision as _mod_revision,
     transform
     )
-from ..bzrdir import BzrDir
+from ..bzr.bzrdir import BzrDir
 from ..export import export
 from ..upstream_import import (
     common_directory,

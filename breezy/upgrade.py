@@ -29,7 +29,7 @@ from .controldir import (
     format_registry,
     )
 from .i18n import gettext
-from .remote import RemoteBzrDir
+from .bzr.remote import RemoteBzrDir
 
 
 class Convert(object):
@@ -53,15 +53,15 @@ class Convert(object):
             raise AssertionError(
                 "either the url or control_dir parameter must be set.")
         if control_dir is not None:
-            self.bzrdir = control_dir
+            self.controldir = control_dir
         else:
-            self.bzrdir = ControlDir.open_unsupported(url)
-        if isinstance(self.bzrdir, RemoteBzrDir):
-            self.bzrdir._ensure_real()
-            self.bzrdir = self.bzrdir._real_bzrdir
-        if self.bzrdir.root_transport.is_readonly():
+            self.controldir = ControlDir.open_unsupported(url)
+        if isinstance(self.controldir, RemoteBzrDir):
+            self.controldir._ensure_real()
+            self.controldir = self.controldir._real_bzrdir
+        if self.controldir.root_transport.is_readonly():
             raise errors.UpgradeReadonly
-        self.transport = self.bzrdir.root_transport
+        self.transport = self.controldir.root_transport
         ui.ui_factory.suppressed_warnings.add(warning_id)
         try:
             self.convert()
@@ -71,8 +71,8 @@ class Convert(object):
 
     def convert(self):
         try:
-            branch = self.bzrdir.open_branch()
-            if branch.user_url != self.bzrdir.user_url:
+            branch = self.controldir.open_branch()
+            if branch.user_url != self.controldir.user_url:
                 ui.ui_factory.note(gettext(
                     'This is a checkout. The branch (%s) needs to be upgraded'
                     ' separately.') % (urlutils.unescape_for_display(
@@ -84,29 +84,29 @@ class Convert(object):
             pass
         if self.format is None:
             try:
-                rich_root = self.bzrdir.find_repository()._format.rich_root_data
+                rich_root = self.controldir.find_repository()._format.rich_root_data
             except errors.NoRepositoryPresent:
                 rich_root = False # assume no rich roots
             if rich_root:
                 format_name = "default-rich-root"
             else:
                 format_name = "default"
-            format = format_registry.make_bzrdir(format_name)
+            format = format_registry.make_controldir(format_name)
         else:
             format = self.format
-        if not self.bzrdir.needs_format_conversion(format):
-            raise errors.UpToDateFormat(self.bzrdir._format)
-        if not self.bzrdir.can_convert_format():
+        if not self.controldir.needs_format_conversion(format):
+            raise errors.UpToDateFormat(self.controldir._format)
+        if not self.controldir.can_convert_format():
             raise errors.BzrError(gettext("cannot upgrade from bzrdir format %s") %
-                           self.bzrdir._format)
-        self.bzrdir.check_conversion_target(format)
+                           self.controldir._format)
+        self.controldir.check_conversion_target(format)
         ui.ui_factory.note(gettext('starting upgrade of %s') % 
             urlutils.unescape_for_display(self.transport.base, 'utf-8'))
 
-        self.backup_oldpath, self.backup_newpath = self.bzrdir.backup_bzrdir()
-        while self.bzrdir.needs_format_conversion(format):
-            converter = self.bzrdir._format.get_converter(format)
-            self.bzrdir = converter.convert(self.bzrdir, None)
+        self.backup_oldpath, self.backup_newpath = self.controldir.backup_bzrdir()
+        while self.controldir.needs_format_conversion(format):
+            converter = self.controldir._format.get_converter(format)
+            self.controldir = converter.convert(self.controldir, None)
         ui.ui_factory.note(gettext('finished'))
 
     def clean_up(self):
@@ -208,7 +208,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
         ui.ui_factory.note(gettext('Found %d dependent branches - upgrading ...')
                            % (len(dependents),))
         # Convert dependent branches
-        branch_cdirs = [b.bzrdir for b in dependents]
+        branch_cdirs = [b.controldir for b in dependents]
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
             dry_run, label="branch")
         attempted.extend(branch_cdirs)

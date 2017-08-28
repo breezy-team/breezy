@@ -16,7 +16,7 @@
 
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-import breezy.xml6
+import breezy.bzr.xml6
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -25,7 +25,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate is mandatory.
         if isinstance(self.workingtree_format,
-            breezy.workingtree_4.DirStateWorkingTreeFormat):
+            breezy.bzr.workingtree_4.DirStateWorkingTreeFormat):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         # TODO: jam 20051218 this probably should add more than just
@@ -36,26 +36,26 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         b = t.branch
         with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
-        t.commit('a', rev_id='r1')
+        r1 = t.commit('a')
 
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv = t.basis_tree().root_inventory
-        self.assertEqual('r1', basis_inv.revision_id)
+        self.assertEqual(r1, basis_inv.revision_id)
 
-        store_inv = b.repository.get_inventory('r1')
+        store_inv = b.repository.get_inventory(r1)
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
         with open('b', 'wb') as f: f.write('b\n')
         t.add('b')
-        t.commit('b', rev_id='r2')
+        r2 = t.commit('b')
 
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = breezy.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
-        self.assertEqual('r2', basis_inv.revision_id)
-        store_inv = b.repository.get_inventory('r2')
+        basis_inv = breezy.bzr.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
+        self.assertEqual(r2, basis_inv.revision_id)
+        store_inv = b.repository.get_inventory(r2)
 
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
@@ -64,14 +64,14 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate and ignorable.
         if isinstance(self.workingtree_format,
-            breezy.workingtree_4.DirStateWorkingTreeFormat):
+            breezy.bzr.workingtree_4.DirStateWorkingTreeFormat):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')
         b = t.branch
         with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
-        t.commit('a', rev_id='r1')
+        t.commit('a')
         t._transport.put_bytes('basis-inventory-cache', 'booga')
         t.basis_tree()
         t._transport.put_bytes('basis-inventory-cache', '<xml/>')

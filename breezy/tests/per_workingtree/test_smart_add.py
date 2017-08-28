@@ -82,7 +82,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         finally:
             wt.unlock()
         # and the disk state should be the same - reopen to check.
-        wt = wt.bzrdir.open_workingtree()
+        wt = wt.controldir.open_workingtree()
         self.assertEqual(wt.path2id('file'), None)
 
     def test_add_dot_from_root(self):
@@ -139,7 +139,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         if wt.user_url != wt.branch.user_url:
             # Lightweight checkout, make sure we have a repo location.
-            wt.branch.bzrdir.root_transport.mkdir('original')
+            wt.branch.controldir.root_transport.mkdir('original')
         child_tree = self.make_branch_and_tree('original/child')
         wt.smart_add((".",))
         for path in paths:
@@ -285,7 +285,7 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
         tb.add('file')
         tb.commit('Adding file')
 
-        t1 = tb.bzrdir.sprout('t1').open_workingtree()
+        t1 = tb.controldir.sprout('t1').open_workingtree()
 
         self.build_tree_contents([('base/file', 'content changed in base')])
         tb.commit('Changing file in base')

@@ -16,8 +16,10 @@
 
 
 from breezy import (
-    branch as _mod_branch,
     controldir,
+    )
+from breezy.bzr import (
+    branch as _mod_bzrbranch,
     )
 from breezy.tests import TestCaseWithTransport
 
@@ -25,8 +27,8 @@ from breezy.tests import TestCaseWithTransport
 class TestReference(TestCaseWithTransport):
 
     def get_default_format(self):
-        format = controldir.format_registry.make_bzrdir('1.9')
-        format.set_branch_format(_mod_branch.BzrBranchFormat8())
+        format = controldir.format_registry.make_controldir('1.9')
+        format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         return format
 
     def test_no_args_lists(self):
@@ -55,7 +57,7 @@ class TestReference(TestCaseWithTransport):
     def test_uses_basis_tree_location(self):
         tree = self.make_tree_with_reference()
         tree.commit('add newpath')
-        tree.bzrdir.destroy_workingtree()
+        tree.controldir.destroy_workingtree()
         out, err = self.run_bzr('reference', working_dir='tree')
         self.assertContainsRe(out, 'newpath http://example.org\n')
 

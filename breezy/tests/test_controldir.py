@@ -31,6 +31,14 @@ from .scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
+class TestErrors(tests.TestCase):
+
+    def test_must_have_working_tree(self):
+        err = controldir.MustHaveWorkingTree('foo', 'bar')
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
+
+
 class SampleComponentFormat(controldir.ControlComponentFormat):
 
     def get_format_string(self):
@@ -83,14 +91,6 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
-
-
-class TestControlDirFormatDeprecated(tests.TestCaseWithTransport):
-    """Tests for removed registration method in the ControlDirFormat facility."""
-
-    def test_register_format(self):
-        self.assertRaises(errors.BzrError,
-            controldir.ControlDirFormat.register_format, object())
 
 
 class TestProber(tests.TestCaseWithTransport):
@@ -233,3 +233,13 @@ class DefaultControlComponentFormatTests(tests.TestCase):
             'is available.\nIt is recommended that you upgrade by running '
             'the command\n  brz upgrade apath\n',
             ui.ui_factory.stderr.getvalue())
+
+
+class IsControlFilenameTest(tests.TestCase):
+
+    def test_is_bzrdir(self):
+        self.assertTrue(controldir.is_control_filename('.bzr'))
+
+    def test_is_not_bzrdir(self):
+        self.assertFalse(controldir.is_control_filename('.git'))
+        self.assertFalse(controldir.is_control_filename('bla'))

@@ -411,7 +411,7 @@ class ChrootDecoratorTransportTest(tests.TestCase):
         self.start_server(server)
         t = transport.get_transport_from_url(server.get_url())
         self.assertRaises(
-            errors.InvalidURLJoin, urlutils.join, t.base, '..')
+            urlutils.InvalidURLJoin, urlutils.join, t.base, '..')
 
 
 class TestChrootServer(tests.TestCase):
@@ -718,7 +718,7 @@ class TestTransportFromPath(tests.TestCaseInTempDir):
 class TestTransportFromUrl(tests.TestCaseInTempDir):
 
     def test_with_path(self):
-        self.assertRaises(errors.InvalidURL, transport.get_transport_from_url,
+        self.assertRaises(urlutils.InvalidURL, transport.get_transport_from_url,
             self.test_dir)
 
     def test_with_url(self):
@@ -822,7 +822,7 @@ class TestWin32LocalTransport(tests.TestCase):
         # clone to root should stop at least at \\HOST part
         # not on \\
         t = local.EmulatedWin32LocalTransport('file://HOST/path/to/some/dir/')
-        for i in xrange(4):
+        for i in range(4):
             t = t.clone('..')
         self.assertEqual(t.base, 'file://HOST/')
         # make sure we reach the root
@@ -862,7 +862,7 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEqual(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
 
     def test_parse_invalid_url(self):
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           transport.ConnectedTransport,
                           'sftp://lily.org:~janneke/public/bzr/gub')
 
@@ -1129,7 +1129,7 @@ class TestLocationToUrl(tests.TestCase):
         self.assertEqual("http://bar", location_to_url("bar:"))
 
     def test_unicode_url(self):
-        self.assertRaises(errors.InvalidURL, location_to_url,
+        self.assertRaises(urlutils.InvalidURL, location_to_url,
             "http://fo/\xc3\xaf".decode("utf-8"))
 
     def test_unicode_path(self):

@@ -44,7 +44,7 @@ def load_tests(loader, standard_tests, pattern):
 class TestMergeImplementation(TestCaseWithTransport):
 
     def do_merge(self, target_tree, source_tree, **kwargs):
-        merger = _mod_merge.Merger.from_revision_ids(None,
+        merger = _mod_merge.Merger.from_revision_ids(
             target_tree, source_tree.last_revision(),
             other_branch=source_tree.branch)
         merger.merge_type=self.merge_type
@@ -62,7 +62,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         ])
         this_tree.add(['file1', 'file2'])
         this_tree.commit('Added files')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([
             ('other/file1', 'a\nb\nc\n'),
             ('other/file2', 'a\nb\nc\n')
@@ -86,7 +86,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         ])
         this_tree.add('file1',)
         this_tree.commit('Added file')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([
             ('other/file1', 'line 1\nline 2 to 2.1\nline 3\nline 4\n'),
         ])
@@ -137,10 +137,10 @@ class TestMergeImplementation(TestCaseWithTransport):
             [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))])
         builder.finish_series()
         branch = builder.get_branch()
-        this_tree = branch.bzrdir.create_workingtree()
+        this_tree = branch.controldir.create_workingtree()
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        other_tree = this_tree.bzrdir.sprout('other',
+        other_tree = this_tree.controldir.sprout('other',
                                              'OTHER-id').open_workingtree()
         self.do_merge(this_tree, other_tree)
         if self.merge_type is _mod_merge.LCAMerger:

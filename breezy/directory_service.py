@@ -36,6 +36,26 @@ from breezy import (
 """)
 
 
+class DirectoryLookupFailure(errors.BzrError):
+    """Base type for lookup errors."""
+
+
+class InvalidLocationAlias(DirectoryLookupFailure):
+
+    _fmt = '"%(alias_name)s" is not a valid location alias.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
+
+
+class UnsetLocationAlias(DirectoryLookupFailure):
+
+    _fmt = 'No %(alias_name)s location assigned.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
+
+
 class DirectoryServiceRegistry(registry.Registry):
     """This object maintains and uses a list of directory services.
 
@@ -84,7 +104,7 @@ class AliasDirectory(object):
     branch_aliases.register('bound', lambda b: b.get_bound_location(),
         help="The branch this branch is bound to, for bound branches.")
     branch_aliases.register('push', lambda b: b.get_push_location(),
-        help="The saved location used for `bzr push` with no arguments.")
+        help="The saved location used for `brz push` with no arguments.")
     branch_aliases.register('this', lambda b: b.base,
         help="This branch.")
 
@@ -99,11 +119,11 @@ class AliasDirectory(object):
         try:
             method = self.branch_aliases.get(name[1:])
         except KeyError:
-            raise errors.InvalidLocationAlias(url)
+            raise InvalidLocationAlias(url)
         else:
             result = method(branch)
         if result is None:
-            raise errors.UnsetLocationAlias(url)
+            raise UnsetLocationAlias(url)
         if extra is not None:
             result = urlutils.join(result, extra)
         return result
@@ -119,14 +139,14 @@ Location aliases
 ================
 
 Bazaar defines several aliases for locations associated with a branch.  These
-can be used with most commands that expect a location, such as `bzr push`.
+can be used with most commands that expect a location, such as `brz push`.
 
 The aliases are::
 
 %s
 For example, to push to the parent location::
 
-    bzr push :parent
+    brz push :parent
 """ % "".join(alias_lines)
 
 

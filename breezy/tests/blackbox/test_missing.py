@@ -57,7 +57,7 @@ class TestMissing(tests.TestCaseWithTransport):
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a', 'initial\nmore\n')])
         b_tree.commit(message='more')
 
@@ -164,7 +164,7 @@ class TestMissing(tests.TestCaseWithTransport):
         a_tree.add('a')
         a_tree.commit(message='r1')
         # clone and add differing revisions
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
         for i in range(2, 6):
             a_tree.commit(message='a%d' % i)
@@ -207,7 +207,7 @@ class TestMissing(tests.TestCaseWithTransport):
         location = osutils.getcwd() + '/a/'
 
         # clone
-        b.bzrdir.sprout('b')
+        b.controldir.sprout('b')
 
         # check last location
         lines, err = self.run_bzr('missing', working_dir='b')
@@ -226,7 +226,7 @@ class TestMissing(tests.TestCaseWithTransport):
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a', 'initial\nmore\n')])
         b_tree.commit(message='more')
 
@@ -245,7 +245,7 @@ class TestMissing(tests.TestCaseWithTransport):
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a', 'initial\nmore\n')])
         b_tree.commit(message='more')
         b_tree.branch.tags.set_tag('a-tag', b_tree.last_revision())

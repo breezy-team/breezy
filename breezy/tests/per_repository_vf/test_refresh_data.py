@@ -46,7 +46,7 @@ class TestRefreshData(TestCaseWithRepository):
         repo.inventories.keys()
         # server repo is the instance a smart server might hold for this
         # repository.
-        server_repo = repo.bzrdir.open_repository()
+        server_repo = repo.controldir.open_repository()
         try:
             server_repo.lock_write(token)
         except errors.TokenLockingNotSupported:

@@ -80,7 +80,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable("only triggered from branches with"
                 " tags")
         readonly_branch1 = branch.Branch.open('readonly+' + tree1.branch.base)
-        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree1.controldir.sprout('tree2').open_workingtree()
         try:
             tree2.branch.bind(readonly_branch1)
         except errors.UpgradeRequired:

@@ -19,8 +19,10 @@
 
 from breezy import (
     controldir,
-    inventory,
     tests,
+    )
+from breezy.bzr import (
+    inventory,
     )
 from breezy.tests.matchers import ContainsNoVfsCalls
 
@@ -40,7 +42,7 @@ class TrivialTest(tests.TestCaseWithTransport):
                                   "%s"
                                   "Reconciliation complete.\n" %
                                   (t.branch.base,
-                                   t.bzrdir.root_transport.base,
+                                   t.controldir.root_transport.base,
                                    does_backup_text))
         self.assertEqualDiff(err, "")
 
@@ -68,7 +70,7 @@ class TrivialTest(tests.TestCaseWithTransport):
                     "%s"
                     "Reconciliation complete.\n" %
                     (t.branch.base,
-                     t.bzrdir.root_transport.base,
+                     t.controldir.root_transport.base,
                      does_backup_text))
         self.assertEqualDiff(expected, out)
         self.assertEqualDiff(err, "")

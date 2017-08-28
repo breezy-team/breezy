@@ -35,7 +35,7 @@ from . import (
     )
 from .trace import mutter
 from .tsort import topo_sort
-from .versionedfile import AdapterFactory, FulltextContentFactory
+from .bzr.versionedfile import AdapterFactory, FulltextContentFactory
 from .i18n import gettext
 
 
@@ -60,7 +60,7 @@ class Reconciler(object):
 
     def __init__(self, dir, other=None, canonicalize_chks=False):
         """Create a Reconciler."""
-        self.bzrdir = dir
+        self.controldir = dir
         self.canonicalize_chks = canonicalize_chks
 
     def reconcile(self):
@@ -89,7 +89,7 @@ class Reconciler(object):
 
     def _reconcile_branch(self):
         try:
-            self.branch = self.bzrdir.open_branch()
+            self.branch = self.controldir.open_branch()
         except errors.NotBranchError:
             # Nothing to check here
             self.fixed_branch_history = None
@@ -99,7 +99,7 @@ class Reconciler(object):
         self.fixed_branch_history = branch_reconciler.fixed_history
 
     def _reconcile_repository(self):
-        self.repo = self.bzrdir.find_repository()
+        self.repo = self.controldir.find_repository()
         ui.ui_factory.note(gettext('Reconciling repository %s') %
             self.repo.user_url)
         self.pb.update(gettext("Reconciling repository"), 0, 1)
@@ -430,7 +430,7 @@ class KnitReconciler(RepoReconciler):
             # NB: This is really not needed, reconcile != pack.
             per_id_bad_parents[key[0]] = {}
         # Generate per-knit/weave data.
-        for key, details in bad_parents.iteritems():
+        for key, details in bad_parents.items():
             file_id = key[0]
             rev_id = key[1]
             knit_parents = tuple([parent[-1] for parent in details[0]])

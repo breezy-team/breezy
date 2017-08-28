@@ -22,7 +22,7 @@ The standard log formats are compared below::
   digital signature       optional       -             -
 
 The default format is ``long``. To change this, define the ``log_format``
-setting in the ``[DEFAULT]`` section of ``bazaar.conf`` like this (say)::
+setting in the ``[DEFAULT]`` section of ``breezy.conf`` like this (say)::
 
   [DEFAULT]
   log_format = short

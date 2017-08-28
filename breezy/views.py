@@ -36,6 +36,37 @@ _VIEWS_FORMAT_MARKER_RE = re.compile(r'Bazaar views format (\d+)')
 _VIEWS_FORMAT1_MARKER = "Bazaar views format 1\n"
 
 
+class NoSuchView(errors.BzrError):
+    """A view does not exist.
+    """
+
+    _fmt = u"No such view: %(view_name)s."
+
+    def __init__(self, view_name):
+        self.view_name = view_name
+
+
+class ViewsNotSupported(errors.BzrError):
+    """Views are not supported by a tree format.
+    """
+
+    _fmt = ("Views are not supported by %(tree)s;"
+            " use 'brz upgrade' to change your tree to a later format.")
+
+    def __init__(self, tree):
+        self.tree = tree
+
+
+class FileOutsideView(errors.BzrError):
+
+    _fmt = ('Specified file "%(file_name)s" is outside the current view: '
+            '%(view_str)s')
+
+    def __init__(self, file_name, view_files):
+        self.file_name = file_name
+        self.view_str = ", ".join(view_files)
+
+
 class _Views(object):
     """Base class for View managers."""
 
@@ -95,7 +126,7 @@ class PathBasedViews(_Views):
         :param views: a map from view name to list of files/directories
         """
         if current is not None and current not in views:
-            raise errors.NoSuchView(current)
+            raise NoSuchView(current)
         self.tree.lock_write()
         try:
             self._current = current
@@ -119,7 +150,7 @@ class PathBasedViews(_Views):
                     return []
             return self._views[view_name]
         except KeyError:
-            raise errors.NoSuchView(view_name)
+            raise NoSuchView(view_name)
 
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
@@ -149,7 +180,7 @@ class PathBasedViews(_Views):
             try:
                 del self._views[view_name]
             except KeyError:
-                raise errors.NoSuchView(view_name)
+                raise NoSuchView(view_name)
             if view_name == self._current:
                 self._current = None
             self._save_view_info()
@@ -256,7 +287,7 @@ class DisabledViews(_Views):
         return False
 
     def _not_supported(self, *a, **k):
-        raise errors.ViewsNotSupported(self.tree)
+        raise ViewsNotSupported(self.tree)
 
     get_view_info = _not_supported
     set_view_info = _not_supported
@@ -282,4 +313,4 @@ def check_path_in_view(tree, relpath):
     if tree.supports_views():
         view_files = tree.views.lookup_view()
         if  view_files and not osutils.is_inside_any(view_files, relpath):
-            raise errors.FileOutsideView(relpath, view_files)
+            raise FileOutsideView(relpath, view_files)

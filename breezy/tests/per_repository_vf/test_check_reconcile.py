@@ -21,7 +21,7 @@ That is, tests for reconcile and check.
 
 from breezy import osutils
 
-from breezy.inventory import (
+from breezy.bzr.inventory import (
     Inventory,
     InventoryFile,
     )

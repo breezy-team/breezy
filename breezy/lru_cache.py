@@ -16,11 +16,16 @@
 
 """A simple least-recently-used (LRU) cache."""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from . import (
     trace,
     )
+from .sixish import (
+    viewitems,
+    viewkeys,
+    )
+
 
 _null_key = object()
 
@@ -129,11 +134,12 @@ class LRUCache(object):
 
         :return: An unordered list of keys that are currently cached.
         """
-        return self._cache.keys()
+        # GZ 2016-06-04: Maybe just make this return the view?
+        return list(viewkeys(self._cache))
 
     def as_dict(self):
         """Get a new dict with the same key:value pairs as the cache"""
-        return dict((k, n.value) for k, n in self._cache.iteritems())
+        return dict((k, n.value) for k, n in viewitems(self._cache))
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
@@ -209,7 +215,7 @@ class LRUCache(object):
     def _update_max_cache(self, max_cache, after_cleanup_count=None):
         self._max_cache = max_cache
         if after_cleanup_count is None:
-            self._after_cleanup_count = self._max_cache * 8 / 10
+            self._after_cleanup_count = self._max_cache * 8 // 10
         else:
             self._after_cleanup_count = min(after_cleanup_count,
                                             self._max_cache)
@@ -246,7 +252,7 @@ class LRUSizeCache(LRUCache):
         if compute_size is None:
             self._compute_size = len
         self._update_max_size(max_size, after_cleanup_size=after_cleanup_size)
-        LRUCache.__init__(self, max_cache=max(int(max_size/512), 1))
+        LRUCache.__init__(self, max_cache=max(int(max_size // 512), 1))
 
     def __setitem__(self, key, value):
         """Add a new value to the cache"""
@@ -294,12 +300,12 @@ class LRUSizeCache(LRUCache):
     def resize(self, max_size, after_cleanup_size=None):
         """Change the number of bytes that will be cached."""
         self._update_max_size(max_size, after_cleanup_size=after_cleanup_size)
-        max_cache = max(int(max_size/512), 1)
+        max_cache = max(int(max_size // 512), 1)
         self._update_max_cache(max_cache)
 
     def _update_max_size(self, max_size, after_cleanup_size=None):
         self._max_size = max_size
         if after_cleanup_size is None:
-            self._after_cleanup_size = self._max_size * 8 / 10
+            self._after_cleanup_size = self._max_size * 8 // 10
         else:
             self._after_cleanup_size = min(after_cleanup_size, self._max_size)

@@ -16,10 +16,13 @@
 
 from __future__ import absolute_import
 
-from . import registry
+from . import (
+    errors,
+    registry,
+    )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-from breezy import errors, urlutils
+from breezy import urlutils
 """)
 
 
@@ -81,7 +84,7 @@ it.
 
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
-can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
+can go into ``breezy.conf``, ``branch.conf`` or into a branch-specific
 configuration section in ``locations.conf``.  You can set up these values
 for each of the projects you work on.
 
@@ -145,6 +148,52 @@ in Hudson's JIRA bug tracker as fixed.
 """
 
 
+class MalformedBugIdentifier(errors.BzrError):
+
+    _fmt = ('Did not understand bug identifier %(bug_id)s: %(reason)s. '
+            'See "brz help bugs" for more information on this feature.')
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class InvalidBugTrackerURL(errors.BzrError):
+
+    _fmt = ("The URL for bug tracker \"%(abbreviation)s\" doesn't "
+            "contain {id}: %(url)s")
+
+    def __init__(self, abbreviation, url):
+        self.abbreviation = abbreviation
+        self.url = url
+
+
+class UnknownBugTrackerAbbreviation(errors.BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
+class InvalidLineInBugsProperty(errors.BzrError):
+
+    _fmt = ("Invalid line in bugs property: '%(line)s'")
+
+    def __init__(self, line):
+        self.line = line
+
+
+class InvalidBugStatus(errors.BzrError):
+
+    _fmt = ("Invalid bug status: '%(status)s'")
+
+    def __init__(self, status):
+        self.status = status
+
+
 def get_bug_url(abbreviated_bugtracker_name, branch, bug_id):
     """Return a URL pointing to the canonical web page of the bug identified by
     'bug_id'.
@@ -167,8 +216,8 @@ class TrackerRegistry(registry.Registry):
             tracker = tracker_type.get(abbreviated_bugtracker_name, branch)
             if tracker is not None:
                 return tracker
-        raise errors.UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name,
-                                                   branch)
+        raise UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name,
+                branch)
 
     def help_topic(self, topic):
         return _bugs_help
@@ -203,7 +252,7 @@ class IntegerBugTracker(BugTracker):
         try:
             int(bug_id)
         except ValueError:
-            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
+            raise MalformedBugIdentifier(bug_id, "Must be an integer")
 
 
 class UniqueIntegerBugTracker(IntegerBugTracker):
@@ -304,8 +353,7 @@ class GenericBugTracker(URLParametrizedBugTracker):
     def _get_bug_url(self, bug_id):
         """Given a validated bug_id, return the bug's web page's URL."""
         if '{id}' not in self._base_url:
-            raise errors.InvalidBugTrackerURL(self._abbreviation,
-                                              self._base_url)
+            raise InvalidBugTrackerURL(self._abbreviation, self._base_url)
         return self._base_url.replace('{id}', str(bug_id))
 
 

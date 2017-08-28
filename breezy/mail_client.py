@@ -36,6 +36,28 @@ from . import (
 mail_client_registry = registry.Registry()
 
 
+class MailClientNotFound(errors.BzrError):
+
+    _fmt = "Unable to find mail client with the following names:"\
+        " %(mail_command_list_string)s"
+
+    def __init__(self, mail_command_list):
+        mail_command_list_string = ', '.join(mail_command_list)
+        errors.BzrError.__init__(
+            self, mail_command_list=mail_command_list,
+            mail_command_list_string=mail_command_list_string)
+
+
+class NoMessageSupplied(errors.BzrError):
+
+    _fmt = "No message supplied."
+
+
+class NoMailAddressSpecified(errors.BzrError):
+
+    _fmt = "No mail-to address (--mail-to) or output (-o) specified."
+
+
 class MailClient(object):
     """A mail client that can send messages with attachements."""
 
@@ -107,10 +129,10 @@ class Editor(MailClient):
                 extension, basename=None, body=None):
         """See MailClient.compose"""
         if not to:
-            raise errors.NoMailAddressSpecified()
+            raise NoMailAddressSpecified()
         body = msgeditor.edit_commit_message(prompt, start_message=body)
         if body == '':
-            raise errors.NoMessageSupplied()
+            raise NoMessageSupplied()
         email_message.EmailMessage.send(self.config,
                                         self.config.get('email'),
                                         to,
@@ -190,7 +212,7 @@ class BodyExternalMailClient(MailClient):
             else:
                 break
         else:
-            raise errors.MailClientNotFound(self._client_commands)
+            raise MailClientNotFound(self._client_commands)
 
     def _get_compose_commandline(self, to, subject, attach_path, body):
         """Determine the commandline to use for composing a message
@@ -252,7 +274,7 @@ class Evolution(BodyExternalMailClient):
         if body is not None:
             message_options['body'] = body
         options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
-                        sorted(message_options.iteritems())]
+                        sorted(message_options.items())]
         return ['mailto:%s?%s' % (self._encode_safe(to or ''),
             '&'.join(options_list))]
 mail_client_registry.register('evolution', Evolution,
@@ -316,7 +338,7 @@ class Thunderbird(BodyExternalMailClient):
         else:
             options_list = []
         options_list.extend(["%s='%s'" % (k, v) for k, v in
-                        sorted(message_options.iteritems())])
+                        sorted(message_options.items())])
         return ['-compose', ','.join(options_list)]
 mail_client_registry.register('thunderbird', Thunderbird,
                               help=Thunderbird.__doc__)
@@ -365,7 +387,7 @@ class Claws(ExternalMailClient):
                 'body=' + urlutils.quote(self._encode_safe(body)))
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
-            raise errors.NoMailAddressSpecified()
+            raise NoMailAddressSpecified()
         compose_url = 'mailto:%s?%s' % (
             self._encode_safe(to), '&'.join(compose_url))
         # Collect command-line options.
@@ -396,7 +418,7 @@ class XDGEmail(BodyExternalMailClient):
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         if not to:
-            raise errors.NoMailAddressSpecified()
+            raise NoMailAddressSpecified()
         commandline = [self._encode_safe(to)]
         if subject is not None:
             commandline.extend(['--subject', self._encode_safe(subject)])
@@ -535,7 +557,7 @@ class MAPIClient(BodyExternalMailClient):
                                 attach_path)
         except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
-                raise errors.MailClientNotFound(['MAPI supported mail client'
+                raise MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])
 mail_client_registry.register('mapi', MAPIClient,
                               help=MAPIClient.__doc__)
@@ -620,7 +642,7 @@ class DefaultMail(MailClient):
             return self._mail_client().compose(prompt, to, subject,
                                                attachment, mime_subtype,
                                                extension, basename, body)
-        except errors.MailClientNotFound:
+        except MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mime_subtype, extension, body)
 
@@ -630,7 +652,7 @@ class DefaultMail(MailClient):
         try:
             return self._mail_client().compose_merge_request(to, subject,
                     directive, basename=basename, body=body)
-        except errors.MailClientNotFound:
+        except MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename, body=body)
 mail_client_registry.register('default', DefaultMail,

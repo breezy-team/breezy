@@ -87,6 +87,7 @@ from .osutils import (
     )
 from breezy.sixish import (
     BytesIO,
+    range,
     zip,
     )
 
@@ -408,8 +409,12 @@ class Logger(object):
 
         # Find and print the interesting revisions
         generator = self._generator_factory(self.branch, rqst)
-        for lr in generator.iter_log_revisions():
-            lf.log_revision(lr)
+        try:
+            for lr in generator.iter_log_revisions():
+                lf.log_revision(lr)
+        except errors.GhostRevisionUnusableHere:
+            raise errors.BzrCommandError(
+                    gettext('Further revision history missing.'))
         lf.show_advice()
 
     def _generator_factory(self, branch, rqst):
@@ -455,6 +460,8 @@ class _DefaultLogGenerator(LogGenerator):
                     continue
                 if omit_merges and len(rev.parent_ids) > 1:
                     continue
+                if rev is None:
+                    raise errors.GhostRevisionUnusableHere(rev_id)
                 if diff_type is None:
                     diff = None
                 else:
@@ -722,6 +729,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     :param exclude_common_ancestry: Whether the start_rev_id should be part of
         the iterated revisions.
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+        dotted_revno will be None for ghosts
     :raises _StartNotLinearAncestor: if a start_rev_id is specified but
         is not found walking the left-hand history
     """
@@ -730,27 +738,44 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
         cur_revno = br_revno
-        for revision_id in graph.iter_lefthand_ancestry(br_rev_id,
-            (_mod_revision.NULL_REVISION,)):
-            yield revision_id, str(cur_revno), 0
-            cur_revno -= 1
+        graph_iter = graph.iter_lefthand_ancestry(br_rev_id,
+            (_mod_revision.NULL_REVISION,))
+        while True:
+            try:
+                revision_id = next(graph_iter)
+            except errors.RevisionNotPresent as e:
+                # Oops, a ghost.
+                yield e.revision_id, None, None
+                break
+            else:
+                yield revision_id, str(cur_revno), 0
+                cur_revno -= 1
     else:
         if end_rev_id is None:
             end_rev_id = br_rev_id
         found_start = start_rev_id is None
-        for revision_id in graph.iter_lefthand_ancestry(end_rev_id,
-                (_mod_revision.NULL_REVISION,)):
-            revno_str = _compute_revno_str(branch, revision_id)
-            if not found_start and revision_id == start_rev_id:
-                if not exclude_common_ancestry:
-                    yield revision_id, revno_str, 0
-                found_start = True
+        graph_iter = graph.iter_lefthand_ancestry(end_rev_id,
+            (_mod_revision.NULL_REVISION,))
+        while True:
+            try:
+                revision_id = next(graph_iter)
+            except StopIteration:
+                break
+            except errors.RevisionNotPresent as e:
+                # Oops, a ghost.
+                yield e.revision_id, None, None
                 break
             else:
-                yield revision_id, revno_str, 0
-        else:
-            if not found_start:
-                raise _StartNotLinearAncestor()
+                revno_str = _compute_revno_str(branch, revision_id)
+                if not found_start and revision_id == start_rev_id:
+                    if not exclude_common_ancestry:
+                        yield revision_id, revno_str, 0
+                    found_start = True
+                    break
+                else:
+                    yield revision_id, revno_str, 0
+        if not found_start:
+            raise _StartNotLinearAncestor()
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
@@ -860,10 +885,10 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    if match is None:
+    if not match:
         return log_rev_iterator
     searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v])
-                for (k,v) in match.iteritems()]
+                for k, v in match.items()]
     return _filter_re(searchRE, log_rev_iterator)
 
 
@@ -880,7 +905,7 @@ def _match_filter(searchRE, rev):
                'author': (rev.get_apparent_authors()),
                'bugs': list(rev.iter_bugs())
                }
-    strings[''] = [item for inner_list in strings.itervalues()
+    strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
     for (k,v) in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
@@ -997,10 +1022,8 @@ def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
     for revs in log_rev_iterator:
         # r = revision_id, n = revno, d = merge depth
         revision_ids = [view[0] for view, _, _ in revs]
-        revisions = repository.get_revisions(revision_ids)
-        revs = [(rev[0], revision, rev[2]) for rev, revision in
-            zip(revs, revisions)]
-        yield revs
+        revisions = dict(repository.iter_revisions(revision_ids))
+        yield [(rev[0], revisions[rev[0][0]], rev[2]) for rev in revs]
 
 
 def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
@@ -1212,7 +1235,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     #       rate). This particular access is clustered with a low success rate.
     modified_text_revisions = set()
     chunk_size = 1000
-    for start in xrange(0, len(text_keys), chunk_size):
+    for start in range(0, len(text_keys), chunk_size):
         next_keys = text_keys[start:start + chunk_size]
         # Only keep the revision_id portion of the key
         modified_text_revisions.update(
@@ -1233,7 +1256,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
 
         if rev_id in modified_text_revisions:
             # This needs to be logged, along with the extra revisions
-            for idx in xrange(len(current_merge_stack)):
+            for idx in range(len(current_merge_stack)):
                 node = current_merge_stack[idx]
                 if node is not None:
                     if include_merges or node[2] == 0:
@@ -1866,8 +1889,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
     # This is the first index which is different between
     # old and new
     base_idx = None
-    for i in xrange(max(len(new_rh),
-                        len(old_rh))):
+    for i in range(max(len(new_rh), len(old_rh))):
         if (len(new_rh) <= i
             or len(old_rh) <= i
             or new_rh[i] != old_rh[i]):

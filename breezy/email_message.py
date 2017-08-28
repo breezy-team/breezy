@@ -28,6 +28,9 @@ from email import (
 
 from . import __version__ as _breezy_version
 from .osutils import safe_unicode
+from .sixish import (
+    text_type,
+    )
 from .smtp_connection import SMTPConnection
 
 
@@ -60,7 +63,7 @@ class EmailMessage(object):
         self._body = body
         self._parts = []
 
-        if isinstance(to_address, basestring):
+        if isinstance(to_address, (str, text_type)):
             to_address = [ to_address ]
 
         to_addresses = []

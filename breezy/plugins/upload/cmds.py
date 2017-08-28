@@ -30,19 +30,19 @@ import stat
 import sys
 
 from breezy import (
-    bzrdir,
+    controldir,
     errors,
     globbing,
     ignores,
-    osutils,
     revision,
-    revisionspec,
-    trace,
     transport,
     urlutils,
-    workingtree,
     )
 """)
+
+from ...sixish import (
+    text_type,
+    )
 
 auto_option = config.Option(
     'upload_auto', default=False, from_unicode=config.bool_from_store,
@@ -178,9 +178,9 @@ class BzrUploader(object):
     def upload_file(self, relpath, id, mode=None):
         if mode is None:
             if self.tree.is_executable(id):
-                mode = 0775
+                mode = 0o775
             else:
-                mode = 0664
+                mode = 0o664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % relpath)
         self._up_put_bytes(relpath, self.tree.get_file_text(id), mode)
@@ -205,7 +205,7 @@ class BzrUploader(object):
 
     def make_remote_dir(self, relpath, mode=None):
         if mode is None:
-            mode = 0775
+            mode = 0o775
         self._up_mkdir(relpath, mode)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
@@ -464,7 +464,7 @@ class cmd_upload(commands.Command):
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
                       short_name='d',
-                      type=unicode,
+                      type=text_type,
                       ),
         option.Option('auto',
                       'Trigger an upload from this branch whenever the tip '
@@ -478,7 +478,8 @@ class cmd_upload(commands.Command):
             directory = u'.'
 
         (wt, branch,
-         relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+         relpath) = controldir.ControlDir.open_containing_tree_or_branch(
+             directory)
 
         if wt:
             wt.lock_read()
@@ -510,7 +511,8 @@ class cmd_upload(commands.Command):
 
             # Check that we are not uploading to a existing working tree.
             try:
-                to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
+                to_bzr_dir = controldir.ControlDir.open_from_transport(
+                        to_transport)
                 has_wt = to_bzr_dir.has_workingtree()
             except errors.NotBranchError:
                 has_wt = False
