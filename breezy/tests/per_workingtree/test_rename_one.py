@@ -75,15 +75,17 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_samedir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
-        a_contents = tree.get_file_text('a-id')
+        a_contents = tree.get_file_text(a_id)
         tree.rename_one('a', 'foo')
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('foo', 'a-id')],
+        self.assertTreeLayout([('', root_id), ('b/', b_id), ('foo', a_id)],
                               tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'foo')
@@ -91,15 +93,17 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_not_localdir(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
-        a_contents = tree.get_file_text('a-id')
+        a_contents = tree.get_file_text(a_id)
         tree.rename_one('a', 'b/foo')
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/foo', 'a-id')],
+        self.assertTreeLayout([('', root_id), ('b/', b_id), ('b/foo', a_id)],
                               tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
         self.assertPathDoesNotExist('tree/a')
         self.assertFileEqual(a_contents, 'tree/b/foo')
@@ -107,55 +111,64 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_subdir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'b', 'b/c'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
+        c_id = tree.path2id('b/c')
         tree.commit('initial')
         root_id = tree.get_root_id()
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('b/c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('b/c', 'c-id')], tree.basis_tree())
-        a_contents = tree.get_file_text('a-id')
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('b/c', c_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('b/c', c_id)], tree.basis_tree())
+        a_contents = tree.get_file_text(a_id)
         tree.rename_one('a', 'b/d')
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/c', 'c-id'),
-                               ('b/d', 'a-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('b/c', 'c-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('b/', b_id), ('b/c', c_id),
+                               ('b/d', a_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('b/c', c_id)], tree.basis_tree())
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/d')
 
     def test_rename_one_parent_dir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'b', 'b/c'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
+        c_id = tree.path2id('b/c')
         tree.commit('initial')
         root_id = tree.get_root_id()
-        c_contents = tree.get_file_text('c-id')
+        c_contents = tree.get_file_text(c_id)
         tree.rename_one('b/c', 'd')
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('d', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('b/c', 'c-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('d', c_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('b/c', c_id)], tree.basis_tree())
         self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'd')
 
     def test_rename_one_fail_consistent(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/a', 'c'])
-        tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'b', 'c'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
+        c_id = tree.path2id('c')
         tree.commit('initial')
         root_id = tree.get_root_id()
         # Target already exists
         self.assertRaises(errors.RenameFailedFilesExist,
                           tree.rename_one, 'a', 'b/a')
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
-                               ('c', 'c-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('c', c_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
+                               ('c', c_id)], tree.basis_tree())
 
     def test_rename_one_onto_existing(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
         tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
@@ -164,7 +177,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_onto_self(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['b/', 'b/a'])
-        tree.add(['b', 'b/a'], ['b-id', 'a-id'])
+        tree.add(['b', 'b/a'])
         tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
@@ -173,7 +186,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_onto_self_root(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'])
         tree.commit('initial')
 
         self.assertRaises(errors.BzrMoveFailedError,
@@ -182,121 +195,139 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_after(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree)
         # We don't need after=True as long as source is missing and target
         # exists.
         tree.rename_one('a', 'b/foo')
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'),
-                               ('b/foo', 'a-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('b/', b_id),
+                               ('b/foo', a_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
 
     def test_rename_one_after_with_after(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree)
         # Passing after=True should work as well
         tree.rename_one('a', 'b/foo', after=True)
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'),
-                               ('b/foo', 'a-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('b/', b_id),
+                               ('b/foo', a_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
 
     def test_rename_one_after_dest_versioned(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'])
+        a_id = tree.path2id('a')
         tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b')
-        tree.add(['b'], ['b-id'])
+        tree.add(['b'])
+        b_id = tree.path2id('b')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
-                               tree)
-        e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.rename_one, 'a', 'b')
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b', b_id)],
+                              tree)
+        e = self.assertRaises(
+                errors.BzrMoveFailedError, tree.rename_one, 'a', 'b')
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_versioned(self):
         ''' using after with an already versioned file should fail '''
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
         os.unlink('a')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
-                               tree)
-        e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.rename_one, 'a', 'b', after=True)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b', b_id)],
+                              tree)
+        e = self.assertRaises(
+                errors.BzrMoveFailedError,
+                tree.rename_one, 'a', 'b', after=True)
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_added(self):
         ''' using after with a newly added file should work '''
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'])
+        a_id = tree.path2id('a')
         tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b')
-        tree.add(['b'], ['b-id'])
+        tree.add(['b'])
+        b_id = tree.path2id('b')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
-                               tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b', b_id)],
+                              tree)
         tree.rename_one('a', 'b', after=True)
-        self.assertTreeLayout([('', root_id), ('b', 'a-id')], tree)
+        self.assertTreeLayout([('', root_id), ('b', a_id)], tree)
 
     def test_rename_one_after_source_removed(self):
         """Rename even if the source was already unversioned."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
         tree.remove(['a'])
 
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id')], tree)
+        self.assertTreeLayout([('', root_id), ('b/', b_id)], tree)
         # We don't need after=True as long as source is missing and target
         # exists.
         tree.rename_one('a', 'b/foo')
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'),
-                               ('b/foo', 'a-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('b/', b_id),
+                               ('b/foo', a_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
 
     def test_rename_one_after_no_target(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
-        # Passing after when the file hasn't been rename_one raises an exception
+        # Passing after when the file hasn't been rename_one raises an
+        # exception
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'a', 'b/foo', after=True)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
 
     def test_rename_one_after_source_and_dest(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/foo'])
-        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.add(['a', 'b'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
@@ -313,19 +344,19 @@ class TestRenameOne(TestCaseWithWorkingTree):
         finally:
             foo_file.close()
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree)
         self.assertRaises(errors.RenameFailedFilesExist,
                           tree.rename_one, 'a', 'b/foo', after=False)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree)
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(foo_text, 'b/foo')
         # But you can pass after=True
         tree.rename_one('a', 'b/foo', after=True)
-        self.assertTreeLayout([('', root_id), ('b/', 'b-id'),
-                               ('b/foo', 'a-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('b/', b_id),
+                               ('b/foo', a_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
                               tree.basis_tree())
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
@@ -334,38 +365,45 @@ class TestRenameOne(TestCaseWithWorkingTree):
     def test_rename_one_directory(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c/', 'a/c/d', 'e/'])
-        tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'],
-                 ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
+        tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('a/c/d')
+        e_id = tree.path2id('e')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a', 'e/f')
-        self.assertTreeLayout([('', root_id), ('e/', 'e-id'), ('e/f/', 'a-id'),
-                               ('e/f/b', 'b-id'), ('e/f/c/', 'c-id'),
-                               ('e/f/c/d', 'd-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('e/', 'e-id'),
-                               ('a/b', 'b-id'), ('a/c/', 'c-id'),
-                               ('a/c/d', 'd-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('e/', e_id), ('e/f/', a_id),
+                               ('e/f/b', b_id), ('e/f/c/', c_id),
+                               ('e/f/c/d', d_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a/', a_id), ('e/', e_id),
+                               ('a/b', b_id), ('a/c/', c_id),
+                               ('a/c/d', d_id)], tree.basis_tree())
 
     def test_rename_one_moved(self):
         """Moving a moved entry works as expected."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'c/'])
-        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'a/b', 'c'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('c')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'c/foo')
-        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c/', 'c-id'),
-                               ('c/foo', 'b-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c/', 'c-id'),
-                               ('a/b', 'b-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('a/', a_id), ('c/', c_id),
+                               ('c/foo', b_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a/', a_id), ('c/', c_id),
+                               ('a/b', b_id)], tree.basis_tree())
 
         tree.rename_one('c/foo', 'bar')
-        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('bar', 'b-id'),
-                               ('c/', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c/', 'c-id'),
-                               ('a/b', 'b-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('a/', a_id), ('bar', b_id),
+                               ('c/', c_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a/', a_id), ('c/', c_id),
+                               ('a/b', b_id)], tree.basis_tree())
 
     def test_rename_to_denormalised_fails(self):
         if osutils.normalizes_filenames():
@@ -373,8 +411,9 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
-        self.assertRaises((errors.InvalidNormalization, UnicodeEncodeError),
-            tree.rename_one, 'a', u'ba\u030arry')
+        self.assertRaises(
+                (errors.InvalidNormalization, UnicodeEncodeError),
+                tree.rename_one, 'a', u'ba\u030arry')
 
     def test_rename_unversioned_non_ascii(self):
         """Check error when renaming an unversioned non-ascii file"""
