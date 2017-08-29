@@ -16,61 +16,7 @@
 
 from __future__ import absolute_import
 
-__all__ = ['use_fast_decorators',
-           'use_pretty_decorators',
-           ]
-
-
 from . import trace
-
-
-def _get_parameters(func):
-    """Recreate the parameters for a function using introspection.
-
-    :return: (function_params, calling_params, default_values)
-        function_params: is a string representing the parameters of the
-            function. (such as "a, b, c=None, d=1")
-            This is used in the function declaration.
-        calling_params: is another string representing how you would call the
-            function with the correct parameters. (such as "a, b, c=c, d=d")
-            Assuming you used function_params in the function declaration, this
-            is the parameters to put in the function call.
-        default_values_block: a dict with the default values to be passed as
-            the scope for the 'exec' statement.
-
-        For example:
-
-        def wrapper(%(function_params)s):
-            return original(%(calling_params)s)
-    """
-    # "import inspect" should stay in local scope. 'inspect' takes a long time
-    # to import the first time. And since we don't always need it, don't import
-    # it globally.
-    import inspect
-    args, varargs, varkw, defaults = inspect.getargspec(func)
-    defaults_dict = {}
-    def formatvalue(value):
-        default_name = '__default_%d' % len(defaults_dict)
-        defaults_dict[default_name] = value
-        return '=' + default_name
-    formatted = inspect.formatargspec(args, varargs=varargs,
-                                      varkw=varkw,
-                                      defaults=defaults,
-                                      formatvalue=formatvalue)
-    if defaults is None:
-        args_passed = args
-    else:
-        first_default = len(args) - len(defaults)
-        args_passed = args[:first_default]
-        for arg in args[first_default:]:
-            args_passed.append("%s=%s" % (arg, arg))
-    if varargs is not None:
-        args_passed.append('*' + varargs)
-    if varkw is not None:
-        args_passed.append('**' + varkw)
-    args_passed = ', '.join(args_passed)
-
-    return formatted[1:-1], args_passed, defaults_dict
 
 
 def only_raises(*errors):

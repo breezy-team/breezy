@@ -21,8 +21,6 @@ See MutableTree for more details.
 
 from __future__ import absolute_import
 
-import operator
-import os
 from . import (
     errors,
     hooks,
@@ -35,16 +33,6 @@ from .sixish import (
     text_type,
     viewvalues,
     )
-
-
-def needs_tree_write_lock(unbound):
-    """Decorate unbound to take out and release a tree_write lock."""
-    def tree_write_locked(self, *args, **kwargs):
-        with self.lock_tree_write():
-            return unbound(self, *args, **kwargs)
-    tree_write_locked.__doc__ = unbound.__doc__
-    tree_write_locked.__name__ = unbound.__name__
-    return tree_write_locked
 
 
 class MutableTree(tree.Tree):
@@ -84,7 +72,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.is_control_filename)
 
-    @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
         """Add paths to the set of versioned paths.
 
@@ -127,16 +114,17 @@ class MutableTree(tree.Tree):
             kinds = [None] * len(files)
         elif not len(kinds) == len(files):
             raise AssertionError()
-        for f in files:
-            # generic constraint checks:
-            if self.is_control_filename(f):
-                raise errors.ForbiddenControlFileError(filename=f)
-            fp = osutils.splitpath(f)
-        # fill out file kinds for all files [not needed when we stop
-        # caring about the instantaneous file kind within a uncommmitted tree
-        #
-        self._gather_kinds(files, kinds)
-        self._add(files, ids, kinds)
+        with self.lock_tree_write():
+            for f in files:
+                # generic constraint checks:
+                if self.is_control_filename(f):
+                    raise errors.ForbiddenControlFileError(filename=f)
+                fp = osutils.splitpath(f)
+            # fill out file kinds for all files [not needed when we stop
+            # caring about the instantaneous file kind within a uncommmitted tree
+            #
+            self._gather_kinds(files, kinds)
+            self._add(files, ids, kinds)
 
     def add_reference(self, sub_tree):
         """Add a TreeReference to the tree, pointing at sub_tree"""

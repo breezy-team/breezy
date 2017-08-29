@@ -63,7 +63,6 @@ from .inventorytree import (
     )
 from ..mutabletree import (
     MutableTree,
-    needs_tree_write_lock,
     )
 from ..osutils import (
     file_kind,
@@ -128,24 +127,24 @@ class DirStateWorkingTree(InventoryWorkingTree):
         #--- allow tests to select the dirstate iter_changes implementation
         self._iter_changes = dirstate._process_entry
 
-    @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
-        state = self.current_dirstate()
-        for f, file_id, kind in zip(files, ids, kinds):
-            f = f.strip(u'/')
-            if self.path2id(f):
-                # special case tree root handling.
-                if f == b'' and self.path2id(f) == ROOT_ID:
-                    state.set_path_id(b'', generate_ids.gen_file_id(f))
-                continue
-            if file_id is None:
-                file_id = generate_ids.gen_file_id(f)
-            # deliberately add the file with no cached stat or sha1
-            # - on the first access it will be gathered, and we can
-            # always change this once tests are all passing.
-            state.add(f, file_id, kind, None, b'')
-        self._make_dirty(reset_inventory=True)
+        with self.lock_tree_write():
+            state = self.current_dirstate()
+            for f, file_id, kind in zip(files, ids, kinds):
+                f = f.strip(u'/')
+                if self.path2id(f):
+                    # special case tree root handling.
+                    if f == b'' and self.path2id(f) == ROOT_ID:
+                        state.set_path_id(b'', generate_ids.gen_file_id(f))
+                    continue
+                if file_id is None:
+                    file_id = generate_ids.gen_file_id(f)
+                # deliberately add the file with no cached stat or sha1
+                # - on the first access it will be gathered, and we can
+                # always change this once tests are all passing.
+                state.add(f, file_id, kind, None, b'')
+            self._make_dirty(reset_inventory=True)
 
     def _get_check_refs(self):
         """Return the references needed to perform a check of this tree."""
@@ -161,13 +160,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if reset_inventory and self._inventory is not None:
             self._inventory = None
 
-    @needs_tree_write_lock
     def add_reference(self, sub_tree):
         # use standard implementation, which calls back to self._add
         #
         # So we don't store the reference_revision in the working dirstate,
         # it's just recorded at the moment of commit.
-        self._add_reference(sub_tree)
+        with self.lock_tree_write():
+            self._add_reference(sub_tree)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -297,12 +296,12 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self._inventory = None
         self._dirty = False
 
-    @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""
-        for pos, f in enumerate(files):
-            if kinds[pos] is None:
-                kinds[pos] = self._kind(f)
+        with self.lock_tree_write():
+            for pos, f in enumerate(files):
+                if kinds[pos] is None:
+                    kinds[pos] = self._kind(f)
 
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
@@ -656,217 +655,217 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self.branch.lock_write()
         return self._lock_self_write()
 
-    @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
         """See WorkingTree.move()."""
         result = []
         if not from_paths:
             return result
-        state = self.current_dirstate()
-        if isinstance(from_paths, (str, bytes)):
-            raise ValueError()
-        to_dir_utf8 = to_dir.encode('utf8')
-        to_entry_dirname, to_basename = os.path.split(to_dir_utf8)
-        id_index = state._get_id_index()
-        # check destination directory
-        # get the details for it
-        to_entry_block_index, to_entry_entry_index, dir_present, entry_present = \
-            state._get_block_entry_index(to_entry_dirname, to_basename, 0)
-        if not entry_present:
-            raise errors.BzrMoveFailedError('', to_dir,
-                errors.NotVersionedError(to_dir))
-        to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
-        # get a handle on the block itself.
-        to_block_index = state._ensure_block(
-            to_entry_block_index, to_entry_entry_index, to_dir_utf8)
-        to_block = state._dirblocks[to_block_index]
-        to_abs = self.abspath(to_dir)
-        if not isdir(to_abs):
-            raise errors.BzrMoveFailedError('',to_dir,
-                errors.NotADirectory(to_abs))
+        with self.lock_tree_write():
+            state = self.current_dirstate()
+            if isinstance(from_paths, (str, bytes)):
+                raise ValueError()
+            to_dir_utf8 = to_dir.encode('utf8')
+            to_entry_dirname, to_basename = os.path.split(to_dir_utf8)
+            id_index = state._get_id_index()
+            # check destination directory
+            # get the details for it
+            to_entry_block_index, to_entry_entry_index, dir_present, entry_present = \
+                state._get_block_entry_index(to_entry_dirname, to_basename, 0)
+            if not entry_present:
+                raise errors.BzrMoveFailedError('', to_dir,
+                    errors.NotVersionedError(to_dir))
+            to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
+            # get a handle on the block itself.
+            to_block_index = state._ensure_block(
+                to_entry_block_index, to_entry_entry_index, to_dir_utf8)
+            to_block = state._dirblocks[to_block_index]
+            to_abs = self.abspath(to_dir)
+            if not isdir(to_abs):
+                raise errors.BzrMoveFailedError('',to_dir,
+                    errors.NotADirectory(to_abs))
 
-        if to_entry[1][0][0] != 'd':
-            raise errors.BzrMoveFailedError('',to_dir,
-                errors.NotADirectory(to_abs))
+            if to_entry[1][0][0] != 'd':
+                raise errors.BzrMoveFailedError('',to_dir,
+                    errors.NotADirectory(to_abs))
 
-        if self._inventory is not None:
-            update_inventory = True
-            inv = self.root_inventory
-            to_dir_id = to_entry[0][2]
-            to_dir_ie = inv[to_dir_id]
-        else:
-            update_inventory = False
+            if self._inventory is not None:
+                update_inventory = True
+                inv = self.root_inventory
+                to_dir_id = to_entry[0][2]
+                to_dir_ie = inv[to_dir_id]
+            else:
+                update_inventory = False
 
-        # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
-        # missing those added here, but there's also no test coverage for this.
-        rollbacks = cleanup.ObjectWithCleanups()
-        def move_one(old_entry, from_path_utf8, minikind, executable,
-                     fingerprint, packed_stat, size,
-                     to_block, to_key, to_path_utf8):
-            state._make_absent(old_entry)
-            from_key = old_entry[0]
-            rollbacks.add_cleanup(
-                state.update_minimal,
-                from_key,
-                minikind,
-                executable=executable,
-                fingerprint=fingerprint,
-                packed_stat=packed_stat,
-                size=size,
-                path_utf8=from_path_utf8)
-            state.update_minimal(to_key,
+            # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
+            # missing those added here, but there's also no test coverage for this.
+            rollbacks = cleanup.ObjectWithCleanups()
+            def move_one(old_entry, from_path_utf8, minikind, executable,
+                         fingerprint, packed_stat, size,
+                         to_block, to_key, to_path_utf8):
+                state._make_absent(old_entry)
+                from_key = old_entry[0]
+                rollbacks.add_cleanup(
+                    state.update_minimal,
+                    from_key,
                     minikind,
                     executable=executable,
                     fingerprint=fingerprint,
                     packed_stat=packed_stat,
                     size=size,
-                    path_utf8=to_path_utf8)
-            added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
-            new_entry = to_block[1][added_entry_index]
-            rollbacks.add_cleanup(state._make_absent, new_entry)
+                    path_utf8=from_path_utf8)
+                state.update_minimal(to_key,
+                        minikind,
+                        executable=executable,
+                        fingerprint=fingerprint,
+                        packed_stat=packed_stat,
+                        size=size,
+                        path_utf8=to_path_utf8)
+                added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
+                new_entry = to_block[1][added_entry_index]
+                rollbacks.add_cleanup(state._make_absent, new_entry)
 
-        for from_rel in from_paths:
-            # from_rel is 'pathinroot/foo/bar'
-            from_rel_utf8 = from_rel.encode('utf8')
-            from_dirname, from_tail = osutils.split(from_rel)
-            from_dirname, from_tail_utf8 = osutils.split(from_rel_utf8)
-            from_entry = self._get_entry(path=from_rel)
-            if from_entry == (None, None):
-                raise errors.BzrMoveFailedError(from_rel,to_dir,
-                    errors.NotVersionedError(path=from_rel))
+            for from_rel in from_paths:
+                # from_rel is 'pathinroot/foo/bar'
+                from_rel_utf8 = from_rel.encode('utf8')
+                from_dirname, from_tail = osutils.split(from_rel)
+                from_dirname, from_tail_utf8 = osutils.split(from_rel_utf8)
+                from_entry = self._get_entry(path=from_rel)
+                if from_entry == (None, None):
+                    raise errors.BzrMoveFailedError(from_rel,to_dir,
+                        errors.NotVersionedError(path=from_rel))
 
-            from_id = from_entry[0][2]
-            to_rel = pathjoin(to_dir, from_tail)
-            to_rel_utf8 = pathjoin(to_dir_utf8, from_tail_utf8)
-            item_to_entry = self._get_entry(path=to_rel)
-            if item_to_entry != (None, None):
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    "Target is already versioned.")
-
-            if from_rel == to_rel:
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    "Source and target are identical.")
-
-            from_missing = not self.has_filename(from_rel)
-            to_missing = not self.has_filename(to_rel)
-            if after:
-                move_file = False
-            else:
-                move_file = True
-            if to_missing:
-                if not move_file:
+                from_id = from_entry[0][2]
+                to_rel = pathjoin(to_dir, from_tail)
+                to_rel_utf8 = pathjoin(to_dir_utf8, from_tail_utf8)
+                item_to_entry = self._get_entry(path=to_rel)
+                if item_to_entry != (None, None):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(path=to_rel,
-                        extra="New file has not been created yet"))
-                elif from_missing:
-                    # neither path exists
-                    raise errors.BzrRenameFailedError(from_rel, to_rel,
-                        errors.PathsDoNotExist(paths=(from_rel, to_rel)))
-            else:
-                if from_missing: # implicitly just update our path mapping
+                        "Target is already versioned.")
+
+                if from_rel == to_rel:
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        "Source and target are identical.")
+
+                from_missing = not self.has_filename(from_rel)
+                to_missing = not self.has_filename(to_rel)
+                if after:
                     move_file = False
-                elif not after:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
+                else:
+                    move_file = True
+                if to_missing:
+                    if not move_file:
+                        raise errors.BzrMoveFailedError(from_rel, to_rel,
+                            errors.NoSuchFile(path=to_rel,
+                            extra="New file has not been created yet"))
+                    elif from_missing:
+                        # neither path exists
+                        raise errors.BzrRenameFailedError(from_rel, to_rel,
+                            errors.PathsDoNotExist(paths=(from_rel, to_rel)))
+                else:
+                    if from_missing: # implicitly just update our path mapping
+                        move_file = False
+                    elif not after:
+                        raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
-            # perform the disk move first - its the most likely failure point.
-            if move_file:
-                from_rel_abs = self.abspath(from_rel)
-                to_rel_abs = self.abspath(to_rel)
+                # perform the disk move first - its the most likely failure point.
+                if move_file:
+                    from_rel_abs = self.abspath(from_rel)
+                    to_rel_abs = self.abspath(to_rel)
+                    try:
+                        osutils.rename(from_rel_abs, to_rel_abs)
+                    except OSError as e:
+                        raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
+                    rollbacks.add_cleanup(osutils.rename, to_rel_abs, from_rel_abs)
                 try:
-                    osutils.rename(from_rel_abs, to_rel_abs)
-                except OSError as e:
-                    raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
-                rollbacks.add_cleanup(osutils.rename, to_rel_abs, from_rel_abs)
-            try:
-                # perform the rename in the inventory next if needed: its easy
-                # to rollback
-                if update_inventory:
-                    # rename the entry
-                    from_entry = inv[from_id]
-                    current_parent = from_entry.parent_id
-                    inv.rename(from_id, to_dir_id, from_tail)
-                    rollbacks.add_cleanup(
-                        inv.rename, from_id, current_parent, from_tail)
-                # finally do the rename in the dirstate, which is a little
-                # tricky to rollback, but least likely to need it.
-                old_block_index, old_entry_index, dir_present, file_present = \
-                    state._get_block_entry_index(from_dirname, from_tail_utf8, 0)
-                old_block = state._dirblocks[old_block_index][1]
-                old_entry = old_block[old_entry_index]
-                from_key, old_entry_details = old_entry
-                cur_details = old_entry_details[0]
-                # remove the old row
-                to_key = ((to_block[0],) + from_key[1:3])
-                minikind = cur_details[0]
-                move_one(old_entry, from_path_utf8=from_rel_utf8,
-                         minikind=minikind,
-                         executable=cur_details[3],
-                         fingerprint=cur_details[1],
-                         packed_stat=cur_details[4],
-                         size=cur_details[2],
-                         to_block=to_block,
-                         to_key=to_key,
-                         to_path_utf8=to_rel_utf8)
+                    # perform the rename in the inventory next if needed: its easy
+                    # to rollback
+                    if update_inventory:
+                        # rename the entry
+                        from_entry = inv[from_id]
+                        current_parent = from_entry.parent_id
+                        inv.rename(from_id, to_dir_id, from_tail)
+                        rollbacks.add_cleanup(
+                            inv.rename, from_id, current_parent, from_tail)
+                    # finally do the rename in the dirstate, which is a little
+                    # tricky to rollback, but least likely to need it.
+                    old_block_index, old_entry_index, dir_present, file_present = \
+                        state._get_block_entry_index(from_dirname, from_tail_utf8, 0)
+                    old_block = state._dirblocks[old_block_index][1]
+                    old_entry = old_block[old_entry_index]
+                    from_key, old_entry_details = old_entry
+                    cur_details = old_entry_details[0]
+                    # remove the old row
+                    to_key = ((to_block[0],) + from_key[1:3])
+                    minikind = cur_details[0]
+                    move_one(old_entry, from_path_utf8=from_rel_utf8,
+                             minikind=minikind,
+                             executable=cur_details[3],
+                             fingerprint=cur_details[1],
+                             packed_stat=cur_details[4],
+                             size=cur_details[2],
+                             to_block=to_block,
+                             to_key=to_key,
+                             to_path_utf8=to_rel_utf8)
 
-                if minikind == b'd':
-                    def update_dirblock(from_dir, to_key, to_dir_utf8):
-                        """Recursively update all entries in this dirblock."""
-                        if from_dir == b'':
-                            raise AssertionError("renaming root not supported")
-                        from_key = (from_dir, '')
-                        from_block_idx, present = \
-                            state._find_block_index_from_key(from_key)
-                        if not present:
-                            # This is the old record, if it isn't present, then
-                            # there is theoretically nothing to update.
-                            # (Unless it isn't present because of lazy loading,
-                            # but we don't do that yet)
-                            return
-                        from_block = state._dirblocks[from_block_idx]
-                        to_block_index, to_entry_index, _, _ = \
-                            state._get_block_entry_index(to_key[0], to_key[1], 0)
-                        to_block_index = state._ensure_block(
-                            to_block_index, to_entry_index, to_dir_utf8)
-                        to_block = state._dirblocks[to_block_index]
+                    if minikind == b'd':
+                        def update_dirblock(from_dir, to_key, to_dir_utf8):
+                            """Recursively update all entries in this dirblock."""
+                            if from_dir == b'':
+                                raise AssertionError("renaming root not supported")
+                            from_key = (from_dir, '')
+                            from_block_idx, present = \
+                                state._find_block_index_from_key(from_key)
+                            if not present:
+                                # This is the old record, if it isn't present, then
+                                # there is theoretically nothing to update.
+                                # (Unless it isn't present because of lazy loading,
+                                # but we don't do that yet)
+                                return
+                            from_block = state._dirblocks[from_block_idx]
+                            to_block_index, to_entry_index, _, _ = \
+                                state._get_block_entry_index(to_key[0], to_key[1], 0)
+                            to_block_index = state._ensure_block(
+                                to_block_index, to_entry_index, to_dir_utf8)
+                            to_block = state._dirblocks[to_block_index]
 
-                        # Grab a copy since move_one may update the list.
-                        for entry in from_block[1][:]:
-                            if not (entry[0][0] == from_dir):
-                                raise AssertionError()
-                            cur_details = entry[1][0]
-                            to_key = (to_dir_utf8, entry[0][1], entry[0][2])
-                            from_path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-                            to_path_utf8 = osutils.pathjoin(to_dir_utf8, entry[0][1])
-                            minikind = cur_details[0]
-                            if minikind in (b'a', b'r'):
-                                # Deleted children of a renamed directory
-                                # Do not need to be updated.
-                                # Children that have been renamed out of this
-                                # directory should also not be updated
-                                continue
-                            move_one(entry, from_path_utf8=from_path_utf8,
-                                     minikind=minikind,
-                                     executable=cur_details[3],
-                                     fingerprint=cur_details[1],
-                                     packed_stat=cur_details[4],
-                                     size=cur_details[2],
-                                     to_block=to_block,
-                                     to_key=to_key,
-                                     to_path_utf8=to_path_utf8)
-                            if minikind == b'd':
-                                # We need to move all the children of this
-                                # entry
-                                update_dirblock(from_path_utf8, to_key,
-                                                to_path_utf8)
-                    update_dirblock(from_rel_utf8, to_key, to_rel_utf8)
-            except:
-                rollbacks.cleanup_now()
-                raise
-            result.append((from_rel, to_rel))
-            state._mark_modified()
-            self._make_dirty(reset_inventory=False)
+                            # Grab a copy since move_one may update the list.
+                            for entry in from_block[1][:]:
+                                if not (entry[0][0] == from_dir):
+                                    raise AssertionError()
+                                cur_details = entry[1][0]
+                                to_key = (to_dir_utf8, entry[0][1], entry[0][2])
+                                from_path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+                                to_path_utf8 = osutils.pathjoin(to_dir_utf8, entry[0][1])
+                                minikind = cur_details[0]
+                                if minikind in (b'a', b'r'):
+                                    # Deleted children of a renamed directory
+                                    # Do not need to be updated.
+                                    # Children that have been renamed out of this
+                                    # directory should also not be updated
+                                    continue
+                                move_one(entry, from_path_utf8=from_path_utf8,
+                                         minikind=minikind,
+                                         executable=cur_details[3],
+                                         fingerprint=cur_details[1],
+                                         packed_stat=cur_details[4],
+                                         size=cur_details[2],
+                                         to_block=to_block,
+                                         to_key=to_key,
+                                         to_path_utf8=to_path_utf8)
+                                if minikind == b'd':
+                                    # We need to move all the children of this
+                                    # entry
+                                    update_dirblock(from_path_utf8, to_key,
+                                                    to_path_utf8)
+                        update_dirblock(from_rel_utf8, to_key, to_rel_utf8)
+                except:
+                    rollbacks.cleanup_now()
+                    raise
+                result.append((from_rel, to_rel))
+                state._mark_modified()
+                self._make_dirty(reset_inventory=False)
 
-        return result
+            return result
 
     def _must_be_locked(self):
         if not self._control_files._lock_count:
@@ -1053,21 +1052,21 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return DirStateRevisionTree(dirstate, revision_id,
                 self.branch.repository)
 
-    @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
-        parents = self.get_parent_ids()
-        if new_revision in (_mod_revision.NULL_REVISION, None):
-            if len(parents) >= 2:
-                raise AssertionError(
-                    "setting the last parent to none with a pending merge is "
-                    "unsupported.")
-            self.set_parent_ids([])
-        else:
-            self.set_parent_ids([new_revision] + parents[1:],
-                allow_leftmost_as_ghost=True)
+        with self.lock_tree_write():
+            parents = self.get_parent_ids()
+            if new_revision in (_mod_revision.NULL_REVISION, None):
+                if len(parents) >= 2:
+                    raise AssertionError(
+                        "setting the last parent to none with a pending merge "
+                        "is unsupported.")
+                self.set_parent_ids([])
+            else:
+                self.set_parent_ids(
+                        [new_revision] + parents[1:],
+                        allow_leftmost_as_ghost=True)
 
-    @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
 
@@ -1080,21 +1079,21 @@ class DirStateWorkingTree(InventoryWorkingTree):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
-        trees = []
-        for revision_id in revision_ids:
-            try:
-                revtree = self.branch.repository.revision_tree(revision_id)
-                # TODO: jam 20070213 KnitVersionedFile raises
-                #       RevisionNotPresent rather than NoSuchRevision if a
-                #       given revision_id is not present. Should Repository be
-                #       catching it and re-raising NoSuchRevision?
-            except (errors.NoSuchRevision, errors.RevisionNotPresent):
-                revtree = None
-            trees.append((revision_id, revtree))
-        self.set_parent_trees(trees,
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+        with self.lock_tree_write():
+            trees = []
+            for revision_id in revision_ids:
+                try:
+                    revtree = self.branch.repository.revision_tree(revision_id)
+                    # TODO: jam 20070213 KnitVersionedFile raises
+                    #       RevisionNotPresent rather than NoSuchRevision if a
+                    #       given revision_id is not present. Should Repository be
+                    #       catching it and re-raising NoSuchRevision?
+                except (errors.NoSuchRevision, errors.RevisionNotPresent):
+                    revtree = None
+                trees.append((revision_id, revtree))
+            self.set_parent_trees(
+                trees, allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
-    @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 
@@ -1102,60 +1101,61 @@ class DirStateWorkingTree(InventoryWorkingTree):
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
-        dirstate = self.current_dirstate()
-        if len(parents_list) > 0:
-            if not allow_leftmost_as_ghost and parents_list[0][1] is None:
-                raise errors.GhostRevisionUnusableHere(parents_list[0][0])
-        real_trees = []
-        ghosts = []
+        with self.lock_tree_write():
+            dirstate = self.current_dirstate()
+            if len(parents_list) > 0:
+                if not allow_leftmost_as_ghost and parents_list[0][1] is None:
+                    raise errors.GhostRevisionUnusableHere(parents_list[0][0])
+            real_trees = []
+            ghosts = []
 
-        parent_ids = [rev_id for rev_id, tree in parents_list]
-        graph = self.branch.repository.get_graph()
-        heads = graph.heads(parent_ids)
-        accepted_revisions = set()
+            parent_ids = [rev_id for rev_id, tree in parents_list]
+            graph = self.branch.repository.get_graph()
+            heads = graph.heads(parent_ids)
+            accepted_revisions = set()
 
-        # convert absent trees to the null tree, which we convert back to
-        # missing on access.
-        for rev_id, tree in parents_list:
-            if len(accepted_revisions) > 0:
-                # we always accept the first tree
-                if rev_id in accepted_revisions or rev_id not in heads:
-                    # We have already included either this tree, or its
-                    # descendent, so we skip it.
-                    continue
-            _mod_revision.check_not_reserved_id(rev_id)
-            if tree is not None:
-                real_trees.append((rev_id, tree))
-            else:
-                real_trees.append((rev_id,
-                    self.branch.repository.revision_tree(
-                        _mod_revision.NULL_REVISION)))
-                ghosts.append(rev_id)
-            accepted_revisions.add(rev_id)
-        updated = False
-        if (len(real_trees) == 1
-            and not ghosts
-            and self.branch.repository._format.fast_deltas
-            and isinstance(real_trees[0][1], InventoryRevisionTree)
-            and self.get_parent_ids()):
-            rev_id, rev_tree = real_trees[0]
-            basis_id = self.get_parent_ids()[0]
-            # There are times when basis_tree won't be in
-            # self.branch.repository, (switch, for example)
-            try:
-                basis_tree = self.branch.repository.revision_tree(basis_id)
-            except errors.NoSuchRevision:
-                # Fall back to the set_parent_trees(), since we can't use
-                # _make_delta if we can't get the RevisionTree
-                pass
-            else:
-                delta = rev_tree.root_inventory._make_delta(
-                    basis_tree.root_inventory)
-                dirstate.update_basis_by_delta(delta, rev_id)
-                updated = True
-        if not updated:
-            dirstate.set_parent_trees(real_trees, ghosts=ghosts)
-        self._make_dirty(reset_inventory=False)
+            # convert absent trees to the null tree, which we convert back to
+            # missing on access.
+            for rev_id, tree in parents_list:
+                if len(accepted_revisions) > 0:
+                    # we always accept the first tree
+                    if rev_id in accepted_revisions or rev_id not in heads:
+                        # We have already included either this tree, or its
+                        # descendent, so we skip it.
+                        continue
+                _mod_revision.check_not_reserved_id(rev_id)
+                if tree is not None:
+                    real_trees.append((rev_id, tree))
+                else:
+                    real_trees.append((rev_id,
+                        self.branch.repository.revision_tree(
+                            _mod_revision.NULL_REVISION)))
+                    ghosts.append(rev_id)
+                accepted_revisions.add(rev_id)
+            updated = False
+            if (len(real_trees) == 1
+                and not ghosts
+                and self.branch.repository._format.fast_deltas
+                and isinstance(real_trees[0][1], InventoryRevisionTree)
+                and self.get_parent_ids()):
+                rev_id, rev_tree = real_trees[0]
+                basis_id = self.get_parent_ids()[0]
+                # There are times when basis_tree won't be in
+                # self.branch.repository, (switch, for example)
+                try:
+                    basis_tree = self.branch.repository.revision_tree(basis_id)
+                except errors.NoSuchRevision:
+                    # Fall back to the set_parent_trees(), since we can't use
+                    # _make_delta if we can't get the RevisionTree
+                    pass
+                else:
+                    delta = rev_tree.root_inventory._make_delta(
+                        basis_tree.root_inventory)
+                    dirstate.update_basis_by_delta(delta, rev_id)
+                    updated = True
+            if not updated:
+                dirstate.set_parent_trees(real_trees, ghosts=ghosts)
+            self._make_dirty(reset_inventory=False)
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
@@ -1204,7 +1204,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
         finally:
             self.branch.unlock()
 
-    @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
 
@@ -1216,92 +1215,93 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """
         if not file_ids:
             return
-        state = self.current_dirstate()
-        state._read_dirblocks_if_needed()
-        ids_to_unversion = set(file_ids)
-        paths_to_unversion = set()
-        # sketch:
-        # check if the root is to be unversioned, if so, assert for now.
-        # walk the state marking unversioned things as absent.
-        # if there are any un-unversioned ids at the end, raise
-        for key, details in state._dirblocks[0][1]:
-            if (details[0][0] not in ('a', 'r') and # absent or relocated
-                key[2] in ids_to_unversion):
-                # I haven't written the code to unversion / yet - it should be
-                # supported.
-                raise errors.BzrError('Unversioning the / is not currently supported')
-        block_index = 0
-        while block_index < len(state._dirblocks):
-            # process one directory at a time.
-            block = state._dirblocks[block_index]
-            # first check: is the path one to remove - it or its children
-            delete_block = False
-            for path in paths_to_unversion:
-                if (block[0].startswith(path) and
-                    (len(block[0]) == len(path) or
-                     block[0][len(path)] == '/')):
-                    # this entire block should be deleted - its the block for a
-                    # path to unversion; or the child of one
-                    delete_block = True
-                    break
-            # TODO: trim paths_to_unversion as we pass by paths
-            if delete_block:
-                # this block is to be deleted: process it.
-                # TODO: we can special case the no-parents case and
-                # just forget the whole block.
+        with self.lock_tree_write():
+            state = self.current_dirstate()
+            state._read_dirblocks_if_needed()
+            ids_to_unversion = set(file_ids)
+            paths_to_unversion = set()
+            # sketch:
+            # check if the root is to be unversioned, if so, assert for now.
+            # walk the state marking unversioned things as absent.
+            # if there are any un-unversioned ids at the end, raise
+            for key, details in state._dirblocks[0][1]:
+                if (details[0][0] not in ('a', 'r') and # absent or relocated
+                    key[2] in ids_to_unversion):
+                    # I haven't written the code to unversion / yet - it should be
+                    # supported.
+                    raise errors.BzrError('Unversioning the / is not currently supported')
+            block_index = 0
+            while block_index < len(state._dirblocks):
+                # process one directory at a time.
+                block = state._dirblocks[block_index]
+                # first check: is the path one to remove - it or its children
+                delete_block = False
+                for path in paths_to_unversion:
+                    if (block[0].startswith(path) and
+                        (len(block[0]) == len(path) or
+                         block[0][len(path)] == '/')):
+                        # this entire block should be deleted - its the block for a
+                        # path to unversion; or the child of one
+                        delete_block = True
+                        break
+                # TODO: trim paths_to_unversion as we pass by paths
+                if delete_block:
+                    # this block is to be deleted: process it.
+                    # TODO: we can special case the no-parents case and
+                    # just forget the whole block.
+                    entry_index = 0
+                    while entry_index < len(block[1]):
+                        entry = block[1][entry_index]
+                        if entry[1][0][0] in 'ar':
+                            # don't remove absent or renamed entries
+                            entry_index += 1
+                        else:
+                            # Mark this file id as having been removed
+                            ids_to_unversion.discard(entry[0][2])
+                            if not state._make_absent(entry):
+                                # The block has not shrunk.
+                                entry_index += 1
+                    # go to the next block. (At the moment we dont delete empty
+                    # dirblocks)
+                    block_index += 1
+                    continue
                 entry_index = 0
                 while entry_index < len(block[1]):
                     entry = block[1][entry_index]
-                    if entry[1][0][0] in 'ar':
-                        # don't remove absent or renamed entries
+                    if (entry[1][0][0] in ('a', 'r') or # absent, relocated
+                        # ^ some parent row.
+                        entry[0][2] not in ids_to_unversion):
+                        # ^ not an id to unversion
                         entry_index += 1
-                    else:
-                        # Mark this file id as having been removed
-                        ids_to_unversion.discard(entry[0][2])
-                        if not state._make_absent(entry):
-                            # The block has not shrunk.
-                            entry_index += 1
-                # go to the next block. (At the moment we dont delete empty
-                # dirblocks)
+                        continue
+                    if entry[1][0][0] == 'd':
+                        paths_to_unversion.add(pathjoin(entry[0][0], entry[0][1]))
+                    if not state._make_absent(entry):
+                        entry_index += 1
+                    # we have unversioned this id
+                    ids_to_unversion.remove(entry[0][2])
                 block_index += 1
-                continue
-            entry_index = 0
-            while entry_index < len(block[1]):
-                entry = block[1][entry_index]
-                if (entry[1][0][0] in ('a', 'r') or # absent, relocated
-                    # ^ some parent row.
-                    entry[0][2] not in ids_to_unversion):
-                    # ^ not an id to unversion
-                    entry_index += 1
-                    continue
-                if entry[1][0][0] == 'd':
-                    paths_to_unversion.add(pathjoin(entry[0][0], entry[0][1]))
-                if not state._make_absent(entry):
-                    entry_index += 1
-                # we have unversioned this id
-                ids_to_unversion.remove(entry[0][2])
-            block_index += 1
-        if ids_to_unversion:
-            raise errors.NoSuchId(self, next(iter(ids_to_unversion)))
-        self._make_dirty(reset_inventory=False)
-        # have to change the legacy inventory too.
-        if self._inventory is not None:
-            for file_id in file_ids:
-                if self._inventory.has_id(file_id):
-                    self._inventory.remove_recursive_id(file_id)
+            if ids_to_unversion:
+                raise errors.NoSuchId(self, next(iter(ids_to_unversion)))
+            self._make_dirty(reset_inventory=False)
+            # have to change the legacy inventory too.
+            if self._inventory is not None:
+                for file_id in file_ids:
+                    if self._inventory.has_id(file_id):
+                        self._inventory.remove_recursive_id(file_id)
 
-    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
         """See WorkingTree.rename_one"""
-        self.flush()
-        super(DirStateWorkingTree, self).rename_one(from_rel, to_rel, after)
+        with self.lock_tree_write():
+            self.flush()
+            super(DirStateWorkingTree, self).rename_one(from_rel, to_rel, after)
 
-    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """See MutableTree.apply_inventory_delta"""
-        state = self.current_dirstate()
-        state.update_by_delta(changes)
-        self._make_dirty(reset_inventory=True)
+        with self.lock_tree_write():
+            state = self.current_dirstate()
+            state.update_by_delta(changes)
+            self._make_dirty(reset_inventory=True)
 
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
@@ -1313,46 +1313,46 @@ class DirStateWorkingTree(InventoryWorkingTree):
         with self.lock_read():
             self._dirstate._validate()
 
-    @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
         if self._dirty:
             raise AssertionError("attempting to write an inventory when the "
                 "dirstate is dirty will lose pending changes")
-        had_inventory = self._inventory is not None
-        # Setting self._inventory = None forces the dirstate to regenerate the
-        # working inventory. We do this because self.inventory may be inv, or
-        # may have been modified, and either case would prevent a clean delta
-        # being created.
-        self._inventory = None
-        # generate a delta,
-        delta = inv._make_delta(self.root_inventory)
-        # and apply it.
-        self.apply_inventory_delta(delta)
-        if had_inventory:
-            self._inventory = inv
-        self.flush()
+        with self.lock_tree_write():
+            had_inventory = self._inventory is not None
+            # Setting self._inventory = None forces the dirstate to regenerate the
+            # working inventory. We do this because self.inventory may be inv, or
+            # may have been modified, and either case would prevent a clean delta
+            # being created.
+            self._inventory = None
+            # generate a delta,
+            delta = inv._make_delta(self.root_inventory)
+            # and apply it.
+            self.apply_inventory_delta(delta)
+            if had_inventory:
+                self._inventory = inv
+            self.flush()
 
-    @needs_tree_write_lock
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
 
         This does a hard-reset to a last-known-good state. This is a way to
         fix if something got corrupted (like the .bzr/checkout/dirstate file)
         """
-        if revision_ids is None:
-            revision_ids = self.get_parent_ids()
-        if not revision_ids:
-            base_tree = self.branch.repository.revision_tree(
-                _mod_revision.NULL_REVISION)
-            trees = []
-        else:
-            trees = list(zip(revision_ids,
-                        self.branch.repository.revision_trees(revision_ids)))
-            base_tree = trees[0][1]
-        state = self.current_dirstate()
-        # We don't support ghosts yet
-        state.set_state_from_scratch(base_tree.root_inventory, trees, [])
+        with self.lock_tree_write():
+            if revision_ids is None:
+                revision_ids = self.get_parent_ids()
+            if not revision_ids:
+                base_tree = self.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+                trees = []
+            else:
+                trees = list(zip(revision_ids,
+                            self.branch.repository.revision_trees(revision_ids)))
+                base_tree = trees[0][1]
+            state = self.current_dirstate()
+            # We don't support ghosts yet
+            state.set_state_from_scratch(base_tree.root_inventory, trees, [])
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):

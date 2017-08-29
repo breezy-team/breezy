@@ -26,13 +26,11 @@ import os
 from . import (
     errors,
     lock,
-    mutabletree,
     revision as _mod_revision,
     )
 from .bzr.inventory import Inventory
 from .bzr.inventorytree import MutableInventoryTree
 from .osutils import sha_file
-from .mutabletree import needs_tree_write_lock
 from .transport.memory import MemoryTransport
 
 
@@ -59,16 +57,16 @@ class MemoryTree(MutableInventoryTree):
         # Memory tree doesn't have any control filenames
         return False
 
-    @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
-        for f, file_id, kind in zip(files, ids, kinds):
-            if kind is None:
-                kind = 'file'
-            if file_id is None:
-                self._inventory.add_path(f, kind=kind)
-            else:
-                self._inventory.add_path(f, kind=kind, file_id=file_id)
+        with self.lock_tree_write():
+            for f, file_id, kind in zip(files, ids, kinds):
+                if kind is None:
+                    kind = 'file'
+                if file_id is None:
+                    self._inventory.add_path(f, kind=kind)
+                else:
+                    self._inventory.add_path(f, kind=kind, file_id=file_id)
 
     def basis_tree(self):
         """See Tree.basis_tree()."""
@@ -109,13 +107,13 @@ class MemoryTree(MutableInventoryTree):
             return None, False, None
         return entry.kind, entry.executable, None
 
-    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel):
-        file_id = self.path2id(from_rel)
-        to_dir, to_tail = os.path.split(to_rel)
-        to_parent_id = self.path2id(to_dir)
-        self._file_transport.move(from_rel, to_rel)
-        self._inventory.rename(file_id, to_parent_id, to_tail)
+        with self.lock_tree_write():
+            file_id = self.path2id(from_rel)
+            to_dir, to_tail = os.path.split(to_rel)
+            to_parent_id = self.path2id(to_dir)
+            self._file_transport.move(from_rel, to_rel)
+            self._inventory.rename(file_id, to_parent_id, to_tail)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
@@ -266,7 +264,6 @@ class MemoryTree(MutableInventoryTree):
         else:
             self._locks -= 1
 
-    @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
 
@@ -276,14 +273,15 @@ class MemoryTree(MutableInventoryTree):
         :param file_ids: The file ids to stop versioning.
         :raises: NoSuchId if any fileid is not currently versioned.
         """
-        # XXX: This should be in mutabletree, but the inventory-save action
-        # is not relevant to memory tree. Until that is done in unlock by
-        # working tree, we cannot share the implementation.
-        for file_id in file_ids:
-            if self._inventory.has_id(file_id):
-                self._inventory.remove_recursive_id(file_id)
-            else:
-                raise errors.NoSuchId(self, file_id)
+        with self.lock_tree_write():
+            # XXX: This should be in mutabletree, but the inventory-save action
+            # is not relevant to memory tree. Until that is done in unlock by
+            # working tree, we cannot share the implementation.
+            for file_id in file_ids:
+                if self._inventory.has_id(file_id):
+                    self._inventory.remove_recursive_id(file_id)
+                else:
+                    raise errors.NoSuchId(self, file_id)
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""

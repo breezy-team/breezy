@@ -65,7 +65,6 @@ from . import (
     )
 from .i18n import gettext
 from . import mutabletree
-from .mutabletree import needs_tree_write_lock
 from .sixish import (
     text_type,
     )
@@ -535,17 +534,17 @@ class WorkingTree(mutabletree.MutableTree,
             else:
                 return None
 
-    @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""
-        for pos, f in enumerate(files):
-            if kinds[pos] is None:
-                fullpath = osutils.normpath(self.abspath(f))
-                try:
-                    kinds[pos] = osutils.file_kind(fullpath)
-                except OSError as e:
-                    if e.errno == errno.ENOENT:
-                        raise errors.NoSuchFile(fullpath)
+        with self.lock_tree_write():
+            for pos, f in enumerate(files):
+                if kinds[pos] is None:
+                    fullpath = osutils.normpath(self.abspath(f))
+                    try:
+                        kinds[pos] = osutils.file_kind(fullpath)
+                    except OSError as e:
+                        if e.errno == errno.ENOENT:
+                            raise errors.NoSuchFile(fullpath)
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -563,7 +562,6 @@ class WorkingTree(mutabletree.MutableTree,
             self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1
                 or allow_leftmost_as_ghost)
 
-    @needs_tree_write_lock
     def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
         """Add revision_id, tree tuple as a parent.
 
@@ -577,27 +575,28 @@ class WorkingTree(mutabletree.MutableTree,
             If the revision_id is a ghost, pass None for the tree.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
-        parent_ids = self.get_parent_ids() + [parent_tuple[0]]
-        if len(parent_ids) > 1:
-            # the leftmost may have already been a ghost, preserve that if it
-            # was.
-            allow_leftmost_as_ghost = True
-        self.set_parent_ids(parent_ids,
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+        with self.lock_tree_write():
+            parent_ids = self.get_parent_ids() + [parent_tuple[0]]
+            if len(parent_ids) > 1:
+                # the leftmost may have already been a ghost, preserve that if it
+                # was.
+                allow_leftmost_as_ghost = True
+            self.set_parent_ids(parent_ids,
+                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
-    @needs_tree_write_lock
     def add_pending_merge(self, *revision_ids):
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        parents = self.get_parent_ids()
-        updated = False
-        for rev_id in revision_ids:
-            if rev_id in parents:
-                continue
-            parents.append(rev_id)
-            updated = True
-        if updated:
-            self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
+        with self.lock_tree_write():
+            # TODO: Perhaps should check at this point that the
+            # history of the revision is actually present?
+            parents = self.get_parent_ids()
+            updated = False
+            for rev_id in revision_ids:
+                if rev_id in parents:
+                    continue
+                parents.append(rev_id)
+                updated = True
+            if updated:
+                self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
     def path_content_summary(self, path, _lstat=os.lstat,
         _mapper=osutils.file_kind_from_stat_mode):
@@ -669,7 +668,6 @@ class WorkingTree(mutabletree.MutableTree,
                          ' but filtered to %s', revision_ids, new_revision_ids)
         return new_revision_ids
 
-    @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
 
@@ -682,28 +680,28 @@ class WorkingTree(mutabletree.MutableTree,
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
-        self._check_parents_for_ghosts(revision_ids,
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-        for revision_id in revision_ids:
-            _mod_revision.check_not_reserved_id(revision_id)
+        with self.lock_tree_write():
+            self._check_parents_for_ghosts(revision_ids,
+                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+            for revision_id in revision_ids:
+                _mod_revision.check_not_reserved_id(revision_id)
 
-        revision_ids = self._filter_parent_ids_by_ancestry(revision_ids)
+            revision_ids = self._filter_parent_ids_by_ancestry(revision_ids)
 
-        if len(revision_ids) > 0:
-            self.set_last_revision(revision_ids[0])
-        else:
-            self.set_last_revision(_mod_revision.NULL_REVISION)
+            if len(revision_ids) > 0:
+                self.set_last_revision(revision_ids[0])
+            else:
+                self.set_last_revision(_mod_revision.NULL_REVISION)
 
-        self._set_merges_from_parent_ids(revision_ids)
+            self._set_merges_from_parent_ids(revision_ids)
 
-    @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
-        parents = self.get_parent_ids()
-        leftmost = parents[:1]
-        new_parents = leftmost + rev_list
-        self.set_parent_ids(new_parents)
+        with self.lock_tree_write():
+            parents = self.get_parent_ids()
+            leftmost = parents[:1]
+            new_parents = leftmost + rev_list
+            self.set_parent_ids(new_parents)
 
-    @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
         """Set the merge modified hashes."""
         raise NotImplementedError(self.set_merge_modified)
@@ -885,7 +883,6 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.move)
 
-    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
         """Rename one file.
 
@@ -1111,7 +1108,6 @@ class WorkingTree(mutabletree.MutableTree,
             self.branch._set_revision_history([new_revision])
         return True
 
-    @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
         """Remove nominated files from the working tree metadata.
@@ -1147,118 +1143,119 @@ class WorkingTree(mutabletree.MutableTree,
                         # should be treated as unknown.
                         files_to_backup.append(relpath)
 
-        for filename in files:
-            # Get file name into canonical form.
-            abspath = self.abspath(filename)
-            filename = self.relpath(abspath)
-            if len(filename) > 0:
-                all_files.add(filename)
-                recurse_directory_to_add_files(filename)
+        with self.lock_tree_write():
+            for filename in files:
+                # Get file name into canonical form.
+                abspath = self.abspath(filename)
+                filename = self.relpath(abspath)
+                if len(filename) > 0:
+                    all_files.add(filename)
+                    recurse_directory_to_add_files(filename)
 
-        files = list(all_files)
+            files = list(all_files)
 
-        if len(files) == 0:
-            return # nothing to do
+            if len(files) == 0:
+                return # nothing to do
 
-        # Sort needed to first handle directory content before the directory
-        files.sort(reverse=True)
+            # Sort needed to first handle directory content before the directory
+            files.sort(reverse=True)
 
-        # Bail out if we are going to delete files we shouldn't
-        if not keep_files and not force:
-            for (file_id, path, content_change, versioned, parent_id, name,
-                 kind, executable) in self.iter_changes(self.basis_tree(),
-                     include_unchanged=True, require_versioned=False,
-                     want_unversioned=True, specific_files=files):
-                if versioned[0] == False:
-                    # The record is unknown or newly added
-                    files_to_backup.append(path[1])
-                elif (content_change and (kind[1] is not None) and
-                        osutils.is_inside_any(files, path[1])):
-                    # Versioned and changed, but not deleted, and still
-                    # in one of the dirs to be deleted.
-                    files_to_backup.append(path[1])
+            # Bail out if we are going to delete files we shouldn't
+            if not keep_files and not force:
+                for (file_id, path, content_change, versioned, parent_id, name,
+                     kind, executable) in self.iter_changes(self.basis_tree(),
+                         include_unchanged=True, require_versioned=False,
+                         want_unversioned=True, specific_files=files):
+                    if versioned[0] == False:
+                        # The record is unknown or newly added
+                        files_to_backup.append(path[1])
+                    elif (content_change and (kind[1] is not None) and
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
+                        files_to_backup.append(path[1])
 
-        def backup(file_to_backup):
-            backup_name = self.controldir._available_backup_name(file_to_backup)
-            osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed %s (but kept a copy: %s)" % (file_to_backup,
-                                                         backup_name)
+            def backup(file_to_backup):
+                backup_name = self.controldir._available_backup_name(file_to_backup)
+                osutils.rename(abs_path, self.abspath(backup_name))
+                return "removed %s (but kept a copy: %s)" % (file_to_backup,
+                                                             backup_name)
 
-        # Build inv_delta and delete files where applicable,
-        # do this before any modifications to meta data.
-        for f in files:
-            fid = self.path2id(f)
-            message = None
-            if not fid:
-                message = "%s is not versioned." % (f,)
-            else:
-                if verbose:
-                    # having removed it, it must be either ignored or unknown
-                    if self.is_ignored(f):
-                        new_status = 'I'
-                    else:
-                        new_status = '?'
-                    # XXX: Really should be a more abstract reporter interface
-                    kind_ch = osutils.kind_marker(self.kind(fid))
-                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
-                # Unversion file
-                inv_delta.append((f, None, fid, None))
-                message = "removed %s" % (f,)
-
-            if not keep_files:
-                abs_path = self.abspath(f)
-                if osutils.lexists(abs_path):
-                    if (osutils.isdir(abs_path) and
-                        len(os.listdir(abs_path)) > 0):
-                        if force:
-                            osutils.rmtree(abs_path)
-                            message = "deleted %s" % (f,)
+            # Build inv_delta and delete files where applicable,
+            # do this before any modifications to meta data.
+            for f in files:
+                fid = self.path2id(f)
+                message = None
+                if not fid:
+                    message = "%s is not versioned." % (f,)
+                else:
+                    if verbose:
+                        # having removed it, it must be either ignored or unknown
+                        if self.is_ignored(f):
+                            new_status = 'I'
                         else:
-                            message = backup(f)
-                    else:
-                        if f in files_to_backup:
-                            message = backup(f)
+                            new_status = '?'
+                        # XXX: Really should be a more abstract reporter interface
+                        kind_ch = osutils.kind_marker(self.kind(fid))
+                        to_file.write(new_status + '       ' + f + kind_ch + '\n')
+                    # Unversion file
+                    inv_delta.append((f, None, fid, None))
+                    message = "removed %s" % (f,)
+
+                if not keep_files:
+                    abs_path = self.abspath(f)
+                    if osutils.lexists(abs_path):
+                        if (osutils.isdir(abs_path) and
+                            len(os.listdir(abs_path)) > 0):
+                            if force:
+                                osutils.rmtree(abs_path)
+                                message = "deleted %s" % (f,)
+                            else:
+                                message = backup(f)
                         else:
-                            osutils.delete_any(abs_path)
-                            message = "deleted %s" % (f,)
-                elif message is not None:
-                    # Only care if we haven't done anything yet.
-                    message = "%s does not exist." % (f,)
+                            if f in files_to_backup:
+                                message = backup(f)
+                            else:
+                                osutils.delete_any(abs_path)
+                                message = "deleted %s" % (f,)
+                    elif message is not None:
+                        # Only care if we haven't done anything yet.
+                        message = "%s does not exist." % (f,)
 
-            # Print only one message (if any) per file.
-            if message is not None:
-                note(message)
-        self.apply_inventory_delta(inv_delta)
+                # Print only one message (if any) per file.
+                if message is not None:
+                    note(message)
+            self.apply_inventory_delta(inv_delta)
 
-    @needs_tree_write_lock
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
-        if old_tree is None:
-            basis_tree = self.basis_tree()
-            basis_tree.lock_read()
-            old_tree = basis_tree
-        else:
-            basis_tree = None
-        try:
-            conflicts = transform.revert(self, old_tree, filenames, backups, pb,
-                                         report_changes)
-            if filenames is None and len(self.get_parent_ids()) > 1:
-                parent_trees = []
-                last_revision = self.last_revision()
-                if last_revision != _mod_revision.NULL_REVISION:
-                    if basis_tree is None:
-                        basis_tree = self.basis_tree()
-                        basis_tree.lock_read()
-                    parent_trees.append((last_revision, basis_tree))
-                self.set_parent_trees(parent_trees)
-                resolve(self)
+        with self.lock_tree_write():
+            if old_tree is None:
+                basis_tree = self.basis_tree()
+                basis_tree.lock_read()
+                old_tree = basis_tree
             else:
-                resolve(self, filenames, ignore_misses=True, recursive=True)
-        finally:
-            if basis_tree is not None:
-                basis_tree.unlock()
-        return conflicts
+                basis_tree = None
+            try:
+                conflicts = transform.revert(self, old_tree, filenames, backups, pb,
+                                             report_changes)
+                if filenames is None and len(self.get_parent_ids()) > 1:
+                    parent_trees = []
+                    last_revision = self.last_revision()
+                    if last_revision != _mod_revision.NULL_REVISION:
+                        if basis_tree is None:
+                            basis_tree = self.basis_tree()
+                            basis_tree.lock_read()
+                        parent_trees.append((last_revision, basis_tree))
+                    self.set_parent_trees(parent_trees)
+                    resolve(self)
+                else:
+                    resolve(self, filenames, ignore_misses=True, recursive=True)
+            finally:
+                if basis_tree is not None:
+                    basis_tree.unlock()
+            return conflicts
 
     def store_uncommitted(self):
         """Store uncommitted changes from the tree in the branch."""
@@ -1296,17 +1293,17 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.revision_tree)
 
-    @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
         if not self.supports_setting_file_ids():
             raise SettingFileIdUnsupported()
-        # for compatability
-        if file_id is None:
-            raise ValueError(
-                'WorkingTree.set_root_id with fileid=None')
-        file_id = osutils.safe_file_id(file_id)
-        self._set_root_id(file_id)
+        with self.lock_tree_write():
+            # for compatability
+            if file_id is None:
+                raise ValueError(
+                    'WorkingTree.set_root_id with fileid=None')
+            file_id = osutils.safe_file_id(file_id)
+            self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
         """Set the root id for this tree, in a format specific manner.
@@ -1379,7 +1376,6 @@ class WorkingTree(mutabletree.MutableTree,
         finally:
             self.unlock()
 
-    @needs_tree_write_lock
     def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
                      show_base=False):
         """Update a tree to the master branch.
@@ -1397,71 +1393,72 @@ class WorkingTree(mutabletree.MutableTree,
         # We MUST save it even if an error occurs, because otherwise the users
         # local work is unreferenced and will appear to have been lost.
         #
-        nb_conflicts = 0
-        try:
-            last_rev = self.get_parent_ids()[0]
-        except IndexError:
-            last_rev = _mod_revision.NULL_REVISION
-        if revision is None:
-            revision = self.branch.last_revision()
+        with self.lock_tree_write():
+            nb_conflicts = 0
+            try:
+                last_rev = self.get_parent_ids()[0]
+            except IndexError:
+                last_rev = _mod_revision.NULL_REVISION
+            if revision is None:
+                revision = self.branch.last_revision()
 
-        old_tip = old_tip or _mod_revision.NULL_REVISION
+            old_tip = old_tip or _mod_revision.NULL_REVISION
 
-        if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
-            # the branch we are bound to was updated
-            # merge those changes in first
-            base_tree  = self.basis_tree()
-            other_tree = self.branch.repository.revision_tree(old_tip)
-            nb_conflicts = merge.merge_inner(self.branch, other_tree,
-                                             base_tree, this_tree=self,
-                                             change_reporter=change_reporter,
-                                             show_base=show_base)
-            if nb_conflicts:
-                self.add_parent_tree((old_tip, other_tree))
-                note(gettext('Rerun update after fixing the conflicts.'))
-                return nb_conflicts
+            if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+                # the branch we are bound to was updated
+                # merge those changes in first
+                base_tree  = self.basis_tree()
+                other_tree = self.branch.repository.revision_tree(old_tip)
+                nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                                 base_tree, this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                if nb_conflicts:
+                    self.add_parent_tree((old_tip, other_tree))
+                    note(gettext('Rerun update after fixing the conflicts.'))
+                    return nb_conflicts
 
-        if last_rev != _mod_revision.ensure_null(revision):
-            # the working tree is up to date with the branch
-            # we can merge the specified revision from master
-            to_tree = self.branch.repository.revision_tree(revision)
-            to_root_id = to_tree.get_root_id()
+            if last_rev != _mod_revision.ensure_null(revision):
+                # the working tree is up to date with the branch
+                # we can merge the specified revision from master
+                to_tree = self.branch.repository.revision_tree(revision)
+                to_root_id = to_tree.get_root_id()
 
-            basis = self.basis_tree()
-            with basis.lock_read():
-                if (basis.get_root_id() is None or basis.get_root_id() != to_root_id):
-                    self.set_root_id(to_root_id)
-                    self.flush()
+                basis = self.basis_tree()
+                with basis.lock_read():
+                    if (basis.get_root_id() is None or basis.get_root_id() != to_root_id):
+                        self.set_root_id(to_root_id)
+                        self.flush()
 
-            # determine the branch point
-            graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
-                                                last_rev)
-            base_tree = self.branch.repository.revision_tree(base_rev_id)
+                # determine the branch point
+                graph = self.branch.repository.get_graph()
+                base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                    last_rev)
+                base_tree = self.branch.repository.revision_tree(base_rev_id)
 
-            nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
-                                             this_tree=self,
-                                             change_reporter=change_reporter,
-                                             show_base=show_base)
-            self.set_last_revision(revision)
-            # TODO - dedup parents list with things merged by pull ?
-            # reuse the tree we've updated to to set the basis:
-            parent_trees = [(revision, to_tree)]
-            merges = self.get_parent_ids()[1:]
-            # Ideally we ask the tree for the trees here, that way the working
-            # tree can decide whether to give us the entire tree or give us a
-            # lazy initialised tree. dirstate for instance will have the trees
-            # in ram already, whereas a last-revision + basis-inventory tree
-            # will not, but also does not need them when setting parents.
-            for parent in merges:
-                parent_trees.append(
-                    (parent, self.branch.repository.revision_tree(parent)))
-            if not _mod_revision.is_null(old_tip):
-                parent_trees.append(
-                    (old_tip, self.branch.repository.revision_tree(old_tip)))
-            self.set_parent_trees(parent_trees)
-            last_rev = parent_trees[0][0]
-        return nb_conflicts
+                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                                 this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                self.set_last_revision(revision)
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the tree we've updated to to set the basis:
+                parent_trees = [(revision, to_tree)]
+                merges = self.get_parent_ids()[1:]
+                # Ideally we ask the tree for the trees here, that way the working
+                # tree can decide whether to give us the entire tree or give us a
+                # lazy initialised tree. dirstate for instance will have the trees
+                # in ram already, whereas a last-revision + basis-inventory tree
+                # will not, but also does not need them when setting parents.
+                for parent in merges:
+                    parent_trees.append(
+                        (parent, self.branch.repository.revision_tree(parent)))
+                if not _mod_revision.is_null(old_tip):
+                    parent_trees.append(
+                        (old_tip, self.branch.repository.revision_tree(old_tip)))
+                self.set_parent_trees(parent_trees)
+                last_rev = parent_trees[0][0]
+            return nb_conflicts
 
     def set_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.set_conflicts, self)
@@ -1605,7 +1602,6 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self._walkdirs)
 
-    @needs_tree_write_lock
     def auto_resolve(self):
         """Automatically resolve text conflicts according to contents.
 
@@ -1616,27 +1612,28 @@ class WorkingTree(mutabletree.MutableTree,
 
         :return: a tuple of ConflictLists: (un_resolved, resolved).
         """
-        un_resolved = _mod_conflicts.ConflictList()
-        resolved = _mod_conflicts.ConflictList()
-        conflict_re = re.compile('^(<{7}|={7}|>{7})')
-        for conflict in self.conflicts():
-            if (conflict.typestring != 'text conflict' or
-                self.kind(conflict.file_id) != 'file'):
-                un_resolved.append(conflict)
-                continue
-            my_file = open(self.id2abspath(conflict.file_id), 'rb')
-            try:
-                for line in my_file:
-                    if conflict_re.search(line):
-                        un_resolved.append(conflict)
-                        break
-                else:
-                    resolved.append(conflict)
-            finally:
-                my_file.close()
-        resolved.remove_files(self)
-        self.set_conflicts(un_resolved)
-        return un_resolved, resolved
+        with self.lock_tree_write():
+            un_resolved = _mod_conflicts.ConflictList()
+            resolved = _mod_conflicts.ConflictList()
+            conflict_re = re.compile('^(<{7}|={7}|>{7})')
+            for conflict in self.conflicts():
+                if (conflict.typestring != 'text conflict' or
+                    self.kind(conflict.file_id) != 'file'):
+                    un_resolved.append(conflict)
+                    continue
+                my_file = open(self.id2abspath(conflict.file_id), 'rb')
+                try:
+                    for line in my_file:
+                        if conflict_re.search(line):
+                            un_resolved.append(conflict)
+                            break
+                    else:
+                        resolved.append(conflict)
+                finally:
+                    my_file.close()
+            resolved.remove_files(self)
+            self.set_conflicts(un_resolved)
+            return un_resolved, resolved
 
     def _validate(self):
         """Validate internal structures.
