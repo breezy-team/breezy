@@ -31,7 +31,10 @@ from . import (
     transport,
     ui,
     )
-from .errors import BzrError
+from .errors import (
+    BzrError,
+    NoSuchRevisionInTree,
+    )
 from .hooks import Hooks
 from .sixish import (
     StringIO,
@@ -271,12 +274,17 @@ def make_commit_message_template(working_tree, specific_files):
     return status_tmp.getvalue()
 
 
-def make_commit_message_template_encoded(working_tree, specific_files,
+def make_commit_message_template_encoded(working_tree, basis_revid, specific_files,
                                          diff=None, output_encoding='utf-8'):
     """Prepare a template file for a commit into a branch.
 
     Returns an encoded string.
     """
+    try:
+        basis_tree = working_tree.revision_tree(basis_revid)
+    except NoSuchRevisionInTree:
+        basis_tree = working_tree.branch.repository.revision_tree(basis_revid)
+
     # TODO: make provision for this to be overridden or modified by a hook
     #
     # TODO: Rather than running the status command, should prepare a draft of
@@ -289,7 +297,7 @@ def make_commit_message_template_encoded(working_tree, specific_files,
 
     if diff:
         stream = StringIO()
-        show_diff_trees(working_tree.basis_tree(),
+        show_diff_trees(basis_tree,
                         working_tree, stream, specific_files,
                         path_encoding=output_encoding)
         template = template + '\n' + stream.getvalue()

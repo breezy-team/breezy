@@ -185,8 +185,8 @@ class MutableTree(tree.Tree):
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
-        from breezy import commit
-        possible_master_transports=[]
+        from . import commit
+        possible_master_transports = []
         revprops = commit.Commit.update_revprops(
                 revprops,
                 self.branch,
@@ -197,7 +197,8 @@ class MutableTree(tree.Tree):
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:
             hook(self)
-        committed_id = commit.Commit().commit(working_tree=self,
+        committed_id = commit.Commit().commit(
+            working_tree=self,
             revprops=revprops,
             possible_master_transports=possible_master_transports,
             *args, **kwargs)

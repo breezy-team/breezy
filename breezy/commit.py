@@ -247,7 +247,8 @@ class Commit(object):
                recursive='down',
                exclude=None,
                possible_master_transports=None,
-               lossy=False):
+               lossy=False,
+               parents=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -304,12 +305,13 @@ class Commit(object):
                recursive=recursive,
                exclude=exclude,
                possible_master_transports=possible_master_transports,
-               lossy=lossy)
+               lossy=lossy,
+               parents=parents)
 
     def _commit(self, operation, message, timestamp, timezone, committer,
             specific_files, rev_id, allow_pointless, strict, verbose,
             working_tree, local, reporter, message_callback, recursive,
-            exclude, possible_master_transports, lossy):
+            exclude, possible_master_transports, lossy, parents):
         mutter('preparing to commit')
 
         if working_tree is None:
@@ -358,11 +360,20 @@ class Commit(object):
 
         self.work_tree.lock_write()
         operation.add_cleanup(self.work_tree.unlock)
-        self.parents = self.work_tree.get_parent_ids()
+        if parents is None:
+            parents = self.work_tree.get_parent_ids()
+        self.parents = parents
         self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
-        self.basis_revid = self.work_tree.last_revision()
-        self.basis_tree = self.work_tree.basis_tree()
+        if len(parents) > 0:
+            self.basis_revid = parents[0]
+        else:
+            self.basis_revid = breezy.revision.NULL_REVISION
+        try:
+            self.basis_tree = self.work_tree.revision_tree(self.basis_revid)
+        except errors.NoSuchRevisionInTree:
+            self.basis_tree = self.branch.repository.revision_tree(
+                    self.basis_revid)
         self.basis_tree.lock_read()
         operation.add_cleanup(self.basis_tree.unlock)
         # Cannot commit with conflicts present.
@@ -411,9 +422,9 @@ class Commit(object):
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
         self._lossy = lossy
-        self.builder = self.branch.get_commit_builder(self.parents,
-            self.config_stack, timestamp, timezone, committer, self.revprops,
-            rev_id, lossy=lossy)
+        self.builder = self.branch.get_commit_builder(
+            self.parents, self.config_stack, timestamp, timezone, committer,
+            self.revprops, rev_id, lossy=lossy)
 
         if self.builder.updates_branch and self.bound_branch:
             self.builder.abort()

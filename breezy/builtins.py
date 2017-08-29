@@ -3439,13 +3439,13 @@ class cmd_commit(Command):
       If selected files are specified, only changes to those files are
       committed.  If a directory is specified then the directory and
       everything within it is committed.
-  
+
       When excludes are given, they take precedence over selected files.
       For example, to commit only changes within foo, but not changes
       within foo/bar::
-  
+
         brz commit foo -x foo/bar
-  
+
       A selective commit after a merge is not yet supported.
 
     :Custom authors:
@@ -3517,6 +3517,9 @@ class cmd_commit(Command):
                     help='When committing to a foreign version control '
                     'system do not push data that can not be natively '
                     'represented.'),
+             Option('amend',
+                    help='Rather than create a new commit, amend the last '
+                    'one.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -3558,7 +3561,7 @@ class cmd_commit(Command):
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
-            lossy=False):
+            lossy=False, amend=False):
         from .commit import (
             PointlessCommit,
             )
@@ -3571,7 +3574,7 @@ class cmd_commit(Command):
             generate_commit_message_template,
             make_commit_message_template_encoded,
             set_commit_message,
-        )
+            )
 
         commit_stamp = offset = None
         if commit_time is not None:
@@ -3589,6 +3592,18 @@ class cmd_commit(Command):
             # as just default commit in that tree, and succeed even though
             # selected-file merge commit is not done yet
             selected_list = []
+
+        template_message = None
+
+        if amend:
+            rev = tree.branch.repository.get_revision(tree.last_revision())
+            properties.update(rev.properties)
+            template_message = rev.message
+            if author is None:
+                author = rev.get_apparent_authors()
+            parents = rev.parent_ids
+        else:
+            parents = None
 
         if fixes is None:
             fixes = []
@@ -3634,8 +3649,9 @@ class cmd_commit(Command):
             else:
                 # No message supplied: make one up.
                 # text is the status of the tree
-                text = make_commit_message_template_encoded(tree,
-                        selected_list, diff=show_diff,
+                text = make_commit_message_template_encoded(
+                        tree, commit_obj.basis_revid, selected_list,
+                        diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
                 # start_message is the template generated from hooks
                 # XXX: Warning - looks like hooks return unicode,
@@ -3644,9 +3660,12 @@ class cmd_commit(Command):
                 # avoid this.
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
-                    start_message = generate_commit_message_template(commit_obj)
-                    my_message = edit_commit_message_encoded(text,
-                        start_message=start_message)
+                    if template_message is not None:
+                        start_message = template_message
+                    else:
+                        start_message = generate_commit_message_template(commit_obj)
+                    my_message = edit_commit_message_encoded(
+                            text, start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError(gettext("please specify a commit"
                         " message with either --message or --file"))
@@ -3669,7 +3688,7 @@ class cmd_commit(Command):
                         authors=author, timestamp=commit_stamp,
                         timezone=offset,
                         exclude=tree.safe_relpath_files(exclude),
-                        lossy=lossy)
+                        lossy=lossy, parents=parents)
         except PointlessCommit:
             raise errors.BzrCommandError(gettext("No changes to commit."
                 " Please 'brz add' the files you want to commit, or use"

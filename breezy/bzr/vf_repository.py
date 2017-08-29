@@ -328,7 +328,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         ghost_basis = True
                     revtrees.append(self.repository.revision_tree(
                         _mod_revision.NULL_REVISION))
-        # The basis inventory from a repository 
+        # The basis inventory from a repository
         if revtrees:
             basis_tree = revtrees[0]
         else:
@@ -355,7 +355,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             parent_entries[change[2]] = {
                                 # basis parent
                                 basis_entry.revision:basis_entry,
-                                # this parent 
+                                # this parent
                                 change[3].revision:change[3],
                                 }
                         else:
