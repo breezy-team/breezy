@@ -1747,6 +1747,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     supports_setting_file_ids = True
     """If this format allows setting the file id."""
 
+    supports_store_uncommitted = True
+    """If this format supports shelve-like functionality."""
+
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.
