@@ -99,17 +99,8 @@ def _pretty_needs_read_lock(unbound):
     #       foo.func_code.co_argcount and foo.func_code.co_varnames
     template = """\
 def %(name)s_read_locked(%(params)s):
-    self.lock_read()
-    try:
-        result = unbound(%(passed_params)s)
-    except:
-        try:
-            self.unlock()
-        finally:
-            raise
-    else:
-        self.unlock()
-        return result
+    with self.lock_read():
+        return unbound(%(passed_params)s)
 read_locked = %(name)s_read_locked
 """
     params, passed_params, defaults_dict = _get_parameters(unbound)
@@ -143,17 +134,8 @@ def _fast_needs_read_lock(unbound):
             stuff
     """
     def read_locked(self, *args, **kwargs):
-        self.lock_read()
-        try:
-            result = unbound(self, *args, **kwargs)
-        except:
-            try:
-                self.unlock()
-            finally:
-                raise
-        else:
-            self.unlock()
-            return result
+        with self.lock_read():
+            return unbound(self, *args, **kwargs)
     read_locked.__doc__ = unbound.__doc__
     read_locked.__name__ = unbound.__name__
     return read_locked
@@ -163,17 +145,8 @@ def _pretty_needs_write_lock(unbound):
     """Decorate unbound to take out and release a write lock."""
     template = """\
 def %(name)s_write_locked(%(params)s):
-    self.lock_write()
-    try:
-        result = unbound(%(passed_params)s)
-    except:
-        try:
-            self.unlock()
-        finally:
-            raise
-    else:
-        self.unlock()
-        return result
+    with self.lock_write():
+        return unbound(%(passed_params)s)
 write_locked = %(name)s_write_locked
 """
     params, passed_params, defaults_dict = _get_parameters(unbound)
@@ -196,17 +169,8 @@ write_locked = %(name)s_write_locked
 def _fast_needs_write_lock(unbound):
     """Decorate unbound to take out and release a write lock."""
     def write_locked(self, *args, **kwargs):
-        self.lock_write()
-        try:
-            result = unbound(self, *args, **kwargs)
-        except:
-            try:
-                self.unlock()
-            finally:
-                raise
-        else:
-            self.unlock()
-            return result
+        with self.lock_write():
+            return unbound(self, *args, **kwargs)
     write_locked.__doc__ = unbound.__doc__
     write_locked.__name__ = unbound.__name__
     return write_locked

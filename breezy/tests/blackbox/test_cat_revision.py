@@ -37,16 +37,13 @@ class TestCatRevision(TestCaseWithTransport):
         wt.commit('Commit two', rev_id='a@r-0-2')
         wt.commit('Commit three', rev_id='a@r-0-3')
 
-        r.lock_read()
-        try:
+        with r.lock_read():
             revs = {}
             for i in (1, 2, 3):
                 revid = "a@r-0-%d" % i
                 stream = r.revisions.get_record_stream([(revid,)], 'unordered', 
                                                        False) 
                 revs[i] = stream.next().get_bytes_as('fulltext')
-        finally:
-            r.unlock()
 
         for i in [1, 2, 3]:
             self.assertEqual(revs[i],

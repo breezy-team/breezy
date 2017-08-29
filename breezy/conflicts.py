@@ -186,9 +186,8 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
         paths do not have conflicts.
     :param action: How the conflict should be resolved,
     """
-    tree.lock_tree_write()
     nb_conflicts_after = None
-    try:
+    with tree.lock_tree_write():
         tree_conflicts = tree.conflicts()
         nb_conflicts_before = len(tree_conflicts)
         if paths is None:
@@ -208,8 +207,6 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
             pass
-    finally:
-        tree.unlock()
     if nb_conflicts_after is None:
         nb_conflicts_after = nb_conflicts_before
     return nb_conflicts_before, nb_conflicts_after

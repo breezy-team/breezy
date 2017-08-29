@@ -38,7 +38,7 @@ from breezy.bzr import (
     xml7,
     )
 """)
-from ..decorators import needs_read_lock, needs_write_lock
+from ..decorators import needs_write_lock
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
@@ -129,10 +129,10 @@ class KnitRepository(MetaDirVersionedFileRepository):
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
 
-    @needs_read_lock
     def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
-        return [key[0] for key in self.revisions.keys()]
+        with self.lock_read():
+            return [key[0] for key in self.revisions.keys()]
 
     def _activate_new_inventory(self):
         """Put a replacement inventory.new into use as inventories."""
@@ -186,11 +186,11 @@ class KnitRepository(MetaDirVersionedFileRepository):
         result.get_parent_map([('A',)])
         return result
 
-    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         revision_id = osutils.safe_revision_id(revision_id)
-        return self.get_revision_reconcile(revision_id)
+        with self.lock_read():
+            return self.get_revision_reconcile(revision_id)
 
     def _refresh_data(self):
         if not self.is_locked():
@@ -489,37 +489,37 @@ class InterKnitRepo(InterSameDataRepository):
             return False
         return are_knits and InterRepository._same_model(source, target)
 
-    @needs_read_lock
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """See InterRepository.search_missing_revision_ids()."""
-        source_ids_set = self._present_source_revisions_for(
-            revision_ids, if_present_ids)
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target.all_revision_ids())
-        possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(
-            self.target._eliminate_revisions_not_present(possibly_present_revisions))
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_ids is not None:
-            # we used get_ancestry to determine source_ids then we are assured all
-            # revisions referenced are present as they are installed in topological order.
-            # and the tip revision was validated by get_ancestry.
-            result_set = required_revisions
-        else:
-            # if we just grabbed the possibly available ids, then
-            # we only have an estimate of whats available and need to validate
-            # that against the revision records.
-            result_set = set(
-                self.source._eliminate_revisions_not_present(required_revisions))
-        if limit is not None:
-            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
-            result_set = set(itertools.islice(topo_ordered, limit))
-        return self.source.revision_ids_to_search_result(result_set)
+        with self.lock_read():
+            source_ids_set = self._present_source_revisions_for(
+                revision_ids, if_present_ids)
+            # source_ids is the worst possible case we may need to pull.
+            # now we want to filter source_ids against what we actually
+            # have in target, but don't try to check for existence where we know
+            # we do not have a revision as that would be pointless.
+            target_ids = set(self.target.all_revision_ids())
+            possibly_present_revisions = target_ids.intersection(source_ids_set)
+            actually_present_revisions = set(
+                self.target._eliminate_revisions_not_present(possibly_present_revisions))
+            required_revisions = source_ids_set.difference(actually_present_revisions)
+            if revision_ids is not None:
+                # we used get_ancestry to determine source_ids then we are assured all
+                # revisions referenced are present as they are installed in topological order.
+                # and the tip revision was validated by get_ancestry.
+                result_set = required_revisions
+            else:
+                # if we just grabbed the possibly available ids, then
+                # we only have an estimate of whats available and need to validate
+                # that against the revision records.
+                result_set = set(
+                    self.source._eliminate_revisions_not_present(required_revisions))
+            if limit is not None:
+                topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+                result_set = set(itertools.islice(topo_ordered, limit))
+            return self.source.revision_ids_to_search_result(result_set)
 
 
 InterRepository.register_optimiser(InterKnitRepo)

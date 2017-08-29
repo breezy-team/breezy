@@ -30,6 +30,7 @@ from .. import (
     controldir,
     diff,
     errors,
+    lock,
     osutils,
     mail_client,
     ui,
@@ -339,7 +340,7 @@ class FakeBranch(object):
         return config.TransportConfig(self._transport, 'branch.conf')
 
     def lock_write(self):
-        pass
+        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         pass

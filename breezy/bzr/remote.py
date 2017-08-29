@@ -48,7 +48,7 @@ from . import (
     )
 from .branch import BranchReferenceFormat
 from ..branch import BranchWriteLockResult
-from ..decorators import needs_read_lock, needs_write_lock, only_raises
+from ..decorators import needs_write_lock, only_raises
 from ..errors import (
     NoSuchRevision,
     SmartProtocolError,
@@ -1409,29 +1409,29 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
 
-    @needs_read_lock
     def get_file_graph(self):
-        return graph.Graph(self.texts)
+        with self.lock_read():
+            return graph.Graph(self.texts)
 
-    @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
         # Copy of breezy.repository.Repository.has_revision
-        return revision_id in self.has_revisions((revision_id,))
+        with self.lock_read():
+            return revision_id in self.has_revisions((revision_id,))
 
-    @needs_read_lock
     def has_revisions(self, revision_ids):
         """Probe to find out the presence of multiple revisions.
 
         :param revision_ids: An iterable of revision_ids.
         :return: A set of the revision_ids that were present.
         """
-        # Copy of breezy.repository.Repository.has_revisions
-        parent_map = self.get_parent_map(revision_ids)
-        result = set(parent_map)
-        if _mod_revision.NULL_REVISION in revision_ids:
-            result.add(_mod_revision.NULL_REVISION)
-        return result
+        with self.lock_read():
+            # Copy of breezy.repository.Repository.has_revisions
+            parent_map = self.get_parent_map(revision_ids)
+            result = set(parent_map)
+            if _mod_revision.NULL_REVISION in revision_ids:
+                result.add(_mod_revision.NULL_REVISION)
+            return result
 
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
@@ -1458,14 +1458,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         parents_provider = self._make_parents_provider(other_repository)
         return graph.Graph(parents_provider)
 
-    @needs_read_lock
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors.
         """
-        st = static_tuple.StaticTuple
-        revision_keys = [st(r_id).intern() for r_id in revision_ids]
-        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
-        return graph.GraphThunkIdsToKeys(known_graph)
+        with self.lock_read():
+            st = static_tuple.StaticTuple
+            revision_keys = [st(r_id).intern() for r_id in revision_ids]
+            known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+            return graph.GraphThunkIdsToKeys(known_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -1775,15 +1775,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return t
         raise errors.UnexpectedSmartServerResponse(response)
 
-    @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a descendent repository for new development.
 
         Unlike clone, this does not copy the settings of the repository.
         """
-        dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
-        dest_repo.fetch(self, revision_id=revision_id)
-        return dest_repo
+        with self.lock_read():
+            dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
+            dest_repo.fetch(self, revision_id=revision_id)
+            return dest_repo
 
     def _create_sprouting_repo(self, a_controldir, shared):
         if not isinstance(a_controldir._format, self.controldir._format.__class__):
@@ -1800,14 +1800,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     ### These methods are just thin shims to the VFS object for now.
 
-    @needs_read_lock
     def revision_tree(self, revision_id):
-        revision_id = _mod_revision.ensure_null(revision_id)
-        if revision_id == _mod_revision.NULL_REVISION:
-            return InventoryRevisionTree(self,
-                Inventory(root_id=None), _mod_revision.NULL_REVISION)
-        else:
-            return list(self.revision_trees([revision_id]))[0]
+        with self.lock_read():
+            revision_id = _mod_revision.ensure_null(revision_id)
+            if revision_id == _mod_revision.NULL_REVISION:
+                return InventoryRevisionTree(self,
+                    Inventory(root_id=None), _mod_revision.NULL_REVISION)
+            else:
+                return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
         path = self.controldir._path_for_remote_call(self._client)
@@ -1926,9 +1926,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             [('revisions', [FulltextContentFactory(key, parents, None, text)])],
             self._format, self._write_group_tokens)
 
-    @needs_read_lock
     def get_inventory(self, revision_id):
-        return list(self.iter_inventories([revision_id]))[0]
+        with self.lock_read():
+            return list(self.iter_inventories([revision_id]))[0]
 
     def _iter_inventories_rpc(self, revision_ids, ordering):
         if ordering is None:
@@ -2050,20 +2050,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             while missing:
                 yield None, missing.pop()
 
-    @needs_read_lock
     def get_revision(self, revision_id):
-        return self.get_revisions([revision_id])[0]
+        with self.lock_read():
+            return self.get_revisions([revision_id])[0]
 
     def get_transaction(self):
         self._ensure_real()
         return self._real_repository.get_transaction()
 
-    @needs_read_lock
     def clone(self, a_controldir, revision_id=None):
-        dest_repo = self._create_sprouting_repo(
-            a_controldir, shared=self.is_shared())
-        self.copy_content_into(dest_repo, revision_id)
-        return dest_repo
+        with self.lock_read():
+            dest_repo = self._create_sprouting_repo(
+                a_controldir, shared=self.is_shared())
+            self.copy_content_into(dest_repo, revision_id)
+            return dest_repo
 
     def make_working_trees(self):
         """See Repository.make_working_trees"""
@@ -2106,7 +2106,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             len(result_set), result_set)
         return result
 
-    @needs_read_lock
     def search_missing_revision_ids(self, other,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
@@ -2116,10 +2115,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
         revision_id: only return revision ids included by revision_id.
         """
-        inter_repo = _mod_repository.InterRepository.get(other, self)
-        return inter_repo.search_missing_revision_ids(
-            find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids, limit=limit)
+        with self.lock_read():
+            inter_repo = _mod_repository.InterRepository.get(other, self)
+            return inter_repo.search_missing_revision_ids(
+                find_ghosts=find_ghosts, revision_ids=revision_ids,
+                if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
             fetch_spec=None):
@@ -2368,33 +2368,33 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                         revision_graph[d[0]] = (NULL_REVISION,)
             return revision_graph
 
-    @needs_read_lock
     def get_signature_text(self, revision_id):
-        path = self.controldir._path_for_remote_call(self._client)
-        try:
-            response_tuple, response_handler = self._call_expecting_body(
-                'Repository.get_revision_signature_text', path, revision_id)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            return self._real_repository.get_signature_text(revision_id)
-        except errors.NoSuchRevision as err:
-            for fallback in self._fallback_repositories:
-                try:
-                    return fallback.get_signature_text(revision_id)
-                except errors.NoSuchRevision:
-                    pass
-            raise err
-        else:
-            if response_tuple[0] != 'ok':
-                raise errors.UnexpectedSmartServerResponse(response_tuple)
-            return response_handler.read_body_bytes()
+        with self.lock_read():
+            path = self.controldir._path_for_remote_call(self._client)
+            try:
+                response_tuple, response_handler = self._call_expecting_body(
+                    'Repository.get_revision_signature_text', path, revision_id)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                return self._real_repository.get_signature_text(revision_id)
+            except errors.NoSuchRevision as err:
+                for fallback in self._fallback_repositories:
+                    try:
+                        return fallback.get_signature_text(revision_id)
+                    except errors.NoSuchRevision:
+                        pass
+                raise err
+            else:
+                if response_tuple[0] != 'ok':
+                    raise errors.UnexpectedSmartServerResponse(response_tuple)
+                return response_handler.read_body_bytes()
 
-    @needs_read_lock
     def _get_inventory_xml(self, revision_id):
-        # This call is used by older working tree formats,
-        # which stored a serialized basis inventory.
-        self._ensure_real()
-        return self._real_repository._get_inventory_xml(revision_id)
+        with self.lock_read():
+            # This call is used by older working tree formats,
+            # which stored a serialized basis inventory.
+            self._ensure_real()
+            return self._real_repository._get_inventory_xml(revision_id)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -2453,65 +2453,65 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             filtered_inv = inv.filter(file_ids)
             yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
-    @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        medium = self._client._medium
-        if medium._is_remote_before((1, 2)):
-            self._ensure_real()
-            for delta in self._real_repository.get_deltas_for_revisions(
-                    revisions, specific_fileids):
-                yield delta
-            return
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
+        with self.lock_read():
+            medium = self._client._medium
+            if medium._is_remote_before((1, 2)):
+                self._ensure_real()
+                for delta in self._real_repository.get_deltas_for_revisions(
+                        revisions, specific_fileids):
+                    yield delta
+                return
+            # Get the revision-ids of interest
+            required_trees = set()
+            for revision in revisions:
+                required_trees.add(revision.revision_id)
+                required_trees.update(revision.parent_ids[:1])
 
-        # Get the matching filtered trees. Note that it's more
-        # efficient to pass filtered trees to changes_from() rather
-        # than doing the filtering afterwards. changes_from() could
-        # arguably do the filtering itself but it's path-based, not
-        # file-id based, so filtering before or afterwards is
-        # currently easier.
-        if specific_fileids is None:
-            trees = dict((t.get_revision_id(), t) for
-                t in self.revision_trees(required_trees))
-        else:
-            trees = dict((t.get_revision_id(), t) for
-                t in self._filtered_revision_trees(required_trees,
-                specific_fileids))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            # Get the matching filtered trees. Note that it's more
+            # efficient to pass filtered trees to changes_from() rather
+            # than doing the filtering afterwards. changes_from() could
+            # arguably do the filtering itself but it's path-based, not
+            # file-id based, so filtering before or afterwards is
+            # currently easier.
+            if specific_fileids is None:
+                trees = dict((t.get_revision_id(), t) for
+                    t in self.revision_trees(required_trees))
             else:
-                old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
+                trees = dict((t.get_revision_id(), t) for
+                    t in self._filtered_revision_trees(required_trees,
+                    specific_fileids))
 
-    @needs_read_lock
+            # Calculate the deltas
+            for revision in revisions:
+                if not revision.parent_ids:
+                    old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+                else:
+                    old_tree = trees[revision.parent_ids[0]]
+                yield trees[revision.revision_id].changes_from(old_tree)
+
     def get_revision_delta(self, revision_id, specific_fileids=None):
-        r = self.get_revision(revision_id)
-        return list(self.get_deltas_for_revisions([r],
-            specific_fileids=specific_fileids))[0]
+        with self.lock_read():
+            r = self.get_revision(revision_id)
+            return list(self.get_deltas_for_revisions([r],
+                specific_fileids=specific_fileids))[0]
 
-    @needs_read_lock
     def revision_trees(self, revision_ids):
-        inventories = self.iter_inventories(revision_ids)
-        for inv in inventories:
-            yield InventoryRevisionTree(self, inv, inv.revision_id)
+        with self.lock_read():
+            inventories = self.iter_inventories(revision_ids)
+            for inv in inventories:
+                yield InventoryRevisionTree(self, inv, inv.revision_id)
 
-    @needs_read_lock
     def get_revision_reconcile(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_revision_reconcile(revision_id)
+        with self.lock_read():
+            self._ensure_real()
+            return self._real_repository.get_revision_reconcile(revision_id)
 
-    @needs_read_lock
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
-        self._ensure_real()
-        return self._real_repository.check(revision_ids=revision_ids,
-            callback_refs=callback_refs, check_repo=check_repo)
+        with self.lock_read():
+            self._ensure_real()
+            return self._real_repository.check(revision_ids=revision_ids,
+                callback_refs=callback_refs, check_repo=check_repo)
 
     def copy_content_into(self, destination, revision_id=None):
         """Make a complete copy of the content in self into destination.
@@ -2657,30 +2657,30 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if text != "":
             yield serializer.read_revision_from_string("".join(chunks))
 
-    @needs_read_lock
     def iter_revisions(self, revision_ids):
         for rev_id in revision_ids:
             if not rev_id or not isinstance(rev_id, bytes):
                 raise errors.InvalidRevisionId(
                     revision_id=rev_id, branch=self)
-        try:
-            missing = set(revision_ids)
-            for rev in self._iter_revisions_rpc(revision_ids):
-                missing.remove(rev.revision_id)
-                yield (rev.revision_id, rev)
-            for fallback in self._fallback_repositories:
-                if not missing:
-                    break
-                for (revid, rev) in fallback.iter_revisions(missing):
-                    if rev is not None:
-                        yield (revid, rev)
-                        missing.remove(revid)
-            for revid in missing:
-                yield (revid, None)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            for entry in self._real_repository.iter_revisions(revision_ids):
-                yield entry
+        with self.lock_read():
+            try:
+                missing = set(revision_ids)
+                for rev in self._iter_revisions_rpc(revision_ids):
+                    missing.remove(rev.revision_id)
+                    yield (rev.revision_id, rev)
+                for fallback in self._fallback_repositories:
+                    if not missing:
+                        break
+                    for (revid, rev) in fallback.iter_revisions(missing):
+                        if rev is not None:
+                            yield (revid, rev)
+                            missing.remove(revid)
+                for revid in missing:
+                    yield (revid, None)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                for entry in self._real_repository.iter_revisions(revision_ids):
+                    yield entry
 
     def supports_rich_root(self):
         return self._format.rich_root_data
@@ -2729,16 +2729,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 return True
         return False
 
-    @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
-        if not self.has_signature_for_revision_id(revision_id):
-            return gpg.SIGNATURE_NOT_SIGNED, None
-        signature = self.get_signature_text(revision_id)
+        with self.lock_read():
+            if not self.has_signature_for_revision_id(revision_id):
+                return gpg.SIGNATURE_NOT_SIGNED, None
+            signature = self.get_signature_text(revision_id)
 
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
+            plaintext = testament.as_short_text()
 
-        return gpg_strategy.verify(signature, plaintext)
+            return gpg_strategy.verify(signature, plaintext)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         self._ensure_real()
@@ -3517,11 +3517,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
 
-    @needs_read_lock
     def _get_tags_bytes(self):
-        if self._tags_bytes is None:
-            self._tags_bytes = self._get_tags_bytes_via_hpss()
-        return self._tags_bytes
+        with self.lock_read():
+            if self._tags_bytes is None:
+                self._tags_bytes = self._get_tags_bytes_via_hpss()
+            return self._tags_bytes
 
     def _get_tags_bytes_via_hpss(self):
         medium = self._client._medium
@@ -3690,23 +3690,23 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
-    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         if revno == 0:
             return _mod_revision.NULL_REVISION
-        last_revision_info = self.last_revision_info()
-        ok, result = self.repository.get_rev_id_for_revno(
-            revno, last_revision_info)
-        if ok:
-            return result
-        missing_parent = result[1]
-        # Either the revision named by the server is missing, or its parent
-        # is.  Call get_parent_map to determine which, so that we report a
-        # useful error.
-        parent_map = self.repository.get_parent_map([missing_parent])
-        if missing_parent in parent_map:
-            missing_parent = parent_map[missing_parent]
-        raise errors.RevisionNotPresent(missing_parent, self.repository)
+        with self.lock_read():
+            last_revision_info = self.last_revision_info()
+            ok, result = self.repository.get_rev_id_for_revno(
+                revno, last_revision_info)
+            if ok:
+                return result
+            missing_parent = result[1]
+            # Either the revision named by the server is missing, or its parent
+            # is.  Call get_parent_map to determine which, so that we report a
+            # useful error.
+            parent_map = self.repository.get_parent_map([missing_parent])
+            if missing_parent in parent_map:
+                missing_parent = parent_map[missing_parent]
+            raise errors.RevisionNotPresent(missing_parent, self.repository)
 
     def _read_last_revision_info(self):
         response = self._call('Branch.last_revision_info', self._remote_path())
@@ -3827,12 +3827,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             source, overwrite=overwrite, stop_revision=stop_revision,
             _override_hook_target=self, **kwargs)
 
-    @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None, lossy=False):
-        self._ensure_real()
-        return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
-            _override_hook_source_branch=self)
+        with self.lock_read():
+            self._ensure_real()
+            return self._real_branch.push(
+                target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
+                _override_hook_source_branch=self)
 
     def peek_lock_mode(self):
         return self._lock_mode
@@ -3840,41 +3840,41 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     def is_locked(self):
         return self._lock_count >= 1
 
-    @needs_read_lock
     def revision_id_to_dotted_revno(self, revision_id):
         """Given a revision id, return its dotted revno.
 
         :return: a tuple like (1,) or (400,1,3).
         """
-        try:
-            response = self._call('Branch.revision_id_to_revno',
-                self._remote_path(), revision_id)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            return self._real_branch.revision_id_to_dotted_revno(revision_id)
-        if response[0] == 'ok':
-            return tuple([int(x) for x in response[1:]])
-        else:
-            raise errors.UnexpectedSmartServerResponse(response)
+        with self.lock_read():
+            try:
+                response = self._call('Branch.revision_id_to_revno',
+                    self._remote_path(), revision_id)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                return self._real_branch.revision_id_to_dotted_revno(revision_id)
+            if response[0] == 'ok':
+                return tuple([int(x) for x in response[1:]])
+            else:
+                raise errors.UnexpectedSmartServerResponse(response)
 
-    @needs_read_lock
     def revision_id_to_revno(self, revision_id):
         """Given a revision id on the branch mainline, return its revno.
 
         :return: an integer
         """
-        try:
-            response = self._call('Branch.revision_id_to_revno',
-                self._remote_path(), revision_id)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            return self._real_branch.revision_id_to_revno(revision_id)
-        if response[0] == 'ok':
-            if len(response) == 2:
-                return int(response[1])
-            raise NoSuchRevision(self, revision_id)
-        else:
-            raise errors.UnexpectedSmartServerResponse(response)
+        with self.lock_read():
+            try:
+                response = self._call('Branch.revision_id_to_revno',
+                    self._remote_path(), revision_id)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                return self._real_branch.revision_id_to_revno(revision_id)
+            if response[0] == 'ok':
+                if len(response) == 2:
+                    return int(response[1])
+                raise NoSuchRevision(self, revision_id)
+            else:
+                raise errors.UnexpectedSmartServerResponse(response)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):

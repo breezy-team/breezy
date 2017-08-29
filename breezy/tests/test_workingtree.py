@@ -18,6 +18,7 @@
 from .. import (
     conflicts,
     errors,
+    lock,
     transport,
     workingtree,
     )
@@ -382,6 +383,7 @@ class InstrumentedTree(object):
 
     def lock_tree_write(self):
         self._locks.append('t')
+        return lock.LogicalLockResult(self.unlock)
 
     @needs_tree_write_lock
     def method_with_tree_write_lock(self, *args, **kwargs):

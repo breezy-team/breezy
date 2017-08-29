@@ -25,6 +25,7 @@ import os
 
 from . import (
     errors,
+    lock,
     mutabletree,
     revision as _mod_revision,
     )
@@ -186,6 +187,7 @@ class MemoryTree(MutableInventoryTree):
                 self.branch.lock_read()
                 self._lock_mode = "r"
                 self._populate_from_branch()
+            return lock.LogicalLockResult(self.unlock)
         except:
             self._locks -= 1
             raise
@@ -203,6 +205,7 @@ class MemoryTree(MutableInventoryTree):
         except:
             self._locks -= 1
             raise
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         """See MutableTree.lock_write()."""
@@ -214,6 +217,7 @@ class MemoryTree(MutableInventoryTree):
                 self._populate_from_branch()
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
+            return lock.LogicalLockResult(self.unlock)
         except:
             self._locks -= 1
             raise
