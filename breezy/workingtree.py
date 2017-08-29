@@ -63,7 +63,6 @@ from breezy import (
 from . import (
     osutils,
     )
-from .decorators import needs_write_lock
 from .i18n import gettext
 from . import mutabletree
 from .mutabletree import needs_tree_write_lock
@@ -548,7 +547,6 @@ class WorkingTree(mutabletree.MutableTree,
                     if e.errno == errno.ENOENT:
                         raise errors.NoSuchFile(fullpath)
 
-    @needs_write_lock
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
 
@@ -560,9 +558,10 @@ class WorkingTree(mutabletree.MutableTree,
             added, or the allow_leftmost_as_ghost parameter is set True.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
-        parents = self.get_parent_ids() + [revision_id]
-        self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1
-            or allow_leftmost_as_ghost)
+        with self.lock_write():
+            parents = self.get_parent_ids() + [revision_id]
+            self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1
+                or allow_leftmost_as_ghost)
 
     @needs_tree_write_lock
     def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
@@ -719,7 +718,6 @@ class WorkingTree(mutabletree.MutableTree,
         """
         return None
 
-    @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
                           merge_type=None, force=False):
         """Merge from a branch into this working tree.
@@ -731,37 +729,38 @@ class WorkingTree(mutabletree.MutableTree,
             branch.last_revision().
         """
         from .merge import Merger, Merge3Merger
-        merger = Merger(self.branch, this_tree=self)
-        # check that there are no local alterations
-        if not force and self.has_changes():
-            raise errors.UncommittedChanges(self)
-        if to_revision is None:
-            to_revision = _mod_revision.ensure_null(branch.last_revision())
-        merger.other_rev_id = to_revision
-        if _mod_revision.is_null(merger.other_rev_id):
-            raise errors.NoCommits(branch)
-        self.branch.fetch(branch, last_revision=merger.other_rev_id)
-        merger.other_basis = merger.other_rev_id
-        merger.other_tree = self.branch.repository.revision_tree(
-            merger.other_rev_id)
-        merger.other_branch = branch
-        if from_revision is None:
-            merger.find_base()
-        else:
-            merger.set_base_revision(from_revision, branch)
-        if merger.base_rev_id == merger.other_rev_id:
-            raise errors.PointlessMerge
-        merger.backup_files = False
-        if merge_type is None:
-            merger.merge_type = Merge3Merger
-        else:
-            merger.merge_type = merge_type
-        merger.set_interesting_files(None)
-        merger.show_base = False
-        merger.reprocess = False
-        conflicts = merger.do_merge()
-        merger.set_pending()
-        return conflicts
+        with self.lock_write():
+            merger = Merger(self.branch, this_tree=self)
+            # check that there are no local alterations
+            if not force and self.has_changes():
+                raise errors.UncommittedChanges(self)
+            if to_revision is None:
+                to_revision = _mod_revision.ensure_null(branch.last_revision())
+            merger.other_rev_id = to_revision
+            if _mod_revision.is_null(merger.other_rev_id):
+                raise errors.NoCommits(branch)
+            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            merger.other_basis = merger.other_rev_id
+            merger.other_tree = self.branch.repository.revision_tree(
+                merger.other_rev_id)
+            merger.other_branch = branch
+            if from_revision is None:
+                merger.find_base()
+            else:
+                merger.set_base_revision(from_revision, branch)
+            if merger.base_rev_id == merger.other_rev_id:
+                raise errors.PointlessMerge
+            merger.backup_files = False
+            if merge_type is None:
+                merger.merge_type = Merge3Merger
+            else:
+                merger.merge_type = merge_type
+            merger.set_interesting_files(None)
+            merger.show_base = False
+            merger.reprocess = False
+            conflicts = merger.do_merge()
+            merger.set_pending()
+            return conflicts
 
     def merge_modified(self):
         """Return a dictionary of files modified by a merge.
@@ -775,16 +774,16 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.merge_modified)
 
-    @needs_write_lock
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
             file_id = generate_ids.gen_file_id(os.path.basename(path))
         elif not self.supports_setting_file_ids():
             raise SettingFileIdUnsupported()
-        os.mkdir(self.abspath(path))
-        self.add(path, file_id, 'directory')
-        return file_id
+        with self.lock_write():
+            os.mkdir(self.abspath(path))
+            self.add(path, file_id, 'directory')
+            return file_id
 
     def get_symlink_target(self, file_id, path=None):
         if path is not None:
@@ -934,11 +933,10 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.unversion)
 
-    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
              show_base=False):
-        with source.lock_read():
+        with source.lock_read(), self.lock_write():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
@@ -984,14 +982,14 @@ class WorkingTree(mutabletree.MutableTree,
                 self.set_parent_trees(parent_trees)
             return count
 
-    @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
-        stream = file(self.id2abspath(file_id), 'wb')
-        try:
-            stream.write(bytes)
-        finally:
-            stream.close()
+        with self.lock_write():
+            stream = file(self.id2abspath(file_id), 'wb')
+            try:
+                stream.write(bytes)
+            finally:
+                stream.close()
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -1262,33 +1260,33 @@ class WorkingTree(mutabletree.MutableTree,
                 basis_tree.unlock()
         return conflicts
 
-    @needs_write_lock
     def store_uncommitted(self):
         """Store uncommitted changes from the tree in the branch."""
-        target_tree = self.basis_tree()
-        shelf_creator = shelf.ShelfCreator(self, target_tree)
-        try:
-            if not shelf_creator.shelve_all():
-                return
-            self.branch.store_uncommitted(shelf_creator)
-            shelf_creator.transform()
-        finally:
-            shelf_creator.finalize()
-        note('Uncommitted changes stored in branch "%s".', self.branch.nick)
+        with self.lock_write():
+            target_tree = self.basis_tree()
+            shelf_creator = shelf.ShelfCreator(self, target_tree)
+            try:
+                if not shelf_creator.shelve_all():
+                    return
+                self.branch.store_uncommitted(shelf_creator)
+                shelf_creator.transform()
+            finally:
+                shelf_creator.finalize()
+            note('Uncommitted changes stored in branch "%s".', self.branch.nick)
 
-    @needs_write_lock
     def restore_uncommitted(self):
         """Restore uncommitted changes from the branch into the tree."""
-        unshelver = self.branch.get_unshelver(self)
-        if unshelver is None:
-            return
-        try:
-            merger = unshelver.make_merger()
-            merger.ignore_zero = True
-            merger.do_merge()
-            self.branch.store_uncommitted(None)
-        finally:
-            unshelver.finalize()
+        with self.lock_write():
+            unshelver = self.branch.get_unshelver(self)
+            if unshelver is None:
+                return
+            try:
+                merger = unshelver.make_merger()
+                merger.ignore_zero = True
+                merger.do_merge()
+                self.branch.store_uncommitted(None)
+            finally:
+                unshelver.finalize()
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.

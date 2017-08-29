@@ -55,7 +55,6 @@ from .. import (
     errors,
     )
 from ..decorators import (
-    needs_write_lock,
     only_raises,
     )
 from .inventory import (
@@ -1125,15 +1124,15 @@ class VersionedFileRepository(Repository):
                     rev = self._serializer.read_revision_from_string(text)
                     yield (revid, rev)
 
-    @needs_write_lock
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
 
         :param revision_id: Revision id of the revision
         :param signature: Signature text.
         """
-        self.signatures.add_lines((revision_id,), (),
-            osutils.split_lines(signature))
+        with self.lock_write():
+            self.signatures.add_lines((revision_id,), (),
+                osutils.split_lines(signature))
 
     def find_text_key_references(self):
         """Find the text key references within the repository.
@@ -2243,7 +2242,6 @@ class InterVersionedFileRepository(InterRepository):
 
     supports_fetch_spec = True
 
-    @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False,
             fetch_spec=None):
         """Fetch the content required to construct revision_id.
@@ -2264,11 +2262,12 @@ class InterVersionedFileRepository(InterRepository):
             ui.ui_factory.show_user_warning('cross_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
-        f = RepoFetcher(to_repository=self.target,
-                               from_repository=self.source,
-                               last_revision=revision_id,
-                               fetch_spec=fetch_spec,
-                               find_ghosts=find_ghosts)
+        with self.lock_write():
+            f = RepoFetcher(to_repository=self.target,
+                                   from_repository=self.source,
+                                   last_revision=revision_id,
+                                   fetch_spec=fetch_spec,
+                                   find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         """Walk out from revision_ids in source to revisions target has.
@@ -2683,7 +2682,6 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         pb.update(gettext('Transferring revisions'), len(revision_ids),
                   len(revision_ids))
 
-    @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False,
             fetch_spec=None):
         """See InterRepository.fetch()."""
@@ -2706,29 +2704,30 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             ui.ui_factory.show_user_warning('cross_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
-        if revision_ids is None:
-            if revision_id:
-                search_revision_ids = [revision_id]
-            else:
-                search_revision_ids = None
-            revision_ids = self.target.search_missing_revision_ids(self.source,
-                revision_ids=search_revision_ids,
-                find_ghosts=find_ghosts).get_keys()
-        if not revision_ids:
-            return 0, 0
-        revision_ids = tsort.topo_sort(
-            self.source.get_graph().get_parent_map(revision_ids))
-        if not revision_ids:
-            return 0, 0
-        # Walk though all revisions; get inventory deltas, copy referenced
-        # texts that delta references, insert the delta, revision and
-        # signature.
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            self._fetch_all_revisions(revision_ids, pb)
-        finally:
-            pb.finished()
-        return len(revision_ids), 0
+        with self.lock_write():
+            if revision_ids is None:
+                if revision_id:
+                    search_revision_ids = [revision_id]
+                else:
+                    search_revision_ids = None
+                revision_ids = self.target.search_missing_revision_ids(self.source,
+                    revision_ids=search_revision_ids,
+                    find_ghosts=find_ghosts).get_keys()
+            if not revision_ids:
+                return 0, 0
+            revision_ids = tsort.topo_sort(
+                self.source.get_graph().get_parent_map(revision_ids))
+            if not revision_ids:
+                return 0, 0
+            # Walk though all revisions; get inventory deltas, copy referenced
+            # texts that delta references, insert the delta, revision and
+            # signature.
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                self._fetch_all_revisions(revision_ids, pb)
+            finally:
+                pb.finished()
+            return len(revision_ids), 0
 
     def _get_basis(self, first_revision_id):
         """Get a revision and tree which exists in the target.

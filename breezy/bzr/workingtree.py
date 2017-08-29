@@ -64,7 +64,6 @@ from breezy.bzr import (
     )
 """)
 
-from ..decorators import needs_write_lock
 from ..lock import _RelockDebugMixin, LogicalLockResult
 from ..mutabletree import needs_tree_write_lock
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
@@ -740,44 +739,44 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             finally:
                 hashfile.close()
 
-    @needs_write_lock
     def subsume(self, other_tree):
         def add_children(inventory, entry):
             for child_entry in entry.children.values():
                 inventory._byid[child_entry.file_id] = child_entry
                 if child_entry.kind == 'directory':
                     add_children(inventory, child_entry)
-        if other_tree.get_root_id() == self.get_root_id():
-            raise errors.BadSubsumeSource(self, other_tree,
-                                          'Trees have the same root')
-        try:
-            other_tree_path = self.relpath(other_tree.basedir)
-        except errors.PathNotChild:
-            raise errors.BadSubsumeSource(self, other_tree,
-                'Tree is not contained by the other')
-        new_root_parent = self.path2id(osutils.dirname(other_tree_path))
-        if new_root_parent is None:
-            raise errors.BadSubsumeSource(self, other_tree,
-                'Parent directory is not versioned.')
-        # We need to ensure that the result of a fetch will have a
-        # versionedfile for the other_tree root, and only fetching into
-        # RepositoryKnit2 guarantees that.
-        if not self.branch.repository.supports_rich_root():
-            raise errors.SubsumeTargetNeedsUpgrade(other_tree)
-        with other_tree.lock_tree_write():
-            new_parents = other_tree.get_parent_ids()
-            other_root = other_tree.root_inventory.root
-            other_root.parent_id = new_root_parent
-            other_root.name = osutils.basename(other_tree_path)
-            self.root_inventory.add(other_root)
-            add_children(self.root_inventory, other_root)
-            self._write_inventory(self.root_inventory)
-            # normally we don't want to fetch whole repositories, but i think
-            # here we really do want to consolidate the whole thing.
-            for parent_id in other_tree.get_parent_ids():
-                self.branch.fetch(other_tree.branch, parent_id)
-                self.add_parent_tree_id(parent_id)
-        other_tree.controldir.retire_bzrdir()
+        with self.lock_write():
+            if other_tree.get_root_id() == self.get_root_id():
+                raise errors.BadSubsumeSource(self, other_tree,
+                                              'Trees have the same root')
+            try:
+                other_tree_path = self.relpath(other_tree.basedir)
+            except errors.PathNotChild:
+                raise errors.BadSubsumeSource(self, other_tree,
+                    'Tree is not contained by the other')
+            new_root_parent = self.path2id(osutils.dirname(other_tree_path))
+            if new_root_parent is None:
+                raise errors.BadSubsumeSource(self, other_tree,
+                    'Parent directory is not versioned.')
+            # We need to ensure that the result of a fetch will have a
+            # versionedfile for the other_tree root, and only fetching into
+            # RepositoryKnit2 guarantees that.
+            if not self.branch.repository.supports_rich_root():
+                raise errors.SubsumeTargetNeedsUpgrade(other_tree)
+            with other_tree.lock_tree_write():
+                new_parents = other_tree.get_parent_ids()
+                other_root = other_tree.root_inventory.root
+                other_root.parent_id = new_root_parent
+                other_root.name = osutils.basename(other_tree_path)
+                self.root_inventory.add(other_root)
+                add_children(self.root_inventory, other_root)
+                self._write_inventory(self.root_inventory)
+                # normally we don't want to fetch whole repositories, but i think
+                # here we really do want to consolidate the whole thing.
+                for parent_id in other_tree.get_parent_ids():
+                    self.branch.fetch(other_tree.branch, parent_id)
+                    self.add_parent_tree_id(parent_id)
+            other_tree.controldir.retire_bzrdir()
 
     @needs_tree_write_lock
     def extract(self, file_id, format=None):
@@ -1370,15 +1369,15 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                 if dir[2] == _directory:
                     pending.append(dir)
 
-    @needs_write_lock
     def update_feature_flags(self, updated_flags):
         """Update the feature flags for this branch.
 
         :param updated_flags: Dictionary mapping feature names to necessities
             A necessity can be None to indicate the feature should be removed
         """
-        self._format._update_feature_flags(updated_flags)
-        self.control_transport.put_bytes('format', self._format.as_string())
+        with self.lock_write():
+            self._format._update_feature_flags(updated_flags)
+            self.control_transport.put_bytes('format', self._format.as_string())
 
     def _check_for_tree_references(self, iterator):
         """See if directories have become tree-references."""

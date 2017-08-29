@@ -31,7 +31,6 @@ from . import (
     tree,
     )
 
-from .decorators import needs_write_lock
 from .sixish import (
     text_type,
     viewvalues,
@@ -179,29 +178,29 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.apply_inventory_delta)
 
-    @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
         from breezy import commit
         possible_master_transports=[]
-        revprops = commit.Commit.update_revprops(
-                revprops,
-                self.branch,
-                kwargs.pop('authors', None),
-                kwargs.get('local', False),
-                possible_master_transports)
-        # args for wt.commit start at message from the Commit.commit method,
-        args = (message, ) + args
-        for hook in MutableTree.hooks['start_commit']:
-            hook(self)
-        committed_id = commit.Commit().commit(working_tree=self,
-            revprops=revprops,
-            possible_master_transports=possible_master_transports,
-            *args, **kwargs)
-        post_hook_params = PostCommitHookParams(self)
-        for hook in MutableTree.hooks['post_commit']:
-            hook(post_hook_params)
-        return committed_id
+        with self.lock_write():
+            revprops = commit.Commit.update_revprops(
+                    revprops,
+                    self.branch,
+                    kwargs.pop('authors', None),
+                    kwargs.get('local', False),
+                    possible_master_transports)
+            # args for wt.commit start at message from the Commit.commit method,
+            args = (message, ) + args
+            for hook in MutableTree.hooks['start_commit']:
+                hook(self)
+            committed_id = commit.Commit().commit(working_tree=self,
+                revprops=revprops,
+                possible_master_transports=possible_master_transports,
+                *args, **kwargs)
+            post_hook_params = PostCommitHookParams(self)
+            for hook in MutableTree.hooks['post_commit']:
+                hook(post_hook_params)
+            return committed_id
 
     def _gather_kinds(self, files, kinds):
         """Helper function for add - sets the entries of kinds."""
@@ -305,7 +304,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.lock_write)
 
-    @needs_write_lock
     def mkdir(self, path, file_id=None):
         """Create a directory in the tree. if file_id is None, one is assigned.
 
@@ -331,7 +329,6 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
-    @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.
 

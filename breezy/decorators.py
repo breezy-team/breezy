@@ -16,8 +16,7 @@
 
 from __future__ import absolute_import
 
-__all__ = ['needs_write_lock',
-           'use_fast_decorators',
+__all__ = ['use_fast_decorators',
            'use_pretty_decorators',
            ]
 
@@ -74,41 +73,6 @@ def _get_parameters(func):
     return formatted[1:-1], args_passed, defaults_dict
 
 
-def _pretty_needs_write_lock(unbound):
-    """Decorate unbound to take out and release a write lock."""
-    template = """\
-def %(name)s_write_locked(%(params)s):
-    with self.lock_write():
-        return unbound(%(passed_params)s)
-write_locked = %(name)s_write_locked
-"""
-    params, passed_params, defaults_dict = _get_parameters(unbound)
-    variables = {'name':unbound.__name__,
-                 'params':params,
-                 'passed_params':passed_params,
-                }
-    func_def = template % variables
-
-    scope = dict(defaults_dict)
-    scope['unbound'] = unbound
-    exec(func_def, scope)
-    write_locked = scope['write_locked']
-
-    write_locked.__doc__ = unbound.__doc__
-    write_locked.__name__ = unbound.__name__
-    return write_locked
-
-
-def _fast_needs_write_lock(unbound):
-    """Decorate unbound to take out and release a write lock."""
-    def write_locked(self, *args, **kwargs):
-        with self.lock_write():
-            return unbound(self, *args, **kwargs)
-    write_locked.__doc__ = unbound.__doc__
-    write_locked.__name__ = unbound.__name__
-    return write_locked
-
-
 def only_raises(*errors):
     """Make a decorator that will only allow the given error classes to be
     raised.  All other errors will be logged and then discarded.
@@ -132,27 +96,6 @@ def only_raises(*errors):
         wrapped.__name__ = unbound.__name__
         return wrapped
     return decorator
-
-
-# Default is more functionality, 'bzr' the commandline will request fast
-# versions.
-needs_write_lock = _pretty_needs_write_lock
-
-
-def use_fast_decorators():
-    """Change the default decorators to be fast loading ones.
-
-    The alternative is to have decorators that do more work to produce
-    nice-looking decorated functions, but this slows startup time.
-    """
-    global needs_write_lock
-    needs_write_lock = _fast_needs_write_lock
-
-
-def use_pretty_decorators():
-    """Change the default decorators to be pretty ones."""
-    global needs_write_lock
-    needs_write_lock = _pretty_needs_write_lock
 
 
 # This implementation of cachedproperty is copied from Launchpad's

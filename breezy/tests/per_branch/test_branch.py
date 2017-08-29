@@ -584,27 +584,6 @@ class TestDecorator(object):
         with self.lock_read():
             raise RuntimeError
 
-    @_mod_branch.needs_write_lock
-    def do_with_write(self):
-        return 2
-
-    @_mod_branch.needs_write_lock
-    def except_with_write(self):
-        raise RuntimeError
-
-
-class TestDecorators(tests.TestCase):
-
-    def test_needs_write_lock(self):
-        branch = TestDecorator()
-        self.assertEqual(2, branch.do_with_write())
-        self.assertEqual(['lw', 'ul'], branch._calls)
-
-    def test_excepts_in_write_lock(self):
-        branch = TestDecorator()
-        self.assertRaises(RuntimeError, branch.except_with_write)
-        self.assertEqual(['lw', 'ul'], branch._calls)
-
 
 class TestBranchPushLocations(per_branch.TestCaseWithBranch):
 

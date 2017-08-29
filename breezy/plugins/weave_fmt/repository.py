@@ -52,7 +52,6 @@ from ...bzr import (
     weave,
     weavefile,
     )
-from ...decorators import needs_write_lock
 from ...repository import (
     InterRepository,
     )
@@ -181,7 +180,6 @@ class AllInOneRepository(VersionedFileRepository):
         """AllInOne repositories cannot be shared."""
         return False
 
-    @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
 
@@ -789,37 +787,37 @@ class InterWeaveRepo(InterSameDataRepository):
         except AttributeError:
             return False
 
-    @needs_write_lock
     def copy_content(self, revision_id=None):
         """See InterRepository.copy_content()."""
-        # weave specific optimised path:
-        try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
-        except (errors.RepositoryUpgradeRequired, NotImplemented):
-            pass
-        # FIXME do not peek!
-        if self.source._transport.listable():
-            pb = ui.ui_factory.nested_progress_bar()
+        with self.lock_write():
+            # weave specific optimised path:
             try:
-                self.target.texts.insert_record_stream(
-                    self.source.texts.get_record_stream(
-                        self.source.texts.keys(), 'topological', False))
-                pb.update('Copying inventory', 0, 1)
-                self.target.inventories.insert_record_stream(
-                    self.source.inventories.get_record_stream(
-                        self.source.inventories.keys(), 'topological', False))
-                self.target.signatures.insert_record_stream(
-                    self.source.signatures.get_record_stream(
-                        self.source.signatures.keys(),
-                        'unordered', True))
-                self.target.revisions.insert_record_stream(
-                    self.source.revisions.get_record_stream(
-                        self.source.revisions.keys(),
-                        'topological', True))
-            finally:
-                pb.finished()
-        else:
-            self.target.fetch(self.source, revision_id=revision_id)
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except (errors.RepositoryUpgradeRequired, NotImplemented):
+                pass
+            # FIXME do not peek!
+            if self.source._transport.listable():
+                pb = ui.ui_factory.nested_progress_bar()
+                try:
+                    self.target.texts.insert_record_stream(
+                        self.source.texts.get_record_stream(
+                            self.source.texts.keys(), 'topological', False))
+                    pb.update('Copying inventory', 0, 1)
+                    self.target.inventories.insert_record_stream(
+                        self.source.inventories.get_record_stream(
+                            self.source.inventories.keys(), 'topological', False))
+                    self.target.signatures.insert_record_stream(
+                        self.source.signatures.get_record_stream(
+                            self.source.signatures.keys(),
+                            'unordered', True))
+                    self.target.revisions.insert_record_stream(
+                        self.source.revisions.get_record_stream(
+                            self.source.revisions.keys(),
+                            'topological', True))
+                finally:
+                    pb.finished()
+            else:
+                self.target.fetch(self.source, revision_id=revision_id)
 
     def search_missing_revision_ids(self, find_ghosts=True, revision_ids=None,
                                     if_present_ids=None, limit=None):

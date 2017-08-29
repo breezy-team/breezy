@@ -48,7 +48,7 @@ from . import (
     )
 from .branch import BranchReferenceFormat
 from ..branch import BranchWriteLockResult
-from ..decorators import needs_write_lock, only_raises
+from ..decorators import only_raises
 from ..errors import (
     NoSuchRevision,
     SmartProtocolError,
@@ -378,10 +378,10 @@ class RemoteControlStore(_mod_config.IniFileStore):
         self._ensure_real()
         return self._real_store.unlock()
 
-    @needs_write_lock
     def save(self):
-        # We need to be able to override the undecorated implementation
-        self.save_without_locking()
+        with self.lock_write():
+            # We need to be able to override the undecorated implementation
+            self.save_without_locking()
 
     def save_without_locking(self):
         super(RemoteControlStore, self).save()
@@ -2396,31 +2396,31 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             self._ensure_real()
             return self._real_repository._get_inventory_xml(revision_id)
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         from ..reconcile import RepoReconciler
-        path = self.controldir._path_for_remote_call(self._client)
-        try:
-            response, handler = self._call_expecting_body(
-                'Repository.reconcile', path, self._lock_token)
-        except (errors.UnknownSmartMethod, errors.TokenLockingNotSupported):
-            self._ensure_real()
-            return self._real_repository.reconcile(other=other, thorough=thorough)
-        if response != ('ok', ):
-            raise errors.UnexpectedSmartServerResponse(response)
-        body = handler.read_body_bytes()
-        result = RepoReconciler(self)
-        for line in body.split('\n'):
-            if not line:
-                continue
-            key, val_text = line.split(':')
-            if key == "garbage_inventories":
-                result.garbage_inventories = int(val_text)
-            elif key == "inconsistent_parents":
-                result.inconsistent_parents = int(val_text)
-            else:
-                mutter("unknown reconcile key %r" % key)
-        return result
+        with self.lock_write():
+            path = self.controldir._path_for_remote_call(self._client)
+            try:
+                response, handler = self._call_expecting_body(
+                    'Repository.reconcile', path, self._lock_token)
+            except (errors.UnknownSmartMethod, errors.TokenLockingNotSupported):
+                self._ensure_real()
+                return self._real_repository.reconcile(other=other, thorough=thorough)
+            if response != ('ok', ):
+                raise errors.UnexpectedSmartServerResponse(response)
+            body = handler.read_body_bytes()
+            result = RepoReconciler(self)
+            for line in body.split('\n'):
+                if not line:
+                    continue
+                key, val_text = line.split(':')
+                if key == "garbage_inventories":
+                    result.garbage_inventories = int(val_text)
+                elif key == "inconsistent_parents":
+                    result.inconsistent_parents = int(val_text)
+                else:
+                    mutter("unknown reconcile key %r" % key)
+            return result
 
     def all_revision_ids(self):
         path = self.controldir._path_for_remote_call(self._client)
@@ -2559,7 +2559,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository.inventories
 
-    @needs_write_lock
     def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
         """
@@ -2567,18 +2566,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             body = ""
         else:
             body = "".join([l+"\n" for l in hint])
-        path = self.controldir._path_for_remote_call(self._client)
-        try:
-            response, handler = self._call_with_body_bytes_expecting_body(
-                'Repository.pack', (path, self._lock_token,
-                    str(clean_obsolete_packs)), body)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            return self._real_repository.pack(hint=hint,
-                clean_obsolete_packs=clean_obsolete_packs)
-        handler.cancel_read_body()
-        if response != ('ok', ):
-            raise errors.UnexpectedSmartServerResponse(response)
+        with self.lock_write():
+            path = self.controldir._path_for_remote_call(self._client)
+            try:
+                response, handler = self._call_with_body_bytes_expecting_body(
+                    'Repository.pack', (path, self._lock_token,
+                        str(clean_obsolete_packs)), body)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                return self._real_repository.pack(hint=hint,
+                    clean_obsolete_packs=clean_obsolete_packs)
+            handler.cancel_read_body()
+            if response != ('ok', ):
+                raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def revisions(self):
@@ -2615,11 +2615,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository.signatures
 
-    @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        with self.lock_write():
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @property
     def texts(self):
@@ -2689,10 +2689,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def _serializer(self):
         return self._format._serializer
 
-    @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        signature = gpg_strategy.sign(plaintext)
-        self.add_signature_text(revision_id, signature)
+        with self.lock_write():
+            signature = gpg_strategy.sign(plaintext)
+            self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
         if self._real_repository:
@@ -3818,14 +3818,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch._set_parent_location(url)
 
-    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
-        self._clear_cached_state_of_remote_branch_only()
-        self._ensure_real()
-        return self._real_branch.pull(
-            source, overwrite=overwrite, stop_revision=stop_revision,
-            _override_hook_target=self, **kwargs)
+        with self.lock_write():
+            self._clear_cached_state_of_remote_branch_only()
+            self._ensure_real()
+            return self._real_branch.pull(
+                source, overwrite=overwrite, stop_revision=stop_revision,
+                _override_hook_target=self, **kwargs)
 
     def push(self, target, overwrite=False, stop_revision=None, lossy=False):
         with self.lock_read():
@@ -3876,59 +3876,59 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             else:
                 raise errors.UnexpectedSmartServerResponse(response)
 
-    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        # XXX: These should be returned by the set_last_revision_info verb
-        old_revno, old_revid = self.last_revision_info()
-        self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        if not revision_id or not isinstance(revision_id, bytes):
-            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
-        try:
-            response = self._call('Branch.set_last_revision_info',
-                self._remote_path(), self._lock_token, self._repo_lock_token,
-                str(revno), revision_id)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            self._clear_cached_state_of_remote_branch_only()
-            self._real_branch.set_last_revision_info(revno, revision_id)
-            self._last_revision_info_cache = revno, revision_id
-            return
-        if response == ('ok',):
-            self._clear_cached_state()
-            self._last_revision_info_cache = revno, revision_id
-            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
-            # Update the _real_branch's cache too.
-            if self._real_branch is not None:
-                cache = self._last_revision_info_cache
-                self._real_branch._last_revision_info_cache = cache
-        else:
-            raise errors.UnexpectedSmartServerResponse(response)
+        with self.lock_write():
+            # XXX: These should be returned by the set_last_revision_info verb
+            old_revno, old_revid = self.last_revision_info()
+            self._run_pre_change_branch_tip_hooks(revno, revision_id)
+            if not revision_id or not isinstance(revision_id, bytes):
+                raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
+            try:
+                response = self._call('Branch.set_last_revision_info',
+                    self._remote_path(), self._lock_token, self._repo_lock_token,
+                    str(revno), revision_id)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                self._clear_cached_state_of_remote_branch_only()
+                self._real_branch.set_last_revision_info(revno, revision_id)
+                self._last_revision_info_cache = revno, revision_id
+                return
+            if response == ('ok',):
+                self._clear_cached_state()
+                self._last_revision_info_cache = revno, revision_id
+                self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+                # Update the _real_branch's cache too.
+                if self._real_branch is not None:
+                    cache = self._last_revision_info_cache
+                    self._real_branch._last_revision_info_cache = cache
+            else:
+                raise errors.UnexpectedSmartServerResponse(response)
 
-    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
-        medium = self._client._medium
-        if not medium._is_remote_before((1, 6)):
-            # Use a smart method for 1.6 and above servers
-            try:
-                self._set_last_revision_descendant(revision_id, other_branch,
-                    allow_diverged=True, allow_overwrite_descendant=True)
-                return
-            except errors.UnknownSmartMethod:
-                medium._remember_remote_is_before((1, 6))
-        self._clear_cached_state_of_remote_branch_only()
-        graph = self.repository.get_graph()
-        (last_revno, last_revid) = self.last_revision_info()
-        known_revision_ids = [
-            (last_revid, last_revno),
-            (_mod_revision.NULL_REVISION, 0),
-            ]
-        if last_rev is not None:
-            if not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
-        revno = graph.find_distance_to_null(revision_id, known_revision_ids)
-        self.set_last_revision_info(revno, revision_id)
+        with self.lock_write():
+            medium = self._client._medium
+            if not medium._is_remote_before((1, 6)):
+                # Use a smart method for 1.6 and above servers
+                try:
+                    self._set_last_revision_descendant(revision_id, other_branch,
+                        allow_diverged=True, allow_overwrite_descendant=True)
+                    return
+                except errors.UnknownSmartMethod:
+                    medium._remember_remote_is_before((1, 6))
+            self._clear_cached_state_of_remote_branch_only()
+            graph = self.repository.get_graph()
+            (last_revno, last_revid) = self.last_revision_info()
+            known_revision_ids = [
+                (last_revid, last_revno),
+                (_mod_revision.NULL_REVISION, 0),
+                ]
+            if last_rev is not None:
+                if not graph.is_ancestor(last_rev, revision_id):
+                    # our previous tip is not merged into stop_revision
+                    raise errors.DivergedBranches(self, other_branch)
+            revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):
         self._set_config_location('push_location', location)

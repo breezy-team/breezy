@@ -41,7 +41,7 @@ from . import (
     registry,
     ui,
     )
-from .decorators import needs_write_lock, only_raises
+from .decorators import only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
@@ -911,10 +911,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             return list(self.get_deltas_for_revisions(
                 [r], specific_fileids=specific_fileids))[0]
 
-    @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        signature = gpg_strategy.sign(plaintext)
-        self.add_signature_text(revision_id, signature)
+        with self.lock_write():
+            signature = gpg_strategy.sign(plaintext)
+            self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
@@ -979,13 +979,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from .reconcile import RepoReconciler
-        reconciler = RepoReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = RepoReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.
@@ -1023,7 +1023,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         types it should be a no-op that just returns.
 
         This stub method does not require a lock, but subclasses should use
-        @needs_write_lock as this is a long running call it's reasonable to
+        self.write_lock as this is a long running call it's reasonable to
         implicitly lock for the user.
 
         :param hint: If not supplied, the whole repository is packed.
@@ -1096,7 +1096,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
 
@@ -1112,11 +1111,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Returns the policy for making working trees on new branches."""
         raise NotImplementedError(self.make_working_trees)
 
-    @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        with self.lock_write():
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
@@ -1507,7 +1506,6 @@ class InterRepository(InterObject):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    @needs_write_lock
     def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
 
@@ -1517,14 +1515,14 @@ class InterRepository(InterObject):
         :param revision_id: Only copy the content needed to construct
                             revision_id and its parents.
         """
-        try:
-            self.target.set_make_working_trees(
-                self.source.make_working_trees())
-        except NotImplementedError:
-            pass
-        self.target.fetch(self.source, revision_id=revision_id)
+        with self.lock_write():
+            try:
+                self.target.set_make_working_trees(
+                    self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            self.target.fetch(self.source, revision_id=revision_id)
 
-    @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
 

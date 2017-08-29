@@ -55,9 +55,6 @@ from breezy.bzr import (
     )
 """)
 
-from ..decorators import needs_write_lock
-from .inventory import Inventory, ROOT_ID, entry_factory
-from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from .inventorytree import (
@@ -219,13 +216,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
-    @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
-        # mark the tree as dirty post commit - commit
-        # can change the current versioned list by doing deletes.
-        result = WorkingTree.commit(self, message, revprops, *args, **kwargs)
-        self._make_dirty(reset_inventory=True)
-        return result
+        with self.lock_write():
+            # mark the tree as dirty post commit - commit
+            # can change the current versioned list by doing deletes.
+            result = WorkingTree.commit(self, message, revprops, *args,
+                                        **kwargs)
+            self._make_dirty(reset_inventory=True)
+            return result
 
     def current_dirstate(self):
         """Return the current dirstate object.
