@@ -501,37 +501,22 @@ class ImportReplacerHelper(TestCaseInTempDir):
         root_path = osutils.pathjoin('base', root_name)
         os.mkdir(root_path)
         root_init = osutils.pathjoin(root_path, '__init__.py')
-        f = open(osutils.pathjoin(root_path, '__init__.py'), 'wb')
-        try:
+        with open(osutils.pathjoin(root_path, '__init__.py'), 'w') as f:
             f.write('var1 = 1\ndef func1(a):\n  return a\n')
-        finally:
-            f.close()
         mod_path = osutils.pathjoin(root_path, mod_name + '.py')
-        f = open(mod_path, 'wb')
-        try:
+        with open(mod_path, 'w') as f:
             f.write('var2 = 2\ndef func2(a):\n  return a\n')
-        finally:
-            f.close()
 
         sub_path = osutils.pathjoin(root_path, sub_name)
         os.mkdir(sub_path)
-        f = open(osutils.pathjoin(sub_path, '__init__.py'), 'wb')
-        try:
+        with open(osutils.pathjoin(sub_path, '__init__.py'), 'w') as f:
             f.write('var3 = 3\ndef func3(a):\n  return a\n')
-        finally:
-            f.close()
         submoda_path = osutils.pathjoin(sub_path, submoda_name + '.py')
-        f = open(submoda_path, 'wb')
-        try:
+        with open(submoda_path, 'w') as f:
             f.write('var4 = 4\ndef func4(a):\n  return a\n')
-        finally:
-            f.close()
         submodb_path = osutils.pathjoin(sub_path, submodb_name + '.py')
-        f = open(submodb_path, 'wb')
-        try:
+        with open(submodb_path, 'w') as f:
             f.write('var5 = 5\ndef func5(a):\n  return a\n')
-        finally:
-            f.close()
         self.root_name = root_name
         self.mod_name = mod_name
         self.sub_name = sub_name

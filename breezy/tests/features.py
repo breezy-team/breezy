@@ -24,6 +24,7 @@ import subprocess
 import stat
 import sys
 import tempfile
+import warnings
 
 from .. import (
     osutils,
@@ -163,19 +164,25 @@ class ModuleAvailableFeature(Feature):
     :ivar module: The module if it is available, else None.
     """
 
-    def __init__(self, module_name):
+    def __init__(self, module_name, ignore_warnings=None):
         super(ModuleAvailableFeature, self).__init__()
         self.module_name = module_name
+        if ignore_warnings is None:
+            ignore_warnings = ()
+        self.ignore_warnings = ignore_warnings
 
     def _probe(self):
         sentinel = object()
         module = sys.modules.get(self.module_name, sentinel)
         if module is sentinel:
-            try:
-                self._module = __import__(self.module_name, {}, {}, [''])
+            with warnings.catch_warnings():
+                for warning_category in self.ignore_warnings:
+                    warnings.simplefilter('ignore', warning_category)
+                try:
+                    self._module = __import__(self.module_name)
+                except ImportError:
+                    return False
                 return True
-            except ImportError:
-                return False
         else:
             self._module = module
             return True
@@ -374,7 +381,10 @@ class _NotRunningAsRoot(Feature):
 
 not_running_as_root = _NotRunningAsRoot()
 
-apport = ModuleAvailableFeature('apport.report')
+# Apport uses deprecated imp module on python3.
+apport = ModuleAvailableFeature(
+    'apport.report',
+    ignore_warnings=[DeprecationWarning, PendingDeprecationWarning])
 gpg = ModuleAvailableFeature('gpg')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae.scanner')

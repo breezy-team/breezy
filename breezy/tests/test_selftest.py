@@ -1813,8 +1813,8 @@ class TestTestCaseLogDetails(tests.TestCase):
         # considered as a skip
         result = self._run_test('test_missing_feature')
         reasons = _get_skip_reasons(result)
-        self.assertEqual({missing_feature}, set(reasons))
-        skips = reasons[missing_feature]
+        self.assertEqual({str(missing_feature)}, set(reasons))
+        skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
         test = skips[0]
         self.assertFalse('log' in test.getDetails())
@@ -2122,7 +2122,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def test_runner_class(self):
         self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=self.factory)
         test = ProtocolTestCase(stream)
         result = unittest.TestResult()
@@ -2192,7 +2193,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         from subunit import ProtocolTestCase
         def factory():
             return TestUtil.TestSuite([_get_test(test_name)])
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=factory)
         test = ProtocolTestCase(stream)
         result = testtools.TestResult()
@@ -3499,8 +3501,8 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
     _test_needs_features = [features.subunit]
 
     def _run_selftest_with_suite(self, **kwargs):
-        return TestUncollectedWarnings._run_selftest_with_suite(self,
-            runner_class=tests.SubUnitBzrRunner, **kwargs)
+        return TestUncollectedWarnings._run_selftest_with_suite(
+            self, runner_class=tests.SubUnitBzrRunnerv1, **kwargs)
 
 
 class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):

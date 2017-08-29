@@ -52,14 +52,14 @@ check-nodocs3:
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
-	  --subunit $(tests) | tee selftest.log
+	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
 	# command above (the '|' swallow any errors since 'make'
 	# sees the 'tee' exit code for the whole line
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
-	subunit-1to2 < selftest.log | subunit-stats
+	subunit-stats < selftest.log
 
 check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
@@ -67,14 +67,14 @@ check-nodocs2: extensions
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 \
-	  --subunit $(tests) | tee selftest.log
+	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'
 	# sees the 'tee' exit code for the whole line
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
-	subunit-1to2 < selftest.log | subunit-stats
+	subunit-stats < selftest.log
 
 # Run Python style checker (apt-get install pyflakes)
 #

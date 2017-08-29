@@ -1816,7 +1816,7 @@ class TestCase(testtools.TestCase):
         if not callable(addSkip):
             result.addSuccess(result)
         else:
-            addSkip(self, reason)
+            addSkip(self, str(reason))
 
     @staticmethod
     def _do_known_failure(self, result, e):
@@ -3263,8 +3263,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         # to take effect, though that is of marginal benefit.
         if verbosity >= 2:
             stream.write("Listing tests only ...\n")
-        for t in iter_suite_tests(suite):
-            stream.write("%s\n" % (t.id()))
+        if getattr(runner, 'list', None) is not None:
+            runner.list(suite)
+        else:
+            for t in iter_suite_tests(suite):
+                stream.write("%s\n" % (t.id()))
         return True
     result = runner.run(suite)
     if strict:
@@ -3487,7 +3490,7 @@ def fork_for_tests(suite):
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 subunit_result = AutoTimingTestResultDecorator(
-                    SubUnitBzrProtocolClient(stream))
+                    SubUnitBzrProtocolClientv1(stream))
                 process_suite.run(subunit_result)
             except:
                 # Try and report traceback on stream, but exit with error even
@@ -4420,10 +4423,11 @@ def probe_bad_non_ascii(encoding):
 try:
     from subunit import TestProtocolClient
     from subunit.test_results import AutoTimingTestResultDecorator
-    class SubUnitBzrProtocolClient(TestProtocolClient):
+
+    class SubUnitBzrProtocolClientv1(TestProtocolClient):
 
         def stopTest(self, test):
-            super(SubUnitBzrProtocolClient, self).stopTest(test)
+            super(SubUnitBzrProtocolClientv1, self).stopTest(test)
             _clear__type_equality_funcs(test)
 
         def addSuccess(self, test, details=None):
@@ -4431,14 +4435,35 @@ try:
             # stream, but we don't want to include it in ours.
             if details is not None and 'log' in details:
                 del details['log']
-            return super(SubUnitBzrProtocolClient, self).addSuccess(
+            return super(SubUnitBzrProtocolClientv1, self).addSuccess(
                 test, details)
 
-    class SubUnitBzrRunner(TextTestRunner):
+    class SubUnitBzrRunnerv1(TextTestRunner):
+
         def run(self, test):
             result = AutoTimingTestResultDecorator(
-                SubUnitBzrProtocolClient(self.stream))
+                SubUnitBzrProtocolClientv1(self.stream))
             test.run(result)
             return result
+except ImportError:
+    pass
+
+
+try:
+    from subunit.run import SubunitTestRunner
+
+    class SubUnitBzrRunnerv2(TextTestRunner, SubunitTestRunner):
+
+        def __init__(self, stream=sys.stderr, descriptions=0, verbosity=1,
+                     bench_history=None, strict=False, result_decorators=None):
+            TextTestRunner.__init__(
+                    self, stream=stream,
+                    descriptions=descriptions, verbosity=verbosity,
+                    bench_history=bench_history, strict=strict,
+                    result_decorators=result_decorators)
+            SubunitTestRunner.__init__(self, verbosity=verbosity,
+                                       stream=stream)
+
+        run = SubunitTestRunner.run
 except ImportError:
     pass

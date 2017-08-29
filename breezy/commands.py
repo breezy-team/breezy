@@ -956,11 +956,9 @@ def _match_argform(cmd, takes_args, args):
 
     return argdict
 
-def apply_coveraged(dirname, the_callable, *args, **kwargs):
-    # Cannot use "import trace", as that would import breezy.trace instead of
-    # the standard library's trace.
-    trace = __import__('trace')
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    import trace
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
     threading.settrace(tracer.globaltrace)
