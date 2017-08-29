@@ -30,7 +30,6 @@ from .. import (
     )
 from ..mutabletree import (
     MutableTree,
-    needs_tree_write_lock,
     )
 from ..revisiontree import (
     RevisionTree,
@@ -46,7 +45,6 @@ from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..decorators import needs_read_lock
 from ..sixish import (
     viewvalues,
     )
@@ -167,10 +165,10 @@ class InventoryTree(Tree):
             file_id = file_id[0]
         return self.root_inventory, file_id
 
-    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        return self._path2inv_file_id(path)[1]
+        with self.lock_read():
+            return self._path2inv_file_id(path)[1]
 
     def _path2inv_file_id(self, path):
         """Lookup a inventory and inventory file id by path.
@@ -210,7 +208,6 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
@@ -223,24 +220,25 @@ class InventoryTree(Tree):
             down to specific_file_ids that have been requested. This has no
             impact if specific_file_ids is None.
         """
-        if specific_file_ids is None:
-            inventory_file_ids = None
-        else:
-            inventory_file_ids = []
-            for tree_file_id in specific_file_ids:
-                inventory, inv_file_id = self._unpack_file_id(tree_file_id)
-                if not inventory is self.root_inventory: # for now
-                    raise AssertionError("%r != %r" % (
-                        inventory, self.root_inventory))
-                inventory_file_ids.append(inv_file_id)
-        # FIXME: Handle nested trees
-        return self.root_inventory.iter_entries_by_dir(
-            specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+        with self.lock_read():
+            if specific_file_ids is None:
+                inventory_file_ids = None
+            else:
+                inventory_file_ids = []
+                for tree_file_id in specific_file_ids:
+                    inventory, inv_file_id = self._unpack_file_id(tree_file_id)
+                    if not inventory is self.root_inventory: # for now
+                        raise AssertionError("%r != %r" % (
+                            inventory, self.root_inventory))
+                    inventory_file_ids.append(inv_file_id)
+            # FIXME: Handle nested trees
+            return self.root_inventory.iter_entries_by_dir(
+                specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
-    @needs_read_lock
     def iter_child_entries(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        return iter(viewvalues(inv[inv_file_id].children))
+        with self.lock_read():
+            inv, inv_file_id = self._unpack_file_id(file_id)
+            return iter(viewvalues(inv[inv_file_id].children))
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""
@@ -251,7 +249,6 @@ class InventoryTree(Tree):
 
 class MutableInventoryTree(MutableTree, InventoryTree):
 
-    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -260,10 +257,11 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
-        self.flush()
-        inv = self.root_inventory
-        inv.apply_delta(changes)
-        self._write_inventory(inv)
+        with self.lock_tree_write():
+            self.flush()
+            inv = self.root_inventory
+            inv.apply_delta(changes)
+            self._write_inventory(inv)
 
     def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
@@ -271,15 +269,14 @@ class MutableInventoryTree(MutableTree, InventoryTree):
             path = self.get_canonical_inventory_path(path)
         return path
 
-    @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         """Version file_list, optionally recursing into directories.
 
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
-        :param file_list: List of zero or more paths.  *NB: these are 
-            interpreted relative to the process cwd, not relative to the 
+        :param file_list: List of zero or more paths.  *NB: these are
+            interpreted relative to the process cwd, not relative to the
             tree.*  (Add and most other tree methods use tree-relative
             paths.)
         :param action: A reporter to be called with the inventory, parent_ie,
@@ -292,22 +289,23 @@ class MutableInventoryTree(MutableTree, InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
-        # Not all mutable trees can have conflicts
-        if getattr(self, 'conflicts', None) is not None:
-            # Collect all related files without checking whether they exist or
-            # are versioned. It's cheaper to do that once for all conflicts
-            # than trying to find the relevant conflict for each added file.
-            conflicts_related = set()
-            for c in self.conflicts():
-                conflicts_related.update(c.associated_filenames())
-        else:
-            conflicts_related = None
-        adder = _SmartAddHelper(self, action, conflicts_related)
-        adder.add(file_list, recurse=recurse)
-        if save:
-            invdelta = adder.get_inventory_delta()
-            self.apply_inventory_delta(invdelta)
-        return adder.added, adder.ignored
+        with self.lock_tree_write():
+            # Not all mutable trees can have conflicts
+            if getattr(self, 'conflicts', None) is not None:
+                # Collect all related files without checking whether they exist or
+                # are versioned. It's cheaper to do that once for all conflicts
+                # than trying to find the relevant conflict for each added file.
+                conflicts_related = set()
+                for c in self.conflicts():
+                    conflicts_related.update(c.associated_filenames())
+            else:
+                conflicts_related = None
+            adder = _SmartAddHelper(self, action, conflicts_related)
+            adder.add(file_list, recurse=recurse)
+            if save:
+                invdelta = adder.get_inventory_delta()
+                self.apply_inventory_delta(invdelta)
+            return adder.added, adder.ignored
 
     def update_basis_by_delta(self, new_revid, delta):
         """Update the parents of this tree after a commit.
@@ -341,12 +339,11 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         # generic implementation based on Inventory manipulation. See
         # WorkingTree classes for optimised versions for specific format trees.
         basis = self.basis_tree()
-        basis.lock_read()
-        # TODO: Consider re-evaluating the need for this with CHKInventory
-        # we don't strictly need to mutate an inventory for this
-        # it only makes sense when apply_delta is cheaper than get_inventory()
-        inventory = _mod_inventory.mutable_inventory_from_tree(basis)
-        basis.unlock()
+        with basis.lock_read():
+            # TODO: Consider re-evaluating the need for this with CHKInventory
+            # we don't strictly need to mutate an inventory for this
+            # it only makes sense when apply_delta is cheaper than get_inventory()
+            inventory = _mod_inventory.mutable_inventory_from_tree(basis)
         inventory.apply_delta(delta)
         rev_tree = InventoryRevisionTree(self.branch.repository,
                                          inventory, new_revid)

@@ -116,14 +116,11 @@ class MatchesAncestry(Matcher):
             self.repository, self.revision_id))
 
     def match(self, expected):
-        self.repository.lock_read()
-        try:
+        with self.repository.lock_read():
             graph = self.repository.get_graph()
             got = [r for r, p in graph.iter_ancestry([self.revision_id])]
             if _mod_revision.NULL_REVISION in got:
                 got.remove(_mod_revision.NULL_REVISION)
-        finally:
-            self.repository.unlock()
         if sorted(got) != sorted(expected):
             return _AncestryMismatch(self.revision_id, sorted(got),
                 sorted(expected))
@@ -141,15 +138,12 @@ class HasLayout(Matcher):
 
     def get_tree_layout(self, tree):
         """Get the (path, file_id) pairs for the current tree."""
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 if ie.parent_id is None:
                     yield (u"", ie.file_id)
                 else:
                     yield (path+ie.kind_character(), ie.file_id)
-        finally:
-            tree.unlock()
 
     @staticmethod
     def _strip_unreferenced_directories(entries):
@@ -202,14 +196,11 @@ class RevisionHistoryMatches(Matcher):
         return 'RevisionHistoryMatches(%r)' % self.expected
 
     def match(self, branch):
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             graph = branch.repository.get_graph()
             history = list(graph.iter_lefthand_ancestry(
                 branch.last_revision(), [_mod_revision.NULL_REVISION]))
             history.reverse()
-        finally:
-            branch.unlock()
         return Equals(self.expected).match(history)
 
 

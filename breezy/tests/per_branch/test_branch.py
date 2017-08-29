@@ -24,6 +24,7 @@ from breezy import (
     config,
     delta as _mod_delta,
     errors,
+    lock,
     merge,
     osutils,
     urlutils,
@@ -566,51 +567,22 @@ class TestDecorator(object):
 
     def lock_read(self):
         self._calls.append('lr')
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         self._calls.append('lw')
+        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         self._calls.append('ul')
 
-    @_mod_branch.needs_read_lock
     def do_with_read(self):
-        return 1
+        with self.lock_read():
+            return 1
 
-    @_mod_branch.needs_read_lock
     def except_with_read(self):
-        raise RuntimeError
-
-    @_mod_branch.needs_write_lock
-    def do_with_write(self):
-        return 2
-
-    @_mod_branch.needs_write_lock
-    def except_with_write(self):
-        raise RuntimeError
-
-
-class TestDecorators(tests.TestCase):
-
-    def test_needs_read_lock(self):
-        branch = TestDecorator()
-        self.assertEqual(1, branch.do_with_read())
-        self.assertEqual(['lr', 'ul'], branch._calls)
-
-    def test_excepts_in_read_lock(self):
-        branch = TestDecorator()
-        self.assertRaises(RuntimeError, branch.except_with_read)
-        self.assertEqual(['lr', 'ul'], branch._calls)
-
-    def test_needs_write_lock(self):
-        branch = TestDecorator()
-        self.assertEqual(2, branch.do_with_write())
-        self.assertEqual(['lw', 'ul'], branch._calls)
-
-    def test_excepts_in_write_lock(self):
-        branch = TestDecorator()
-        self.assertRaises(RuntimeError, branch.except_with_write)
-        self.assertEqual(['lw', 'ul'], branch._calls)
+        with self.lock_read():
+            raise RuntimeError
 
 
 class TestBranchPushLocations(per_branch.TestCaseWithBranch):

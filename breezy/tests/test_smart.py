@@ -930,7 +930,7 @@ class TestSmartServerBranchRequestGetConfigFile(
 class TestLockedBranch(tests.TestCaseWithMemoryTransport):
 
     def get_lock_tokens(self, branch):
-        branch_token = branch.lock_write().branch_token
+        branch_token = branch.lock_write().token
         repo_token = branch.repository.lock_write().repository_token
         branch.repository.unlock()
         return branch_token, repo_token
@@ -1399,7 +1399,7 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.')
-        branch_token = branch.lock_write().branch_token
+        branch_token = branch.lock_write().token
         branch.leave_lock_in_place()
         branch.unlock()
         response = request.execute('')

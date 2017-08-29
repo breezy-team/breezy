@@ -16,7 +16,10 @@
 
 """Tests for VersionedFileRepository.refresh_data."""
 
-from breezy import repository
+from breezy import (
+    errors,
+    repository,
+    )
 
 from breezy.tests.per_repository_vf import (
     TestCaseWithRepository,
@@ -50,7 +53,7 @@ class TestRefreshData(TestCaseWithRepository):
         try:
             server_repo.lock_write(token)
         except errors.TokenLockingNotSupported:
-            raise TestSkipped('Cannot concurrently insert into repo format %r'
+            self.skipTest('Cannot concurrently insert into repo format %r'
                 % self.repository_format)
         try:
             server_repo.fetch(source.branch.repository, revid)

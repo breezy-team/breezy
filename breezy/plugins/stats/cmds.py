@@ -267,15 +267,12 @@ class cmd_committer_statistics(commands.Command):
             if len(revision) > 1:
                 alternate_rev = revision[1].in_history(a_branch).rev_id
 
-        a_branch.lock_read()
-        try:
+        with a_branch.lock_read():
             if alternate_rev:
                 info = get_diff_info(a_branch.repository, last_rev,
                                      alternate_rev)
             else:
                 info = get_info(a_branch.repository, last_rev)
-        finally:
-            a_branch.unlock()
         if show_class:
             def fetch_class_stats(revs):
                 return gather_class_stats(a_branch.repository, revs)
@@ -301,8 +298,7 @@ class cmd_ancestor_growth(commands.Command):
             a_branch = wt.branch
             last_rev = wt.last_revision()
 
-        a_branch.lock_read()
-        try:
+        with a_branch.lock_read():
             graph = a_branch.repository.get_graph()
             revno = 0
             cur_parents = 0
@@ -313,8 +309,6 @@ class cmd_ancestor_growth(commands.Command):
                 if depth == 0:
                     revno += 1
                     self.outf.write('%4d, %4d\n' % (revno, cur_parents))
-        finally:
-            a_branch.unlock()
 
 
 def gather_class_stats(repository, revs):
@@ -322,8 +316,7 @@ def gather_class_stats(repository, revs):
     total = 0
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        repository.lock_read()
-        try:
+        with repository.lock_read():
             i = 0
             for delta in repository.get_deltas_for_revisions(revs):
                 pb.update("classifying commits", i, len(revs))
@@ -333,8 +326,6 @@ def gather_class_stats(repository, revs):
                     ret[c] += 1
                     total += 1
                 i += 1
-        finally:
-            repository.unlock()
     finally:
         pb.finished()
     return ret, total
@@ -371,8 +362,7 @@ def find_credits(repository, revid):
            "translation": {},
            None: {}
            }
-    repository.lock_read()
-    try:
+    with repository.lock_read():
         graph = repository.get_graph()
         ancestry = [r for (r, ps) in graph.iter_ancestry([revid])
                     if ps is not None and r != NULL_REVISION]
@@ -392,8 +382,6 @@ def find_credits(repository, revid):
                         ret[c][author] += 1
         finally:
             pb.finished()
-    finally:
-        repository.unlock()
     def sort_class(name):
         return [author
             for author, _  in sorted(ret[name].items(), key=classify_key)]
@@ -421,9 +409,6 @@ class cmd_credits(commands.Command):
         if revision is not None:
             last_rev = revision[0].in_history(a_branch).rev_id
 
-        a_branch.lock_read()
-        try:
+        with a_branch.lock_read():
             credits = find_credits(a_branch.repository, last_rev)
             display_credits(credits, self.outf)
-        finally:
-            a_branch.unlock()

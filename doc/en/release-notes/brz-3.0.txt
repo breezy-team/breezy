@@ -194,6 +194,19 @@ API Changes
  * ``Repository.print_file`` and ``Branch.print_file`` have been removed.
    (Jelmer Vernooĳ)
 
+ * Various ``lock_write`` and ``lock_read`` functions now return a
+   context manager. (Jelmer Vernooĳ)
+
+ * The ``BranchWriteLockResult.branch_token`` (returned by
+   ``Branch.lock_write``) has been renamed to
+   ``BranchWriteLockResult.token``. (Jelmer Vernooĳ)
+
+ * ``breezy.decorators.needs_write_lock``,
+   ``breezy.decorators.needs_read_lock`` and
+   ``breezy.mutabletree.needs_tree_write_lock`` have been deprecated.
+   Instead, use the context managers returned by ``.lock_write``,
+   ``.lock_read`` and ``.lock_tree_write`` respectively. (Jelmer Vernooĳ)
+
 Internals
 *********
 

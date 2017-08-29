@@ -458,8 +458,7 @@ class cmd_cat_revision(Command):
             raise errors.BzrCommandError(gettext('Repository %r does not support '
                 'access to raw revision texts'))
 
-        b.repository.lock_read()
-        try:
+        with b.repository.lock_read():
             # TODO: jam 20060112 should cat-revision always output utf-8?
             if revision_id is not None:
                 revision_id = cache_utf8.encode(revision_id)
@@ -476,9 +475,7 @@ class cmd_cat_revision(Command):
                             gettext('You cannot specify a NULL revision.'))
                     rev_id = rev.as_revision_id(b)
                     self.print_revision(revisions, rev_id)
-        finally:
-            b.repository.unlock()
-        
+
 
 class cmd_dump_btree(Command):
     __doc__ = """Dump the contents of a btree index file to stdout.

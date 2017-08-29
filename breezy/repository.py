@@ -41,7 +41,7 @@ from . import (
     registry,
     ui,
     )
-from .decorators import needs_read_lock, needs_write_lock, only_raises
+from .decorators import only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
@@ -492,7 +492,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         self.control_files.dont_leave_in_place()
 
-    @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
         """Gather statistics from a revision id.
 
@@ -509,32 +508,33 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             revisions: The total revision count in the repository.
             size: An estimate disk size of the repository in bytes.
         """
-        result = {}
-        if revid and committers:
-            result['committers'] = 0
-        if revid and revid != _mod_revision.NULL_REVISION:
-            graph = self.get_graph()
-            if committers:
-                all_committers = set()
-            revisions = [r for (r, p) in graph.iter_ancestry([revid])
-                        if r != _mod_revision.NULL_REVISION]
-            last_revision = None
-            if not committers:
-                # ignore the revisions in the middle - just grab first and last
-                revisions = revisions[0], revisions[-1]
-            for revision in self.get_revisions(revisions):
-                if not last_revision:
-                    last_revision = revision
+        with self.lock_read():
+            result = {}
+            if revid and committers:
+                result['committers'] = 0
+            if revid and revid != _mod_revision.NULL_REVISION:
+                graph = self.get_graph()
                 if committers:
-                    all_committers.add(revision.committer)
-            first_revision = revision
-            if committers:
-                result['committers'] = len(all_committers)
-            result['firstrev'] = (first_revision.timestamp,
-                first_revision.timezone)
-            result['latestrev'] = (last_revision.timestamp,
-                last_revision.timezone)
-        return result
+                    all_committers = set()
+                revisions = [r for (r, p) in graph.iter_ancestry([revid])
+                            if r != _mod_revision.NULL_REVISION]
+                last_revision = None
+                if not committers:
+                    # ignore the revisions in the middle - just grab first and last
+                    revisions = revisions[0], revisions[-1]
+                for revision in self.get_revisions(revisions):
+                    if not last_revision:
+                        last_revision = revision
+                    if committers:
+                        all_committers.add(revision.committer)
+                first_revision = revision
+                if committers:
+                    result['committers'] = len(all_committers)
+                result['firstrev'] = (first_revision.timestamp,
+                    first_revision.timezone)
+                result['latestrev'] = (last_revision.timestamp,
+                    last_revision.timezone)
+            return result
 
     def find_branches(self, using=False):
         """Find branches underneath this repository.
@@ -573,7 +573,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 ret.extend(repository.find_branches())
         return ret
 
-    @needs_read_lock
     def search_missing_revision_ids(self, other,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
@@ -583,9 +582,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         revision_ids: only return revision ids included by revision_id.
         """
-        return InterRepository.get(other, self).search_missing_revision_ids(
-            find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids, limit=limit)
+        with self.lock_read():
+            return InterRepository.get(other, self).search_missing_revision_ids(
+                find_ghosts=find_ghosts, revision_ids=revision_ids,
+                if_present_ids=if_present_ids, limit=limit)
 
     @staticmethod
     def open(base):
@@ -721,7 +721,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if (self.control_files._lock_count == 1 and
-            self.control_files._lock_mode == 'w'):
+                self.control_files._lock_mode == 'w'):
             if self._write_group is not None:
                 self.abort_write_group()
                 self.control_files.unlock()
@@ -732,7 +732,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             for repo in self._fallback_repositories:
                 repo.unlock()
 
-    @needs_read_lock
     def clone(self, controldir, revision_id=None):
         """Clone this repository into controldir using the current format.
 
@@ -741,12 +740,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :return: The newly created destination repository.
         """
-        # TODO: deprecate after 0.16; cloning this with all its settings is
-        # probably not very useful -- mbp 20070423
-        dest_repo = self._create_sprouting_repo(
-            controldir, shared=self.is_shared())
-        self.copy_content_into(dest_repo, revision_id)
-        return dest_repo
+        with self.lock_read():
+            # TODO: deprecate after 0.16; cloning this with all its settings is
+            # probably not very useful -- mbp 20070423
+            dest_repo = self._create_sprouting_repo(
+                controldir, shared=self.is_shared())
+            self.copy_content_into(dest_repo, revision_id)
+            return dest_repo
 
     def start_write_group(self):
         """Start a write group in the repository.
@@ -755,8 +755,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         between file ids and backend store to manage the insertion of data from
         both fetch and commit operations.
 
-        A write lock is required around the start_write_group/commit_write_group
-        for the support of lock-requiring repository formats.
+        A write lock is required around the
+        start_write_group/commit_write_group for the support of lock-requiring
+        repository formats.
 
         One can only insert data into a repository inside a write group.
 
@@ -777,35 +778,36 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         entered.
         """
 
-    @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a descendent repository for new development.
 
         Unlike clone, this does not copy the settings of the repository.
         """
-        dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
-        dest_repo.fetch(self, revision_id=revision_id)
-        return dest_repo
+        with self.lock_read():
+            dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
+            dest_repo.fetch(self, revision_id=revision_id)
+            return dest_repo
 
     def _create_sprouting_repo(self, a_controldir, shared):
-        if not isinstance(a_controldir._format, self.controldir._format.__class__):
+        if not isinstance(
+                a_controldir._format, self.controldir._format.__class__):
             # use target default format.
             dest_repo = a_controldir.create_repository()
         else:
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(a_controldir, shared=shared)
+                dest_repo = self._format.initialize(
+                        a_controldir, shared=shared)
             except errors.UninitializableFormat:
                 dest_repo = a_controldir.open_repository()
         return dest_repo
 
-    @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
-        return revision_id in self.has_revisions((revision_id,))
+        with self.lock_read():
+            return revision_id in self.has_revisions((revision_id,))
 
-    @needs_read_lock
     def has_revisions(self, revision_ids):
         """Probe to find out the presence of multiple revisions.
 
@@ -814,10 +816,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.has_revisions)
 
-    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision."""
-        return self.get_revisions([revision_id])[0]
+        with self.lock_read():
+            return self.get_revisions([revision_id])[0]
 
     def get_revision_reconcile(self, revision_id):
         """'reconcile' helper routine that allows access to a revision always.
@@ -894,7 +896,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 old_tree = trees[revision.parent_ids[0]]
             yield trees[revision.revision_id].changes_from(old_tree)
 
-    @needs_read_lock
     def get_revision_delta(self, revision_id, specific_fileids=None):
         """Return the delta for one revision.
 
@@ -905,14 +906,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           so that only those file-ids, their parents and their
           children are included.
         """
-        r = self.get_revision(revision_id)
-        return list(self.get_deltas_for_revisions([r],
-            specific_fileids=specific_fileids))[0]
+        with self.lock_read():
+            r = self.get_revision(revision_id)
+            return list(self.get_deltas_for_revisions(
+                [r], specific_fileids=specific_fileids))[0]
 
-    @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        signature = gpg_strategy.sign(plaintext)
-        self.add_signature_text(revision_id, signature)
+        with self.lock_write():
+            signature = gpg_strategy.sign(plaintext)
+            self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
@@ -977,13 +979,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from .reconcile import RepoReconciler
-        reconciler = RepoReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = RepoReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.
@@ -999,7 +1001,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         repository.
         """
 
-    @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -1022,7 +1023,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         types it should be a no-op that just returns.
 
         This stub method does not require a lock, but subclasses should use
-        @needs_write_lock as this is a long running call it's reasonable to
+        self.write_lock as this is a long running call it's reasonable to
         implicitly lock for the user.
 
         :param hint: If not supplied, the whole repository is packed.
@@ -1077,7 +1078,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return graph.CallableToParentsProviderAdapter(
             self._get_parent_map_no_fallbacks)
 
-    @needs_read_lock
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors.
         """
@@ -1096,7 +1096,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
 
@@ -1112,13 +1111,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Returns the policy for making working trees on new branches."""
         raise NotImplementedError(self.make_working_trees)
 
-    @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        with self.lock_write():
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
-    @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
 
@@ -1127,16 +1125,17 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
-        if not self.has_signature_for_revision_id(revision_id):
-            return gpg.SIGNATURE_NOT_SIGNED, None
-        signature = self.get_signature_text(revision_id)
+        with self.lock_read():
+            if not self.has_signature_for_revision_id(revision_id):
+                return gpg.SIGNATURE_NOT_SIGNED, None
+            signature = self.get_signature_text(revision_id)
 
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
+            testament = _mod_testament.Testament.from_revision(
+                    self, revision_id)
+            plaintext = testament.as_short_text()
 
-        return gpg_strategy.verify(signature, plaintext)
+            return gpg_strategy.verify(signature, plaintext)
 
-    @needs_read_lock
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.
 
@@ -1144,9 +1143,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :gpg_strategy: the GPGStrategy object to used
         :return: Iterator over tuples with revision id, result and keys
         """
-        for revid in revision_ids:
-            (result, key) = self.verify_revision_signature(revid, gpg_strategy)
-            yield revid, result, key
+        with self.lock_read():
+            for revid in revision_ids:
+                (result, key) = self.verify_revision_signature(revid, gpg_strategy)
+                yield revid, result, key
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
@@ -1506,7 +1506,6 @@ class InterRepository(InterObject):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    @needs_write_lock
     def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
 
@@ -1516,14 +1515,14 @@ class InterRepository(InterObject):
         :param revision_id: Only copy the content needed to construct
                             revision_id and its parents.
         """
-        try:
-            self.target.set_make_working_trees(
-                self.source.make_working_trees())
-        except NotImplementedError:
-            pass
-        self.target.fetch(self.source, revision_id=revision_id)
+        with self.lock_write():
+            try:
+                self.target.set_make_working_trees(
+                    self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            self.target.fetch(self.source, revision_id=revision_id)
 
-    @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
 
@@ -1535,7 +1534,6 @@ class InterRepository(InterObject):
         """
         raise NotImplementedError(self.fetch)
 
-    @needs_read_lock
     def search_missing_revision_ids(
             self, find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):

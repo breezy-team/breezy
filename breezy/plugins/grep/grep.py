@@ -216,8 +216,7 @@ class _GrepDiffOutputter(object):
 def grep_diff(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
         else:
@@ -301,15 +300,12 @@ def grep_diff(opts):
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
                     writeline("    %s" % (line,))
-    finally:
-        branch.unlock()
 
 
 def versioned_grep(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
         if start_revid is None:
@@ -371,8 +367,6 @@ def versioned_grep(opts):
                     dir_grep(tree, path, relpath, opts, revno, path_prefix)
                 else:
                     versioned_file_grep(tree, id, '.', path, opts, revno)
-    finally:
-        branch.unlock()
 
 
 def workingtree_grep(opts):
@@ -388,16 +382,13 @@ def workingtree_grep(opts):
     # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
     opts.outputter = _Outputter(opts)
 
-    tree.lock_read()
-    try:
+    with tree.lock_read():
         for path in opts.path_list:
             if osutils.isdir(path):
                 path_prefix = path
                 dir_grep(tree, path, relpath, opts, revno, path_prefix)
             else:
                 _file_grep(open(path).read(), path, opts, revno)
-    finally:
-        tree.unlock()
 
 
 def _skip_file(include, exclude, path):
