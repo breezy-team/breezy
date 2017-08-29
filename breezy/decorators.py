@@ -16,8 +16,7 @@
 
 from __future__ import absolute_import
 
-__all__ = ['needs_read_lock',
-           'needs_write_lock',
+__all__ = ['needs_write_lock',
            'use_fast_decorators',
            'use_pretty_decorators',
            ]
@@ -73,72 +72,6 @@ def _get_parameters(func):
     args_passed = ', '.join(args_passed)
 
     return formatted[1:-1], args_passed, defaults_dict
-
-
-def _pretty_needs_read_lock(unbound):
-    """Decorate unbound to take out and release a read lock.
-
-    This decorator can be applied to methods of any class with lock_read() and
-    unlock() methods.
-
-    Typical usage:
-
-    class Branch(...):
-        @needs_read_lock
-        def branch_method(self, ...):
-            stuff
-    """
-    # This compiles a function with a similar name, but wrapped with
-    # lock_read/unlock calls. We use dynamic creation, because we need the
-    # internal name of the function to be modified so that --lsprof will see
-    # the correct name.
-    # TODO: jam 20070111 Modify this template so that the generated function
-    #       has the same argument signature as the original function, which
-    #       will help commands like epydoc.
-    #       This seems possible by introspecting foo.func_defaults, and
-    #       foo.func_code.co_argcount and foo.func_code.co_varnames
-    template = """\
-def %(name)s_read_locked(%(params)s):
-    with self.lock_read():
-        return unbound(%(passed_params)s)
-read_locked = %(name)s_read_locked
-"""
-    params, passed_params, defaults_dict = _get_parameters(unbound)
-    variables = {'name':unbound.__name__,
-                 'params':params,
-                 'passed_params':passed_params,
-                }
-    func_def = template % variables
-
-    scope = dict(defaults_dict)
-    scope['unbound'] = unbound
-    exec(func_def, scope)
-    read_locked = scope['read_locked']
-
-    read_locked.__doc__ = unbound.__doc__
-    read_locked.__name__ = unbound.__name__
-    return read_locked
-
-
-def _fast_needs_read_lock(unbound):
-    """Decorate unbound to take out and release a read lock.
-
-    This decorator can be applied to methods of any class with lock_read() and
-    unlock() methods.
-
-    Typical usage:
-
-    class Branch(...):
-        @needs_read_lock
-        def branch_method(self, ...):
-            stuff
-    """
-    def read_locked(self, *args, **kwargs):
-        with self.lock_read():
-            return unbound(self, *args, **kwargs)
-    read_locked.__doc__ = unbound.__doc__
-    read_locked.__name__ = unbound.__name__
-    return read_locked
 
 
 def _pretty_needs_write_lock(unbound):
@@ -203,7 +136,6 @@ def only_raises(*errors):
 
 # Default is more functionality, 'bzr' the commandline will request fast
 # versions.
-needs_read_lock = _pretty_needs_read_lock
 needs_write_lock = _pretty_needs_write_lock
 
 
@@ -213,15 +145,13 @@ def use_fast_decorators():
     The alternative is to have decorators that do more work to produce
     nice-looking decorated functions, but this slows startup time.
     """
-    global needs_read_lock, needs_write_lock
-    needs_read_lock = _fast_needs_read_lock
+    global needs_write_lock
     needs_write_lock = _fast_needs_write_lock
 
 
 def use_pretty_decorators():
     """Change the default decorators to be pretty ones."""
-    global needs_read_lock, needs_write_lock
-    needs_read_lock = _pretty_needs_read_lock
+    global needs_write_lock
     needs_write_lock = _pretty_needs_write_lock
 
 

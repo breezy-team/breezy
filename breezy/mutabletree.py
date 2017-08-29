@@ -31,7 +31,7 @@ from . import (
     tree,
     )
 
-from .decorators import needs_read_lock, needs_write_lock
+from .decorators import needs_write_lock
 from .sixish import (
     text_type,
     viewvalues,
@@ -207,7 +207,6 @@ class MutableTree(tree.Tree):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
-    @needs_read_lock
     def has_changes(self, _from_tree=None):
         """Quickly check that the tree contains at least one commitable change.
 
@@ -216,23 +215,23 @@ class MutableTree(tree.Tree):
 
         :return: True if a change is found. False otherwise
         """
-        # Check pending merges
-        if len(self.get_parent_ids()) > 1:
-            return True
-        if _from_tree is None:
-            _from_tree = self.basis_tree()
-        changes = self.iter_changes(_from_tree)
-        try:
-            change = next(changes)
-            # Exclude root (talk about black magic... --vila 20090629)
-            if change[4] == (None, None):
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            try:
                 change = next(changes)
-            return True
-        except StopIteration:
-            # No changes
-            return False
+                # Exclude root (talk about black magic... --vila 20090629)
+                if change[4] == (None, None):
+                    change = next(changes)
+                return True
+            except StopIteration:
+                # No changes
+                return False
 
-    @needs_read_lock
     def check_changed_or_out_of_date(self, strict, opt_name,
                                      more_error, more_warning):
         """Check the tree for uncommitted changes and branch synchronization.
@@ -249,28 +248,28 @@ class MutableTree(tree.Tree):
 
         :param more_warning: Details about what is happening.
         """
-        if strict is None:
-            strict = self.branch.get_config_stack().get(opt_name)
-        if strict is not False:
-            err_class = None
-            if (self.has_changes()):
-                err_class = errors.UncommittedChanges
-            elif self.last_revision() != self.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the action with --no-strict
-                err_class = errors.OutOfDateTree
-            if err_class is not None:
-                if strict is None:
-                    err = err_class(self, more=more_warning)
-                    # We don't want to interrupt the user if he expressed no
-                    # preference about strict.
-                    trace.warning('%s', err._format())
-                else:
-                    err = err_class(self, more=more_error)
-                    raise err
+        with self.lock_read():
+            if strict is None:
+                strict = self.branch.get_config_stack().get(opt_name)
+            if strict is not False:
+                err_class = None
+                if (self.has_changes()):
+                    err_class = errors.UncommittedChanges
+                elif self.last_revision() != self.branch.last_revision():
+                    # The tree has lost sync with its branch, there is little
+                    # chance that the user is aware of it but he can still
+                    # force the action with --no-strict
+                    err_class = errors.OutOfDateTree
+                if err_class is not None:
+                    if strict is None:
+                        err = err_class(self, more=more_warning)
+                        # We don't want to interrupt the user if he expressed
+                        # no preference about strict.
+                        trace.warning('%s', err._format())
+                    else:
+                        err = err_class(self, more=more_error)
+                        raise err
 
-    @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.
 

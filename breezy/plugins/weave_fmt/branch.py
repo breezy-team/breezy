@@ -24,7 +24,6 @@ from ... import (
     )
 
 from ...decorators import (
-    needs_read_lock,
     needs_write_lock,
     only_raises,
     )

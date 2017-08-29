@@ -595,16 +595,6 @@ class TestDecorator(object):
 
 class TestDecorators(tests.TestCase):
 
-    def test_needs_read_lock(self):
-        branch = TestDecorator()
-        self.assertEqual(1, branch.do_with_read())
-        self.assertEqual(['lr', 'ul'], branch._calls)
-
-    def test_excepts_in_read_lock(self):
-        branch = TestDecorator()
-        self.assertRaises(RuntimeError, branch.except_with_read)
-        self.assertEqual(['lr', 'ul'], branch._calls)
-
     def test_needs_write_lock(self):
         branch = TestDecorator()
         self.assertEqual(2, branch.do_with_write())

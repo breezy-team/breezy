@@ -55,7 +55,7 @@ from breezy.bzr import (
     )
 """)
 
-from ..decorators import needs_read_lock, needs_write_lock
+from ..decorators import needs_write_lock
 from .inventory import Inventory, ROOT_ID, entry_factory
 from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
@@ -441,13 +441,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
     root_inventory = property(_get_root_inventory,
         "Root inventory of this tree")
 
-    @needs_read_lock
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
 
         This implementation requests the ids list from the dirstate file.
         """
-        return self.current_dirstate().get_parent_ids()
+        with self.lock_read():
+            return self.current_dirstate().get_parent_ids()
 
     def get_reference_revision(self, file_id, path=None):
         # referenced tree's revision is whatever's currently there
@@ -459,10 +459,10 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # else: check file_id is at path?
         return WorkingTree.open(self.abspath(path))
 
-    @needs_read_lock
     def get_root_id(self):
         """Return the id of this trees root"""
-        return self._get_entry(path='')[0][2]
+        with self.lock_read():
+            return self._get_entry(path='')[0][2]
 
     def has_id(self, file_id):
         state = self.current_dirstate()
@@ -477,15 +477,15 @@ class DirStateWorkingTree(InventoryWorkingTree):
         row, parents = self._get_entry(file_id=file_id)
         return row is not None
 
-    @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
-        state = self.current_dirstate()
-        entry = self._get_entry(file_id=file_id)
-        if entry == (None, None):
-            raise errors.NoSuchId(tree=self, file_id=file_id)
-        path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-        return path_utf8.decode('utf8')
+        with self.lock_read():
+            state = self.current_dirstate()
+            entry = self._get_entry(file_id=file_id)
+            if entry == (None, None):
+                raise errors.NoSuchId(tree=self, file_id=file_id)
+            path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+            return path_utf8.decode('utf8')
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         entry = self._get_entry(path=path)
@@ -520,22 +520,22 @@ class DirStateWorkingTree(InventoryWorkingTree):
             result.add(key[2])
         return result
 
-    @needs_read_lock
     def __iter__(self):
         """Iterate through file_ids for this tree.
 
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        result = []
-        for key, tree_details in self.current_dirstate()._iter_entries():
-            if tree_details[0][0] in (b'a', b'r'): # absent, relocated
-                # not relevant to the working tree
-                continue
-            path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
-            if osutils.lexists(path):
-                result.append(key[2])
-        return iter(result)
+        with self.lock_read():
+            result = []
+            for key, tree_details in self.current_dirstate()._iter_entries():
+                if tree_details[0][0] in (b'a', b'r'): # absent, relocated
+                    # not relevant to the working tree
+                    continue
+                path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
+                if osutils.lexists(path):
+                    result.append(key[2])
+            return iter(result)
 
     def iter_references(self):
         if not self._repo_supports_tree_reference:
@@ -587,14 +587,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     kind = 'tree-reference'
         return kind
 
-    @needs_read_lock
     def _last_revision(self):
         """See Mutable.last_revision."""
-        parent_ids = self.current_dirstate().get_parent_ids()
-        if parent_ids:
-            return parent_ids[0]
-        else:
-            return _mod_revision.NULL_REVISION
+        with self.lock_read():
+            parent_ids = self.current_dirstate().get_parent_ids()
+            if parent_ids:
+                return parent_ids[0]
+            else:
+                return _mod_revision.NULL_REVISION
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock.
@@ -878,18 +878,18 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """Initialize the state in this tree to be a new tree."""
         self._dirty = True
 
-    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        if isinstance(path, list):
-            if path == []:
-                path = [""]
-            path = osutils.pathjoin(*path)
-        path = path.strip('/')
-        entry = self._get_entry(path=path)
-        if entry == (None, None):
-            return None
-        return entry[0][2]
+        with self.lock_read():
+            if isinstance(path, list):
+                if path == []:
+                    path = [""]
+                path = osutils.pathjoin(*path)
+            path = path.strip('/')
+            entry = self._get_entry(path=path)
+            if entry == (None, None):
+                return None
+            return entry[0][2]
 
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """See Tree.paths2ids().
@@ -1040,20 +1040,20 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """
         return self.root_inventory
 
-    @needs_read_lock
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.
 
         WorkingTree4 supplies revision_trees for any basis tree.
         """
-        dirstate = self.current_dirstate()
-        parent_ids = dirstate.get_parent_ids()
-        if revision_id not in parent_ids:
-            raise errors.NoSuchRevisionInTree(self, revision_id)
-        if revision_id in dirstate.get_ghosts():
-            raise errors.NoSuchRevisionInTree(self, revision_id)
-        return DirStateRevisionTree(dirstate, revision_id,
-            self.branch.repository)
+        with self.lock_read():
+            dirstate = self.current_dirstate()
+            parent_ids = dirstate.get_parent_ids()
+            if revision_id not in parent_ids:
+                raise errors.NoSuchRevisionInTree(self, revision_id)
+            if revision_id in dirstate.get_ghosts():
+                raise errors.NoSuchRevisionInTree(self, revision_id)
+            return DirStateRevisionTree(dirstate, revision_id,
+                self.branch.repository)
 
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
@@ -1176,7 +1176,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """
         return self.current_dirstate().sha1_from_stat(path, stat_result)
 
-    @needs_read_lock
     def supports_tree_reference(self):
         return self._repo_supports_tree_reference
 
@@ -1312,9 +1311,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
             raise AssertionError()
         self.current_dirstate().update_basis_by_delta(delta, new_revid)
 
-    @needs_read_lock
     def _validate(self):
-        self._dirstate._validate()
+        with self.lock_read():
+            self._dirstate._validate()
 
     @needs_tree_write_lock
     def _write_inventory(self, inv):
@@ -1877,10 +1876,10 @@ class DirStateRevisionTree(InventoryTree):
             return parent_details[1]
         return None
 
-    @needs_read_lock
     def get_file_revision(self, file_id):
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        return inv[inv_file_id].revision
+        with self.lock_read():
+            inv, inv_file_id = self._unpack_file_id(file_id)
+            return inv[inv_file_id].revision
 
     def get_file(self, file_id, path=None):
         return BytesIO(self.get_file_text(file_id))
@@ -2023,7 +2022,6 @@ class DirStateRevisionTree(InventoryTree):
         if not self._locked:
             raise errors.ObjectNotLocked(self)
 
-    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
         # lookup by path: faster than splitting and walking the ivnentory.
@@ -2031,10 +2029,11 @@ class DirStateRevisionTree(InventoryTree):
             if path == []:
                 path = [""]
             path = osutils.pathjoin(*path)
-        entry = self._get_entry(path=path)
-        if entry == (None, None):
-            return None
-        return entry[0][2]
+        with self.lock_read():
+            entry = self._get_entry(path=path)
+            if entry == (None, None):
+                return None
+            return entry[0][2]
 
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""
@@ -2048,9 +2047,9 @@ class DirStateRevisionTree(InventoryTree):
                 self._dirstate_locked = False
             self._repository.unlock()
 
-    @needs_read_lock
     def supports_tree_reference(self):
-        return self._repo_supports_tree_reference
+        with self.lock_read():
+            return self._repo_supports_tree_reference
 
     def walkdirs(self, prefix=""):
         # TODO: jam 20070215 This is the lazy way by using the RevisionTree

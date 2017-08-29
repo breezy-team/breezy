@@ -29,7 +29,6 @@ from . import (
     mutabletree,
     revision as _mod_revision,
     )
-from .decorators import needs_read_lock
 from .bzr.inventory import Inventory
 from .bzr.inventorytree import MutableInventoryTree
 from .osutils import sha_file
@@ -144,14 +143,14 @@ class MemoryTree(MutableInventoryTree):
             return 0
         return entry.text_size
 
-    @needs_read_lock
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
 
         This implementation returns the current cached value from
             self._parent_ids.
         """
-        return list(self._parent_ids)
+        with self.lock_read():
+            return list(self._parent_ids)
 
     def has_filename(self, filename):
         """See Tree.has_filename()."""
@@ -171,10 +170,10 @@ class MemoryTree(MutableInventoryTree):
         self._file_transport.mkdir(path)
         return file_id
 
-    @needs_read_lock
     def last_revision(self):
         """See MutableTree.last_revision."""
-        return self._branch_revision_id
+        with self.lock_read():
+            return self._branch_revision_id
 
     def lock_read(self):
         """Lock the memory tree for reading.

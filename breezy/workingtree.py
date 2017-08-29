@@ -63,7 +63,7 @@ from breezy import (
 from . import (
     osutils,
     )
-from .decorators import needs_read_lock, needs_write_lock
+from .decorators import needs_write_lock
 from .i18n import gettext
 from . import mutabletree
 from .mutabletree import needs_tree_write_lock
@@ -480,7 +480,6 @@ class WorkingTree(mutabletree.MutableTree,
         """Return the id of this trees root"""
         raise NotImplementedError(self.get_root_id)
 
-    @needs_read_lock
     def clone(self, to_controldir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
 
@@ -494,31 +493,33 @@ class WorkingTree(mutabletree.MutableTree,
             revision, and difference between the source trees last revision
             and this one merged in.
         """
-        # assumes the target bzr dir format is compatible.
-        result = to_controldir.create_workingtree()
-        self.copy_content_into(result, revision_id)
-        return result
+        with self.lock_read():
+            # assumes the target bzr dir format is compatible.
+            result = to_controldir.create_workingtree()
+            self.copy_content_into(result, revision_id)
+            return result
 
-    @needs_read_lock
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
-        tree.set_root_id(self.get_root_id())
-        if revision_id is None:
-            merge.transform_tree(tree, self)
-        else:
-            # TODO now merge from tree.last_revision to revision (to preserve
-            # user local changes)
-            try:
-                other_tree = self.revision_tree(revision_id)
-            except errors.NoSuchRevision:
-                other_tree = self.branch.repository.revision_tree(revision_id)
-
-            merge.transform_tree(tree, other_tree)
-            if revision_id == _mod_revision.NULL_REVISION:
-                new_parents = []
+        with self.lock_read():
+            tree.set_root_id(self.get_root_id())
+            if revision_id is None:
+                merge.transform_tree(tree, self)
             else:
-                new_parents = [revision_id]
-            tree.set_parent_ids(new_parents)
+                # TODO now merge from tree.last_revision to revision (to
+                # preserve user local changes)
+                try:
+                    other_tree = self.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    other_tree = self.branch.repository.revision_tree(
+                            revision_id)
+
+                merge.transform_tree(tree, other_tree)
+                if revision_id == _mod_revision.NULL_REVISION:
+                    new_parents = []
+                else:
+                    new_parents = [revision_id]
+                tree.set_parent_ids(new_parents)
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -910,17 +911,17 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.rename_one)
 
-    @needs_read_lock
     def unknowns(self):
         """Return all unknown files.
 
         These are files in the working directory that are not versioned or
         control files or ignored.
         """
-        # force the extras method to be fully executed before returning, to
-        # prevent race conditions with the lock
-        return iter(
-            [subp for subp in self.extras() if not self.is_ignored(subp)])
+        with self.lock_read():
+            # force the extras method to be fully executed before returning, to
+            # prevent race conditions with the lock
+            return iter(
+                [subp for subp in self.extras() if not self.is_ignored(subp)])
 
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
@@ -1056,10 +1057,10 @@ class WorkingTree(mutabletree.MutableTree,
         """
         return self._last_revision()
 
-    @needs_read_lock
     def _last_revision(self):
         """helper for get_parent_ids."""
-        return _mod_revision.ensure_null(self.branch.last_revision())
+        with self.lock_read():
+            return _mod_revision.ensure_null(self.branch.last_revision())
 
     def is_locked(self):
         """Check if this tree is locked."""
