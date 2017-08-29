@@ -237,18 +237,6 @@ class Branch(controldir.ControlComponent):
         """
         return _mod_config.BranchStack(self)
 
-    def _get_config(self):
-        """Get the concrete config for just the config in this branch.
-
-        This is not intended for client use; see Branch.get_config for the
-        public API.
-
-        Added in 1.14.
-
-        :return: An object supporting get_option and set_option.
-        """
-        raise NotImplementedError(self._get_config)
-
     def store_uncommitted(self, creator):
         """Store uncommitted changes from a ShelfCreator.
 
@@ -1692,6 +1680,10 @@ class BranchFormat(controldir.ControlComponentFormat):
 
     def supports_tags_referencing_ghosts(self):
         """True if tags can reference ghost revisions."""
+        return True
+
+    def supports_store_uncommitted(self):
+        """True if uncommitted changes can be stored in this branch."""
         return True
 
 

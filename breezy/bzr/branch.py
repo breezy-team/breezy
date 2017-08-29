@@ -116,6 +116,15 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return self._user_transport
 
     def _get_config(self):
+        """Get the concrete config for just the config in this branch.
+
+        This is not intended for client use; see Branch.get_config for the
+        public API.
+
+        Added in 1.14.
+
+        :return: An object supporting get_option and set_option.
+        """
         return _mod_config.TransportConfig(self._transport, 'branch.conf')
 
     def _get_config_store(self):
