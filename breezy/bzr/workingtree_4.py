@@ -1215,9 +1215,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
         :param file_ids: The file ids to stop versioning.
         :raises: NoSuchId if any fileid is not currently versioned.
         """
-        if not file_ids:
-            return
         with self.lock_tree_write():
+            if not file_ids:
+                return
             state = self.current_dirstate()
             state._read_dirblocks_if_needed()
             ids_to_unversion = set(file_ids)
