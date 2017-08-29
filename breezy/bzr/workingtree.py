@@ -37,6 +37,7 @@ import collections
 import errno
 import os
 import stat
+import sys
 
 # Explicitly import breezy.bzrdir so that the BzrProber
 # is guaranteed to be registered.
@@ -72,7 +73,7 @@ from ..sixish import (
     BytesIO,
     text_type,
     )
-from ..trace import mutter
+from ..trace import mutter, note
 from ..tree import FileTimestampUnavailable
 from ..workingtree import (
     TreeDirectory,
