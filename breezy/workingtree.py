@@ -933,7 +933,7 @@ class WorkingTree(mutabletree.MutableTree,
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
              show_base=False):
-        with source.lock_read(), self.lock_write():
+        with self.lock_write(), source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,

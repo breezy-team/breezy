@@ -55,6 +55,8 @@ from breezy.bzr import (
     )
 """)
 
+from .inventory import Inventory, ROOT_ID, entry_factory
+from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from .inventorytree import (

@@ -4106,7 +4106,7 @@ class BranchOnlyStack(Stack):
             self.store.save_changes()
 
     def remove(self, name):
-        With self.lock_write():
+        with self.lock_write():
             super(BranchOnlyStack, self).remove(name)
             # Force a write to persistent storage
             self.store.save_changes()
