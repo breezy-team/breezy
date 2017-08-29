@@ -94,15 +94,6 @@ if breezy.version_info[:3] != _script_version:
 import breezy.breakin
 breezy.breakin.hook_debugger_to_signal()
 
-import breezy.decorators
-if ('--lsprof' in sys.argv
-    or '--lsprof-file' in sys.argv
-    or '--profile' in sys.argv
-    or '--lsprof-timed' in sys.argv):
-    breezy.decorators.use_pretty_decorators()
-else:
-    breezy.decorators.use_fast_decorators()
-
 import breezy.commands
 import breezy.trace
 
