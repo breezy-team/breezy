@@ -23,6 +23,7 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	BRZ_HOME=debian/brzhome \
 	BRZ_PLUGIN_PATH=-site:-user \
 	BRZ_DISABLE_PLUGINS=launchpad \
+	LC_ALL=C.UTF-8 \
 	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYVERSION)) \
 	$(CURDIR)/build/scripts-$(PYVERSION)/brz -Derror selftest -v --parallel=fork
 endif

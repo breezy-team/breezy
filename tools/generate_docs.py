@@ -38,9 +38,7 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-# Don't remove the following import, it triggers a format registration that
-# avoid http://pad.lv/956860
-import breezy.bzr
+import breezy
 from breezy import (
     commands,
     doc_generate,
@@ -79,6 +77,8 @@ Available OUTPUT_FORMAT:
         sys.exit(1)
 
     with breezy.initialize():
+        # Import breezy.bzr for format registration, see <http://pad.lv/956860>
+        from breezy import bzr as _
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)

@@ -1,8 +1,9 @@
-breezy (3.0.0~bzr6770-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6772-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
+  * Run testsuite with LC_ALL=C.UTF-8. Closes: #873676
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Aug 2017 15:51:06 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Aug 2017 05:09:42 +0000
 
 breezy (3.0.0~bzr6753-1) unstable; urgency=medium
 
