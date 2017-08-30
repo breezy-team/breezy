@@ -3870,9 +3870,9 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
     def _get_overrides(self):
-        # FIXME: Hack around library_state.initialize never called
-        if breezy.global_state is not None:
-            return breezy.global_state.cmdline_overrides.get_sections()
+        if breezy._global_state is not None:
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            return breezy._global_state.cmdline_overrides.get_sections()
         return []
 
     def get_shared_store(self, store, state=None):
@@ -3889,7 +3889,8 @@ class Stack(object):
             otherwise.
         """
         if state is None:
-            state = breezy.global_state
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            state = breezy._global_state
         if state is None:
             global _shared_stores_at_exit_installed
             stores = _shared_stores
