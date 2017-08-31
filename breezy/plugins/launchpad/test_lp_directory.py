@@ -545,16 +545,19 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     # Bogus distro.
 
     def test_bogus_distro(self):
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
         self.assertRaises(lp_registration.InvalidURL,
-                          self.directory._resolve, 'gentoo:foo')
+                          self.directory._resolve, 'gentoo:foo', factory)
 
     def test_trick_bogus_distro_u(self):
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
         self.assertRaises(lp_registration.InvalidURL,
-                          self.directory._resolve, 'utube:foo')
+                          self.directory._resolve, 'utube:foo', factory)
 
     def test_trick_bogus_distro_d(self):
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
         self.assertRaises(lp_registration.InvalidURL,
-                          self.directory._resolve, 'debuntu:foo')
+                          self.directory._resolve, 'debuntu:foo', factory)
 
     def test_missing_ubuntu_distroseries_without_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or
