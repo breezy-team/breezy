@@ -225,5 +225,9 @@ Testing
  * Launchpad plugin tests no longer try to connect to production
    Launchpad. (Jelmer Vernooĳ, #723183)
 
+ * Set the ``GPGHOME`` environment variable during testing, to prevent
+   e.g. leaking keys into the users' GNUPG directory.
+   (Jelmer Vernooĳ, #843885)
+
 ..
    vim: tw=74 ft=rst ff=unix
