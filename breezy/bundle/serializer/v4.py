@@ -331,15 +331,12 @@ class BundleWriteOperation(object):
         """Write all data to the bundle"""
         trace.note(ngettext('Bundling %d revision.', 'Bundling %d revisions.',
                             len(self.revision_ids)), len(self.revision_ids))
-        self.repository.lock_read()
-        try:
+        with self.repository.lock_read():
             self.bundle.begin()
             self.write_info()
             self.write_files()
             self.write_revisions()
             self.bundle.end()
-        finally:
-            self.repository.unlock()
         return self.revision_ids
 
     def write_info(self):

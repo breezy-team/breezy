@@ -19,7 +19,10 @@
 
 import inspect
 
-from .. import decorators
+from .. import (
+    decorators,
+    lock,
+    )
 from . import TestCase
 
 
@@ -60,9 +63,11 @@ def create_decorator_sample(style, unlock_error=None, meth=None):
 
         def lock_read(self):
             self.actions.append('lock_read')
+            return lock.LogicalLockResult(self.unlock)
 
         def lock_write(self):
             self.actions.append('lock_write')
+            return lock.LogicalLockResult(self.unlock)
 
         @decorators.only_raises(SampleUnlockError)
         def unlock(self):

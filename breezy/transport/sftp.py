@@ -875,6 +875,10 @@ class SFTPTransport(ConnectedTransport):
                 self.path = path
             def unlock(self):
                 pass
+            def __exit__(self):
+                pass
+            def __enter__(self):
+                pass
         return BogusLock(relpath)
 
     def lock_write(self, relpath):

@@ -460,8 +460,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    old_tree.lock_read()
-    try:
+    with old_tree.lock_read():
         if extra_trees is not None:
             for tree in extra_trees:
                 tree.lock_read()
@@ -478,8 +477,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
             if extra_trees is not None:
                 for tree in extra_trees:
                     tree.unlock()
-    finally:
-        old_tree.unlock()
 
 
 def _patch_header_date(tree, file_id, path):

@@ -199,9 +199,7 @@ class EmailSender(object):
         Depending on the configuration, this will either use smtplib, or it
         will call out to the 'mail' program.
         """
-        self.branch.lock_read()
-        self.repository.lock_read()
-        try:
+        with self.branch.lock_read(), self.repository.lock_read():
             # Do this after we have locked, to make things faster.
             self._setup_revision_and_revno()
             mailer = self.mailer()
@@ -209,9 +207,6 @@ class EmailSender(object):
                 self._send_using_smtplib()
             else:
                 self._send_using_process()
-        finally:
-            self.repository.unlock()
-            self.branch.unlock()
 
     def _send_using_process(self):
         """Spawn a 'mail' subprocess to send the email."""

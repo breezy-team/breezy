@@ -136,14 +136,11 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
         # We don't want things re-filtered by the specific exporter.
         filtered = False
 
-    tree.lock_read()
-    try:
+    with tree.lock_read():
         for _ in _exporters[format](
             tree, dest, root, subdir,
             force_mtime=force_mtime, fileobj=fileobj):
             yield
-    finally:
-        tree.unlock()
 
 
 def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
