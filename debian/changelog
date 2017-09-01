@@ -5,7 +5,7 @@ brz-debian (2.8.9) UNRELEASED; urgency=medium
   * Only apply/unapply quilt patches on '3.0 (quilt)' format source
     packages. LP: #999586
   * Remove deprecated --result option for 'bzr builddeb'.
-  * Remove deprecated export-upstream setting in configuation.
+  * Remove deprecated export-upstream setting in configuration.
   * Remove deprecated --v3 option from 'bzr dh-make'.
   * Remove 'bzr merge-package' command - this functionality is now in
     the 'brz merge' command.
