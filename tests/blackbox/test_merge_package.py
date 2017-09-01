@@ -77,7 +77,7 @@ class TestMergePackageBB(BuilddebTestCase):
         merge_source = '../debp-n'
         self.run_bzr_error(
             ['2 conflicts encountered.'],
-            'merge %s' % merge_source)
+            'merge %s' % merge_source, retcode=1)
 
     def test_pre_merge_hook_shared_rev_conflict(self):
         """Source upstream conflicts with target packaging -> Error.
