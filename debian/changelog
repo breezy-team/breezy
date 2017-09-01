@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr6772-2) UNRELEASED; urgency=medium
+
+  * Use https URLs.
+  * Depend on cython, breezy doesn't support pyrex.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Sep 2017 16:02:40 +0000
+
 breezy (3.0.0~bzr6772-1) unstable; urgency=medium
 
   * New upstream snapshot.
