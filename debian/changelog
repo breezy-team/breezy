@@ -1,4 +1,4 @@
-brz-debian (2.8.9) UNRELEASED; urgency=medium
+breezy-debian (2.8.9) UNRELEASED; urgency=medium
 
   * Update to be compatible with breezy rather than bazaar.
   * Added support for -b in Git-Vcs fields.
@@ -10,6 +10,7 @@ brz-debian (2.8.9) UNRELEASED; urgency=medium
   * Remove 'bzr merge-package' command - this functionality is now in
     the 'brz merge' command.
   * Bump version to 4.0.0 (no changes).
+  * Package as breezy-debian. Closes: #873848
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Jun 2017 14:10:48 +0000
 
