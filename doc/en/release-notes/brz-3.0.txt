@@ -77,6 +77,9 @@ New Features
  * The 'upload' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
+ * The 'cvs' and 'mtn' plugins are now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
  * The 'email' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
