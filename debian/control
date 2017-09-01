@@ -1,14 +1,14 @@
-Source: brz-debian
+Source: breezy-debian
 Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
-Uploaders: James Westby <james.westby@ubuntu.com>, Andrew Starr-Bochicchio <asb@debian.org>, Jelmer Vernooĳ <jelmer@debian.org>
+Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: debhelper (>= 9), python-all (>= 2.6.6-3), xz-utils
 Build-Depends-Indep: brz, python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts (>= 2.10.59), python-subunit, python-breezy.tests, python-lzma, libalgorithm-merge-perl, python-distro-info, quilt
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/brz-debian/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/brz-debian/unstable
 X-Python-Version: >= 2.4
-Standards-Version: 3.9.5
+Standards-Version: 4.0.0
 XS-Testsuite: autopkgtest
 
 Package: brz-debian
