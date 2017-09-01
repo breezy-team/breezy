@@ -221,9 +221,9 @@ class PristineTarSource(UpstreamSource):
         basis_tree = tree.branch.repository.revision_tree(base_revid)
         tree.lock_write()
         try:
-            builder = tree.branch.get_commit_builder(parents=parent_ids,
-                revprops=revprops, timestamp=timestamp, timezone=timezone)
-            builder.will_record_deletes()
+            builder = tree.branch.get_commit_builder(
+                    parents=parent_ids, revprops=revprops, timestamp=timestamp,
+                    timezone=timezone)
             try:
                 changes = [c for c in tree.iter_changes(basis_tree) if
                            include_change(c)]
@@ -233,7 +233,8 @@ class PristineTarSource(UpstreamSource):
                 builder.abort()
                 raise
             revid = builder.commit(message)
-            tag_name, _ = self.tag_version(version, revid=revid, component=component)
+            tag_name, _ = self.tag_version(
+                    version, revid=revid, component=component)
             tree.update_basis_by_delta(revid, builder.get_basis_delta())
         finally:
             tree.unlock()
