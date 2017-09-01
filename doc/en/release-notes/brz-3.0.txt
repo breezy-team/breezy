@@ -93,6 +93,9 @@ New Features
    can be enabled by setting ``commit.template_from_files = NEWS``.
    (Jelmer Vernooĳ)
 
+ * The 'darcs' plugin is now bundled.
+   (Jelmer Vernooĳ)
+
  * The functionality from ``bzr-guess`` is now merged into Breezy.
    It will provide suggestions if the user typoes a command.
    (Jelmer Vernooĳ)
