@@ -1,6 +1,6 @@
 breezy (3.0.0~bzr6779-1) UNRELEASED; urgency=medium
 
-  * Use https URLs.
+  * Use https VCS-* URLs in debian/control.
   * Depend on cython, breezy doesn't support pyrex.
   * New upstream snapshot.
 
