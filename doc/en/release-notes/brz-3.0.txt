@@ -107,6 +107,9 @@ Improvements
    variable (https://reproducible-builds.org/specs/source-date-epoch/).
    (Jelmer Vernooĳ)
 
+ * The ``repodebug`` plugin is now bundled.
+   (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
