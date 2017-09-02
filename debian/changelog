@@ -3,6 +3,7 @@ breezy (3.0.0~bzr6779-1) UNRELEASED; urgency=medium
   * Use https VCS-* URLs in debian/control.
   * Depend on cython, breezy doesn't support pyrex.
   * New upstream snapshot.
+  * Re-enable launchpad plugin - it should work offline now.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 02 Sep 2017 05:34:23 +0000
 
