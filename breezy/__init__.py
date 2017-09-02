@@ -192,7 +192,7 @@ else:
 # it is important to store the reference you get, rather than looking it up
 # repeatedly; that way your code will behave properly in the breezy test suite
 # and from programs that do use multiple library contexts.
-global_state = None
+_global_state = None
 
 
 def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
@@ -233,6 +233,12 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     # Start automatically in case people don't realize this returns a context.
     state._start()
     return state
+
+
+def get_global_state():
+    if _global_state is None:
+        return initialize()
+    return _global_state
 
 
 def test_suite():

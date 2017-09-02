@@ -328,6 +328,14 @@ class TestPlugins(BaseTestPlugins):
         with open('plugin.py', 'w') as f: f.write(source + '\n')
         self.load_with_paths(['.'])
 
+    def test_plugin_loaded(self):
+        self.assertPluginUnknown('plugin')
+        self.assertIs(None, breezy.plugin.get_loaded_plugin('plugin'))
+        self.setup_plugin()
+        p = breezy.plugin.get_loaded_plugin('plugin')
+        self.assertIsInstance(p, breezy.plugin.PlugIn)
+        self.assertIs(p.module, sys.modules[self.module_prefix + 'plugin'])
+
     def test_plugin_appears_in_plugins(self):
         self.setup_plugin()
         self.assertPluginKnown('plugin')

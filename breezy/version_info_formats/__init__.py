@@ -150,8 +150,7 @@ class VersionInfoBuilder(object):
         last_rev = self._get_revision_id()
 
         repository =  self._branch.repository
-        repository.lock_read()
-        try:
+        with repository.lock_read():
             graph = repository.get_graph()
             revhistory = list(graph.iter_lefthand_ancestry(
                 last_rev, [_mod_revision.NULL_REVISION]))
@@ -159,8 +158,6 @@ class VersionInfoBuilder(object):
                 rev = repository.get_revision(revision_id)
                 yield (rev.revision_id, rev.message,
                        rev.timestamp, rev.timezone)
-        finally:
-            repository.unlock()
 
     def _get_revision_id(self):
         """Get the revision id we are working on."""

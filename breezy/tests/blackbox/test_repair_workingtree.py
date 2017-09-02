@@ -29,13 +29,10 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         # manually corrupt. If we change the way to get at that dirstate file,
         # then we can update how this is done
         self.assertIsNot(None, getattr(tree, 'current_dirstate', None))
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             dirstate = tree.current_dirstate()
             dirstate_path = dirstate._filename
             self.assertPathExists(dirstate_path)
-        finally:
-            tree.unlock()
         # We have to have the tree unlocked at this point, so we can safely
         # mutate the state file on all platforms.
         if completely:

@@ -37,6 +37,7 @@ from breezy import (
     commit,
     conflicts,
     delta,
+    lock,
     multiparent,
     osutils,
     revision as _mod_revision,
@@ -1551,7 +1552,6 @@ class TreeTransform(DiskTreeTransform):
         TreeTransform.apply() called).
         """
         tree.lock_tree_write()
-
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
@@ -2046,7 +2046,7 @@ class _PreviewTree(inventorytree.InventoryTree):
 
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
-        return self
+        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         pass
@@ -2527,22 +2527,15 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
     :param delta_from_tree: If true, build_tree may use the input Tree to
         generate the inventory delta.
     """
-    wt.lock_tree_write()
-    try:
-        tree.lock_read()
+    with wt.lock_tree_write(), tree.lock_read():
+        if accelerator_tree is not None:
+            accelerator_tree.lock_read()
         try:
-            if accelerator_tree is not None:
-                accelerator_tree.lock_read()
-            try:
-                return _build_tree(tree, wt, accelerator_tree, hardlink,
-                                   delta_from_tree)
-            finally:
-                if accelerator_tree is not None:
-                    accelerator_tree.unlock()
+            return _build_tree(tree, wt, accelerator_tree, hardlink,
+                               delta_from_tree)
         finally:
-            tree.unlock()
-    finally:
-        wt.unlock()
+            if accelerator_tree is not None:
+                accelerator_tree.unlock()
 
 
 def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):

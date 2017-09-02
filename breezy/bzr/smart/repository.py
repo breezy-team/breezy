@@ -123,8 +123,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
-        repository.lock_read()
-        try:
+        with repository.lock_read():
             search = repository.get_graph()._make_breadth_first_searcher(
                 start_keys)
             while True:
@@ -144,8 +143,6 @@ class SmartServerRepositoryRequest(SmartServerRequest):
             search_result = vf_search.SearchResult(started_keys, excludes,
                 len(included_keys), included_keys)
             return (search_result, None)
-        finally:
-            repository.unlock()
 
 
 class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
@@ -153,11 +150,8 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, *args):
         """Read lock a repository for do_readlocked_repository_request."""
-        repository.lock_read()
-        try:
+        with repository.lock_read():
             return self.do_readlocked_repository_request(repository, *args)
-        finally:
-            repository.unlock()
 
 
 class SmartServerRepositoryBreakLock(SmartServerRepositoryRequest):
@@ -202,11 +196,8 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             compressed.
         """
         repository = self._repository
-        repository.lock_read()
-        try:
+        with repository.lock_read():
             return self._do_repository_request(body_bytes)
-        finally:
-            repository.unlock()
 
     def _expand_requested_revs(self, repo_graph, revision_ids, client_seen_revs,
                                include_missing, max_size=65536):
@@ -1190,8 +1181,7 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
     """
 
     def body_stream(self, repository, desired_files):
-        self._repository.lock_read()
-        try:
+        with self._repository.lock_read():
             text_keys = {}
             for i, key in enumerate(desired_files):
                 text_keys[key] = i
@@ -1212,8 +1202,6 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                 data = compressor.flush()
                 if data:
                     yield data
-        finally:
-            self._repository.unlock()
 
     def do_body(self, body_bytes):
         desired_files = [
@@ -1251,15 +1239,12 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
             body_stream=self.body_stream(self._repository, revision_ids))
 
     def body_stream(self, repository, revision_ids):
-        self._repository.lock_read()
-        try:
+        with self._repository.lock_read():
             for record in repository.revisions.get_record_stream(
                 [(revid,) for revid in revision_ids], 'unordered', True):
                 if record.storage_kind == 'absent':
                     continue
                 yield zlib.compress(record.get_bytes_as('fulltext'))
-        finally:
-            self._repository.unlock()
 
 
 class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
@@ -1282,8 +1267,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
         serializer = inventory_delta.InventoryDeltaSerializer(
             repository.supports_rich_root(),
             repository._format.supports_tree_reference)
-        repository.lock_read()
-        try:
+        with repository.lock_read():
             for inv, revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
@@ -1292,8 +1276,6 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                     prev_inv.revision_id, inv.revision_id, inv_delta)
                 yield ChunkedContentFactory(inv.revision_id, None, None, lines)
                 prev_inv = inv
-        finally:
-            repository.unlock()
 
     def body_stream(self, repository, ordering, revids):
         substream = self._inventory_delta_stream(repository,

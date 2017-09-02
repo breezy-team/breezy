@@ -965,19 +965,20 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
         super(TestDeltaRevisionFiltered, self).setUp()
         self.tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
-        self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
-                        ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
+        self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'])
+        self.bar_id = self.tree_a.path2id('bar')
         self.rev1 = self.tree_a.commit('rev1')
         self.build_tree(['a/bar/b3'])
-        self.tree_a.add('bar/b3', 'b3-id')
+        self.tree_a.add('bar/b3')
         self.rev2 = self.tree_a.commit('rev2')
         self.repository = self.tree_a.branch.repository
 
     def test_multiple_files(self):
         # Test multiple files
-        delta = self.repository.get_revision_delta(self.rev1,
-            specific_fileids=[self.tree_a.path2id('foo'),
-                              self.tree_a.path2id('baz')])
+        delta = self.repository.get_revision_delta(
+                self.rev1, specific_fileids=[
+                    self.tree_a.path2id('foo'),
+                    self.tree_a.path2id('baz')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('baz', self.tree_a.path2id('baz'), 'file'),
@@ -986,8 +987,8 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_directory(self):
         # Test a directory
-        delta = self.repository.get_revision_delta(self.rev1,
-            specific_fileids=['bar-id'])
+        delta = self.repository.get_revision_delta(
+                self.rev1, specific_fileids=[self.bar_id])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('bar', self.tree_a.path2id('bar'), 'directory'),
@@ -997,15 +998,15 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_unrelated(self):
         # Try another revision
-        delta = self.repository.get_revision_delta(self.rev2,
-                specific_fileids=[self.tree_a.path2id('foo')])
+        delta = self.repository.get_revision_delta(
+                self.rev2, specific_fileids=[self.tree_a.path2id('foo')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([], delta.added)
 
     def test_file_in_directory(self):
         # Test a file in a directory, both of which were added
-        delta = self.repository.get_revision_delta(self.rev1,
-            specific_fileids=[self.tree_a.path2id('bar/b2')])
+        delta = self.repository.get_revision_delta(
+                self.rev1, specific_fileids=[self.tree_a.path2id('bar/b2')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('bar', self.tree_a.path2id('bar'), 'directory'),

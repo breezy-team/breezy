@@ -291,8 +291,7 @@ class BzrUploader(object):
     def upload_full_tree(self):
         self.to_transport.ensure_base() # XXX: Handle errors (add
                                         # --create-prefix option ?)
-        self.tree.lock_read()
-        try:
+        with self.tree.lock_read():
             for relpath, ie in self.tree.iter_entries_by_dir():
                 if relpath in ('', '.bzrignore', '.bzrignore-upload'):
                     # skip root ('')
@@ -315,8 +314,6 @@ class BzrUploader(object):
                 else:
                     raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
-        finally:
-            self.tree.unlock()
 
     def upload_tree(self):
         # If we can't find the revid file on the remote location, upload the
@@ -340,8 +337,7 @@ class BzrUploader(object):
         self.to_transport.ensure_base() # XXX: Handle errors (add
                                         # --create-prefix option ?)
         changes = self.tree.changes_from(from_tree)
-        self.tree.lock_read()
-        try:
+        with self.tree.lock_read():
             for (path, id, kind) in changes.removed:
                 if self.is_ignored(path):
                     if not self.quiet:
@@ -428,8 +424,6 @@ class BzrUploader(object):
                     raise NotImplementedError
 
             self.set_uploaded_revid(self.rev_id)
-        finally:
-            self.tree.unlock()
 
 
 class CannotUploadToWorkingTree(errors.BzrCommandError):

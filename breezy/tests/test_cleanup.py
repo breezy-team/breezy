@@ -22,17 +22,21 @@ from ..cleanup import (
     ObjectWithCleanups,
     OperationWithCleanups,
     )
-from ..sixish import (
-    BytesIO,
-    )
-from . import TestCase
 from .. import (
     debug,
-    trace,
+    tests,
     )
 
 
-class CleanupsTestCase(TestCase):
+class ErrorA(Exception):
+    """Sample exception type A."""
+
+
+class ErrorB(Exception):
+    """Sample exception type B."""
+
+
+class CleanupsTestCase(tests.TestCase):
 
     def setUp(self):
         super(CleanupsTestCase, self).setUp()
@@ -83,12 +87,10 @@ class TestRunCleanup(CleanupsTestCase):
         """The -Dcleanup debug flag causes cleanup errors to be reported to the
         user.
         """
-        log = BytesIO()
-        trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         self.assertFalse(_run_cleanup(self.failing_cleanup))
         self.assertContainsRe(
-            log.getvalue(),
+            self.get_log(),
             "brz: warning: Cleanup failed:.*failing_cleanup goes boom")
 
     def test_prior_error_cleanup_succeeds(self):
@@ -186,7 +188,12 @@ class TestDoWithCleanups(CleanupsTestCase):
         self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
             self.trivial_func)
         self.assertLogContains('Cleanup failed:.*ErrorB')
-        self.assertFalse('ErrorA' in self.get_log())
+        # Error A may appear in the log (with Python 3 exception chaining), but
+        # Error B should be the last error recorded.
+        self.assertContainsRe(
+            self.get_log(),
+            'Traceback \\(most recent call last\\):\n(  .*\n)+'
+            '.*ErrorB: Error B\n$')
 
     def make_two_failing_cleanup_funcs(self):
         def raise_a():
@@ -196,29 +203,26 @@ class TestDoWithCleanups(CleanupsTestCase):
         return [(raise_a, (), {}), (raise_b, (), {})]
 
     def test_multiple_cleanup_failures_debug_flag(self):
-        log = BytesIO()
-        trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
         self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
             self.trivial_func)
+        trace_value = self.get_log()
         self.assertContainsRe(
-            log.getvalue(), "brz: warning: Cleanup failed:.*Error B\n")
-        self.assertEqual(1, log.getvalue().count('brz: warning:'),
-                log.getvalue())
+            trace_value, "brz: warning: Cleanup failed:.*Error B\n")
+        self.assertEqual(1, trace_value.count('brz: warning:'))
 
     def test_func_and_cleanup_errors_debug_flag(self):
-        log = BytesIO()
-        trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
         self.assertRaises(ZeroDivisionError, _do_with_cleanups, cleanups,
             self.failing_func)
+        trace_value = self.get_log()
         self.assertContainsRe(
-            log.getvalue(), "brz: warning: Cleanup failed:.*Error A\n")
+            trace_value, "brz: warning: Cleanup failed:.*Error A\n")
         self.assertContainsRe(
-            log.getvalue(), "brz: warning: Cleanup failed:.*Error B\n")
-        self.assertEqual(2, log.getvalue().count('brz: warning:'))
+            trace_value, "brz: warning: Cleanup failed:.*Error B\n")
+        self.assertEqual(2, trace_value.count('brz: warning:'))
 
     def test_func_may_mutate_cleanups(self):
         """The main func may mutate the cleanups before it returns.
@@ -241,19 +245,14 @@ class TestDoWithCleanups(CleanupsTestCase):
         """The -Dcleanup debug flag causes cleanup errors to be reported to the
         user.
         """
-        log = BytesIO()
-        trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         self.assertRaises(ZeroDivisionError, _do_with_cleanups,
             [(self.failing_cleanup, (), {})], self.failing_func)
+        trace_value = self.get_log()
         self.assertContainsRe(
-            log.getvalue(),
+            trace_value,
             "brz: warning: Cleanup failed:.*failing_cleanup goes boom")
-        self.assertEqual(1, log.getvalue().count('brz: warning:'))
-
-
-class ErrorA(Exception): pass
-class ErrorB(Exception): pass
+        self.assertEqual(1, trace_value.count('brz: warning:'))
 
 
 class TestOperationWithCleanups(CleanupsTestCase):
@@ -281,11 +280,10 @@ class TestOperationWithCleanups(CleanupsTestCase):
 
 
 class SampleWithCleanups(ObjectWithCleanups):
+    """Minimal ObjectWithCleanups subclass."""
 
-    pass
 
-
-class TestObjectWithCleanups(TestCase):
+class TestObjectWithCleanups(tests.TestCase):
 
     def test_object_with_cleanups(self):
         a = []

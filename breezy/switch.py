@@ -56,11 +56,8 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
     if store_uncommitted:
         with lock.write_locked(control_dir.open_workingtree()) as tree:
             tree.store_uncommitted()
-    to_branch.lock_read()
-    try:
+    with to_branch.lock_read():
         _set_branch_location(control_dir, to_branch, force)
-    finally:
-        to_branch.unlock()
     tree = control_dir.open_workingtree()
     _update(tree, source_repository, quiet, revision_id, store_uncommitted)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
@@ -128,8 +125,7 @@ def _set_branch_location(control, to_branch, force=False):
         else:
             # If this is a standalone tree and the new branch
             # is derived from this one, create a lightweight checkout.
-            b.lock_read()
-            try:
+            with b.lock_read():
                 graph = b.repository.get_graph(to_branch.repository)
                 if (b.controldir._format.colocated_branches and
                      (force or graph.is_ancestor(b.last_revision(),
@@ -139,8 +135,6 @@ def _set_branch_location(control, to_branch, force=False):
                 else:
                     raise errors.BzrCommandError(gettext('Cannot switch a branch, '
                         'only a checkout.'))
-            finally:
-                b.unlock()
 
 
 def _any_local_commits(this_branch, possible_transports):
@@ -148,17 +142,12 @@ def _any_local_commits(this_branch, possible_transports):
     last_rev = revision.ensure_null(this_branch.last_revision())
     if last_rev != revision.NULL_REVISION:
         other_branch = this_branch.get_master_branch(possible_transports)
-        this_branch.lock_read()
-        other_branch.lock_read()
-        try:
+        with this_branch.lock_read(), other_branch.lock_read():
             other_last_rev = other_branch.last_revision()
             graph = this_branch.repository.get_graph(
                 other_branch.repository)
             if not graph.is_ancestor(last_rev, other_last_rev):
                 return True
-        finally:
-            other_branch.unlock()
-            this_branch.unlock()
     return False
 
 

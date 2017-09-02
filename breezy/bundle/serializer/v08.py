@@ -115,16 +115,13 @@ class BundleSerializerV08(BundleSerializer):
         self.forced_bases = forced_bases
         self.to_file = f
         self.check_compatible()
-        source.lock_read()
-        try:
+        with source.lock_read():
             self._write_main_header()
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 self._write_revisions(pb)
             finally:
                 pb.finished()
-        finally:
-            source.unlock()
 
     def write_bundle(self, repository, target, base, fileobj):
         return self._write_bundle(repository, target, base, fileobj)

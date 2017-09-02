@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from ... import (
     conflicts as _mod_conflicts,
     errors,
+    lock,
     osutils,
     revision as _mod_revision,
     transform,
@@ -180,8 +181,8 @@ class WorkingTree2(PreDirStateWorkingTree):
         """
         self.branch.lock_write()
         try:
-            self._control_files.lock_write()
-            return self
+            token = self._control_files.lock_write()
+            return lock.LogicalLockResult(self.unlock, token)
         except:
             self.branch.unlock()
             raise

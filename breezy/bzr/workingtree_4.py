@@ -1526,8 +1526,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 parents_list = []
             else:
                 parents_list = [(revision_id, basis)]
-            basis.lock_read()
-            try:
+            with basis.lock_read():
                 wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
                 wt.flush()
                 # if the basis has a root id we have to use that; otherwise we
@@ -1551,8 +1550,6 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                                      delta_from_tree=delta_from_tree)
                 for hook in MutableTree.hooks['post_build_tree']:
                     hook(wt)
-            finally:
-                basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()
