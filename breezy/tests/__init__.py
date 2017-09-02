@@ -141,6 +141,7 @@ TestLoader = TestUtil.TestLoader
 isolated_environ = {
     'BRZ_HOME': None,
     'HOME': None,
+    'GNUPGHOME': None,
     'XDG_CONFIG_HOME': None,
     # brz now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
@@ -964,9 +965,8 @@ class TestCase(testtools.TestCase):
             self.requireFeature(feature)
         self._cleanEnvironment()
 
-        if breezy.global_state is not None:
-            self.overrideAttr(breezy.global_state, 'cmdline_overrides',
-                              config.CommandLineStore())
+        self.overrideAttr(breezy.get_global_state(), 'cmdline_overrides',
+                          config.CommandLineStore())
 
         self._silenceUI()
         self._startLogFile()
@@ -2704,6 +2704,7 @@ class TestCaseWithMemoryTransport(TestCase):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BRZ_HOME', test_home_dir)
+        self.overrideEnv('GNUPGHOME', os.path.join(test_home_dir, '.gnupg'))
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""

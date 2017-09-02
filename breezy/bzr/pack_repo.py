@@ -53,7 +53,6 @@ from ..bzr import (
     )
 
 from ..decorators import (
-    needs_read_lock,
     needs_write_lock,
     only_raises,
     )
@@ -1707,10 +1706,10 @@ class PackRepository(MetaDirVersionedFileRepository):
             self._unstacked_provider = graph.CachingParentsProvider(self)
         self._unstacked_provider.disable_cache()
 
-    @needs_read_lock
     def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
-        return [key[0] for key in self.revisions.keys()]
+        with self.lock_read():
+            return [key[0] for key in self.revisions.keys()]
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()

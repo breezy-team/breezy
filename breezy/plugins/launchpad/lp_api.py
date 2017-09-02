@@ -266,8 +266,7 @@ class LaunchpadBranch(object):
         """Update the Launchpad copy of this branch."""
         if not self._check_update:
             return
-        self.bzr.lock_read()
-        try:
+        with self.bzr.lock_read():
             if self.lp.last_scanned_id is not None:
                 if self.bzr.last_revision() == self.lp.last_scanned_id:
                     trace.note(gettext('%s is already up-to-date.') %
@@ -279,8 +278,6 @@ class LaunchpadBranch(object):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
                 trace.note(gettext('Pushing to %s') % self.lp.bzr_identity)
             self.bzr.push(self.push_bzr)
-        finally:
-            self.bzr.unlock()
 
     def find_lca_tree(self, other):
         """Find the revision tree for the LCA of this branch and other.

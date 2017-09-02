@@ -96,12 +96,24 @@ class LogicalLockResult(object):
     :ivar unlock: A callable which will unlock the lock.
     """
 
-    def __init__(self, unlock):
+    def __init__(self, unlock, token=None):
         self.unlock = unlock
+        self.token = token
 
     def __repr__(self):
         return "LogicalLockResult(%s)" % (self.unlock)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # If there was an error raised, prefer the original one
+        try:
+            self.unlock()
+        except:
+            if exc_type is None:
+                raise
+        return False
 
 
 def cant_unlock_not_held(locked_object):

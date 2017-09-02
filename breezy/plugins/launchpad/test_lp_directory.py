@@ -461,7 +461,7 @@ class TestXMLRPCTransport(tests.TestCase):
         # FIXME: There should be a better way but the only alternative I can
         # think of involves carrying the ca_certs through the lp_registration
         # infrastructure to _urllib2_wrappers... -- vila 2012-01-20
-        breezy.global_state.cmdline_overrides._from_cmdline(
+        breezy.get_global_state().cmdline_overrides._from_cmdline(
             ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
 
     def set_canned_response(self, server, path):
@@ -545,16 +545,19 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     # Bogus distro.
 
     def test_bogus_distro(self):
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
         self.assertRaises(lp_registration.InvalidURL,
-                          self.directory._resolve, 'gentoo:foo')
+                          self.directory._resolve, 'gentoo:foo', factory)
 
     def test_trick_bogus_distro_u(self):
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
         self.assertRaises(lp_registration.InvalidURL,
-                          self.directory._resolve, 'utube:foo')
+                          self.directory._resolve, 'utube:foo', factory)
 
     def test_trick_bogus_distro_d(self):
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
         self.assertRaises(lp_registration.InvalidURL,
-                          self.directory._resolve, 'debuntu:foo')
+                          self.directory._resolve, 'debuntu:foo', factory)
 
     def test_missing_ubuntu_distroseries_without_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or

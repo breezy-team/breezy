@@ -213,14 +213,11 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.
         """
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             graph = branch.repository.get_graph()
             stop_revisions = (None, _mod_revision.NULL_REVISION)
             history = list(graph.iter_lefthand_ancestry(
                 branch.last_revision(), stop_revisions))
-        finally:
-            branch.unlock()
         return SuccessfulSmartServerResponse(
             ('ok', ), ('\x00'.join(reversed(history))))
 
@@ -396,7 +393,7 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
                 token=repo_token).repository_token
             try:
                 branch_token = branch.lock_write(
-                    token=branch_token).branch_token
+                    token=branch_token).token
             finally:
                 # this leaves the repository with 1 lock
                 branch.repository.unlock()

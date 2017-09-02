@@ -97,6 +97,7 @@ from breezy import (
     directory_service,
     lazy_regex,
     library_state,
+    lock,
     lockdir,
     mergetools,
     osutils,
@@ -998,7 +999,8 @@ class LockableConfig(IniBasedConfig):
         If the directory doesn't exist it is created.
         """
         ensure_config_dir_exists(self.dir)
-        return self._lock.lock_write(token)
+        token = self._lock.lock_write(token)
+        return lock.LogicalLockResult(self.unlock, token)
 
     def unlock(self):
         self._lock.unlock()
@@ -1710,30 +1712,21 @@ class TreeConfig(IniBasedConfig):
         return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
-        self.branch.lock_read()
-        try:
+        with self.branch.lock_read():
             return self._config.get_option(name, section, default)
-        finally:
-            self.branch.unlock()
 
     def set_option(self, value, name, section=None):
         """Set a per-branch configuration option"""
         # FIXME: We shouldn't need to lock explicitly here but rather rely on
         # higher levels providing the right lock -- vila 20101004
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             self._config.set_option(value, name, section)
-        finally:
-            self.branch.unlock()
 
     def remove_option(self, option_name, section_name=None):
         # FIXME: We shouldn't need to lock explicitly here but rather rely on
         # higher levels providing the right lock -- vila 20101004
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             self._config.remove_option(option_name, section_name)
-        finally:
-            self.branch.unlock()
 
 
 _authentication_config_permission_errors = set()
@@ -3410,7 +3403,8 @@ class LockableIniFileStore(TransportIniFileStore):
         # ensure_config_dir_exists does. It should if the transport is local
         # -- vila 2011-04-06
         self.transport.create_prefix()
-        return self._lock.lock_write(token)
+        token = self._lock.lock_write(token)
+        return lock.LogicalLockResult(self.unlock, token)
 
     def unlock(self):
         self._lock.unlock()
@@ -3870,9 +3864,9 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
     def _get_overrides(self):
-        # FIXME: Hack around library_state.initialize never called
-        if breezy.global_state is not None:
-            return breezy.global_state.cmdline_overrides.get_sections()
+        if breezy._global_state is not None:
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            return breezy._global_state.cmdline_overrides.get_sections()
         return []
 
     def get_shared_store(self, store, state=None):
@@ -3889,7 +3883,8 @@ class Stack(object):
             otherwise.
         """
         if state is None:
-            state = breezy.global_state
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            state = breezy._global_state
         if state is None:
             global _shared_stores_at_exit_installed
             stores = _shared_stores

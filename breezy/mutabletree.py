@@ -41,11 +41,8 @@ from .sixish import (
 def needs_tree_write_lock(unbound):
     """Decorate unbound to take out and release a tree_write lock."""
     def tree_write_locked(self, *args, **kwargs):
-        self.lock_tree_write()
-        try:
+        with self.lock_tree_write():
             return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
     tree_write_locked.__doc__ = unbound.__doc__
     tree_write_locked.__name__ = unbound.__name__
     return tree_write_locked

@@ -45,7 +45,6 @@ from ..branch import (
     UnstackableBranchFormat,
     )
 from ..decorators import (
-    needs_read_lock,
     needs_write_lock,
     only_raises,
     )
@@ -180,7 +179,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             took_lock = False
         try:
-            return BranchWriteLockResult(self.unlock,
+            return BranchWriteLockResult(
+                self.unlock,
                 self.control_files.lock_write(token=token))
         except:
             if took_lock:
@@ -231,7 +231,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         if not revision_id or not isinstance(revision_id, bytes):
-            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
+            raise errors.InvalidRevisionId(
+                    revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()
         if self.get_append_revisions_only():
@@ -308,16 +309,16 @@ class BzrBranch(Branch, _RelockDebugMixin):
         except errors.NoSuchFile:
             return None
 
-    @needs_read_lock
     def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
 
         :return: Either a Branch, or None
         """
-        if self._master_branch_cache is None:
-            self._master_branch_cache = self._get_master_branch(
-                possible_transports)
-        return self._master_branch_cache
+        with self.lock_read():
+            if self._master_branch_cache is None:
+                self._master_branch_cache = self._get_master_branch(
+                    possible_transports)
+            return self._master_branch_cache
 
     def _get_master_branch(self, possible_transports):
         bound_loc = self.get_bound_location()
@@ -452,10 +453,10 @@ class BzrBranch8(BzrBranch):
         """Set the parent branch"""
         self._set_config_location('parent_location', url, make_relative=True)
 
-    @needs_read_lock
     def _get_parent_location(self):
         """Set the parent branch"""
-        return self._get_config_location('parent_location')
+        with self.lock_read():
+            return self._get_config_location('parent_location')
 
     @needs_write_lock
     def _set_all_reference_info(self, info_dict):
@@ -472,23 +473,23 @@ class BzrBranch8(BzrBranch):
         self._transport.put_bytes('references', s.getvalue())
         self._reference_info = info_dict
 
-    @needs_read_lock
     def _get_all_reference_info(self):
         """Return all the reference info stored in a branch.
 
         :return: A dict of {file_id: (tree_path, branch_location)}
         """
-        if self._reference_info is not None:
-            return self._reference_info
-        rio_file = self._transport.get('references')
-        try:
-            stanzas = rio.read_stanzas(rio_file)
-            info_dict = dict((s['file_id'], (s['tree_path'],
-                             s['branch_location'])) for s in stanzas)
-        finally:
-            rio_file.close()
-        self._reference_info = info_dict
-        return info_dict
+        with self.lock_read():
+            if self._reference_info is not None:
+                return self._reference_info
+            rio_file = self._transport.get('references')
+            try:
+                stanzas = rio.read_stanzas(rio_file)
+                info_dict = dict((s['file_id'], (s['tree_path'],
+                                 s['branch_location'])) for s in stanzas)
+            finally:
+                rio_file.close()
+            self._reference_info = info_dict
+            return info_dict
 
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference.
@@ -583,45 +584,46 @@ class BzrBranch8(BzrBranch):
             raise errors.NotStacked(self)
         return stacked_url.encode('utf-8')
 
-    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:
             return _mod_revision.NULL_REVISION
 
-        last_revno, last_revision_id = self.last_revision_info()
-        if revno <= 0 or revno > last_revno:
-            raise errors.NoSuchRevision(self, revno)
+        with self.lock_read():
+            last_revno, last_revision_id = self.last_revision_info()
+            if revno <= 0 or revno > last_revno:
+                raise errors.NoSuchRevision(self, revno)
 
-        if history is not None:
-            return history[revno - 1]
+            if history is not None:
+                return history[revno - 1]
 
-        index = last_revno - revno
-        if len(self._partial_revision_history_cache) <= index:
-            self._extend_partial_history(stop_index=index)
-        if len(self._partial_revision_history_cache) > index:
-            return self._partial_revision_history_cache[index]
-        else:
-            raise errors.NoSuchRevision(self, revno)
+            index = last_revno - revno
+            if len(self._partial_revision_history_cache) <= index:
+                self._extend_partial_history(stop_index=index)
+            if len(self._partial_revision_history_cache) > index:
+                return self._partial_revision_history_cache[index]
+            else:
+                raise errors.NoSuchRevision(self, revno)
 
-    @needs_read_lock
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
             return 0
-        try:
-            index = self._partial_revision_history_cache.index(revision_id)
-        except ValueError:
+        with self.lock_read():
             try:
-                self._extend_partial_history(stop_revision=revision_id)
-            except errors.RevisionNotPresent as e:
-                raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
-            index = len(self._partial_revision_history_cache) - 1
-            if index < 0:
-                raise errors.NoSuchRevision(self, revision_id)
-            if self._partial_revision_history_cache[index] != revision_id:
-                raise errors.NoSuchRevision(self, revision_id)
-        return self.revno() - index
+                index = self._partial_revision_history_cache.index(revision_id)
+            except ValueError:
+                try:
+                    self._extend_partial_history(stop_revision=revision_id)
+                except errors.RevisionNotPresent as e:
+                    raise errors.GhostRevisionsHaveNoRevno(
+                            revision_id, e.revision_id)
+                index = len(self._partial_revision_history_cache) - 1
+                if index < 0:
+                    raise errors.NoSuchRevision(self, revision_id)
+                if self._partial_revision_history_cache[index] != revision_id:
+                    raise errors.NoSuchRevision(self, revision_id)
+            return self.revno() - index
 
 
 class BzrBranch7(BzrBranch8):
