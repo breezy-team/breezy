@@ -23,6 +23,7 @@ from ... import (
     check,
     errors,
     graph as _mod_graph,
+    lock,
     repository,
     revision,
     transactions,
@@ -101,8 +102,9 @@ class GitCheck(check.Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        self.repository.lock_read()
-        self.repository.unlock()
+        with repository.lock_read():
+            # TODO(jelmer): Check some things
+            pass
 
     def report_results(self, verbose):
         pass
@@ -158,7 +160,7 @@ class GitRepository(ForeignRepository):
         else:
             self._lock_mode = 'w'
             self._lock_count = 1
-        return GitRepositoryLock(self)
+        return lock.LogicalLockResult(self.unlock)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
@@ -176,7 +178,7 @@ class GitRepository(ForeignRepository):
         else:
             self._lock_mode = 'r'
             self._lock_count = 1
-        return self
+        return lock.LogicalLockResult(self.unlock)
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
@@ -229,17 +231,6 @@ class GitRepository(ForeignRepository):
 
     def sign_revision(self, revision_id, gpg_strategy):
         raise errors.UnsupportedOperation(self.add_signature_text, self)
-
-
-class GitRepositoryLock(object):
-    """Subversion lock."""
-
-    def __init__(self, repository):
-        self.repository_token = None
-        self.repository = repository
-
-    def unlock(self):
-        self.repository.unlock()
 
 
 class LocalGitRepository(GitRepository):

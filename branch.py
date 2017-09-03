@@ -32,6 +32,7 @@ from ... import (
     config,
     controldir,
     errors,
+    lock,
     repository as _mod_repository,
     revision,
     tag,
@@ -77,11 +78,8 @@ class GitPullResult(branch.PullResult):
     def _lookup_revno(self, revid):
         assert isinstance(revid, str), "was %r" % revid
         # Try in source branch first, it'll be faster
-        self.target_branch.lock_read()
-        try:
+        with self.target_branch.lock_read():
             return self.target_branch.revision_id_to_revno(revid)
-        finally:
-            self.target_branch.unlock()
 
     @property
     def old_revno(self):
@@ -325,19 +323,6 @@ class GitBranchFormat(branch.BranchFormat):
             append_revisions_only=append_revisions_only)
 
 
-class GitReadLock(object):
-
-    def __init__(self, unlock):
-        self.unlock = unlock
-
-
-class GitWriteLock(object):
-
-    def __init__(self, unlock):
-        self.branch_token = None
-        self.unlock = unlock
-
-
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
@@ -425,7 +410,7 @@ class GitBranch(ForeignBranch):
             self._lock_mode = 'w'
             self._lock_count = 1
         self.repository.lock_write()
-        return GitWriteLock(self.unlock)
+        return lock.LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
         raise NotImplementedError(self.leave_lock_in_place)
@@ -457,7 +442,7 @@ class GitBranch(ForeignBranch):
             self._lock_mode = 'r'
             self._lock_count = 1
         self.repository.lock_read()
-        return GitReadLock(self.unlock)
+        return lock.LogicalLockResult(self.unlock)
 
     def peek_lock_mode(self):
         return self._lock_mode
@@ -766,38 +751,31 @@ class InterFromGitBranch(branch.GenericInterBranch):
             result.target_branch = self.target
         else:
             result.target_branch = _override_hook_target
-        self.source.lock_read()
-        try:
-            self.target.lock_write()
-            try:
-                # We assume that during 'pull' the target repository is closer than
-                # the source one.
-                (result.old_revno, result.old_revid) = \
-                    self.target.last_revision_info()
-                result.new_git_head, remote_refs = self._update_revisions(
-                    stop_revision, overwrite=overwrite)
-                tags_ret  = self.source.tags.merge_to(
-                        self.target.tags, overwrite, ignore_master=True)
-                if isinstance(tags_ret, tuple):
-                    result.tag_updates, result.tag_conflicts = tags_ret
-                else:
-                    result.tag_conflicts = tags_ret
-                (result.new_revno, result.new_revid) = \
-                    self.target.last_revision_info()
-                if _hook_master:
-                    result.master_branch = _hook_master
-                    result.local_branch = result.target_branch
-                else:
-                    result.master_branch = result.target_branch
-                    result.local_branch = None
-                if run_hooks:
-                    for hook in branch.Branch.hooks['post_pull']:
-                        hook(result)
-                return result
-            finally:
-                self.target.unlock()
-        finally:
-            self.source.unlock()
+        with self.target.lock_write(), self.source.lock_read():
+            # We assume that during 'pull' the target repository is closer than
+            # the source one.
+            (result.old_revno, result.old_revid) = \
+                self.target.last_revision_info()
+            result.new_git_head, remote_refs = self._update_revisions(
+                stop_revision, overwrite=overwrite)
+            tags_ret  = self.source.tags.merge_to(
+                    self.target.tags, overwrite, ignore_master=True)
+            if isinstance(tags_ret, tuple):
+                result.tag_updates, result.tag_conflicts = tags_ret
+            else:
+                result.tag_conflicts = tags_ret
+            (result.new_revno, result.new_revid) = \
+                self.target.last_revision_info()
+            if _hook_master:
+                result.master_branch = _hook_master
+                result.local_branch = result.target_branch
+            else:
+                result.master_branch = result.target_branch
+                result.local_branch = None
+            if run_hooks:
+                for hook in branch.Branch.hooks['post_pull']:
+                    hook(result)
+            return result
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
@@ -961,29 +939,22 @@ class InterGitLocalGitBranch(InterGitBranch):
         result = GitPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        self.source.lock_read()
-        try:
-            self.target.lock_write()
-            try:
-                result.old_revid = self.target.last_revision()
-                refs, stop_revision = self.update_refs(stop_revision)
-                self.target.generate_revision_history(stop_revision, result.old_revid)
-                tags_ret = self.source.tags.merge_to(self.target.tags,
-                    overwrite=overwrite, source_refs=refs)
-                if isinstance(tags_ret, tuple):
-                    (result.tag_updates, result.tag_conflicts) = tags_ret
-                else:
-                    result.tag_conflicts = tags_ret
-                result.new_revid = self.target.last_revision()
-                result.local_branch = None
-                result.master_branch = result.target_branch
-                if run_hooks:
-                    for hook in branch.Branch.hooks['post_pull']:
-                        hook(result)
-            finally:
-                self.target.unlock()
-        finally:
-            self.source.unlock()
+        with self.target.lock_write(), self.source.lock_read():
+            result.old_revid = self.target.last_revision()
+            refs, stop_revision = self.update_refs(stop_revision)
+            self.target.generate_revision_history(stop_revision, result.old_revid)
+            tags_ret = self.source.tags.merge_to(self.target.tags,
+                overwrite=overwrite, source_refs=refs)
+            if isinstance(tags_ret, tuple):
+                (result.tag_updates, result.tag_conflicts) = tags_ret
+            else:
+                result.tag_conflicts = tags_ret
+            result.new_revid = self.target.last_revision()
+            result.local_branch = None
+            result.master_branch = result.target_branch
+            if run_hooks:
+                for hook in branch.Branch.hooks['post_pull']:
+                    hook(result)
         return result
 
 

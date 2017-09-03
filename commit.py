@@ -167,9 +167,9 @@ class GitCommitBuilder(CommitBuilder):
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None
         self.new_inventory = None
 
-    def get_basis_delta(self):
-        # FIXME
-        return []
+    def update_basis(self, tree):
+        # Nothing to do here
+        pass
 
     def finish_inventory(self):
         # eliminate blobs that were removed

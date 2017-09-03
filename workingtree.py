@@ -771,10 +771,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         # FIXME:
         return _mod_conflicts.ConflictList()
 
-    def update_basis_by_delta(self, new_revid, delta):
-        # The index just contains content, which won't have changed.
-        self._reset_data()
-
     @needs_read_lock
     def get_canonical_inventory_path(self, path):
         for p in self.index:
