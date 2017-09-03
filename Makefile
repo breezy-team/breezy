@@ -7,7 +7,8 @@ PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
 RST2HTML ?= rst2html
-TESTS ?= -s bp.git
+TESTS ?= ^breezy.plugins.git. Git
+SUBUNIT_FILTER ?= subunit-filter --fixup-expected-failures=xfail --success --xfail
 
 all:: build 
 
@@ -24,10 +25,10 @@ clean::
 	rm -f *.so
 
 check:: build-inplace 
-	BRZ_PLUGINS_AT=git@$(shell pwd) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BRZ) $(BRZ_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
+	BRZ_PLUGINS_AT=git@$(shell pwd) BRZ_PLUGIN_PATH=-site:-user $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BRZ) $(BRZ_OPTIONS) selftest --subunit2 $(TEST_OPTIONS) $(TESTS) | $(SUBUNIT_FILTER) | subunit2pyunit
 
 check-all::
-	$(MAKE) check TESTS="^breezy.plugins.git. Git"
+	$(MAKE) check TESTS="^breezy.plugins.git. Git" SUBUNIT_FILTER=cat
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
