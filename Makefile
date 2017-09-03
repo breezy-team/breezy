@@ -9,6 +9,7 @@ PYLINT ?= pylint
 RST2HTML ?= rst2html
 TESTS ?= ^breezy.plugins.git. Git
 SUBUNIT_FILTER ?= subunit-filter --fixup-expected-failures=xfail --success --xfail
+SUBUNIT_FORMATTER = subunit2pyunit
 
 all:: build 
 
@@ -25,7 +26,10 @@ clean::
 	rm -f *.so
 
 check:: build-inplace 
-	BRZ_PLUGINS_AT=git@$(shell pwd) BRZ_PLUGIN_PATH=-site:-user $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BRZ) $(BRZ_OPTIONS) selftest --subunit2 $(TEST_OPTIONS) $(TESTS) | $(SUBUNIT_FILTER) | subunit2pyunit
+	BRZ_PLUGINS_AT=git@$(shell pwd) BRZ_PLUGIN_PATH=-site:-user $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BRZ) $(BRZ_OPTIONS) selftest --subunit2 $(TEST_OPTIONS) $(TESTS) | $(SUBUNIT_FILTER) | $(SUBUNIT_FORMATTER)
+
+list-failing-tests:
+	$(MAKE) check SUBUNIT_FILTER="subunit-filter -F" SUBUNIT_FORMATTER=subunit-ls
 
 check-all::
 	$(MAKE) check TESTS="^breezy.plugins.git. Git" SUBUNIT_FILTER=cat

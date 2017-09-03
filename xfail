@@ -719,4 +719,3 @@ breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_update_takes_
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_update_turns_local_commit_into_merge(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTreeUpdate.test_update_remove_commit(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTreeUpdate.test_update_revision(GitWorkingTreeFormat)
-process-returncode
