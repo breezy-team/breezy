@@ -482,6 +482,10 @@ class TransportObjectStore(PackBasedObjectStore):
                 ret.append(name)
             return ret
 
+    def _remove_pack(self, pack):
+        self.pack_transport.delete(os.path.basename(pack.index.path))
+        self.pack_transport.delete(pack.data.filename)
+
     def _load_packs(self):
         ret = []
         for name in self._pack_names():
@@ -499,7 +503,7 @@ class TransportObjectStore(PackBasedObjectStore):
                 idxname = name.replace(".pack", ".idx")
                 idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 pack = Pack.from_objects(pd, idx)
-                pack._basename = idxname[:-5]
+                pack._basename = idxname[:-4]
                 ret.append(pack)
         return ret
 
@@ -551,6 +555,7 @@ class TransportObjectStore(PackBasedObjectStore):
         p = PackData(None, f, len(f.getvalue()))
         entries = p.sorted_entries()
         basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
+        p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
         idxfile = self.pack_transport.open_write_stream(basename + ".idx")
@@ -561,6 +566,7 @@ class TransportObjectStore(PackBasedObjectStore):
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename+".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
+        final_pack._basename = basename
         self._add_known_pack(basename, final_pack)
         return final_pack
 
