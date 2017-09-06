@@ -156,16 +156,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self._add)
 
-    def apply_inventory_delta(self, changes):
-        """Apply changes to the inventory as an atomic operation.
-
-        :param changes: An inventory delta to apply to the working tree's
-            inventory.
-        :return None:
-        :seealso Inventory.apply_delta: For details on the changes parameter.
-        """
-        raise NotImplementedError(self.apply_inventory_delta)
-
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
         from breezy import commit
