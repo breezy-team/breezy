@@ -30,7 +30,6 @@ from .. import (
     )
 from ..mutabletree import (
     MutableTree,
-    needs_tree_write_lock,
     )
 from ..revisiontree import (
     RevisionTree,
@@ -250,7 +249,6 @@ class InventoryTree(Tree):
 
 class MutableInventoryTree(MutableTree, InventoryTree):
 
-    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -259,10 +257,11 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
-        self.flush()
-        inv = self.root_inventory
-        inv.apply_delta(changes)
-        self._write_inventory(inv)
+        with self.lock_tree_write():
+            self.flush()
+            inv = self.root_inventory
+            inv.apply_delta(changes)
+            self._write_inventory(inv)
 
     def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
@@ -270,15 +269,14 @@ class MutableInventoryTree(MutableTree, InventoryTree):
             path = self.get_canonical_inventory_path(path)
         return path
 
-    @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         """Version file_list, optionally recursing into directories.
 
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
-        :param file_list: List of zero or more paths.  *NB: these are 
-            interpreted relative to the process cwd, not relative to the 
+        :param file_list: List of zero or more paths.  *NB: these are
+            interpreted relative to the process cwd, not relative to the
             tree.*  (Add and most other tree methods use tree-relative
             paths.)
         :param action: A reporter to be called with the inventory, parent_ie,
@@ -291,22 +289,23 @@ class MutableInventoryTree(MutableTree, InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
-        # Not all mutable trees can have conflicts
-        if getattr(self, 'conflicts', None) is not None:
-            # Collect all related files without checking whether they exist or
-            # are versioned. It's cheaper to do that once for all conflicts
-            # than trying to find the relevant conflict for each added file.
-            conflicts_related = set()
-            for c in self.conflicts():
-                conflicts_related.update(c.associated_filenames())
-        else:
-            conflicts_related = None
-        adder = _SmartAddHelper(self, action, conflicts_related)
-        adder.add(file_list, recurse=recurse)
-        if save:
-            invdelta = adder.get_inventory_delta()
-            self.apply_inventory_delta(invdelta)
-        return adder.added, adder.ignored
+        with self.lock_tree_write():
+            # Not all mutable trees can have conflicts
+            if getattr(self, 'conflicts', None) is not None:
+                # Collect all related files without checking whether they exist or
+                # are versioned. It's cheaper to do that once for all conflicts
+                # than trying to find the relevant conflict for each added file.
+                conflicts_related = set()
+                for c in self.conflicts():
+                    conflicts_related.update(c.associated_filenames())
+            else:
+                conflicts_related = None
+            adder = _SmartAddHelper(self, action, conflicts_related)
+            adder.add(file_list, recurse=recurse)
+            if save:
+                invdelta = adder.get_inventory_delta()
+                self.apply_inventory_delta(invdelta)
+            return adder.added, adder.ignored
 
     def update_basis_by_delta(self, new_revid, delta):
         """Update the parents of this tree after a commit.

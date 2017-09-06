@@ -53,7 +53,6 @@ from ..bzr import (
     )
 
 from ..decorators import (
-    needs_write_lock,
     only_raises,
     )
 from ..lock import LogicalLockResult
@@ -1819,22 +1818,22 @@ class PackRepository(MetaDirVersionedFileRepository):
         # not supported - raise an error
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
-    @needs_write_lock
     def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
+        with self.lock_write():
+            self._pack_collection.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from breezy.reconcile import PackReconciler
-        reconciler = PackReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = PackReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         raise NotImplementedError(self._reconcile_pack)
