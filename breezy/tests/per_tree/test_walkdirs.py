@@ -70,11 +70,13 @@ class TestWalkdirs(TestCaseWithTree):
         self.assertEqual(len(expected_dirblocks), len(result))
 
     def test_walkdir_subtree(self):
-        tree = self.get_tree_with_subdirs_and_all_supported_content_types(has_symlinks())
+        tree = self.get_tree_with_subdirs_and_all_supported_content_types(
+                has_symlinks())
         # test that its iterable by iterating
         result = []
         tree.lock_read()
-        expected_dirblocks = self.get_all_subdirs_expected(tree, has_symlinks())[1:]
+        expected_dirblocks = self.get_all_subdirs_expected(
+                tree, has_symlinks())[1:]
         for dirinfo, block in tree.walkdirs('1top-dir'):
             newblock = []
             for row in block:
@@ -93,7 +95,9 @@ class TestWalkdirs(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('tree')
         work_tree.set_root_id('tree-root')
         self.build_tree(['tree/file', 'tree/dir/'])
-        work_tree.add(['file', 'dir'], ['file-id', 'dir-id'])
+        work_tree.add(['file', 'dir'])
+        file_id = work_tree.path2id('file')
+        dir_id = work_tree.path2id('dir')
         os.unlink('tree/file')
         os.rmdir('tree/dir')
         tree = self._convert_tree(work_tree)
@@ -103,7 +107,7 @@ class TestWalkdirs(TestCaseWithTree):
             raise tests.TestNotApplicable(
                 'Tree type cannot represent dangling ids.')
         expected = [(('', 'tree-root'), [
-            ('dir', 'dir', 'unknown', None, 'dir-id', 'directory'),
-            ('file', 'file', 'unknown', None, 'file-id', 'file')]),
-            (('dir', 'dir-id'), [])]
+            ('dir', 'dir', 'unknown', None, dir_id, 'directory'),
+            ('file', 'file', 'unknown', None, file_id, 'file')]),
+            (('dir', dir_id), [])]
         self.assertEqual(expected, list(tree.walkdirs()))

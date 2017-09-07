@@ -212,13 +212,13 @@ class PluginLoadedFeature(Feature):
         self.plugin_name = plugin_name
 
     def _probe(self):
-        import breezy
-        return self.plugin_name in breezy.global_state.plugins
+        from breezy.plugin import get_loaded_plugin
+        return (get_loaded_plugin(self.plugin_name) is not None)
 
     @property
     def plugin(self):
-        import breezy
-        return breezy.global_state.plugins.get(self.plugin_name)
+        from breezy.plugin import get_loaded_plugin
+        return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
         return '%s plugin' % self.plugin_name

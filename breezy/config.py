@@ -81,7 +81,6 @@ import sys
 import configobj
 
 import breezy
-from .decorators import needs_write_lock
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import base64
@@ -952,8 +951,8 @@ class LockableConfig(IniBasedConfig):
     If several processes try to write the config file, the accesses need to be
     serialized.
 
-    Daughter classes should decorate all methods that update a config with the
-    ``@needs_write_lock`` decorator (they call, directly or indirectly, the
+    Daughter classes should use the self.lock_write() decorator method when they 
+    upate a config (they call, directly or indirectly, the
     ``_write_config_file()`` method. These methods (typically ``set_option()``
     and variants must reload the config file from disk before calling
     ``_write_config_file()``), this can be achieved by calling the
@@ -1008,15 +1007,15 @@ class LockableConfig(IniBasedConfig):
     def break_lock(self):
         self._lock.break_lock()
 
-    @needs_write_lock
     def remove_user_option(self, option_name, section_name=None):
-        super(LockableConfig, self).remove_user_option(option_name,
-                                                       section_name)
+        with self.lock_write():
+            super(LockableConfig, self).remove_user_option(
+                    option_name, section_name)
 
     def _write_config_file(self):
         if self._lock is None or not self._lock.is_held:
             # NB: if the following exception is raised it probably means a
-            # missing @needs_write_lock decorator on one of the callers.
+            # missing call to lock_write() by one of the callers.
             raise errors.ObjectNotLocked(self)
         super(LockableConfig, self)._write_config_file()
 
@@ -1043,10 +1042,10 @@ class GlobalConfig(LockableConfig):
         conf._create_from_string(str_or_unicode, save)
         return conf
 
-    @needs_write_lock
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
-        self._set_option(option, value, 'DEFAULT')
+        with self.lock_write():
+            self._set_option(option, value, 'DEFAULT')
 
     def get_aliases(self):
         """Return the aliases section."""
@@ -1055,20 +1054,20 @@ class GlobalConfig(LockableConfig):
         else:
             return {}
 
-    @needs_write_lock
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the configuration."""
-        self._set_option(alias_name, alias_command, 'ALIASES')
+        with self.lock_write():
+            self._set_option(alias_name, alias_command, 'ALIASES')
 
-    @needs_write_lock
     def unset_alias(self, alias_name):
         """Unset an existing alias."""
-        self.reload()
-        aliases = self._get_parser().get('ALIASES')
-        if not aliases or alias_name not in aliases:
-            raise errors.NoSuchAlias(alias_name)
-        del aliases[alias_name]
-        self._write_config_file()
+        with self.lock_write():
+            self.reload()
+            aliases = self._get_parser().get('ALIASES')
+            if not aliases or alias_name not in aliases:
+                raise errors.NoSuchAlias(alias_name)
+            del aliases[alias_name]
+            self._write_config_file()
 
     def _set_option(self, option, value, section):
         self.reload()
@@ -1087,18 +1086,19 @@ class GlobalConfig(LockableConfig):
             # doesn't exist yet. So we force DEFAULT when yielding
             name = 'DEFAULT'
             if 'DEFAULT' not in parser:
-               parser['DEFAULT']= {}
+                parser['DEFAULT'] = {}
         yield (name, parser[name], self.config_id())
 
-    @needs_write_lock
     def remove_user_option(self, option_name, section_name=None):
         if section_name is None:
             # We need to force the default section.
             section_name = 'DEFAULT'
-        # We need to avoid the LockableConfig implementation or we'll lock
-        # twice
-        super(LockableConfig, self).remove_user_option(option_name,
-                                                       section_name)
+        with self.lock_write():
+            # We need to avoid the LockableConfig implementation or we'll lock
+            # twice
+            super(LockableConfig, self).remove_user_option(
+                    option_name, section_name)
+
 
 def _iter_for_location_by_parts(sections, location):
     """Keep only the sessions matching the specified location.
@@ -1234,29 +1234,29 @@ class LocationConfig(LockableConfig):
             if policy_key in self._get_parser()[section]:
                 del self._get_parser()[section][policy_key]
 
-    @needs_write_lock
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
         if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
                          STORE_LOCATION_APPENDPATH]:
             raise ValueError('bad storage policy %r for %r' %
-                (store, option))
-        self.reload()
-        location = self.location
-        if location.endswith('/'):
-            location = location[:-1]
-        parser = self._get_parser()
-        if not location in parser and not location + '/' in parser:
-            parser[location] = {}
-        elif location + '/' in parser:
-            location = location + '/'
-        parser[location][option]=value
-        # the allowed values of store match the config policies
-        self._set_option_policy(location, option, store)
-        self._write_config_file()
-        for hook in OldConfigHooks['set']:
-            hook(self, option, value)
+                             (store, option))
+        with self.lock_write():
+            self.reload()
+            location = self.location
+            if location.endswith('/'):
+                location = location[:-1]
+            parser = self._get_parser()
+            if location not in parser and not location + '/' in parser:
+                parser[location] = {}
+            elif location + '/' in parser:
+                location = location + '/'
+            parser[location][option] = value
+            # the allowed values of store match the config policies
+            self._set_option_policy(location, option, store)
+            self._write_config_file()
+            for hook in OldConfigHooks['set']:
+                hook(self, option, value)
 
 
 class BranchConfig(Config):
@@ -3412,10 +3412,10 @@ class LockableIniFileStore(TransportIniFileStore):
     def break_lock(self):
         self._lock.break_lock()
 
-    @needs_write_lock
     def save(self):
-        # We need to be able to override the undecorated implementation
-        self.save_without_locking()
+        with self.lock_write():
+            # We need to be able to override the undecorated implementation
+            self.save_without_locking()
 
     def save_without_locking(self):
         super(LockableIniFileStore, self).save()
@@ -3864,9 +3864,9 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
     def _get_overrides(self):
-        # FIXME: Hack around library_state.initialize never called
-        if breezy.global_state is not None:
-            return breezy.global_state.cmdline_overrides.get_sections()
+        if breezy._global_state is not None:
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            return breezy._global_state.cmdline_overrides.get_sections()
         return []
 
     def get_shared_store(self, store, state=None):
@@ -3883,7 +3883,8 @@ class Stack(object):
             otherwise.
         """
         if state is None:
-            state = breezy.global_state
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            state = breezy._global_state
         if state is None:
             global _shared_stores_at_exit_installed
             stores = _shared_stores
@@ -4051,17 +4052,17 @@ class BranchStack(Stack):
     def unlock(self):
         return self.branch.unlock()
 
-    @needs_write_lock
     def set(self, name, value):
-        super(BranchStack, self).set(name, value)
-        # Unlocking the branch will trigger a store.save_changes() so the last
-        # unlock saves all the changes.
+        with self.lock_write():
+            super(BranchStack, self).set(name, value)
+            # Unlocking the branch will trigger a store.save_changes() so the
+            # last unlock saves all the changes.
 
-    @needs_write_lock
     def remove(self, name):
-        super(BranchStack, self).remove(name)
-        # Unlocking the branch will trigger a store.save_changes() so the last
-        # unlock saves all the changes.
+        with self.lock_write():
+            super(BranchStack, self).remove(name)
+            # Unlocking the branch will trigger a store.save_changes() so the
+            # last unlock saves all the changes.
 
 
 class RemoteControlStack(Stack):
@@ -4099,17 +4100,17 @@ class BranchOnlyStack(Stack):
     def unlock(self):
         return self.branch.unlock()
 
-    @needs_write_lock
     def set(self, name, value):
-        super(BranchOnlyStack, self).set(name, value)
-        # Force a write to persistent storage
-        self.store.save_changes()
+        with self.lock_write():
+            super(BranchOnlyStack, self).set(name, value)
+            # Force a write to persistent storage
+            self.store.save_changes()
 
-    @needs_write_lock
     def remove(self, name):
-        super(BranchOnlyStack, self).remove(name)
-        # Force a write to persistent storage
-        self.store.save_changes()
+        with self.lock_write():
+            super(BranchOnlyStack, self).remove(name)
+            # Force a write to persistent storage
+            self.store.save_changes()
 
 
 class cmd_config(commands.Command):

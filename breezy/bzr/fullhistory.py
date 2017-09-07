@@ -32,27 +32,24 @@ from .branch import (
     BranchFormatMetadir,
     )
 
-from ..decorators import (
-    needs_write_lock,
-    )
 from ..trace import mutter_callsite
 
 
 class FullHistoryBzrBranch(BzrBranch):
     """Bzr branch which contains the full revision history."""
 
-    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
-        # this old format stores the full history, but this api doesn't
-        # provide it, so we must generate, and might as well check it's
-        # correct
-        history = self._lefthand_history(revision_id)
-        if len(history) != revno:
-            raise AssertionError('%d != %d' % (len(history), revno))
-        self._set_revision_history(history)
+        with self.lock_write():
+            # this old format stores the full history, but this api doesn't
+            # provide it, so we must generate, and might as well check it's
+            # correct
+            history = self._lefthand_history(revision_id)
+            if len(history) != revno:
+                raise AssertionError('%d != %d' % (len(history), revno))
+            self._set_revision_history(history)
 
     def _read_last_revision_info(self):
         rh = self._revision_history()
@@ -116,7 +113,6 @@ class FullHistoryBzrBranch(BzrBranch):
                 new_history = rev.get_history(self.repository)[1:]
         destination._set_revision_history(new_history)
 
-    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
         other_branch=None):
         """Create a new revision history that will finish with revision_id.
@@ -127,8 +123,9 @@ class FullHistoryBzrBranch(BzrBranch):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev, other_branch))
+        with self.lock_write():
+            self._set_revision_history(self._lefthand_history(revision_id,
+                last_rev, other_branch))
 
 
 class BzrBranch5(FullHistoryBzrBranch):

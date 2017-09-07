@@ -58,16 +58,6 @@ if os.name == "posix":
     sys._brz_default_fs_enc = "utf8"
 
 
-# The python2.6 release includes some libraries that have deprecation warnings
-# against the interpreter - see https://bugs.launchpad.net/bzr/+bug/387139
-warnings.filterwarnings('ignore',
-    r"(struct integer overflow masking is deprecated|"
-    r"'L' format requires 0 <= number <= 4294967295)",
-    DeprecationWarning,
-    'gzip',
-    )
-
-
 # instruct breezy/__init__.py to install lazy_regex
 sys._brz_lazy_regex = True
 try:
@@ -93,15 +83,6 @@ if breezy.version_info[:3] != _script_version:
 
 import breezy.breakin
 breezy.breakin.hook_debugger_to_signal()
-
-import breezy.decorators
-if ('--lsprof' in sys.argv
-    or '--lsprof-file' in sys.argv
-    or '--profile' in sys.argv
-    or '--lsprof-timed' in sys.argv):
-    breezy.decorators.use_pretty_decorators()
-else:
-    breezy.decorators.use_fast_decorators()
 
 import breezy.commands
 import breezy.trace

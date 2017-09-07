@@ -45,7 +45,6 @@ from ..branch import (
     UnstackableBranchFormat,
     )
 from ..decorators import (
-    needs_write_lock,
     only_raises,
     )
 from ..lock import _RelockDebugMixin, LogicalLockResult
@@ -228,20 +227,20 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
 
-    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(
                     revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
-        old_revno, old_revid = self.last_revision_info()
-        if self.get_append_revisions_only():
-            self._check_history_violation(revision_id)
-        self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        self._write_last_revision_info(revno, revision_id)
-        self._clear_cached_state()
-        self._last_revision_info_cache = revno, revision_id
-        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+        with self.lock_write():
+            old_revno, old_revid = self.last_revision_info()
+            if self.get_append_revisions_only():
+                self._check_history_violation(revision_id)
+            self._run_pre_change_branch_tip_hooks(revno, revision_id)
+            self._write_last_revision_info(revno, revision_id)
+            self._clear_cached_state()
+            self._last_revision_info_cache = revno, revision_id
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def basis_tree(self):
         """See Branch.basis_tree."""
@@ -272,12 +271,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.controldir._get_file_mode())
 
-    @needs_write_lock
     def unbind(self):
         """If bound, unbind"""
-        return self.set_bound_location(None)
+        with self.lock_write():
+            return self.set_bound_location(None)
 
-    @needs_write_lock
     def bind(self, other):
         """Bind this branch to the branch other.
 
@@ -301,7 +299,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        self.set_bound_location(other.base)
+        with self.lock_write():
+            self.set_bound_location(other.base)
 
     def get_bound_location(self):
         try:
@@ -331,39 +330,39 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise errors.BoundBranchConnectionFailure(
                     self, bound_loc, e)
 
-    @needs_write_lock
     def set_bound_location(self, location):
         """Set the target where this branch is bound to.
 
         :param location: URL to the target branch
         """
-        self._master_branch_cache = None
-        if location:
-            self._transport.put_bytes('bound', location+'\n',
-                mode=self.controldir._get_file_mode())
-        else:
-            try:
-                self._transport.delete('bound')
-            except errors.NoSuchFile:
-                return False
-            return True
+        with self.lock_write():
+            self._master_branch_cache = None
+            if location:
+                self._transport.put_bytes('bound', location+'\n',
+                    mode=self.controldir._get_file_mode())
+            else:
+                try:
+                    self._transport.delete('bound')
+                except errors.NoSuchFile:
+                    return False
+                return True
 
-    @needs_write_lock
     def update(self, possible_transports=None):
         """Synchronise this branch with the master branch if any.
 
         :return: None or the last_revision that was pivoted out during the
                  update.
         """
-        master = self.get_master_branch(possible_transports)
-        if master is not None:
-            old_tip = _mod_revision.ensure_null(self.last_revision())
-            self.pull(master, overwrite=True)
-            if self.repository.get_graph().is_ancestor(old_tip,
-                _mod_revision.ensure_null(self.last_revision())):
-                return None
-            return old_tip
-        return None
+        with self.lock_write():
+            master = self.get_master_branch(possible_transports)
+            if master is not None:
+                old_tip = _mod_revision.ensure_null(self.last_revision())
+                self.pull(master, overwrite=True)
+                if self.repository.get_graph().is_ancestor(old_tip,
+                    _mod_revision.ensure_null(self.last_revision())):
+                    return None
+                return old_tip
+            return None
 
     def _read_last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
@@ -384,15 +383,15 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._transport.put_bytes('last-revision', out_string,
             mode=self.controldir._get_file_mode())
 
-    @needs_write_lock
     def update_feature_flags(self, updated_flags):
         """Update the feature flags for this branch.
 
         :param updated_flags: Dictionary mapping feature names to necessities
             A necessity can be None to indicate the feature should be removed
         """
-        self._format._update_feature_flags(updated_flags)
-        self.control_transport.put_bytes('format', self._format.as_string())
+        with self.lock_write():
+            self._format._update_feature_flags(updated_flags)
+            self.control_transport.put_bytes('format', self._format.as_string())
 
 
 class BzrBranch8(BzrBranch):
@@ -448,17 +447,16 @@ class BzrBranch8(BzrBranch):
         self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
 
-    @needs_write_lock
     def _set_parent_location(self, url):
         """Set the parent branch"""
-        self._set_config_location('parent_location', url, make_relative=True)
+        with self.lock_write():
+            self._set_config_location('parent_location', url, make_relative=True)
 
     def _get_parent_location(self):
         """Set the parent branch"""
         with self.lock_read():
             return self._get_config_location('parent_location')
 
-    @needs_write_lock
     def _set_all_reference_info(self, info_dict):
         """Replace all reference info stored in a branch.
 
@@ -470,8 +468,9 @@ class BzrBranch8(BzrBranch):
             stanza = rio.Stanza(file_id=key, tree_path=tree_path,
                                 branch_location=branch_location)
             writer.write_stanza(stanza)
-        self._transport.put_bytes('references', s.getvalue())
-        self._reference_info = info_dict
+        with self.lock_write():
+            self._transport.put_bytes('references', s.getvalue())
+            self._reference_info = info_dict
 
     def _get_all_reference_info(self):
         """Return all the reference info stored in a branch.
