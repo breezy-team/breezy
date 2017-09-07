@@ -18,6 +18,8 @@
 
 """
 
+from __future__ import absolute_import
+
 from ... import (
     controldir,
     commands,
@@ -62,8 +64,8 @@ class cmd_check_chk(commands.Command):
         for idx, inv in enumerate(repo.iter_inventories(inv_ids)):
             pb.update('checking', idx, len(inv_ids))
             d = dict(inv.id_to_entry.iteritems())
-            test_key = chk_map.CHKMap.from_dict(vf, d,
-                maximum_size=inv.id_to_entry._root_node._maximum_size,
+            test_key = chk_map.CHKMap.from_dict(
+                vf, d, maximum_size=inv.id_to_entry._root_node._maximum_size,
                 key_width=inv.id_to_entry._root_node._key_width,
                 search_key_func=inv.id_to_entry._search_key_func)
             if inv.id_to_entry.key() != test_key:
@@ -71,11 +73,10 @@ class cmd_check_chk(commands.Command):
                               % (inv.revision_id,))
             pid = inv.parent_id_basename_to_file_id
             d = dict(pid.iteritems())
-            test_key = chk_map.CHKMap.from_dict(vf, d,
-                maximum_size=pid._root_node._maximum_size,
+            test_key = chk_map.CHKMap.from_dict(
+                vf, d, maximum_size=pid._root_node._maximum_size,
                 key_width=pid._root_node._key_width,
                 search_key_func=pid._search_key_func)
             if pid.key() != test_key:
                 trace.warning('Failed for parent_id_to_basename inv: %s'
                               % (inv.revision_id,))
-

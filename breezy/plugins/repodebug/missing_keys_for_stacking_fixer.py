@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 from ...controldir import ControlDir
 from ...commands import Command, Option
@@ -24,15 +25,16 @@ from ...revision import NULL_REVISION
 
 class cmd_fix_missing_keys_for_stacking(Command):
     """Fix missing keys for stacking.
-    
+
     This is the fixer script for <https://bugs.launchpad.net/bzr/+bug/354036>.
     """
 
     hidden = True
     takes_args = ['branch_url']
     takes_options = [
-        Option('dry-run',
-               help="Show what would be done, but don't actually do anything."),
+        Option(
+            'dry-run',
+            help="Show what would be done, but don't actually do anything."),
         ]
 
     def run(self, branch_url, dry_run=False):
@@ -58,31 +60,32 @@ class cmd_fix_missing_keys_for_stacking(Command):
             b.lock_read()
             raw_r.lock_write()
         try:
-          revs = raw_r.all_revision_ids()
-          rev_parents = raw_r.get_graph().get_parent_map(revs)
-          needed = set()
-          map(needed.update, rev_parents.itervalues())
-          needed.discard(NULL_REVISION)
-          needed = set((rev,) for rev in needed)
-          needed = needed - raw_r.inventories.keys()
-          if not needed:
-            # Nothing to see here.
-            return
-          self.outf.write("Missing inventories: %r\n" % needed)
-          if dry_run:
-            return
-          assert raw_r._format.network_name() == b.repository._format.network_name()
-          stream = b.repository.inventories.get_record_stream(needed, 'topological', True)
-          raw_r.start_write_group()
-          try:
-            raw_r.inventories.insert_record_stream(stream)
-          except:
-            raw_r.abort_write_group()
-            raise
-          else:
-            raw_r.commit_write_group()
+            revs = raw_r.all_revision_ids()
+            rev_parents = raw_r.get_graph().get_parent_map(revs)
+            needed = set()
+            map(needed.update, rev_parents.itervalues())
+            needed.discard(NULL_REVISION)
+            needed = set((rev,) for rev in needed)
+            needed = needed - raw_r.inventories.keys()
+            if not needed:
+                # Nothing to see here.
+                return
+            self.outf.write("Missing inventories: %r\n" % needed)
+            if dry_run:
+                return
+            assert raw_r._format.network_name() == b.repository._format.network_name()
+            stream = b.repository.inventories.get_record_stream(
+                    needed, 'topological', True)
+            raw_r.start_write_group()
+            try:
+                raw_r.inventories.insert_record_stream(stream)
+            except:
+                raw_r.abort_write_group()
+                raise
+            else:
+                raw_r.commit_write_group()
         finally:
-          raw_r.unlock()
+            raw_r.unlock()
         b.unlock()
         self.outf.write("Fixed: %s\n" % branch_url)
 
@@ -100,12 +103,7 @@ class cmd_mirror_revs_into(Command):
         source_r = bd.open_branch().repository
         bd = ControlDir.open(destination)
         target_r = bd.open_branch().repository
-        source_r.lock_read()
-        target_r.lock_write()
-        try:
+        with source_r.lock_read(), target_r.lock_write():
             revs = [k[-1] for k in source_r.revisions.keys()]
             target_r.fetch(
                 source_r, fetch_spec=PendingAncestryResult(revs, source_r))
-        finally:
-            target_r.unlock()
-            source_r.unlock()

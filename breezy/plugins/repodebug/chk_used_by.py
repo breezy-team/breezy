@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from ... import (
     controldir,
     static_tuple,
@@ -22,9 +24,11 @@ from ...commands import (
     Command,
     )
 
+
 class cmd_chk_used_by(Command):
+
     __doc__ = \
-    """Find the inventories/revisions that reference a CHK."""
+        """Find the inventories/revisions that reference a CHK."""
 
     hidden = True
     takes_args = ['key*']
@@ -42,9 +46,11 @@ class cmd_chk_used_by(Command):
         # print len(all_invs)
         for inv in repo.iter_inventories(all_invs):
             if inv.id_to_entry.key() in key_list:
-                self.outf.write('id_to_entry of %s -> %s\n' %
+                self.outf.write(
+                    'id_to_entry of %s -> %s\n' %
                     (inv.revision_id, inv.id_to_entry.key(),))
             if inv.parent_id_basename_to_file_id.key() in key_list:
-                self.outf.write('parent_id_basename_to_file_id of %s -> %s\n' %
+                self.outf.write(
+                    'parent_id_basename_to_file_id of %s -> %s\n' %
                     (inv.revision_id, inv.parent_id_basename_to_file_id.key(),))
 

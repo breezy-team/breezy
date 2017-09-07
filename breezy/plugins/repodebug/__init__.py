@@ -20,7 +20,18 @@ Some of these commands may be good candidates for adding to bzr itself, perhaps
 as hidden commands.
 """
 
+from __future__ import absolute_import
+
 from ...commands import plugin_cmds
+
+
+def test_suite():
+    from unittest import TestSuite
+    from .tests import test_suite
+    result = TestSuite()
+    result.addTest(test_suite())
+    return result
+
 
 plugin_cmds.register_lazy(
     'cmd_check_chk', [], __name__ + '.check_chk')
@@ -40,5 +51,3 @@ plugin_cmds.register_lazy(
     'cmd_repo_has_key', [], __name__ + '.repo_has_key')
 plugin_cmds.register_lazy(
     'cmd_repo_keys', [], __name__ + '.repo_keys')
-
-

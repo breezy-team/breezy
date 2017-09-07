@@ -14,14 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+from __future__ import print_function
+
 from ...controldir import ControlDir
 from ...commands import Command, Option
-from ... import errors, trace
+from ... import errors, trace, urlutils
 
 
 class cmd_fetch_all_records(Command):
     __doc__ = """Fetch all records from another repository.
-    
+
     This inserts every key from SOURCE_REPO into the target repository.  Unlike
     regular fetches this doesn't assume any relationship between keys (e.g.
     that text X may be assumed to be present if inventory Y is present), so it
@@ -40,14 +43,15 @@ class cmd_fetch_all_records(Command):
     def run(self, source_repo, directory=u'.', dry_run=False):
         try:
             source = ControlDir.open(source_repo).open_repository()
-        except (errors.NotBranchError, errors.InvalidURL):
-            print >>self.outf, u"Not a branch or invalid URL: %s" % source_repo
+        except (errors.NotBranchError, urlutils.InvalidURL):
+            print(u"Not a branch or invalid URL: %s" % source_repo,
+                  file=self.outf)
             return
 
         try:
             target = ControlDir.open(directory).open_repository()
-        except (errors.NotBranchError, errors.InvalidURL):
-            print >>self.outf, u"Not a branch or invalid URL: %s" % directory
+        except (errors.NotBranchError, urlutils.InvalidURL):
+            print(u"Not a branch or invalid URL: %s" % directory, file=self.outf)
             return
 
         self.add_cleanup(source.lock_read().unlock)
@@ -75,9 +79,6 @@ class cmd_fetch_all_records(Command):
             source_stream(), source._format, [])
 
         if not resume_tokens:
-            print >> self.outf, "Done."
+            print("Done.", file=self.outf)
         else:
-            print >> self.outf, "Missing keys!", missing_keys
-
-
-
+            print("Missing keys!", missing_keys, file=self.outf)

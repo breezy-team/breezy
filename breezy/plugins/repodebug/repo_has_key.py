@@ -14,9 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
-from bzrlib.controldir import ControlDir
-from bzrlib.commands import Command
+from ...controldir import ControlDir
+from ...commands import Command
 
 
 class cmd_repo_has_key(Command):
@@ -38,8 +39,7 @@ class cmd_repo_has_key(Command):
         vf_name, key = key_parts_list[0], key_parts_list[1:]
         bd = ControlDir.open(repo)
         repo = bd.open_repository()
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             vf = getattr(repo, vf_name)
             key = tuple(key)
             if key in vf.get_parent_map([key]):
@@ -48,6 +48,3 @@ class cmd_repo_has_key(Command):
             else:
                 self.outf.write("False\n")
                 return 1
-        finally:
-            repo.unlock()
-

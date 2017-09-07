@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from ... import controldir
 from ...commands import Command
 
@@ -31,11 +33,8 @@ class cmd_repo_keys(Command):
 
     def run(self, repo_location, versioned_file):
         repo = controldir.ControlDir.open(repo_location).open_repository()
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             vf = getattr(repo, versioned_file)
             for key in sorted(vf.keys()):
                 self.outf.write(repr(key) + '\n')
-        finally:
-            repo.unlock()
 

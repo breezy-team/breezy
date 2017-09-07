@@ -14,15 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from ... import (
     controldir,
     commands,
     errors,
     )
 
+
 class cmd_file_refs(commands.Command):
     __doc__ = \
-    """Find the inventories that reference a particular version of a text."""
+        """Find the inventories that reference a particular version of a text."""
 
     hidden = True
     takes_args = ['file_id', 'rev_id']
@@ -45,5 +48,3 @@ class cmd_file_refs(commands.Command):
                 continue
             if entry.revision == rev_id:
                 self.outf.write(inv.revision_id + '\n')
-
-
