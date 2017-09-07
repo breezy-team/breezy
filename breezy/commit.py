@@ -369,6 +369,7 @@ class Commit(object):
             self.basis_revid = parents[0]
         else:
             self.basis_revid = breezy.revision.NULL_REVISION
+        self.wt_basis_tree = self.work_tree.basis_tree()
         try:
             self.basis_tree = self.work_tree.revision_tree(self.basis_revid)
         except errors.NoSuchRevisionInTree:
@@ -472,8 +473,13 @@ class Commit(object):
         # as updating its basis and unversioning paths that were missing.
         self.work_tree.unversion(self.deleted_ids)
         self._set_progress_stage("Updating the working tree")
-        self.work_tree.update_basis_by_delta(self.rev_id,
-             self.builder.get_basis_delta())
+        if self.work_tree.last_revision() == self.basis_revid:
+            invdelta = self.builder.get_basis_delta()
+        else:
+            with self.wt_basis_tree.lock_read():
+                invdelta = self.work_tree.root_inventory._make_delta(
+                        self.wt_basis_tree.root_inventory)
+        self.work_tree.update_basis_by_delta(self.rev_id, invdelta)
         self.reporter.completed(new_revno, self.rev_id)
         self._process_post_hooks(old_revno, new_revno)
         return self.rev_id

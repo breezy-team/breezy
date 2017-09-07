@@ -873,6 +873,27 @@ altered in u2
             ['Unable to determine your name'],
             ['commit', '-m', 'initial'], working_dir='foo')
 
+    def test_commit_amend(self):
+        """Ensure commit error if username is not set.
+        """
+        self.run_bzr(['init', 'foo'])
+        with open('foo/foo.txt', 'w') as f:
+            f.write('hello')
+        self.run_bzr(['add'], working_dir='foo')
+        out, err = self.run_bzr("commit -m original\\ message foo/foo.txt")
+        self.assertEqualDiff(out, '')
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'added foo\.txt\n'
+                              'Committed revision 1\.\n$')
+        out, err = self.run_bzr("commit --amend -m new\\ message foo/foo.txt")
+        self.assertEqualDiff(out, '')
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'added foo\.txt\n'
+                              'Committed revision 1\.\n$')
+        out, err = self.run_bzr("log --short foo'")
+        self.assertEqualDiff(out, '')
+        self.assertEqualDiff(err, '')
+
     def test_commit_recursive_checkout(self):
         """Ensure that a commit to a recursive checkout fails cleanly.
         """
