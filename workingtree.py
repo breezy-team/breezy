@@ -843,6 +843,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             return (git_id, disk_mode)
         return (index_sha, index_mode)
 
+    def get_shelf_manager(self):
+        raise workingtree.ShelvingUnsupported(self)
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
@@ -851,6 +854,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     supports_versioned_directories = False
 
     supports_setting_file_ids = False
+
+    supports_store_uncommitted = False
 
     @property
     def _matchingcontroldir(self):
