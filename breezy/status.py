@@ -447,10 +447,9 @@ def _show_shelve_summary(params):
     # no file arguments have been passed
     if params.specific_files:
         return
-    get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
-    if get_shelf_manager is None:
+    manager = params.new_tree.get_shelf_manager()
+    if manager is None:
         return
-    manager = get_shelf_manager()
     shelves = manager.active_shelves()
     if shelves:
         singular = '%d shelf exists. '

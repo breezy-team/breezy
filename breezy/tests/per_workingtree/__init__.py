@@ -151,6 +151,7 @@ def load_tests(loader, standard_tests, pattern):
         'rename_one',
         'revision_tree',
         'set_root_id',
+        'shelf_manager',
         'smart_add',
         'symlinks',
         'uncommit',
