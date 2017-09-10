@@ -454,7 +454,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
-        with self.lock.read():
+        with self.lock_read():
             return set(self._iter_files_recursive()) - set(self.index)
 
     def flush(self):
