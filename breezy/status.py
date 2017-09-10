@@ -28,6 +28,8 @@ from . import (
     )
 from . import errors as errors
 from .trace import mutter, warning
+from .workingtree import ShelvingUnsupported
+
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -447,19 +449,21 @@ def _show_shelve_summary(params):
     # no file arguments have been passed
     if params.specific_files:
         return
-    manager = params.new_tree.get_shelf_manager()
-    if manager is None:
-        return
-    shelves = manager.active_shelves()
-    if shelves:
-        singular = '%d shelf exists. '
-        plural = '%d shelves exist. '
-        if len(shelves) == 1:
-            fmt = singular
-        else:
-            fmt = plural
-        params.to_file.write(fmt % len(shelves))
-        params.to_file.write('See "brz shelve --list" for details.\n')
+    try:
+        manager = params.new_tree.get_shelf_manager()
+    except ShelvingUnsupported:
+        pass
+    else:
+        shelves = manager.active_shelves()
+        if shelves:
+            singular = '%d shelf exists. '
+            plural = '%d shelves exist. '
+            if len(shelves) == 1:
+                fmt = singular
+            else:
+                fmt = plural
+            params.to_file.write(fmt % len(shelves))
+            params.to_file.write('See "brz shelve --list" for details.\n')
 
 
 hooks = StatusHooks()

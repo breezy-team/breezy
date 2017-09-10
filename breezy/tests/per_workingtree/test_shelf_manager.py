@@ -20,9 +20,7 @@ from breezy import (
     errors,
     tests,
     )
-from breezy.bzr import (
-    inventory,
-    )
+from breezy.workingtree import ShelvingUnsupported
 from breezy.tests.matchers import HasLayout
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -34,5 +32,4 @@ class TestShelfManager(TestCaseWithWorkingTree):
         if self.workingtree_format.supports_store_uncommitted:
             self.assertIsNot(None, tree.get_shelf_manager())
         else:
-            self.assertIs(None, tree.get_shelf_manager())
-
+            self.assertRaises(ShelvingUnsupported, tree.get_shelf_manager)
