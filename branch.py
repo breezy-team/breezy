@@ -39,9 +39,6 @@ from ... import (
     transport,
     urlutils,
     )
-from ...decorators import (
-    needs_read_lock,
-    )
 from ...revision import (
     NULL_REVISION,
     )
@@ -461,12 +458,12 @@ class GitBranch(ForeignBranch):
     def get_physical_lock_status(self):
         return False
 
-    @needs_read_lock
     def last_revision(self):
-        # perhaps should escape this ?
-        if self.head is None:
-            return revision.NULL_REVISION
-        return self.lookup_foreign_revision_id(self.head)
+        with self.lock_read():
+            # perhaps should escape this ?
+            if self.head is None:
+                return revision.NULL_REVISION
+            return self.lookup_foreign_revision_id(self.head)
 
     def _basic_push(self, target, overwrite=False, stop_revision=None):
         return branch.InterBranch.get(self, target)._basic_push(

@@ -63,10 +63,6 @@ from ... import (
 from ...bzr import (
     inventory,
     )
-from ...decorators import (
-    needs_read_lock,
-    )
-from ...mutabletree import needs_tree_write_lock
 
 
 from .dir import (
@@ -257,18 +253,17 @@ class GitWorkingTree(workingtree.WorkingTree):
                     del self.index[p]
         # FIXME: remove empty directories
 
-    @needs_tree_write_lock
     def unversion(self, file_ids):
-        for file_id in file_ids:
-            path = self.id2path(file_id)
-            self._unversion_path(path)
-        self.flush()
+        with self.lock_tree_write():
+            for file_id in file_ids:
+                path = self.id2path(file_id)
+                self._unversion_path(path)
+            self.flush()
 
     def check_state(self):
         """Check that the working state is/isn't valid."""
         pass
 
-    @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
         """Remove nominated files from the working tree metadata.
@@ -301,42 +296,43 @@ class GitWorkingTree(workingtree.WorkingTree):
             return "removed %s (but kept a copy: %s)" % (
                 file_to_backup, backup_name)
 
-        for f in files:
-            fid = self.path2id(f)
-            if not fid:
-                message = "%s is not versioned." % (f,)
-            else:
-                abs_path = self.abspath(f)
-                if verbose:
-                    # having removed it, it must be either ignored or unknown
-                    if self.is_ignored(f):
-                        new_status = 'I'
-                    else:
-                        new_status = '?'
-                    # XXX: Really should be a more abstract reporter interface
-                    kind_ch = osutils.kind_marker(self.kind(fid))
-                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
-                # Unversion file
-                # FIXME: _unversion_path() is O(size-of-index) for directories
-                self._unversion_path(f)
-                message = "removed %s" % (f,)
-                if osutils.lexists(abs_path):
-                    if (osutils.isdir(abs_path) and
-                        len(os.listdir(abs_path)) > 0):
-                        if force:
-                            osutils.rmtree(abs_path)
-                            message = "deleted %s" % (f,)
+        with self.lock_tree_write():
+            for f in files:
+                fid = self.path2id(f)
+                if not fid:
+                    message = "%s is not versioned." % (f,)
+                else:
+                    abs_path = self.abspath(f)
+                    if verbose:
+                        # having removed it, it must be either ignored or unknown
+                        if self.is_ignored(f):
+                            new_status = 'I'
                         else:
-                            message = backup(f)
-                    else:
-                        if not keep_files:
-                            osutils.delete_any(abs_path)
-                            message = "deleted %s" % (f,)
+                            new_status = '?'
+                        # XXX: Really should be a more abstract reporter interface
+                        kind_ch = osutils.kind_marker(self.kind(fid))
+                        to_file.write(new_status + '       ' + f + kind_ch + '\n')
+                    # Unversion file
+                    # FIXME: _unversion_path() is O(size-of-index) for directories
+                    self._unversion_path(f)
+                    message = "removed %s" % (f,)
+                    if osutils.lexists(abs_path):
+                        if (osutils.isdir(abs_path) and
+                            len(os.listdir(abs_path)) > 0):
+                            if force:
+                                osutils.rmtree(abs_path)
+                                message = "deleted %s" % (f,)
+                            else:
+                                message = backup(f)
+                        else:
+                            if not keep_files:
+                                osutils.delete_any(abs_path)
+                                message = "deleted %s" % (f,)
 
-            # print only one message (if any) per file.
-            if message is not None:
-                trace.note(message)
-        self.flush()
+                # print only one message (if any) per file.
+                if message is not None:
+                    trace.note(message)
+            self.flush()
 
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
@@ -344,86 +340,86 @@ class GitWorkingTree(workingtree.WorkingTree):
                 raise workingtree.SettingFileIdUnsupported()
             self._index_add_entry(path, kind)
 
-    @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         added = []
         ignored = {}
         user_dirs = []
-        for filepath in osutils.canonical_relpaths(self.basedir, file_list):
-            abspath = self.abspath(filepath)
-            kind = osutils.file_kind(abspath)
-            if action is not None:
-                file_id = action(self, None, filepath, kind)
-            else:
-                file_id = None
-            if kind in ("file", "symlink"):
-                if save:
-                    self._index_add_entry(filepath, kind)
-                added.append(filepath)
-            elif kind == "directory":
-                if recurse:
-                    user_dirs.append(filepath)
-            else:
-                raise errors.BadFileKindError(filename=abspath, kind=kind)
-        for user_dir in user_dirs:
-            abs_user_dir = self.abspath(user_dir)
-            for name in os.listdir(abs_user_dir):
-                subp = os.path.join(user_dir, name)
-                if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
-                    continue
-                ignore_glob = self.is_ignored(subp)
-                if ignore_glob is not None:
-                    ignored.setdefault(ignore_glob, []).append(subp)
-                    continue
-                abspath = self.abspath(subp)
+        with self.lock_tree_write():
+            for filepath in osutils.canonical_relpaths(self.basedir, file_list):
+                abspath = self.abspath(filepath)
                 kind = osutils.file_kind(abspath)
-                if kind == "directory":
-                    user_dirs.append(subp)
+                if action is not None:
+                    file_id = action(self, None, filepath, kind)
                 else:
-                    if action is not None:
-                        file_id = action(self, None, filepath, kind)
-                    else:
-                        file_id = None
+                    file_id = None
+                if kind in ("file", "symlink"):
                     if save:
-                        self._index_add_entry(subp, kind)
-        if added and save:
-            self.flush()
-        return added, ignored
+                        self._index_add_entry(filepath, kind)
+                    added.append(filepath)
+                elif kind == "directory":
+                    if recurse:
+                        user_dirs.append(filepath)
+                else:
+                    raise errors.BadFileKindError(filename=abspath, kind=kind)
+            for user_dir in user_dirs:
+                abs_user_dir = self.abspath(user_dir)
+                for name in os.listdir(abs_user_dir):
+                    subp = os.path.join(user_dir, name)
+                    if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
+                        continue
+                    ignore_glob = self.is_ignored(subp)
+                    if ignore_glob is not None:
+                        ignored.setdefault(ignore_glob, []).append(subp)
+                        continue
+                    abspath = self.abspath(subp)
+                    kind = osutils.file_kind(abspath)
+                    if kind == "directory":
+                        user_dirs.append(subp)
+                    else:
+                        if action is not None:
+                            file_id = action(self, None, filepath, kind)
+                        else:
+                            file_id = None
+                        if save:
+                            self._index_add_entry(subp, kind)
+            if added and save:
+                self.flush()
+            return added, ignored
 
     def _set_root_id(self, file_id):
         self._fileid_map.set_file_id("", file_id)
 
-    @needs_tree_write_lock
     def move(self, from_paths, to_dir=None, after=False):
         rename_tuples = []
-        to_abs = self.abspath(to_dir)
-        if not os.path.isdir(to_abs):
-            raise errors.BzrMoveFailedError('', to_dir,
-                errors.NotADirectory(to_abs))
+        with self.lock_tree_write():
+            to_abs = self.abspath(to_dir)
+            if not os.path.isdir(to_abs):
+                raise errors.BzrMoveFailedError('', to_dir,
+                    errors.NotADirectory(to_abs))
 
-        for from_rel in from_paths:
-            from_tail = os.path.split(from_rel)[-1]
-            to_rel = os.path.join(to_dir, from_tail)
-            self.rename_one(from_rel, to_rel, after=after)
-            rename_tuples.append((from_rel, to_rel))
-        self.flush()
-        return rename_tuples
+            for from_rel in from_paths:
+                from_tail = os.path.split(from_rel)[-1]
+                to_rel = os.path.join(to_dir, from_tail)
+                self.rename_one(from_rel, to_rel, after=after)
+                rename_tuples.append((from_rel, to_rel))
+            self.flush()
+            return rename_tuples
 
-    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
         from_path = from_rel.encode("utf-8")
         to_path = to_rel.encode("utf-8")
-        if not self.has_filename(to_rel):
-            raise errors.BzrMoveFailedError(from_rel, to_rel,
-                errors.NoSuchFile(to_rel))
-        if not from_path in self.index:
-            raise errors.BzrMoveFailedError(from_rel, to_rel,
-                errors.NotVersionedError(path=from_rel))
-        if not after:
-            os.rename(self.abspath(from_rel), self.abspath(to_rel))
-        self.index[to_path] = self.index[from_path]
-        del self.index[from_path]
-        self.flush()
+        with self.lock_tree_write():
+            if not self.has_filename(to_rel):
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
+                    errors.NoSuchFile(to_rel))
+            if not from_path in self.index:
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
+                    errors.NotVersionedError(path=from_rel))
+            if not after:
+                os.rename(self.abspath(from_rel), self.abspath(to_rel))
+            self.index[to_path] = self.index[from_path]
+            del self.index[from_path]
+            self.flush()
 
     def get_root_id(self):
         return self.path2id("")
@@ -435,14 +431,14 @@ class GitWorkingTree(workingtree.WorkingTree):
             self._load_dirs()
         return path in self._versioned_dirs
 
-    @needs_read_lock
     def path2id(self, path):
         if type(path) is list:
             path = u"/".join(path)
-        encoded_path = path.encode("utf-8")
-        if self._is_versioned(encoded_path):
-            return self._fileid_map.lookup_file_id(encoded_path)
-        return None
+        with self.lock_read():
+            encoded_path = path.encode("utf-8")
+            if self._is_versioned(encoded_path):
+                return self._fileid_map.lookup_file_id(encoded_path)
+            return None
 
     def _iter_files_recursive(self, from_dir=None):
         if from_dir is None:
@@ -455,26 +451,26 @@ class GitWorkingTree(workingtree.WorkingTree):
                 if not self.mapping.is_special_file(filename):
                     yield os.path.join(dir_relpath, filename)
 
-    @needs_read_lock
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
-        return set(self._iter_files_recursive()) - set(self.index)
+        with self.lock.read():
+            return set(self._iter_files_recursive()) - set(self.index)
 
-    @needs_tree_write_lock
     def flush(self):
-        # TODO: Maybe this should only write on dirty ?
-        if self._lock_mode != 'w':
-            raise errors.NotWriteLocked(self)
-        self.index.write()
+        with self.lock_tree_write():
+            # TODO: Maybe this should only write on dirty ?
+            if self._lock_mode != 'w':
+                raise errors.NotWriteLocked(self)
+            self.index.write()
 
-    @needs_read_lock
     def __iter__(self):
-        for path in self.index:
-            yield self.path2id(path)
-        self._load_dirs()
-        for path in self._versioned_dirs:
-            yield self.path2id(path)
+        with self.lock_read():
+            for path in self.index:
+                yield self.path2id(path)
+            self._load_dirs()
+            for path in self._versioned_dirs:
+                yield self.path2id(path)
 
     def has_or_had_id(self, file_id):
         if self.has_id(file_id):
@@ -508,15 +504,15 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             return True
 
-    @needs_read_lock
     def id2path(self, file_id):
         assert type(file_id) is str, "file id not a string: %r" % file_id
         file_id = osutils.safe_utf8(file_id)
-        path = self._fileid_map.lookup_path(file_id)
-        # FIXME: What about directories?
-        if self._is_versioned(path):
-            return path.decode("utf-8")
-        raise errors.NoSuchId(self, file_id)
+        with self.lock_read():
+            path = self._fileid_map.lookup_path(file_id)
+            # FIXME: What about directories?
+            if self._is_versioned(path):
+                return path.decode("utf-8")
+            raise errors.NoSuchId(self, file_id)
 
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime."""
@@ -572,28 +568,28 @@ class GitWorkingTree(workingtree.WorkingTree):
             self._basis_fileid_map = self.mapping.get_fileid_map(
                 self.store.__getitem__, self.store[head].tree)
 
-    @needs_read_lock
     def get_file_verifier(self, file_id, path=None, stat_value=None):
-        if path is None:
-            path = self.id2path(file_id)
-        try:
-            return ("GIT", self.index[path][-2])
-        except KeyError:
-            if self._has_dir(path):
-                return ("GIT", None)
-            raise errors.NoSuchId(self, file_id)
+        with self.lock_read():
+            if path is None:
+                path = self.id2path(file_id)
+            try:
+                return ("GIT", self.index[path][-2])
+            except KeyError:
+                if self._has_dir(path):
+                    return ("GIT", None)
+                raise errors.NoSuchId(self, file_id)
 
-    @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        if not path:
-            path = self.id2path(file_id)
-        abspath = self.abspath(path).encode(osutils._fs_enc)
-        try:
-            return osutils.sha_file_by_name(abspath)
-        except OSError, (num, msg):
-            if num in (errno.EISDIR, errno.ENOENT):
-                return None
-            raise
+        with self.lock_read():
+            if not path:
+                path = self.id2path(file_id)
+            abspath = self.abspath(path).encode(osutils._fs_enc)
+            try:
+                return osutils.sha_file_by_name(abspath)
+            except OSError, (num, msg):
+                if num in (errno.EISDIR, errno.ENOENT):
+                    return None
+                raise
 
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
@@ -645,17 +641,17 @@ class GitWorkingTree(workingtree.WorkingTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    @needs_read_lock
     def stored_kind(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
-        try:
-            return mode_kind(self.index[path.encode("utf-8")][4])
-        except KeyError:
-            # Maybe it's a directory?
-            if self._has_dir(path):
-                return "directory"
-            raise errors.NoSuchId(self, file_id)
+        with self.lock_read():
+            if path is None:
+                path = self.id2path(file_id)
+            try:
+                return mode_kind(self.index[path.encode("utf-8")][4])
+            except KeyError:
+                # Maybe it's a directory?
+                if self._has_dir(path):
+                    return "directory"
+                raise errors.NoSuchId(self, file_id)
 
     def is_executable(self, file_id, path=None):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
@@ -676,7 +672,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
 
-    @needs_read_lock
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None:
             from_dir = ""
@@ -684,102 +679,103 @@ class GitWorkingTree(workingtree.WorkingTree):
         fk_entries = {'directory': workingtree.TreeDirectory,
                       'file': workingtree.TreeFile,
                       'symlink': workingtree.TreeLink}
-        root_ie = self._get_dir_ie(u"", None)
-        if include_root and not from_dir:
-            yield "", "V", root_ie.kind, root_ie.file_id, root_ie
-        dir_ids[u""] = root_ie.file_id
-        if recursive:
-            path_iterator = self._iter_files_recursive(from_dir)
-        else:
-            if from_dir is None:
-                start = self.basedir
+        with self.lock_read():
+            root_ie = self._get_dir_ie(u"", None)
+            if include_root and not from_dir:
+                yield "", "V", root_ie.kind, root_ie.file_id, root_ie
+            dir_ids[u""] = root_ie.file_id
+            if recursive:
+                path_iterator = self._iter_files_recursive(from_dir)
             else:
-                start = os.path.join(self.basedir, from_dir)
-            path_iterator = sorted([os.path.join(from_dir, name) for name in
-                os.listdir(start) if not self.controldir.is_control_filename(name)
-                and not self.mapping.is_special_file(name)])
-        for path in path_iterator:
-            try:
-                value = self.index[path]
-            except KeyError:
-                value = None
-            path = path.decode("utf-8")
-            parent, name = posixpath.split(path)
-            for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
-                yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
-            if value is not None:
-                ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                yield path, "V", ie.kind, ie.file_id, ie
-            else:
-                kind = osutils.file_kind(self.abspath(path))
-                ie = fk_entries[kind]()
-                yield path, ("I" if self.is_ignored(path) else "?"), kind, None, ie
+                if from_dir is None:
+                    start = self.basedir
+                else:
+                    start = os.path.join(self.basedir, from_dir)
+                path_iterator = sorted([os.path.join(from_dir, name) for name in
+                    os.listdir(start) if not self.controldir.is_control_filename(name)
+                    and not self.mapping.is_special_file(name)])
+            for path in path_iterator:
+                try:
+                    value = self.index[path]
+                except KeyError:
+                    value = None
+                path = path.decode("utf-8")
+                parent, name = posixpath.split(path)
+                for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
+                    yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
+                if value is not None:
+                    ie = self._get_file_ie(name, path, value, dir_ids[parent])
+                    yield path, "V", ie.kind, ie.file_id, ie
+                else:
+                    kind = osutils.file_kind(self.abspath(path))
+                    ie = fk_entries[kind]()
+                    yield path, ("I" if self.is_ignored(path) else "?"), kind, None, ie
 
-    @needs_read_lock
     def all_file_ids(self):
-        ids = {u"": self.path2id("")}
-        for path in self.index:
-            if self.mapping.is_special_file(path):
-                continue
-            path = path.decode("utf-8")
-            parent = posixpath.dirname(path).strip("/")
-            for e in self._add_missing_parent_ids(parent, ids):
-                pass
-            ids[path] = self.path2id(path)
-        return set(ids.values())
+        with self.lock_read():
+            ids = {u"": self.path2id("")}
+            for path in self.index:
+                if self.mapping.is_special_file(path):
+                    continue
+                path = path.decode("utf-8")
+                parent = posixpath.dirname(path).strip("/")
+                for e in self._add_missing_parent_ids(parent, ids):
+                    pass
+                ids[path] = self.path2id(path)
+            return set(ids.values())
 
     def _directory_is_tree_reference(self, path):
         # FIXME: Check .gitsubmodules for path
         return False
 
-    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Is return order correct?
         if yield_parents:
             raise NotImplementedError(self.iter_entries_by_dir)
-        if specific_file_ids is not None:
-            specific_paths = [self.id2path(file_id) for file_id in specific_file_ids]
-            if specific_paths in ([u""], []):
-                specific_paths = None
+        with self.lock_read():
+            if specific_file_ids is not None:
+                specific_paths = [
+                        self.id2path(file_id) for file_id in specific_file_ids]
+                if specific_paths in ([u""], []):
+                    specific_paths = None
+                else:
+                    specific_paths = set(specific_paths)
             else:
-                specific_paths = set(specific_paths)
-        else:
-            specific_paths = None
-        root_ie = self._get_dir_ie(u"", None)
-        if specific_paths is None:
-            yield u"", root_ie
-        dir_ids = {u"": root_ie.file_id}
-        for path, value in self.index.iteritems():
-            if self.mapping.is_special_file(path):
-                continue
-            path = path.decode("utf-8")
-            if specific_paths is not None and not path in specific_paths:
-                continue
-            (parent, name) = posixpath.split(path)
-            try:
-                file_ie = self._get_file_ie(name, path, value, None)
-            except IOError:
-                continue
-            for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
-                    dir_ids):
-                yield dir_path, dir_ie
-            file_ie.parent_id = self.path2id(parent)
-            yield path, file_ie
+                specific_paths = None
+            root_ie = self._get_dir_ie(u"", None)
+            if specific_paths is None:
+                yield u"", root_ie
+            dir_ids = {u"": root_ie.file_id}
+            for path, value in self.index.iteritems():
+                if self.mapping.is_special_file(path):
+                    continue
+                path = path.decode("utf-8")
+                if specific_paths is not None and not path in specific_paths:
+                    continue
+                (parent, name) = posixpath.split(path)
+                try:
+                    file_ie = self._get_file_ie(name, path, value, None)
+                except IOError:
+                    continue
+                for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
+                        dir_ids):
+                    yield dir_path, dir_ie
+                file_ie.parent_id = self.path2id(parent)
+                yield path, file_ie
 
-    @needs_read_lock
     def conflicts(self):
-        # FIXME:
-        return _mod_conflicts.ConflictList()
+        with self.lock_read():
+            # FIXME:
+            return _mod_conflicts.ConflictList()
 
-    @needs_read_lock
     def get_canonical_inventory_path(self, path):
-        for p in self.index:
-            if p.lower() == path.lower():
-                return p
-        else:
-            return path
+        with self.lock_read():
+            for p in self.index:
+                if p.lower() == path.lower():
+                    return p
+            else:
+                return path
 
-    @needs_read_lock
     def _walkdirs(self, prefix=""):
         if prefix != "":
             prefix += "/"
@@ -888,36 +884,36 @@ class InterIndexGitTree(tree.InterTree):
         return (isinstance(source, GitRevisionTree) and
                 isinstance(target, GitWorkingTree))
 
-    @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        # FIXME: Handle include_root
-        changes = changes_between_git_tree_and_index(
-            self.source.store, self.source.tree,
-            self.target, want_unchanged=want_unchanged,
-            want_unversioned=want_unversioned)
-        source_fileid_map = self.source._fileid_map
-        target_fileid_map = self.target._fileid_map
-        ret = tree_delta_from_git_changes(changes, self.target.mapping,
-            (source_fileid_map, target_fileid_map),
-            specific_file=specific_files, require_versioned=require_versioned)
-        if want_unversioned:
-            for e in self.target.extras():
-                ret.unversioned.append((e, None,
-                    osutils.file_kind(self.target.abspath(e))))
-        return ret
+        with self.lock_read():
+            # FIXME: Handle include_root
+            changes = changes_between_git_tree_and_index(
+                self.source.store, self.source.tree,
+                self.target, want_unchanged=want_unchanged,
+                want_unversioned=want_unversioned)
+            source_fileid_map = self.source._fileid_map
+            target_fileid_map = self.target._fileid_map
+            ret = tree_delta_from_git_changes(changes, self.target.mapping,
+                (source_fileid_map, target_fileid_map),
+                specific_file=specific_files, require_versioned=require_versioned)
+            if want_unversioned:
+                for e in self.target.extras():
+                    ret.unversioned.append((e, None,
+                        osutils.file_kind(self.target.abspath(e))))
+            return ret
 
-    @needs_read_lock
     def iter_changes(self, include_unchanged=False, specific_files=None,
         pb=None, extra_trees=[], require_versioned=True,
         want_unversioned=False):
-        changes = changes_between_git_tree_and_index(
-            self.source.store, self.source.tree,
-            self.target, want_unchanged=include_unchanged,
-            want_unversioned=want_unversioned)
-        return changes_from_git_changes(changes, self.target.mapping,
-            specific_file=specific_files)
+        with self.lock_read():
+            changes = changes_between_git_tree_and_index(
+                self.source.store, self.source.tree,
+                self.target, want_unchanged=include_unchanged,
+                want_unversioned=want_unversioned)
+            return changes_from_git_changes(
+                    changes, self.target.mapping, specific_file=specific_files)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
