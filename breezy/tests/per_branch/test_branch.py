@@ -1047,6 +1047,12 @@ def skip_if_storing_uncommitted_unsupported():
 
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
 
+    def setUp(self):
+        super(TestUncommittedChanges, self).setUp()
+        if not self.branch_format.supports_store_uncommitted():
+            raise tests.TestNotApplicable(
+                    'Branch format does not support store_uncommitted')
+
     def bind(self, branch, master):
         try:
             branch.bind(master)

@@ -1246,3 +1246,8 @@ class TestFormatAttributes(TestCaseWithWorkingTree):
         self.assertSubset(
             [self.workingtree_format.supports_setting_file_ids],
             (True, False))
+
+    def test_supports_store_uncommitted(self):
+        self.assertSubset(
+            [self.workingtree_format.supports_store_uncommitted],
+            (True, False))

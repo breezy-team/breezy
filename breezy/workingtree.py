@@ -52,7 +52,6 @@ from breezy import (
     generate_ids,
     merge,
     revision as _mod_revision,
-    shelf,
     transform,
     transport,
     ui,
@@ -76,7 +75,12 @@ ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 class SettingFileIdUnsupported(errors.BzrError):
 
-    _fmt = "This format does not support setting file ids."""
+    _fmt = "This format does not support setting file ids."
+
+
+class ShelvingUnsupported(errors.BzrError):
+
+    _fmt = "This format does not support shelving changes."
 
 
 class TreeEntry(object):
@@ -1151,31 +1155,11 @@ class WorkingTree(mutabletree.MutableTree,
 
     def store_uncommitted(self):
         """Store uncommitted changes from the tree in the branch."""
-        with self.lock_write():
-            target_tree = self.basis_tree()
-            shelf_creator = shelf.ShelfCreator(self, target_tree)
-            try:
-                if not shelf_creator.shelve_all():
-                    return
-                self.branch.store_uncommitted(shelf_creator)
-                shelf_creator.transform()
-            finally:
-                shelf_creator.finalize()
-            note('Uncommitted changes stored in branch "%s".', self.branch.nick)
+        raise NotImplementedError(self.store_uncommitted)
 
     def restore_uncommitted(self):
         """Restore uncommitted changes from the branch into the tree."""
-        with self.lock_write():
-            unshelver = self.branch.get_unshelver(self)
-            if unshelver is None:
-                return
-            try:
-                merger = unshelver.make_merger()
-                merger.ignore_zero = True
-                merger.do_merge()
-                self.branch.store_uncommitted(None)
-            finally:
-                unshelver.finalize()
+        raise NotImplementedError(self.restore_uncommitted)
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.
@@ -1559,8 +1543,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def get_shelf_manager(self):
         """Return the ShelfManager for this WorkingTree."""
-        from .shelf import ShelfManager
-        return ShelfManager(self, self._transport)
+        raise NotImplementedError(self.get_shelf_manager)
 
 
 class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
@@ -1625,6 +1608,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_setting_file_ids = True
     """If this format allows setting the file id."""
+
+    supports_store_uncommitted = True
+    """If this format supports shelve-like functionality."""
 
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

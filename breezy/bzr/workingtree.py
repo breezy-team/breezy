@@ -278,6 +278,40 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             f.close()
         self._set_inventory(result, dirty=False)
 
+    def store_uncommitted(self):
+        """Store uncommitted changes from the tree in the branch."""
+        with self.lock_write():
+            target_tree = self.basis_tree()
+            from ..shelf import ShelfCreator
+            shelf_creator = ShelfCreator(self, target_tree)
+            try:
+                if not shelf_creator.shelve_all():
+                    return
+                self.branch.store_uncommitted(shelf_creator)
+                shelf_creator.transform()
+            finally:
+                shelf_creator.finalize()
+            note('Uncommitted changes stored in branch "%s".', self.branch.nick)
+
+    def restore_uncommitted(self):
+        """Restore uncommitted changes from the branch into the tree."""
+        with self.lock_write():
+            unshelver = self.branch.get_unshelver(self)
+            if unshelver is None:
+                return
+            try:
+                merger = unshelver.make_merger()
+                merger.ignore_zero = True
+                merger.do_merge()
+                self.branch.store_uncommitted(None)
+            finally:
+                unshelver.finalize()
+
+    def get_shelf_manager(self):
+        """Return the ShelfManager for this WorkingTree."""
+        from ..shelf import ShelfManager
+        return ShelfManager(self, self._transport)
+
     def _set_root_id(self, file_id):
         """Set the root id for this tree, in a format specific manner.
 
