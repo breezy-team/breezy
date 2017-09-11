@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Jelmer Vernooij
+# Copyright (C) 2017 Breezy Developers
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
