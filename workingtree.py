@@ -260,6 +260,10 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self._unversion_path(path)
             self.flush()
 
+    def update_basis_by_delta(self, revid, delta):
+        # TODO(jelmer): This shouldn't be called, it's inventory specific.
+        pass
+
     def check_state(self):
         """Check that the working state is/isn't valid."""
         pass
@@ -845,6 +849,9 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def get_shelf_manager(self):
         raise workingtree.ShelvingUnsupported(self)
+
+    def store_uncommitted(self):
+        raise errors.StoringUncommittedNotSupported(self)
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

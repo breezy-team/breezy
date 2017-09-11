@@ -477,6 +477,9 @@ class GitBranch(ForeignBranch):
         return self.repository.lookup_bzr_revision_id(
             revid, mapping=self.mapping)
 
+    def get_unshelver(self, tree):
+        raise errors.StoringUncommittedNotSupported(self)
+
 
 class LocalGitBranch(GitBranch):
     """A local Git branch."""

@@ -214,3 +214,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def revision_tree(self):
         return self.repository.revision_tree(self._new_revision_id)
+
+    def get_basis_delta(self):
+        # TODO(jelmer): This shouldn't be called, it's for inventory deltas.
+        return []
