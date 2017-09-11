@@ -586,6 +586,9 @@ class LocalGitBranch(GitBranch):
     def supports_tags(self):
         return True
 
+    def store_uncommitted(self, creator):
+        raise errors.StoringUncommittedNotSupported(self)
+
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     assert isinstance(revid, str), "was %r" % revid
