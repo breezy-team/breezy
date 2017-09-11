@@ -27,6 +27,13 @@ from breezy import (
     )
 
 
+class DarcsUnsupportedError(errors.UnsupportedFormatError):
+
+    _fmt = ('Darcs branches are not yet supported. '
+            'To convert darcs branches to Bazaar branches or vice versa, '
+            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+
+
 class DarcsDirFormat(controldir.ControlDirFormat):
     """Darcs directory format."""
 
@@ -37,7 +44,13 @@ class DarcsDirFormat(controldir.ControlDirFormat):
         return "darcs control directory"
 
     def initialize_on_transport(self, transport):
-        raise NotImplementedError(self.get_converter)
+        raise errors.UninitializableFormat(self)
+
+    def is_supported(self):
+        return False
+
+    def supports_transport(self, transport):
+        return False
 
     @classmethod
     def _known_formats(self):
@@ -45,18 +58,29 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 
     def open(self, transport, _found=False):
         """Open this directory."""
-        raise errors.BzrCommandError(
-            'Darcs branches are not yet supported. '
-            'To convert darcs branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+        raise DarcsUnsupportedError(self)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+                             basedir=None):
+        raise DarcsUnsupportedError(self)
+
+    def open(self, transport):
+        # Raise NotBranchError if there is nothing there
+        DarcsProber().probe_transport(transport)
+        raise NotImplementedError(self.open)
+
+
+class DarcsProber(controldir.Prober):
 
     @classmethod
     def probe_transport(klass, transport):
-        """Our format is present if the transport has a '_darcs/' subdir."""
-        format = klass()
         if transport.has('_darcs'):
-            return format
+            return DarcsDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
+    @classmethod
+    def known_formats(cls):
+        return set([DarcsDirFormat()])
 
-controldir.ControlDirFormat.register_control_format(DarcsDirFormat)
+
+controldir.ControlDirFormat.register_prober(DarcsProber)
