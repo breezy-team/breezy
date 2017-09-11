@@ -102,7 +102,7 @@ class GitCheck(check.Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with repository.lock_read():
+        with self.repository.lock_read():
             # TODO(jelmer): Check some things
             pass
 
@@ -160,7 +160,7 @@ class GitRepository(ForeignRepository):
         else:
             self._lock_mode = 'w'
             self._lock_count = 1
-        return lock.LogicalLockResult(self.unlock)
+        return repository.RepositoryWriteLockResult(self.unlock, None)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)

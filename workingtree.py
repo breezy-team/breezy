@@ -63,6 +63,9 @@ from ... import (
 from ...bzr import (
     inventory,
     )
+from ...mutabletree import (
+    MutableTree,
+    )
 
 
 from .dir import (
@@ -879,8 +882,12 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
             raise errors.IncompatibleFormat(self, a_controldir)
         index = Index(a_controldir.root_transport.local_abspath(".git/index"))
         index.write()
-        return GitWorkingTree(a_controldir, a_controldir.open_repository(),
+        wt = GitWorkingTree(
+                a_controldir, a_controldir.open_repository(),
             a_controldir.open_branch(), index)
+        for hook in MutableTree.hooks['post_build_tree']:
+            hook(wt)
+        return wt
 
 
 class InterIndexGitTree(tree.InterTree):
