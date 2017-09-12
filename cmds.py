@@ -193,7 +193,7 @@ class cmd_builddeb(Command):
             "appropriate -v and -sa options for merging in the changes from "
             "another source.")
     takes_args = ['branch_or_build_options*']
-    aliases = ['bd']
+    aliases = ['bd', 'debuild']
     takes_options = [working_tree_opt, export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
         build_dir_opt, orig_dir_opt, split_opt,

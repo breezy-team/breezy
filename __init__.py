@@ -42,7 +42,7 @@ gettext = translation.ugettext
 
 commands = {
         "builddeb_do": ["bd-do"],
-        "builddeb": ["bd"],
+        "builddeb": ["bd", "debuild"],
         "get_orig_source": [],
         "dep3_patch": [],
         "dh_make": ["dh_make"],
