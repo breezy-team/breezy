@@ -1,4 +1,4 @@
-breezy-debian (2.8.9) UNRELEASED; urgency=medium
+breezy-debian (2.8.9) unstable; urgency=medium
 
   * Update to be compatible with breezy rather than bazaar.
   * Added support for -b in Git-Vcs fields.
