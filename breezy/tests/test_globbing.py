@@ -184,7 +184,7 @@ class TestGlobster(TestCase):
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'*bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
+             [u'bar', u'foobar', u'foo\\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -222,7 +222,7 @@ class TestGlobster(TestCase):
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'**bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
+             [u'bar', u'foobar', u'foo\\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
