@@ -43,7 +43,7 @@ class Replacer(object):
     must not contain capturing groups.
     """
 
-    _expand = lazy_regex.lazy_compile(ur'\\&')
+    _expand = lazy_regex.lazy_compile(u'\\\\&')
 
     def __init__(self, source=None):
         self._pat = None
@@ -93,12 +93,12 @@ class Replacer(object):
 
 
 _sub_named = Replacer()
-_sub_named.add(ur'\[:digit:\]', ur'\d')
-_sub_named.add(ur'\[:space:\]', ur'\s')
-_sub_named.add(ur'\[:alnum:\]', ur'\w')
-_sub_named.add(ur'\[:ascii:\]', ur'\0-\x7f')
-_sub_named.add(ur'\[:blank:\]', ur' \t')
-_sub_named.add(ur'\[:cntrl:\]', ur'\0-\x1f\x7f-\x9f')
+_sub_named.add(r'\[:digit:\]', r'\d')
+_sub_named.add(r'\[:space:\]', r'\s')
+_sub_named.add(r'\[:alnum:\]', r'\w')
+_sub_named.add(r'\[:ascii:\]', r'\0-\x7f')
+_sub_named.add(r'\[:blank:\]', r' \t')
+_sub_named.add(r'\[:cntrl:\]', r'\0-\x1f\x7f-\x9f')
 
 
 def _sub_group(m):
@@ -133,26 +133,26 @@ _sub_re.add(u'^RE:', u'')
 _sub_re.add(u'\((?!\?)', u'(?:')
 _sub_re.add(u'\(\?P<.*>', _invalid_regex(u'(?:'))
 _sub_re.add(u'\(\?P=[^)]*\)', _invalid_regex(u''))
-_sub_re.add(ur'\\+$', _trailing_backslashes_regex)
+_sub_re.add(r'\\+$', _trailing_backslashes_regex)
 
 
 _sub_fullpath = Replacer()
-_sub_fullpath.add(ur'^RE:.*', _sub_re) # RE:<anything> is a regex
-_sub_fullpath.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
-_sub_fullpath.add(ur'(?:(?<=/)|^)(?:\.?/)+', u'') # canonicalize path
-_sub_fullpath.add(ur'\\.', ur'\&') # keep anything backslashed
-_sub_fullpath.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
-_sub_fullpath.add(ur'(?:(?<=/)|^)\*\*+/', ur'(?:.*/)?') # **/ after ^ or /
-_sub_fullpath.add(ur'\*+', ur'[^/]*') # * elsewhere
-_sub_fullpath.add(ur'\?', ur'[^/]') # ? everywhere
+_sub_fullpath.add(r'^RE:.*', _sub_re) # RE:<anything> is a regex
+_sub_fullpath.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
+_sub_fullpath.add(r'(?:(?<=/)|^)(?:\.?/)+', u'') # canonicalize path
+_sub_fullpath.add(r'\\.', r'\&') # keep anything backslashed
+_sub_fullpath.add(r'[(){}|^$+.]', r'\\&') # escape specials
+_sub_fullpath.add(r'(?:(?<=/)|^)\*\*+/', r'(?:.*/)?') # **/ after ^ or /
+_sub_fullpath.add(r'\*+', r'[^/]*') # * elsewhere
+_sub_fullpath.add(r'\?', r'[^/]') # ? everywhere
 
 
 _sub_basename = Replacer()
-_sub_basename.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
-_sub_basename.add(ur'\\.', ur'\&') # keep anything backslashed
-_sub_basename.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
-_sub_basename.add(ur'\*+', ur'.*') # * everywhere
-_sub_basename.add(ur'\?', ur'.') # ? everywhere
+_sub_basename.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
+_sub_basename.add(r'\\.', r'\&') # keep anything backslashed
+_sub_basename.add(r'[(){}|^$+.]', r'\\&') # escape specials
+_sub_basename.add(r'\*+', r'.*') # * everywhere
+_sub_basename.add(r'\?', r'.') # ? everywhere
 
 
 def _sub_extension(pattern):
