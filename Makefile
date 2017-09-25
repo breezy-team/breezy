@@ -61,6 +61,22 @@ check-nodocs3:
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
 
+update-python3-passing:
+	# Generate a stream for PQM to watch.
+	-$(RM) -f selftest.log
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
+	  ./brz selftest -Oselftest.timeout=120 \
+	  --subunit2 $(tests) | tee selftest.log | \
+	  subunit-filter --no-failure --no-error --no-skip | \
+	  subunit-ls --no-passthrough > now-working
+	cp python3.passing python3.passing.new
+	cat now-working >> python3.passing.new
+	echo <<EOF>python3.passing\
+# This is the list of tests that are known to pass with Python3.\
+# "make check-nodocs3" verifies that these pass.\
+EOF
+	grep -v "^#" python3.passing.new | uniq | sort >> python3.passing
+
 check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
