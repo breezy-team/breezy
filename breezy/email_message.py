@@ -18,14 +18,20 @@
 
 from __future__ import absolute_import
 
-from email import (
-    Header,
-    Message,
-    MIMEMultipart,
-    MIMEText,
-    Utils,
-    )
-
+try:
+    from email.message import Message
+    from email.header import Header
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.utils import formataddr, parseaddr
+except ImportError:   # python < 3
+    from email import (
+        Header,
+        Message,
+        MIMEMultipart,
+        MIMEText,
+        )
+    from email.Utils import formataddr, parseaddr
 from . import __version__ as _breezy_version
 from .osutils import safe_unicode
 from .sixish import (
@@ -175,11 +181,11 @@ class EmailMessage(object):
         """
         # Can't call Header over all the address, because that encodes both the
         # name and the email address, which is not permitted by RFCs.
-        user, email = Utils.parseaddr(address)
+        user, email = parseaddr(address)
         if not user:
             return email
         else:
-            return Utils.formataddr((str(Header.Header(safe_unicode(user))),
+            return formataddr((str(Header.Header(safe_unicode(user))),
                 email))
 
     @staticmethod

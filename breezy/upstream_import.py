@@ -21,7 +21,6 @@ from __future__ import absolute_import
 import errno
 import os
 import re
-from StringIO import StringIO
 import stat
 import tarfile
 import zipfile
@@ -31,6 +30,7 @@ from .controldir import ControlDir, is_control_filename
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
+from .sixish import StringIO
 from .trace import warning
 from .transform import TreeTransform, resolve_conflicts, cook_conflicts
 from .transport import get_transport
@@ -84,7 +84,7 @@ class ZipInfoWrapper(object):
         self.type = None
         self.name = info.filename
         self.zipfile = zipfile
-        self.mode = 0666
+        self.mode = 0o666
 
     def isdir(self):
         # Really? Eeeew!
@@ -132,7 +132,7 @@ class FileInfo(object):
         if filepath != '':
             self.name = pathjoin(basename(root), filepath)
         else:
-            print 'root %r' % root
+            print('root %r' % root)
             self.name = basename(root)
         self.type = None
         stat = os.lstat(self.fullpath)
@@ -272,7 +272,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         if member.isreg():
             tt.create_file(file_iterator(archive_file.extractfile(member)),
                            trans_id)
-            executable = (member.mode & 0111) != 0
+            executable = (member.mode & 0o111) != 0
             tt.set_executability(executable, trans_id)
         elif member.isdir():
             do_directory(tt, trans_id, tree, relative_path, path)
@@ -340,7 +340,7 @@ def do_import(source, tree_directory=None):
                     elif external_compressor == 'lzma':
                         import lzma
                         tar_input = StringIO(lzma.decompress(tar_input.read()))
-                except IOError, e:
+                except IOError as e:
                     if e.errno == errno.ENOENT:
                         raise NoSuchFile(source)
                 try:

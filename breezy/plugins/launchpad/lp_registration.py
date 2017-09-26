@@ -19,7 +19,10 @@ from __future__ import absolute_import
 
 import os
 import socket
-from urlparse import urlsplit, urlunsplit
+try:
+    from urllib.parse import urlsplit, urlunsplit
+except ImportError:
+    from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 

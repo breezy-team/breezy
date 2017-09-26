@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 
-import cStringIO
+from ...sixish import StringIO
 
 from ... import (
     errors,
@@ -68,7 +68,7 @@ class _TreeShim(object):
 
     def get_file_with_stat(self, file_id, path=None):
         content = self.get_file_text(file_id, path)
-        sio = cStringIO.StringIO(content)
+        sio = StringIO(content)
         return sio, None
 
     def get_file_text(self, file_id, path=None):

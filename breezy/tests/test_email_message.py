@@ -15,7 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
-from email.Header import decode_header
+try:
+    from email.header import decode_header
+except ImportError:  # python < 3
+    from email.Header import decode_header
 
 from .. import __version__ as _breezy_version
 from ..email_message import EmailMessage
