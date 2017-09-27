@@ -45,7 +45,6 @@ from . import (
     lock,
     osutils,
     )
-from .decorators import needs_read_lock
 from .inter import InterObject
 from .sixish import (
     viewvalues,
@@ -873,7 +872,6 @@ class InterTree(InterObject):
         return (file_id, (source_path, target_path), changed_content,
                 versioned, parent, name, kind, executable), changes
 
-    @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False, include_root=False,
         want_unversioned=False):
@@ -896,22 +894,23 @@ class InterTree(InterObject):
         trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
-        # target is usually the newer tree:
-        specific_file_ids = self.target.paths2ids(specific_files, trees,
-            require_versioned=require_versioned)
-        if specific_files and not specific_file_ids:
-            # All files are unversioned, so just return an empty delta
-            # _compare_trees would think we want a complete delta
-            result = delta.TreeDelta()
-            fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
-            result.unversioned = [(path, None,
-                self.target._comparison_data(fake_entry, path)[0]) for path in
-                specific_files]
-            return result
-        return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_files, include_root, extra_trees=extra_trees,
-            require_versioned=require_versioned,
-            want_unversioned=want_unversioned)
+        with self.lock_read():
+            # target is usually the newer tree:
+            specific_file_ids = self.target.paths2ids(specific_files, trees,
+                require_versioned=require_versioned)
+            if specific_files and not specific_file_ids:
+                # All files are unversioned, so just return an empty delta
+                # _compare_trees would think we want a complete delta
+                result = delta.TreeDelta()
+                fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
+                result.unversioned = [(path, None,
+                    self.target._comparison_data(fake_entry, path)[0]) for path in
+                    specific_files]
+                return result
+            return delta._compare_trees(self.source, self.target, want_unchanged,
+                specific_files, include_root, extra_trees=extra_trees,
+                require_versioned=require_versioned,
+                want_unversioned=want_unversioned)
 
     def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
@@ -1155,7 +1154,7 @@ class InterTree(InterObject):
                 precise_file_ids.add(new_parent_id)
                 if changes:
                     if (result[6][0] == 'directory' and
-                        result[6][1] != 'directory'):
+                            result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if old_entry is None:
@@ -1166,9 +1165,9 @@ class InterTree(InterObject):
                     changed_file_ids.add(result[0])
                     yield result
 
-    @needs_read_lock
-    def file_content_matches(self, source_file_id, target_file_id,
-            source_path=None, target_path=None, source_stat=None, target_stat=None):
+    def file_content_matches(
+            self, source_file_id, target_file_id, source_path=None,
+            target_path=None, source_stat=None, target_stat=None):
         """Check if two files are the same in the source and target trees.
 
         This only checks that the contents of the files are the same,
@@ -1182,24 +1181,27 @@ class InterTree(InterObject):
         :param target_stat: Optional stat value of the file in the target tree
         :return: Boolean indicating whether the files have the same contents
         """
-        source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
-            source_file_id, source_path, source_stat)
-        target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
-            target_file_id, target_path, target_stat)
-        if source_verifier_kind == target_verifier_kind:
-            return (source_verifier_data == target_verifier_data)
-        # Fall back to SHA1 for now
-        if source_verifier_kind != "SHA1":
-            source_sha1 = self.source.get_file_sha1(source_file_id,
-                    source_path, source_stat)
-        else:
-            source_sha1 = source_verifier_data
-        if target_verifier_kind != "SHA1":
-            target_sha1 = self.target.get_file_sha1(target_file_id,
-                    target_path, target_stat)
-        else:
-            target_sha1 = target_verifier_data
-        return (source_sha1 == target_sha1)
+        with self.lock_read():
+            source_verifier_kind, source_verifier_data = (
+                    self.source.get_file_verifier(
+                        source_file_id, source_path, source_stat))
+            target_verifier_kind, target_verifier_data = (
+                self.target.get_file_verifier(
+                    target_file_id, target_path, target_stat))
+            if source_verifier_kind == target_verifier_kind:
+                return (source_verifier_data == target_verifier_data)
+            # Fall back to SHA1 for now
+            if source_verifier_kind != "SHA1":
+                source_sha1 = self.source.get_file_sha1(
+                        source_file_id, source_path, source_stat)
+            else:
+                source_sha1 = source_verifier_data
+            if target_verifier_kind != "SHA1":
+                target_sha1 = self.target.get_file_sha1(
+                        target_file_id, target_path, target_stat)
+            else:
+                target_sha1 = target_verifier_data
+            return (source_sha1 == target_sha1)
 
 InterTree.register_optimiser(InterTree)
 

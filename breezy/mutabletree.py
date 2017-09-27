@@ -21,8 +21,6 @@ See MutableTree for more details.
 
 from __future__ import absolute_import
 
-import operator
-import os
 from . import (
     errors,
     hooks,
@@ -31,21 +29,10 @@ from . import (
     tree,
     )
 
-from .decorators import needs_read_lock, needs_write_lock
 from .sixish import (
     text_type,
     viewvalues,
     )
-
-
-def needs_tree_write_lock(unbound):
-    """Decorate unbound to take out and release a tree_write lock."""
-    def tree_write_locked(self, *args, **kwargs):
-        with self.lock_tree_write():
-            return unbound(self, *args, **kwargs)
-    tree_write_locked.__doc__ = unbound.__doc__
-    tree_write_locked.__name__ = unbound.__name__
-    return tree_write_locked
 
 
 class MutableTree(tree.Tree):
@@ -85,7 +72,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.is_control_filename)
 
-    @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
         """Add paths to the set of versioned paths.
 
@@ -128,16 +114,17 @@ class MutableTree(tree.Tree):
             kinds = [None] * len(files)
         elif not len(kinds) == len(files):
             raise AssertionError()
-        for f in files:
-            # generic constraint checks:
-            if self.is_control_filename(f):
-                raise errors.ForbiddenControlFileError(filename=f)
-            fp = osutils.splitpath(f)
-        # fill out file kinds for all files [not needed when we stop
-        # caring about the instantaneous file kind within a uncommmitted tree
-        #
-        self._gather_kinds(files, kinds)
-        self._add(files, ids, kinds)
+        with self.lock_tree_write():
+            for f in files:
+                # generic constraint checks:
+                if self.is_control_filename(f):
+                    raise errors.ForbiddenControlFileError(filename=f)
+                fp = osutils.splitpath(f)
+            # fill out file kinds for all files [not needed when we stop
+            # caring about the instantaneous file kind within a uncommmitted tree
+            #
+            self._gather_kinds(files, kinds)
+            self._add(files, ids, kinds)
 
     def add_reference(self, sub_tree):
         """Add a TreeReference to the tree, pointing at sub_tree"""
@@ -169,45 +156,34 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self._add)
 
-    def apply_inventory_delta(self, changes):
-        """Apply changes to the inventory as an atomic operation.
-
-        :param changes: An inventory delta to apply to the working tree's
-            inventory.
-        :return None:
-        :seealso Inventory.apply_delta: For details on the changes parameter.
-        """
-        raise NotImplementedError(self.apply_inventory_delta)
-
-    @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
         from breezy import commit
         possible_master_transports=[]
-        revprops = commit.Commit.update_revprops(
-                revprops,
-                self.branch,
-                kwargs.pop('authors', None),
-                kwargs.get('local', False),
-                possible_master_transports)
-        # args for wt.commit start at message from the Commit.commit method,
-        args = (message, ) + args
-        for hook in MutableTree.hooks['start_commit']:
-            hook(self)
-        committed_id = commit.Commit().commit(working_tree=self,
-            revprops=revprops,
-            possible_master_transports=possible_master_transports,
-            *args, **kwargs)
-        post_hook_params = PostCommitHookParams(self)
-        for hook in MutableTree.hooks['post_commit']:
-            hook(post_hook_params)
-        return committed_id
+        with self.lock_write():
+            revprops = commit.Commit.update_revprops(
+                    revprops,
+                    self.branch,
+                    kwargs.pop('authors', None),
+                    kwargs.get('local', False),
+                    possible_master_transports)
+            # args for wt.commit start at message from the Commit.commit method,
+            args = (message, ) + args
+            for hook in MutableTree.hooks['start_commit']:
+                hook(self)
+            committed_id = commit.Commit().commit(working_tree=self,
+                revprops=revprops,
+                possible_master_transports=possible_master_transports,
+                *args, **kwargs)
+            post_hook_params = PostCommitHookParams(self)
+            for hook in MutableTree.hooks['post_commit']:
+                hook(post_hook_params)
+            return committed_id
 
     def _gather_kinds(self, files, kinds):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
-    @needs_read_lock
     def has_changes(self, _from_tree=None):
         """Quickly check that the tree contains at least one commitable change.
 
@@ -216,23 +192,23 @@ class MutableTree(tree.Tree):
 
         :return: True if a change is found. False otherwise
         """
-        # Check pending merges
-        if len(self.get_parent_ids()) > 1:
-            return True
-        if _from_tree is None:
-            _from_tree = self.basis_tree()
-        changes = self.iter_changes(_from_tree)
-        try:
-            change = next(changes)
-            # Exclude root (talk about black magic... --vila 20090629)
-            if change[4] == (None, None):
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            try:
                 change = next(changes)
-            return True
-        except StopIteration:
-            # No changes
-            return False
+                # Exclude root (talk about black magic... --vila 20090629)
+                if change[4] == (None, None):
+                    change = next(changes)
+                return True
+            except StopIteration:
+                # No changes
+                return False
 
-    @needs_read_lock
     def check_changed_or_out_of_date(self, strict, opt_name,
                                      more_error, more_warning):
         """Check the tree for uncommitted changes and branch synchronization.
@@ -249,28 +225,28 @@ class MutableTree(tree.Tree):
 
         :param more_warning: Details about what is happening.
         """
-        if strict is None:
-            strict = self.branch.get_config_stack().get(opt_name)
-        if strict is not False:
-            err_class = None
-            if (self.has_changes()):
-                err_class = errors.UncommittedChanges
-            elif self.last_revision() != self.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the action with --no-strict
-                err_class = errors.OutOfDateTree
-            if err_class is not None:
-                if strict is None:
-                    err = err_class(self, more=more_warning)
-                    # We don't want to interrupt the user if he expressed no
-                    # preference about strict.
-                    trace.warning('%s', err._format())
-                else:
-                    err = err_class(self, more=more_error)
-                    raise err
+        with self.lock_read():
+            if strict is None:
+                strict = self.branch.get_config_stack().get(opt_name)
+            if strict is not False:
+                err_class = None
+                if (self.has_changes()):
+                    err_class = errors.UncommittedChanges
+                elif self.last_revision() != self.branch.last_revision():
+                    # The tree has lost sync with its branch, there is little
+                    # chance that the user is aware of it but he can still
+                    # force the action with --no-strict
+                    err_class = errors.OutOfDateTree
+                if err_class is not None:
+                    if strict is None:
+                        err = err_class(self, more=more_warning)
+                        # We don't want to interrupt the user if he expressed
+                        # no preference about strict.
+                        trace.warning('%s', err._format())
+                    else:
+                        err = err_class(self, more=more_error)
+                        raise err
 
-    @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.
 
@@ -306,7 +282,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.lock_write)
 
-    @needs_write_lock
     def mkdir(self, path, file_id=None):
         """Create a directory in the tree. if file_id is None, one is assigned.
 
@@ -332,7 +307,6 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
-    @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.
 

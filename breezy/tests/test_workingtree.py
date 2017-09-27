@@ -30,7 +30,6 @@ from ..bzr import (
     )
 from ..lock import write_locked
 from ..lockdir import LockDir
-from ..mutabletree import needs_tree_write_lock
 from . import TestCase, TestCaseWithTransport, TestSkipped
 from ..workingtree import (
     TreeEntry,
@@ -373,53 +372,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree = workingtree_3.WorkingTreeFormat3().initialize(control)
         tree._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
-
-
-class InstrumentedTree(object):
-    """A instrumented tree to check the needs_tree_write_lock decorator."""
-
-    def __init__(self):
-        self._locks = []
-
-    def lock_tree_write(self):
-        self._locks.append('t')
-        return lock.LogicalLockResult(self.unlock)
-
-    @needs_tree_write_lock
-    def method_with_tree_write_lock(self, *args, **kwargs):
-        """A lock_tree_write decorated method that returns its arguments."""
-        return args, kwargs
-
-    @needs_tree_write_lock
-    def method_that_raises(self):
-        """This method causes an exception when called with parameters.
-
-        This allows the decorator code to be checked - it should still call
-        unlock.
-        """
-
-    def unlock(self):
-        self._locks.append('u')
-
-
-class TestInstrumentedTree(TestCase):
-
-    def test_needs_tree_write_lock(self):
-        """@needs_tree_write_lock should be semantically transparent."""
-        tree = InstrumentedTree()
-        self.assertEqual(
-            'method_with_tree_write_lock',
-            tree.method_with_tree_write_lock.__name__)
-        self.assertDocstring(
-            "A lock_tree_write decorated method that returns its arguments.",
-            tree.method_with_tree_write_lock)
-        args = (1, 2, 3)
-        kwargs = {'a':'b'}
-        result = tree.method_with_tree_write_lock(1,2,3, a='b')
-        self.assertEqual((args, kwargs), result)
-        self.assertEqual(['t', 'u'], tree._locks)
-        self.assertRaises(TypeError, tree.method_that_raises, 'foo')
-        self.assertEqual(['t', 'u', 't', 'u'], tree._locks)
 
 
 class TestRevert(TestCaseWithTransport):
