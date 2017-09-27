@@ -38,7 +38,6 @@ from breezy.bzr import (
     xml7,
     )
 """)
-from ..decorators import needs_write_lock
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
@@ -205,13 +204,13 @@ class KnitRepository(MetaDirVersionedFileRepository):
         else:
             self.control_files._set_read_transaction()
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from breezy.reconcile import KnitReconciler
-        reconciler = KnitReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = KnitReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)

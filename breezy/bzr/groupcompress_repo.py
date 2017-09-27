@@ -41,7 +41,6 @@ from ..bzr.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
-from ..decorators import needs_write_lock
 from ..bzr.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
@@ -1095,15 +1094,15 @@ class CHKInventoryRepository(PackRepository):
         finally:
             pb.finished()
 
-    @needs_write_lock
     def reconcile_canonicalize_chks(self):
         """Reconcile this repository to make sure all CHKs are in canonical
         form.
         """
         from breezy.reconcile import PackReconciler
-        reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
+            reconciler.reconcile()
+            return reconciler
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)

@@ -47,6 +47,9 @@
 #define PyBytes_Type PyString_Type
 #define PyBytes_CheckExact PyString_CheckExact
 
+/* Lazy hide Python 3.3 only functions, callers must avoid on 2.7 anyway */
+#define PyUnicode_AsUTF8AndSize(u, size) NULL
+
 #define PYMOD_ERROR
 #define PYMOD_SUCCESS(val)
 #define PYMOD_INIT_FUNC(name) void init##name(void)

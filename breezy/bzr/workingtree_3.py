@@ -34,9 +34,6 @@ from .. import (
     trace,
     transform,
     )
-from ..decorators import (
-    needs_read_lock,
-    )
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
@@ -85,11 +82,11 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 trace.mutter('Could not write hashcache for %s\nError: %s',
                               self._hashcache.cache_file_name(), e)
 
-    @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        if not path:
-            path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path, stat_value)
+        with self.lock_read():
+            if not path:
+                path = self._inventory.id2path(file_id)
+            return self._hashcache.get_sha1(path, stat_value)
 
 
 class WorkingTree3(PreDirStateWorkingTree):
@@ -102,13 +99,13 @@ class WorkingTree3(PreDirStateWorkingTree):
     This is new in bzr 0.8
     """
 
-    @needs_read_lock
     def _last_revision(self):
         """See Mutable.last_revision."""
-        try:
-            return self._transport.get_bytes('last-revision')
-        except errors.NoSuchFile:
-            return _mod_revision.NULL_REVISION
+        with self.lock_read():
+            try:
+                return self._transport.get_bytes('last-revision')
+            except errors.NoSuchFile:
+                return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""

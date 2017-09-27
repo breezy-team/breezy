@@ -452,6 +452,8 @@ def get_loaded_plugin(name):
         module = sys.modules[_MODULE_PREFIX + name]
     except KeyError:
         return None
+    if module is None:
+        return None
     return PlugIn(name, module)
 
 

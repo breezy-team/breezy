@@ -96,6 +96,9 @@ New Features
    can be enabled by setting ``commit.template_from_files = NEWS``.
    (Jelmer Vernooĳ)
 
+ * The 'darcs' plugin is now bundled.
+   (Jelmer Vernooĳ)
+
  * The functionality from ``bzr-guess`` is now merged into Breezy.
    It will provide suggestions if the user typoes a command.
    (Jelmer Vernooĳ)
@@ -105,6 +108,9 @@ Improvements
 
  * Doc generators now support the SOURCE_DATE_EPOCH environment
    variable (https://reproducible-builds.org/specs/source-date-epoch/).
+   (Jelmer Vernooĳ)
+
+ * The ``repodebug`` plugin is now bundled.
    (Jelmer Vernooĳ)
 
 Bug Fixes
@@ -203,6 +209,12 @@ API Changes
  * The ``BranchWriteLockResult.branch_token`` (returned by
    ``Branch.lock_write``) has been renamed to
    ``BranchWriteLockResult.token``. (Jelmer Vernooĳ)
+
+ * ``breezy.decorators.needs_write_lock``,
+   ``breezy.decorators.needs_read_lock`` and
+   ``breezy.mutabletree.needs_tree_write_lock`` have been deprecated.
+   Instead, use the context managers returned by ``.lock_write``,
+   ``.lock_read`` and ``.lock_tree_write`` respectively. (Jelmer Vernooĳ)
 
 Internals
 *********
