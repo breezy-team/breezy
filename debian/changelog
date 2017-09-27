@@ -7,6 +7,7 @@ breezy (3.0.0~bzr6791-1) UNRELEASED; urgency=medium
   * Depend on cython >= 0.17. Older versions don't support
     absolute_import.
   * Bump standards version to 4.1.0 (no changes).
+  * Drop upstream (Bazaar) signing key.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 27 Sep 2017 23:35:10 +0100
 
