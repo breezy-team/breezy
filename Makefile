@@ -69,7 +69,7 @@ update-python3-passing:
 	  --subunit2 $(tests) > selftest.log
 	grep -v "^#" python3.passing > python3.passing.new
 	cat selftest.log | \
-	  subunit-filter --no-failure --no-error --no-skip | \
+	  subunit-filter --no-failure --no-error --success | \
 	  subunit-ls --no-passthrough >> python3.passing.new
 	cp python3.passing python3.passing.old; grep "^#" python3.passing.old > python3.passing
 	sort -u python3.passing.new >> python3.passing
