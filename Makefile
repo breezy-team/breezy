@@ -71,7 +71,8 @@ update-python3-passing:
 	cat selftest.log | \
 	  subunit-filter --no-failure --no-error --success | \
 	  subunit-ls --no-passthrough >> python3.passing.new
-	cp python3.passing python3.passing.old; grep "^#" python3.passing.old > python3.passing
+	cp python3.passing python3.passing.old
+	grep "^#" python3.passing.old > python3.passing
 	sort -u python3.passing.new >> python3.passing
 
 check-nodocs2: extensions
