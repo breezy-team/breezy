@@ -63,11 +63,13 @@ check-nodocs3:
 
 update-python3-passing:
 	# Generate a stream for PQM to watch.
-	grep -v "^#" python3.passing > python3.passing.new
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
+	-$(RM) -f selftest.log
+	-BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 \
-	  --subunit2 $(tests) | \
-	  subunit-filter --no-failure --no-error --no-skip | \
+	  --subunit2 $(tests) > selftest.log
+	grep -v "^#" python3.passing > python3.passing.new
+	cat selftest.log | \
+	  subunit-filter --no-failure --no-error --success | \
 	  subunit-ls --no-passthrough >> python3.passing.new
 	cp python3.passing python3.passing.old; grep "^#" python3.passing.old > python3.passing
 	sort -u python3.passing.new >> python3.passing
