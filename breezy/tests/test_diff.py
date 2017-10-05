@@ -328,9 +328,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         cmd = ['diff', '-u', '--binary', 'old', 'new']
         with open('old', 'wb') as f: f.write('\x00foobar\n')
         with open('new', 'wb') as f: f.write('foo\x00bar\n')
-        pipe = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE,
-                stdin=subprocess.PIPE)
+        pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                     stdin=subprocess.PIPE)
         out, err = pipe.communicate()
         # We should output whatever diff tells us, plus a trailing newline
         self.assertEqual(out.splitlines(True) + ['\n'], lines)
