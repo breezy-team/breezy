@@ -320,6 +320,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
 
     def test_external_diff_binary(self):
         """The output when using external diff should use diff's i18n error"""
+        for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
+            self.overrideEnv(lang, 'C')
         # Make sure external_diff doesn't fail in the current LANG
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
@@ -328,7 +330,7 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         with open('new', 'wb') as f: f.write('foo\x00bar\n')
         pipe = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE,
-                stdin=subprocess.PIPE, env={'LANGUAGE': 'C.UTF-8'})
+                stdin=subprocess.PIPE)
         out, err = pipe.communicate()
         # We should output whatever diff tells us, plus a trailing newline
         self.assertEqual(out.splitlines(True) + ['\n'], lines)
