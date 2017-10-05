@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr6792-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+  * Add patch 02_diff_language: set LANGUAGE when running diff in tests.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Oct 2017 23:48:13 +0100
+
 breezy (3.0.0~bzr6791-1) unstable; urgency=medium
 
   * Use https VCS-* URLs in debian/control.
