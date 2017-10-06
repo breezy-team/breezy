@@ -320,6 +320,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
 
     def test_external_diff_binary(self):
         """The output when using external diff should use diff's i18n error"""
+        for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
+            self.overrideEnv(lang, 'C')
         # Make sure external_diff doesn't fail in the current LANG
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
