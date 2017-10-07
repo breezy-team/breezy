@@ -31,19 +31,10 @@ override_dh_auto_clean:
 	dh_auto_clean
 	rm -rf debian/brzhome
 	rm -f brzlib/*_pyx.c
-	# 'make clean-sphinx' calls Makefiles in sub-directories that are
-	# created only after calling 'make docs-sphinx'. Check for them first.
-	if [ -f doc/es/Makefile ]; then $(MAKE) clean-sphinx; fi
 	# It also doesn't really clean every thing...
 	ls doc/en/user-reference/*txt | grep -v readme.txt | xargs rm -rf
 	rm -rf doc/developers/make.bat \
-		doc/es/make.bat \
-		doc/ja/make.bat \
-		doc/ru/make.bat \
 		doc/developers/Makefile \
-		doc/es/Makefile \
-		doc/ja/Makefile \
-		doc/ru/Makefile \
 		doc/*/_build/ \
 		doc/en/release-notes/index.txt
 
