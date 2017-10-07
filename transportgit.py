@@ -552,7 +552,7 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        p = PackData(None, f, len(f.getvalue()))
+        p = PackData("", f, len(f.getvalue()))
         entries = p.sorted_entries()
         basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
         p._filename = basename + ".pack"
