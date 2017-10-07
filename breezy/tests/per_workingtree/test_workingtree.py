@@ -53,6 +53,7 @@ from ...bzr.workingtree import (
     InventoryWorkingTree,
     )
 from ...workingtree import (
+    SettingFileIdUnsupported,
     TreeDirectory,
     TreeFile,
     TreeLink,
@@ -535,6 +536,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_sets_updated_root_id(self):
         wt = self.make_branch_and_tree('tree')
+        if not wt._format.supports_setting_file_ids:
+            self.assertRaises(SettingFileIdUnsupported, wt.set_root_id,
+                    'first_root_id')
+            return
         wt.set_root_id('first_root_id')
         self.assertEqual('first_root_id', wt.get_root_id())
         self.build_tree(['tree/file'])
