@@ -45,6 +45,8 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_existing_id(self):
         """Adding an entry with a pre-existing id raises DuplicateFileId"""
         tree = self.make_branch_and_tree('.')
+        if not tree.supports_setting_file_ids():
+            self.skip("tree does not support setting file ids")
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         self.assertRaises(errors.DuplicateFileId,
