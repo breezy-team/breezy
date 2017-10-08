@@ -1,0 +1,18 @@
+=== modified file 'breezy/tests/test_test_server.py'
+--- old/breezy/tests/test_test_server.py	2017-05-24 01:39:33 +0000
++++ new/breezy/tests/test_test_server.py	2017-10-08 15:28:36 +0000
+@@ -291,7 +291,12 @@
+         server = self.get_server()
+         client = self.get_client()
+         server.server.serving = False
+-        client.connect((server.host, server.port))
++        try:
++            client.connect((server.host, server.port))
++        except socket.error as e:
++            if e[0] == errno.ECONNRESET:
++                return
++            raise
+         self.assertEqual('', client.read())
+ 
+ 
+

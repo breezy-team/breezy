@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr6792-3) UNRELEASED; urgency=medium
+
+  * Add 14_test_server: Fix test_server test failure on FreeBSD.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Oct 2017 16:30:44 +0100
+
 breezy (3.0.0~bzr6792-2) unstable; urgency=medium
 
   * Add 04_remove_outdated_docs: Drop outdated documentation.
