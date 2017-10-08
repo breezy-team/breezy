@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr6792-4) UNRELEASED; urgency=medium
+
+  * Bump standards version to 4.1.1 (no changes).
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Oct 2017 16:43:06 +0100
+
 breezy (3.0.0~bzr6792-3) unstable; urgency=medium
 
   * Add 14_test_server: Fix test_server test failure on FreeBSD.
