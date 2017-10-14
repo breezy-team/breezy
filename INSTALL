@@ -1,15 +1,27 @@
-brz install instructions
-************************
+Breezy install instructions
+***************************
 
 Dependencies
 ------------
 
-brz requires Python 2.7 or newer, or Python 3.4 or newer.
+Breezy requires Python 2.7 or newer, or Python 3.4 or newer.
+
+It also requires the `configobj` Python module to be installed. It can be
+installed either from your operating system's package manager, using pip
+or by downloading it from:
+
+  http://www.voidspace.org.uk/python/configobj.html
+
+Optional dependencies
+~~~~~~~~~~~~~~~~~~~~~
 
 If you wish to access branches over sftp, you will need paramiko and
 pycrypto:
 
   http://www.lag.net/paramiko/
+
+To PGP sign commits and verify PGP signatures on commits, install
+python-gpg.
 
 brz can optionally use compiled versions of some parts of the code
 for increased speed. When installing brz you need the ability to
@@ -20,11 +32,11 @@ Windows, source-based GNU/Linux distributions, and possibly other operating
 systems, have the required files installed by default.
 
 If you are installing brz from a brz branch rather than a release tarball,
-then you should also have the Pyrex package installed. This is not necessary
-for release tarballs as they already contain the C files that Pyrex is needed
+then you should also have the Cython package installed. This is not necessary
+for release tarballs as they already contain the C files that Cython is needed
 to create.
 
-  http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/
+  http://www.cython.org/
 
 Installation
 ------------
