@@ -195,7 +195,7 @@ isolated_environ = {
 
 def override_os_environ(test, env=None):
     """Modify os.environ keeping a copy.
-    
+
     :param test: A test instance
 
     :param env: A dict containing variable definitions to be installed
@@ -897,6 +897,7 @@ TestUIFactory = ui_testing.TestUIFactory
 
 def isolated_doctest_setUp(test):
     override_os_environ(test)
+    osutils.set_or_unset_env('BRZ_HOME', '/nonexistent')
     test._orig_ui_factory = ui.ui_factory
     ui.ui_factory = ui.SilentUIFactory()
 
