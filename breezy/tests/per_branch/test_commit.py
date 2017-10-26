@@ -185,13 +185,16 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         try:
             # setting up a playground
-            tree.set_root_id('root_id')
-            tree.add('rootfile', 'rootfile_id')
-            tree.put_file_bytes_non_atomic('rootfile_id', 'abc')
-            tree.add('dir', 'dir_id')
-            tree.add('dir/subfile', 'dir_subfile_id')
-            tree.mkdir('to_be_unversioned', 'to_be_unversioned_id')
-            tree.put_file_bytes_non_atomic('dir_subfile_id', 'def')
+            tree.add('rootfile')
+            rootfile_id = tree.path2id('rootfile')
+            tree.put_file_bytes_non_atomic(rootfile_id, 'abc')
+            tree.add('dir')
+            dir_id = tree.path2id('dir')
+            tree.add('dir/subfile')
+            dir_subfile_id = tree.path2id('dir/subfile')
+            tree.mkdir('to_be_unversioned')
+            to_be_unversioned_id = tree.path2id('to_be_unversioned')
+            tree.put_file_bytes_non_atomic(dir_subfile_id, 'def')
             revid1 = tree.commit('first revision')
         finally:
             tree.unlock()
@@ -199,10 +202,11 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         try:
             # making changes
-            tree.put_file_bytes_non_atomic('rootfile_id', 'jkl')
+            tree.put_file_bytes_non_atomic(rootfile_id, 'jkl')
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
-            tree.unversion(['to_be_unversioned_id'])
-            tree.mkdir('added_dir', 'added_dir_id')
+            tree.unversion([to_be_unversioned_id])
+            tree.mkdir('added_dir')
+            added_dir_id = tree.path2id('added_dir')
             # start to capture pre_commit delta
             branch.Branch.hooks.install_named_hook(
                 "pre_commit", self.capture_pre_commit_hook, None)
@@ -211,12 +215,12 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             tree.unlock()
 
         expected_delta = delta.TreeDelta()
-        expected_delta.added = [('added_dir', 'added_dir_id', 'directory')]
+        expected_delta.added = [('added_dir', added_dir_id, 'directory')]
         expected_delta.removed = [('to_be_unversioned',
-                                   'to_be_unversioned_id', 'directory')]
+                                   to_be_unversioned_id, 'directory')]
         expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
-                                   'dir_subfile_id', 'file', False, False)]
-        expected_delta.modified=[('rootfile', 'rootfile_id', 'file', True,
+                                   dir_subfile_id, 'file', False, False)]
+        expected_delta.modified=[('rootfile', rootfile_id, 'file', True,
                                   False)]
         self.assertEqual([('pre_commit', 1, revid1, 2, revid2,
                            expected_delta)], self.hook_calls)
