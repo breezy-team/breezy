@@ -26,7 +26,16 @@ from __future__ import absolute_import
 import httplib2
 import os
 import re
-import urlparse
+try:
+    from urllib.parse import (
+        urlparse,
+        urlunparse,
+        )
+except ImportError:  # python < 3
+    from urlparse import (
+        urlparse,
+        urlunparse,
+        )
 
 from ... import (
     branch,
@@ -293,9 +302,8 @@ class LaunchpadBranch(object):
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+    scheme, netloc, path, params, query, fragment = urlparse(
         str(object.self_link))
     path = '/'.join(path.split('/')[2:])
     netloc = netloc.replace('api.', 'code.')
-    return urlparse.urlunparse((scheme, netloc, path, params, query,
-                                fragment))
+    return urlunparse((scheme, netloc, path, params, query, fragment))

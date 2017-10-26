@@ -37,7 +37,10 @@ except ImportError:
 
 import time
 import urllib
-import urllib2
+try:
+    import urllib2
+except ImportError:  # python >= 3
+    import urllib.request as urllib2
 
 from ... import (
     revision,

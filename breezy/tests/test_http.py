@@ -23,9 +23,13 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: Should be renamed to breezy.transport.http.tests?
 # TODO: What about renaming to breezy.tests.transport.http ?
 
-import httplib
+try:
+    from http.client import UnknownProtocol
+    from http.server import SimpleHTTPRequestHandler
+except ImportError:  # python < 3
+    from httplib import UnknownProtocol
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
 import io
-import SimpleHTTPServer
 import socket
 import sys
 import threading
@@ -307,11 +311,11 @@ class TestHTTPServer(tests.TestCase):
 
             protocol_version = 'HTTP/0.1'
 
-        self.assertRaises(httplib.UnknownProtocol,
+        self.assertRaises(UnknownProtocol,
                           http_server.HttpServer, BogusRequestHandler)
 
     def test_force_invalid_protocol(self):
-        self.assertRaises(httplib.UnknownProtocol,
+        self.assertRaises(UnknownProtocol,
                           http_server.HttpServer, protocol_version='HTTP/0.1')
 
     def test_server_start_and_stop(self):
@@ -863,7 +867,7 @@ class NoRangeRequestHandler(http_server.TestingHTTPRequestHandler):
         # Update the statistics
         self.server.test_case_server.GET_request_nb += 1
         # Just bypass the range handling done by TestingHTTPRequestHandler
-        return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+        return SimpleHTTPRequestHandler.do_GET(self)
 
 
 class TestNoRangeRequestServer(TestRangeRequestServer):

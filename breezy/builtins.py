@@ -3143,7 +3143,7 @@ class cmd_ignore(Command):
 
         Ignore .o files under the lib directory::
 
-            brz ignore "RE:lib/.*\.o"
+            brz ignore "RE:lib/.*\\.o"
 
         Ignore everything but the "debian" toplevel directory::
 

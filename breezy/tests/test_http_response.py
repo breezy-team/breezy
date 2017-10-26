@@ -37,7 +37,10 @@ Some properties are common to all kinds:
   InvalidHttpResponse.
 """
 
-import httplib
+try:
+    import http.client as http_client
+except ImportError:  # python < 3
+    import httplib as http_client
 
 from .. import (
     errors,
@@ -714,7 +717,7 @@ class TestHandleResponse(tests.TestCase):
         status_and_headers = BytesIO(raw_headers)
         # Get rid of the status line
         status_and_headers.readline()
-        msg = httplib.HTTPMessage(status_and_headers)
+        msg = http_client.HTTPMessage(status_and_headers)
         return msg
 
     def get_response(self, a_response):
