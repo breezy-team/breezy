@@ -135,7 +135,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         :param empty_tree: A working tree with no content and no parents to
             modify.
         """
-        empty_tree.set_root_id('empty-root-id')
+        if empty_tree.supports_setting_file_ids():
+            empty_tree.set_root_id('empty-root-id')
         return self._convert_tree(empty_tree, converter)
 
     def _make_abc_tree(self, tree):
@@ -143,8 +144,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
-        tree.set_root_id('root-id')
-        tree.add(files, ['a-id', 'b-id', 'c-id'])
+        tree.add(files)
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents."""
@@ -220,7 +220,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         """
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
-        tree.add(['d'], ['d-id'])
+        tree.add(['d'])
         tt = transform.TreeTransform(tree)
         trans_id = tt.trans_id_tree_path('b')
         parent_trans_id = tt.trans_id_tree_path('d')
