@@ -259,11 +259,11 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual('', ui.stdout.getvalue())
         self.assertContainsRe(
             ui.stderr.getvalue(),
-            "^Doing on-the-fly conversion from RepositoryFormat2a\(\) to "
-                "RemoteRepositoryFormat\(_network_name="
-                "b?'Bazaar RepositoryFormatKnitPack5 \(bzr 1.6\)\\\\n'\)\.\n"
+            "^Doing on-the-fly conversion from RepositoryFormat2a\\(\\) to "
+                "RemoteRepositoryFormat\\(_network_name="
+                "b?'Bazaar RepositoryFormatKnitPack5 \\(bzr 1.6\\)\\\\n'\\)\\.\n"
             "This may take some time. Upgrade the repositories to "
-                "the same format for better performance\.\n$")
+                "the same format for better performance\\.\n$")
         # and now with it suppressed please
         ui = ui_testing.TextUIFactory()
         ui.suppressed_warnings.add('cross_format_fetch')

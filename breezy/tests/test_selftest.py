@@ -1081,7 +1081,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
             "=+\n"
-            "FAIL: \\S+\.test_truth\n"
+            "FAIL: \\S+\\.test_truth\n"
             "-+\n"
             "(?:.*\n)*"
             "\\s*(?:Text attachment: )?reason"
@@ -1260,7 +1260,7 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(out.getvalue(),
             "(?:Text attachment: )?log"
             "(?:\n-+\n|: {{{)"
-            "\d+\.\d+  \\\\u2606"
+            "\\d+\\.\\d+  \\\\u2606"
             "(?:\n-+\n|}}}\n)")
 
 
@@ -3427,7 +3427,7 @@ class TestParallelFork(_ForkedSelftest, tests.TestCase):
             "(?:.*\n)*"
             ".+ in fork_for_tests\n"
             "(?:.*\n)*"
-            "\s*workaround_zealous_crypto_random\(\)\n"
+            "\\s*workaround_zealous_crypto_random\\(\\)\n"
             "(?:.*\n)*"
             "TypeError:")
 

@@ -81,7 +81,7 @@ class TestLazyRegex(tests.TestCase):
         # by assertRaises correctly.
         e = self.assertRaises(lazy_regex.InvalidPattern, lambda: p.match('foo'))
         # Expect either old or new form of error message
-        self.assertContainsRe(e.msg, '^"RE:\[" '
+        self.assertContainsRe(e.msg, '^"RE:\\[" '
             '(unexpected end of regular expression'
             '|unterminated character set at position 3)$')
 

@@ -166,11 +166,11 @@ class TestFormatRegistry(TestCase):
         experimental, deprecated = rest.split('Deprecated formats')
         self.assertContainsRe(new, 'formats-help')
         self.assertContainsRe(new,
-                ':knit:\n    \(native\) \(default\) Format using knits\n')
+                ':knit:\n    \\(native\\) \\(default\\) Format using knits\n')
         self.assertContainsRe(experimental,
-                ':branch6:\n    \(native\) Experimental successor to knit')
+                ':branch6:\n    \\(native\\) Experimental successor to knit')
         self.assertContainsRe(deprecated,
-                ':lazy:\n    \(native\) Format registered lazily\n')
+                ':lazy:\n    \\(native\\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
