@@ -585,13 +585,13 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         d = get_diff_as_string(tree.basis_tree(), tree)
 
         self.assertContainsRe(d, r"file 'a'.*\(properties changed:"
-                                  ".*\+x to -x.*\)")
+                                 r".*\+x to -x.*\)")
         self.assertContainsRe(d, r"file 'b'.*\(properties changed:"
-                                  ".*-x to \+x.*\)")
+                                 r".*-x to \+x.*\)")
         self.assertContainsRe(d, r"file 'c'.*\(properties changed:"
-                                  ".*\+x to -x.*\)")
+                                 r".*\+x to -x.*\)")
         self.assertContainsRe(d, r"file 'd'.*\(properties changed:"
-                                  ".*-x to \+x.*\)")
+                                 r".*-x to \+x.*\)")
         self.assertNotContainsRe(d, r"file 'e'")
         self.assertNotContainsRe(d, r"file 'f'")
 
@@ -759,7 +759,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.new_tree.add('file', 'file-id')
         os.unlink('old-tree/file')
         self.differ.show_diff(None)
-        self.assertContainsRe(self.differ.to_file.getvalue(), '\+contents')
+        self.assertContainsRe(self.differ.to_file.getvalue(), r'\+contents')
 
     def test_diff_symlink(self):
         differ = diff.DiffSymlink(self.old_tree, self.new_tree, BytesIO())
@@ -790,7 +790,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
-             ' \@\@\n-old\n\+new\n\n')
+            r' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
         self.requireFeature(features.SymlinkFeature)
@@ -806,7 +806,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
-             ' \@\@\n-old\n\n')
+            r' \@\@\n-old\n\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               "=== target is u'new'\n")
 
@@ -839,7 +839,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
-             ' \@\@\n-old\n\+new\n\n')
+            r' \@\@\n-old\n\+new\n\n')
         self.assertContainsRe(differ.to_file.getvalue(),
                               'was: old\nis: new\n')
 
@@ -851,7 +851,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
-             ' \@\@\n-old\n\+new\n\n')
+            r' \@\@\n-old\n\+new\n\n')
         self.assertContainsRe(differ.to_file.getvalue(),
                               'was: old\nis: new\n')
 

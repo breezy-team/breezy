@@ -42,7 +42,7 @@ class TestParseIgnoreFile(TestCase):
                 '\n' # empty line
                 '#comment\n'
                 ' xx \n' # whitespace
-                '!RE:^\.z.*\n'
+                '!RE:^\\.z.*\n'
                 '!!./.zcompdump\n'
                 ))
         self.assertEqual({'./rootdir',
@@ -51,7 +51,7 @@ class TestParseIgnoreFile(TestCase):
                           u'unicode\xb5',
                           'dos',
                           ' xx ',
-                          '!RE:^\.z.*',
+                          '!RE:^\\.z.*',
                           '!!./.zcompdump',
                          }, ignored)
 

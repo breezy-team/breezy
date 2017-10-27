@@ -16,7 +16,6 @@
 
 """Tests for version_info"""
 
-import imp
 import os
 import sys
 
@@ -269,6 +268,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
             builder.generate(outf)
         finally:
             outf.close()
+        import imp
         module_info = imp.find_module('test_version_information',
                                       [self.test_dir])
         tvi = imp.load_module('tvi', *module_info)

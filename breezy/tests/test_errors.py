@@ -43,7 +43,7 @@ class TestErrors(tests.TestCase):
         Python 2.5 uses a slot for StandardError.message.
         See bug #603461
         """
-        fmt_pattern = re.compile("%\(message\)[sir]")
+        fmt_pattern = re.compile("%\\(message\\)[sir]")
         for c in errors.BzrError.__subclasses__():
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)

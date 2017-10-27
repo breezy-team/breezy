@@ -130,9 +130,9 @@ def _trailing_backslashes_regex(m):
 
 _sub_re = Replacer()
 _sub_re.add(u'^RE:', u'')
-_sub_re.add(u'\((?!\?)', u'(?:')
-_sub_re.add(u'\(\?P<.*>', _invalid_regex(u'(?:'))
-_sub_re.add(u'\(\?P=[^)]*\)', _invalid_regex(u''))
+_sub_re.add(u'\\((?!\\?)', u'(?:')
+_sub_re.add(u'\\(\\?P<.*>', _invalid_regex(u'(?:'))
+_sub_re.add(u'\\(\\?P=[^)]*\\)', _invalid_regex(u''))
 _sub_re.add(r'\\+$', _trailing_backslashes_regex)
 
 

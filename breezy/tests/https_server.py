@@ -59,13 +59,6 @@ class TestingHTTPSServerMixin:
         return serving
 
     def ignored_exceptions_during_shutdown(self, e):
-        if (sys.version < (2, 7) and isinstance(e, TypeError)
-            and e.args[0] == "'member_descriptor' object is not callable"):
-            # Fixed in python-2.7 (and some Ubuntu 2.6) there is a bug where
-            # the ssl socket fail to raise a socket.error when trying to read
-            # from a closed socket. This is rarely observed in practice but
-            # still make valid selftest runs fail if not caught.
-            return True
         base = test_server.TestingTCPServerMixin
         return base.ignored_exceptions_during_shutdown(self, e)
 

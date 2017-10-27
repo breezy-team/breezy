@@ -318,7 +318,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         self.assertContainsRe(log,
             r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
             "because the file path isn't a valid module name; try renaming "
-            "it to 'bad_plugin_name_'\.")
+            "it to 'bad_plugin_name_'\\.")
 
 
 class TestPlugins(BaseTestPlugins):
@@ -536,7 +536,7 @@ class TestPluginHelp(BaseTestPlugins):
         help = self.run_bzr('help myplug')[0]
         self.assertContainsRe(help, 'plugin "myplug"')
         help = self.split_help_commands()['myplug']
-        self.assertContainsRe(help, '\[myplug\]')
+        self.assertContainsRe(help, '\\[myplug\\]')
 
 
 class TestHelpIndex(tests.TestCase):

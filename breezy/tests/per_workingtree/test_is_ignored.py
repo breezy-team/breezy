@@ -45,7 +45,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
                            '*.~*\n'
                            'dir1/*f1\n'
                            'dir1/?f2\n'
-                           'RE:dir2/.*\.wombat\n'
+                           'RE:dir2/.*\\.wombat\n'
                            'path/from/ro?t\n'
                            '**/piffle.py\n'
                            '!b/piffle.py\n'

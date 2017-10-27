@@ -226,7 +226,7 @@ class BaseMergeDirective(object):
         else:
             revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
                 ['merge'])
-        nick = re.sub('(\W+)', '-', branch.nick).strip('-')
+        nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
         return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
 
     @staticmethod

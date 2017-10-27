@@ -25,7 +25,7 @@ from __future__ import absolute_import
 import re
 
 
-_whitespace_match = re.compile(u'\s', re.UNICODE).match
+_whitespace_match = re.compile(u'\\s', re.UNICODE).match
 
 
 class _PushbackSequence(object):

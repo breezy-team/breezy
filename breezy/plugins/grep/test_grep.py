@@ -91,7 +91,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 2) # finds line1 and line10
 
-        out, err = self.run_bzr(['grep', 'line\d+', 'file0.txt'])
+        out, err = self.run_bzr(['grep', 'line\\d+', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 10)
 
