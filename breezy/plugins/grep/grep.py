@@ -25,11 +25,6 @@ from fnmatch import fnmatch
 
 from breezy._termcolor import color_string, FG
 
-from breezy.revisionspec import (
-    RevisionSpec,
-    RevisionSpec_revid,
-    RevisionSpec_revno,
-    )
 from breezy import (
     controldir,
     diff,
@@ -41,6 +36,11 @@ from breezy import (
 from breezy import (
     osutils,
     trace,
+    )
+from breezy.revisionspec import (
+    RevisionSpec,
+    RevisionSpec_revid,
+    RevisionSpec_revno,
     )
 from breezy.sixish import (
     BytesIO,
