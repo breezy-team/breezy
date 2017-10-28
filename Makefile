@@ -29,7 +29,7 @@ check:: build-inplace
 	BRZ_PLUGINS_AT=git@$(shell pwd) BRZ_PLUGIN_PATH=-site:-user $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BRZ) $(BRZ_OPTIONS) selftest --subunit2 $(TEST_OPTIONS) $(TESTS) | $(SUBUNIT_FILTER) | $(SUBUNIT_FORMATTER)
 
 list-failing-tests:
-	$(MAKE) check SUBUNIT_FILTER="subunit-filter -F" SUBUNIT_FORMATTER=subunit-ls
+	$(MAKE) check SUBUNIT_FILTER="subunit-filter -F" SUBUNIT_FORMATTER=subunit-ls | grep -e "^breezy\\." | sort
 
 check-all::
 	$(MAKE) check TESTS="^breezy.plugins.git. Git" SUBUNIT_FILTER=cat
