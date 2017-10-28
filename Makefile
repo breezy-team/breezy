@@ -31,6 +31,9 @@ check:: build-inplace
 list-failing-tests:
 	$(MAKE) check SUBUNIT_FILTER="subunit-filter -F" SUBUNIT_FORMATTER=subunit-ls | grep -e "^breezy\\." | sort
 
+xfail:
+	$(MAKE) -s list-failing-tests > xfail
+
 check-all::
 	$(MAKE) check TESTS="^breezy.plugins.git. Git" SUBUNIT_FILTER=cat
 
@@ -73,3 +76,5 @@ po/brz-git.pot: $(PYFILES) $(DOCFILES)
 	  --copyright-holder "Canonical Ltd <canonical-bazaar@lists.canonical.com>" \
 	  --from-code ISO-8859-1 --sort-by-file --join --add-comments=i18n: \
 	  -d brz-git -p po -o brz-git.pot
+
+.PHONY: xfail
