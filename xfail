@@ -251,8 +251,6 @@ breezy.tests.per_tree.test_tree.TestPlanFileMerge.test_plan_file_merge(GitWorkin
 breezy.tests.per_tree.test_walkdirs.TestWalkdirs.test_walkdir_root(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_walkdirs.TestWalkdirs.test_walkdir_subtree(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_walkdirs.TestWalkdirs.test_walkdir_versioned_kind(GitWorkingTreeFormat)
-breezy.tests.per_workingtree.test_add_reference.TestBasisInventory.test_add_reference_same_root(GitWorkingTreeFormat)
-breezy.tests.per_workingtree.test_add_reference.TestBasisInventory.test_root_present(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_add.TestAdd.test_add_after_remove(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_add.TestAdd.test_add_invalid(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_add.TestAdd.test_add_multiple(GitWorkingTreeFormat)
