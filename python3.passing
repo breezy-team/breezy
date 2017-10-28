@@ -1,6 +1,11 @@
 # This is the list of tests that are known to pass with Python3.
 # "make check-nodocs3" verifies that these pass.
 breezy.doc.api.DocFileTest(transport_txt)
+breezy.iterablefile.IterableFile.close
+breezy.iterablefile.IterableFile.flush
+breezy.lockdir
+breezy.merge3.intersect
+breezy.option._parse_revision_str
 breezy.plugins.bash_completion.tests.test_bashcomp.TestBashCodeGen.test_brz_version
 breezy.plugins.bash_completion.tests.test_bashcomp.TestBashCodeGen.test_command_case
 breezy.plugins.bash_completion.tests.test_bashcomp.TestBashCodeGen.test_command_cases
@@ -74,6 +79,8 @@ breezy.plugins.weave_fmt.test_store.TestTransportStore.test__relpath_invalid
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test__relpath_simple
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test__relpath_simple_suffixed
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test__relpath_unregister_suffixes
+breezy.pyutils.get_named_object
+breezy.symbol_versioning.deprecated_in
 breezy.tests.commands.test_branch.TestBranch.test_branch_local_remote
 breezy.tests.commands.test_branch.TestBranch.test_branch_remote_local
 breezy.tests.commands.test_branch.TestBranch.test_branch_remote_remote
@@ -92,6 +99,7 @@ breezy.tests.commands.test_pull.TestPull.test_pull_with_bound_branch
 breezy.tests.commands.test_push.TestPush.test_push
 breezy.tests.commands.test_push.TestPush.test_push_onto_stacked
 breezy.tests.commands.test_update.TestUpdate.test_update
+breezy.tests.multiply_tests
 breezy.tests.per_branch.test_branch.TestBound.test_bind_clears_cached_master_branch(BranchReferenceFormat)
 breezy.tests.per_branch.test_branch.TestBound.test_bind_clears_cached_master_branch(BzrBranchFormat7)
 breezy.tests.per_branch.test_branch.TestBound.test_bind_diverged(BranchReferenceFormat)
@@ -2230,6 +2238,7 @@ breezy.tests.per_transport.TransportTests.test_create_prefix(TransportLogDecorat
 breezy.tests.per_transport.TransportTests.test_create_prefix(TransportTraceDecorator,TraceServer)
 breezy.tests.per_transport.TransportTests.test_create_prefix(UnlistableTransportDecorator,UnlistableServer)
 breezy.tests.per_transport.TransportTests.test_delete(FtpTransport,UnavailableFTPTestServer)
+breezy.tests.per_transport.TransportTests.test_delete(HTTPS_urllib_transport,HTTPSServer_urllib)
 breezy.tests.per_transport.TransportTests.test_delete(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_delete(ReadonlyTransportDecorator,ReadonlyServer)
 breezy.tests.per_transport.TransportTests.test_delete_tree(ChrootTransport,TestingChrootServer)
@@ -2426,6 +2435,7 @@ breezy.tests.per_transport.TransportTests.test_iter_files_recursive(ChrootTransp
 breezy.tests.per_transport.TransportTests.test_iter_files_recursive(FakeNFSTransportDecorator,FakeNFSServer)
 breezy.tests.per_transport.TransportTests.test_iter_files_recursive(FakeVFATTransportDecorator,FakeVFATServer)
 breezy.tests.per_transport.TransportTests.test_iter_files_recursive(FtpTransport,UnavailableFTPTestServer)
+breezy.tests.per_transport.TransportTests.test_iter_files_recursive(HTTPS_urllib_transport,HTTPSServer_urllib)
 breezy.tests.per_transport.TransportTests.test_iter_files_recursive(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_iter_files_recursive(LocalTransport,LocalURLServer)
 breezy.tests.per_transport.TransportTests.test_iter_files_recursive(MemoryTransport,MemoryServer)
@@ -2564,6 +2574,7 @@ breezy.tests.per_transport.TransportTests.test_put_bytes_unicode(TransportLogDec
 breezy.tests.per_transport.TransportTests.test_put_bytes_unicode(TransportTraceDecorator,TraceServer)
 breezy.tests.per_transport.TransportTests.test_put_bytes_unicode(UnlistableTransportDecorator,UnlistableServer)
 breezy.tests.per_transport.TransportTests.test_put_file(FtpTransport,UnavailableFTPTestServer)
+breezy.tests.per_transport.TransportTests.test_put_file(HTTPS_urllib_transport,HTTPSServer_urllib)
 breezy.tests.per_transport.TransportTests.test_put_file(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_put_file_non_atomic(FtpTransport,UnavailableFTPTestServer)
 breezy.tests.per_transport.TransportTests.test_put_file_non_atomic(HTTPS_urllib_transport,HTTPSServer_urllib)
@@ -2654,6 +2665,7 @@ breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(FtpTransport,
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(HTTPS_urllib_transport,HTTPSServer_urllib)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(LocalTransport,LocalURLServer)
+breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(MemoryTransport,MemoryServer)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(NoSmartTransportDecorator,NoSmartTransportServer)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(PathFilteringTransport,TestingPathFilteringServer)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(ReadonlyTransportDecorator,ReadonlyServer)
@@ -2702,6 +2714,7 @@ breezy.tests.per_transport.TransportTests.test__reuse_for(TransportTraceDecorato
 breezy.tests.per_transport.TransportTests.test__reuse_for(UnlistableTransportDecorator,UnlistableServer)
 breezy.tests.per_transport.TransportTests.test_rmdir(ChrootTransport,TestingChrootServer)
 breezy.tests.per_transport.TransportTests.test_rmdir_empty_but_similar_prefix(FtpTransport,UnavailableFTPTestServer)
+breezy.tests.per_transport.TransportTests.test_rmdir_empty_but_similar_prefix(HTTPS_urllib_transport,HTTPSServer_urllib)
 breezy.tests.per_transport.TransportTests.test_rmdir_empty_but_similar_prefix(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_rmdir_empty_but_similar_prefix(ReadonlyTransportDecorator,ReadonlyServer)
 breezy.tests.per_transport.TransportTests.test_rmdir(FakeNFSTransportDecorator,FakeNFSServer)
@@ -2775,6 +2788,7 @@ breezy.tests.per_transport.TransportTests.test_stat_symlink(FakeNFSTransportDeco
 breezy.tests.per_transport.TransportTests.test_stat_symlink(FakeVFATTransportDecorator,FakeVFATServer)
 breezy.tests.per_transport.TransportTests.test_stat_symlink(FtpTransport,UnavailableFTPTestServer)
 breezy.tests.per_transport.TransportTests.test_stat_symlink(HTTPS_urllib_transport,HTTPSServer_urllib)
+breezy.tests.per_transport.TransportTests.test_stat_symlink(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_stat_symlink(LocalTransport,LocalURLServer)
 breezy.tests.per_transport.TransportTests.test_stat_symlink(MemoryTransport,MemoryServer)
 breezy.tests.per_transport.TransportTests.test_stat_symlink(NoSmartTransportDecorator,NoSmartTransportServer)
@@ -2872,6 +2886,12 @@ breezy.tests.per_tree.test_tree.TestConflicts.test_conflicts(PreviewTreePost)
 breezy.tests.per_tree.test_tree.TestConflicts.test_conflicts(WorkingTreeFormat4)
 breezy.tests.per_tree.test_tree.TestConflicts.test_conflicts(WorkingTreeFormat5)
 breezy.tests.per_tree.test_tree.TestConflicts.test_conflicts(WorkingTreeFormat6)
+breezy.tests.per_tree.test_tree.TestFileIds.test_all_file_ids(WorkingTreeFormat4)
+breezy.tests.per_tree.test_tree.TestFileIds.test_all_file_ids(WorkingTreeFormat5)
+breezy.tests.per_tree.test_tree.TestFileIds.test_all_file_ids(WorkingTreeFormat6)
+breezy.tests.per_tree.test_tree.TestFileIds.test_id2path(WorkingTreeFormat4)
+breezy.tests.per_tree.test_tree.TestFileIds.test_id2path(WorkingTreeFormat5)
+breezy.tests.per_tree.test_tree.TestFileIds.test_id2path(WorkingTreeFormat6)
 breezy.tests.per_tree.test_tree.TestHasId.test_has_id(PreviewTree)
 breezy.tests.per_tree.test_tree.TestHasId.test_has_id(WorkingTreeFormat4)
 breezy.tests.per_tree.test_tree.TestHasId.test_has_id(WorkingTreeFormat5)
@@ -2886,6 +2906,7 @@ breezy.tests.per_tree.test_tree.TestIterChildEntries.test_does_not_exist(Preview
 breezy.tests.per_tree.test_tree.TestIterChildEntries.test_does_not_exist(WorkingTreeFormat4)
 breezy.tests.per_tree.test_tree.TestIterChildEntries.test_does_not_exist(WorkingTreeFormat5)
 breezy.tests.per_tree.test_tree.TestIterChildEntries.test_does_not_exist(WorkingTreeFormat6)
+breezy.tests.per_tree.test_walkdirs.TestWalkdirs.test_walkdir_versioned_kind(PreviewTreePost)
 breezy.tests.per_uifactory.TestCannedInputUIFactory.test_be_quiet
 breezy.tests.per_uifactory.TestCannedInputUIFactory.test_confirm_action
 breezy.tests.per_uifactory.TestCannedInputUIFactory.test_make_output_stream
@@ -4396,6 +4417,10 @@ breezy.tests.test_dirstate.TestDiscardMergeParents.test_discard_no_parents(unico
 breezy.tests.test_dirstate.TestErrors.test_dirstate_corrupt
 breezy.tests.test_dirstate.TestGetLines.test_iter_entries(unicode)
 breezy.tests.test_dirstate.TestSHA1Provider.test_sha1provider_is_an_interface
+breezy.tests.test_email_message.TestEmailMessage.test_empty_message
+breezy.tests.test_email_message.TestEmailMessage.test_multiple_destinations
+breezy.tests.test_email_message.TestEmailMessage.test_retrieving_headers
+breezy.tests.test_email_message.TestEmailMessage.test_setting_headers
 breezy.tests.test_eol_filters.TestEolFilters.test_to_crlf
 breezy.tests.test_eol_filters.TestEolFilters.test_to_lf
 breezy.tests.test_eol_filters.TestEolRulesSpecifications.test_eol_missing_altogether_is_ok
@@ -4771,6 +4796,7 @@ breezy.tests.test_http.TestHTTPRangeParsing.test_range_without_end
 breezy.tests.test_http.TestHTTPRangeParsing.test_simple_range
 breezy.tests.test_http.TestHTTPRangeParsing.test_tail
 breezy.tests.test_http.TestHTTPRangeParsing.test_tail_bigger_than_file
+breezy.tests.test_http.TestHTTPServer.test_create_http_server_force_one_one
 breezy.tests.test_http.TestHTTPServer.test_create_http_server_force_one_zero
 breezy.tests.test_http.TestHTTPServer.test_create_http_server_one_one
 breezy.tests.test_http.TestHTTPServer.test_create_http_server_one_zero
@@ -6134,6 +6160,7 @@ breezy.tests.test_selftest.TestTestResult.test_uses_time_from_testtools
 breezy.tests.test_selftest.TestTestResult.test_verbose_report_known_failure
 breezy.tests.test_selftest.TestTestResult.test_verbose_report_unsupported
 breezy.tests.test_selftest.TestTestScenarioApplication.test_apply_scenario
+breezy.tests.test_selftest.TestTestSuite.test_test_suite
 breezy.tests.test_selftest.TestTestSuite.test_test_suite_list_and_start
 breezy.tests.test_selftest.TestTestSuite.test__test_suite_modules_to_doctest
 breezy.tests.test_selftest.TestTestSuite.test__test_suite_testmod_names
@@ -6337,6 +6364,7 @@ breezy.tests.test_smart_transport.TestVersionOneFeaturesInProtocolTwo.test__send
 breezy.tests.test_smart_transport.TestVersionOneFeaturesInProtocolTwo.test_server_offset_serialisation
 breezy.tests.test_smart_transport.WritableEndToEndTests.test__remote_path
 breezy.tests.test_smart_transport.WritableEndToEndTests.test_start_tcp_server
+breezy.tests.test_smtp_connection.TestSMTPConnection.test_get_message_addresses
 breezy.tests.test_source.TestSource.test_tmpdir_not_in_source_files
 breezy.tests.test_ssh_transport.SSHVendorManagerTests.test_cached_vendor
 breezy.tests.test_ssh_transport.SSHVendorManagerTests.test_default_vendor
@@ -6818,6 +6846,8 @@ breezy.tests.test_utextwrap.TestUTextWrap.test_cut
 breezy.tests.test_utextwrap.TestUTextWrap.test_width
 breezy.tests.test_utextwrap.TestWrap.test_wrap
 breezy.tests.test_versionedfile.Test_MPDiffGenerator.test_raises_on_ghost_keys
+breezy.tests.test_version_info.CustomVersionInfoTests.test_custom_without_template
+breezy.tests.test_version_info.TestVersionInfoFormatRegistry.test_register_remove
 breezy.tests.test_version.TestBzrlibVersioning.test_get_brz_source_tree
 breezy.tests.test_vf_search.TestLimitedSearchResultFromParentMap.test_ancestry_1
 breezy.tests.test_vf_search.TestLimitedSearchResultFromParentMap.test_empty_ancestry
@@ -6907,3 +6937,5 @@ breezy.tests.test_wsgi.TestWSGI.test_relpath_setter_bad_path_prefix
 breezy.tests.test_wsgi.TestWSGI.test_relpath_setter_bad_path_suffix
 breezy.tests.test_xml.TestMisc.test_unescape_xml
 breezy.tests.test_xml.TestSerializer.test_wrong_format_v7
+breezy.timestamp.format_highres_date
+breezy.transport.http.unhtml_roughly
