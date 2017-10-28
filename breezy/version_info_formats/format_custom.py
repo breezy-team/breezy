@@ -62,7 +62,7 @@ class Template(object):
     ['xxx', '\\n']
     """
 
-    _tag_re = lazy_compile('{(\w+)}')
+    _tag_re = lazy_compile('{(\\w+)}')
 
     def __init__(self):
         self._data = {}
