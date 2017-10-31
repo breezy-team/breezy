@@ -22,17 +22,10 @@ from __future__ import absolute_import
 import optparse
 import re
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
-    revisionspec,
-    i18n,
-    )
-""")
-
 from . import (
     errors,
     registry as _mod_registry,
+    revisionspec,
     )
 from .sixish import (
     text_type,
@@ -460,7 +453,8 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
     def format_option(self, option):
         """code taken from Python's optparse.py"""
         if option.help:
-            option.help = i18n.gettext(option.help)
+            from .i18n import gettext
+            option.help = gettext(option.help)
         return optparse.IndentedHelpFormatter.format_option(self, option)
 
 

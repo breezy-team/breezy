@@ -118,6 +118,7 @@ from . import (
     errors,
     lock,
     osutils,
+    rio,
     ui,
     urlutils,
     )
@@ -144,10 +145,6 @@ from .sixish import (
     )
 from .trace import mutter, note
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import rio
-""")
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
