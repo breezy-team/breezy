@@ -35,11 +35,10 @@ def get_long_description():
 # META INFORMATION FOR SETUP
 # see http://docs.python.org/dist/meta-data.html
 META_INFO = {
-    'name':         'brz',
+    'name':         'breezy',
     'version':      breezy.__version__,
-    'author':       'Canonical Ltd',
-    'author_email': 'bazaar@lists.canonical.com',
     'maintainer':   'Breezy Developers',
+    'maintainer_email':   'team@breezy-vcs.org',
     'url':          'https://www.breezy-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
