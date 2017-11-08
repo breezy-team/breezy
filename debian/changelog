@@ -1,3 +1,9 @@
+breezy-debian (2.8.10) UNRELEASED; urgency=medium
+
+  * debian/copyright: Fix package name.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 08 Nov 2017 23:23:20 +0000
+
 breezy-debian (2.8.9) unstable; urgency=medium
 
   * Update to be compatible with breezy rather than bazaar.
