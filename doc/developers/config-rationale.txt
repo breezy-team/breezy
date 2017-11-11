@@ -6,12 +6,12 @@ Goal
 ====
 
 Not all needs can be addressed by the default values used inside bzr and
-bzrlib, no matter how well they are chosen (and they are ;).
+breezy, no matter how well they are chosen (and they are ;).
 
 Options that are rarely used don't deserve a corresponding command line
 switch in one or several commands.
 
-Many parts of ``bzrlib`` depends on some constants though and the user
+Many parts of ``breezy`` depends on some constants though and the user
 should be able to customize the behavior to suit his needs so these
 constants need to become configuration options or more generally, be easier
 to set.
@@ -28,7 +28,7 @@ config designs:
 Current issues
 ==============
 
-* Many parts of ``bzrlib`` declare constants and there is no way for the
+* Many parts of ``breezy`` declare constants and there is no way for the
   user to look at or modify them (see http://pad.lv/832061).
 
 * The old design requires a configuration object to create, modify or delete
@@ -158,7 +158,7 @@ Current issues
   transports only and the hpss implementing the corresponding verbs).
 
 * While the underlying ``ConfigObj`` implementation provides an
-  interpolation feature, the ``bzrlib`` implementation doesn't provide an
+  interpolation feature, the ``breezy`` implementation doesn't provide an
   easy handling of templates where other configuration options can be
   interpolated. Instead, ``locations.conf`` (and only it) allows for
   ``appendpath`` and ``norecurse``. (Cross-section, cross-file interpolation
@@ -218,7 +218,7 @@ do so in the future).
 
 The option name space is organized by topic:
 
-* bzrlib options are grouped by topic (``branch``, ``tree``, ``repo``)
+* breezy options are grouped by topic (``branch``, ``tree``, ``repo``)
 
 * plugins are encouraged (but not required) to prefix their specific options
   with their name (``qbzr.`` for qbzr)
@@ -263,7 +263,7 @@ Option expansion
 Some option values can be templates and contain references to other
 options. This is especially useful to define URLs in sections shared for
 multiple branches for example. It can also be used to describe commands
-where some parameters are set by ``bzrlib`` at runtime.
+where some parameters are set by ``breezy`` at runtime.
 
 Since option values are text-only, and to avoid clashing with other option
 expansion (also known as interpolation) syntaxes, references are enclosed
@@ -276,7 +276,7 @@ configuration option while ``nick`` is the branch nickname and is set when a
 configuration applies to a given branch.
 
 The interpolation implementation should accept an additional dict so that
-``bzrlib`` or plugins can define references that can be expanded without
+``breezy`` or plugins can define references that can be expanded without
 being existing configuration options::
 
   diff_command={cmd} {cmd_opts} {file_a} {file_b}

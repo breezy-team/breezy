@@ -8,7 +8,7 @@ Getting Input
 Processing Command Lines
 ------------------------
 
-bzrlib has a standard framework for parsing command lines and calling
+breezy has a standard framework for parsing command lines and calling
 processing routines associated with various commands. See builtins.py
 for numerous examples.
 
@@ -19,7 +19,7 @@ Standard Parameter Types
 There are some common requirements in the library: some parameters need to be
 unicode safe, some need byte strings, and so on. At the moment we have
 only codified one specific pattern: Parameters that need to be unicode
-should be checked via ``bzrlib.osutils.safe_unicode``. This will coerce the
+should be checked via ``breezy.osutils.safe_unicode``. This will coerce the
 input into unicode in a consistent fashion, allowing trivial strings to be
 used for programmer convenience, but not performing unpredictably in the
 presence of different locales.
@@ -28,8 +28,8 @@ Confirmation
 ============
 
 There are some operations, such as uncommitting, or breaking a lock, where
-bzr may want to get confirmation from the user before proceeding.
-However in some circumstances bzr should just go ahead without asking: if
+Breezy may want to get confirmation from the user before proceeding.
+However in some circumstances Breezy should just go ahead without asking: if
 it's being used from a noninteractive program, or if the user's asked to
 never be asked for this particular confirmation or for any confirmations
 at all.
@@ -45,13 +45,13 @@ use them.  (Because code may move or the check may for implementation
 reasons be done elsewhere, they need not perfectly correspond to the place
 they're used, and they should stay stable even when the code moves.)
 
-``bzrlib.builtins.uncommit``
+``breezy.builtins.uncommit``
     Before the ``uncommit`` command actually changes the branch.
 
-``bzrlib.lockdir.break``
+``breezy.lockdir.break``
     Before breaking a lock.
 
-``bzrlib.msgeditor.unchanged``
+``breezy.msgeditor.unchanged``
     Proceed even though the user made no changes to the template message.
 
 Interactive confirmations can be overridden by using a
@@ -65,7 +65,7 @@ Writing Output
 (The strategy described here is what we want to get to, but it's not
 consistently followed in the code at the moment.)
 
-bzrlib is intended to be a generically reusable library.  It shouldn't
+breezy is intended to be a generically reusable library.  It shouldn't
 write messages to stdout or stderr, because some programs that use it
 might want to display that information through a GUI or some other
 mechanism.
@@ -85,7 +85,7 @@ We can distinguish two types of output from the library:
 
  2. Unstructured log/debug messages, mostly for the benefit of the
     developers or users trying to debug problems.  This should always
-    be sent through ``bzrlib.trace`` and Python ``logging``, so that
+    be sent through ``breezy.trace`` and Python ``logging``, so that
     it can be redirected by the client.
 
 The distinction between the two is a bit subjective, but in general if
@@ -99,7 +99,7 @@ should be only in the command-line tool.
 Progress and Activity Indications
 ---------------------------------
 
-bzrlib has a way for code to display to the user that stuff is happening
+breezy has a way for code to display to the user that stuff is happening
 during a long operation.  There are two particular types: *activity* which
 means that IO is happening on a Transport, and *progress* which means that
 higher-level application work is occurring.  Both are drawn together by
@@ -111,7 +111,7 @@ when they do IO.
 Progress uses a model/view pattern: application code acts on a
 `ProgressTask` object, which notifies the UI when it needs to be
 displayed.  Progress tasks form a stack.  To create a new progress task on
-top of the stack, call `bzrlib.ui.ui_factory.nested_progress_bar()`, then
+top of the stack, call `breezy.ui.ui_factory.nested_progress_bar()`, then
 call `update()` on the returned ProgressTask.  It can be updated with just
 a text description, with a numeric count, or with a numeric count and
 expected total count.  If an expected total count is provided the view
@@ -157,8 +157,8 @@ for base-2 units and SI standard applies for base-10 units:
 Displaying help
 ===============
 
-Bazaar has online help for various topics through ``bzr help COMMAND`` or
-equivalently ``bzr command -h``.  We also have help on command options,
+Breezy has online help for various topics through ``brz help COMMAND`` or
+equivalently ``brz command -h``.  We also have help on command options,
 and on other help topics.  (See ``help_topics.py``.)
 
 As for python docstrings, the first paragraph should be a single-sentence
@@ -190,7 +190,7 @@ Recommended values are:
     4. An internal error occurred (one that shows a traceback.)
 
 Errors are handled through Python exceptions. Exceptions should be defined
-inside bzrlib.errors, so that we can see the whole tree at a glance.
+inside breezy.errors, so that we can see the whole tree at a glance.
 
 We broadly classify errors as either being either internal or not,
 depending on whether ``internal_error`` is set or not.  If we think it's our
@@ -208,7 +208,7 @@ the files inside the repository is not found, then it's our fault --
 either there's a bug in bzr, or something complicated has gone wrong in
 the environment that means one internal file was deleted.
 
-Many errors are defined in ``bzrlib/errors.py`` but it's OK for new errors
+Many errors are defined in ``breezy/errors.py`` but it's OK for new errors
 to be added near the place where they are used.
 
 Exceptions are formatted for the user by conversion to a string

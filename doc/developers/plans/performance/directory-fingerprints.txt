@@ -223,7 +223,7 @@ Open questions
 * Are unbalanced trees a significant problem?  Trees can be unbalanced by having
   many directories (deep or wide), or many files per directory.
 
-  For small trees like bzr, 744 of 874 are in the bzrlib subtree.  In
+  For small trees like bzr, 744 of 874 are in the breezy subtree.  In
   general, larger trees are more balanced, because humans, editors and
   other tools have trouble managing very unbalanced trees.  But there are
   exceptions: Aaron has one tree with 20,000 generated but versioned

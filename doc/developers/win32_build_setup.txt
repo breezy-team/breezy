@@ -22,7 +22,7 @@ Install Packages
 1) Download cygwin's setup.exe from http://www.cygwin.com
    At present the current version is 1.5.25-15. This is used primarily to
    install the build scripts and gcc-mingw. Note that we explicitly *don't*
-   install cygwin's python or bzr package. As we are only interested in
+   install cygwin's python or Breezy package. As we are only interested in
    running the native version of bzr. For information on running the cygwin
    port of bzr, look elsewhere.
 

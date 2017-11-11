@@ -101,7 +101,7 @@ In fact there are some user interface niceties that complicate this:
 
 3 - Before starting the commit proper, we prompt for a commit message
 and in that commit message editor we show a list of the files that
-will be committed: basically the output of bzr status.  This is
+will be committed: basically the output of brz status.  This is
 basically the same as the list of changes we detect while storing the
 commit, but because the user will sometimes change the tree after
 opening the commit editor and expect the final state to be committed I
@@ -130,7 +130,7 @@ We may need to run hooks or generate signatures during commit, but
 they don't seem to have substantial performance consequences.
 
 If one wanted to optimize solely for the speed of commit I think
-hash-addressed  file-per-text storage like in git (or bzr 0.1) is very
+hash-addressed  file-per-text storage like in git (or Breezy 0.1) is very
 good.  Remarkably, it does not need to read the inventory for the
 previous revision.  For each versioned file, we just need to get its
 hash, either by reading the file or validating its stat data.  If that
@@ -186,9 +186,9 @@ others new to Bazaar ...
      the 2 parents).
 
 3) **Automatic deletion of 'missing' files.** This is a point that we go
-   back and forth on. I think the basic idea is that 'bzr commit' by
+   back and forth on. I think the basic idea is that 'brz commit' by
    default should abort if it finds a 'missing' file (in case that file was
-   renamed rather than deleted), but 'bzr commit --auto' can add unknown
+   renamed rather than deleted), but 'brz commit --auto' can add unknown
    files and remove missing files automatically.
 
 4) **sha1 for newly added files.** status doesn't really need this: it should
@@ -262,7 +262,7 @@ has the parent records next to the current working inventory, it can do
 all the work to do really fast comparison and throw-away of unimportant
 records.
 
-The way I made "bzr status" fast is by moving the 'ignore this record'
+The way I made "brz status" fast is by moving the 'ignore this record'
 ability as deep into the stack as I could get. Status has the property
 that you don't care about most of the records, just like commit. So the
 sooner you can stop evaluating the 99% that you don't care about, the
