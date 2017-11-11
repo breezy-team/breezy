@@ -22,6 +22,7 @@ from __future__ import absolute_import
 import urllib
 
 from ... import (
+    branch as _mod_branch,
     errors as bzr_errors,
     trace,
     osutils,
@@ -128,7 +129,7 @@ class GitDir(ControlDir):
         else:
             target_is_empty = None # Unknown
         if stacked:
-            raise bzr_errors.IncompatibleRepositories(source_repository, result_repo)
+            raise _mod_branch.UnstackableBranchFormat(self._format, self.user_url)
         interrepo = InterRepository.get(source_repository, result_repo)
 
         if revision_id is not None:
