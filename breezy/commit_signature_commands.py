@@ -110,7 +110,7 @@ class cmd_verify_signatures(Command):
                    help='Comma separated list of GPG key patterns which are'
                         ' acceptable for verification.',
                    short_name='k',
-                   type=str,),
+                   type=unicode,),
             'revision',
             'verbose',
           ]

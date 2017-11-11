@@ -84,7 +84,7 @@ class cmd_version_info(Command):
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
                             help='Include the last revision for each file.'),
-                     Option('template', type=str, help='Template for the output.'),
+                     Option('template', type=unicode, help='Template for the output.'),
                      'revision',
                      ]
     takes_args = ['location?']

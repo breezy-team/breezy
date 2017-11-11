@@ -420,13 +420,13 @@ class cmd_bash_completion(commands.Command):
     """
 
     takes_options = [
-        option.Option("function-name", short_name="f", type=str, argname="name",
+        option.Option("function-name", short_name="f", type=unicode, argname="name",
                help="Name of the generated function (default: _brz)"),
         option.Option("function-only", short_name="o", type=None,
                help="Generate only the shell function, don't enable it"),
         option.Option("debug", type=None, hidden=True,
                help="Enable shell code useful for debugging"),
-        option.ListOption("plugin", type=str, argname="name",
+        option.ListOption("plugin", type=unicode, argname="name",
                 # param_name="selected_plugins", # doesn't work, bug #387117
                 help="Enable completions for the selected plugin"
                 + " (default: all plugins)"),
