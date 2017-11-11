@@ -87,7 +87,6 @@ Description: distributed version control system - python library
 
 Package: python-breezy-dbg
 Architecture: any
-Priority: extra
 Section: debug
 Depends: python-breezy (= ${binary:Version}),
          ${misc:Depends},

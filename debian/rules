@@ -52,12 +52,15 @@ override_dh_install:
 		mkdir -p debian/python-breezy/usr/share; \
 		mv debian/tmp/usr/share/locale debian/python-breezy/usr/share/locale; \
 	fi;
-	dh_install --list-missing --fail-missing
+	dh_install
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from brz-doc.install.
 	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
 		xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 		"debian/brz-doc/usr/share/doc/brz/txt/{}"
+
+override_dh_auto_missing:
+	dh_missing --fail-missing
 
 override_dh_auto_build:
 	dh_auto_build
