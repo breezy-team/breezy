@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from StringIO import StringIO
+from ..sixish import StringIO
 from shutil import rmtree, copy2, copytree
 import tarfile
 import tempfile

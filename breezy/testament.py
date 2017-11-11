@@ -162,7 +162,7 @@ class Testament(object):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        return unicode(path.replace('\\', '/').replace(' ', '\ '))
+        return unicode(path.replace('\\', '/').replace(' ', '\\ '))
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
@@ -242,4 +242,4 @@ class StrictTestament3(StrictTestament):
             raise ValueError(path)
         if path == '':
             path = '.'
-        return unicode(path.replace('\\', '/').replace(' ', '\ '))
+        return unicode(path.replace('\\', '/').replace(' ', '\\ '))

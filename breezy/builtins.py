@@ -63,7 +63,6 @@ from breezy.bzr import (
 from breezy.branch import Branch, UnstackableBranchFormat
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
-from breezy.revisionspec import RevisionSpec, RevisionInfo
 from breezy.smtp_connection import SMTPConnection
 from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext, ngettext
@@ -80,6 +79,10 @@ from .option import (
     RegistryOption,
     custom_help,
     _parse_revision_str,
+    )
+from .revisionspec import (
+    RevisionSpec,
+    RevisionInfo,
     )
 from .sixish import (
     BytesIO,
@@ -3143,7 +3146,7 @@ class cmd_ignore(Command):
 
         Ignore .o files under the lib directory::
 
-            brz ignore "RE:lib/.*\.o"
+            brz ignore "RE:lib/.*\\.o"
 
         Ignore everything but the "debian" toplevel directory::
 

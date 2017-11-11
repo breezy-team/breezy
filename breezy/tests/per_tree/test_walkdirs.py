@@ -93,7 +93,6 @@ class TestWalkdirs(TestCaseWithTree):
 
     def test_walkdir_versioned_kind(self):
         work_tree = self.make_branch_and_tree('tree')
-        work_tree.set_root_id('tree-root')
         self.build_tree(['tree/file', 'tree/dir/'])
         work_tree.add(['file', 'dir'])
         file_id = work_tree.path2id('file')
@@ -106,7 +105,7 @@ class TestWalkdirs(TestCaseWithTree):
         if tree.path2id('file') is None:
             raise tests.TestNotApplicable(
                 'Tree type cannot represent dangling ids.')
-        expected = [(('', 'tree-root'), [
+        expected = [(('', work_tree.path2id('')), [
             ('dir', 'dir', 'unknown', None, dir_id, 'directory'),
             ('file', 'file', 'unknown', None, file_id, 'file')]),
             (('dir', dir_id), [])]

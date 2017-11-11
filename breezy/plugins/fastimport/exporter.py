@@ -47,7 +47,10 @@ from __future__ import absolute_import
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-from email.Utils import parseaddr
+try:
+    from email.utils import parseaddr
+except ImportError:  # python < 3
+    from email.Utils import parseaddr
 import sys, time, re
 
 import breezy.branch
@@ -101,7 +104,7 @@ def check_ref_format(refname):
     if '..' in refname:
         return False
     for c in refname:
-        if ord(c) < 040 or c in '\177 ~^:?*[':
+        if ord(c) < 0o40 or c in '\177 ~^:?*[':
             return False
     if refname[-1] in '/.':
         return False
@@ -131,7 +134,7 @@ def sanitize_ref_name_for_git(refname):
         # '..' in refname
         r"|\.\."
         # ord(c) < 040
-        r"|[" + "".join([chr(x) for x in range(040)]) + r"]"
+        r"|[" + "".join([chr(x) for x in range(0o40)]) + r"]"
         # c in '\177 ~^:?*['
         r"|[\177 ~^:?*[]"
         # last char in "/."

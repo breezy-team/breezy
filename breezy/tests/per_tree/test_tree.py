@@ -36,11 +36,12 @@ class TestAnnotate(TestCaseWithTree):
         tree_revision = getattr(tree, 'get_revision_id', lambda: 'current:')()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        for revision, line in tree.annotate_iter('a-id'):
+        a_id = tree.path2id('a')
+        for revision, line in tree.annotate_iter(a_id):
             self.assertEqual('contents of a\n', line)
             self.assertEqual(tree_revision, revision)
         tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
-        for revision, line in tree.annotate_iter('a-id', 'random:'):
+        for revision, line in tree.annotate_iter(a_id, 'random:'):
             self.assertEqual('contents of a\n', line)
             self.assertEqual(tree_revision, revision)
 
@@ -123,9 +124,10 @@ class TestFileIds(TestCaseWithTree):
         # translate from file-id back to path
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
+        a_id = tree.path2id('a')
         tree.lock_read()
         try:
-            self.assertEqual(u'a', tree.id2path('a-id'))
+            self.assertEqual(u'a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
             self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         finally:
@@ -137,7 +139,8 @@ class TestFileIds(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(tree.all_file_ids(),
-                         {'b-id', 'root-id', 'c-id', 'a-id'})
+                         {tree.path2id('a'), tree.path2id(''),
+                          tree.path2id('b'), tree.path2id('b/c')})
 
 
 class TestStoredKind(TestCaseWithTree):
@@ -146,10 +149,12 @@ class TestStoredKind(TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('file', tree.stored_kind('a-id'))
-        self.assertEqual('directory', tree.stored_kind('b-id'))
+        self.assertEqual('file', tree.stored_kind(a_id))
+        self.assertEqual('directory', tree.stored_kind(b_id))
 
 
 class TestFileContent(TestCaseWithTree):
@@ -157,17 +162,18 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Test lookup without path works
-        file_without_path = tree.get_file('a-id')
+        file_without_path = tree.get_file(a_id)
         try:
             lines = file_without_path.readlines()
             self.assertEqual(['foobar\n'], lines)
         finally:
             file_without_path.close()
         # Test lookup with path works
-        file_with_path = tree.get_file('a-id', path='a')
+        file_with_path = tree.get_file(a_id, path='a')
         try:
             lines = file_with_path.readlines()
             self.assertEqual(['foobar\n'], lines)
@@ -177,22 +183,24 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by file-id
-        self.assertEqual('foobar\n', tree.get_file_text('a-id'))
+        self.assertEqual('foobar\n', tree.get_file_text(a_id))
         # test read by path
-        self.assertEqual('foobar\n', tree.get_file_text('a-id', path='a'))
+        self.assertEqual('foobar\n', tree.get_file_text(a_id, path='a'))
 
     def test_get_file_lines(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by file-id
-        self.assertEqual(['foobar\n'], tree.get_file_lines('a-id'))
+        self.assertEqual(['foobar\n'], tree.get_file_lines(a_id))
         # test read by path
-        self.assertEqual(['foobar\n'], tree.get_file_lines('a-id', path='a'))
+        self.assertEqual(['foobar\n'], tree.get_file_lines(a_id, path='a'))
 
     def test_get_file_lines_multi_line_breaks(self):
         work_tree = self.make_branch_and_tree('wt')

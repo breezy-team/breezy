@@ -15,7 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-import urllib2
+try:
+    from urllib.request import (
+        parse_http_list,
+        parse_keqv_list,
+        )
+except ImportError:  # python < 3
+    from urllib2 import (
+        parse_http_list,
+        parse_keqv_list,
+        )
 
 
 from .. import (
@@ -354,7 +363,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
             return False
         scheme, auth = auth_header.split(None, 1)
         if scheme.lower() == tcs.auth_scheme:
-            auth_dict = urllib2.parse_keqv_list(urllib2.parse_http_list(auth))
+            auth_dict = parse_keqv_list(parse_http_list(auth))
 
             return tcs.digest_authorized(auth_dict, self.command)
 

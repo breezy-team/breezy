@@ -23,6 +23,7 @@ from breezy import (
     errors,
     mutabletree,
     tests,
+    transform,
     )
 from breezy.osutils import has_symlinks
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
@@ -47,6 +48,19 @@ from breezy.tests import (
 #       make_branch_and_tree.  mbp 20070307
 
 class TestCompare(TestCaseWithTwoTrees):
+
+    def _make_abc_tree(self, tree):
+        """setup an abc content tree."""
+        files = ['a', 'b/', 'b/c']
+        self.build_tree(files, line_endings='binary',
+                        transport=tree.controldir.root_transport)
+        tree.set_root_id('root-id')
+        tree.add(files, ['a-id', 'b-id', 'c-id'])
+
+    def get_tree_no_parents_abc_content(self, tree, converter=None):
+        """return a test tree with a, b/, b/c contents."""
+        self._make_abc_tree(tree)
+        return self._convert_tree(tree, converter)
 
     def test_compare_empty_trees(self):
         tree1 = self.make_branch_and_tree('1')
@@ -365,6 +379,34 @@ class TestCompare(TestCaseWithTwoTrees):
 class TestIterChanges(TestCaseWithTwoTrees):
     """Test the comparison iterator"""
 
+    def _make_abc_tree(self, tree):
+        """setup an abc content tree."""
+        files = ['a', 'b/', 'b/c']
+        self.build_tree(files, line_endings='binary',
+                        transport=tree.controldir.root_transport)
+        tree.set_root_id('root-id')
+        tree.add(files, ['a-id', 'b-id', 'c-id'])
+
+    def get_tree_no_parents_abc_content(self, tree, converter=None):
+        """return a test tree with a, b/, b/c contents."""
+        self._make_abc_tree(tree)
+        return self._convert_tree(tree, converter)
+
+    def get_tree_no_parents_abc_content_7(self, tree, converter=None):
+        """return a test tree with a, b/, d/e contents.
+
+        This variation adds a dir 'd' ('d-id'), renames b to d/e.
+        """
+        self._make_abc_tree(tree)
+        self.build_tree(['d/'], transport=tree.controldir.root_transport)
+        tree.add(['d'], ['d-id'])
+        tt = transform.TreeTransform(tree)
+        trans_id = tt.trans_id_tree_path('b')
+        parent_trans_id = tt.trans_id_tree_path('d')
+        tt.adjust_path('e', parent_trans_id, trans_id)
+        tt.apply()
+        return self._convert_tree(tree, converter)
+
     def assertEqualIterChanges(self, left_changes, right_changes):
         """Assert that left_changes == right_changes.
 
@@ -515,7 +557,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
     @staticmethod
     def get_path_entry(tree, file_id):
         iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
-        return next(iterator)
+        try:
+            return next(iterator)
+        except StopIteration:
+            raise KeyError(file_id)
 
     def content_changed(self, tree, file_id):
         path, entry = self.get_path_entry(tree, file_id)
@@ -994,10 +1039,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.not_applicable_if_missing_in('a', tree2)
         self.not_applicable_if_missing_in('b', tree2)
-        root_id = tree1.path2id('')
         expected = sorted([
-            self.missing('a-id', 'a', 'a', root_id, 'file'),
-            self.missing('b-id', 'b', 'b', root_id, 'directory'),
+            self.missing('a-id', 'a', 'a', 'root-id', 'file'),
+            self.missing('b-id', 'b', 'b', 'root-id', 'directory'),
             self.missing('c-id', 'b/c', 'b/c', 'b-id', 'file'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
@@ -1078,11 +1122,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        root_id = tree1.path2id('')
-        self.assertEqual(sorted([self.unchanged(tree1, root_id),
+        self.assertEqual(sorted([self.unchanged(tree1, 'root-id'),
             self.unchanged(tree1, 'b-id'),
             ('a-id', ('a', 'd'), True, (True, True),
-             (root_id, root_id), ('a', 'd'), ('file', 'file'),
+             ('root-id', 'root-id'), ('a', 'd'), ('file', 'file'),
             (False, False)), self.unchanged(tree1, 'c-id')]),
             self.do_iter_changes(tree1, tree2, include_unchanged=True))
 

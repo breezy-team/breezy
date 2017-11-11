@@ -24,8 +24,14 @@ responses.
 from __future__ import absolute_import
 
 import os
-import httplib
-import rfc822
+try:
+    import http.client as http_client
+except ImportError:  # python < 3
+    import httplib as http_client
+try:
+    import email.utils as email_utils
+except ImportError:  # python < 3
+    import rfc822 as email_utils
 
 from ... import (
     errors,
@@ -180,7 +186,7 @@ class RangeFile(ResponseFile):
                 self._boundary)
 
         if boundary_line != '--' + self._boundary + '\r\n':
-            # rfc822.unquote() incorrectly unquotes strings enclosed in <>
+            # email_utils.unquote() incorrectly unquotes strings enclosed in <>
             # IIS 6 and 7 incorrectly wrap boundary strings in <>
             # together they make a beautiful bug, which we will be gracious
             # about here
@@ -192,7 +198,7 @@ class RangeFile(ResponseFile):
                     % (self._boundary, boundary_line))
 
     def _unquote_boundary(self, b):
-        return b[:2] + rfc822.unquote(b[2:-2]) + b[-2:]
+        return b[:2] + email_utils.unquote(b[2:-2]) + b[-2:]
 
     def read_range_definition(self):
         """Read a new range definition in a multi parts message.
@@ -200,7 +206,7 @@ class RangeFile(ResponseFile):
         Parse the headers including the empty line following them so that we
         are ready to read the data itself.
         """
-        self._headers = httplib.HTTPMessage(self._file, seekable=0)
+        self._headers = http_client.HTTPMessage(self._file, seekable=0)
         # Extract the range definition
         content_range = self._headers.getheader('content-range', None)
         if content_range is None:

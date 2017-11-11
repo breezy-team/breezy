@@ -173,7 +173,7 @@ class TestamentTestsStrict2(TestamentTests):
         return StrictTestament3
 
 
-REV_1_TESTAMENT = """\
+REV_1_TESTAMENT = b"""\
 bazaar-ng testament version 1
 revision-id: test@user-1
 committer: test@user
@@ -189,7 +189,7 @@ properties:
 """
 
 
-REV_1_STRICT_TESTAMENT = """\
+REV_1_STRICT_TESTAMENT = b"""\
 bazaar-ng testament version 2.1
 revision-id: test@user-1
 committer: test@user
@@ -205,7 +205,7 @@ properties:
 """
 
 
-REV_1_STRICT_TESTAMENT3 = """\
+REV_1_STRICT_TESTAMENT3 = b"""\
 bazaar testament version 3 strict
 revision-id: test@user-1
 committer: test@user
@@ -243,7 +243,7 @@ sha1: %s
 """ % osutils.sha_string(REV_1_STRICT_TESTAMENT3)
 
 
-REV_2_TESTAMENT = """\
+REV_2_TESTAMENT = b"""\
 bazaar-ng testament version 1
 revision-id: test@user-2
 committer: test@user
@@ -263,7 +263,7 @@ properties:
 """
 
 
-REV_2_STRICT_TESTAMENT = """\
+REV_2_STRICT_TESTAMENT = b"""\
 bazaar-ng testament version 2.1
 revision-id: test@user-2
 committer: test@user
@@ -283,7 +283,7 @@ properties:
 """
 
 
-REV_2_STRICT_TESTAMENT3 = """\
+REV_2_STRICT_TESTAMENT3 = b"""\
 bazaar testament version 3 strict
 revision-id: test@user-2
 committer: test@user
@@ -325,7 +325,7 @@ sha1: %s
 """ % osutils.sha_string(REV_2_STRICT_TESTAMENT3)
 
 
-REV_PROPS_TESTAMENT = """\
+REV_PROPS_TESTAMENT = b"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
 committer: test@user
@@ -351,7 +351,7 @@ properties:
 """
 
 
-REV_PROPS_TESTAMENT_STRICT = """\
+REV_PROPS_TESTAMENT_STRICT = b"""\
 bazaar-ng testament version 2.1
 revision-id: test@user-3
 committer: test@user
@@ -377,7 +377,7 @@ properties:
 """
 
 
-REV_PROPS_TESTAMENT_STRICT3 = """\
+REV_PROPS_TESTAMENT_STRICT3 = b"""\
 bazaar testament version 3 strict
 revision-id: test@user-3
 committer: test@user
@@ -404,7 +404,7 @@ properties:
 """
 
 
-REV_3_TESTAMENT = """\
+REV_3_TESTAMENT = b"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
 committer: test@user
@@ -425,7 +425,7 @@ properties:
 """
 
 
-REV_3_TESTAMENT_STRICT = """\
+REV_3_TESTAMENT_STRICT = b"""\
 bazaar-ng testament version 2.1
 revision-id: test@user-3
 committer: test@user
@@ -446,7 +446,7 @@ properties:
 """
 
 
-REV_3_TESTAMENT_STRICT3 = """\
+REV_3_TESTAMENT_STRICT3 = b"""\
 bazaar testament version 3 strict
 revision-id: test@user-3
 committer: test@user

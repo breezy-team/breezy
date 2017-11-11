@@ -80,7 +80,7 @@ class EmailSender(object):
 
         # We must use StringIO.StringIO because we want a Unicode string that
         # we can pass to send_email and have that do the proper encoding.
-        from StringIO import StringIO
+        from ...sixish import StringIO
         outf = StringIO()
 
         _body = self.config.get('post_commit_body')
@@ -134,9 +134,9 @@ class EmailSender(object):
             tree_new = self.repository.revision_tree(revid_new)
             tree_old = self.repository.revision_tree(revid_old)
 
-        # We can use a cStringIO because show_diff_trees should only write
+        # We can use a StringIO because show_diff_trees should only write
         # 8-bit strings. It is an error to write a Unicode string here.
-        from cStringIO import StringIO
+        from ...sixish import StringIO
         diff_content = StringIO()
         diff_options = self.config.get('post_commit_diffoptions')
         show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)

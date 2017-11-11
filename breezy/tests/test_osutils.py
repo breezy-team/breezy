@@ -1183,7 +1183,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual('./test-unreadable', e.filename)
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
-        self.assertContainsRe(str(e), "\./test-unreadable")
+        self.assertContainsRe(str(e), "\\./test-unreadable")
 
 
     def test_walkdirs_encoding_error(self):

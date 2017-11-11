@@ -23,6 +23,7 @@ the object given a transport that supports smartserver rpc operations.
 These tests correspond to tests.test_smart, which exercises the server side.
 """
 
+import base64
 import bz2
 import zlib
 
@@ -3471,7 +3472,7 @@ class TestRepositoryInsertStream_1_19(TestRepositoryInsertStreamBase):
 class TestRepositoryTarball(TestRemoteRepository):
 
     # This is a canned tarball reponse we can validate against
-    tarball_content = (
+    tarball_content = base64.b64decode(
         'QlpoOTFBWSZTWdGkj3wAAWF/k8aQACBIB//A9+8cIX/v33AACEAYABAECEACNz'
         'JqsgJJFPTSnk1A3qh6mTQAAAANPUHkagkSTEkaA09QaNAAAGgAAAcwCYCZGAEY'
         'mJhMJghpiaYBUkKammSHqNMZQ0NABkNAeo0AGneAevnlwQoGzEzNVzaYxp/1Uk'
@@ -3484,7 +3485,7 @@ class TestRepositoryTarball(TestRemoteRepository):
         'QplPKp2nqBWAfwBGaOwVrz3y1T+UZZNismXHsb2Jq18T+VaD9k4P8DqE3g70qV'
         'JLurpnDI6VS5oqDDPVbtVjMxMxMg4rzQVipn2Bv1fVNK0iq3Gl0hhnnHKm/egy'
         'nWQ7QH/F3JFOFCQ0aSPfA='
-        ).decode('base64')
+        )
 
     def test_repository_tarball(self):
         # Test that Repository.tarball generates the right operations

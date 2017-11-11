@@ -316,7 +316,7 @@ class cmd_fast_import(Command):
                 user_map=user_map)
 
     def _generate_info(self, source):
-        from cStringIO import StringIO
+        from ...sixish import StringIO
         from fastimport import parser
         from fastimport.errors import ParsingError
         from ...errors import BzrCommandError

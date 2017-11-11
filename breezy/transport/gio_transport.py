@@ -30,7 +30,16 @@ import os
 import random
 import stat
 import time
-import urlparse
+try:
+    from urllib.parse import (
+        urlparse,
+        urlunparse,
+        )
+except ImportError:
+    from urlparse import (
+        urlparse,
+        urlunparse,
+        )
 
 from .. import (
     config,
@@ -122,7 +131,7 @@ class GioTransport(ConnectedTransport):
             raise ValueError(base)
 
         (scheme, netloc, path, params, query, fragment) = \
-                urlparse.urlparse(base[len('gio+'):], allow_fragments=False)
+                urlparse(base[len('gio+'):], allow_fragments=False)
         if '@' in netloc:
             user, netloc = netloc.rsplit('@', 1)
         #Seems it is not possible to list supported backends for GIO
@@ -136,7 +145,7 @@ class GioTransport(ConnectedTransport):
         #Remove the username and password from the url we send to GIO
         #by rebuilding the url again.
         u = (scheme, netloc, path, '', '', '')
-        self.url = urlparse.urlunparse(u)
+        self.url = urlunparse(u)
 
         # And finally initialize super
         super(GioTransport, self).__init__(base,

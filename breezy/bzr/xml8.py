@@ -59,7 +59,7 @@ def _unescaper(match, _map=_xml_unescape_map):
         return unichr(int(code[1:])).encode('utf8')
 
 
-_unescape_re = lazy_regex.lazy_compile('\&([^;]*);')
+_unescape_re = lazy_regex.lazy_compile('\\&([^;]*);')
 
 def _unescape_xml(data):
     """Unescape predefined XML entities in a string of data."""
