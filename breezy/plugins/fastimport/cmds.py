@@ -238,10 +238,10 @@ class cmd_fast_import(Command):
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
     takes_args = ['source', 'destination?']
     takes_options = ['verbose',
-                    Option('user-map', type=unicode,
+                    Option('user-map', type=text_type,
                         help="Path to file containing a map of user-ids.",
                         ),
-                    Option('info', type=unicode,
+                    Option('info', type=text_type,
                         help="Path to file containing caching hints.",
                         ),
                     Option('trees',
@@ -268,10 +268,10 @@ class cmd_fast_import(Command):
                         experimental="Enable experimental features.",
                         value_switches=True, enum_switch=False,
                         ),
-                    Option('import-marks', type=unicode,
+                    Option('import-marks', type=text_type,
                         help="Import marks from file."
                         ),
-                    Option('export-marks', type=unicode,
+                    Option('export-marks', type=text_type,
                         help="Export marks to file."
                         ),
                     RegistryOption('format',
@@ -422,14 +422,14 @@ class cmd_fast_import_filter(Command):
     _see_also = ['fast-import']
     takes_args = ['source?']
     takes_options = ['verbose',
-                    ListOption('include_paths', short_name='i', type=unicode,
+                    ListOption('include_paths', short_name='i', type=text_type,
                         help="Only include commits affecting these paths."
                              " Directories should have a trailing /."
                         ),
-                    ListOption('exclude_paths', short_name='x', type=unicode,
+                    ListOption('exclude_paths', short_name='x', type=text_type,
                         help="Exclude these paths from commits."
                         ),
-                    Option('user-map', type=unicode,
+                    Option('user-map', type=text_type,
                         help="Path to file containing a map of user-ids.",
                         ),
                     Option('dont-squash-empty-commits',
@@ -543,10 +543,10 @@ class cmd_fast_import_query(Command):
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source']
     takes_options = ['verbose',
-                    Option('commit-mark', short_name='m', type=unicode,
+                    Option('commit-mark', short_name='m', type=text_type,
                         help="Mark of the commit to display."
                         ),
-                    ListOption('commands', short_name='C', type=unicode,
+                    ListOption('commands', short_name='C', type=text_type,
                         help="Display fields for these commands."
                         ),
                      ]
@@ -666,20 +666,20 @@ class cmd_fast_export(Command):
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source?', 'destination?']
     takes_options = ['verbose', 'revision',
-                    Option('git-branch', short_name='b', type=unicode,
+                    Option('git-branch', short_name='b', type=text_type,
                         argname='FILE',
                         help='Name of the git branch to create (default=master).'
                         ),
                     Option('checkpoint', type=int, argname='N',
                         help="Checkpoint every N revisions (default=10000)."
                         ),
-                    Option('marks', type=unicode, argname='FILE',
+                    Option('marks', type=text_type, argname='FILE',
                         help="Import marks from and export marks to file."
                         ),
-                    Option('import-marks', type=unicode, argname='FILE',
+                    Option('import-marks', type=text_type, argname='FILE',
                         help="Import marks from file."
                         ),
-                    Option('export-marks', type=unicode, argname='FILE',
+                    Option('export-marks', type=text_type, argname='FILE',
                         help="Export marks to file."
                         ),
                     Option('plain',
