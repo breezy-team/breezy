@@ -302,7 +302,10 @@ class ContainerReader(BaseReader):
 
     def _iter_record_objects(self):
         while True:
-            record_kind = self.reader_func(1)
+            try:
+                record_kind = self.reader_func(1)
+            except StopIteration:
+                return
             if record_kind == b'B':
                 # Bytes record.
                 reader = BytesRecordReader(self._source)
@@ -418,7 +421,7 @@ class ContainerPushParser(object):
     """
 
     def __init__(self):
-        self._buffer = ''
+        self._buffer = b''
         self._state_handler = self._state_expecting_format_line
         self._parsed_records = []
         self._reset_current_record()
@@ -458,7 +461,7 @@ class ContainerPushParser(object):
         If a newline byte is not found in the buffer, the buffer is
         unchanged and this returns None instead.
         """
-        newline_pos = self._buffer.find('\n')
+        newline_pos = self._buffer.find(b'\n')
         if newline_pos != -1:
             line = self._buffer[:newline_pos]
             self._buffer = self._buffer[newline_pos+1:]
