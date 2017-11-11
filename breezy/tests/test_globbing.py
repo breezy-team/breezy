@@ -318,14 +318,14 @@ class TestGlobster(TestCase):
         g = Globster(patterns)
         e = self.assertRaises(lazy_regex.InvalidPattern, g.match, 'filename')
         self.assertContainsRe(e.msg,
-            "File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
+            r"File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
 
 
 class TestExceptionGlobster(TestCase):
 
     def test_exclusion_patterns(self):
         """test that exception patterns are not matched"""
-        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*',u'!!./.zcompdump' ]
+        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\\.z.*',u'!!./.zcompdump' ]
         globster = ExceptionGlobster(patterns)
         self.assertEqual(u'*', globster.match('tmp/foo.txt'))
         self.assertEqual(None, globster.match('local'))

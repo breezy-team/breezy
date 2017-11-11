@@ -364,7 +364,7 @@ class TestingTCPServerMixin(object):
                                errno.ENOTCONN,
                                errno.EPIPE,
                                ]
-        if isinstance(e, socket.error) and e[0] in accepted_errnos:
+        if isinstance(e, socket.error) and e.errno in accepted_errnos:
             return True
         return False
 

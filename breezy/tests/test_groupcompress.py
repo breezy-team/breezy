@@ -777,8 +777,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                               inconsistency_fatal=True)
         self.assertContainsRe(str(e), "Knit.* corrupt: inconsistent details"
                               " in add_records:"
-                              " \('b',\) \('42 32 0 8', \(\(\),\)\) \('74 32"
-                              " 0 8', \(\(\('a',\),\),\)\)")
+                              " \\('b',\\) \\('42 32 0 8', \\(\\(\\),\\)\\) \\('74 32"
+                              " 0 8', \\(\\(\\('a',\\),\\),\\)\\)")
 
     def test_clear_cache(self):
         vf = self.make_source_with_b(True, 'source')

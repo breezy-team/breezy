@@ -30,7 +30,7 @@ def split_lines(t):
 ############################################################
 # test case data from the gnu diffutils manual
 # common base
-TZU = split_lines("""     The Nameless is the origin of Heaven and Earth;
+TZU = split_lines(b"""     The Nameless is the origin of Heaven and Earth;
      The named is the mother of all things.
 
      Therefore let there always be non-being,
@@ -45,7 +45,7 @@ TZU = split_lines("""     The Nameless is the origin of Heaven and Earth;
      The door of all subtleties!
 """)
 
-LAO = split_lines("""     The Way that can be told of is not the eternal Way;
+LAO = split_lines(b"""     The Way that can be told of is not the eternal Way;
      The name that can be named is not the eternal name.
      The Nameless is the origin of Heaven and Earth;
      The Named is the mother of all things.
@@ -59,7 +59,7 @@ LAO = split_lines("""     The Way that can be told of is not the eternal Way;
 """)
 
 
-TAO = split_lines("""     The Way that can be told of is not the eternal Way;
+TAO = split_lines(b"""     The Way that can be told of is not the eternal Way;
      The name that can be named is not the eternal name.
      The Nameless is the origin of Heaven and Earth;
      The named is the mother of all things.
@@ -76,7 +76,7 @@ TAO = split_lines("""     The Way that can be told of is not the eternal Way;
 
 """)
 
-MERGED_RESULT = split_lines("""     The Way that can be told of is not the eternal Way;
+MERGED_RESULT = split_lines(b"""     The Way that can be told of is not the eternal Way;
      The name that can be named is not the eternal name.
      The Nameless is the origin of Heaven and Earth;
      The Named is the mother of all things.

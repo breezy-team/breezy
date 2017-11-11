@@ -232,7 +232,7 @@ class TestTrace(TestCase):
         self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
         self.assertContainsRe(log,
-            'test_trace.py", line \d+, in test_mutter_callsite_2\n')
+            'test_trace.py", line \\d+, in test_mutter_callsite_2\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 

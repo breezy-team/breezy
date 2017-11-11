@@ -417,7 +417,7 @@ def _load_plugin_module(name, dir):
             trace.print_exception(sys.exc_info(), sys.stderr)
         # GZ 2017-06-02: Move this name checking up a level, no point trying
         # to import things with bad names.
-        if re.search('\.|-| ', name):
+        if re.search('\\.|-| ', name):
             sanitised_name = re.sub('[-. ]', '_', name)
             if sanitised_name.startswith('brz_'):
                 sanitised_name = sanitised_name[len('brz_'):]

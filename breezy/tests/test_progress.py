@@ -111,7 +111,7 @@ class TestTextProgressView(tests.TestCase):
         # first half of the overall work
         task2.update('stage2', 2, 2)
         self.assertEqual(
-'[#########\          ] reticulating splines:stage2 2/2                         '
+'[#########\\          ] reticulating splines:stage2 2/2                         '
             , view._render_line())
 
     def test_render_progress_sub_nested(self):

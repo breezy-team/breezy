@@ -4504,7 +4504,7 @@ password=jimpass
                           conf.get_password('ssh', 'bar.org', user='jim'))
         self.assertContainsRe(
             self.get_log(),
-            'password ignored in section \[ssh with password\]')
+            'password ignored in section \\[ssh with password\\]')
 
     def test_ssh_without_password_doesnt_emit_warning(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b"""
@@ -4524,7 +4524,7 @@ user=jim
         # providing "user".
         self.assertNotContainsRe(
             self.get_log(),
-            'password ignored in section \[ssh with password\]')
+            'password ignored in section \\[ssh with password\\]')
 
     def test_uses_fallback_stores(self):
         self.overrideAttr(config, 'credential_store_registry',

@@ -2484,7 +2484,7 @@ def int_SI_from_store(unicode_str):
     :return Integer, expanded to its base-10 value if a proper SI unit is 
         found, None otherwise.
     """
-    regexp = "^(\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
+    regexp = "^(\\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
     p = re.compile(regexp, re.IGNORECASE)
     m = p.match(unicode_str)
     val = None
@@ -2583,7 +2583,7 @@ class RegistryOption(Option):
         return "".join(ret)
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^\d\W](?:\.\w|-\w|\w)*})')
+_option_ref_re = lazy_regex.lazy_compile('({[^\\d\\W](?:\\.\\w|-\\w|\\w)*})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.

@@ -18,7 +18,11 @@
 
 from __future__ import absolute_import
 
-from email import Utils
+try:
+    from email.utils import getaddresses, parseaddr
+except ImportError:  # python < 3
+    from email.Utils import getaddresses, parseaddr
+
 import errno
 import smtplib
 import socket
@@ -174,19 +178,20 @@ class SMTPConnection(object):
         """Get the origin and destination addresses of a message.
 
         :param message: A message object supporting get() to access its
-            headers, like email.Message or breezy.email_message.EmailMessage.
+            headers, like email.message.Message or
+            breezy.email_message.EmailMessage.
         :return: A pair (from_email, to_emails), where from_email is the email
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = Utils.parseaddr(message.get('From', None))[1]
+        from_email = parseaddr(message.get('From', None))[1]
         to_full_addresses = []
         for header in ['To', 'Cc', 'Bcc']:
             value = message.get(header, None)
             if value:
                 to_full_addresses.append(value)
         to_emails = [ pair[1] for pair in
-                Utils.getaddresses(to_full_addresses) ]
+                getaddresses(to_full_addresses) ]
 
         return from_email, to_emails
 
@@ -196,7 +201,8 @@ class SMTPConnection(object):
         The message will be sent to all addresses in the To, Cc and Bcc
         headers.
 
-        :param message: An email.Message or email.MIMEMultipart object.
+        :param message: An email.message.Message or
+            email.mime.multipart.MIMEMultipart object.
         :return: None
         """
         from_email, to_emails = self.get_message_addresses(message)

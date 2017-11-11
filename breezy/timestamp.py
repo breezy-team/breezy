@@ -125,8 +125,8 @@ def format_patch_date(secs, offset=0):
 
 # Format for patch dates: %Y-%m-%d %H:%M:%S [+-]%H%M
 # Groups: 1 = %Y-%m-%d %H:%M:%S; 2 = [+-]%H; 3 = %M
-RE_PATCHDATE = re.compile("(\d+-\d+-\d+\s+\d+:\d+:\d+)\s*([+-]\d\d)(\d\d)$")
-RE_PATCHDATE_NOOFFSET = re.compile("\d+-\d+-\d+\s+\d+:\d+:\d+$")
+RE_PATCHDATE = re.compile("(\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+)\\s*([+-]\\d\\d)(\\d\\d)$")
+RE_PATCHDATE_NOOFFSET = re.compile("\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+$")
 
 def parse_patch_date(date_str):
     """Parse a patch-style date into a POSIX timestamp and offset.

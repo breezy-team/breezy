@@ -68,7 +68,6 @@ from breezy import (
     foreign,
     repository as _mod_repository,
     revision as _mod_revision,
-    revisionspec,
     tsort,
     )
 from breezy.i18n import gettext, ngettext
@@ -77,6 +76,7 @@ from breezy.i18n import gettext, ngettext
 from . import (
     lazy_regex,
     registry,
+    revisionspec,
     )
 from .osutils import (
     format_date,

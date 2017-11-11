@@ -47,13 +47,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {'root-id', 'a-id', 'b-id', 'c-id'},
+            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('b/c')},
             set(tree.all_file_ids()))
         self.assertEqual(
-            [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
+            [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
-        self.assertFalse(tree.is_executable('c-id', path='b/c'))
+        self.assertEqualDiff('contents of a\n', tree.get_file_text(tree.path2id('a')))
+        self.assertFalse(tree.is_executable(tree.path2id('b/c'), path='b/c'))
 
     def test_abc_tree_content_2_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -65,13 +65,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {'root-id', 'a-id', 'b-id', 'c-id'},
+            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('b/c')},
             set(tree.all_file_ids()))
         self.assertEqual(
-            [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
+            [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('foobar\n', tree.get_file_text('a-id'))
-        self.assertFalse(tree.is_executable('c-id'))
+        self.assertEqualDiff('foobar\n', tree.get_file_text(tree.path2id('a')))
+        self.assertFalse(tree.is_executable(tree.path2id('b//c')))
 
     def test_abc_tree_content_3_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -83,13 +83,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {'root-id', 'a-id', 'b-id', 'c-id'},
+            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('b/c')},
             set(tree.all_file_ids()))
         self.assertEqual(
-            [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
+            [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
-        self.assertTrue(tree.is_executable('c-id'))
+        self.assertEqualDiff('contents of a\n', tree.get_file_text(tree.path2id('a')))
+        self.assertTrue(tree.is_executable(tree.path2id('b/c')))
 
     def test_abc_tree_content_4_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -101,13 +101,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {'root-id', 'a-id', 'b-id', 'c-id'},
+            {tree.path2id(''), tree.path2id('b'), tree.path2id('d'), tree.path2id('b/c')},
             set(tree.all_file_ids()))
         self.assertEqual(
-            [('', 'root-id'), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
+            [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
-        self.assertFalse(tree.is_executable('c-id'))
+        self.assertEqualDiff('contents of a\n', tree.get_file_text(tree.path2id('d')))
+        self.assertFalse(tree.is_executable(tree.path2id('b/c')))
 
     def test_abc_tree_content_5_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -119,13 +119,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {'root-id', 'a-id', 'b-id', 'c-id'},
+            {tree.path2id(''), tree.path2id('d'), tree.path2id('b'), tree.path2id('b/c')},
             set(tree.all_file_ids()))
         self.assertEqual(
-            [('', 'root-id'), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
+            [(p, tree.path2id(p)) for p in ['', 'b', 'd',  'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('bar\n', tree.get_file_text('a-id'))
-        self.assertFalse(tree.is_executable('c-id'))
+        self.assertEqualDiff('bar\n', tree.get_file_text(tree.path2id('d')))
+        self.assertFalse(tree.is_executable(tree.path2id('b/c')))
 
     def test_abc_tree_content_6_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -137,13 +137,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {'root-id', 'a-id', 'b-id', 'c-id'},
+            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('e')},
             set(tree.all_file_ids()))
         self.assertEqual(
-            [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('e', 'c-id')],
+            [(p, tree.path2id(p)) for p in ['', 'a', 'b',  'e']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
-        self.assertTrue(tree.is_executable('c-id'))
+        self.assertEqualDiff('contents of a\n', tree.get_file_text(tree.path2id('a')))
+        self.assertTrue(tree.is_executable(tree.path2id('e')))
 
     def test_tree_with_subdirs_and_all_content_types(self):
         # currently this test tree requires unicode. It might be good

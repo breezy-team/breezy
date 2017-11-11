@@ -165,20 +165,11 @@ docs-sphinx: html-sphinx
 # Clean out generated documentation
 clean-sphinx:
 	cd doc/en && make clean
-	cd doc/es && make clean
-	cd doc/ja && make clean
-	cd doc/ru && make clean
 	cd doc/developers && make clean
 
 SPHINX_DEPENDENCIES = \
         doc/en/release-notes/index.txt \
         doc/en/user-reference/index.txt \
-	doc/es/Makefile \
-	doc/es/make.bat \
-	doc/ja/Makefile \
-	doc/ja/make.bat \
-	doc/ru/Makefile \
-	doc/ru/make.bat \
 	doc/developers/Makefile \
 	doc/developers/make.bat
 
@@ -199,9 +190,6 @@ doc/%/make.bat: doc/en/make.bat
 # Build the html docs using Sphinx.
 html-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make html
-	cd doc/es && make html
-	cd doc/ru && make html
-	cd doc/ja && make html
 	cd doc/developers && make html
 
 # Build the PDF docs using Sphinx. This requires numerous LaTeX
@@ -211,11 +199,8 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 # Russian hyphenation rules, etc.)
 pdf-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make latex
-	cd doc/es && make latex
-	cd doc/ja && make latex
 	cd doc/developers && make latex
 	cd doc/en/_build/latex && make all-pdf
-	cd doc/es/_build/latex && make all-pdf
 	cd doc/developers/_build/latex && make all-pdf
 
 # Build the CHM (Windows Help) docs using Sphinx.
@@ -223,18 +208,12 @@ pdf-sphinx: $(SPHINX_DEPENDENCIES)
 # to generate the final chm files.
 chm-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make htmlhelp
-	cd doc/es && make htmlhelp
-	cd doc/ru && make htmlhelp
-	cd doc/ja && make htmlhelp
 	cd doc/developers && make htmlhelp
 
 
 # Build the texinfo files using Sphinx.
 texinfo-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make texinfo
-	cd doc/es && make texinfo
-	cd doc/ru && make texinfo
-	cd doc/ja && make texinfo
 	cd doc/developers && make texinfo
 
 ### Documentation Website ###
@@ -245,9 +224,6 @@ DOC_WEBSITE_BUILD = build_doc_website
 # Build and package docs into a website, complete with downloads.
 doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
-	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
-	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
-	$(PYTHON) tools/package_docs.py doc/ja $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
@@ -266,11 +242,6 @@ txt_all = \
 	doc/en/tutorials/tutorial.txt \
 	doc/en/tutorials/using_breezy_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
-        $(call sw,doc/es/tutorials/*.txt) \
-	$(call sw,doc/ru/tutorials/*.txt) \
-	doc/ja/tutorials/tutorial.txt \
-	doc/ja/tutorials/using_bazaar_with_launchpad.txt \
-	doc/ja/tutorials/centralized_workflow.txt \
 	$(call sw,doc/*/mini-tutorial/index.txt) \
 	$(call sw,doc/*/user-guide/index-plain.txt) \
 	doc/en/admin-guide/index-plain.txt \
@@ -281,9 +252,6 @@ txt_all = \
 	$(call sw,doc/index.*.txt)
 txt_nohtml = \
 	doc/en/user-guide/index.txt \
-	doc/es/user-guide/index.txt \
-	doc/ja/user-guide/index.txt \
-	doc/ru/user-guide/index.txt \
 	doc/en/admin-guide/index.txt
 txt_files = $(filter-out $(txt_nohtml), $(txt_all))
 htm_files = $(patsubst %.txt, %.html, $(txt_files)) 

@@ -146,6 +146,10 @@ Documentation
  * Various documents have been updated to explain that Breezy is a fork
    of Bazaar.
 
+ * Documentation translations into Japanese, Spanish and Russian have been
+   removed since there are no current translators to update them.
+   (Jelmer Vernooĳ)
+
 API Changes
 ***********
 

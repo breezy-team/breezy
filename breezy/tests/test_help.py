@@ -336,7 +336,7 @@ Description:
 
 class ZzzTranslationsForDoc(ZzzTranslations):
 
-    _section_pat = re.compile(':\w+:\\n\\s+')
+    _section_pat = re.compile(':\\w+:\\n\\s+')
     _indent_pat = re.compile('\\s+')
 
     def zzz(self, s):

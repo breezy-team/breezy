@@ -779,9 +779,11 @@ class WorkingTree(mutabletree.MutableTree,
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
-            file_id = generate_ids.gen_file_id(os.path.basename(path))
-        elif not self.supports_setting_file_ids():
-            raise SettingFileIdUnsupported()
+            if self.supports_setting_file_ids():
+                file_id = generate_ids.gen_file_id(os.path.basename(path))
+        else:
+            if not self.supports_setting_file_ids():
+                raise SettingFileIdUnsupported()
         with self.lock_write():
             os.mkdir(self.abspath(path))
             self.add(path, file_id, 'directory')
