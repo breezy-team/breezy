@@ -186,7 +186,7 @@ class RenameMap(object):
             for (file_id, paths, changed_content, versioned, parent, name,
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
-                    if self.tree.has_filename(self.tree.id2path(parent[0])) == False:
+                    if not self.tree.has_filename(self.tree.id2path(parent[0])):
                         missing_parents.setdefault(parent[0], set()).add(file_id)
                     if kind[0] == 'file':
                         missing_files.add(file_id)

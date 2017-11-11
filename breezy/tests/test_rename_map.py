@@ -215,5 +215,3 @@ class TestRenameMap(TestCaseWithTransport):
         self.assertEqual('file => folder/file2', ''.join(notes))
 
         tree.unlock()
-        self.assertEqual('added:\n  folder/\nrenamed:\n  file => folder/file2\n',
-            self.run_bzr("status")[0])
