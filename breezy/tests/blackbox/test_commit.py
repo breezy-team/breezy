@@ -540,11 +540,11 @@ altered in u2
         tree.add('hello.txt')
         output, err = self.run_bzr(
             ['commit', '-m', 'hello',
-              '--fixes=generic:\xca\x8a'.decode('utf-8'), 'tree/hello.txt'],
+             u'--fixes=generic:\u20ac', 'tree/hello.txt'],
             encoding='utf-8', retcode=3)
-        self.assertEqual('', output)
+        self.assertEqual(b'', output)
         self.assertContainsRe(err,
-                'brz: ERROR: Unrecognized bug generic:\xca\x8a. Commit refused.\n')
+            b'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.

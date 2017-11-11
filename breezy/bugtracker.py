@@ -276,7 +276,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
 
     def _get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
-        return self.base_url + bug_id
+        return self.base_url + str(bug_id)
 
 
 tracker_registry.register(
