@@ -1,46 +1,46 @@
 ***********************
-Tracking Bugs in Bazaar
+Tracking Bugs in Breezy
 ***********************
 
-This document describes the bug-tracking processes for developing Bazaar
-itself.  Bugs in Bazaar are recorded in Launchpad.
+This document describes the bug-tracking processes for developing Breezy
+itself.  Bugs in Breezy are recorded in Launchpad.
 
 
 See also:
 
-* `Bazaar Developer Documents <index.html>`_.
+* `Breezy Developer Documents <index.html>`_.
 
-* `The Bazaar Development Cycle <cycle.html>`_.
+* `The Breezy Development Cycle <cycle.html>`_.
 
-* `The Bazaar User Guide <../en/user-guide/index.html>`_ -- for
-  information on integrating Bazaar with other bug trackers.
+* `The Breezy User Guide <../en/user-guide/index.html>`_ -- for
+  information on integrating Breezy with other bug trackers.
 
 
 Links
 *****
 
-* `bzr bugs home page <https://bugs.launchpad.net/bzr>`_.
+* `Breezy bugs home page <https://bugs.launchpad.net/brz>`_.
 
-* `Critical bugs <https://bugs.launchpad.net/bzr/+bugs?search=Search&field.importance=Critical&field.status=New&field.status=Incomplete&field.status=Confirmed&field.status=Triaged&field.status=In+Progress&field.status=Fix+Committed>`_.
+* `Critical bugs <https://bugs.launchpad.net/brz/+bugs?search=Search&field.importance=Critical&field.status=New&field.status=Incomplete&field.status=Confirmed&field.status=Triaged&field.status=In+Progress&field.status=Fix+Committed>`_.
 
-* `Open bugs by importance <https://bugs.launchpad.net/bzr/+bugs>`_.
+* `Open bugs by importance <https://bugs.launchpad.net/brz/+bugs>`_.
 
 * `Open bugs most recently changed first
-  <https://bugs.launchpad.net/bzr/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
+  <https://bugs.launchpad.net/brz/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
 
-* `Most commonly duplicated bugs <http://tinyurl.com/bzr-bugs-by-dupes>`_.
+* `Most commonly duplicated bugs <http://tinyurl.com/brz-bugs-by-dupes>`_.
 
 
 Generalities
 ************
 
-Anyone involved with Bazaar is welcome to contribute to managing our bug
+Anyone involved with Breezy is welcome to contribute to managing our bug
 reports.  **Edit boldly**: try to help users out, assess importance or improve
 the bug description or status.  Other people will see the bugs: it's
 better to have 20 of them processed and later change the status of a
 couple than to leave them lie.
 
-When you file a bug as a Bazaar developer or active user, if you feel
+When you file a bug as a Breezy developer or active user, if you feel
 confident in doing so, make an assessment of status and importance at the
 time you file it, rather than leaving it for someone else.  It's more
 efficient to change the importance if someone else feels it's higher or
@@ -143,17 +143,16 @@ Incomplete
     progress on the bug without that information.  The bug will expire if
     it remains in this state for two months.
 Confirmed
+    This bug has been confirmed by at least one other person (developer or otherwise).
+Triaged
     The bug report has been seen by a developer and we agree it's a bug.
-    You don't have to reproduce the bug to mark it Confirmed.  (Generally
+    You don't have to reproduce the bug to mark it Triaged.  (Generally
     it's not a good idea for a developer to spend time reproducing the bug
     until they're going to work on it.)
-Triaged
-    We don't use this status.  If it is set, it means the same as
-    Confirmed.
 In Progress
     Someone has started working on this.  We can deliver the value of the
-    work already done by finishing and shipping the fix.  
-    
+    work already done by finishing and shipping the fix.
+
     The bug keeps this state from the time someone does non-trivial
     analysis, until the fix is merged to a release or trunk branch (when
     it is Fix Released), or until they give up on it (back to New or
@@ -169,15 +168,15 @@ Fix Committed
     Don't use this.  If set on old bug, it probably means In Progress,
     with the fix waiting for review.  See Launchpad `bug 163694`_.
 Fix Released
-    The fix for this bug is now in the bzr branch that this task is for.
-    The branch for the default task on a bug is bzr.dev.  
-    
+    The fix for this bug is now in the Breezy branch that this task is for.
+    The branch for the default task on a bug is trunk.
+
     We use this value even though the fix may not have been been included
     in a release yet because all the developer activity around it is
     complete and we want to both avoid bug spam when releases happen, and
     keep the list of bugs that developers see when they look at the bug
-    tracker trimmed to those that require action. 
-    
+    tracker trimmed to those that require action.
+
     When setting a bug task to fix released, the bug target milestone
     should be set to the release the fix will be included in (or was
     included in, if you are updating an old bug). Don't spend too much
@@ -191,14 +190,14 @@ Bug Importance
 **************
 
 Critical
-    This is a serious bug that could cause data loss, stop bzr being
+    This is a serious bug that could cause data loss, stop Breezy being
     usable in an important case, or represents a regression in something
     previously working.  We should fix critical bugs before doing other
     work, or seriously consider whether the bug is really critical
     or whether the other change is more urgent.
 High
     This is a bug that can seriously interfere with people's use of
-    Bazaar.  We should seriously consider fixing these bugs before
+    Breezy.  We should seriously consider fixing these bugs before
     working on new features.
 Medium
     A regular bug.  We'd like to fix them, but there may be a long delay.
@@ -228,7 +227,7 @@ Targetting Bugs
 ***************
 
 It's possible to target a bug to a milestone, eg
-<https://bugs.launchpad.net/bzr/+milestone/1.16>.  We use this to help the
+<https://bugs.launchpad.net/brz/+milestone/1.16>.  We use this to help the
 release manager know what **must** be merged to make the release.
 
 Therefore, we don't target bugs that we'd like to have fixed or that could
@@ -289,7 +288,7 @@ hpssvfs
     bugs for causes of VFS methods of the smart server
 
 launchpad
-    bugs about interactions with launchpad (typically this means bzrlib.plugins.launchpad).
+    bugs about interactions with launchpad (typically this means breezy.plugins.launchpad).
 
 locale
     problems using locales other than English
@@ -304,7 +303,7 @@ performance
     bugs about performance problems.
 
 regression
-    bugs which represent an aspect of bzr becoming accidentally less good than it was.
+    bugs which represent an aspect of Breezy becoming accidentally less good than it was.
 
 test
     needs changes to the test framework
@@ -313,18 +312,18 @@ transport
     virtual filesystem for HTTP, SFTP, etc.
 
 trivial
-    should be very easy to fix (10-20 minutes) and easily landed: typically 
+    should be very easy to fix (10-20 minutes) and easily landed: typically
     just spelling errors and the like
 
 ui
-    bugs relating to the bzr user interface, e.g. confusing error messages.
+    bugs relating to the Breezy user interface, e.g. confusing error messages.
 
 win32
-    bugs that mainly affects Windows. Also there is cygwin and win98 tags for 
+    bugs that mainly affects Windows. Also there is cygwin and win98 tags for
     marking specific bugs.
 
 You can see the full list of tags in use at
-<https://bugs.launchpad.net/bzr/+bugs>.  As of September 2008 the
-list is on the right. 
+<https://bugs.launchpad.net/brz/+bugs>.  As of September 2008 the
+list is on the right.
 
 .. vim: ft=rst

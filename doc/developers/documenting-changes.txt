@@ -7,7 +7,7 @@ change you made:
 
 Changing existing behavior
   If the change will break existing command lines, or break
-  interoperability with other versions of Bazaar, mention this in 
+  interoperability with other versions of Breezy, mention this in
   "External Compatibility Breaks" in NEWS, and also in "What's New".
 
 Adding a new feature, function or option
@@ -17,7 +17,7 @@ Adding a new feature, function or option
 
 A new hook or extension point
   These are also described in NEWS, in the hook documentation, and in
-  "What's New."  Even though they might be API-only changes, the fact that 
+  "What's New."  Even though they might be API-only changes, the fact that
   they exist may interest users enough to write a new plugin that uses
   them.
 
@@ -40,8 +40,8 @@ Changing the way the test suite works or adding more tests
   to testing.
 
 Purely internal changes
-  If the change has no user-visible impact and is not interesting to 
-  plugin developers, it doesn't need to be mentioned in NEWS.  If you're 
+  If the change has no user-visible impact and is not interesting to
+  plugin developers, it doesn't need to be mentioned in NEWS.  If you're
   setting a new pattern or adding a new abstraction, update the developer
   docs.
 
