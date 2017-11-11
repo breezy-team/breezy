@@ -464,7 +464,7 @@ class VersionedFile(object):
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:
-            if line.__class__ is not str:
+            if not isinstance(line, bytes):
                 raise errors.BzrBadParameterUnicode("lines")
 
     def _check_lines_are_lines(self, lines):
