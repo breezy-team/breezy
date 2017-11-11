@@ -140,6 +140,9 @@ Bug Fixes
   Thanks to Augie Fackler for reporting.
   (Jelmer Vernooĳ, #1710979)
 
+* Support automatic rename tracking into new directories.
+  (mnn, #373319)
+
 Documentation
 *************
 
