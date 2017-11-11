@@ -3553,7 +3553,7 @@ class cmd_commit(Command):
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
             except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
-                    "%s\nCommit refused.") % (str(e),))
+                    u"%s\nCommit refused.") % (e,))
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,

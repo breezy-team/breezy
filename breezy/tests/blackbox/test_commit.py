@@ -533,6 +533,19 @@ altered in u2
                               'added hello\.txt\n'
                               'Committed revision 1\.\n')
 
+    def test_fixes_bug_unicode(self):
+        """commit --fixes=lp:unicode succeeds without output."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        output, err = self.run_bzr(
+            ['commit', '-m', 'hello',
+              '--fixes=generic:\xca\x8a'.decode('utf-8'), 'tree/hello.txt'],
+            encoding='utf-8', retcode=3)
+        self.assertEqual('', output)
+        self.assertContainsRe(err,
+                'brz: ERROR: Unrecognized bug generic:\xca\x8a. Commit refused.\n')
+
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
 
@@ -541,7 +554,7 @@ altered in u2
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.run_bzr( 'commit -m hello tree/hello.txt')
+        self.run_bzr('commit -m hello tree/hello.txt')
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
