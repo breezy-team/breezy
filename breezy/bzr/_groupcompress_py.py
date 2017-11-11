@@ -419,14 +419,14 @@ def decode_copy_instruction(bytes, cmd, pos):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
-    if not isinstance(source_bytes, str):
-        raise TypeError('source is not a str')
-    if not isinstance(target_bytes, str):
-        raise TypeError('target is not a str')
+    if not isinstance(source_bytes, bytes):
+        raise TypeError('source is not bytes')
+    if not isinstance(target_bytes, bytes):
+        raise TypeError('target is not bytes')
     line_locations = LinesDeltaIndex(osutils.split_lines(source_bytes))
     delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
                                          bytes_length=len(target_bytes))
-    return ''.join(delta)
+    return b''.join(delta)
 
 
 def apply_delta(basis, delta):
