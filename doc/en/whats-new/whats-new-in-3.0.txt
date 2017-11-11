@@ -1,0 +1,28 @@
+*************************
+What's New in Breezy 3.0?
+*************************
+
+Breezy 3.0 is still under development, and will be released when it is ready.
+This document accumulates a high level summary of what's changed.  See the
+:doc:`../release-notes/index` for a full list.
+
+<topics of interest here>
+
+Further information
+*******************
+
+For more detailed information on the changes made, see the the
+:doc:`../release-notes/index` for:
+
+* the interim brz `milestones <https://launchpad.net/brz/3.0>`_
+* the plugins you use.
+
+For a summary of changes made in earlier releases, see:
+
+* :doc:`whats-new-in-2.1`
+* :doc:`whats-new-in-2.2`
+* :doc:`whats-new-in-2.3`
+* :doc:`whats-new-in-2.4`
+* :doc:`whats-new-in-2.5`
+* :doc:`whats-new-in-2.6`
+* :doc:`whats-new-in-2.7`

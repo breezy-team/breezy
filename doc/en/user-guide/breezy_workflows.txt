@@ -1,0 +1,171 @@
+Workflows
+=========
+
+Breezy is just a tool
+---------------------
+
+Breezy supports many different ways of working together.
+This means that you can
+start with one workflow and adapt it over time as circumstances
+change. There is no "one true way" that always makes sense and
+there never will be. This section provides a brief overview of
+some popular workflows supported by Breezy.
+
+Keep in mind that these workflow are just *some* examples of how
+Breezy can be used. You may want to use a workflow not listed here,
+perhaps building on the ideas below.
+
+Solo
+----
+
+Whether developing software, editing documents or changing configuration files,
+having an easy-to-use VCS tool can help. A single user can use this workflow
+effectively for managing projects where they are the only contributor.
+
+.. image:: images/workflows_single.png
+
+Advantages of this workflow over not using version control at all include:
+
+ * backup of old versions
+ * rollback to an earlier state
+ * tracking of history.
+
+The key features of Breezy appropriate for this workflow are low administration
+(no server setup) and ease of use.
+
+
+Partner
+-------
+
+Sometimes two people need to work together sharing changes as they go. This
+commonly starts off as a *Solo* workflow (see above) or a team-oriented
+workflow (see below). At some point, the second person takes a branch (copy
+including history) of what the first person has done. They can then work in
+parallel exchanging changes by merging when appropriate.
+
+.. image:: images/workflows_peer.png
+
+Advantages over *Solo* are:
+
+ * easier sharing of changes
+ * each line of each text file can be attributed to a particular change
+   including who changed it, when and why.
+
+When implementing this workflow, Breezy's advantages over CVS and Subversion include:
+
+ * no server to setup
+ * intelligent merging means merging multiple times isn't painful.
+
+
+Centralized
+-----------
+
+Also known as *lock-step*, this is essentially the same as the workflow
+encouraged/enforced by CVS and Subversion. All developers work on the same
+branch (or branches). They run ``brz update`` to get their checkout up-to-date,
+then ``brz commit`` to publish their changes to the central location.
+
+.. image:: images/workflows_centralized.png
+
+Subversion and CVS are good choices for implementing this workflow because they
+make it easy. Breezy directly supports it as well while providing some
+important advantages over CVS and Subversion:
+
+ * better branching and merging
+ * better renaming support.
+
+
+Centralized with local commits
+------------------------------
+
+This is essentially the same as the *Centralized* model, except that when
+developers are making a series of changes, they do ``commit --local`` or unbind
+their checkout. When it is complete, they commit their work to the shared
+mainline.
+
+.. image:: images/workflows_localcommit.png
+
+Advantages over *Centralized*:
+
+ * Can work offline, e.g. when disconnected during travel
+ * Less chance for a bad commit to interfere with everyone else's work
+
+Subversion and CVS do not support this model. Other distributed VCS tools can
+support it but do so less directly than Breezy does.
+
+
+Decentralized with shared mainline
+----------------------------------
+
+In this workflow, each developer has their own branch or branches, plus commit
+rights to the main branch. They do their work in their personal branch, then
+merge it into the mainline when it is ready.
+
+.. image:: images/workflows_shared.png
+
+Advantage over *Centralized with local commits*:
+
+ * Easier organization of work - separate changes can be developed in their own branches
+ * Developers can merge one another's personal branches when working on something together.
+
+Subversion and CVS do not support this model. Other distributed VCS
+tools support it. Many features of Breezy are good for this workflow
+including ease of use, shared repositories, integrated merging and
+rich metadata (including directory rename tracking).
+
+
+Decentralized with human gatekeeper
+-----------------------------------
+
+In this workflow, each developer has their own branch or branches, plus
+read-only access to the main branch. One developer (the gatekeeper) has commit
+rights to the main branch. When a developer wants their work merged, they ask
+the gatekeeper to merge it. The gatekeeper does code review, and merges the
+work into the main branch if it meets the necessary standards.
+
+.. image:: images/workflows_gatekeeper.png
+
+Advantage over *Decentralized with shared mainline*:
+
+ * Code is always reviewed before it enters the mainline
+ * Tighter control over when changes get incorporated into the mainline.
+
+A companion tool of Breezy's called Bundle Buggy can be very useful for
+tracking what changes are up for review, their status and reviewer comments.
+
+
+Decentralized with automatic gatekeeper
+---------------------------------------
+
+In this workflow, each developer has their own branch or branches, plus
+read-only access to the mainline. A software gatekeeper has commit rights to
+the main branch. When a developer wants their work merged, they request another
+person to review it. Once it has passed review, either the original author or
+the reviewer asks the gatekeeper software to merge it, depending on team
+policies. The gatekeeper software does a merge, a compile, and runs the test
+suite. If and only if the code passes, it is merged into the mainline.
+
+Note: As an alternative, the review step can be skipped and the author can
+submit the change to the automatic gatekeeper without it. (This is particularly
+appropriate when using practices such as Pair Programming that effectively
+promote just-in-time reviews instead of reviewing code as a separate step.)
+
+.. image:: images/workflows_pqm.png
+
+Advantages over *Decentralized with human gatekeeper*:
+
+ * Code is always tested before it enters the mainline (so the integrity of the
+   mainline is higher)
+ * Scales better as teams grow.
+
+A companion tool of Breezy's called Patch Queue Manager (PQM) can provide the
+automated gatekeeper capability.
+
+
+Implementing a workflow
+-----------------------
+
+For an in-depth look at how to implement each of the workflows above,
+see chapters 3 to 6 in this manual. First though, chapter 2
+explains some important pre-requisites including installation, general
+usage instructions and configuration tips.

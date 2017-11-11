@@ -1,8 +1,8 @@
 ========================
-Bazaar Design Principles
+Breezy Design Principles
 ========================
 
-We have learned or adopted a few general principles for code in Bazaar.
+We have learned or adopted a few general principles for code in Breezy.
 Generally we will try to follow them in future, either for consistency or
 because they've been proven to work well, or both.  
 
@@ -10,7 +10,7 @@ We may need to depart from these principles in particular special cases,
 or modify them as we learn more, or we might be diverging for them for no
 very good reason but just because of bugs.  If in doubt, ask.  
 
-See also: `Bazaar Developer Document Catalog <index.html>`_.
+See also: `Breezy Developer Document Catalog <index.html>`_.
 
 
 Testing
@@ -36,7 +36,7 @@ formats in future.  It should be easy to read the format without reading
 the whole object.
 
 The format marker should be a string understandable by a user that names
-the format and gives the bzr release that introduced it.  If the bzr
+the format and gives the Breezy release that introduced it.  If the Breezy
 program doesn't understand that format, it can at least show that format
 marker to the user.
 
@@ -49,14 +49,14 @@ optional elements can cause problems when older clients don't understand
 those changes, or don't propagate them properly.
 
 We clearly distinguish internal files from user files.  Files inside
-``.bzr/`` are only written to by bzr and we discourage users from editing
-them.  Within bzr, code addressing the abstract interface of the Branch,
-BzrDir, etc shouldn't know where or how the internal files are stored.  If
+``.bzr/`` are only written to by Breezy and we discourage users from editing
+them.  Within Breezy, code addressing the abstract interface of the Branch,
+ControlDir, etc shouldn't know where or how the internal files are stored.  If
 anything else is written in there, it won't be propagated when pushing or
 pulling, and won't be converted when upgrading.  (This is not quite true
 though; there is a ``branch.conf``.)
 
 User files within the tree, by contrast, we always store and return
-verbatim.  It's OK for Bazaar to read and act on these files (as we do
-with ``.bzrignore``), and to update them (as ``bzr ignore`` does), but
+verbatim.  It's OK for Breezy to read and act on these files (as we do
+with ``.bzrignore``), and to update them (as ``brz ignore`` does), but
 they remain clearly user files and can be directly edited.

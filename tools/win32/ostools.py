@@ -25,7 +25,7 @@ def makedir(dirname):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     if not os.path.isdir(dirname):
-        print "Error: Destination is not a directory", dirname
+        print("Error: Destination is not a directory", dirname)
         return 2
     return 0
 
@@ -39,12 +39,12 @@ def main(argv=None):
     cmd = argv.pop(0)
 
     if cmd == 'help':
-        print __doc__
+        print(__doc__)
         return 0
 
     if cmd == 'copytodir':
         if len(argv) < 2:
-            print "Usage:  ostools.py copytodir FILES... DIR"
+            print("Usage:  ostools.py copytodir FILES... DIR")
             return 1
 
         todir = argv.pop()
@@ -59,13 +59,13 @@ def main(argv=None):
         for src in files:
             dest = os.path.join(todir, os.path.basename(src))
             shutil.copy(src, dest)
-            print "Copied:", src, "=>", dest
+            print("Copied:", src, "=>", dest)
 
         return 0
 
     if cmd == 'copytree':
         if len(argv) < 2:
-            print "Usage:  ostools.py copytree FILES... DIR"
+            print("Usage:  ostools.py copytree FILES... DIR")
             return 1
 
         todir = argv.pop()
@@ -85,13 +85,13 @@ def main(argv=None):
             if retcode:
                 return retcode
             shutil.copy(src, dest)
-            print "Copied:", src, "=>", dest
+            print("Copied:", src, "=>", dest)
 
         return 0
 
     if cmd == 'remove':
         if len(argv) == 0:
-            print "Usage:  ostools.py remove [FILES...] [DIRS...]"
+            print("Usage:  ostools.py remove [FILES...] [DIRS...]")
             return 1
 
         filesdirs = []
@@ -101,27 +101,27 @@ def main(argv=None):
         for i in filesdirs:
             if os.path.isdir(i):
                 shutil.rmtree(i)
-                print "Removed:", i
+                print("Removed:", i)
             elif os.path.isfile(i):
                 os.remove(i)
-                print "Removed:", i
+                print("Removed:", i)
             else:
-                print "Not found:", i
+                print("Not found:", i)
 
         return 0
 
     if cmd == "basename":
         if len(argv) == 0:
-            print "Usage:  ostools.py basename [PATH | URL]"
+            print("Usage:  ostools.py basename [PATH | URL]")
             return 1
 
         for path in argv:
-            print os.path.basename(path)
+            print(os.path.basename(path))
         return 0
 
     if cmd == 'makedir':
         if len(argv) == 0:
-            print "Usage:  ostools.py makedir DIR"
+            print("Usage:  ostools.py makedir DIR")
             return 1
 
         retcode = makedir(argv.pop())
@@ -129,8 +129,8 @@ def main(argv=None):
             return retcode
         return 0
 
-    print "Usage error"
-    print __doc__
+    print("Usage error")
+    print(__doc__)
     return 1
 
 

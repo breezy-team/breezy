@@ -1,0 +1,34 @@
+Log Formats
+===========
+
+A log format controls how information about each revision is displayed.
+The standard log formats are compared below::
+
+  Feature                 long           short         line
+  ----------------------  -------------  ------------  -------------------
+  design goal             detailed view  concise view  1 revision per line
+  committer               name+email     name only     name only
+  author                  name+email     -             -
+  date-time format        full           date only     date only
+  commit message          full           full          top line
+  tags                    yes            yes           yes
+  merges indicator        -              yes           -
+  status/delta            optional       optional      -
+  diff/patch              optional       optional      -
+  revision-id             optional       optional      -
+  branch nick             yes            -             -
+  foreign vcs properties  yes            yes           -
+  preferred levels        all            1             1
+  digital signature       optional       -             -
+
+The default format is ``long``. To change this, define the ``log_format``
+setting in the ``[DEFAULT]`` section of ``breezy.conf`` like this (say)::
+
+  [DEFAULT]
+  log_format = short
+
+Alternatively, to change the log format used for a given query, use the
+--long, --short or --line options.
+
+If one of the standard log formats does not meet your needs, additional
+formats can be provided by plugins.

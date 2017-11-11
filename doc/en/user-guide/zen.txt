@@ -1,16 +1,16 @@
-Bazaar Zen
+Breezy Zen
 ==========
 
-Grokking Bazaar
+Grokking Breezy
 ---------------
 
-While Bazaar is similar to other VCS tools in many ways, there are
+While Breezy is similar to other VCS tools in many ways, there are
 some important differences that are not necessarily obvious at first
 glance.  This section attempts
-to explain some of the things users need to know in order to "grok" Bazaar,
+to explain some of the things users need to know in order to "grok" Breezy,
 i.e. to deeply understand it.
 
-Note: It isn't necessary to fully understand this section to use Bazaar.
+Note: It isn't necessary to fully understand this section to use Breezy.
 You may wish to skim this section now and come back to it at a later time.
 
 Understanding revision numbers
@@ -29,7 +29,7 @@ same revision, so they all get a unique number. The third number is the
 number of revisions since the branch started. For example, 3112.1.5 is the
 first branch from revision 3112, the fifth revision on that branch.
 
-.. [#] Versions prior to bzr 1.2 used a slightly different algorithm.
+.. [#] Versions prior to brz 1.2 used a slightly different algorithm.
    Some nested branches would get extra numbers (such as 1.1.1.1.1)
    rather than the simpler 3-number system.
 
@@ -60,7 +60,7 @@ with Mary's changes and Bill's changes interleaved. It might look like this::
 Many teams use this approach because their tools make branching and merging
 difficult. As a consequence, developers update from and commit to the trunk
 frequently, minimizing integration pain by spreading it over every commit.
-If you wish, you can use Bazaar exactly like this. Bazaar does offer other
+If you wish, you can use Breezy exactly like this. Breezy does offer other
 ways though that you ought to consider.
 
 An alternative approach encouraged by distributed VCS tools is to create
@@ -153,7 +153,7 @@ In summary, the important points are:
 Each branch has its own view of history
 ---------------------------------------
 
-As explained above, Bazaar makes the distinction between:
+As explained above, Breezy makes the distinction between:
 
  * mainline revisions, i.e. ones you committed in your branch, and
 
@@ -184,16 +184,16 @@ to see the steps she has taken to develop this change. In this context,
 merging the trunk (and resolving any conflicts caused by doing that) is
 just one step as far as the history of this branch is concerned.
 
-It's important to remember that Bazaar is not changing history here, nor
+It's important to remember that Breezy is not changing history here, nor
 is it changing the global revision identifiers. You can always use the
 latter if you really want to. In fact, you can use the branch specific
 revision numbers when communicating *as long as* you provide the branch
-URL as context. (In many Bazaar projects, developers imply the central
+URL as context. (In many Breezy projects, developers imply the central
 trunk branch if they exchange a revision number without a branch URL.)
 
 Merges do not change revision numbers in a branch, though they do
 allocate local revision numbers to newly merged revisions. The only time
-Bazaar will change revision numbers in a branch is when you explicitly
+Breezy will change revision numbers in a branch is when you explicitly
 ask it to mirror another branch.
 
 Note: Revisions are numbered in a stable way: if two branches have
@@ -206,11 +206,11 @@ Summary
 -------
 
 In general, if you follow the advice given earlier - organise
-your work in branches and use merge to collaborate - you'll find Bazaar
+your work in branches and use merge to collaborate - you'll find Breezy
 generally does what you expect.
 
-In coming chapters, we examine various ways of using Bazaar beginning with
-the simplest: using Bazaar for personal projects.
+In coming chapters, we examine various ways of using Breezy beginning with
+the simplest: using Breezy for personal projects.
 
 ..
    vim: ft=rst tw=74 ai

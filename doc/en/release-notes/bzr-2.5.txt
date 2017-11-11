@@ -32,7 +32,36 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr config`` properly handles aliases and references in the
+  ``--directory`` parameter (Vincent Ladeuil, Wouter van Heyst, #947049)
+
+* Empty arguments in EDITOR are now properly preserved.
+  (Ross Lagerwall, #1089792)
+
+* Fix a traceback when trying to checkout a tree that also has an entry
+  with file-id `TREE_ROOT` somewhere other than at the root directory.
+  (John Arbash Meinel, #830947)
+
+* Lightweight checkouts of remote repositories had a bug with how they
+  extracted texts from the repository. (Just an ordering constraint on how
+  they consumed the stream.) (John Arbash Meinel, #1046284)
+
+* ``osutils.send_all`` now detects if we get a series of zero bytes sent,
+  and fails with a ECONNRESET. It seems if paramiko gets disconnected, it
+  will get into a state where it returns 0 bytes sent, but doesn't raise
+  an error. This change allows us to get a couple hiccups of no content
+  sent, but if it is consistent, we will consider it to be a failure.
+  (John Arbash Meinel, #1047309)
+
 * Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
+
+* Some filesystems give ``EOPNOTSUPP`` when trying to call ``fdatasync``.
+  This shouldn't be treated as a fatal error.
+  (John Arbash Meinel, #1075108)
+
+* Some small bug fixes wrt lightweight checkouts and remote repositories.
+  A test permutation was added that runs all working tree tests against a
+  lightweight checkout. (John Arbash Meinel, #1046697)
 
 Documentation
 *************

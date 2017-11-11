@@ -1,0 +1,252 @@
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.
+
+brz 3.0.0
+#########
+
+:Codename: Pelican
+:3.0.1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+ * The bzr command has been renamed to brz, to prevent
+   clashes with upstream Bazaar.
+   (Martin Packman, Jelmer Vernooĳ)
+
+ * The --prefix/-p argument for ``bzr diff`` now defaults to -p1 rather
+   than -p0. (Jelmer Vernooĳ, #1695126)
+
+ * The ``brz register-branch`` command from the Launchpad plugin has been
+   removed, because it has not worked for at least five years: it relies on
+   password authentication rather than SSO, the relevant systems no longer
+   have firewall-level access to the outside world, and in general the
+   Mirrored branch type is deprecated.  Either just push the branch to
+   Launchpad or use code imports instead
+   (https://help.launchpad.net/VcsImports).
+   (Colin Watson, #254567, #483689)
+
+ * brz no longer supports building the C extensions using Pyrex.
+   Only Cython is supported. (Jelmer Vernooĳ)
+
+ * Support for HTTP support using "pycurl" and the associated
+   URL schemes "http+pycurl://" and "https+pycurl://" has been dropped.
+   (Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)
+
+ * Support for medusa for FTP tests has been dropped, only
+   pyftpdlib is now supported. (Jelmer Vernooĳ)
+
+ * The deprecated ``brz get`` and ``brz clone`` commands have been
+   removed. (Jelmer Vernooĳ)
+
+ * The setting to ignore missing C extensions has been changed from
+   ``ignore_missing_extensions=True`` to
+   ``suppress_warnings=missing_extensions``. (Jelmer Vernooĳ)
+
+ * Remove format names as options to ``brz init`` and ``brz
+   init-repository``.. Now you must use ``brz init --format=...``.
+   This simplifies ``brz init --help``.
+   (Neil Martinsen-Burrell, #330494)
+
+ * ``python-gpg`` is now used for checking GPG signatures rather than
+   ``python-gpgme``. (Jelmer Vernooĳ, #1702308)
+
+ * ``python-gpg`` is now used for signing commits, rather than shelling
+   out to the gnupg command. The ``gpg_signing_command`` option has been
+   removed.  (Jelmer Vernooĳ, #847388)
+
+New Features
+************
+
+ * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+
+ * The 'fastimport' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'stats' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'upload' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'cvs' and 'mtn' plugins are now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'email' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'import' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)
+
+ * The 'link-tree' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
+
+ * The 'fetch-ghosts' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
+
+ * The 'commitfromnews' plugin is now bundled and
+   can be enabled by setting ``commit.template_from_files = NEWS``.
+   (Jelmer Vernooĳ)
+
+ * The 'darcs' plugin is now bundled.
+   (Jelmer Vernooĳ)
+
+ * The functionality from ``bzr-guess`` is now merged into Breezy.
+   It will provide suggestions if the user typoes a command.
+   (Jelmer Vernooĳ)
+
+Improvements
+************
+
+ * Doc generators now support the SOURCE_DATE_EPOCH environment
+   variable (https://reproducible-builds.org/specs/source-date-epoch/).
+   (Jelmer Vernooĳ)
+
+ * The ``repodebug`` plugin is now bundled.
+   (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+* Support Server Name Indication (SNI) when talking to https servers.
+  Cherry-picked from lp:~vila/bzr/1089352-sni-support
+  (Vincent Ladeuil, #1089352)
+
+* The ``bisect`` command now works in non-``.bzr`` directories.
+  (Jelmer Vernooĳ)
+
+* When creating ``authentication.conf``, umask is now set so only the
+  current user can read the file. Breezy warns if the file is
+  accessible for other users when it starts.
+  (Joke de Buhr, Jelmer Vernooĳ, #475501)
+
+* Support ``brz commit -x`` in combination with iter_changes.
+  (Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)
+
+* Print a proper error when encountering ghost revisions in
+  mainline in ``bzr log``. (Jelmer Vernooĳ, #726466)
+
+* Security fix: hostnames starting with a dash in bzr+ssh URLs
+  are now filtered out when using a subprocess SSH client.
+  .
+  Thanks to Augie Fackler for reporting.
+  (Jelmer Vernooĳ, #1710979)
+
+Documentation
+*************
+
+ * Various documents have been updated to explain that Breezy is a fork
+   of Bazaar.
+
+ * Documentation translations into Japanese, Spanish and Russian have been
+   removed since there are no current translators to update them.
+   (Jelmer Vernooĳ)
+
+API Changes
+***********
+
+ * bzrlib has been renamed to breezy. (Martin Packman, Jelmer Vernooĳ)
+
+ * Signature of ``load_tests`` used by ``TestLoader`` changed to be
+   compatible with standard libarary unittest.  (Martin Packman)
+
+ * All previously deprecated functionality has been removed.
+   (Jelmer Vernooĳ)
+
+ * ``CommitBuilder.record_entry_contents`` has been removed.
+   (Jelmer Vernooĳ, #731433, #604953)
+
+ * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
+   ``predicate=``. (Martin Packman)
+
+ * ``Branch.bzrdir``, ``Repository.bzrdir`` and ``WorkingTree.bzrdir``
+   have been renamed to ``Branch.controldir``, ``Repository.controldir``
+   and ``WorkingTree.controldir``, respectively.
+   (Jelmer Vernooĳ, #1695774)
+
+ * ``BzrBranch`` and the various bzr branch format implementations
+   have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
+
+ * ``MetaDirBranchFormatFactory`` has been removed.
+   Use lazy registration on ``breezy.branch.format_registry``
+   instead. (Jelmer Vernooĳ)
+
+ * ``breezy.bzrdir.format_registry`` has been removed; use
+   ``breezy.controldir.format_registry`` instead.
+   (Jelmer Vernooĳ)
+
+ * ``breezy.api`` has been removed.  (Jelmer Vernooĳ, #742192)
+
+ * ``ControlDir.find_bzrdirs`` has been renamed to
+   ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
+
+ * ``Repository.get_revisions`` no longer accepts ``None`` as
+   argument. (Jelmer Vernooĳ)
+
+ * A new ``Repository.iter_revisions`` method has been added.
+   (Jelmer Vernooĳ)
+
+ * A new ``WorkingTreeFormat.supports_setting_file_ids`` property
+   has been added that can be set to False to indicate a working tree
+   doesn't support e.g. passing a file_id into ``WorkingTree.mkdir``.
+   (Jelmer Vernooĳ, #1707533)
+
+ * A new ``RepositoryFormat.supports_setting_revision_ids`` property
+   has been added that can be set to False to indicate a repository
+   doesn't support passing revision ids to ``CommitBuilder.commit``.
+   (Jelmer Vernooĳ)
+
+ * ``Repository.print_file`` and ``Branch.print_file`` have been removed.
+   (Jelmer Vernooĳ)
+
+ * Various ``lock_write`` and ``lock_read`` functions now return a
+   context manager. (Jelmer Vernooĳ)
+
+ * The ``BranchWriteLockResult.branch_token`` (returned by
+   ``Branch.lock_write``) has been renamed to
+   ``BranchWriteLockResult.token``. (Jelmer Vernooĳ)
+
+ * ``breezy.decorators.needs_write_lock``,
+   ``breezy.decorators.needs_read_lock`` and
+   ``breezy.mutabletree.needs_tree_write_lock`` have been deprecated.
+   Instead, use the context managers returned by ``.lock_write``,
+   ``.lock_read`` and ``.lock_tree_write`` respectively. (Jelmer Vernooĳ)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+ * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
+   which caused ``output_encoding = iso-8859-1`` to be added to the
+   users' bazaar.conf. (Jelmer Vernooĳ)
+
+ * Newer versions of ``pyftpdlib`` are now supported for running FTP tests.
+   (Jelmer Vernooĳ)
+
+ * The ``--subunit`` argument for ``brz selftest`` has been renamed to
+   ``--subunit1``, and a new argument ``--subunit2`` has been added that
+   outputs subunit v2.
+   (Jelmer Vernooĳ, #1699346, #661205)
+
+ * Launchpad plugin tests no longer try to connect to production
+   Launchpad. (Jelmer Vernooĳ, #723183)
+
+ * Set the ``GPGHOME`` environment variable during testing, to prevent
+   e.g. leaking keys into the users' GNUPG directory.
+   (Jelmer Vernooĳ, #843885)
+
+..
+   vim: tw=74 ft=rst ff=unix

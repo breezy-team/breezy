@@ -4,7 +4,7 @@ Organizing your workspace
 Common workspace layouts
 ------------------------
 
-The best way for a Bazaar user to organize their workspace for a project
+The best way for a Breezy user to organize their workspace for a project
 depends on numerous factors including:
 
 * user role: project owner vs core developer vs casual contributor
@@ -33,22 +33,22 @@ and well understood.
 
 To set up::
 
-  bzr checkout --lightweight URL project
+  brz checkout --lightweight URL project
   cd project
 
 To work::
 
   (make changes)
-  bzr commit
+  brz commit
   (make changes)
-  bzr commit
+  brz commit
 
 Note that each commit implicitly publishes the change to everyone else
 working from that branch. However, you need to be up to date with changes
 in the remote branch for the commit to succeed. To grab the latest code
 and merge it with your changes, if any::
 
-  bzr update
+  brz update
 
 
 Standalone tree
@@ -57,23 +57,23 @@ Standalone tree
 In this layout, the working tree & branch are in the one place. Unless
 a shared repository exists in a higher level directory, the repository
 is located in that same place as well. This is the default layout in
-Bazaar and it's great for small to moderately sized projects.
+Breezy and it's great for small to moderately sized projects.
 
 To set up::
 
-  bzr branch URL project
+  brz branch URL project
   cd project
 
 To work::
 
   (make changes)
-  bzr commit
+  brz commit
   (make changes)
-  bzr commit
+  brz commit
 
 To publish changes to a central location::
 
-  bzr push [URL]
+  brz push [URL]
 
 The URL for push is only required the first time.
 
@@ -81,9 +81,9 @@ If the central location has, in the meantime, received changes from
 other users, then you'll need to merge those changes into your local
 branch before you try to push again::
 
-  bzr merge
+  brz merge
   (resolve conflicts)
-  bzr commit
+  brz commit
 
 As an alternative, a checkout can be used. Like a branch, a checkout
 has a full copy of the history stored locally but the local branch
@@ -105,30 +105,30 @@ This layout is ideal for most projects, particularly moderately sized ones.
 
 To set up::
 
-  bzr init-repo project
+  brz init-repo project
   cd project
-  bzr branch URL trunk
+  brz branch URL trunk
 
 To start a feature branch::
 
-  bzr branch trunk featureX
+  brz branch trunk featureX
   cd featureX
 
 To work::
 
   (make changes)
-  bzr commit
+  brz commit
   (make changes)
-  bzr commit
+  brz commit
 
 To publish changes to a mailing list for review & approval::
 
-  bzr send
+  brz send
 
 To publish changes to a public branch (that can then be registered as
 a Launchpad merge request, say)::
 
-  bzr push [URL]
+  brz push [URL]
 
 As a variation, the trunk can be created as a checkout. If you have
 commit privileges on trunk, that lets you merge into trunk and the
@@ -149,10 +149,10 @@ build artifacts (like .o or .class files).
 
 To set up::
 
-  bzr init-repo --no-trees project
+  brz init-repo --no-trees project
   cd project
-  bzr branch URL trunk
-  bzr checkout --lightweight trunk sandbox
+  brz branch URL trunk
+  brz checkout --lightweight trunk sandbox
   cd sandbox
 
 While you *could* start making changes in sandbox now, committing while
@@ -161,8 +161,8 @@ a mirror of the upstream URL (well unless the trunk is a checkout).
 Therefore, you usually want to immediately create a feature branch and
 switch your sandbox to it like this::
 
-  bzr branch ../trunk ../featureX
-  bzr switch ../featureX
+  brz branch ../trunk ../featureX
+  brz switch ../featureX
 
 The processes for making changes and submitting them are otherwise
 pretty much the same as those used for feature branches.

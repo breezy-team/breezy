@@ -3,7 +3,7 @@ Reviewing proposed changes to Bazaar
 
 All non-trivial code changes coming in to Bazaar are reviewed by someone else.
 
-Anyone is welcome to review any patch.  You don't need to have a full 
+Anyone is welcome to review any patch.  You don't need to have a full
 understanding of the codebase to find problems in the code, the documentation,
 or the concept of the patch.
 
@@ -11,12 +11,12 @@ Normally changes by core contributors are reviewed by one other core
 developer, and changes from other people are reviewed by two core
 developers.  Use intelligent discretion about whether the patch is trivial.
 
-No one likes their merge requests sitting in a queue going nowhere: this 
-is pure waste.  We prioritize reviewing existing proposals.  
-Canonical dedicates some staff time to providing prompt helpful reviews.  
+No one likes their merge requests sitting in a queue going nowhere: this
+is pure waste.  We prioritize reviewing existing proposals.
+Canonical dedicates some staff time to providing prompt helpful reviews.
 (See <http://wiki.bazaar.canonical.com/PatchPilot/>.)
 
-From late 2009 on, we do all our code reviews through Launchpad's 
+From late 2009 on, we do all our code reviews through Launchpad's
 merge proposal interface.
 
 
@@ -85,7 +85,7 @@ Reviews on Launchpad
 Anyone can propose or comment on a merge proposal just by creating a
 Launchpad account.
 
-From <https://code.launchpad.net/bzr/+activereviews> you can see all
+From <https://code.launchpad.net/brz/+activereviews> you can see all
 currently active reviews, and choose one to comment on.  This page also
 shows proposals that are now approved and should be merged by someone with
 PQM access.
@@ -100,5 +100,5 @@ Landing approved changes
 
 Once a merge proposal is approved and finished, it's sent to PQM (the patch
 queue manager) which will automatically test and integrate it.  The recommended
-way to start this off is by running the ``feed-pqm`` script from 
+way to start this off is by running the ``feed-pqm`` script from
 <https://launchpad.net/hydrazine/>.

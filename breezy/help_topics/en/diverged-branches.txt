@@ -1,0 +1,39 @@
+Diverged Branches
+=================
+
+When Bazaar tries to push one branch onto another, it requires that the
+destination branch must be ready to receive the source branch.  If this isn't
+the case, then we say that the branches have ``diverged``.  Branches are
+considered diverged if the destination branch's most recent commit is one that
+has not been merged (directly or indirectly) by the source branch.  To recover
+from diverged branches, one must merge the missing revisions into the source
+branch.
+
+This situation commonly arises when using a centralized workflow with local
+commits.  If someone else has committed new work to the mainline since your
+last pull and you have local commits that have not yet been pushed to the
+mainline, then your local branch and the mainline have diverged.
+
+Discovering What Has Diverged
+-----------------------------
+
+The ``brz missing`` command is used to find out what revisions are in another
+branch that are not present in the current branch, and vice-versa.  It shows a
+summary of  which extra revisions exist in each branch.  If you want to see the
+precise effects of those revisions, you can use ``brz diff --old=other_branch``
+to show the differences between other_branch and your current branch.
+
+A Solution
+----------
+
+The solution is to merge the revisions from the mainline into your local
+branch.  To do so, use ``brz merge`` to get the new revisions from the
+mainline.  This merge may result in conflicts if the other developer's changes
+overlap with your changes.  These conflicts should be resolved before
+continuing. After any conflicts have been resolved, or even if there were no
+conflicts, Bazaar requires that you explicitly commit these new revisions
+to your local branch.  This requirement gives you an opportunity to test the
+resulting working tree for correctness, since the merged revisions could have
+made arbitrary changes.  After testing, you should commit the merge using
+``brz commit``.  This clears up the diverged branches situation.  Your local
+branch can now be pushed to the mainline.

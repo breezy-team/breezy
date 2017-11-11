@@ -2,7 +2,7 @@
 What's New in Bazaar 2.5?
 *************************
 
-Bazaar 2.5 bas been released on the 24th of February 2012 and marks the
+Bazaar 2.5 has been released on the 24th of February 2012 and marks the
 start of a new long-term-stable series. From here, we will only make bugfix
 releases on the 2.5 series (2.5.1, etc, and support it until April 2017),
 while 2.6 will become our new development series.

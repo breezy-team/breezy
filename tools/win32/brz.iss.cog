@@ -1,0 +1,336 @@
+; Script for Inno Setup installer
+; [[[cog cog.outl('; This script created by Cog from brz.iss.cog source') ]]]
+; [[[end]]]
+; Cog is http://www.nedbatchelder.com/code/cog/
+
+[Setup]
+AppName=Breezy
+
+; [[[cog
+; # Python 2.5 compatibility code
+; import os
+; import sys
+; cwd = os.getcwd()
+; if cwd not in sys.path:
+;     sys.path.insert(0, cwd)
+; #/Python 2.5 compatibility code
+;
+; import breezy
+; try:
+;     VERSION = breezy.__version__
+;     AppVerName = 'Breezy %s' % VERSION
+;     OutputBaseFilename = 'brz-%s-setup' % VERSION
+; except:
+;     VERSION = ''
+;     AppVerName = 'Breezy'
+;     OutputBaseFilename = 'brz-setup'
+;
+; cog.outl('AppVerName=%s' % AppVerName)
+; cog.outl('OutputBaseFilename=%s' % OutputBaseFilename)
+; ]]]
+AppVerName=Breezy
+OutputBaseFilename=brz-setup
+; [[[end]]]
+
+DefaultDirName={pf}\Breezy
+DefaultGroupName=Breezy
+
+SolidCompression=yes
+
+OutputDir="..\"
+SourceDir="..\..\win32_brz.exe"
+
+; TODO(jelmer): Add brz.ico
+; SetupIconFile="..\brz.ico"
+InfoBeforeFile="..\tools\win32\info.txt"
+
+; VersionInfoCompany="Canonical Ltd."
+VersionInfoCopyright="Canonical Ltd. et al"
+VersionInfoDescription="Windows installer for Breezy"
+; [[[cog
+; import breezy
+; version_number = []
+; for i in breezy.version_info[:3]:
+;     try:
+;         i = int(i)
+;     except ValueError:
+;         i = 0
+;     version_number.append(i)
+; # incremental build number
+; from tools.win32.file_version import *
+; try:
+;     version_prev = get_file_version(OutputBaseFilename + '.exe')
+; except (FileNotFound, VersionNotAvailable):
+;     pass
+; else:
+;     if version_number == list(version_prev[:3]):
+;         version_number.append((version_prev[-1]+1) % 65536)
+; version_str = '.'.join(str(i) for i in version_number)
+; cog.outl('VersionInfoVersion="%s"' % version_str)
+; ]]]
+; [[[end]]]
+
+AppComments="Breezy: Friendly distributed version control system"
+AppPublisher="Breezy Developers"
+AppPublisherURL="https://www.breezy-vcs.org/"
+AppSupportURL="http://wiki.bazaar.canonical.com/BzrSupport"
+AppUpdatesURL="http://wiki.bazaar.canonical.com/WindowsDownloads"
+; [[[cog cog.outl('AppVersion=%s' % VERSION) ]]]
+; [[[end]]]
+
+ChangesEnvironment=yes
+; MARKH: PrivilegesRequired=none means it can't be installed by a non-admin
+; user - but sadly we still need admin - eg, tortoise overlays, installing
+; into "\Program Files", installing COM objects etc all must be done by an
+; admin.
+PrivilegesRequired=admin
+
+[Files]
+; Tortoise files - these are at the top as we use 'ExtractTemporaryFile' on
+; the TortoiseOverlays MSI, and inno documents such files should be at the
+; start for best performance.
+; [[[cog
+; if "TBZR" in os.environ: # we need a more formal way of controlling this...
+;     tovmsi32 = os.environ["TORTOISE_OVERLAYS_MSI_WIN32"] # point at the 32bit TortoiseOverlays .msi
+;     tovmsi64 = os.environ["TORTOISE_OVERLAYS_MSI_X64"] # point at the 64bit TortoiseOverlays .msi
+;     cog.outl('Source: "%s"; Flags: dontcopy ignoreversion ; Components: tortoise' % tovmsi32)
+;     cog.outl('Source: "%s"; Flags: dontcopy ignoreversion ; Components: tortoise' % tovmsi64)
+;     cog.outl('Source: "tbzrcache.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrcachew.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrcommand.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrcommandw.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrtrace.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: debug')
+;     # Note 'regserver' here appears to run regsvr32 without elevation, which
+;     # is no good for us - so we have a [run] entry below.
+;     cog.outl('Source: "tbzr_old.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrshellext_x86.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrshellext_x64.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise; Check: IsWin64;')
+;     cog.outl(r'Source: "plugins\qbzr\*"; DestDir: "{app}\plugins\qbzr"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: tortoise')
+;
+;     cog.outl('Source: "%s\\doc\\*.html"; DestDir: "{app}\\doc\\tbzr"; Flags: ignoreversion; Components: tortoise' % os.environ['TBZR'])
+; ]]]
+; [[[end]]]
+
+; We can't say '*.*' due to optional components.
+Source: "plugins\*.*"; DestDir: "{app}\\plugins"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: plugins
+Source: "*.bat"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "*.url"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "msvc*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "bz*.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "Python*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;
+Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;
+; [[[cog
+; try:
+;     import pycurl
+; except ImportError:
+;     ca_path = None
+; else:
+;     supported = pycurl.version_info()[8]
+;     if 'https' in supported:
+;         from breezy.transport.http.ca_bundle import get_ca_path
+;         ca_path = get_ca_path()
+;         if ca_path:
+;             cog.outl('Source: "%s"; DestDir: "{app}"; Components: cabundle' % ca_path)
+;         else:
+;             cog.msg('You have pycurl with SSL support, '
+;                     'but CA Bundle (curl-ca-bundle.crt) not found!')
+; ]]]
+; [[[end]]]
+
+; imageformats plugins for PyQt4
+; [[[cog
+; plug_dir = os.path.join(os.path.dirname(cog.inFile), # $(bzr_src_root)/tools/win32
+;                         '..', '..', 'win32_bzr.exe', 'imageformats')
+; if os.path.isdir(plug_dir):
+;     cog.outl('Source: "imageformats\\*.*"; DestDir: "{app}\\imageformats"; '
+;              'Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;')
+; else:
+;     cog.msg('imageformats plugins for PyQt4 not found')
+; ]]]
+; [[[end]]]
+
+[Types]
+Name: "typical"; Description: "A typical installation"
+Name: "full"; Description: "Full Installation (typical installation plus test utilities)"
+Name: "compact"; Description: "Compact installation"
+Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+[Components]
+Name: "main"; Description: "Main Files"; Types: full typical compact custom; Flags: fixed
+Name: "plugins"; Description: "Default plugins"; Types: full typical custom;
+; [[[cog
+; if ca_path:
+;     cog.outl('Name: "cabundle"; '
+;              'Description: "CA certificates for SSL support"; '
+;              'Types: full typical custom')
+; if "TBZR" in os.environ: # we need a more formal way of controlling this...
+;     cog.outl('Name: "tortoise"; Description: "Windows Shell Extensions (TortoiseBZR)"; Types: full typical custom;')
+;     cog.outl('Name: "debug"; Description: "Test, diagnostic and debugging utilities"; Types: full custom;')
+;
+; ]]]
+; [[[end]]]
+
+[Dirs]
+Name: "{userappdata}\bazaar\2.0"
+Name: "{app}\plugins"; Flags: uninsalwaysuninstall
+
+
+[Icons]
+Name: "{group}\Documentation index"; Filename: "{app}\doc\index.html"; WorkingDir: "{app}\doc";
+Name: "{group}\Breezy Home Page"; Filename: "{app}\breezy.url"; Comment: "https://www.breezy-vcs.org/";
+Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
+; NOTE: Intent is to change the log file location - the line below will need to change to reflect that.
+Name: "{group}\Open Bzr log file"; Filename: "notepad.exe"; Parameters: "{userdocs}\.bzr.log"; Comment: "Launch notepad to view the bzr log file";
+
+; [[[cog
+; if "TBZR" in os.environ:
+;     cog.outl(r'Name: "{group}\TortoiseBZR documentation"; Filename: "{app}\doc\tbzr\index.html"; Comment: "Launch TortoiseBZR documentation";')
+; ]]]
+; [[[end]]]
+; No Uninstall here - Control Panel will do
+
+
+[Tasks]
+Name: Path; Description: "Add {app} directory to PATH environment variable"
+; [[[cog
+; if "TBZR" in os.environ:
+;     cog.outl('Name: TBZRReadme; Description: "View the TortoiseBZR Readme"; Components: tortoise')
+; ]]]
+; [[[end]]]
+
+
+[Registry]
+Root: HKLM; Subkey: "SOFTWARE\Breezy"; Flags: noerror uninsdeletekey
+Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "InstallPath"; ValueType: string; ValueData: "{app}"; Flags: noerror
+; Don't write stuff that can be implied
+;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "breezyPath"; ValueType: string; ValueData: "{app}\lib\library.zip\breezy"; Flags: noerror
+;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "PluginsPath"; ValueType: string; ValueData: "{app}\plugins"; Flags: noerror
+;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "PythonPath"; ValueType: string; ValueData: "{app}\lib\library.zip"; Flags: noerror
+; [[[cog cog.outl('Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "Version"; ValueType: string; ValueData: "%s"; Flags: noerror' % VERSION) ]]]
+; [[[end]]]
+
+
+[Run]
+Filename: "{app}\brz_postinstall.exe"; Parameters: "--start-brz"; Flags: skipifdoesntexist runhidden;
+Filename: "{app}\brz_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Flags: skipifdoesntexist skipifsilent runhidden;
+; [[[cog
+; if "TBZR" in os.environ:
+;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/s /i: /n tbzrshellext_x86.dll"; WorkingDir: "{app}"; Components: tortoise; Description: "Registering Tortoise"; StatusMsg: "Registering Tortoise"')
+;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/s /i: /n tbzrshellext_x64.dll"; WorkingDir: "{app}"; Components: tortoise; Description: "Registering Tortoise"; StatusMsg: "Registering Tortoise"; Check: IsWin64')
+;     cog.outl(r'Filename: "{app}\doc\tbzr\index.html"; Tasks: TBZRReadme; Flags: shellexec')
+; ]]]
+; [[[end]]]
+
+
+[UninstallRun]
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden;
+; [[[cog
+; if "TBZR" in os.environ:
+;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s /i: tbzrshellext_x86.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist')
+;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s /i: tbzrshellext_x64.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist; Check: IsWin64')
+; ]]]
+; [[[end]]]
+
+
+[Code]
+const
+  SHCNF_IDLIST = $0000;
+  SHCNE_ASSOCCHANGED = $08000000;
+  WM_QUIT = 18;
+  MOVEFILE_DELAY_UNTIL_REBOOT    = 4;
+
+procedure SHChangeNotify(wEventId, uFlags, dwItem1, dwItem2: Integer);
+ external 'SHChangeNotify@shell32.dll stdcall';
+
+function MoveFileEx(lpExistingFileName, lpNewFileName: String; dwFlags: Cardinal): Integer;
+ external 'MoveFileExA@kernel32.dll stdcall';
+
+procedure DeleteFileNowOrLater(filename: string);
+var
+  rc : Integer;
+begin
+    if FileExists(filename) and not DeleteFile(filename) then
+        // can't work out to pass NULL to the API, but an empty string
+        // seems to work OK.
+        MoveFileEx(filename, '', MOVEFILE_DELAY_UNTIL_REBOOT);
+end;
+
+procedure ShutdownTBZR;
+var
+    hwnd: HWND;
+begin
+// [[[cog
+// if "TBZR" not in os.environ:
+//     cog.outl('        Exit;  // No TSVN set - exit this procedure.')
+// ]]]
+// [[[end]]]
+    // ask the cache process to shut-down.
+    hwnd := FindWindowByClassName('TBZRCache_Taskbar');
+    if hwnd <> 0 then
+        PostMessage(hwnd, WM_QUIT, 1, 0);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+    S, tovmsi, fqtovmsi, params: String;
+    ErrorCode: Integer;
+begin
+    if CurStep=ssInstall then begin
+        ShutdownTBZR;
+        // In case the user hasn't uninstalled the old version before
+        // upgrading, we unregister and delete some obsolete files
+        // (regsvr32 remains silent even if the file doesn't exist)
+        Exec('regsvr32.exe', '/s /u "' + ExpandConstant('{app}\tbzr.dll') + '"',
+             '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+        DeleteFileNowOrLater(ExpandConstant('{app}\tbzr.dll'));
+        DeleteFileNowOrLater(ExpandConstant('{app}\tbzrtest.exe'));
+        DeleteFileNowOrLater(ExpandConstant('{app}\tbzr_tracer.exe'));
+    end;
+
+    if CurStep=ssPostInstall then begin
+        // a couple of post-install tasks
+        if IsComponentSelected('tortoise') then begin
+            // Need to execute:
+            // msiexec /i TortoiseOverlays-1.X.X.XXXX-win32.msi /qn /norestart
+// 64bit notes:
+// We are still primarily a 32bit application - the only 64bit binary is the
+// shell extension, but even then, we need to install the 32bit version too.
+// Thus, we keep tortoise in 32bit "install mode" - meaning we are installed
+// to "\Program Files (x86)".  We don't bother trying to install our single
+// 64bit DLL into "\Program Files" - we use a different DLL name for 32 and
+// 64 bit versions, so nothing will conflict.
+// Note however that on a 64bit OS, we only need the 64bit TortoiseOverlays -
+// the 32bit apps using shell extensions still work fine with that.
+// [[[cog
+// if "TBZR" in os.environ:
+//     import os
+//     cog.outl("if IsWin64 then")
+//     cog.outl("  tovmsi := '%s'" % os.path.basename(os.environ["TORTOISE_OVERLAYS_MSI_X64"]))
+//     cog.outl("else")
+//     cog.outl("  tovmsi := '%s'" % os.path.basename(os.environ["TORTOISE_OVERLAYS_MSI_WIN32"]))
+// else:
+//     cog.outl("tovmsi := '';")
+// ]]]
+// [[[end]]]
+            ExtractTemporaryFile(tovmsi);
+            fqtovmsi := AddBackslash(ExpandConstant('{tmp}')) + tovmsi;
+            params := '/i "' + fqtovmsi + '" /qn /norestart';
+            if not ShellExec('', 'msiexec.exe', params, '', SW_HIDE,
+                             ewWaitUntilTerminated, ErrorCode) then
+                MsgBox('Failed to install TortoiseOverlays: ' + SysErrorMessage(ErrorCode),
+                        mbInformation, MB_OK);
+            // Ideally we could be bzr_postinstall.exe this way too, but
+            // its needed at uninstall time.
+        end;
+        // cause explorer to re-fetch handlers.
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
+    end;
+end;
+
+
+function InitializeUninstall(): Boolean;
+begin
+    ShutdownTBZR;
+    result := True;
+end;

@@ -1,5 +1,5 @@
 #################
-Bazaar User Guide
+Breezy User Guide
 #################
 
 .. Please mark sections in included files as following:
@@ -14,18 +14,18 @@ Bazaar User Guide
 Introduction
 ############
 
-.. include:: introducing_bazaar.txt
+.. include:: introducing_breezy.txt
 .. include:: core_concepts.txt
-.. include:: bazaar_workflows.txt
+.. include:: breezy_workflows.txt
 
 
 Getting started
 ###############
 
-.. include:: installing_bazaar.txt
+.. include:: installing_breezy.txt
 .. include:: entering_commands.txt
 .. include:: getting_help.txt
-.. include:: configuring_bazaar.txt
+.. include:: configuring_breezy.txt
 .. include:: using_aliases.txt
 .. include:: plugins.txt
 .. include:: zen.txt
@@ -95,7 +95,7 @@ A brief tour of some popular plugins
 .. include later looms_plugin.txt
 
 
-Integrating Bazaar into your environment
+Integrating Breezy into your environment
 ########################################
 
 .. include:: web_browsing.txt

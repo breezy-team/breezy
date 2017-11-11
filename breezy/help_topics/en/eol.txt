@@ -1,0 +1,122 @@
+End of Line Conversion
+======================
+
+EOL conversion is provided as a content filter where Bazaar internally
+stores a canonical format but outputs a convenience format. See
+``brz help content-filters`` for general information about using these.
+
+Note: Content filtering is only supported in recently added formats,
+e.g. 1.14. Be sure that both the repository *and* the branch are
+in a recent format. (Just setting the format on the repository
+is not enough.) If content filtering does not appear to be working, use
+'brz info -v' to confirm that the branch is using "Working tree format 5"
+or later.
+
+EOL conversion needs to be enabled for selected file patterns using
+rules. See ``brz help rules`` for general information on defining rules.
+Currently, rules are only supported in $brz_HOME/.bazaar/rules (or
+%brz_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be
+supported in a future verison of Bazaar.
+
+To configure which files to filter, set ``eol`` to one of the values below.
+(If a value is not set, ``exact`` is the default.)
+
+ ========== ===================================== ======================
+ Value      Checkout end-of-lines as              Commit end-of-lines as
+ ========== ===================================== ======================
+ ``native`` ``crlf`` on Windows, ``lf`` otherwise ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``lf``     ``lf``                                ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``crlf``   ``crlf``                              ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``exact``  No conversion                         Exactly as in file
+ ========== ===================================== ======================
+
+Note: For safety reasons, no conversion is applied to any file where a null
+byte is detected in the file.
+
+For users working on a cross-platform project, here is a suggested rule
+to use as a starting point::
+
+  [name *]
+  eol = native
+
+If you have binary files that do not contain a null byte though, be
+sure to add ``eol = exact`` rules for those as well. You can do this
+by giving more explicit patterns earlier in the rules file. For example::
+
+  [name *.png]
+  eol = exact
+
+  [name *]
+  eol = native
+
+If your working tree is on a network drive shared by users on different
+operating systems, you typically want to force certain conventions for
+certain files. In that way, if a file is created with the wrong line
+endings or line endings get mixed during editing, it gets committed
+correctly and gets checked out correctly. For example::
+
+  [name *.bat]
+  eol = crlf
+
+  [name *.sh]
+  eol = lf
+
+  [name *]
+  eol = native
+
+If you take the care to create files with their required endings, you can
+achieve *almost* the same thing by using ``eol = exact``. It is slightly
+safer to use ``lf`` and ``crlf`` though because edits accidentally
+introducing mixed line endings will be corrected during commit for files
+with those settings.
+
+If you have sample test data that deliberately has text files with mixed
+newline conventions, you can ask for those to be left alone like this::
+
+  [name test_data/]
+  eol = exact
+
+  [name *]
+  eol = native
+
+Note that ``exact`` does not imply the file is binary but it does mean
+that no conversion of end-of-lines will be done. (Bazaar currently relies
+of content analysis to detect binary files for commands like ``diff``.
+In the future, a ``binary = true`` rule may be added but it is not
+supported yet.)
+
+If you have an existing repository with text files already stored using
+Windows newline conventions (``crlf``), then you may want to keep using that
+convention in the repository. Forcing certain files to this convention
+may also help users who do not have rules configured. To do this, set
+``eol`` to one of the values below.
+
+ ============================ ======================== ======================
+ Value                        Checkout end-of-lines as Commit end-of-lines as
+ ============================ ======================== ======================
+ ``native-with-crlf-in-repo`` ``crlf`` on Windows,     ``crlf``
+                              ``lf`` otherwise
+ ---------------------------- ------------------------ ----------------------
+ ``lf-with-crlf-in-repo``     ``lf``                   ``crlf``
+ ---------------------------- ------------------------ ----------------------
+ ``crlf-with-crlf-in-repo``   ``crlf``                 ``crlf``
+ ============================ ======================== ======================
+
+For users working on an existing project that uses Windows newline
+conventions in their Bazaar repository, this rule is suggested as a
+starting point::
+
+  [name *]
+  eol = native-with-crlf-in-repo
+
+For new projects, it is recommended that end-of-lines be stored as ``lf``
+and that users stick to the basic settings, i.e. ``native``, ``lf``,
+``crlf`` and ``exact``.
+
+Note: Bazaar's EOL conversion will convert the content of files but
+never reject files because a given line ending or mixed line endings
+are found. A precommit hook should be used if you wish to validate
+(and not just convert) content before committing.
