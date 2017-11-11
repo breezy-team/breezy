@@ -71,7 +71,7 @@ Specifications
 * `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories
   (new in Bazaar 0.92).
 
-* `Format feature flags <feature-flags.html>`_ |--| Allow exntending
+* `Format feature flags <feature-flags.html>`_ |--| Allow extending
   formats with optional features.  (new in Bazaar 2.5).
 
 

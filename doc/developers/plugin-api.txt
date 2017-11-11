@@ -76,7 +76,7 @@ the full list.
 |                        |         | available to python at                 |
 |                        |         | breezy.plugins.NAME                    |
 +------------------------+---------+----------------------------------------+
-| brz__commands          | []      | A list of the commands that the plugin |
+| brz_commands           | []      | A list of the commands that the plugin |
 |                        |         | provides. Commands that already exist  |
 |                        |         | in brz and are decorated by the plugin |
 |                        |         | do not need to be listed (but it is not|
