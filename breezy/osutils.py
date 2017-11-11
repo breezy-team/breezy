@@ -736,6 +736,16 @@ def file_iterator(input_file, readsize=32768):
         yield b
 
 
+# GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
+# used as bytes through most interfaces so encode with this wrapper.
+if PY3:
+    def _hexdigest(hashobj):
+        return hashobj.hexdigest().encode()
+else:
+    def _hexdigest(hashobj):
+        return hashobj.hexdigest()
+
+
 def sha_file(f):
     """Calculate the hexdigest of an open file.
 
@@ -748,7 +758,7 @@ def sha_file(f):
         if not b:
             break
         s.update(b)
-    return s.hexdigest()
+    return _hexdigest(s)
 
 
 def size_sha_file(f):
@@ -766,7 +776,7 @@ def size_sha_file(f):
             break
         size += len(b)
         s.update(b)
-    return size, s.hexdigest()
+    return size, _hexdigest(s)
 
 
 def sha_file_by_name(fname):
@@ -777,7 +787,7 @@ def sha_file_by_name(fname):
         while True:
             b = os.read(f, 1<<16)
             if not b:
-                return s.hexdigest()
+                return _hexdigest(s)
             s.update(b)
     finally:
         os.close(f)
@@ -788,17 +798,18 @@ def sha_strings(strings, _factory=sha):
     s = _factory()
     for string in strings:
         s.update(string)
-    return s.hexdigest()
+    return _hexdigest(s)
 
 
 def sha_string(f, _factory=sha):
-    return _factory(f).hexdigest()
+    # GZ 2017-09-16: Dodgy if factory is ever not sha, probably shouldn't be.
+    return _hexdigest(_factory(f))
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha(b).hexdigest()}
+            'sha1': _hexdigest(sha(b))}
 
 
 def compare_files(a, b):

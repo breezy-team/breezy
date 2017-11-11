@@ -30,10 +30,10 @@ from ..sixish import (
     )
 
 
-FORMAT_ONE = "Bazaar pack format 1 (introduced in 0.18)"
+FORMAT_ONE = b"Bazaar pack format 1 (introduced in 0.18)"
 
 
-_whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
+_whitespace_re = re.compile(b'[\t\n\x0b\x0c\r ]')
 
 
 def _check_name(name):
@@ -73,7 +73,7 @@ class ContainerSerialiser(object):
 
     def begin(self):
         """Return the bytes to begin a container."""
-        return FORMAT_ONE.encode("ascii") + b"\n"
+        return FORMAT_ONE + b"\n"
 
     def end(self):
         """Return the bytes to finish a container."""
@@ -211,7 +211,7 @@ class ReadVFile(object):
         """Note that readline will not cross readv segments."""
         self._next()
         result = self._string.readline()
-        if self._string.tell() == self._string_length and result[-1] != '\n':
+        if self._string.tell() == self._string_length and result[-1:] != b'\n':
             raise errors.BzrError('short readline in the readvfile hunk: %r'
                 % (result, ))
         return result
@@ -247,9 +247,9 @@ class BaseReader(object):
 
     def _read_line(self):
         line = self._source.readline()
-        if not line.endswith('\n'):
+        if not line.endswith(b'\n'):
             raise errors.UnexpectedEndOfContainerError()
-        return line.rstrip('\n')
+        return line.rstrip(b'\n')
 
 
 class ContainerReader(BaseReader):
@@ -303,14 +303,14 @@ class ContainerReader(BaseReader):
     def _iter_record_objects(self):
         while True:
             record_kind = self.reader_func(1)
-            if record_kind == 'B':
+            if record_kind == b'B':
                 # Bytes record.
                 reader = BytesRecordReader(self._source)
                 yield reader
-            elif record_kind == 'E':
+            elif record_kind == b'E':
                 # End marker.  There are no more records.
                 return
-            elif record_kind == '':
+            elif record_kind == b'':
                 # End of stream encountered, but no End Marker record seen, so
                 # this container is incomplete.
                 raise errors.UnexpectedEndOfContainerError()
@@ -346,7 +346,7 @@ class ContainerReader(BaseReader):
                     raise errors.DuplicateRecordNameError(name_tuple[0])
                 all_names.add(name_tuple)
         excess_bytes = self.reader_func(1)
-        if excess_bytes != '':
+        if excess_bytes != b'':
             raise errors.ContainerHasExcessDataError(excess_bytes)
 
 
@@ -375,9 +375,9 @@ class BytesRecordReader(BaseReader):
         names = []
         while True:
             name_line = self._read_line()
-            if name_line == '':
+            if name_line == b'':
                 break
-            name_tuple = tuple(name_line.split('\x00'))
+            name_tuple = tuple(name_line.split(b'\x00'))
             for name in name_tuple:
                 _check_name(name)
             names.append(name_tuple)
@@ -475,11 +475,11 @@ class ContainerPushParser(object):
 
     def _state_expecting_record_type(self):
         if len(self._buffer) >= 1:
-            record_type = self._buffer[0]
+            record_type = self._buffer[:1]
             self._buffer = self._buffer[1:]
-            if record_type == 'B':
+            if record_type == b'B':
                 self._state_handler = self._state_expecting_length
-            elif record_type == 'E':
+            elif record_type == b'E':
                 self.finished = True
                 self._state_handler = self._state_expecting_nothing
             else:
@@ -497,10 +497,10 @@ class ContainerPushParser(object):
 
     def _state_expecting_name(self):
         encoded_name_parts = self._consume_line()
-        if encoded_name_parts == '':
+        if encoded_name_parts == b'':
             self._state_handler = self._state_expecting_body
         elif encoded_name_parts:
-            name_parts = tuple(encoded_name_parts.split('\x00'))
+            name_parts = tuple(encoded_name_parts.split(b'\x00'))
             for name_part in name_parts:
                 _check_name(name_part)
             self._current_record_names.append(name_parts)
