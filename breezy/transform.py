@@ -2038,7 +2038,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             executable = False
         else:
             file_id = self._transform.final_file_id(self._path2trans_id(path))
-            executable = self.is_executable(file_id, path)
+            executable = self.is_executable(path, file_id)
         return kind, executable, None
 
     def is_locked(self):
@@ -2289,7 +2289,9 @@ class _PreviewTree(inventorytree.InventoryTree):
             finally:
                 fileobj.close()
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         if file_id is None:
             return False
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -2297,7 +2299,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             return self._transform._new_executability[trans_id]
         except KeyError:
             try:
-                return self._transform._tree.is_executable(file_id, path)
+                return self._transform._tree.is_executable(path, file_id)
             except OSError as e:
                 if e.errno == errno.ENOENT:
                     return False
@@ -2615,14 +2617,14 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     trans_id = tt.create_path(entry.name, parent_id)
                     file_trans_id[file_id] = trans_id
                     tt.version_file(file_id, trans_id)
-                    executable = tree.is_executable(file_id, tree_path)
+                    executable = tree.is_executable(tree_path, file_id)
                     if executable:
                         tt.set_executability(executable, trans_id)
                     trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((file_id, trans_data))
                 else:
-                    file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
-                                                          tree)
+                    file_trans_id[file_id] = new_by_entry(
+                            tt, entry, parent_id, tree)
                 if reparent:
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
@@ -2765,13 +2767,13 @@ def resolve_checkout(tt, conflicts, divert):
     return new_conflicts
 
 
-def new_by_entry(tt, entry, parent_id, tree):
+def new_by_entry(path, tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""
     name = entry.name
     kind = entry.kind
     if kind == 'file':
         contents = tree.get_file(entry.file_id).readlines()
-        executable = tree.is_executable(entry.file_id)
+        executable = tree.is_executable(path, entry.file_id)
         return tt.new_file(name, parent_id, contents, entry.file_id,
                            executable)
     elif kind in ('directory', 'tree-reference'):

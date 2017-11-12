@@ -1001,15 +1001,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree._supports_executable():
             tree.lock_read()
             try:
-                self.assertFalse(tree.is_executable(tree.path2id('filename')))
+                self.assertFalse(tree.is_executable('filename'))
             finally:
                 tree.unlock()
             os.chmod('filename', 0o755)
             self.addCleanup(tree.lock_read().unlock)
-            self.assertTrue(tree.is_executable(tree.path2id('filename')))
+            self.assertTrue(tree.is_executable('filename'))
         else:
             self.addCleanup(tree.lock_read().unlock)
-            self.assertFalse(tree.is_executable(tree.path2id('filename')))
+            self.assertFalse(tree.is_executable('filename'))
 
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')

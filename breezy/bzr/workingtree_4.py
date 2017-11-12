@@ -489,7 +489,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return False # Missing entries are not executable
         return entry[1][0][3] # Executable?
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         """Test if a file is executable or not.
 
         Note: The caller is expected to take a read-lock before calling this.
@@ -501,8 +501,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return entry[1][0][3]
         else:
             self._must_be_locked()
-            if not path:
-                path = self.id2path(file_id)
             mode = osutils.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
@@ -1979,8 +1977,11 @@ class DirStateRevisionTree(InventoryTree):
         else:
             return (kind, None, None, None)
 
-    def is_executable(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def is_executable(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         ie = inv[inv_file_id]
         if ie.kind != "file":
             return False

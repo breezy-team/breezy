@@ -154,7 +154,7 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.has_filename()."""
         return self._file_transport.has(filename)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         return self._inventory[file_id].executable
 
     def kind(self, file_id):

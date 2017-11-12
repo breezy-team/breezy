@@ -1108,7 +1108,8 @@ class Merge3Merger(object):
             return None
         if tree.kind(file_id) != "file":
             return False
-        return tree.is_executable(file_id)
+        path = tree.id2path(file_id)
+        return tree.is_executable(path, file_id)
 
     @staticmethod
     def kind(tree, file_id):
@@ -1854,10 +1855,10 @@ class MergeIntoMergeType(Merge3Merger):
         try:
             entries = self._entries_to_incorporate()
             entries = list(entries)
-            for num, (entry, parent_id) in enumerate(entries):
+            for num, (entry, parent_id, path) in enumerate(entries):
                 child_pb.update(gettext('Preparing file merge'), num, len(entries))
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
-                trans_id = transform.new_by_entry(self.tt, entry,
+                trans_id = transform.new_by_entry(path, self.tt, entry,
                     parent_trans_id, self.other_tree)
         finally:
             child_pb.finished()
@@ -1889,17 +1890,17 @@ class MergeIntoMergeType(Merge3Merger):
             # an edge case, so we don't do anything special for those.  We let
             # them cause conflicts.
             merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
-        yield (merge_into_root, target_id)
+        yield (merge_into_root, target_id, '')
         if subdir.kind != 'directory':
             # No children, so we are done.
             return
-        for ignored_path, entry in other_inv.iter_entries_by_dir(subdir_id):
+        for path, entry in other_inv.iter_entries_by_dir(subdir_id):
             parent_id = entry.parent_id
             if parent_id == subdir.file_id:
                 # The root's parent ID has changed, so make sure children of
                 # the root refer to the new ID.
                 parent_id = merge_into_root.file_id
-            yield (entry, parent_id)
+            yield (entry, parent_id, path)
 
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,

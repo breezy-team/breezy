@@ -164,8 +164,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         modified_paths = transform.apply().modified_paths
         self.assertEqual('contents', self.wt.get_file_byname('name').read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
-        self.assertIs(self.wt.is_executable('my_pretties'), True)
-        self.assertIs(self.wt.is_executable('my_pretties2'), False)
+        self.assertIs(self.wt.is_executable('name'), True)
+        self.assertIs(self.wt.is_executable('name2'), False)
         self.assertEqual('directory', file_kind(self.wt.abspath('oz')))
         self.assertEqual(len(modified_paths), 3)
         tree_mod_paths = [self.wt.id2abspath(f) for f in
@@ -382,14 +382,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertRaises(ReusingTransform, transform.find_conflicts)
         self.assertEqual('contents', file(self.wt.abspath('name')).read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
-        self.assertIs(self.wt.is_executable('my_pretties'), True)
+        self.assertIs(self.wt.is_executable('name'), True)
         self.assertEqual(self.wt.path2id('oz'), 'oz-id')
         self.assertEqual(self.wt.path2id('oz/dorothy'), 'dorothy-id')
         self.assertEqual(self.wt.path2id('oz/dorothy/toto'), 'toto-id')
 
         self.assertEqual('toto-contents',
                          self.wt.get_file_byname('oz/dorothy/toto').read())
-        self.assertIs(self.wt.is_executable('toto-id'), False)
+        self.assertIs(self.wt.is_executable('oz/dorothy/toto'), False)
 
     def test_tree_reference(self):
         transform, root = self.get_transform()
@@ -1066,8 +1066,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                                  'uws')
         self.assertRaises(KeyError, transform.set_executability, None, uws)
         transform.apply()
-        self.assertTrue(wt.is_executable('soc'))
-        self.assertTrue(wt.is_executable('sac'))
+        self.assertTrue(wt.is_executable('set_on_creation'))
+        self.assertTrue(wt.is_executable('set_after_creation'))
 
     def test_preserve_mode(self):
         """File mode is preserved when replacing content"""
@@ -1078,13 +1078,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.apply()
         self.wt.lock_write()
         self.addCleanup(self.wt.unlock)
-        self.assertTrue(self.wt.is_executable('file1-id'))
+        self.assertTrue(self.wt.is_executable('file1'))
         transform, root = self.get_transform()
         file1_id = transform.trans_id_tree_file_id('file1-id')
         transform.delete_contents(file1_id)
         transform.create_file('contents2', file1_id)
         transform.apply()
-        self.assertTrue(self.wt.is_executable('file1-id'))
+        self.assertTrue(self.wt.is_executable('file1'))
 
     def test__set_mode_stats_correctly(self):
         """_set_mode stats to determine file mode."""
@@ -2162,7 +2162,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         trans_id = tt.trans_id_tree_file_id('file1-id')
         tt.set_executability(True, trans_id)
         tt.apply()
-        self.assertTrue(source.is_executable('file1-id'))
+        self.assertTrue(source.is_executable('file1'))
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
         revision_tree.lock_read()
@@ -2171,7 +2171,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
-        self.assertTrue(source.is_executable('file1-id'))
+        self.assertTrue(source.is_executable('file1'))
 
     def install_rot13_content_filter(self, pattern):
         # We could use
@@ -3131,7 +3131,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
         preview.set_executability(True, preview.trans_id_file_id('file-id'))
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(True, preview_tree.is_executable('file-id'))
+        self.assertEqual(True, preview_tree.is_executable('file'))
 
     def test_get_set_parent_ids(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
@@ -3294,9 +3294,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(preview.finalize)
         preview.new_file('foo', preview.root, 'bar', 'baz-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(False, preview_tree.is_executable('baz-id',
-                                                           'tree/foo'))
-        self.assertEqual(False, preview_tree.is_executable('baz-id'))
+        self.assertEqual(False, preview_tree.is_executable('tree/foo', 'baz-id'))
+        self.assertEqual(False, preview_tree.is_executable('tree/foo'))
 
     def test_commit_preview_tree(self):
         tree = self.make_branch_and_tree('tree')

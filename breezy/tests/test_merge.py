@@ -2177,16 +2177,16 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         except:
             tt.finalize()
             raise
-        self.assertTrue(wt.is_executable('foo-id'))
+        self.assertTrue(wt.is_executable('foo'))
         wt.commit('F-id', rev_id='F-id')
         # Reset to D, so that we can merge F
         wt.set_parent_ids(['D-id'])
         wt.branch.set_last_revision_info(3, 'D-id')
         wt.revert()
-        self.assertFalse(wt.is_executable('foo-id'))
+        self.assertFalse(wt.is_executable('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.assertEqual(0, conflicts)
-        self.assertTrue(wt.is_executable('foo-id'))
+        self.assertTrue(wt.is_executable('foo'))
 
     def test_create_symlink(self):
         self.requireFeature(features.SymlinkFeature)

@@ -348,9 +348,9 @@ y
             self.assertEqual("text2", builder.this.get_file("2").read())
             self.assertEqual("a\nz\nc\nd\ne\nz\n",
                              builder.this.get_file("5").read())
-            self.assertTrue(builder.this.is_executable("1"))
-            self.assertFalse(builder.this.is_executable("2"))
-            self.assertTrue(builder.this.is_executable("3"))
+            self.assertTrue(builder.this.is_executable("name1"))
+            self.assertFalse(builder.this.is_executable("name3"))
+            self.assertTrue(builder.this.is_executable("name5"))
         except:
             builder.unlock()
             raise
@@ -417,9 +417,9 @@ y
         builder.change_perms('4', this=True)
         builder.remove_file('4', base=True)
         builder.merge()
-        self.assertIs(builder.this.is_executable("1"), False)
-        self.assertIs(builder.this.is_executable("2"), True)
-        self.assertIs(builder.this.is_executable("3"), False)
+        self.assertIs(builder.this.is_executable("name1"), False)
+        self.assertIs(builder.this.is_executable("name2"), True)
+        self.assertIs(builder.this.is_executable("name3"), False)
         builder.cleanup();
 
     def test_new_suffix(self):

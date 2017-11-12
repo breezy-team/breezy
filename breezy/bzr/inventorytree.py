@@ -631,8 +631,11 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
         ie = inv[inv_file_id]
         return ie.revision
 
-    def is_executable(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def is_executable(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         ie = inv[inv_file_id]
         if ie.kind != "file":
             return False

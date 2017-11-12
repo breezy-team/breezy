@@ -747,13 +747,14 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            inv, inv_file_id = self._unpack_file_id(file_id)
+            if file_id is None:
+                inv, inv_file_id = self._path2inv_file_id(path)
+            else:
+                inv, inv_file_id = self._unpack_file_id(file_id)
             return inv[inv_file_id].executable
         else:
-            if not path:
-                path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 

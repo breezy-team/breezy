@@ -57,8 +57,8 @@ class ContentFilterTree(tree.Tree):
     def has_filename(self, filename):
         return self.backing_tree.has_filename
 
-    def is_executable(self, file_id, path=None):
-        return self.backing_tree.is_executable(file_id, path)
+    def is_executable(self, path, file_id=None):
+        return self.backing_tree.is_executable(path, file_id)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=None):
         # NB: This simply returns the parent tree's entries; the length may be

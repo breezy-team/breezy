@@ -90,7 +90,7 @@ class MockTree(object):
     def all_file_ids(self):
         return set(self.paths.keys())
 
-    def is_executable(self, file_id):
+    def is_executable(self, path, file_id):
         # Not all the files are executable.
         return False
 

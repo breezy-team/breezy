@@ -177,7 +177,7 @@ class BzrUploader(object):
 
     def upload_file(self, relpath, id, mode=None):
         if mode is None:
-            if self.tree.is_executable(id):
+            if self.tree.is_executable(relpath, id):
                 mode = 0o775
             else:
                 mode = 0o664

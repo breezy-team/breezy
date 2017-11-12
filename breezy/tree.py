@@ -376,11 +376,11 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_size)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         """Check if a file is executable.
 
-        :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
+        :param file_id: The handle for this file.
             These must point to the same object.
         """
         raise NotImplementedError(self.is_executable)

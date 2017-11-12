@@ -666,12 +666,11 @@ class BundleTree(Tree):
         else:
             return self.base_tree.get_file_revision(file_id)
 
-    def is_executable(self, file_id):
-        path = self.id2path(file_id)
+    def is_executable(self, path, file_id=None):
         if path in self._executable:
             return self._executable[path]
         else:
-            return self.base_tree.is_executable(file_id)
+            return self.base_tree.is_executable(path, file_id)
 
     def get_last_changed(self, file_id):
         path = self.id2path(file_id)
@@ -723,7 +722,7 @@ class BundleTree(Tree):
                 ie = InventoryDirectory(file_id, name, parent_id)
             elif kind == 'file':
                 ie = InventoryFile(file_id, name, parent_id)
-                ie.executable = self.is_executable(file_id)
+                ie.executable = self.is_executable(path, file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
                 ie.symlink_target = self.get_symlink_target(file_id, path)

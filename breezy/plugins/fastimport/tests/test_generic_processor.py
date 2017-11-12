@@ -183,9 +183,8 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             self.assertEqual(tree.get_symlink_target(file_id), target)
 
     def assertExecutable(self, branch, tree, path, executable):
-        file_id = tree.path2id(path)
         with branch.lock_read():
-            self.assertEqual(tree.is_executable(file_id), executable)
+            self.assertEqual(tree.is_executable(path), executable)
 
     def assertRevisionRoot(self, revtree, path):
         self.assertEqual(revtree.get_revision_id(),

@@ -52,7 +52,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.mtime = tree.get_file_mtime(entry.file_id, tree_path)
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
-        if tree.is_executable(entry.file_id, tree_path):
+        if tree.is_executable(tree_path, entry.file_id):
             item.mode = 0o755
         else:
             item.mode = 0o644
