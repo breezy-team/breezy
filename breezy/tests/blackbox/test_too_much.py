@@ -522,14 +522,14 @@ class OldTests(TestCaseWithTransport):
             self.assertEqual(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEqual(listdir_sorted("d2"), [ "link1", "link3" ])
             self.assertEqual(os.readlink("d2/link1"), "NOWHERE1")
-            self.assertEqual(os.readlink("link2")   , "NOWHERE2")
+            self.assertEqual(os.readlink("link2"), "NOWHERE2")
             chdir("..")
 
             self.run_bzr('export -r 4 exp4.tmp')
             chdir("exp4.tmp")
             self.assertEqual(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEqual(os.readlink("d2/link1"), "TARGET 1")
-            self.assertEqual(os.readlink("link2")   , "TARGET 2")
+            self.assertEqual(os.readlink("link2"), "TARGET 2")
             self.assertEqual(listdir_sorted("d2"), [ "link1", "link3" ])
             chdir("..")
 

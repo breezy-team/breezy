@@ -565,7 +565,7 @@ class TestReadvFile(tests.TestCaseWithTransport):
         """Test reading of both single bytes and all bytes in a hunk."""
         transport = self.get_transport()
         transport.put_bytes(b'sample', b'0123456789')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0,1), (1,2), (4,1), (6,2)]))
+        f = pack.ReadVFile(transport.readv(b'sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
         results = []
         results.append(f.read(1))
         results.append(f.read(2))
@@ -581,7 +581,7 @@ class TestReadvFile(tests.TestCaseWithTransport):
         """
         transport = self.get_transport()
         transport.put_bytes(b'sample', b'0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0,2), (2,4)]))
+        f = pack.ReadVFile(transport.readv(b'sample', [(0, 2), (2, 4)]))
         results = []
         results.append(f.readline())
         results.append(f.readline())
@@ -592,7 +592,7 @@ class TestReadvFile(tests.TestCaseWithTransport):
         """Test exercising one byte reads, readline, and then read again."""
         transport = self.get_transport()
         transport.put_bytes(b'sample', b'0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0,6)]))
+        f = pack.ReadVFile(transport.readv(b'sample', [(0, 6)]))
         results = []
         results.append(f.read(1))
         results.append(f.readline())

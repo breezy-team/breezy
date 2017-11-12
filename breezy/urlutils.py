@@ -686,7 +686,7 @@ _no_decode_hex = (['%02x' % o for o in _no_decode_ords]
 _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
                     + [('%02X' % o, chr(o)) for o in range(256)]))
 #These entries get mapped to themselves
-_hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
+_hex_display_map.update((hex, '%'+hex) for hex in _no_decode_hex)
 
 # These characters shouldn't be percent-encoded, and it's always safe to
 # unencode them if they are.
@@ -885,7 +885,7 @@ class URL(object):
 
         if ':' in host and not (host[0] == '[' and host[-1] == ']'):
             # there *is* port
-            host, port = host.rsplit(':',1)
+            host, port = host.rsplit(':', 1)
             try:
                 port = int(port)
             except ValueError:

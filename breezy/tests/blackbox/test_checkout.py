@@ -71,7 +71,7 @@ class TestCheckout(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
-        out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
+        out, err = self.run_bzr(['checkout', '--lightweight', '-r', '-2',
             'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.

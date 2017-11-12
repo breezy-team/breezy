@@ -1693,7 +1693,7 @@ class TransportTests(TestTransportImplementation):
         self.assertTrue(data_len >= 100)
         check_result_data(result)
         # close ranges get combined (even if out of order)
-        for request_vector in [((400,50), (800, 234)), ((800, 234), (400,50))]:
+        for request_vector in [((400, 50), (800, 234)), ((800, 234), (400, 50))]:
             result = list(transport.readv('a', request_vector,
                 adjust_for_latency=True, upper_limit=content_size))
             self.assertEqual(1, len(result))
@@ -1731,7 +1731,7 @@ class TransportTests(TestTransportImplementation):
         handle = t.open_write_stream('foo')
         try:
             handle.write('bcd')
-            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0,1), (2,1)))))
+            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0, 1), (2, 1)))))
         finally:
             handle.close()
 
@@ -1758,12 +1758,12 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange,
                                # Can be raised by paramiko
                                AssertionError),
-                              transport.readv, 'a', [(1,1), (8,10)])
+                              transport.readv, 'a', [(1, 1), (8, 10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
-                              transport.readv, 'a', [(12,2)])
+                              transport.readv, 'a', [(12, 2)])
 
     def test_no_segment_parameters(self):
         """Segment parameters should be stripped and stored in

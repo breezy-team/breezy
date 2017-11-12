@@ -108,7 +108,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(TestRemove.files)
 
         for f in TestRemove.rfiles:
-            tree.rename_one(f,f+'x')
+            tree.rename_one(f, f+'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
         self.assertInWorkingTree(rfilesx)
         self.assertPathExists(rfilesx)
@@ -122,10 +122,10 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(TestRemove.files)
 
         for f in TestRemove.rfiles:
-            tree.rename_one(f,f+'x')
+            tree.rename_one(f, f+'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
-        self.build_tree_contents([('ax','changed and renamed!'),
-                                  ('bx/cx','changed and renamed!')])
+        self.build_tree_contents([('ax', 'changed and renamed!'),
+                                  ('bx/cx', 'changed and renamed!')])
         self.assertInWorkingTree(rfilesx)
         self.assertPathExists(rfilesx)
 

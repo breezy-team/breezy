@@ -1212,9 +1212,9 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual({
-            ("a",):(),
-            ("b",):(("a",), ("c",)),
-            ("c",):(("b",), ("a",), ("e",)),
+            ("a",): (),
+            ("b",): (("a",), ("c",)),
+            ("c",): (("b",), ("a",), ("e",)),
             }, index.get_parent_map(index.keys()))
 
     def test_impossible_parent(self):
@@ -1421,7 +1421,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         details = ('line-delta', False)
         p1_record = ['line1\n', 'line2\n']
         ann._num_compression_children[p1_key] = 1
-        res = ann._expand_record(rev_key, (p1_key,p2_key), p1_key,
+        res = ann._expand_record(rev_key, (p1_key, p2_key), p1_key,
                                  record, details)
         self.assertEqual(None, res)
         # self.assertTrue(p1_key in ann._pending_deltas)
@@ -1543,9 +1543,9 @@ class TestKnitIndex(KnitTests):
             ('a-2',): ((('a-2',), 0, 0), None, (('a-1',),), ('fulltext', False)),
             ('a-3',): ((('a-3',), 0, 0), None, (('a-2',),), ('fulltext', False)),
             }, idx.get_build_details(idx.keys()))
-        self.assertEqual({('a-1',):(),
-            ('a-2',):(('a-1',),),
-            ('a-3',):(('a-2',),),},
+        self.assertEqual({('a-1',): (),
+            ('a-2',): (('a-1',),),
+            ('a-3',): (('a-2',),),},
             idx.get_parent_map(idx.keys()))
 
     def test_add_versions_fails_clean(self):

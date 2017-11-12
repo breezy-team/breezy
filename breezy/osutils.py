@@ -593,7 +593,7 @@ def normalizepath(f):
         F = realpath
     else:
         F = abspath
-    [p,e] = os.path.split(f)
+    [p, e] = os.path.split(f)
     if e == "" or e == "." or e == "..":
         return F(f)
     else:
@@ -1948,9 +1948,9 @@ def copy_tree(from_path, to_path, handlers={}):
         link_to = os.readlink(source)
         os.symlink(link_to, dest)
 
-    real_handlers = {'file':shutil.copy2,
-                     'symlink':copy_link,
-                     'directory':copy_dir,
+    real_handlers = {'file': shutil.copy2,
+                     'symlink': copy_link,
+                     'directory': copy_dir,
                     }
     real_handlers.update(handlers)
 
@@ -1992,7 +1992,7 @@ def path_prefix_key(path):
 
     This can be used to sort paths in the same way that walkdirs does.
     """
-    return (dirname(path) , path)
+    return (dirname(path), path)
 
 
 def compare_paths_prefix_order(path_a, path_b):

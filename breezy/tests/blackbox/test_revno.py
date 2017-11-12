@@ -61,12 +61,12 @@ class TestRevno(tests.TestCaseWithTransport):
         wt.commit('mkfile')
 
         # Make sure revno says we're on 1
-        out,err = self.run_bzr('revno checkout')
+        out, err = self.run_bzr('revno checkout')
         self.assertEqual('', err)
         self.assertEqual('1\n', out)
 
         # Make sure --tree knows it's still on 0
-        out,err = self.run_bzr('revno --tree checkout')
+        out, err = self.run_bzr('revno --tree checkout')
         self.assertEqual('', err)
         self.assertEqual('0\n', out)
 
@@ -75,7 +75,7 @@ class TestRevno(tests.TestCaseWithTransport):
         b = self.make_branch('branch')
 
         # Try getting it's --tree revno
-        out,err = self.run_bzr('revno --tree branch', retcode=3)
+        out, err = self.run_bzr('revno --tree branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)

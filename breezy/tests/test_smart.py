@@ -122,7 +122,7 @@ class TestByteStreamToStream(tests.TestCase):
     def test_repeated_substreams_same_kind_are_one_stream(self):
         # Make a stream - an iterable of bytestrings.
         stream = [('text', [versionedfile.FulltextContentFactory(('k1',), None,
-            None, 'foo')]),('text', [
+            None, 'foo')]), ('text', [
             versionedfile.FulltextContentFactory(('k2',), None, None, 'bar')])]
         fmt = controldir.format_registry.get('pack-0.92')().repository_format
         bytes = smart_repo._stream_to_byte_stream(stream, fmt)
@@ -652,7 +652,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranch(backing)
         branch = self.make_branch('branch')
-        checkout = branch.create_checkout('reference',lightweight=True)
+        checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
             checkout.controldir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
@@ -693,7 +693,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranchV2(backing)
         branch = self.make_branch('branch')
-        checkout = branch.create_checkout('reference',lightweight=True)
+        checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
             checkout.controldir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
@@ -756,7 +756,7 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranchV3(backing)
         branch = self.make_branch('branch')
-        checkout = branch.create_checkout('reference',lightweight=True)
+        checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
             checkout.controldir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
@@ -835,7 +835,7 @@ class TestSmartServerBranchRequest(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequest(backing)
         branch = self.make_branch('branch')
-        checkout = branch.create_checkout('reference',lightweight=True)
+        checkout = branch.create_checkout('reference', lightweight=True)
         self.assertRaises(errors.NotBranchError,
             request.execute, 'checkout')
 

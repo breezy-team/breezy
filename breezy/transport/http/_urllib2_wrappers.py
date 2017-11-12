@@ -267,7 +267,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301,302, 303, 307, 400, 401, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 400, 401, 403, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -784,7 +784,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
-                for k,v in headers.items():
+                for k, v in headers.items():
                     # People are often told to paste -Dhttp output to help
                     # debug. Don't compromise credentials.
                     if k in ('Authorization', 'Proxy-Authorization'):
@@ -945,7 +945,7 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
         # if we want to be sure, we MUST follow them.
 
         if code in (301, 302, 303, 307):
-            return Request(req.get_method(),newurl,
+            return Request(req.get_method(), newurl,
                            headers = req.headers,
                            origin_req_host = req.get_origin_req_host(),
                            unverifiable = True,

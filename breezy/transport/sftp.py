@@ -514,7 +514,7 @@ class SFTPTransport(ConnectedTransport):
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code"""
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
-                        os.getpid(), random.randint(0,0x7FFFFFFF))
+                        os.getpid(), random.randint(0, 0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
         closed = False
         try:

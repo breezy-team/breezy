@@ -91,7 +91,7 @@ class DummyForeignVcs(foreign.ForeignVcs):
         return "%s|%s|%s" % foreign_revid
 
 
-class DummyForeignVcsBranch(bzrbranch.BzrBranch6,foreign.ForeignBranch):
+class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
     @property

@@ -1155,7 +1155,7 @@ class TestMap(TestCaseWithStore):
 
     def test_iteritems_keys_prefixed_by_2_width_nodes(self):
         chkmap = self._get_map(
-            {("a","a"):"content here", ("a", "b",):"more content",
+            {("a", "a"):"content here", ("a", "b",):"more content",
              ("b", ""): 'boring content'},
             maximum_size=10, key_width=2)
         self.assertEqual(
@@ -1171,7 +1171,7 @@ class TestMap(TestCaseWithStore):
         self.assertEqual('71BEEFF9\x0000000000',
                          search_key_func(StaticTuple('b', '')))
         chkmap = self._get_map(
-            {("a","a"):"content here", ("a", "b",):"more content",
+            {("a", "a"):"content here", ("a", "b",):"more content",
              ("b", ""): 'boring content'},
             maximum_size=10, key_width=2, search_key_func=search_key_func)
         self.assertEqual(
@@ -1180,7 +1180,7 @@ class TestMap(TestCaseWithStore):
 
     def test_iteritems_keys_prefixed_by_2_width_one_leaf(self):
         chkmap = self._get_map(
-            {("a","a"):"content here", ("a", "b",):"more content",
+            {("a", "a"):"content here", ("a", "b",):"more content",
              ("b", ""): 'boring content'}, key_width=2)
         self.assertEqual(
             {("a", "a"): "content here", ("a", "b"): 'more content'},

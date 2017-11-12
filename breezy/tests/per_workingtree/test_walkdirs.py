@@ -84,7 +84,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         def add_dirblock(path, kind):
             dirblock = DirBlock(tree, path)
             if file_status != self.unknown:
-                dirblock.id = 'a ' + str(path).replace('/','-') + '-id'
+                dirblock.id = 'a ' + str(path).replace('/', '-') + '-id'
                 dirblock.inventory_kind = kind
             if file_status != self.missing:
                 dirblock.disk_kind = kind

@@ -136,12 +136,12 @@ class TestReportChanges(tests.TestCase):
             "Operating on whole tree but only reporting on 'my' view.",
             " M  path"]
         self.assertReportLines(expected_lines, modified='modified',
-            view_info=('my',['path']))
+            view_info=('my', ['path']))
         # If a file in outside the view, it should not appear in the output
         expected_lines = [
             "Operating on whole tree but only reporting on 'my' view."]
         self.assertReportLines(expected_lines, modified='modified',
-            path="foo", view_info=('my',['path']))
+            path="foo", view_info=('my', ['path']))
 
     def assertChangesEqual(self,
                            file_id='fid',

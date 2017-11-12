@@ -95,7 +95,7 @@ class TestMissing(TestCaseWithTransport):
                             verbose=True))
         self.assertEqual(4, len(results))
 
-        r0,r1,r2,r3 = results
+        r0, r1, r2, r3 = results
 
         self.assertEqual([('2', 'c-2'), ('3', 'c-3'),
                           ('4', 'c-4'), ('5', 'c-5'),],

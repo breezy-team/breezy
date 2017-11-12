@@ -153,7 +153,7 @@ class TestTree(TestCaseWithTransport):
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
         delta = wt.changes_from(wt.basis_tree(),
-            specific_files=['known_file', 'unknown_file'] ,
+            specific_files=['known_file', 'unknown_file'],
             require_versioned=False)
         self.assertEqual(len(delta.added), 1)
 

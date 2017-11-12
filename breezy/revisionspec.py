@@ -701,7 +701,7 @@ class RevisionSpec_date(RevisionSpec):
                     else:
                         second = 0
                 else:
-                    hour, minute, second = 0,0,0
+                    hour, minute, second = 0, 0, 0
             except ValueError:
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, 'invalid date')

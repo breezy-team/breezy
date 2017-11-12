@@ -1056,7 +1056,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             elif revision_id is None:
                 raise ValueError('get_parent_map(None) is not valid')
             else:
-                query_keys.append((revision_id ,))
+                query_keys.append((revision_id,))
         vf = self.revisions.without_fallbacks()
         for (revision_id,), parent_keys in viewitems(
                 vf.get_parent_map(query_keys)):

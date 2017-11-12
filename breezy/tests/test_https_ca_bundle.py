@@ -35,7 +35,7 @@ class TestGetCAPath(TestCaseInTempDir):
 
     def _make_file(self, in_dir='.'):
         fname = os.path.join(in_dir, 'curl-ca-bundle.crt')
-        f = file(fname,'w')
+        f = file(fname, 'w')
         f.write('spam')
         f.close()
 

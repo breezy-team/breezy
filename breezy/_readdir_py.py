@@ -31,13 +31,13 @@ _socket = 'socket'
 _unknown = 'unknown'
 
 _formats = {
-    stat.S_IFDIR:'directory',
-    stat.S_IFCHR:'chardev',
-    stat.S_IFBLK:'block',
-    stat.S_IFREG:'file',
-    stat.S_IFIFO:'fifo',
-    stat.S_IFLNK:'symlink',
-    stat.S_IFSOCK:'socket',
+    stat.S_IFDIR: 'directory',
+    stat.S_IFCHR: 'chardev',
+    stat.S_IFBLK: 'block',
+    stat.S_IFREG: 'file',
+    stat.S_IFIFO: 'fifo',
+    stat.S_IFLNK: 'symlink',
+    stat.S_IFSOCK: 'socket',
 }
 
 

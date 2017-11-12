@@ -1668,9 +1668,9 @@ class TestCopyTree(tests.TestCaseInTempDir):
             processed_files.append(('d', from_path, to_path))
         def link_handler(from_path, to_path):
             processed_links.append((from_path, to_path))
-        handlers = {'file':file_handler,
-                    'directory':dir_handler,
-                    'symlink':link_handler,
+        handlers = {'file': file_handler,
+                    'directory': dir_handler,
+                    'symlink': link_handler,
                    }
 
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
