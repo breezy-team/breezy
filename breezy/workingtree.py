@@ -442,7 +442,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
-        f = file(path, 'rb')
+        f = open(path, 'rb')
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(filename)
             return _mod_filters.filtered_input_file(f, filters)

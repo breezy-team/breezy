@@ -103,7 +103,7 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config_stack.get('email')
-        elif not isinstance(committer, unicode):
+        elif not isinstance(committer, text_type):
             self._committer = committer.decode() # throw if non-ascii
         else:
             self._committer = committer

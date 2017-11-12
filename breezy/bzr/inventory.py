@@ -2322,7 +2322,7 @@ def _check_delta_ids_are_valid(delta):
         if item[2] is None:
             raise errors.InconsistentDelta(item[0] or item[1], item[2],
                 "entry with file_id None %r" % entry)
-        if not isinstance(item[2], str):
+        if not isinstance(item[2], bytes):
             raise errors.InconsistentDelta(item[0] or item[1], item[2],
                 "entry with non bytes file_id %r" % entry)
         yield item

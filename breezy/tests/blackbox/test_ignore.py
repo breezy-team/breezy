@@ -172,7 +172,7 @@ class TestCommands(TestCaseWithTransport):
         out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
-            'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
+            r'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
         self.assertNotContainsRe(err, 'foo', re.DOTALL)
         self.assertFalse(os.path.isfile('.bzrignore'))
 
