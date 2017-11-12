@@ -482,32 +482,32 @@ class VersionedFileTestMixIn(object):
         next_parent = 'base'
         text_name = 'chain1-'
         text = ['line\n']
-        sha1s = {0 :'da6d3141cb4a5e6f464bf6e0518042ddc7bfd079',
-                 1 :'45e21ea146a81ea44a821737acdb4f9791c8abe7',
-                 2 :'e1f11570edf3e2a070052366c582837a4fe4e9fa',
-                 3 :'26b4b8626da827088c514b8f9bbe4ebf181edda1',
-                 4 :'e28a5510be25ba84d31121cff00956f9970ae6f6',
-                 5 :'d63ec0ce22e11dcf65a931b69255d3ac747a318d',
-                 6 :'2c2888d288cb5e1d98009d822fedfe6019c6a4ea',
-                 7 :'95c14da9cafbf828e3e74a6f016d87926ba234ab',
-                 8 :'779e9a0b28f9f832528d4b21e17e168c67697272',
-                 9 :'1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f',
-                 10:'131a2ae712cf51ed62f143e3fbac3d4206c25a05',
-                 11:'c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199',
-                 12:'31a2286267f24d8bedaa43355f8ad7129509ea85',
-                 13:'dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a',
-                 14:'2c4b1736566b8ca6051e668de68650686a3922f2',
-                 15:'5912e4ecd9b0c07be4d013e7e2bdcf9323276cde',
-                 16:'b0d2e18d3559a00580f6b49804c23fea500feab3',
-                 17:'8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7',
-                 18:'5cf64a3459ae28efa60239e44b20312d25b253f3',
-                 19:'1ebed371807ba5935958ad0884595126e8c4e823',
-                 20:'2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3',
-                 21:'01edc447978004f6e4e962b417a4ae1955b6fe5d',
-                 22:'d8d8dc49c4bf0bab401e0298bb5ad827768618bb',
-                 23:'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
-                 24:'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
-                 25:'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
+        sha1s = {0: 'da6d3141cb4a5e6f464bf6e0518042ddc7bfd079',
+                 1: '45e21ea146a81ea44a821737acdb4f9791c8abe7',
+                 2: 'e1f11570edf3e2a070052366c582837a4fe4e9fa',
+                 3: '26b4b8626da827088c514b8f9bbe4ebf181edda1',
+                 4: 'e28a5510be25ba84d31121cff00956f9970ae6f6',
+                 5: 'd63ec0ce22e11dcf65a931b69255d3ac747a318d',
+                 6: '2c2888d288cb5e1d98009d822fedfe6019c6a4ea',
+                 7: '95c14da9cafbf828e3e74a6f016d87926ba234ab',
+                 8: '779e9a0b28f9f832528d4b21e17e168c67697272',
+                 9: '1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f',
+                 10: '131a2ae712cf51ed62f143e3fbac3d4206c25a05',
+                 11: 'c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199',
+                 12: '31a2286267f24d8bedaa43355f8ad7129509ea85',
+                 13: 'dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a',
+                 14: '2c4b1736566b8ca6051e668de68650686a3922f2',
+                 15: '5912e4ecd9b0c07be4d013e7e2bdcf9323276cde',
+                 16: 'b0d2e18d3559a00580f6b49804c23fea500feab3',
+                 17: '8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7',
+                 18: '5cf64a3459ae28efa60239e44b20312d25b253f3',
+                 19: '1ebed371807ba5935958ad0884595126e8c4e823',
+                 20: '2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3',
+                 21: '01edc447978004f6e4e962b417a4ae1955b6fe5d',
+                 22: 'd8d8dc49c4bf0bab401e0298bb5ad827768618bb',
+                 23: 'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
+                 24: 'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
+                 25: 'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
                  }
         for depth in range(26):
             new_version = text_name + '%s' % depth
@@ -880,14 +880,14 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
             self.plan_merge_vf.get_parent_map([('root', 'B')]))
         self.assertEqual({('root', 'D'):(('root', 'C'),)},
             self.plan_merge_vf.get_parent_map([('root', 'D')]))
-        self.assertEqual({('root', 'E:'):(('root', 'B'),('root', 'D'))},
+        self.assertEqual({('root', 'E:'):(('root', 'B'), ('root', 'D'))},
             self.plan_merge_vf.get_parent_map([('root', 'E:')]))
         self.assertEqual({},
             self.plan_merge_vf.get_parent_map([('root', 'F')]))
         self.assertEqual({
-                ('root', 'B'):(('root', 'A'),),
-                ('root', 'D'):(('root', 'C'),),
-                ('root', 'E:'):(('root', 'B'),('root', 'D')),
+                ('root', 'B'): (('root', 'A'),),
+                ('root', 'D'): (('root', 'C'),),
+                ('root', 'E:'): (('root', 'B'), ('root', 'D')),
                 },
             self.plan_merge_vf.get_parent_map(
                 [('root', 'B'), ('root', 'D'), ('root', 'E:'), ('root', 'F')]))
@@ -1396,78 +1396,78 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     # plain text knits in packs (texts)
     len_one_scenarios = [
         ('weave-named', {
-            'cleanup':None,
-            'factory':make_versioned_files_factory(WeaveFile,
+            'cleanup': None,
+            'factory': make_versioned_files_factory(WeaveFile,
                 ConstantMapper('inventory')),
-            'graph':True,
-            'key_length':1,
+            'graph': True,
+            'key_length': 1,
             'support_partial_insertion': False,
             }),
         ('named-knit', {
-            'cleanup':None,
-            'factory':make_file_factory(False, ConstantMapper('revisions')),
-            'graph':True,
-            'key_length':1,
+            'cleanup': None,
+            'factory': make_file_factory(False, ConstantMapper('revisions')),
+            'graph': True,
+            'key_length': 1,
             'support_partial_insertion': False,
             }),
         ('named-nograph-nodelta-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(False, False, 1),
-            'graph':False,
-            'key_length':1,
+            'cleanup': cleanup_pack_knit,
+            'factory': make_pack_factory(False, False, 1),
+            'graph': False,
+            'key_length': 1,
             'support_partial_insertion': False,
             }),
         ('named-graph-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, True, 1),
-            'graph':True,
-            'key_length':1,
+            'cleanup': cleanup_pack_knit,
+            'factory': make_pack_factory(True, True, 1),
+            'graph': True,
+            'key_length': 1,
             'support_partial_insertion': True,
             }),
         ('named-graph-nodelta-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, False, 1),
-            'graph':True,
-            'key_length':1,
+            'cleanup': cleanup_pack_knit,
+            'factory': make_pack_factory(True, False, 1),
+            'graph': True,
+            'key_length': 1,
             'support_partial_insertion': False,
             }),
         ('groupcompress-nograph', {
-            'cleanup':groupcompress.cleanup_pack_group,
-            'factory':groupcompress.make_pack_factory(False, False, 1),
+            'cleanup': groupcompress.cleanup_pack_group,
+            'factory': groupcompress.make_pack_factory(False, False, 1),
             'graph': False,
-            'key_length':1,
-            'support_partial_insertion':False,
+            'key_length': 1,
+            'support_partial_insertion': False,
             }),
         ]
     len_two_scenarios = [
         ('weave-prefix', {
-            'cleanup':None,
-            'factory':make_versioned_files_factory(WeaveFile,
+            'cleanup': None,
+            'factory': make_versioned_files_factory(WeaveFile,
                 PrefixMapper()),
-            'graph':True,
-            'key_length':2,
+            'graph': True,
+            'key_length': 2,
             'support_partial_insertion': False,
             }),
         ('annotated-knit-escape', {
-            'cleanup':None,
-            'factory':make_file_factory(True, HashEscapedPrefixMapper()),
-            'graph':True,
-            'key_length':2,
+            'cleanup': None,
+            'factory': make_file_factory(True, HashEscapedPrefixMapper()),
+            'graph': True,
+            'key_length': 2,
             'support_partial_insertion': False,
             }),
         ('plain-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, True, 2),
-            'graph':True,
-            'key_length':2,
+            'cleanup': cleanup_pack_knit,
+            'factory': make_pack_factory(True, True, 2),
+            'graph': True,
+            'key_length': 2,
             'support_partial_insertion': True,
             }),
         ('groupcompress', {
-            'cleanup':groupcompress.cleanup_pack_group,
-            'factory':groupcompress.make_pack_factory(True, False, 1),
+            'cleanup': groupcompress.cleanup_pack_group,
+            'factory': groupcompress.make_pack_factory(True, False, 1),
             'graph': True,
-            'key_length':1,
-            'support_partial_insertion':False,
+            'key_length': 1,
+            'support_partial_insertion': False,
             }),
         ]
 
@@ -1860,10 +1860,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('FileB', 'base'),
                 ]
             sort_order = {
-                ('FileA', 'merged'):2, ('FileA', 'left'):1, ('FileA', 'right'):1,
-                ('FileA', 'base'):0,
-                ('FileB', 'merged'):2, ('FileB', 'left'):1, ('FileB', 'right'):1,
-                ('FileB', 'base'):0,
+                ('FileA', 'merged'): 2, ('FileA', 'left'): 1, ('FileA', 'right'): 1,
+                ('FileA', 'base'): 0,
+                ('FileB', 'merged'): 2, ('FileB', 'left'): 1, ('FileB', 'right'): 1,
+                ('FileB', 'base'): 0,
                 }
         return keys, sort_order
 
@@ -1880,10 +1880,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('FileB', 'base'),
                 ]
             sort_order = {
-                ('FileA', 'merged'):0, ('FileA', 'left'):1, ('FileA', 'right'):1,
-                ('FileA', 'base'):2,
-                ('FileB', 'merged'):3, ('FileB', 'left'):4, ('FileB', 'right'):4,
-                ('FileB', 'base'):5,
+                ('FileA', 'merged'): 0, ('FileA', 'left'): 1, ('FileA', 'right'): 1,
+                ('FileA', 'base'): 2,
+                ('FileB', 'merged'): 3, ('FileB', 'left'): 4, ('FileB', 'right'): 4,
+                ('FileB', 'base'): 5,
                 }
         return keys, sort_order
 
@@ -2259,7 +2259,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 (('r1',), self.get_parents((('r0',),))),
                 (('r2',), self.get_parents(())),
                 (('r3',), self.get_parents(())),
-                (('m',), self.get_parents((('r0',),('r1',),('r2',),('r3',)))),
+                (('m',), self.get_parents((('r0',), ('r1',), ('r2',), ('r3',)))),
                 ]
         else:
             parent_details = [
@@ -2676,32 +2676,32 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         next_parent = self.get_simple_key('base')
         text_name = 'chain1-'
         text = ['line\n']
-        sha1s = {0 :'da6d3141cb4a5e6f464bf6e0518042ddc7bfd079',
-                 1 :'45e21ea146a81ea44a821737acdb4f9791c8abe7',
-                 2 :'e1f11570edf3e2a070052366c582837a4fe4e9fa',
-                 3 :'26b4b8626da827088c514b8f9bbe4ebf181edda1',
-                 4 :'e28a5510be25ba84d31121cff00956f9970ae6f6',
-                 5 :'d63ec0ce22e11dcf65a931b69255d3ac747a318d',
-                 6 :'2c2888d288cb5e1d98009d822fedfe6019c6a4ea',
-                 7 :'95c14da9cafbf828e3e74a6f016d87926ba234ab',
-                 8 :'779e9a0b28f9f832528d4b21e17e168c67697272',
-                 9 :'1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f',
-                 10:'131a2ae712cf51ed62f143e3fbac3d4206c25a05',
-                 11:'c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199',
-                 12:'31a2286267f24d8bedaa43355f8ad7129509ea85',
-                 13:'dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a',
-                 14:'2c4b1736566b8ca6051e668de68650686a3922f2',
-                 15:'5912e4ecd9b0c07be4d013e7e2bdcf9323276cde',
-                 16:'b0d2e18d3559a00580f6b49804c23fea500feab3',
-                 17:'8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7',
-                 18:'5cf64a3459ae28efa60239e44b20312d25b253f3',
-                 19:'1ebed371807ba5935958ad0884595126e8c4e823',
-                 20:'2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3',
-                 21:'01edc447978004f6e4e962b417a4ae1955b6fe5d',
-                 22:'d8d8dc49c4bf0bab401e0298bb5ad827768618bb',
-                 23:'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
-                 24:'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
-                 25:'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
+        sha1s = {0: 'da6d3141cb4a5e6f464bf6e0518042ddc7bfd079',
+                 1: '45e21ea146a81ea44a821737acdb4f9791c8abe7',
+                 2: 'e1f11570edf3e2a070052366c582837a4fe4e9fa',
+                 3: '26b4b8626da827088c514b8f9bbe4ebf181edda1',
+                 4: 'e28a5510be25ba84d31121cff00956f9970ae6f6',
+                 5: 'd63ec0ce22e11dcf65a931b69255d3ac747a318d',
+                 6: '2c2888d288cb5e1d98009d822fedfe6019c6a4ea',
+                 7: '95c14da9cafbf828e3e74a6f016d87926ba234ab',
+                 8: '779e9a0b28f9f832528d4b21e17e168c67697272',
+                 9: '1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f',
+                 10: '131a2ae712cf51ed62f143e3fbac3d4206c25a05',
+                 11: 'c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199',
+                 12: '31a2286267f24d8bedaa43355f8ad7129509ea85',
+                 13: 'dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a',
+                 14: '2c4b1736566b8ca6051e668de68650686a3922f2',
+                 15: '5912e4ecd9b0c07be4d013e7e2bdcf9323276cde',
+                 16: 'b0d2e18d3559a00580f6b49804c23fea500feab3',
+                 17: '8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7',
+                 18: '5cf64a3459ae28efa60239e44b20312d25b253f3',
+                 19: '1ebed371807ba5935958ad0884595126e8c4e823',
+                 20: '2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3',
+                 21: '01edc447978004f6e4e962b417a4ae1955b6fe5d',
+                 22: 'd8d8dc49c4bf0bab401e0298bb5ad827768618bb',
+                 23: 'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
+                 24: 'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
+                 25: 'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
                  }
         for depth in range(26):
             new_version = self.get_simple_key(text_name + '%s' % depth)
@@ -2784,7 +2784,7 @@ class VirtualVersionedFilesTests(TestCase):
 
     def test_get_parent_map(self):
         self._parent_map = {"G": ("A", "B")}
-        self.assertEqual({("G",): (("A",),("B",))},
+        self.assertEqual({("G",): (("A",), ("B",))},
                           self.texts.get_parent_map([("G",), ("L",)]))
 
     def test_get_record_stream(self):

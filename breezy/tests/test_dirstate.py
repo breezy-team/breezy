@@ -255,35 +255,35 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         f_len = len(f_text)
         null_stat = dirstate.DirState.NULLSTAT
         expected = {
-            '':(('', '', 'TREE_ROOT'), [
+            '': (('', '', 'TREE_ROOT'), [
                   ('d', '', 0, False, null_stat),
                   ('d', '', 0, False, revision_id),
                 ]),
-            'a':(('', 'a', 'a-id'), [
+            'a': (('', 'a', 'a-id'), [
                    ('f', '', 0, False, null_stat),
                    ('f', a_sha, a_len, False, revision_id),
                  ]),
-            'b':(('', 'b', 'b-id'), [
+            'b': (('', 'b', 'b-id'), [
                   ('d', '', 0, False, null_stat),
                   ('d', '', 0, False, revision_id),
                  ]),
-            'b/c':(('b', 'c', 'c-id'), [
+            'b/c': (('b', 'c', 'c-id'), [
                     ('f', '', 0, False, null_stat),
                     ('f', c_sha, c_len, False, revision_id),
                    ]),
-            'b/d':(('b', 'd', 'd-id'), [
+            'b/d': (('b', 'd', 'd-id'), [
                     ('d', '', 0, False, null_stat),
                     ('d', '', 0, False, revision_id),
                    ]),
-            'b/d/e':(('b/d', 'e', 'e-id'), [
+            'b/d/e': (('b/d', 'e', 'e-id'), [
                       ('f', '', 0, False, null_stat),
                       ('f', e_sha, e_len, False, revision_id),
                      ]),
-            'b-c':(('', 'b-c', 'b-c-id'), [
+            'b-c': (('', 'b-c', 'b-c-id'), [
                       ('f', '', 0, False, null_stat),
                       ('f', b_c_sha, b_c_len, False, revision_id),
                      ]),
-            'f':(('', 'f', 'f-id'), [
+            'f': (('', 'f', 'f-id'), [
                   ('f', '', 0, False, null_stat),
                   ('f', f_sha, f_len, False, revision_id),
                  ]),
@@ -2027,15 +2027,15 @@ class TestBisect(TestCaseWithDirState):
         """Test bisect when there is only 1 page to read"""
         tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 5000
-        self.assertBisect(expected,[['']], state, [''])
-        self.assertBisect(expected,[['a']], state, ['a'])
-        self.assertBisect(expected,[['b']], state, ['b'])
-        self.assertBisect(expected,[['b/c']], state, ['b/c'])
-        self.assertBisect(expected,[['b/d']], state, ['b/d'])
-        self.assertBisect(expected,[['b/d/e']], state, ['b/d/e'])
-        self.assertBisect(expected,[['b-c']], state, ['b-c'])
-        self.assertBisect(expected,[['f']], state, ['f'])
-        self.assertBisect(expected,[['a'], ['b'], ['f']],
+        self.assertBisect(expected, [['']], state, [''])
+        self.assertBisect(expected, [['a']], state, ['a'])
+        self.assertBisect(expected, [['b']], state, ['b'])
+        self.assertBisect(expected, [['b/c']], state, ['b/c'])
+        self.assertBisect(expected, [['b/d']], state, ['b/d'])
+        self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
+        self.assertBisect(expected, [['b-c']], state, ['b-c'])
+        self.assertBisect(expected, [['f']], state, ['f'])
+        self.assertBisect(expected, [['a'], ['b'], ['f']],
                           state, ['a', 'b', 'f'])
         self.assertBisect(expected, [['b/d'], ['b/d/e'], ['f']],
                           state, ['b/d', 'b/d/e', 'f'])

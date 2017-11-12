@@ -337,14 +337,14 @@ class DirState(object):
             b'a': 'absent',
             b'f': 'file',
             b'd': 'directory',
-            b'l':'symlink',
+            b'l': 'symlink',
             b'r': 'relocated',
             b't': 'tree-reference',
         }
     _stat_to_minikind = {
-        stat.S_IFDIR:b'd',
-        stat.S_IFREG:b'f',
-        stat.S_IFLNK:b'l',
+        stat.S_IFDIR: b'd',
+        stat.S_IFREG: b'f',
+        stat.S_IFLNK: b'l',
     }
     _to_yesno = {True: b'y', False: b'n'} # TODO profile the performance gain
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF

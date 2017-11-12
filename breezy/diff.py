@@ -237,7 +237,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             diffcmd.extend(diff_opts)
 
         pipe = _spawn_external_diff(diffcmd, capture_errors=True)
-        out,err = pipe.communicate()
+        out, err = pipe.communicate()
         rc = pipe.returncode
 
         # internal_diff() adds a trailing newline, add one here for consistency
@@ -699,7 +699,7 @@ class DiffText(DiffPath):
         except errors.BinaryFile:
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
-                  (from_label, to_label)).encode(self.path_encoding,'replace'))
+                  (from_label, to_label)).encode(self.path_encoding, 'replace'))
         return self.CHANGED
 
 

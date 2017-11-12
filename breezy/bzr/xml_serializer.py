@@ -158,11 +158,11 @@ _unicode_re = lazy_regex.lazy_compile(u'[&<>\'\"\u0080-\uffff]')
 
 
 _xml_escape_map = {
-    "&":'&amp;',
-    "'":"&apos;", # FIXME: overkill
-    "\"":"&quot;",
-    "<":"&lt;",
-    ">":"&gt;",
+    "&": '&amp;',
+    "'": "&apos;", # FIXME: overkill
+    "\"": "&quot;",
+    "<": "&lt;",
+    ">": "&gt;",
     }
 
 

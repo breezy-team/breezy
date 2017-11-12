@@ -632,7 +632,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         create_tree.new_file('moving_file2', root, 'later2', 'mfile2')
         create_tree.apply()
 
-        mangle_tree,root = self.get_transform()
+        mangle_tree, root = self.get_transform()
         root = mangle_tree.root
         #swap names
         name1 = mangle_tree.trans_id_tree_file_id('name1')
@@ -660,23 +660,23 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         mangle_tree.apply()
         self.assertEqual(file(self.wt.abspath('name1')).read(), 'hello2')
         self.assertEqual(file(self.wt.abspath('name2')).read(), 'hello1')
-        mfile2_path = self.wt.abspath(pathjoin('new_directory','mfile2'))
+        mfile2_path = self.wt.abspath(pathjoin('new_directory', 'mfile2'))
         self.assertEqual(mangle_tree.final_parent(mfile2), newdir)
         self.assertEqual(file(mfile2_path).read(), 'later2')
         self.assertEqual(self.wt.id2path('mfile2'), 'new_directory/mfile2')
         self.assertEqual(self.wt.path2id('new_directory/mfile2'), 'mfile2')
-        newfile_path = self.wt.abspath(pathjoin('new_directory','newfile'))
+        newfile_path = self.wt.abspath(pathjoin('new_directory', 'newfile'))
         self.assertEqual(file(newfile_path).read(), 'hello3')
         self.assertEqual(self.wt.path2id('dying_directory'), 'ddir')
         self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
-        mfile2_path = self.wt.abspath(pathjoin('new_directory','mfile2'))
+        mfile2_path = self.wt.abspath(pathjoin('new_directory', 'mfile2'))
 
     def test_both_rename(self):
-        create_tree,root = self.get_transform()
+        create_tree, root = self.get_transform()
         newdir = create_tree.new_directory('selftest', root, 'selftest-id')
         create_tree.new_file('blackbox.py', newdir, 'hello1', 'blackbox-id')
         create_tree.apply()
-        mangle_tree,root = self.get_transform()
+        mangle_tree, root = self.get_transform()
         selftest = mangle_tree.trans_id_tree_file_id('selftest-id')
         blackbox = mangle_tree.trans_id_tree_file_id('blackbox-id')
         mangle_tree.adjust_path('test', root, selftest)
@@ -685,14 +685,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         mangle_tree.apply()
 
     def test_both_rename2(self):
-        create_tree,root = self.get_transform()
+        create_tree, root = self.get_transform()
         breezy = create_tree.new_directory('breezy', root, 'breezy-id')
         tests = create_tree.new_directory('tests', breezy, 'tests-id')
         blackbox = create_tree.new_directory('blackbox', tests, 'blackbox-id')
         create_tree.new_file('test_too_much.py', blackbox, 'hello1',
                              'test_too_much-id')
         create_tree.apply()
-        mangle_tree,root = self.get_transform()
+        mangle_tree, root = self.get_transform()
         breezy = mangle_tree.trans_id_tree_file_id('breezy-id')
         tests = mangle_tree.trans_id_tree_file_id('tests-id')
         test_too_much = mangle_tree.trans_id_tree_file_id('test_too_much-id')
@@ -702,12 +702,12 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         mangle_tree.apply()
 
     def test_both_rename3(self):
-        create_tree,root = self.get_transform()
+        create_tree, root = self.get_transform()
         tests = create_tree.new_directory('tests', root, 'tests-id')
         create_tree.new_file('test_too_much.py', tests, 'hello1',
                              'test_too_much-id')
         create_tree.apply()
-        mangle_tree,root = self.get_transform()
+        mangle_tree, root = self.get_transform()
         tests = mangle_tree.trans_id_tree_file_id('tests-id')
         test_too_much = mangle_tree.trans_id_tree_file_id('test_too_much-id')
         mangle_tree.adjust_path('selftest', root, tests)
@@ -752,7 +752,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         resolve_conflicts(replace)
         replace.apply()
 
-    def _test_symlinks(self, link_name1,link_target1,
+    def _test_symlinks(self, link_name1, link_target1,
                        link_name2, link_target2):
 
         def ozpath(p): return 'oz/' + p
@@ -810,12 +810,12 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 os.symlink = os_symlink
 
     def get_conflicted(self):
-        create,root = self.get_transform()
+        create, root = self.get_transform()
         create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
         oz = create.new_directory('oz', root, 'oz-id')
         create.new_directory('emeraldcity', oz, 'emerald-id')
         create.apply()
-        conflicts,root = self.get_transform()
+        conflicts, root = self.get_transform()
         # set up duplicate entry, duplicate id
         new_dorothy = conflicts.new_file('dorothy', root, 'dorothy',
                                          'dorothy-id')
@@ -3214,11 +3214,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_merge_into_preview(self):
         work_tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file','b\n')])
+        self.build_tree_contents([('tree/file', 'b\n')])
         work_tree.add('file', 'file-id')
         work_tree.commit('first commit')
         child_tree = work_tree.controldir.sprout('child').open_workingtree()
-        self.build_tree_contents([('child/file','b\nc\n')])
+        self.build_tree_contents([('child/file', 'b\nc\n')])
         child_tree.commit('child commit')
         child_tree.lock_write()
         self.addCleanup(child_tree.unlock)

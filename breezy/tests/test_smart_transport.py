@@ -2055,10 +2055,10 @@ class CommonSmartProtocolTestMixin(object):
         """
         requester, response_handler = self.make_client_protocol()
         self.assertOffsetSerialisation([], '', requester)
-        self.assertOffsetSerialisation([(1,2)], '1,2', requester)
-        self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
+        self.assertOffsetSerialisation([(1, 2)], '1,2', requester)
+        self.assertOffsetSerialisation([(10, 40), (0, 5)], '10,40\n0,5',
             requester)
-        self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
+        self.assertOffsetSerialisation([(1, 2), (3, 4), (100, 200)],
             '1,2\n3,4\n100,200', requester)
 
 
@@ -2220,7 +2220,7 @@ class TestVersionOneFeaturesInProtocolOne(
             input, output, 'base')
         request = client_medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
+        smart_protocol.call_with_body_readv_array(('foo', ), [(1, 2), (5, 6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
     def _test_client_read_response_tuple_raises_UnknownSmartMethod(self,
@@ -2494,7 +2494,7 @@ class TestVersionOneFeaturesInProtocolTwo(
             input, output, 'base')
         request = client_medium.get_request()
         smart_protocol = self.client_protocol_class(request)
-        smart_protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
+        smart_protocol.call_with_body_readv_array(('foo', ), [(1, 2), (5, 6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
     def test_client_read_body_bytes_all(self):

@@ -1453,7 +1453,7 @@ class TestCase(testtools.TestCase):
         except excClass as e:
             return e
         else:
-            if getattr(excClass,'__name__', None) is not None:
+            if getattr(excClass, '__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
@@ -1474,7 +1474,7 @@ class TestCase(testtools.TestCase):
         except excClass as e:
             return e
         else:
-            if getattr(excClass,'__name__', None) is not None:
+            if getattr(excClass, '__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 # probably a tuple
@@ -2874,7 +2874,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, (str, text_type)):
             for p in path:
-                self.assertNotInWorkingTree(p,tree=tree)
+                self.assertNotInWorkingTree(p, tree=tree)
         else:
             self.assertIs(tree.path2id(path), None, path+' in working tree.')
 

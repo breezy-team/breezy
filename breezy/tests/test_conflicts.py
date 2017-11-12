@@ -1061,7 +1061,7 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # trunk switched. As such it should certainly produce the same
         # conflict.
         self.assertRaises(errors.MalformedTransform,
-                          self.run_script,"""
+                          self.run_script, """
 $ brz init trunk
 ...
 $ cd trunk

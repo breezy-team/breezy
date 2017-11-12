@@ -74,7 +74,7 @@ class TestOptParseBugHandling(tests.TestCase):
     def test_nonascii_optparse(self):
         """Reasonable error raised when non-ascii in option name"""
         error_re = 'Only ASCII permitted in option names'
-        out = self.run_bzr_error([error_re], ['st',u'-\xe4'])
+        out = self.run_bzr_error([error_re], ['st', u'-\xe4'])
 
 
 class TestObsoleteRepoFormat(RepositoryFormat2a):

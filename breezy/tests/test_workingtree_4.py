@@ -781,7 +781,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
             # Now add in an invalid entry, a rename with a dangling pointer
             state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
                                             [('f', '', 0, False, ''),
-                                             ('r', 'bar', 0 , False, '')]))
+                                             ('r', 'bar', 0, False, '')]))
             self.assertListRaises(dirstate.DirstateCorrupt,
                                   tree.iter_changes, tree.basis_tree())
         finally:

@@ -65,17 +65,17 @@ class TestCleanTree(TestCaseInTempDir):
             transport.put_bytes('file', 'contents')
             transport.put_bytes('file~', 'contents')
             transport.put_bytes('file.pyc', 'contents')
-            dels = sorted([r for a,r in iter_deletables(tree, unknown=True)])
+            dels = sorted([r for a, r in iter_deletables(tree, unknown=True)])
             self.assertEqual(['file', 'file.BASE'], dels)
 
-            dels = [r for a,r in iter_deletables(tree, detritus=True)]
+            dels = [r for a, r in iter_deletables(tree, detritus=True)]
             self.assertEqual(sorted(['file~', 'file.BASE']), dels)
 
-            dels = [r for a,r in iter_deletables(tree, ignored=True)]
+            dels = [r for a, r in iter_deletables(tree, ignored=True)]
             self.assertEqual(sorted(['file~', 'file.pyc', '.bzrignore']),
                              dels)
 
-            dels = [r for a,r in iter_deletables(tree, unknown=False)]
+            dels = [r for a, r in iter_deletables(tree, unknown=False)]
             self.assertEqual([], dels)
         finally:
             tree.unlock()

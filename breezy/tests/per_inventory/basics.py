@@ -154,8 +154,8 @@ class TestInventoryReads(TestInventory):
     def test_non_directory_children(self):
         """Test path2id when a parent directory has no children"""
         inv = inventory.Inventory('tree-root')
-        inv.add(self.make_file('file-id','file', 'tree-root'))
-        inv.add(self.make_link('link-id','link', 'tree-root'))
+        inv.add(self.make_file('file-id', 'file', 'tree-root'))
+        inv.add(self.make_link('link-id', 'link', 'tree-root'))
         self.assertIs(None, inv.path2id('file/subfile'))
         self.assertIs(None, inv.path2id('link/subfile'))
 

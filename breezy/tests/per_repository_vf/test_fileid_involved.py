@@ -165,7 +165,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["main/a", "main/b", "main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
@@ -211,7 +211,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end C -----------
 
-        bt1.rename_one("d","e")
+        bt1.rename_one("d", "e")
         bt1.commit("branch1, commit two", rev_id="rev-F")
 
         #-------- end F -----------
@@ -237,12 +237,12 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def test_fileids_altered_between_two_revs(self):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
+        self.branch.repository.fileids_altered_by_revision_ids(["rev-J", "rev-K"])
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':{'rev-J'},
              'c-funky<file-id>quiji%bo':{'rev-K'}
              },
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
+            self.branch.repository.fileids_altered_by_revision_ids(["rev-J", "rev-K"]))
 
         self.assertEqual(
             {'b-file-id-2006-01-01-defg': {'rev-<D>'},
@@ -281,7 +281,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd':{'rev-A'},
+            {'a-file-id-2006-01-01-abcd': {'rev-A'},
              'b-file-id-2006-01-01-defg': {'rev-A'},
              'c-funky<file-id>quiji%bo': {'rev-A'},
              },
@@ -312,9 +312,9 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         if len(history) < 2:
             return
 
-        for start in range(0,len(history)-1):
+        for start in range(0, len(history)-1):
             start_id = history[start]
-            for end in range(start+1,len(history)):
+            for end in range(start+1, len(history)):
                 end_id = history[end]
                 unique_revs = graph.find_unique_ancestors(end_id, [start_id])
                 l1 = self.branch.repository.fileids_altered_by_revision_ids(
@@ -365,7 +365,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["main/a", "main/b", "main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',

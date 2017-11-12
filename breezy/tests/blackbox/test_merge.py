@@ -121,7 +121,7 @@ class TestMerge(tests.TestCaseWithTransport):
                                 working_dir='a')
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
-                    %(ancestor,b.revno()), working_dir='a')
+                    %(ancestor, b.revno()), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('a/goodbye', 'quux')
@@ -264,7 +264,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # test merge for failure without parent set
         out = self.run_bzr('merge', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                ('','brz: ERROR: No location specified or remembered\n'))
+                ('', 'brz: ERROR: No location specified or remembered\n'))
 
         # test uncommitted changes
         self.build_tree(['branch_b/d'])

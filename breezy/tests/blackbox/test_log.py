@@ -328,7 +328,7 @@ class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
     def test_log_revno_n_path_correct_order(self):
         self.make_linear_branch('branch2')
         self.assertLogRevnos(['-rrevno:1:branch2..revno:3:branch2'],
-                             ['3', '2','1'])
+                             ['3', '2', '1'])
 
     def test_log_revno_n_path(self):
         self.make_linear_branch('branch2')
@@ -718,13 +718,13 @@ class TestLogUnicodeDiff(TestLog):
         wt.commit(message=message)
         # check that command won't fail with unicode error
         # don't care about exact output because we have other tests for this
-        out,err = self.run_bzr('log -p --long')
+        out, err = self.run_bzr('log -p --long')
         self.assertNotEqual('', out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('log -p --short')
+        out, err = self.run_bzr('log -p --short')
         self.assertNotEqual('', out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('log -p --line')
+        out, err = self.run_bzr('log -p --line')
         self.assertNotEqual('', out)
         self.assertEqual('', err)
 

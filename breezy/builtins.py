@@ -4904,7 +4904,7 @@ class cmd_missing(Command):
         Option('reverse', 'Reverse the order of revisions.'),
         Option('mine-only',
                'Display changes in the local branch only.'),
-        Option('this' , 'Same as --mine-only.'),
+        Option('this', 'Same as --mine-only.'),
         Option('theirs-only',
                'Display changes in the remote branch only.'),
         Option('other', 'Same as --theirs-only.'),

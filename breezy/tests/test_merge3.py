@@ -110,7 +110,7 @@ class TestMerge3(tests.TestCase):
                           [(0, 2,
                             0, 2,
                             0, 2),
-                           (2,2, 2,2, 2,2)])
+                           (2, 2, 2, 2, 2, 2)])
 
         self.assertEqual(list(m3.merge_regions()),
                           [('unchanged', 0, 2)])
@@ -126,8 +126,8 @@ class TestMerge3(tests.TestCase):
         # todo: should use a sentinal at end as from get_matching_blocks
         # to match without zz
         self.assertEqual(list(m3.find_sync_regions()),
-                          [(0,1, 2,3, 0,1),
-                           (1,1, 3,3, 1,1),])
+                          [(0, 1, 2, 3, 0, 1),
+                           (1, 1, 3, 3, 1, 1),])
 
         self.assertEqual(list(m3.merge_regions()),
                           [('a', 0, 2),
@@ -144,7 +144,7 @@ class TestMerge3(tests.TestCase):
         # todo: should use a sentinal at end as from get_matching_blocks
         # to match without zz
         self.assertEqual(list(m3.find_sync_regions()),
-                          [(0,0, 2,2, 0,0)])
+                          [(0, 0, 2, 2, 0, 0)])
 
         self.assertEqual(list(m3.merge_regions()),
                           [('a', 0, 2)])
@@ -162,9 +162,9 @@ class TestMerge3(tests.TestCase):
                           [(0, 1), (1, 2)])
 
         self.assertEqual(list(m3.find_sync_regions()),
-                          [(0,1, 0,1, 0,1),
-                           (1,2, 2,3, 1,2),
-                           (2,2, 3,3, 2,2),])
+                          [(0, 1, 0, 1, 0, 1),
+                           (1, 2, 2, 3, 1, 2),
+                           (2, 2, 3, 3, 2, 2),])
 
         self.assertEqual(list(m3.merge_regions()),
                           [('unchanged', 0, 1),
@@ -239,14 +239,14 @@ bbb
                           [(0, 1), (1, 2)])
 
         self.assertEqual(list(m3.find_sync_regions()),
-                          [(0,1, 0,1, 0,1),
-                           (1,2, 2,3, 2,3),
-                           (2,2, 3,3, 3,3),])
+                          [(0, 1, 0, 1, 0, 1),
+                           (1, 2, 2, 3, 2, 3),
+                           (2, 2, 3, 3, 3, 3),])
 
         self.assertEqual(list(m3.merge_regions()),
-                          [('unchanged', 0,1),
-                           ('conflict', 1,1, 1,2, 1,2),
-                           ('unchanged', 1,2)])
+                          [('unchanged', 0, 1),
+                           ('conflict', 1, 1, 1, 2, 1, 2),
+                           ('unchanged', 1, 2)])
 
         self.assertEqual(list(m3.merge_groups()),
                           [('unchanged', ['aaa\n']),
@@ -279,9 +279,9 @@ bbb
                           [(0, 1), (2, 3)])
 
         self.assertEqual(list(m3.find_sync_regions()),
-                          [(0,1, 0,1, 0,1),
-                           (2,3, 2,3, 2,3),
-                           (3,3, 3,3, 3,3),])
+                          [(0, 1, 0, 1, 0, 1),
+                           (2, 3, 2, 3, 2, 3),
+                           (3, 3, 3, 3, 3, 3),])
 
     def test_replace_multi(self):
         """Replacement with regions of different size."""
@@ -294,9 +294,9 @@ bbb
 
 
         self.assertEqual(list(m3.find_sync_regions()),
-                          [(0,1, 0,1, 0,1),
-                           (3,4, 4,5, 5,6),
-                           (4,4, 5,5, 6,6),])
+                          [(0, 1, 0, 1, 0, 1),
+                           (3, 4, 4, 5, 5, 6),
+                           (4, 4, 5, 5, 6, 6),])
 
     def test_merge_poem(self):
         """Test case from diff3 manual"""
@@ -439,9 +439,9 @@ bbb
         merge_groups and merge_regions work with non-str input.  Methods that
         return lines like merge_lines fail.
         """
-        base = [(x,x) for x in 'abcde']
-        a = [(x,x) for x in 'abcdef']
-        b = [(x,x) for x in 'Zabcde']
+        base = [(x, x) for x in 'abcde']
+        a = [(x, x) for x in 'abcdef']
+        b = [(x, x) for x in 'Zabcde']
         m3 = merge3.Merge3(base, a, b, allow_objects=True)
         self.assertEqual(
             [('b', 0, 1),
@@ -450,7 +450,7 @@ bbb
             list(m3.merge_regions()))
         self.assertEqual(
             [('b', [('Z', 'Z')]),
-             ('unchanged', [(x,x) for x in 'abcde']),
+             ('unchanged', [(x, x) for x in 'abcde']),
              ('a', [('f', 'f')])],
             list(m3.merge_groups()))
 

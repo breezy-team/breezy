@@ -1713,7 +1713,7 @@ class GraphThunkIdsToKeys(object):
         self._graph.add_node((revision,), [(p,) for p in parents])
 
 
-_counters = [0,0,0,0,0,0,0]
+_counters = [0, 0, 0, 0, 0, 0, 0]
 try:
     from ._known_graph_pyx import KnownGraph
 except ImportError as e:

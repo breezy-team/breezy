@@ -2363,7 +2363,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
         result = repo.gather_stats(None)
         self.assertEqual(
             [('call_expecting_body', 'Repository.gather_stats',
-             ('quack/','','no'))],
+             ('quack/', '', 'no'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18}, result)
 
@@ -2900,7 +2900,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         # Then it should ask the fallback, using revno/revid from the
         # history-incomplete response as the known revno/revid.
         client.add_expected_call(
-            'Repository.get_rev_id_for_revno',('fallback/', 1, (2, 'rev-two')),
+            'Repository.get_rev_id_for_revno', ('fallback/', 1, (2, 'rev-two')),
             'success', ('ok', 'rev-one'))
         result = repo.get_rev_id_for_revno(1, (42, 'rev-foo'))
         self.assertEqual((True, 'rev-one'), result)
@@ -3972,7 +3972,7 @@ class TestStacking(tests.TestCaseWithTransport):
         tip = stacked.last_revision()
         stacked.repository._ensure_real()
         graph = stacked.repository.get_graph()
-        revs = [r for (r,ps) in graph.iter_ancestry([tip])
+        revs = [r for (r, ps) in graph.iter_ancestry([tip])
                 if r != NULL_REVISION]
         revs.reverse()
         search = vf_search.PendingAncestryResult([tip], stacked.repository)

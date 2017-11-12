@@ -152,7 +152,7 @@ class _GrepDiffOutputter(object):
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
         else:
@@ -403,7 +403,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
-        rpath = osutils.pathjoin('..',relpath)
+        rpath = osutils.pathjoin('..', relpath)
 
     from_dir = osutils.pathjoin(relpath, path)
     if opts.from_root:
@@ -548,7 +548,7 @@ class _Outputter(object):
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
             path_start = FG.MAGENTA

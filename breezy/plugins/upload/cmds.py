@@ -275,7 +275,7 @@ class BzrUploader(object):
 
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0,0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))
         if not self.quiet:
             self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
         self._up_rename(old_relpath, stamp)

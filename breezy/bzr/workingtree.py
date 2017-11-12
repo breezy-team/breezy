@@ -92,7 +92,7 @@ MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = b"BZR conflict list format 1"
 
 
-class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
+class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     """Base class for working trees that are inventory-oriented.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -1180,7 +1180,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                 from_tail = osutils.splitpath(from_rel)[-1]
                 from_inv, from_id = self._path2inv_file_id(from_rel)
                 if from_id is None:
-                    raise errors.BzrMoveFailedError(from_rel,to_dir,
+                    raise errors.BzrMoveFailedError(from_rel, to_dir,
                         errors.NotVersionedError(path=from_rel))
 
                 from_entry = from_inv[from_id]
@@ -1273,7 +1273,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             # check if the target changed directory and if the target directory is
             # versioned
             if to_dir_id is None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=to_dir))
 
             # all checks done. now we can continue with our actual work
@@ -1322,7 +1322,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
 
             # check the inventory for source and destination
             if from_id is None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=from_rel))
             if to_id is not None:
                 allowed = False
@@ -1334,14 +1334,14 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                             rename_entry.change_id = True
                             allowed = True
                 if not allowed:
-                    raise errors.BzrMoveFailedError(from_rel,to_rel,
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_id,to_rel,
+                    raise errors.BzrMoveFailedError(from_id, to_rel,
                         errors.NoSuchFile(path=to_rel,
                         extra="New file has not been created yet"))
                 only_change_inv = True

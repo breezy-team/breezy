@@ -678,11 +678,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
             to_block = state._dirblocks[to_block_index]
             to_abs = self.abspath(to_dir)
             if not isdir(to_abs):
-                raise errors.BzrMoveFailedError('',to_dir,
+                raise errors.BzrMoveFailedError('', to_dir,
                     errors.NotADirectory(to_abs))
 
             if to_entry[1][0][0] != 'd':
-                raise errors.BzrMoveFailedError('',to_dir,
+                raise errors.BzrMoveFailedError('', to_dir,
                     errors.NotADirectory(to_abs))
 
             if self._inventory is not None:
@@ -728,7 +728,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 from_dirname, from_tail_utf8 = osutils.split(from_rel_utf8)
                 from_entry = self._get_entry(path=from_rel)
                 if from_entry == (None, None):
-                    raise errors.BzrMoveFailedError(from_rel,to_dir,
+                    raise errors.BzrMoveFailedError(from_rel, to_dir,
                         errors.NotVersionedError(path=from_rel))
 
                 from_id = from_entry[0][2]

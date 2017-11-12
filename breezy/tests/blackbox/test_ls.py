@@ -139,22 +139,22 @@ class TestLS(tests.TestCaseWithTransport):
         """If a path is specified, files are listed with that prefix"""
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['subdir', 'subdir/b'])
-        self.ls_equals('subdir/b\n' ,
+        self.ls_equals('subdir/b\n',
                        'subdir')
         self.ls_equals('../.bzrignore\n'
                        '../a\n'
                        '../subdir/\n'
-                       '../subdir/b\n' ,
+                       '../subdir/b\n',
                        '..', working_dir='subdir')
         self.ls_equals('../.bzrignore\0'
                        '../a\0'
                        '../subdir\0'
-                       '../subdir/b\0' ,
+                       '../subdir/b\0',
                        '.. --null', working_dir='subdir')
         self.ls_equals('?        ../.bzrignore\n'
                        '?        ../a\n'
                        'V        ../subdir/\n'
-                       'V        ../subdir/b\n' ,
+                       'V        ../subdir/b\n',
                        '.. --verbose', working_dir='subdir')
         self.run_bzr_error(['cannot specify both --from-root and PATH'],
                            'ls --from-root ..', working_dir='subdir')

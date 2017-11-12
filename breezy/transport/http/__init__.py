@@ -226,7 +226,7 @@ class HttpTransportBase(ConnectedTransport):
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange, errors.HttpBoundaryMissing) as e:
-                mutter('Exception %r: %s during http._readv',e, e)
+                mutter('Exception %r: %s during http._readv', e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):
                     # We don't degrade the range hint for ShortReadvError since

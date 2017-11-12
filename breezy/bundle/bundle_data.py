@@ -536,7 +536,7 @@ class BundleTree(Tree):
         old_path = self._renamed.get(new_path)
         if old_path is not None:
             return old_path
-        dirname,basename = os.path.split(new_path)
+        dirname, basename = os.path.split(new_path)
         # dirname is not '' doesn't work, because
         # dirname may be a unicode entry, and is
         # requires the objects to be identical
@@ -565,7 +565,7 @@ class BundleTree(Tree):
             return new_path
         if new_path in self._renamed:
             return None
-        dirname,basename = os.path.split(old_path)
+        dirname, basename = os.path.split(old_path)
         if dirname != '':
             new_dir = self.new_path(dirname)
             if new_dir is None:

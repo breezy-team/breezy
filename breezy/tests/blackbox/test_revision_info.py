@@ -110,7 +110,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         b = self.make_branch('branch')
 
         # Try getting the --tree revision-info
-        out,err = self.run_bzr('revision-info --tree -d branch', retcode=3)
+        out, err = self.run_bzr('revision-info --tree -d branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)

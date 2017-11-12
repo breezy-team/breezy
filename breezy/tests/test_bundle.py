@@ -118,7 +118,7 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..bzr.inventory import (InventoryFile , InventoryDirectory,
+        from ..bzr.inventory import (InventoryFile, InventoryDirectory,
             InventoryLink)
         name = os.path.basename(path)
         kind = self.kind(file_id)
@@ -158,7 +158,7 @@ class MockTree(object):
             file_id = self.path2id(path)
         result = BytesIO()
         result.write(self.contents[file_id])
-        result.seek(0,0)
+        result.seek(0, 0)
         return result
 
     def get_file_revision(self, path, file_id=None):
@@ -269,7 +269,7 @@ class BTreeTester(tests.TestCase):
     def unified_diff(self, old, new):
         out = BytesIO()
         diff.internal_diff("old", old, "new", new, out)
-        out.seek(0,0)
+        out.seek(0, 0)
         return out.read()
 
     def make_tree_2(self):
@@ -719,7 +719,7 @@ class BundleTester(object):
         tt.apply()
         self.tree1.commit('add symlink', rev_id='l@cset-0-1')
         bundle = self.get_valid_bundle('null:', 'l@cset-0-1')
-        if getattr(bundle ,'revision_tree', None) is not None:
+        if getattr(bundle, 'revision_tree', None) is not None:
             # Not all bundle formats supports revision_tree
             bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-1')
             self.assertEqual(link_target, bund_tree.get_symlink_target(link_id))
@@ -732,7 +732,7 @@ class BundleTester(object):
         tt.apply()
         self.tree1.commit('rename and change symlink', rev_id='l@cset-0-2')
         bundle = self.get_valid_bundle('l@cset-0-1', 'l@cset-0-2')
-        if getattr(bundle ,'revision_tree', None) is not None:
+        if getattr(bundle, 'revision_tree', None) is not None:
             # Not all bundle formats supports revision_tree
             bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-2')
             self.assertEqual(new_link_target,

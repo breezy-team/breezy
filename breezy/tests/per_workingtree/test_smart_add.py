@@ -340,7 +340,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                         [(path, ie.kind) for path,ie in
+                         [(path, ie.kind) for path, ie in
                           self.wt.iter_entries_by_dir()])
 
     def test_accessible_implicit(self):
@@ -353,7 +353,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                         [(path, ie.kind) for path,ie
+                         [(path, ie.kind) for path, ie
                           in self.wt.iter_entries_by_dir()])
 
     def test_inaccessible_explicit(self):

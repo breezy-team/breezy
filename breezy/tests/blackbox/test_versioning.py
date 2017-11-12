@@ -79,7 +79,7 @@ class TestMkdir(TestCaseWithTransport):
 
         self.assertEqual(len(delta.added), 2)
         self.assertEqual(delta.added[0][0], 'dir')
-        self.assertEqual(delta.added[1][0], pathjoin('dir','subdir'))
+        self.assertEqual(delta.added[1][0], pathjoin('dir', 'subdir'))
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):

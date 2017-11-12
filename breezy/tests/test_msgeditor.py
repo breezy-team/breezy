@@ -295,7 +295,7 @@ if len(sys.argv) == 2:
         # check that commit template written properly
         # and has platform native line-endings (CRLF on win32)
         create_file = msgeditor._create_temp_file_with_commit_template
-        msgfilename, hasinfo = create_file('infotext','----','start message')
+        msgfilename, hasinfo = create_file('infotext', '----', 'start message')
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
         expected = os.linesep.join(['start message',

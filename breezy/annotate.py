@@ -200,11 +200,11 @@ def _expand_annotations(annotations, branch, current_rev=None):
     for origin, text in annotations:
         text = text.rstrip('\r\n')
         if origin == last_origin:
-            (revno_str, author, date_str) = ('','','')
+            (revno_str, author, date_str) = ('', '', '')
         else:
             last_origin = origin
             if origin not in revisions:
-                (revno_str, author, date_str) = ('?','?','?')
+                (revno_str, author, date_str) = ('?', '?', '?')
             else:
                 revno_str = '.'.join(str(i) for i in
                                             revision_id_to_revno[origin])
@@ -344,7 +344,7 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
     output_extend = output_lines.extend
     output_append = output_lines.append
     # We need to see if any of the unannotated lines match
-    plain_right_subset = [l for a,l in right_lines[start_right:end_right]]
+    plain_right_subset = [l for a, l in right_lines[start_right:end_right]]
     plain_child_subset = plain_child_lines[start_child:end_child]
     match_blocks = _get_matching_blocks(plain_right_subset, plain_child_subset)
 

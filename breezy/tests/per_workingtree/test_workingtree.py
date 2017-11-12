@@ -819,7 +819,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.add([u'a\u030a'])
             tree.lock_read()
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in
+                    [(path, ie.kind) for path, ie in
                                 tree.iter_entries_by_dir()])
             tree.unlock()
         finally:

@@ -187,7 +187,7 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    return cmd[4:].replace('_','-')
+    return cmd[4:].replace('_', '-')
 
 
 def _register_builtin_commands():
@@ -559,7 +559,7 @@ class Command(object):
             doc = gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
-        purpose,sections,order = self._get_help_parts(doc)
+        purpose, sections, order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
         if 'Usage' in sections:
@@ -670,14 +670,14 @@ class Command(object):
         summary = lines.pop(0)
         sections = {}
         order = []
-        label,section = None,''
+        label, section = None, ''
         for line in lines:
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, order, label, section)
-                label,section = line[1:-1],''
+                label, section = line[1:-1], ''
             elif (label is not None) and len(line) > 1 and not line[0].isspace():
                 save_section(sections, order, label, section)
-                label,section = None,line
+                label, section = None, line
             else:
                 if len(section) > 0:
                     section += '\n' + line
