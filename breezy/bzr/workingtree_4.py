@@ -1702,9 +1702,11 @@ class DirStateRevisionTree(InventoryTree):
         return "<%s of %s in %s>" % \
             (self.__class__.__name__, self._revision_id, self._dirstate)
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
+        if file_id is None:
+            file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(file_id))
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]

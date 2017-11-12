@@ -799,7 +799,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         # raise if there was no inventory, or if we read the wrong inventory.
         raise errors.NoSuchRevisionInTree(self, revision_id)
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter
 
@@ -810,6 +810,8 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         incorrectly attributed to CURRENT_REVISION (but after committing, the
         attribution will be correct).
         """
+        if file_id is None:
+            file_id = self.path2id(path)
         with self.lock_read():
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():

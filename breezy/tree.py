@@ -428,7 +428,7 @@ class Tree(object):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 

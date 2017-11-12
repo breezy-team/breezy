@@ -3075,7 +3075,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             ('me:', 'b\n'),
             ('me:', 'c\n'),
         ]
-        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        annotation = preview_tree.annotate_iter('file', default_revision='me:')
         self.assertEqual(expected, annotation)
 
     def test_annotate_missing(self):
@@ -3087,7 +3087,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             ('me:', 'b\n'),
             ('me:', 'c\n'),
          ]
-        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        annotation = preview_tree.annotate_iter('file', default_revision='me:')
         self.assertEqual(expected, annotation)
 
     def test_annotate_rename(self):
@@ -3103,7 +3103,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         expected = [
             ('one', 'a\n'),
         ]
-        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        annotation = preview_tree.annotate_iter('file', default_revision='me:')
         self.assertEqual(expected, annotation)
 
     def test_annotate_deleted(self):
@@ -3117,7 +3117,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         file_trans_id = preview.trans_id_file_id('file-id')
         preview.delete_contents(file_trans_id)
         preview_tree = preview.get_preview_tree()
-        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        annotation = preview_tree.annotate_iter('file', default_revision='me:')
         self.assertIs(None, annotation)
 
     def test_stored_kind(self):

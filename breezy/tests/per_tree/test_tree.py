@@ -36,12 +36,11 @@ class TestAnnotate(TestCaseWithTree):
         tree_revision = getattr(tree, 'get_revision_id', lambda: 'current:')()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        a_id = tree.path2id('a')
-        for revision, line in tree.annotate_iter(a_id):
+        for revision, line in tree.annotate_iter('a'):
             self.assertEqual('contents of a\n', line)
             self.assertEqual(tree_revision, revision)
         tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
-        for revision, line in tree.annotate_iter(a_id, 'random:'):
+        for revision, line in tree.annotate_iter('a', 'random:'):
             self.assertEqual('contents of a\n', line)
             self.assertEqual(tree_revision, revision)
 

@@ -2376,7 +2376,7 @@ class _PreviewTree(inventorytree.InventoryTree):
     def get_file_with_stat(self, file_id, path=None):
         return self.get_file(file_id, path), None
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         changes = self._iter_changes_cache.get(file_id)
         if changes is None:
@@ -2388,8 +2388,8 @@ class _PreviewTree(inventorytree.InventoryTree):
                 return None
             get_old = (kind[0] == 'file' and versioned[0])
         if get_old:
-            old_annotation = self._transform._tree.annotate_iter(file_id,
-                default_revision=default_revision)
+            old_annotation = self._transform._tree.annotate_iter(
+                    path, file_id=file_id, default_revision=default_revision)
         else:
             old_annotation = []
         if changes is None:

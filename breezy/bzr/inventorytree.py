@@ -741,9 +741,11 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
         except errors.RevisionNotPresent as e:
             raise errors.NoSuchFile(e.file_id)
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
+        if file_id is None:
+            file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(file_id))
         annotator = self._repository.texts.get_annotator()
         annotations = annotator.annotate_flat(text_key)

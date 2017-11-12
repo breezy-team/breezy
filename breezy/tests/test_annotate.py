@@ -278,9 +278,9 @@ class TestAnnotate(tests.TestCaseWithTransport):
             verbose=verbose, full=full, show_ids=show_ids, branch=branch)
         self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
 
-    def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
+    def assertRepoAnnotate(self, expected, repo, path, revision_id):
         """Assert that the revision is properly annotated."""
-        actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
+        actual = list(repo.revision_tree(revision_id).annotate_iter(path))
         self.assertAnnotateEqualDiff(actual, expected)
 
     def test_annotate_duplicate_lines(self):
@@ -289,12 +289,12 @@ class TestAnnotate(tests.TestCaseWithTransport):
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertRepoAnnotate(duplicate_base, repo, 'file-id', 'rev-base')
-        self.assertRepoAnnotate(duplicate_A, repo, 'file-id', 'rev-A')
-        self.assertRepoAnnotate(duplicate_B, repo, 'file-id', 'rev-B')
-        self.assertRepoAnnotate(duplicate_C, repo, 'file-id', 'rev-C')
-        self.assertRepoAnnotate(duplicate_D, repo, 'file-id', 'rev-D')
-        self.assertRepoAnnotate(duplicate_E, repo, 'file-id', 'rev-E')
+        self.assertRepoAnnotate(duplicate_base, repo, 'file', 'rev-base')
+        self.assertRepoAnnotate(duplicate_A, repo, 'file', 'rev-A')
+        self.assertRepoAnnotate(duplicate_B, repo, 'file', 'rev-B')
+        self.assertRepoAnnotate(duplicate_C, repo, 'file', 'rev-C')
+        self.assertRepoAnnotate(duplicate_D, repo, 'file', 'rev-D')
+        self.assertRepoAnnotate(duplicate_E, repo, 'file', 'rev-E')
 
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()
