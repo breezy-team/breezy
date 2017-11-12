@@ -611,7 +611,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             inv, inv_file_id = self._path2inv_file_id(path)
         else:
             inv, inv_file_id = self._unpack_file_id(file_id)
-        ie = inv[inv_file_id]
+        try:
+            ie = inv[inv_file_id]
+        except errors.NoSuchId:
+            raise errors.NoSuchFile(path)
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:

@@ -110,7 +110,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.lock_write()
         tree.add(['', 'foo'], ids=['root-id', 'foo-id'],
                   kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
+        tree.put_file_bytes_non_atomic('foo', 'barshoom')
         self.assertEqual('barshoom', tree.get_file('foo').read())
         tree.unlock()
 
@@ -120,8 +120,8 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.lock_write()
         tree.add(['', 'foo'], ids=['root-id', 'foo-id'],
                  kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo-id', 'first-content')
-        tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
+        tree.put_file_bytes_non_atomic('foo', 'first-content')
+        tree.put_file_bytes_non_atomic('foo', 'barshoom')
         self.assertEqual('barshoom', tree.get_file('foo').read())
         tree.unlock()
 
@@ -139,7 +139,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.add(['adir/afile'], ['file-id'], ['file'])
         self.assertEqual('adir/afile', tree.id2path('file-id'))
         self.assertEqual('adir', tree.id2path('dir-id'))
-        tree.put_file_bytes_non_atomic('file-id', 'barshoom')
+        tree.put_file_bytes_non_atomic('adir/afile', 'barshoom')
 
     def test_commit_trivial(self):
         """Smoke test for commit on a MemoryTree.
@@ -152,7 +152,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.lock_write()
         tree.add(['', 'foo'], ids=['root-id', 'foo-id'],
                  kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
+        tree.put_file_bytes_non_atomic('foo', 'barshoom')
         revision_id = tree.commit('message baby')
         # the parents list for the tree should have changed.
         self.assertEqual([revision_id], tree.get_parent_ids())
@@ -188,7 +188,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add(['', 'foo'], ['root-id', 'foo-id'], ['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo-id', 'content\n')
+        tree.put_file_bytes_non_atomic('foo', 'content\n')
         tree.commit('one', rev_id='rev-one')
         tree.rename_one('foo', 'bar')
         self.assertEqual('bar', tree.id2path('foo-id'))
@@ -211,7 +211,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.add('')
         tree.mkdir('subdir', 'subdir-id')
         tree.add('foo', 'foo-id', 'file')
-        tree.put_file_bytes_non_atomic('foo-id', 'content\n')
+        tree.put_file_bytes_non_atomic('foo', 'content\n')
         tree.commit('one', rev_id='rev-one')
 
         tree.rename_one('foo', 'subdir/bar')

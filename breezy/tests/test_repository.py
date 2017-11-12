@@ -252,7 +252,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         branch = control.create_branch()
         tree = control.create_workingtree()
         tree.add(['foo'], ['Nasty-IdC:'], ['file'])
-        tree.put_file_bytes_non_atomic('Nasty-IdC:', '')
+        tree.put_file_bytes_non_atomic('foo', '')
         tree.commit('1st post', rev_id='foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             '\nfoo fulltext 0 81  :')

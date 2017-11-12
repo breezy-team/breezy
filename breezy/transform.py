@@ -1080,7 +1080,7 @@ class TreeTransformBase(object):
         file_id = self.tree_file_id(trans_id)
         try:
             if (file_id is None or
-                    self._tree.kind(self.tree.id2path(file_id), file_id) != 'file'):
+                    self._tree.kind(self._tree.id2path(file_id), file_id) != 'file'):
                 return None
         except errors.NoSuchFile:
             return None
@@ -2160,7 +2160,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 continue
             kind = self._transform.final_kind(trans_id)
             if kind is None:
-                kind = self._transform._tree.stored_kind(file_id)
+                kind = self._transform._tree.stored_kind(
+                    self._transform._tree.id2path(file_id),
+                    file_id)
             new_entry = inventory.make_entry(
                 kind,
                 self._transform.final_name(trans_id),
@@ -2236,7 +2238,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             for path, entry in entries:
                 yield path, 'V', entry.kind, entry.file_id, entry
 
-    def kind(self, path, file_id):
+    def kind(self, path, file_id=None):
         if file_id is None:
             file_id = self.path2id(path)
         trans_id = self._transform.trans_id_file_id(file_id)

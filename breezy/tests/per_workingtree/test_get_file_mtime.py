@@ -112,8 +112,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         os.remove('tree/one')
         tree.lock_read()
         try:
-            self.assertRaises(FileTimestampUnavailable,
-                tree.get_file_mtime, 'one')
+            self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'one')
         finally:
             tree.unlock()
 

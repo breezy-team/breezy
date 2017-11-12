@@ -240,9 +240,9 @@ class MemoryTree(MutableInventoryTree):
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
-    def put_file_bytes_non_atomic(self, file_id, bytes):
+    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
-        self._file_transport.put_bytes(self.id2path(file_id), bytes)
+        self._file_transport.put_bytes(path, bytes)
 
     def unlock(self):
         """Release a lock.

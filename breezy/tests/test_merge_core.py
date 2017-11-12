@@ -345,7 +345,7 @@ y
         try:
             self.assertEqual([], conflicts)
             self.assertEqual("text4", builder.this.get_file("name1").read())
-            self.assertEqual("text2", builder.this.get_file("name2").read())
+            self.assertEqual("text2", builder.this.get_file("name3").read())
             self.assertEqual("a\nz\nc\nd\ne\nz\n",
                              builder.this.get_file("name7").read())
             self.assertTrue(builder.this.is_executable("name1"))

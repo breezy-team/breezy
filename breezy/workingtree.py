@@ -977,10 +977,10 @@ class WorkingTree(mutabletree.MutableTree,
                 self.set_parent_trees(parent_trees)
             return count
 
-    def put_file_bytes_non_atomic(self, file_id, bytes):
+    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
         with self.lock_write():
-            stream = file(self.id2abspath(file_id), 'wb')
+            stream = file(self.abspath(path), 'wb')
             try:
                 stream.write(bytes)
             finally:

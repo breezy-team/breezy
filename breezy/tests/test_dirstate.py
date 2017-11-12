@@ -1105,7 +1105,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree1.add('')
             tree1.add(['a file'], ['file-id'], ['file'])
-            tree1.put_file_bytes_non_atomic('file-id', 'file-content')
+            tree1.put_file_bytes_non_atomic('a file', 'file-content')
             revid1 = tree1.commit('foo')
         finally:
             tree1.unlock()
@@ -1113,7 +1113,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree2 = memorytree.MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         try:
-            tree2.put_file_bytes_non_atomic('file-id', 'new file-content')
+            tree2.put_file_bytes_non_atomic('a file', 'new file-content')
             revid2 = tree2.commit('foo')
             root_id = tree2.get_root_id()
         finally:
