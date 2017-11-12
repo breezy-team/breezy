@@ -155,7 +155,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         else:
             expected = "Foo Txt"
         self.assertEqual(expected, basis.get_file_text(basis.id2path(txt_fileid)))
-        self.assertEqual('Foo Bin', basis.get_file_text(bsais.id2path(bin_fileid)))
+        self.assertEqual('Foo Bin', basis.get_file_text(basis.id2path(bin_fileid)))
         # Check that the working tree has the original content
         tree.lock_read()
         self.addCleanup(tree.unlock)

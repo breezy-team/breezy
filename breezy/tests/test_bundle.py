@@ -110,7 +110,9 @@ class MockTree(object):
         for path, file_id in self.ids.items():
             yield path, self[file_id]
 
-    def kind(self, file_id):
+    def kind(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         if file_id in self.contents:
             kind = 'file'
         else:
@@ -121,7 +123,7 @@ class MockTree(object):
         from ..bzr.inventory import (InventoryFile, InventoryDirectory,
             InventoryLink)
         name = os.path.basename(path)
-        kind = self.kind(file_id)
+        kind = self.kind(path, file_id)
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
         if kind == 'directory':
@@ -295,7 +297,8 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(path, "grandparent/parent/file")
         self.assertEqual(btree.path2id("grandparent/parent/file"), "e")
         self.assertEqual(btree.get_file(path).read(), "Extra cheese\n")
-        self.assertEqual(btree.get_symlink_target('f'), 'venus')
+        self.assertEqual(
+            btree.get_symlink_target('grandparent/parent/symlink'), 'venus')
 
     def test_adds2(self):
         """File/inventory adds, with patch-compatibile renames"""
@@ -328,7 +331,7 @@ class BTreeTester(tests.TestCase):
         self.get_file_test(btree)
 
     def test_get_file2(self):
-        """Get file contents, with patch-compatibile renames"""
+        """Get file contents, with patch-compatible renames"""
         btree = self.make_tree_3()
         btree.contents_by_id = False
         mod_patch = self.unified_diff([], ["Lemon\n"])
@@ -722,7 +725,7 @@ class BundleTester(object):
         if getattr(bundle, 'revision_tree', None) is not None:
             # Not all bundle formats supports revision_tree
             bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-1')
-            self.assertEqual(link_target, bund_tree.get_symlink_target(link_id))
+            self.assertEqual(link_target, bund_tree.get_symlink_target(link_name))
 
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id(link_id)
@@ -736,7 +739,7 @@ class BundleTester(object):
             # Not all bundle formats supports revision_tree
             bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-2')
             self.assertEqual(new_link_target,
-                             bund_tree.get_symlink_target(link_id))
+                             bund_tree.get_symlink_target('link2'))
 
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id(link_id)

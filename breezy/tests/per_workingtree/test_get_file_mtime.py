@@ -79,7 +79,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
 
         tree.lock_read()
         try:
-            mtime = tree.get_file_mtime('one')
+            mtime = tree.get_file_mtime('two')
             self.assertAlmostEqual(st.st_mtime, mtime)
             mtime = tree.get_file_mtime('two', one_id)
             self.assertAlmostEqual(st.st_mtime, mtime)

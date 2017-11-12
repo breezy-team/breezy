@@ -501,7 +501,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         entry.text_sha1 = parent_entry.text_sha1
                 elif kind == 'symlink':
                     # Wants a path hint?
-                    entry.symlink_target = tree.get_symlink_target(file_id)
+                    entry.symlink_target = tree.get_symlink_target(change[1][1], file_id)
                     if (carry_over_possible and
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True

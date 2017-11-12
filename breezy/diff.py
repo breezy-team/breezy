@@ -602,13 +602,13 @@ class DiffSymlink(DiffPath):
         if 'symlink' not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         if old_kind == 'symlink':
-            old_target = self.old_tree.get_symlink_target(file_id)
+            old_target = self.old_tree.get_symlink_target(old_path, file_id)
         elif old_kind is None:
             old_target = None
         else:
             return self.CANNOT_DIFF
         if new_kind == 'symlink':
-            new_target = self.new_tree.get_symlink_target(file_id)
+            new_target = self.new_tree.get_symlink_target(new_path, file_id)
         elif new_kind is None:
             new_target = None
         else:
@@ -686,10 +686,9 @@ class DiffText(DiffPath):
         :param to_path: The path in the to tree or None if unknown.
         """
         def _get_text(tree, file_id, path):
-            try:
-                return tree.get_file_lines(path, file_id)
-            except errors.NoSuchId:
+            if file_id is None:
                 return []
+            return tree.get_file_lines(path, file_id)
         try:
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
@@ -1039,11 +1038,11 @@ class DiffTree(object):
         :param new_path: The path of the file in the new tree
         """
         try:
-            old_kind = self.old_tree.kind(file_id)
+            old_kind = self.old_tree.kind(old_path, file_id)
         except (errors.NoSuchId, errors.NoSuchFile):
             old_kind = None
         try:
-            new_kind = self.new_tree.kind(file_id)
+            new_kind = self.new_tree.kind(new_path, file_id)
         except (errors.NoSuchId, errors.NoSuchFile):
             new_kind = None
         self._diff(file_id, old_path, new_path, old_kind, new_kind)

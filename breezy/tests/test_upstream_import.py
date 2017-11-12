@@ -236,10 +236,8 @@ class TestImport(TestCaseInTempDir):
             self.assertTrue(tree.path2id('README') is not None)
             self.assertTrue(tree.path2id('FEEDME') is not None)
             self.assertTrue(os.path.isfile(tree.abspath('README')))
-            self.assertEqual(tree.stored_kind(tree.path2id('README')),
-                'file')
-            self.assertEqual(tree.stored_kind(tree.path2id('FEEDME')),
-                'file')
+            self.assertEqual(tree.stored_kind('README'), 'file')
+            self.assertEqual(tree.stored_kind('FEEDME'), 'file')
             f = file(tree.abspath('junk/food'), 'wb')
             f.write('I like food\n')
             f.close()

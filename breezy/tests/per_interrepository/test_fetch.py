@@ -79,7 +79,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             self.addCleanup(tree.unlock)
             tree.get_file_text('foo')
             for file_id in tree.all_file_ids():
-                if tree.kind(file_id) == "file":
+                if tree.kind(tree.id2path(file_id)) == "file":
                     tree.get_file(tree.id2path(file_id)).read()
 
         # makes a target version repo

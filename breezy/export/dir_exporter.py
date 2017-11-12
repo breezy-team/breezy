@@ -62,7 +62,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                symlink_target = tree.get_symlink_target(ie.file_id, tp)
+                symlink_target = tree.get_symlink_target(tp, ie.file_id)
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(

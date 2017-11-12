@@ -647,7 +647,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             rev3 = mini_commit(in_tree, name, 'new_' + name, False,
                 delta_against_basis=changed_in_tree)
             tree3, = self._get_revtrees(in_tree, [rev2])
-            self.assertEqual(rev2, tree3.get_file_revision(file_id))
+            self.assertEqual(
+                    rev2,
+                    tree3.get_file_revision(tree3.id2path(file_id), file_id))
             expected_graph = {}
             expected_graph[(file_id, rev1)] = ()
             expected_graph[(file_id, rev2)] = ((file_id, rev1),)

@@ -180,7 +180,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     def assertSymlinkTarget(self, branch, tree, path, target):
         file_id = tree.path2id(path)
         with branch.lock_read():
-            self.assertEqual(tree.get_symlink_target(file_id), target)
+            self.assertEqual(tree.get_symlink_target(path, file_id), target)
 
     def assertExecutable(self, branch, tree, path, executable):
         with branch.lock_read():

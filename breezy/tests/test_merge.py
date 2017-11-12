@@ -2212,7 +2212,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt = self.get_wt_from_builder(builder)
         os.symlink('bar', 'path/foo')
         wt.add(['foo'], ['foo-id'])
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
         wt.commit('add symlink', rev_id='F-id')
         # Reset to D, so that we can merge F
         wt.set_parent_ids(['D-id'])
@@ -2222,7 +2222,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.assertEqual(0, conflicts)
         self.assertEqual('foo-id', wt.path2id('foo'))
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
 
     def test_both_sides_revert(self):
         # Both sides of a criss-cross revert the text to the lca
@@ -2284,7 +2284,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        self.assertEqual('baz', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         os.remove('path/foo')
         os.symlink('bing', 'path/foo')
@@ -2296,7 +2296,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('D merges B & C', rev_id='D-id')
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.assertEqual(0, conflicts)
-        self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_renamed_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2327,7 +2327,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
         self.assertEqual('barry', wt.id2path('foo-id'))
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         wt.rename_one('barry', 'blah')
         wt.commit('F barry => blah', rev_id='F-id')
@@ -2381,7 +2381,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        self.assertEqual('baz', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         wt.set_last_revision('B-id')
         wt.branch.set_last_revision_info(2, 'B-id')
@@ -2401,7 +2401,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Now do a real merge, just to test the rest of the stack
         conflicts = wt.merge_from_branch(wt.branch, to_revision='E-id')
         self.assertEqual(0, conflicts)
-        self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_symlink_this_changed_kind(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2427,7 +2427,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
         os.remove('path/foo')
         # We have to change the link in E, or it won't try to do a comparison
         os.symlink('bing', 'path/foo')
@@ -2483,7 +2483,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        self.assertEqual('baz', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         os.remove('path/foo')
         os.symlink('bing', 'path/foo')

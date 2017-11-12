@@ -393,9 +393,9 @@ y
             builder.change_target("2", base="target2")
             builder.change_target("3", other="target2")
             builder.merge()
-            self.assertEqual(builder.this.get_symlink_target("1"), "target2")
-            self.assertEqual(builder.this.get_symlink_target("2"), "target1")
-            self.assertEqual(builder.this.get_symlink_target("3"), "target2")
+            self.assertEqual(builder.this.get_symlink_target("name1"), "target2")
+            self.assertEqual(builder.this.get_symlink_target("name2"), "target1")
+            self.assertEqual(builder.this.get_symlink_target("name3"), "target2")
             builder.cleanup()
 
     def test_no_passive_add(self):

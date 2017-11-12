@@ -148,12 +148,10 @@ class TestStoredKind(TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        a_id = tree.path2id('a')
-        b_id = tree.path2id('b')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('file', tree.stored_kind(a_id))
-        self.assertEqual('directory', tree.stored_kind(b_id))
+        self.assertEqual('file', tree.stored_kind('a'))
+        self.assertEqual('directory', tree.stored_kind('b'))
 
 
 class TestFileContent(TestCaseWithTree):

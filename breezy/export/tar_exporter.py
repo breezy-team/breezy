@@ -73,7 +73,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.type = tarfile.SYMTYPE
         item.size = 0
         item.mode = 0o755
-        item.linkname = tree.get_symlink_target(entry.file_id, tree_path)
+        item.linkname = tree.get_symlink_target(tree_path, entry.file_id)
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"

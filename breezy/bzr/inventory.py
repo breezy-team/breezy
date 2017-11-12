@@ -576,7 +576,8 @@ class InventoryLink(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.symlink_target = work_tree.get_symlink_target(self.file_id)
+        self.symlink_target = work_tree.get_symlink_target(
+                work_tree.id2path(self.file_id), self.file_id)
 
     def _forget_tree_state(self):
         self.symlink_target = None

@@ -673,8 +673,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 
-    def get_symlink_target(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_symlink_target(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         ie = inv[inv_file_id]
         # Inventories store symlink targets in unicode
         return ie.symlink_target
@@ -690,8 +693,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         if self.root_inventory.root:
             return self.root_inventory.root.file_id
 
-    def kind(self, file_id):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def kind(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].kind
 
     def path_content_summary(self, path):
@@ -748,7 +754,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         """See Tree.iter_files_bytes.
 
         This version is implemented on top of Repository.iter_files_bytes"""
-        repo_desired_files = [(f, self.get_file_revision(self.id2path(f)), i)
+        repo_desired_files = [(f, self.get_file_revision(self.id2path(f), f), i)
                               for f, i in desired_files]
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
@@ -759,6 +765,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def annotate_iter(self, path, file_id=None,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
+        if file_id is None:
+            file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(path, file_id))
         annotator = self._repository.texts.get_annotator()
         annotations = annotator.annotate_flat(text_key)

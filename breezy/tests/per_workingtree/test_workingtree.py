@@ -912,11 +912,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if has_symlinks():
             os.symlink('target', 'symlink')
             names.append('symlink')
-        tree.add(names, [n + '-id' for n in names])
+        tree.add(names)
         # now when we first look, we should see everything with the same kind
         # with which they were initially added
         for n in names:
-            actual_kind = tree.kind(n + '-id')
+            actual_kind = tree.kind(n)
             self.assertEqual(n, actual_kind)
         # move them around so the names no longer correspond to the types
         os.rename(names[0], 'tmp')
@@ -925,7 +925,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.rename('tmp', names[-1])
         # now look and expect to see the correct types again
         for i in range(len(names)):
-            actual_kind = tree.kind(names[i-1] + '-id')
+            actual_kind = tree.kind(names[i-1])
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
@@ -937,8 +937,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a', 'b'])
         os.unlink('tree/a')
         os.rmdir('tree/b')
-        self.assertEqual('file', tree.stored_kind(tree.path2id('a')))
-        self.assertEqual('directory', tree.stored_kind(tree.path2id('b')))
+        self.assertEqual('file', tree.stored_kind('a'))
+        self.assertEqual('directory', tree.stored_kind('b'))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""

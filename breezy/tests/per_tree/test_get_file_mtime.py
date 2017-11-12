@@ -49,5 +49,4 @@ class TestGetFileMTime(TestCaseWithTree):
         tree = self.get_basic_tree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertRaises(errors.NoSuchId,
-            tree.get_file_mtime, 'unexistant')
+        self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'unexistant')

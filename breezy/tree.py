@@ -231,17 +231,17 @@ class Tree(object):
                 if entry.kind == 'tree-reference':
                     yield path, entry.file_id
 
-    def kind(self, file_id):
+    def kind(self, path, file_id=None):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
 
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
         """File kind stored for this file_id.
 
         May not match kind on disk for working trees.  Always available
         for versioned files, even when the file itself is missing.
         """
-        return self.kind(file_id)
+        return self.kind(path, file_id)
 
     def path_content_summary(self, path):
         """Get a summary of the information about path.
@@ -413,7 +413,7 @@ class Tree(object):
             cur_file = (self.get_file_text(path, file_id),)
             yield identifier, cur_file
 
-    def get_symlink_target(self, file_id, path=None):
+    def get_symlink_target(self, path, file_id=None):
         """Get the target for a given file_id.
 
         It is assumed that the caller already knows that file_id is referencing
@@ -447,12 +447,15 @@ class Tree(object):
     def _get_plan_merge_data(self, file_id, other, base):
         from .bzr import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
-        last_revision_a = self._get_file_revision(file_id, vf, 'this:')
-        last_revision_b = other._get_file_revision(file_id, vf, 'other:')
+        last_revision_a = self._get_file_revision(
+                self.id2path(file_id), file_id, vf, 'this:')
+        last_revision_b = other._get_file_revision(
+                other.id2path(file_id), file_id, vf, 'other:')
         if base is None:
             last_revision_base = None
         else:
-            last_revision_base = base._get_file_revision(file_id, vf, 'base:')
+            last_revision_base = base._get_file_revision(
+                    base.id2path(file_id), file_id, vf, 'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
     def plan_file_merge(self, file_id, other, base=None):
@@ -489,9 +492,8 @@ class Tree(object):
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
 
-    def _get_file_revision(self, file_id, vf, tree_revision):
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        path= self.id2path(file_id)
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
             parent_keys = [(file_id, t.get_file_revision(path, file_id)) for t in
@@ -855,8 +857,8 @@ class InterTree(InterObject):
                     target_path, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
-            if (self.source.get_symlink_target(file_id) !=
-                self.target.get_symlink_target(file_id)):
+            if (self.source.get_symlink_target(source_path, file_id) !=
+                self.target.get_symlink_target(target_path, file_id)):
                 changed_content = True
         elif source_kind == 'tree-reference':
             if (self.source.get_reference_revision(source_path, file_id)
@@ -1185,9 +1187,9 @@ class InterTree(InterObject):
         """
         with self.lock_read():
             if source_path is None:
-                source_path = self.id2path(source_file_id)
+                source_path = self.source.id2path(source_file_id)
             if target_path is None:
-                target_path = self.id2path(target_file_id)
+                target_path = self.target.id2path(target_file_id)
             source_verifier_kind, source_verifier_data = (
                     self.source.get_file_verifier(
                         source_path, source_file_id, source_stat))

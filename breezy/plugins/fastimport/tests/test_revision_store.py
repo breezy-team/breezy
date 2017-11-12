@@ -112,7 +112,8 @@ class Test_TreeShim(tests.TestCase):
         basis_inv.add(ie)
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[], content_provider=None)
-        self.assertEqual(u'link-target', shim.get_symlink_target('link-id'))
+        self.assertEqual(u'link-target',
+                         shim.get_symlink_target('link', 'link-id'))
 
     def test_get_symlink_target_from_delta(self):
         basis_inv = self.make_trivial_basis_inv()

@@ -427,7 +427,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         else:
                             new_status = '?'
                         # XXX: Really should be a more abstract reporter interface
-                        kind_ch = osutils.kind_marker(self.kind(fid))
+                        kind_ch = osutils.kind_marker(self.kind(f, fid))
                         to_file.write(new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
@@ -730,7 +730,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise FileTimestampUnavailable(path)
+                raise errors.NoSuchFile(path)
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
@@ -810,6 +810,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         attribution will be correct).
         """
         with self.lock_read():
+            if file_id is None:
+                file_id = self.path2id(path)
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
                 try:
@@ -817,8 +819,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 except errors.NoSuchRevisionInTree:
                     parent_tree = self.branch.repository.revision_tree(parent_id)
                 with parent_tree.lock_read():
+
                     try:
-                        kind = parent_tree.kind(file_id)
+                        kind = parent_tree.kind(path, file_id)
                     except errors.NoSuchId:
                         continue
                     if kind != 'file':
@@ -840,7 +843,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             # Now we have the parents of this content
             annotator = self.branch.repository.texts.get_annotator()
-            text = self.get_file_text(file_id)
+            text = self.get_file_text(path, file_id)
             this_key =(file_id, default_revision)
             annotator.add_special_text(this_key, file_parent_keys, text)
             annotations = [(key[-1], line)
@@ -1441,9 +1444,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # - RBC 20060907
                 self._write_inventory(self._inventory)
 
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        inv, inv_file_id = self._unpack_file_id(file_id)
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].kind
 
     def extras(self):

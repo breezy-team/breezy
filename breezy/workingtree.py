@@ -779,7 +779,7 @@ class WorkingTree(mutabletree.MutableTree,
             self.add(path, file_id, 'directory')
             return file_id
 
-    def get_symlink_target(self, file_id, path=None):
+    def get_symlink_target(self, path, file_id=None):
         if path is not None:
             abspath = self.abspath(path)
         else:
@@ -827,7 +827,9 @@ class WorkingTree(mutabletree.MutableTree,
         """Write the in memory meta data to disk."""
         raise NotImplementedError(self.flush)
 
-    def _kind(self, relpath):
+    def kind(self, relpath, file_id=None):
+        if file_id is not None:
+            return osutils.file_kind(self.id2abspath(file_id))
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -1008,10 +1010,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.is_ignored)
 
-    def kind(self, file_id):
-        return osutils.file_kind(self.id2abspath(file_id))
-
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
         raise NotImplementedError(self.stored_kind)
 
@@ -1486,7 +1485,7 @@ class WorkingTree(mutabletree.MutableTree,
             conflict_re = re.compile('^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(conflict.file_id) != 'file'):
+                    self.kind(self.id2path(conflict.file_id), conflict.file_id) != 'file'):
                     un_resolved.append(conflict)
                     continue
                 my_file = open(self.id2abspath(conflict.file_id), 'rb')

@@ -569,7 +569,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.add(['dir'], ['dir-id'])
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
-        self.assertEqual('directory', tree.kind('dir-id'))
+        self.assertEqual('directory', tree.kind('dir'))
         # a diff against the basis should give us a directory and the root (as
         # the root is new too).
         tree.lock_read()

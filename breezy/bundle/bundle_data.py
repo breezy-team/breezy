@@ -29,6 +29,7 @@ from .. import (
     )
 from . import apply_bundle
 from ..errors import (
+    NoSuchFile,
     NoSuchId,
     TestamentMismatch,
     BzrError,
@@ -628,13 +629,13 @@ class BundleTree(Tree):
                 then be cached.
         """
         try:
-            patch_original = self.base_tree.get_file(path)
-        except errors.NoSuchId:
+            patch_original = self.base_tree.get_file(path, file_id)
+        except (NoSuchId, NoSuchFile):
             patch_original = None
         file_patch = self.patches.get(path)
         if file_patch is None:
             if (patch_original is None and
-                self.kind(self.path2id(path)) == 'directory'):
+                self.kind(path, file_id) == 'directory'):
                 return BytesIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % path)
@@ -645,18 +646,18 @@ class BundleTree(Tree):
                 'Malformed patch for %s, %r' % (path, file_patch))
         return patched_file(file_patch, patch_original)
 
-    def get_symlink_target(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
+    def get_symlink_target(self, path, file_id=None):
         try:
             return self._targets[path]
         except KeyError:
-            return self.base_tree.get_symlink_target(file_id)
+            return self.base_tree.get_symlink_target(path, file_id)
 
-    def kind(self, file_id):
+    def kind(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         if file_id in self._kinds:
             return self._kinds[file_id]
-        return self.base_tree.kind(file_id)
+        return self.base_tree.kind(path, file_id)
 
     def get_file_revision(self, path, file_id=None):
         if path in self._last_changed:
@@ -677,12 +678,11 @@ class BundleTree(Tree):
         base_path = self.base_tree.id2path(file_id)
         return self.base_tree.get_file_revision(base_path, file_id)
 
-    def get_size_and_sha1(self, file_id):
+    def get_size_and_sha1(self, new_path, file_id):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
         from the base_tree. Rather than re-reading the file.
         """
-        new_path = self.id2path(file_id)
         if new_path is None:
             return None, None
         if new_path not in self.patches:
@@ -692,7 +692,7 @@ class BundleTree(Tree):
             text_size = self.base_tree.get_file_size(base_path, file_id)
             text_sha1 = self.base_tree.get_file_sha1(base_path, file_id)
             return text_size, text_sha1
-        fileobj = self.get_file(file_id)
+        fileobj = self.get_file(new_path, file_id)
         content = fileobj.read()
         return len(content), sha_string(content)
 
@@ -714,7 +714,7 @@ class BundleTree(Tree):
                 parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
-            kind = self.kind(file_id)
+            kind = self.kind(path, file_id)
             revision_id = self.get_last_changed(file_id)
 
             name = basename(path)
@@ -725,11 +725,11 @@ class BundleTree(Tree):
                 ie.executable = self.is_executable(path, file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(file_id, path)
+                ie.symlink_target = self.get_symlink_target(path, file_id)
             ie.revision = revision_id
 
             if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path, file_id)
                 if ie.text_size is None:
                     raise BzrError(
                         'Got a text_size of None for file_id %r' % file_id)

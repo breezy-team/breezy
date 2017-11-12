@@ -257,9 +257,9 @@ class BundleSerializerV08(BundleSerializer):
         new_label = ''
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
-            def tree_lines(tree, require_text=False):
+            def tree_lines(tree, path, require_text=False):
                 if tree.has_id(file_id):
-                    tree_file = tree.get_file(file_id)
+                    tree_file = tree.get_file(path, file_id)
                     if require_text is True:
                         tree_file = text_file(tree_file)
                     return tree_file.readlines()
@@ -269,14 +269,14 @@ class BundleSerializerV08(BundleSerializer):
             try:
                 if force_binary:
                     raise errors.BinaryFile()
-                old_lines = tree_lines(old_tree, require_text=True)
-                new_lines = tree_lines(new_tree, require_text=True)
+                old_lines = tree_lines(old_tree, old_path, require_text=True)
+                new_lines = tree_lines(new_tree, new_path, require_text=True)
                 action.write(self.to_file)
                 internal_diff(old_path, old_lines, new_path, new_lines,
                               self.to_file)
             except errors.BinaryFile:
-                old_lines = tree_lines(old_tree, require_text=False)
-                new_lines = tree_lines(new_tree, require_text=False)
+                old_lines = tree_lines(old_tree, old_path, require_text=False)
+                new_lines = tree_lines(new_tree, new_path, require_text=False)
                 action.add_property('encoding', 'base64')
                 action.write(self.to_file)
                 binary_diff(old_path, old_lines, new_path, new_lines,
@@ -328,8 +328,10 @@ class BundleSerializerV08(BundleSerializer):
             old_rev = old_tree.get_file_revision(
                     old_tree.id2path(file_id), file_id)
             if new_rev != old_rev:
-                action = Action('modified', [new_tree.kind(file_id),
-                                             new_tree.id2path(file_id)])
+                new_path = new_tree.id2path(file_id)
+                action = Action(
+                        'modified',
+                        [new_tree.kind(new_path, file_id), new_path])
                 action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)
 

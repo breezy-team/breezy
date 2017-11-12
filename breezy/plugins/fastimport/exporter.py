@@ -294,14 +294,13 @@ class BzrFastExporter(object):
             marks_file.export_marks(self.export_marks_file, revision_ids)
 
     def is_empty_dir(self, tree, path):
-        path_id = tree.path2id(path)
-        if path_id is None:
+        # Continue if path is not a directory
+        try:
+            if tree.kind(path) != 'directory':
+                return False
+        except bazErrors.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                 (path,))
-            return False
-
-        # Continue if path is not a directory
-        if tree.kind(path_id) != 'directory':
             return False
 
         # Use treewalk to find the contents of our directory
@@ -494,7 +493,7 @@ class BzrFastExporter(object):
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(id_)))
+                    None, tree_new.get_symlink_target(path, id_)))
             elif kind == 'directory':
                 if not self.plain_format:
                     file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
@@ -557,7 +556,7 @@ class BzrFastExporter(object):
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if kind == 'directory' and tree_old.kind(id_) == 'directory':
+            if kind == 'directory' and tree_old.kind(oldpath, id_) == 'directory':
                 for p, e in tree_old.inventory.iter_entries_by_dir(from_dir=id_):
                     if e.kind == 'directory' and self.plain_format:
                         continue

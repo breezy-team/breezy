@@ -116,7 +116,7 @@ class MemoryTree(MutableInventoryTree):
         id = self.path2id(path)
         if id is None:
             return 'missing', None, None, None
-        kind = self.kind(id)
+        kind = self.kind(path, id)
         if kind == 'file':
             bytes = self._file_transport.get_bytes(path)
             size = len(bytes)
@@ -153,7 +153,9 @@ class MemoryTree(MutableInventoryTree):
     def is_executable(self, path, file_id=None):
         return self._inventory[file_id].executable
 
-    def kind(self, file_id):
+    def kind(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         return self._inventory[file_id].kind
 
     def mkdir(self, path, file_id=None):

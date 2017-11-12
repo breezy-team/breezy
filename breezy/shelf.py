@@ -125,8 +125,8 @@ class ShelfCreator(object):
                 if kind[0] != kind [1]:
                     yield ('change kind', file_id, kind[0], kind[1], paths[0])
                 elif kind[0] == 'symlink':
-                    t_target = self.target_tree.get_symlink_target(file_id)
-                    w_target = self.work_tree.get_symlink_target(file_id)
+                    t_target = self.target_tree.get_symlink_target(paths[0], file_id)
+                    w_target = self.work_tree.get_symlink_target(paths[1], file_id)
                     yield ('modify target', file_id, paths[0], t_target,
                             w_target)
                 elif changed:
@@ -143,7 +143,7 @@ class ShelfCreator(object):
         elif change[0] in ('change kind', 'modify text'):
             self.shelve_content_change(change[1])
         elif change[0] == 'modify target':
-            self.shelve_modify_target(change[1])
+            self.shelve_modify_target(change[1], change[2], change[3])
         else:
             raise ValueError('Unknown change kind: "%s"' % change[0])
 
@@ -171,19 +171,18 @@ class ShelfCreator(object):
         shelf_parent = self.shelf_transform.trans_id_file_id(parents[1])
         self.shelf_transform.adjust_path(names[1], shelf_parent, s_trans_id)
 
-    def shelve_modify_target(self, file_id):
+    def shelve_modify_target(self, file_id, old_target, new_target):
         """Shelve a change of symlink target.
 
         :param file_id: The file id of the symlink which changed target.
+        :param old_target: The old target
         :param new_target: The target that the symlink should have due
             to shelving.
         """
-        new_target = self.target_tree.get_symlink_target(file_id)
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
         self.work_transform.create_symlink(new_target, w_trans_id)
 
-        old_target = self.work_tree.get_symlink_target(file_id)
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         self.shelf_transform.delete_contents(s_trans_id)
         self.shelf_transform.create_symlink(old_target, s_trans_id)
@@ -207,7 +206,9 @@ class ShelfCreator(object):
     def _content_from_tree(tt, tree, file_id):
         trans_id = tt.trans_id_file_id(file_id)
         tt.delete_contents(trans_id)
-        transform.create_from_tree(tt, trans_id, tree, file_id)
+        transform.create_from_tree(
+                tt, trans_id, tree, tree.id2path(file_id),
+                file_id=file_id)
 
     def shelve_content_change(self, file_id):
         """Shelve a kind change or binary file content change.
@@ -264,7 +265,8 @@ class ShelfCreator(object):
                     to_transform.create_file('', s_trans_id)
                 else:
                     transform.create_from_tree(to_transform, s_trans_id,
-                                               tree, file_id)
+                                               tree, tree.id2path(file_id),
+                                               file_id=file_id)
         if version:
             to_transform.version_file(file_id, s_trans_id)
 

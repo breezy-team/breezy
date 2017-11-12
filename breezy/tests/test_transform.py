@@ -1533,7 +1533,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("foo/bar")
         wt.lock_read()
         try:
-            self.assertEqual(wt.kind(wt.path2id("foo")), "directory")
+            self.assertEqual(wt.kind("foo"), "directory")
         finally:
             wt.unlock()
         wt.commit("two")
@@ -1555,7 +1555,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("foo")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.assertEqual(wt.kind(wt.path2id("foo")), "symlink")
+        self.assertEqual(wt.kind("foo"), "symlink")
 
     def test_dir_to_file(self):
         wt = self.make_branch_and_tree('.')
@@ -1573,7 +1573,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("foo")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.assertEqual(wt.kind(wt.path2id("foo")), "file")
+        self.assertEqual(wt.kind("foo"), "file")
 
     def test_dir_to_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -1594,7 +1594,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("baz")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.assertEqual(wt.kind(wt.path2id("foo")), "file")
+        self.assertEqual(wt.kind("foo"), "file")
 
     def test_no_final_path(self):
         transform, root = self.get_transform()
@@ -1610,9 +1610,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         tt = TreeTransform(tree2)
         foo_trans_id = tt.create_path('foo', tt.root)
-        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id='foo-id')
         bar_trans_id = tt.create_path('bar', tt.root)
-        create_from_tree(tt, bar_trans_id, tree1, 'bar-id')
+        create_from_tree(tt, bar_trans_id, tree1, 'bar', file_id='bar-id')
         tt.apply()
         self.assertEqual('directory', osutils.file_kind('tree2/foo'))
         self.assertFileEqual('baz', 'tree2/bar')
@@ -1625,7 +1625,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         tt = TreeTransform(tree2)
         foo_trans_id = tt.create_path('foo', tt.root)
-        create_from_tree(tt, foo_trans_id, tree1, 'foo-id', bytes='qux')
+        create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id='foo-id',
+                         bytes='qux')
         tt.apply()
         self.assertFileEqual('qux', 'tree2/foo')
 
@@ -1636,7 +1637,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree1.add('foo', 'foo-id')
         tt = TreeTransform(self.make_branch_and_tree('tree2'))
         foo_trans_id = tt.create_path('foo', tt.root)
-        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id='foo-id')
         tt.apply()
         self.assertEqual('bar', os.readlink('tree2/foo'))
 
@@ -2349,7 +2350,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual('dir', tree.id2path('dir-id'))
         if SymlinkFeature.available():
             self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
-            self.assertEqual('target', tree.get_symlink_target('symlink-id'))
+            self.assertEqual('target', tree.get_symlink_target('dir/symlink'))
 
     def test_add_unversioned(self):
         branch, tt = self.get_branch_and_transform()
@@ -2731,7 +2732,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(preview_tree.kind('file2-id'), 'file')
+        self.assertEqual(preview_tree.kind('file2'), 'file')
         self.assertEqual(
             preview_tree.get_file('file2', 'file2-id').read(), 'content B\n')
 
@@ -2818,8 +2819,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.new_file('file', preview.root, 'contents', 'file-id')
         preview.new_directory('directory', preview.root, 'dir-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual('file', preview_tree.kind('file-id'))
-        self.assertEqual('directory', preview_tree.kind('dir-id'))
+        self.assertEqual('file', preview_tree.kind('file'))
+        self.assertEqual('directory', preview_tree.kind('directory'))
 
     def test_get_file_mtime(self):
         preview = self.get_empty_preview()
@@ -2870,7 +2871,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.new_symlink('symlink', preview.root, 'target', 'symlink-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual('target',
-                         preview_tree.get_symlink_target('symlink-id'))
+                         preview_tree.get_symlink_target('symlink'))
 
     def test_all_file_ids(self):
         tree = self.make_branch_and_tree('tree')
@@ -3124,7 +3125,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview = self.get_empty_preview()
         preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual('file', preview_tree.stored_kind('file-id'))
+        self.assertEqual('file', preview_tree.stored_kind('file'))
 
     def test_is_executable(self):
         preview = self.get_empty_preview()

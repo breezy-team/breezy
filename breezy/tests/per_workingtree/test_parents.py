@@ -250,9 +250,9 @@ class TestSetParents(TestParents):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Check that the symlink target is safely round-tripped in the trees.
-        self.assertEqual(target, tree.get_symlink_target('link-id'))
+        self.assertEqual(target, tree.get_symlink_target(link_name))
         basis = tree.basis_tree()
-        self.assertEqual(target, basis.get_symlink_target('link-id'))
+        self.assertEqual(target, basis.get_symlink_target(link_name))
 
 
 class TestAddParent(TestParents):

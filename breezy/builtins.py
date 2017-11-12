@@ -1050,10 +1050,11 @@ class cmd_mv(Command):
                 into_existing = False
             else:
                 # 'fix' the case of a potential 'from'
-                from_id = tree.path2id(
-                            tree.get_canonical_inventory_path(rel_names[0]))
+                from_path = tree.get_canonical_inventory_path(rel_names[0])
+                from_id = tree.path2id(from_path)
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and tree.stored_kind(from_id) == "directory"):
+                    from_id and
+                    tree.stored_kind(from_path, from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
@@ -4697,7 +4698,7 @@ class cmd_remerge(Command):
                 if file_id is None:
                     raise errors.NotVersionedError(filename)
                 interesting_ids.add(file_id)
-                if tree.kind(file_id) != "directory":
+                if tree.kind(filename, file_id) != "directory":
                     continue
 
                 # FIXME: Support nested trees
