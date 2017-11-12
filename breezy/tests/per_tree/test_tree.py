@@ -40,7 +40,7 @@ class TestAnnotate(TestCaseWithTree):
             self.assertEqual('contents of a\n', line)
             self.assertEqual(tree_revision, revision)
         tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
-        for revision, line in tree.annotate_iter('a', 'random:'):
+        for revision, line in tree.annotate_iter('a', default_revision='random:'):
             self.assertEqual('contents of a\n', line)
             self.assertEqual(tree_revision, revision)
 

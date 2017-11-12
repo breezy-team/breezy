@@ -2378,6 +2378,8 @@ class _PreviewTree(inventorytree.InventoryTree):
 
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
+        if file_id is None:
+            file_id = self.path2id(path)
         changes = self._iter_changes_cache.get(file_id)
         if changes is None:
             get_old = True

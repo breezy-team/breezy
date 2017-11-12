@@ -5190,11 +5190,11 @@ class cmd_annotate(Command):
         if wt is not None and revision is None:
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
-            annotate_file_tree(wt, file_id, self.outf, long, all,
-                show_ids=show_ids)
+            annotate_file_tree(wt, relpath, self.outf, long, all,
+                show_ids=show_ids, file_id=file_id)
         else:
-            annotate_file_tree(tree, file_id, self.outf, long, all,
-                show_ids=show_ids, branch=branch)
+            annotate_file_tree(tree, relpath, self.outf, long, all,
+                show_ids=show_ids, branch=branch, file_id=file_id)
 
 
 class cmd_re_sign(Command):
