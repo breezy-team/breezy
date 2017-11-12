@@ -68,7 +68,7 @@ def parse_ignore_file(f):
     except UnicodeDecodeError:
         # Otherwise go though line by line and pick out the 'good'
         # decodable lines
-        lines = ignore_file.split('\n')
+        lines = ignore_file.split(b'\n')
         unicode_lines = []
         for line_number, line in enumerate(lines):
             try:
@@ -128,12 +128,9 @@ def _set_user_ignores(patterns):
     config.ensure_config_dir_exists()
 
     # Create an empty file
-    f = open(ignore_path, 'wb')
-    try:
+    with open(ignore_path, 'wb') as f:
         for pattern in patterns:
-            f.write(pattern.encode('utf8') + '\n')
-    finally:
-        f.close()
+            f.write(pattern.encode('utf8') + b'\n')
 
 
 def add_unique_user_ignores(new_ignores):
@@ -153,12 +150,9 @@ def add_unique_user_ignores(new_ignores):
     if not to_add:
         return []
 
-    f = open(config.user_ignore_config_filename(), 'ab')
-    try:
+    with open(config.user_ignore_config_filename(), 'ab') as f:
         for pattern in to_add:
-            f.write(pattern.encode('utf8') + '\n')
-    finally:
-        f.close()
+            f.write(pattern.encode('utf8') + b'\n')
 
     return to_add
 
@@ -198,20 +192,17 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     # read in the existing ignores set
     ifn = tree.abspath(breezy.IGNORE_FILENAME)
     if tree.has_filename(ifn):
-        f = open(ifn, 'rU')
-        try:
+        with open(ifn, 'rbU') as f:
             file_contents = f.read()
             # figure out what kind of line endings are used
             newline = getattr(f, 'newlines', None)
             if isinstance(newline, tuple):
                 newline = newline[0]
             elif newline is None:
-                newline = os.linesep
-        finally:
-            f.close()
+                newline = os.linesep.encode()
     else:
-        file_contents = ""
-        newline = os.linesep
+        file_contents = b""
+        newline = os.linesep.encode()
     
     sio = BytesIO(file_contents)
     try:
@@ -223,8 +214,8 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     f = atomicfile.AtomicFile(ifn, 'wb')
     try:
         # write the original contents, preserving original line endings
-        f.write(newline.join(file_contents.split('\n')))
-        if len(file_contents) > 0 and not file_contents.endswith('\n'):
+        f.write(newline.join(file_contents.split(b'\n')))
+        if len(file_contents) > 0 and not file_contents.endswith(b'\n'):
             f.write(newline)
         for pattern in name_pattern_list:
             if not pattern in ignores:
