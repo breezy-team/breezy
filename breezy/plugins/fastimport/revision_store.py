@@ -89,7 +89,7 @@ class _TreeShim(object):
             return ie.symlink_target
         return self._basis_inv[file_id].symlink_target
 
-    def get_reference_revision(self, file_id, path=None):
+    def get_reference_revision(self, path, file_id=None):
         raise NotImplementedError(_TreeShim.get_reference_revision)
 
     def _delta_to_iter_changes(self):

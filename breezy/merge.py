@@ -651,9 +651,9 @@ class Merger(object):
             hook(merge)
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
-                sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
+                sub_tree = self.this_tree.get_nested_tree(relpath, file_id)
                 other_revision = self.other_tree.get_reference_revision(
-                    file_id, relpath)
+                    relpath, file_id)
                 if  other_revision == sub_tree.last_revision():
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
@@ -661,7 +661,9 @@ class Merger(object):
                 other_branch = self.other_branch.reference_parent(file_id,
                                                                   relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
-                base_revision = self.base_tree.get_reference_revision(file_id)
+                base_tree_path = self.base_tree.id2path(file_id)
+                base_revision = self.base_tree.get_reference_revision(
+                    base_tree_path, file_id)
                 sub_merge.base_tree = \
                     sub_tree.branch.repository.revision_tree(base_revision)
                 sub_merge.base_rev_id = base_revision

@@ -448,14 +448,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
         with self.lock_read():
             return self.current_dirstate().get_parent_ids()
 
-    def get_reference_revision(self, file_id, path=None):
+    def get_reference_revision(self, path, file_id=None):
         # referenced tree's revision is whatever's currently there
-        return self.get_nested_tree(file_id, path).last_revision()
+        return self.get_nested_tree(path, file_id).last_revision()
 
-    def get_nested_tree(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
-        # else: check file_id is at path?
+    def get_nested_tree(self, path, file_id=None):
         return WorkingTree.open(self.abspath(path))
 
     def get_root_id(self):
@@ -1903,8 +1900,11 @@ class DirStateRevisionTree(InventoryTree):
                 ' the requested data')
         return content
 
-    def get_reference_revision(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_reference_revision(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].reference_revision
 
     def iter_files_bytes(self, desired_files):

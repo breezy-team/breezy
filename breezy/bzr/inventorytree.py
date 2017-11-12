@@ -664,8 +664,11 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
         # Inventories store symlink targets in unicode
         return ie.symlink_target
 
-    def get_reference_revision(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_reference_revision(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].reference_revision
 
     def get_root_id(self):

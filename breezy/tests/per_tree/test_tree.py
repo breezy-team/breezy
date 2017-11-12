@@ -100,7 +100,7 @@ class TestReference(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1',
-            tree.get_reference_revision('sub-root', path))
+            tree.get_reference_revision(path, 'sub-root'))
 
     def test_iter_references(self):
         tree = self.create_nested()

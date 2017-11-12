@@ -609,7 +609,7 @@ class TreeReference(InventoryEntry):
         """Populate fields in the inventory entry from the given tree.
         """
         self.reference_revision = work_tree.get_reference_revision(
-            self.file_id, path)
+            path, self.file_id)
 
     def _forget_tree_state(self):
         self.reference_revision = None

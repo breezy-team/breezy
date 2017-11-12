@@ -2931,8 +2931,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 if target_kind in ('directory', 'tree-reference'):
                     tt.create_directory(trans_id)
                     if target_kind == 'tree-reference':
-                        revision = target_tree.get_reference_revision(file_id,
-                                                                      target_path)
+                        revision = target_tree.get_reference_revision(
+                                target_path, file_id)
                         tt.set_tree_reference(revision, trans_id)
                 elif target_kind == 'symlink':
                     tt.create_symlink(target_tree.get_symlink_target(file_id),

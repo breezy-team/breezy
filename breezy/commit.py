@@ -742,7 +742,7 @@ class Commit(object):
 
     def _commit_nested_tree(self, file_id, path):
         "Commit a nested tree."
-        sub_tree = self.work_tree.get_nested_tree(file_id, path)
+        sub_tree = self.work_tree.get_nested_tree(path, file_id)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,
         # but when both are bound to a different repository,
@@ -763,7 +763,7 @@ class Commit(object):
                 strict=self.strict, verbose=self.verbose,
                 local=self.local, reporter=self.reporter)
         except PointlessCommit:
-            return self.work_tree.get_reference_revision(file_id)
+            return self.work_tree.get_reference_revision(path, file_id)
 
     def _set_progress_stage(self, name, counter=False):
         """Set the progress stage and emit an update to the progress bar."""

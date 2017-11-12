@@ -523,7 +523,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    reference_revision = tree.get_reference_revision(change[0])
+                    reference_revision = tree.get_reference_revision(change[1][1], change[0])
                     entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):

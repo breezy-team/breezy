@@ -261,7 +261,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, file_id, path=None):
+    def get_reference_revision(self, path, file_id=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
             % self.__class__.__name__)
@@ -857,8 +857,8 @@ class InterTree(InterObject):
                 self.target.get_symlink_target(file_id)):
                 changed_content = True
         elif source_kind == 'tree-reference':
-            if (self.source.get_reference_revision(file_id, source_path)
-                != self.target.get_reference_revision(file_id, target_path)):
+            if (self.source.get_reference_revision(source_path, file_id)
+                != self.target.get_reference_revision(target_path, file_id)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
