@@ -41,9 +41,9 @@ class TestGetParentMap(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         self.assertEqual({rev3:(rev1, rev2)},
                          repo.get_parent_map([rev3]))
-        self.assertEqual({rev1:(revision.NULL_REVISION,),
-                          rev2:(rev1,),
-                          rev3:(rev1, rev2),
+        self.assertEqual({rev1: (revision.NULL_REVISION,),
+                          rev2: (rev1,),
+                          rev3: (rev1, rev2),
                          }, repo.get_parent_map([rev1, rev2, rev3]))
 
     def test_no_parents(self):

@@ -41,8 +41,8 @@ def infogen(options, outfile):
     tt = breezy.osutils.gmtime()
     params = \
            { "brzcmd": options.brz_name,
-             "datestamp": time.strftime("%Y-%m-%d",tt),
-             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
+             "datestamp": time.strftime("%Y-%m-%d", tt),
+             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000", tt),
              "version": breezy.__version__,
              }
     nominated_filename = getattr(options, 'filename', None)

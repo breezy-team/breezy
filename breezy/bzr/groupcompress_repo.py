@@ -1361,7 +1361,7 @@ def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_text_key):
     """
     text_keys_update = text_keys.update
     for record, items in interesting_nodes_iterable:
-        text_keys_update([bytes_to_text_key(b) for n,b in items])
+        text_keys_update([bytes_to_text_key(b) for n, b in items])
         yield record
 
 

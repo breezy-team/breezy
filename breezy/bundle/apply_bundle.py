@@ -37,7 +37,7 @@ def install_bundle(repository, bundle_reader):
     try:
         real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
-            pb.update(gettext("Install revisions"),i, len(real_revisions))
+            pb.update(gettext("Install revisions"), i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
                 continue
             cset_tree = bundle_reader.revision_tree(repository,

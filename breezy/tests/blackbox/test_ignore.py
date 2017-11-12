@@ -94,7 +94,7 @@ class TestCommands(TestCaseWithTransport):
     def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['a','b','c','d'])
+        self.build_tree(['a', 'b', 'c', 'd'])
         self.assertEqual(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
         self.run_bzr('ignore a b c')
         self.assertEqual(list(tree.unknowns()), ['d'])
@@ -116,7 +116,7 @@ class TestCommands(TestCaseWithTransport):
 
     def test_ignore_versioned_file(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['a','b'])
+        self.build_tree(['a', 'b'])
         tree.add('a')
 
         # test a single versioned file

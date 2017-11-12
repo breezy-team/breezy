@@ -193,7 +193,7 @@ def _get_sh_special_folder_path(csidl):
             pass
         else:
             buf = ctypes.create_unicode_buffer(MAX_PATH)
-            if SHGetSpecialFolderPath(None,buf,csidl,0):
+            if SHGetSpecialFolderPath(None, buf, csidl, 0):
                 return buf.value
 
     global has_win32com_shell

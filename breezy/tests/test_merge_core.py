@@ -607,24 +607,24 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_merge_swapping_renames(self):
         a_wt = self.make_branch_and_tree('a')
-        with file('a/un','wb') as f: f.write('UN')
-        with file('a/deux','wb') as f: f.write('DEUX')
+        with file('a/un', 'wb') as f: f.write('UN')
+        with file('a/deux', 'wb') as f: f.write('DEUX')
         a_wt.add('un', 'un-id')
         a_wt.add('deux', 'deux-id')
         a_wt.commit('r0', rev_id='r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
-        b_wt.rename_one('un','tmp')
-        b_wt.rename_one('deux','un')
-        b_wt.rename_one('tmp','deux')
+        b_wt.rename_one('un', 'tmp')
+        b_wt.rename_one('deux', 'un')
+        b_wt.rename_one('tmp', 'deux')
         b_wt.commit('r1', rev_id='r1')
         self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
             b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
         self.assertPathExists('a/un')
         self.assertTrue('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))
-        self.assertEqual(file('a/un').read(),'DEUX')
-        self.assertEqual(file('a/deux').read(),'UN')
+        self.assertEqual(file('a/un').read(), 'DEUX')
+        self.assertEqual(file('a/deux').read(), 'UN')
 
     def test_merge_delete_and_add_same(self):
         a_wt = self.make_branch_and_tree('a')
@@ -641,7 +641,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
                                b_wt.branch.get_rev_id(1))
         self.assertTrue(os.path.exists('a/file'))
-        self.assertEqual(file('a/file').read(),'THAT')
+        self.assertEqual(file('a/file').read(), 'THAT')
 
     def test_merge_rename_before_create(self):
         """rename before create

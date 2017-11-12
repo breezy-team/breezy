@@ -1363,7 +1363,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
         sha1s = {}
-        for prefix,suffixes, vf in self._iter_keys_vf(keys):
+        for prefix, suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
             for suffix, sha1 in viewitems(vf_sha1s):
                 sha1s[prefix + (suffix,)] = sha1

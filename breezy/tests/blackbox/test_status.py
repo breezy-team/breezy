@@ -212,8 +212,8 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        self.build_tree(['directory/','directory/hello.c',
-                         'bye.c','test.c','dir2/',
+        self.build_tree(['directory/', 'directory/hello.c',
+                         'bye.c', 'test.c', 'dir2/',
                          'missing.c'])
         wt.add('directory')
         wt.add('test.c')
@@ -242,7 +242,7 @@ class BranchStatus(TestCaseWithTransport):
         tof = BytesIO()
         self.assertRaises(errors.PathsDoNotExist,
                           show_tree_status,
-                          wt, specific_files=['bye.c','test.c','absent.c'],
+                          wt, specific_files=['bye.c', 'test.c', 'absent.c'],
                           to_file=tof)
 
         tof = BytesIO()

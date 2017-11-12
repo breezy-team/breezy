@@ -229,7 +229,7 @@ Message: %(message)s.
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
         self.send_header('Accept-Ranges', 'bytes')
-        boundary = '%d' % random.randint(0,0x7FFFFFFF)
+        boundary = '%d' % random.randint(0, 0x7FFFFFFF)
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
         boundary_line = '--%s\r\n' % boundary

@@ -600,7 +600,7 @@ class _SmartAddHelper(object):
                             things_to_add.append((subp, sub_invp, None, this_ie))
 
 
-class InventoryRevisionTree(RevisionTree,InventoryTree):
+class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def __init__(self, repository, inv, revision_id):
         RevisionTree.__init__(self, repository, revision_id)

@@ -765,7 +765,7 @@ class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
         return c
 
     def test_dont_cross_unrelated_section(self):
-        c = self.get_config('/another/branch/path','''
+        c = self.get_config('/another/branch/path', '''
 [/one/branch/path]
 foo = hello
 bar = {foo}/2
@@ -777,7 +777,7 @@ bar = {foo}/2
                           c.get_user_option, 'bar', expand=True)
 
     def test_cross_related_sections(self):
-        c = self.get_config('/project/branch/path','''
+        c = self.get_config('/project/branch/path', '''
 [/project]
 foo = qu
 
@@ -1913,7 +1913,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         # caused by the differences in implementations betwen
         # SmartServerBzrDirRequestConfigFile (in smart/bzrdir.py) and
         # SmartServerBranchGetConfigFile (in smart/branch.py)
-        self.assertLoadHook(2 ,'file', remote.RemoteBzrDirConfig, remote_bzrdir)
+        self.assertLoadHook(2, 'file', remote.RemoteBzrDirConfig, remote_bzrdir)
 
     def assertSaveHook(self, conf):
         calls = []
@@ -3797,7 +3797,7 @@ class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
         return c
 
     def test_dont_cross_unrelated_section(self):
-        c = self.get_config('/another/branch/path','''
+        c = self.get_config('/another/branch/path', '''
 [/one/branch/path]
 foo = hello
 bar = {foo}/2
@@ -3809,7 +3809,7 @@ bar = {foo}/2
                           c.get, 'bar', expand=True)
 
     def test_cross_related_sections(self):
-        c = self.get_config('/project/branch/path','''
+        c = self.get_config('/project/branch/path', '''
 [/project]
 foo = qu
 
@@ -4332,7 +4332,7 @@ password=bendover
                               conf, 'http', host='bar.org', path='/dir2')
         # matching subdir
         self._got_user_passwd('jim', 'jimpass',
-                              conf, 'http', host='bar.org',path='/dir1/subdir')
+                              conf, 'http', host='bar.org', path='/dir1/subdir')
 
     def test_credentials_for_user(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b"""

@@ -66,6 +66,6 @@ class TestBranchMapper(tests.TestCase):
             'refs/remotes/origin/trunk':    'git-trunk.remote',
             'refs/heads/git-trunk':         'git-git-trunk',
             'refs/tags/git-trunk':          'git-git-trunk.tag',
-            'refs/remotes/origin/git-trunk':'git-git-trunk.remote',
+            'refs/remotes/origin/git-trunk': 'git-git-trunk.remote',
             }.items():
             self.assertEqual(m.git_to_bzr(git), bzr)

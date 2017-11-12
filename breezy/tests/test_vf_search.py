@@ -133,11 +133,11 @@ class TestSearchResultFromParentMap(TestGraphBase):
                                 missing_keys=[NULL_REVISION])
 
     def test_partial_search(self):
-        parent_map = dict((k,extended_history_shortcut[k])
+        parent_map = dict((k, extended_history_shortcut[k])
                           for k in ['e', 'f'])
         self.assertSearchResult(['e', 'f'], ['d', 'a'], 2,
                                 parent_map)
-        parent_map.update((k,extended_history_shortcut[k])
+        parent_map.update((k, extended_history_shortcut[k])
                           for k in ['d', 'a'])
         self.assertSearchResult(['e', 'f'], ['c', NULL_REVISION], 4,
                                 parent_map)

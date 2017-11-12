@@ -264,7 +264,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
             response = client.call('BzrDirFormat.initialize_ex_1.16',
                 request_network_name, path, *args)
         except errors.UnknownSmartMethod:
-            client._medium._remember_remote_is_before((1,16))
+            client._medium._remember_remote_is_before((1, 16))
             local_dir_format = _mod_bzrdir.BzrDirMetaFormat1()
             self._supply_sub_formats_to(local_dir_format)
             return local_dir_format.initialize_on_transport_ex(transport,

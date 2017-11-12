@@ -352,9 +352,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                                 change[3].revision]
                             parent_entries[change[2]] = {
                                 # basis parent
-                                basis_entry.revision:basis_entry,
+                                basis_entry.revision: basis_entry,
                                 # this parent 
-                                change[3].revision:change[3],
+                                change[3].revision: change[3],
                                 }
                         else:
                             merged_ids[change[2]] = [change[3].revision]
@@ -1565,7 +1565,7 @@ class VersionedFileRepository(Repository):
             elif revision_id is None:
                 raise ValueError('get_parent_map(None) is not valid')
             else:
-                query_keys.append((revision_id ,))
+                query_keys.append((revision_id,))
         for (revision_id,), parent_keys in viewitems(
                 self.revisions.get_parent_map(query_keys)):
             if parent_keys:

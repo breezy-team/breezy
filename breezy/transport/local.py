@@ -233,7 +233,7 @@ class LocalTransport(transport.Transport):
             # We couldn't create the file, maybe we need to create
             # the parent directory, and try again
             if (not create_parent_dir
-                or e.errno not in (errno.ENOENT,errno.ENOTDIR)):
+                or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
                 self._translate_error(e, relpath)
             parent_dir = os.path.dirname(abspath)
             if not parent_dir:

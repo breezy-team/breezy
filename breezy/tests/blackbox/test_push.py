@@ -68,13 +68,13 @@ class TestPush(tests.TestCaseWithTransport):
         # If there is no parent location set, :parent isn't mentioned.
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-                ('','brz: ERROR: No push location known or specified.\n'))
+                ('', 'brz: ERROR: No push location known or specified.\n'))
 
         # If there is a parent location set, the error suggests :parent.
         tree_a.branch.set_parent(tree_b.branch.base)
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-            ('','brz: ERROR: No push location known or specified. '
+            ('', 'brz: ERROR: No push location known or specified. '
                 'To push to the parent branch '
                 '(at %s), use \'brz push :parent\'.\n' %
                 urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
@@ -103,7 +103,7 @@ class TestPush(tests.TestCaseWithTransport):
         # test push for failure without push location set
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('','brz: ERROR: No push location known or specified.\n'))
+                ('', 'brz: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
         self.run_bzr('push path/which/doesnt/exist',
@@ -117,7 +117,7 @@ class TestPush(tests.TestCaseWithTransport):
         out = self.run_bzr('push ../branch_b',
                            working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('','brz: ERROR: These branches have diverged.  '
+                ('', 'brz: ERROR: These branches have diverged.  '
                  'See "brz help diverged-branches" for more information.\n'))
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.controldir.open_branch()

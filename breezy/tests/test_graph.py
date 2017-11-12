@@ -232,11 +232,11 @@ complex_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
 #     | | |
 #     |/|/
 #     t u
-complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
-                    'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
-                    'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
-                    'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
-                    't':['i', 's'], 'u':['s', 'j'],
+complex_shortcut2 = {'a': [NULL_REVISION], 'b': ['a'], 'c': ['b'], 'd': ['c'],
+                    'e': ['d'], 'f': ['e'], 'g': ['f'], 'h': ['d'], 'i': ['g'],
+                    'j': ['h'], 'k': ['h', 'i'], 'l': ['k'], 'm': ['l'], 'n': ['m'],
+                    'o': ['n'], 'p': ['o'], 'q': ['p'], 'r': ['q'], 's': ['r'],
+                    't': ['i', 's'], 'u': ['s', 'j'],
                     }
 
 # Graph where different walkers will race to find the common and uncommon
@@ -894,9 +894,9 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_heads_limits_search(self):
         # test that a heads query does not search all of history
         graph_dict = {
-            'left':['common'],
-            'right':['common'],
-            'common':['deeper'],
+            'left': ['common'],
+            'right': ['common'],
+            'common': ['deeper'],
         }
         self.assertEqual({'left', 'right'},
             self._run_heads_break_deeper(graph_dict, ['left', 'right']))
@@ -904,11 +904,11 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_heads_limits_search_assymetric(self):
         # test that a heads query does not search all of history
         graph_dict = {
-            'left':['midleft'],
-            'midleft':['common'],
-            'right':['common'],
-            'common':['aftercommon'],
-            'aftercommon':['deeper'],
+            'left': ['midleft'],
+            'midleft': ['common'],
+            'right': ['common'],
+            'common': ['aftercommon'],
+            'aftercommon': ['deeper'],
         }
         self.assertEqual({'left', 'right'},
             self._run_heads_break_deeper(graph_dict, ['left', 'right']))
@@ -917,11 +917,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         # test that common nodes are still queried, preventing
         # all-the-way-to-origin behaviour in the following graph:
         graph_dict = {
-            'h1':['shortcut', 'common1'],
-            'h2':['common1'],
-            'shortcut':['common2'],
-            'common1':['common2'],
-            'common2':['deeper'],
+            'h1': ['shortcut', 'common1'],
+            'h2': ['common1'],
+            'shortcut': ['common2'],
+            'common1': ['common2'],
+            'common2': ['deeper'],
         }
         self.assertEqual({'h1', 'h2'},
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
@@ -939,9 +939,9 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_breadth_first_search_deep_ghosts(self):
         graph = self.make_graph({
-            'head':['present'],
-            'present':['child', 'ghost'],
-            'child':[],
+            'head': ['present'],
+            'present': ['child', 'ghost'],
+            'child': [],
             })
         # with_ghosts reports the ghosts
         search = graph._make_breadth_first_searcher(['head'])
@@ -962,9 +962,9 @@ class TestGraph(TestCaseWithMemoryTransport):
         # To make the API robust, we allow calling both next() and
         # next_with_ghosts() on the same searcher.
         graph = self.make_graph({
-            'head':['present'],
-            'present':['child', 'ghost'],
-            'child':[],
+            'head': ['present'],
+            'present': ['child', 'ghost'],
+            'child': [],
             })
         # start with next_with_ghosts
         search = graph._make_breadth_first_searcher(['head'])
@@ -984,10 +984,10 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_breadth_first_change_search(self):
         # Changing the search should work with both next and next_with_ghosts.
         graph = self.make_graph({
-            'head':['present'],
-            'present':['stopped'],
-            'other':['other_2'],
-            'other_2':[],
+            'head': ['present'],
+            'present': ['stopped'],
+            'other': ['other_2'],
+            'other_2': [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual(({'head'}, set()), search.next_with_ghosts())
@@ -1035,9 +1035,9 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_breadth_first_get_result_excludes_current_pending(self):
         graph = self.make_graph({
-            'head':['child'],
-            'child':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': ['child'],
+            'child': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
@@ -1102,9 +1102,9 @@ class TestGraph(TestCaseWithMemoryTransport):
         # A client should be able to say 'stop node X' even if X has not been
         # returned to the client.
         graph = self.make_graph({
-            'head':['child', 'ghost1'],
-            'child':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': ['child', 'ghost1'],
+            'child': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         expected = [
@@ -1128,10 +1128,10 @@ class TestGraph(TestCaseWithMemoryTransport):
         # from the result even if X was seen in an older iteration of the
         # search.
         graph = self.make_graph({
-            'head':['middle'],
-            'middle':['child'],
-            'child':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': ['middle'],
+            'middle': ['child'],
+            'child': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         expected = [
@@ -1152,9 +1152,9 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_breadth_first_get_result_ghosts_are_excluded(self):
         graph = self.make_graph({
-            'head':['child', 'ghost'],
-            'child':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': ['child', 'ghost'],
+            'child': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
@@ -1173,9 +1173,9 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_breadth_first_get_result_starting_a_ghost_ghost_is_excluded(self):
         graph = self.make_graph({
-            'head':['child'],
-            'child':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': ['child'],
+            'child': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
@@ -1194,8 +1194,8 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_breadth_first_revision_count_includes_NULL_REVISION(self):
         graph = self.make_graph({
-            'head':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
@@ -1215,8 +1215,8 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_breadth_first_search_get_result_after_StopIteration(self):
         # StopIteration should not invalid anything..
         graph = self.make_graph({
-            'head':[NULL_REVISION],
-            NULL_REVISION:[],
+            'head': [NULL_REVISION],
+            NULL_REVISION: [],
             })
         search = graph._make_breadth_first_searcher(['head'])
         # using next:

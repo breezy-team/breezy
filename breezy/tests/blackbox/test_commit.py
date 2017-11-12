@@ -46,7 +46,7 @@ class TestCommit(TestCaseWithTransport):
         # If forced, it should succeed, but this is not tested here.
         self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
-        out,err = self.run_bzr('commit -m empty', retcode=3)
+        out, err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
         # Two ugly bits here.
         # 1) We really don't want 'aborting commit write group' anymore.
@@ -108,7 +108,7 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
         tree.add("hello.txt")
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello.txt\n'
@@ -228,7 +228,7 @@ brz: ERROR: No changes to commit.\
         wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello\.txt\n'
@@ -241,7 +241,7 @@ brz: ERROR: No changes to commit.\
         tree.add('unchanged.txt')
         self.run_bzr('commit -m unchanged unchanged.txt')
         tree.add("hello.txt")
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello\.txt\n'
@@ -910,7 +910,7 @@ altered in u2
         tree.add([u'abc\xa7/', u'abc\xa7/foo'])
         tree.commit('checkin')
 
-        tree.rename_one(u'abc\xa7','abc')
+        tree.rename_one(u'abc\xa7', 'abc')
 
         self.run_bzr('ci -m "non-ascii mv"')
 

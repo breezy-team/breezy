@@ -105,7 +105,7 @@ class TestFilteredSha(TestCaseInTempDir):
         post_filtered_content = ''.join(_swapcase([text], None))
         expected_len = len(post_filtered_content)
         expected_sha = sha_string(post_filtered_content)
-        self.assertEqual((expected_len,expected_sha),
+        self.assertEqual((expected_len, expected_sha),
             internal_size_sha_file_byname('a',
             [ContentFilter(_swapcase, _swapcase)]))
 
@@ -142,18 +142,18 @@ class TestFilterStackMaps(TestCase):
         z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
         self._register_map('foo', a_stack, z_stack)
         self._register_map('bar', d_stack, z_stack)
-        prefs = (('foo','v1'),)
+        prefs = (('foo', 'v1'),)
         self.assertEqual(a_stack, _get_filter_stack_for(prefs))
-        prefs = (('foo','v2'),)
+        prefs = (('foo', 'v2'),)
         self.assertEqual(z_stack, _get_filter_stack_for(prefs))
-        prefs = (('foo','v1'), ('bar','v1'))
+        prefs = (('foo', 'v1'), ('bar', 'v1'))
         self.assertEqual(a_stack + d_stack, _get_filter_stack_for(prefs))
         # Test an unknown preference
-        prefs = (('baz','v1'),)
+        prefs = (('baz', 'v1'),)
         self.assertEqual([], _get_filter_stack_for(prefs))
         # Test an unknown value
-        prefs = (('foo','v3'),)
+        prefs = (('foo', 'v3'),)
         self.assertEqual([], _get_filter_stack_for(prefs))
         # Test a value of None is skipped
-        prefs = (('foo',None), ('bar', 'v1'))
+        prefs = (('foo', None), ('bar', 'v1'))
         self.assertEqual(d_stack, _get_filter_stack_for(prefs))
