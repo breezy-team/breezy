@@ -143,6 +143,9 @@ Bug Fixes
 * Mark all options as unicode. Allows using non-ASCII values in most
   options. (Jelmer Vernooĳ, #563692)
 
+* Support automatic rename tracking into new directories.
+  (mnn, #373319)
+
 Documentation
 *************
 
