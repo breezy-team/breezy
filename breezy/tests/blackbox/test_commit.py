@@ -130,8 +130,8 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'modified hello\.txt\n'
-                              'Committed revision 2\.\n$')
+                              'modified hello\\.txt\n'
+                              'Committed revision 2\\.\n$')
 
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
@@ -203,8 +203,8 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'renamed hello\.txt => gutentag\.txt\n'
-                              'Committed revision 2\.$\n')
+                              'renamed hello\\.txt => gutentag\\.txt\n'
+                              'Committed revision 2\\.$\n')
 
     def test_verbose_commit_moved(self):
         # Verbose commit of file moved to new directory should say so
@@ -231,8 +231,8 @@ brz: ERROR: No changes to commit.\
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added hello\.txt\n'
-                              'Committed revision 1\.\n$')
+                              'added hello\\.txt\n'
+                              'Committed revision 1\\.\n$')
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
@@ -244,8 +244,8 @@ brz: ERROR: No changes to commit.\
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added hello\.txt\n'
-                              'Committed revision 2\.$\n')
+                              'added hello\\.txt\n'
+                              'Committed revision 2\\.$\n')
 
     def test_verbose_commit_includes_master_location(self):
         """Location of master is displayed when committing to bound branch"""
@@ -530,8 +530,8 @@ altered in u2
             'commit -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
         self.assertContainsRe(err, 'Committing to: .*\n'
-                              'added hello\.txt\n'
-                              'Committed revision 1\.\n')
+                              'added hello\\.txt\n'
+                              'Committed revision 1\\.\n')
 
     def test_fixes_bug_unicode(self):
         """commit --fixes=lp:unicode succeeds without output."""
