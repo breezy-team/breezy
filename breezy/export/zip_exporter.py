@@ -66,7 +66,7 @@ def zip_exporter_generator(tree, dest, root, subdir=None,
             if force_mtime is not None:
                 mtime = force_mtime
             else:
-                mtime = tree.get_file_mtime(ie.file_id, tp)
+                mtime = tree.get_file_mtime(tp, ie.file_id)
             date_time = time.localtime(mtime)[:6]
             filename = osutils.pathjoin(root, dp).encode('utf8')
             if ie.kind == "file":
@@ -75,7 +75,7 @@ def zip_exporter_generator(tree, dest, root, subdir=None,
                             date_time=date_time)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
-                content = tree.get_file_text(file_id, tp)
+                content = tree.get_file_text(tp, file_id)
                 zipf.writestr(zinfo, content)
             elif ie.kind == "directory":
                 # Directories must contain a trailing slash, to indicate

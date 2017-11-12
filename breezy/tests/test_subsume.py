@@ -82,16 +82,16 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
         self.assertEqual('subtree/file2', base_tree.id2path('file2-id'))
         self.assertEqualDiff(file2_contents,
-                             base_tree.get_file_text('file2-id'))
+                             base_tree.get_file_text('subtree/file2'))
         basis_tree = base_tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
         self.assertEqualDiff(file2_contents,
-                             base_tree.get_file_text('file2-id'))
+                             base_tree.get_file_text('subtree/file2'))
         self.assertEqualDiff(file2_contents,
-                             basis_tree.get_file_text('file2-id'))
+                             basis_tree.get_file_text('subtree/file2'))
         self.assertEqual('subtree-1',
-                         basis_tree.get_file_revision('file2-id'))
+                         basis_tree.get_file_revision('subtree/file2'))
         self.assertEqual('combined-1',
                          basis_tree.get_file_revision(sub_root_id))
 

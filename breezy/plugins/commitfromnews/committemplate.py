@@ -69,7 +69,7 @@ class CommitTemplate(object):
             # changed in new version of the file. So for now a direct diff
             # using patiencediff is done.
             old_revision = self.commit.basis_tree.get_file_revision(
-                found_entry.file_id)
+                old_path, found_entry.file_id)
             needed = [(found_entry.file_id, found_entry.revision, 'new'),
                       (found_entry.file_id, old_revision, 'old')]
             contents = self.commit.builder.repository.iter_files_bytes(needed)

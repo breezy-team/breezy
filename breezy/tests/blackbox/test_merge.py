@@ -146,7 +146,7 @@ class TestMerge(tests.TestCaseWithTransport):
                              '=======\n'
                              'D\n'
                              '>>>>>>> MERGE-SOURCE\n',
-                             tree.get_file_text('f-id'))
+                             tree.get_file_text(tree.id2path('f-id')))
 
     def test_merge_explicit_reprocess_show_base(self):
         tree, other = self.create_conflicting_branches()
@@ -168,7 +168,7 @@ class TestMerge(tests.TestCaseWithTransport):
                              'B\n'
                              'D\n'
                              '>>>>>>> MERGE-SOURCE\n',
-                             tree.get_file_text('f-id'))
+                             tree.get_file_text(tree.id2path('f-id')))
 
     def test_merge_override_show_base(self):
         tree, other = self.create_conflicting_branches()
@@ -186,7 +186,7 @@ class TestMerge(tests.TestCaseWithTransport):
                              'B\n'
                              'D\n'
                              '>>>>>>> MERGE-SOURCE\n',
-                             tree.get_file_text('f-id'))
+                             tree.get_file_text(tree.id2path('f-id')))
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""

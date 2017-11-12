@@ -395,14 +395,16 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 self._repository = tree.branch.repository
                 self._inventory = shape
 
-            def get_file_text(self, file_id, path=None):
+            def get_file_text(self, path, file_id=None):
+                if file_id is None:
+                    file_id = self.path2id(path)
                 ie = self.root_inventory[file_id]
                 if ie.kind != "file":
                     return ""
                 return 'a' * ie.text_size
 
-            def get_file(self, file_id, path=None):
-                return BytesIO(self.get_file_text(file_id))
+            def get_file(self, path, file_id=None):
+                return BytesIO(self.get_file_text(path, file_id))
 
         tree.lock_write()
         try:

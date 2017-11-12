@@ -154,8 +154,8 @@ class BzrUploader(object):
             try:
                 ignore_file_path = '.bzrignore-upload'
                 ignore_file_id = self.tree.path2id(ignore_file_path)
-                ignore_file = self.tree.get_file(ignore_file_id,
-                                                 ignore_file_path)
+                ignore_file = self.tree.get_file(ignore_file_path,
+                                                 ignore_file_id)
                 ignored_patterns = ignores.parse_ignore_file(ignore_file)
             except errors.NoSuchId:
                 ignored_patterns = []
@@ -183,7 +183,7 @@ class BzrUploader(object):
                 mode = 0o664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % relpath)
-        self._up_put_bytes(relpath, self.tree.get_file_text(id), mode)
+        self._up_put_bytes(relpath, self.tree.get_file_text(relpath, id), mode)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.

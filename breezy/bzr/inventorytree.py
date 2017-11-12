@@ -606,8 +606,11 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
         RevisionTree.__init__(self, repository, revision_id)
         self._inventory = inv
 
-    def get_file_mtime(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_file_mtime(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         ie = inv[inv_file_id]
         try:
             revision = self._repository.get_revision(ie.revision)
@@ -615,19 +618,28 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
             raise FileTimestampUnavailable(self.id2path(file_id))
         return revision.timestamp
 
-    def get_file_size(self, file_id):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_file_size(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].text_size
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         ie = inv[inv_file_id]
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
-    def get_file_revision(self, file_id, path=None):
-        inv, inv_file_id = self._unpack_file_id(file_id)
+    def get_file_revision(self, path, file_id=None):
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         ie = inv[inv_file_id]
         return ie.revision
 
@@ -736,7 +748,7 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
         """See Tree.iter_files_bytes.
 
         This version is implemented on top of Repository.iter_files_bytes"""
-        repo_desired_files = [(f, self.get_file_revision(f), i)
+        repo_desired_files = [(f, self.get_file_revision(self.id2path(f)), i)
                               for f, i in desired_files]
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
@@ -747,9 +759,7 @@ class InventoryRevisionTree(RevisionTree,InventoryTree):
     def annotate_iter(self, path, file_id=None,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        if file_id is None:
-            file_id = self.path2id(path)
-        text_key = (file_id, self.get_file_revision(file_id))
+        text_key = (file_id, self.get_file_revision(path, file_id))
         annotator = self._repository.texts.get_annotator()
         annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]

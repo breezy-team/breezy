@@ -162,7 +162,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.set_executability(False, trans_id2)
         transform.version_file('my_pretties2', trans_id2)
         modified_paths = transform.apply().modified_paths
-        self.assertEqual('contents', self.wt.get_file_byname('name').read())
+        self.assertEqual('contents', self.wt.get_file('name').read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertIs(self.wt.is_executable('name'), True)
         self.assertIs(self.wt.is_executable('name2'), False)
@@ -249,9 +249,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.create_file('content-two',
                               transform.create_path('two', root))
         transform.apply()
-        fo, st1 = self.wt.get_file_with_stat(None, path='one', filtered=False)
+        fo, st1 = self.wt.get_file_with_stat('one', filtered=False)
         fo.close()
-        fo, st2 = self.wt.get_file_with_stat(None, path='two', filtered=False)
+        fo, st2 = self.wt.get_file_with_stat('two', filtered=False)
         fo.close()
         # We only guarantee 2s resolution
         self.assertTrue(abs(creation_mtime - st1.st_mtime) < 2.0,
@@ -388,7 +388,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(self.wt.path2id('oz/dorothy/toto'), 'toto-id')
 
         self.assertEqual('toto-contents',
-                         self.wt.get_file_byname('oz/dorothy/toto').read())
+                         self.wt.get_file('oz/dorothy/toto').read())
         self.assertIs(self.wt.is_executable('oz/dorothy/toto'), False)
 
     def test_tree_reference(self):
@@ -1729,33 +1729,33 @@ class TestTransformMerge(TestCaseInTempDir):
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         # textual merge
-        self.assertEqual(this.wt.get_file('a').read(), 'y\nb\nc\nd\bz\n')
+        self.assertEqual(this.wt.get_file(this.wt.id2path('a')).read(), 'y\nb\nc\nd\bz\n')
         # three-way text conflict
-        self.assertEqual(this.wt.get_file('b').read(),
+        self.assertEqual(this.wt.get_file(this.wt.id2path('b')).read(),
                          conflict_text('b', 'b2'))
         # OTHER wins
-        self.assertEqual(this.wt.get_file('c').read(), 'c2')
+        self.assertEqual(this.wt.get_file(this.wt.id2path('c')).read(), 'c2')
         # THIS wins
-        self.assertEqual(this.wt.get_file('d').read(), 'd2')
+        self.assertEqual(this.wt.get_file(this.wt.id2path('d')).read(), 'd2')
         # Ambigious clean merge
-        self.assertEqual(this.wt.get_file('e').read(), 'e2')
+        self.assertEqual(this.wt.get_file(this.wt.id2path('e')).read(), 'e2')
         # No change
-        self.assertEqual(this.wt.get_file('f').read(), 'f')
+        self.assertEqual(this.wt.get_file(this.wt.id2path('f')).read(), 'f')
         # Correct correct results when THIS == OTHER
-        self.assertEqual(this.wt.get_file('g').read(), 'g')
+        self.assertEqual(this.wt.get_file(this.wt.id2path('g')).read(), 'g')
         # Text conflict when THIS & OTHER are text and BASE is dir
-        self.assertEqual(this.wt.get_file('h').read(),
+        self.assertEqual(this.wt.get_file(this.wt.id2path('h')).read(),
                          conflict_text('1\n2\n3\n4\n', 'h\ni\nj\nk\n'))
-        self.assertEqual(this.wt.get_file_byname('h.THIS').read(),
+        self.assertEqual(this.wt.get_file('h.THIS').read(),
                          '1\n2\n3\n4\n')
-        self.assertEqual(this.wt.get_file_byname('h.OTHER').read(),
+        self.assertEqual(this.wt.get_file('h.OTHER').read(),
                          'h\ni\nj\nk\n')
         self.assertEqual(file_kind(this.wt.abspath('h.BASE')), 'directory')
-        self.assertEqual(this.wt.get_file('i').read(),
+        self.assertEqual(this.wt.get_file(this.wt.id2path('i')).read(),
                          conflict_text('1\n2\n3\n4\n', 'h\ni\nj\nk\n'))
-        self.assertEqual(this.wt.get_file_byname('i.THIS').read(),
+        self.assertEqual(this.wt.get_file('i.THIS').read(),
                          '1\n2\n3\n4\n')
-        self.assertEqual(this.wt.get_file_byname('i.OTHER').read(),
+        self.assertEqual(this.wt.get_file('i.OTHER').read(),
                          'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
         modified = ['a', 'b', 'c', 'h', 'i']
@@ -2047,9 +2047,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.build_tree_contents([('source/file2', 'C')])
         calls = []
         real_source_get_file = source.get_file
-        def get_file(file_id, path=None):
+        def get_file(path, file_id=None):
             calls.append(file_id)
-            return real_source_get_file(file_id, path)
+            return real_source_get_file(path, file_id)
         source.get_file = get_file
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
@@ -2099,9 +2099,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         os.symlink('file2', 'source/file1')
         calls = []
         real_source_get_file = source.get_file
-        def get_file(file_id, path=None):
+        def get_file(path, file_id=None):
             calls.append(file_id)
-            return real_source_get_file(file_id, path)
+            return real_source_get_file(path, file_id)
         source.get_file = get_file
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
@@ -2267,9 +2267,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         entry2_state = entry2[1][0]
         # Now, make sure that we don't have to re-read the content. The
         # packed_stat should match exactly.
-        self.assertEqual(entry1_sha, target.get_file_sha1('file1-id', 'file1'))
+        self.assertEqual(entry1_sha, target.get_file_sha1('file1', 'file1-id'))
         self.assertEqual(entry2_sha,
-                         target.get_file_sha1('file2-id', 'dir/file2'))
+                         target.get_file_sha1('dir/file2', 'file2-id'))
         self.assertEqual(entry1_state, entry1[1][0])
         self.assertEqual(entry2_state, entry2[1][0])
 
@@ -2345,7 +2345,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         rev = tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path('file-id'))
-        self.assertEqual('contents', tree.get_file_text('file-id'))
+        self.assertEqual('contents', tree.get_file_text('file', 'file-id'))
         self.assertEqual('dir', tree.id2path('dir-id'))
         if SymlinkFeature.available():
             self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
@@ -2733,7 +2733,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree = preview.get_preview_tree()
         self.assertEqual(preview_tree.kind('file2-id'), 'file')
         self.assertEqual(
-            preview_tree.get_file('file2-id').read(), 'content B\n')
+            preview_tree.get_file('file2', 'file2-id').read(), 'content B\n')
 
     def test_diff_preview_tree(self):
         revision_tree = self.create_tree()
@@ -2828,7 +2828,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         limbo_path = preview._limbo_name(file_trans_id)
         preview_tree = preview.get_preview_tree()
         self.assertEqual(os.stat(limbo_path).st_mtime,
-                         preview_tree.get_file_mtime('file-id'))
+                         preview_tree.get_file_mtime('file', 'file-id'))
 
     def test_get_file_mtime_renamed(self):
         work_tree = self.make_branch_and_tree('tree')
@@ -2839,8 +2839,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         file_trans_id = preview.trans_id_tree_file_id('file-id')
         preview.adjust_path('renamed', preview.root, file_trans_id)
         preview_tree = preview.get_preview_tree()
-        preview_mtime = preview_tree.get_file_mtime('file-id', 'renamed')
-        work_mtime = work_tree.get_file_mtime('file-id', 'file')
+        preview_mtime = preview_tree.get_file_mtime('renamed', 'file-id')
+        work_mtime = work_tree.get_file_mtime('file', 'file-id')
 
     def test_get_file_size(self):
         work_tree = self.make_branch_and_tree('tree')
@@ -2851,14 +2851,14 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         new_id = preview.new_file('name', preview.root, 'contents', 'new-id',
                                   'executable')
         tree = preview.get_preview_tree()
-        self.assertEqual(len('old'), tree.get_file_size('old-id'))
-        self.assertEqual(len('contents'), tree.get_file_size('new-id'))
+        self.assertEqual(len('old'), tree.get_file_size('old'))
+        self.assertEqual(len('contents'), tree.get_file_size('name'))
 
     def test_get_file(self):
         preview = self.get_empty_preview()
         preview.new_file('file', preview.root, 'contents', 'file-id')
         preview_tree = preview.get_preview_tree()
-        tree_file = preview_tree.get_file('file-id')
+        tree_file = preview_tree.get_file('file')
         try:
             self.assertEqual('contents', tree_file.read())
         finally:
@@ -3238,7 +3238,9 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tt = merger.make_merger().make_preview_transform()
         self.addCleanup(tt.finalize)
         final_tree = tt.get_preview_tree()
-        self.assertEqual('a\nb\nc\n', final_tree.get_file_text('file-id'))
+        self.assertEqual(
+                'a\nb\nc\n',
+                final_tree.get_file_text(final_tree.id2path('file-id')))
 
     def test_merge_preview_into_workingtree(self):
         tree = self.make_branch_and_tree('tree')
@@ -3312,7 +3314,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         builder.finish_inventory()
         rev2_id = builder.commit('rev2')
         rev2_tree = tree.branch.repository.revision_tree(rev2_id)
-        self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
+        self.assertEqual('contents', rev2_tree.get_file_text('file'))
 
     def test_ascii_limbo_paths(self):
         self.requireFeature(features.UnicodeFilenameFeature)

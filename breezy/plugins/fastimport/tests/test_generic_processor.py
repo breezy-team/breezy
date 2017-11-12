@@ -175,7 +175,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     def assertContent(self, branch, tree, path, content):
         file_id = tree.path2id(path)
         with branch.lock_read():
-            self.assertEqual(tree.get_file_text(file_id), content)
+            self.assertEqual(tree.get_file_text(path, file_id), content)
 
     def assertSymlinkTarget(self, branch, tree, path, target):
         file_id = tree.path2id(path)
@@ -188,7 +188,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
     def assertRevisionRoot(self, revtree, path):
         self.assertEqual(revtree.get_revision_id(),
-                         revtree.get_file_revision(revtree.path2id(path)))
+                         revtree.get_file_revision(path))
 
 
 class TestImportToPackTag(TestCaseForGenericProcessor):
@@ -1942,11 +1942,10 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
         rev_b = branch.repository.get_parent_map([rev_c])[rev_c][0]
         rtree_a, rtree_b, rtree_c, rtree_d = branch.repository.revision_trees([
             rev_a, rev_b, rev_c, rev_d])
-        foo_id = rtree_a.path2id('foo')
-        self.assertEqual(rev_a, rtree_a.get_file_revision(foo_id))
-        self.assertEqual(rev_b, rtree_b.get_file_revision(foo_id))
-        self.assertEqual(rev_c, rtree_c.get_file_revision(foo_id))
-        self.assertEqual(rev_c, rtree_d.get_file_revision(foo_id))
+        self.assertEqual(rev_a, rtree_a.get_file_revision('foo'))
+        self.assertEqual(rev_b, rtree_b.get_file_revision('foo'))
+        self.assertEqual(rev_c, rtree_c.get_file_revision('foo'))
+        self.assertEqual(rev_c, rtree_d.get_file_revision('foo'))
 
 
 class TestCommitCommands(TestCaseForGenericProcessor):
@@ -1986,5 +1985,4 @@ class TestAddNonUtf8InBranch(TestCaseForGenericProcessor):
         self.addCleanup(branch.unlock)
         rev_a = branch.last_revision()
         rtree_a = branch.repository.revision_tree(rev_a)
-        foo_id = rtree_a.path2id(u'foo\ufffd')
-        self.assertEqual(rev_a, rtree_a.get_file_revision(foo_id))
+        self.assertEqual(rev_a, rtree_a.get_file_revision(u'foo\ufffd'))

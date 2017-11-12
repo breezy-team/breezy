@@ -90,7 +90,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         if force_mtime is not None:
             mtime = force_mtime
         else:
-            mtime = tree.get_file_mtime(file_id, treepath)
+            mtime = tree.get_file_mtime(treepath, file_id)
         os.utime(fullpath, (mtime, mtime))
 
         yield

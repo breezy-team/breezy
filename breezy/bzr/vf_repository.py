@@ -484,7 +484,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
-                    file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
+                    file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
                     try:
                         text = file_obj.read()
                     finally:
@@ -2839,11 +2839,13 @@ def _install_revision(repository, rev, revision_tree, signature,
         for revision, tree in viewitems(parent_trees):
             if not tree.has_id(ie.file_id):
                 continue
-            parent_id = tree.get_file_revision(ie.file_id)
+            path = tree.id2path(ie.file_id)
+            parent_id = tree.get_file_revision(path, ie.file_id)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))
-        lines = revision_tree.get_file(ie.file_id).readlines()
+        revision_tree_path = revision_tree.id2path(ie.file_id)
+        lines = revision_tree.get_file(revision_tree_path, ie.file_id).readlines()
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory

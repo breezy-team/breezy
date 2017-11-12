@@ -474,12 +474,12 @@ class TestMerge(TestCaseWithTransport):
         tt = tree_merger.make_preview_transform()
         self.addCleanup(tt.finalize)
         preview_tree = tt.get_preview_tree()
-        tree_file = this_tree.get_file('file-id')
+        tree_file = this_tree.get_file('file')
         try:
             self.assertEqual('1\n2a\n', tree_file.read())
         finally:
             tree_file.close()
-        preview_file = preview_tree.get_file('file-id')
+        preview_file = preview_tree.get_file('file')
         try:
             self.assertEqual('2b\n1\n2a\n', preview_file.read())
         finally:
@@ -502,7 +502,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         tt = tree_merger.do_merge()
-        tree_file = this_tree.get_file('file-id')
+        tree_file = this_tree.get_file('file')
         try:
             self.assertEqual('2b\n1\n2a\n', tree_file.read())
         finally:
@@ -2090,7 +2090,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt, conflicts = self.do_merge(builder, 'E-id')
         self.assertEqual(0, conflicts)
         # The merge should have simply update the contents of 'a'
-        self.assertEqual('a\nb\nc\nd\ne\nf\n', wt.get_file_text('a-id'))
+        self.assertEqual('a\nb\nc\nd\ne\nf\n', wt.get_file_text('a'))
 
     def test_conflict_without_lca(self):
         # This test would cause a merge conflict, unless we use the lca trees
@@ -2251,7 +2251,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              '=======\n'
                              'C content\n'
                              '>>>>>>> MERGE-SOURCE\n',
-                             wt.get_file_text('foo-id'))
+                             wt.get_file_text('foo'))
 
     def test_modified_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2559,7 +2559,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # TODO: We need to use the per-file graph to properly select a BASE
         #       before this will work. Or at least use the LCA trees to find
         #       the appropriate content base. (which is B, not A).
-        self.assertEqual('base content\n', wt.get_file_text('foo-id'))
+        self.assertEqual('base content\n', wt.get_file_text('foo'))
 
     def test_other_modified_content(self):
         builder = self.get_builder()
@@ -2576,7 +2576,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
-        self.assertEqual('F content\n', wt.get_file_text('foo-id'))
+        self.assertEqual('F content\n', wt.get_file_text('foo'))
 
     def test_all_wt(self):
         """Check behavior if all trees are Working Trees."""

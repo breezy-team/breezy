@@ -106,7 +106,7 @@ class TestRevert(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.assertTrue(tree.is_executable('newfile'))
         transform.revert(tree, tree.basis_tree(), None, backups=True)
-        self.assertEqual('helooo!', tree.get_file('newfile-id').read())
+        self.assertEqual('helooo!', tree.get_file('newfile').read())
         self.assertTrue(tree.is_executable('newfile'))
 
     def test_revert_executable(self):

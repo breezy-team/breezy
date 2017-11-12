@@ -482,7 +482,7 @@ class InventoryFile(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.text_sha1 = work_tree.get_file_sha1(self.file_id, path=path)
+        self.text_sha1 = work_tree.get_file_sha1(path, self.file_id)
         # FIXME: 20050930 probe for the text size when getting sha1
         # in _read_tree_state
         self.executable = work_tree.is_executable(path, self.file_id)

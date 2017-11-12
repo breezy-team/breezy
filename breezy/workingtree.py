@@ -418,40 +418,30 @@ class WorkingTree(mutabletree.MutableTree,
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, file_id, path=None, filtered=True):
-        return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
+    def get_file(self, path, file_id=None, filtered=True):
+        return self.get_file_with_stat(path, file_id, filtered=filtered)[0]
 
-    def get_file_with_stat(self, file_id, path=None, filtered=True,
+    def get_file_with_stat(self, path, file_id=None, filtered=True,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
-        if path is None:
-            path = self.id2path(file_id)
-        file_obj = self.get_file_byname(path, filtered=False)
+        abspath = self.abspath(path)
+        file_obj = file(abspath, 'rb')
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
             file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
-    def get_file_text(self, file_id, path=None, filtered=True):
-        my_file = self.get_file(file_id, path=path, filtered=filtered)
+    def get_file_text(self, path, file_id=None, filtered=True):
+        my_file = self.get_file(path, file_id, filtered=filtered)
         try:
             return my_file.read()
         finally:
             my_file.close()
 
-    def get_file_byname(self, filename, filtered=True):
-        path = self.abspath(filename)
-        f = file(path, 'rb')
-        if filtered and self.supports_content_filtering():
-            filters = self._content_filter_stack(filename)
-            return _mod_filters.filtered_input_file(f, filters)
-        else:
-            return f
-
-    def get_file_lines(self, file_id, path=None, filtered=True):
+    def get_file_lines(self, path, file_id=None, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(file_id, path, filtered=filtered)
+        file = self.get_file(path, file_id, filtered=filtered)
         try:
             return file.readlines()
         finally:
@@ -526,12 +516,12 @@ class WorkingTree(mutabletree.MutableTree,
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
 
-    def get_file_size(self, file_id):
+    def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
         # canonical size
         try:
-            return os.path.getsize(self.id2abspath(file_id))
+            return os.path.getsize(self.abspath(path))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise

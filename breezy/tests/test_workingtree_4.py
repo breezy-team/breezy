@@ -750,10 +750,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # Explicit test to ensure we get a lstat value from WT4 trees.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        tree.add(['foo'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        file_obj, statvalue = tree.get_file_with_stat('foo-id')
+        file_obj, statvalue = tree.get_file_with_stat('foo')
         expected = os.lstat('foo')
         self.assertEqualStat(expected, statvalue)
         self.assertEqual(["contents of foo\n"], file_obj.readlines())

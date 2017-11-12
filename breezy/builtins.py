@@ -3404,9 +3404,9 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            content = filter_tree.get_file_text(actual_file_id)
+            content = filter_tree.get_file_text(relpath, actual_file_id)
         else:
-            content = rev_tree.get_file_text(actual_file_id)
+            content = rev_tree.get_file_text(relpath, actual_file_id)
         self.cleanup_now()
         self.outf.write(content)
 

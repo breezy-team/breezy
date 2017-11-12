@@ -565,7 +565,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file_byname(breezy.IGNORE_FILENAME)
+            f = self.get_file(breezy.IGNORE_FILENAME)
             try:
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
@@ -724,10 +724,8 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             mode=self.controldir._get_file_mode())
         self._inventory_is_modified = False
 
-    def get_file_mtime(self, file_id, path=None):
+    def get_file_mtime(self, path, file_id=None):
         """See Tree.get_file_mtime."""
-        if not path:
-            path = self.id2path(file_id)
         try:
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
@@ -811,8 +809,6 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         incorrectly attributed to CURRENT_REVISION (but after committing, the
         attribution will be correct).
         """
-        if file_id is None:
-            file_id = self.path2id(path)
         with self.lock_read():
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
@@ -830,8 +826,9 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                         # directories have a "text" which is the empty text, and we
                         # know that won't mess up annotations. But it seems cleaner
                         continue
+                    parent_path = parent_tree.id2path(file_id)
                     parent_text_key = (
-                        file_id, parent_tree.get_file_revision(file_id))
+                        file_id, parent_tree.get_file_revision(parent_path, file_id))
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
             graph = _mod_graph.Graph(self.branch.repository.texts)
@@ -892,7 +889,8 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                     if not self.has_id(file_id):
                         continue
                     text_hash = s.get("hash")
-                    if text_hash == self.get_file_sha1(file_id):
+                    path = self.id2path(file_id)
+                    if text_hash == self.get_file_sha1(path, file_id):
                         merge_hashes[file_id] = text_hash
                 return merge_hashes
             finally:

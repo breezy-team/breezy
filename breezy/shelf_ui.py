@@ -300,7 +300,8 @@ class Shelver(object):
         :param file_id: The id of the file that was modified.
         :return: The number of changes.
         """
-        work_tree_lines = self.work_tree.get_file_lines(file_id)
+        path = self.work_tree.id2path(file_id)
+        work_tree_lines = self.work_tree.get_file_lines(path, file_id)
         try:
             lines, change_count = self._select_hunks(creator, file_id,
                                                      work_tree_lines)
@@ -324,7 +325,8 @@ class Shelver(object):
         if self.reporter.invert_diff:
             target_lines = work_tree_lines
         else:
-            target_lines = self.target_tree.get_file_lines(file_id)
+            path = self.target_tree.path2id(file_id)
+            target_lines = self.target_tree.get_file_lines(path, file_id)
         textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)

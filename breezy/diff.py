@@ -482,7 +482,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     try:
-        mtime = tree.get_file_mtime(file_id, path)
+        mtime = tree.get_file_mtime(path, file_id)
     except FileTimestampUnavailable:
         mtime = 0
     return timestamp.format_patch_date(mtime)
@@ -686,9 +686,9 @@ class DiffText(DiffPath):
         :param to_path: The path in the to tree or None if unknown.
         """
         def _get_text(tree, file_id, path):
-            if file_id is not None:
-                return tree.get_file_lines(file_id, path)
-            else:
+            try:
+                return tree.get_file_lines(path, file_id)
+            except errors.NoSuchId:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_file_id, from_path)
@@ -813,7 +813,7 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(file_id, relpath)
+        source = tree.get_file(relpath, file_id)
         try:
             target = open(full_path, 'wb')
             try:
@@ -823,7 +823,7 @@ class DiffFromTool(DiffPath):
         finally:
             source.close()
         try:
-            mtime = tree.get_file_mtime(file_id)
+            mtime = tree.get_file_mtime(relpath, file_id)
         except FileTimestampUnavailable:
             pass
         else:

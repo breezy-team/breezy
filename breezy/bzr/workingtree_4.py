@@ -393,7 +393,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             path = path.encode('utf8')
         return state._get_entry(0, fileid_utf8=file_id, path_utf8=path)
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
         # check file id is valid unconditionally.
         entry = self._get_entry(file_id=file_id, path=path)
         if entry[0] is None:
@@ -415,7 +415,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             stat_value=stat_value)
         if entry[1][0][0] == b'f':
             if link_or_sha1 is None:
-                file_obj, statvalue = self.get_file_with_stat(file_id, path)
+                file_obj, statvalue = self.get_file_with_stat(path, file_id)
                 try:
                     sha1 = osutils.sha_file(file_obj)
                 finally:
@@ -1703,9 +1703,7 @@ class DirStateRevisionTree(InventoryTree):
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        if file_id is None:
-            file_id = self.path2id(path)
-        text_key = (file_id, self.get_file_revision(file_id))
+        text_key = (file_id, self.get_file_revision(path, file_id))
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
 
@@ -1848,7 +1846,7 @@ class DirStateRevisionTree(InventoryTree):
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
 
-    def get_file_mtime(self, file_id, path=None):
+    def get_file_mtime(self, path, file_id=None):
         """Return the modification time for this record.
 
         We return the timestamp of the last-changed revision.
@@ -1865,7 +1863,7 @@ class DirStateRevisionTree(InventoryTree):
             raise FileTimestampUnavailable(self.id2path(file_id))
         return rev.timestamp
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
         entry = self._get_entry(file_id=file_id, path=path)
         parent_index = self._get_parent_index()
         parent_details = entry[1][parent_index]
@@ -1873,20 +1871,25 @@ class DirStateRevisionTree(InventoryTree):
             return parent_details[1]
         return None
 
-    def get_file_revision(self, file_id):
+    def get_file_revision(self, path, file_id=None):
         with self.lock_read():
             inv, inv_file_id = self._unpack_file_id(file_id)
             return inv[inv_file_id].revision
 
-    def get_file(self, file_id, path=None):
-        return BytesIO(self.get_file_text(file_id))
+    def get_file(self, path, file_id=None):
+        return BytesIO(self.get_file_text(path, file_id))
 
-    def get_file_size(self, file_id):
+    def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
-        inv, inv_file_id = self._unpack_file_id(file_id)
+        if file_id is None:
+            inv, inv_file_id = self._path2inv_file_id(path)
+        else:
+            inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].text_size
 
-    def get_file_text(self, file_id, path=None):
+    def get_file_text(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         content = None
         for _, content_iter in self.iter_files_bytes([(file_id, None)]):
             if content is not None:

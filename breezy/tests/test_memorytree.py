@@ -49,7 +49,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.lock_read()
         self.assertEqual([rev_id], tree.get_parent_ids())
         self.assertEqual('contents of foo\n',
-            tree.get_file(tree.path2id('foo')).read())
+            tree.get_file('foo').read())
         tree.unlock()
 
     def test_get_root_id(self):
@@ -111,7 +111,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.add(['', 'foo'], ids=['root-id', 'foo-id'],
                   kinds=['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
-        self.assertEqual('barshoom', tree.get_file('foo-id').read())
+        self.assertEqual('barshoom', tree.get_file('foo').read())
         tree.unlock()
 
     def test_put_existing_file(self):
@@ -122,7 +122,7 @@ class TestMemoryTree(TestCaseWithTransport):
                  kinds=['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo-id', 'first-content')
         tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
-        self.assertEqual('barshoom', tree.get_file('foo-id').read())
+        self.assertEqual('barshoom', tree.get_file('foo').read())
         tree.unlock()
 
     def test_add_in_subdir(self):
@@ -161,7 +161,7 @@ class TestMemoryTree(TestCaseWithTransport):
         revtree = tree.branch.repository.revision_tree(revision_id)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        self.assertEqual('barshoom', revtree.get_file('foo-id').read())
+        self.assertEqual('barshoom', revtree.get_file('foo').read())
 
     def test_unversion(self):
         """Some test for unversion of a memory tree."""
@@ -202,7 +202,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
         rev_tree2 = tree.branch.repository.revision_tree('rev-two')
         self.assertEqual('bar', rev_tree2.id2path('foo-id'))
-        self.assertEqual('content\n', rev_tree2.get_file_text('foo-id'))
+        self.assertEqual('content\n', rev_tree2.get_file_text('foo'))
 
     def test_rename_file_to_subdir(self):
         tree = self.make_branch_and_memory_tree('branch')

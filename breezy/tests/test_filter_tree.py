@@ -44,10 +44,10 @@ class TestFilterTree(tests.TestCaseWithTransport):
     def test_get_file_text(self):
         self.make_tree()
         self.assertEqual(
-            self.underlying_tree.get_file_text('hello-id'),
+            self.underlying_tree.get_file_text('hello'),
             'hello world')
         self.assertEqual(
-            self.filter_tree.get_file_text('hello-id'),
+            self.filter_tree.get_file_text('hello'),
             'HELLO WORLD')
 
     def test_tar_export_content_filter_tree(self):

@@ -153,25 +153,34 @@ class MockTree(object):
     def has_id(self, file_id):
         return self.id2path(file_id) is not None
 
-    def get_file(self, file_id):
+    def get_file(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         result = BytesIO()
         result.write(self.contents[file_id])
         result.seek(0,0)
         return result
 
-    def get_file_revision(self, file_id):
+    def get_file_revision(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         return self.inventory[file_id].revision
 
-    def get_file_size(self, file_id):
+    def get_file_size(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         return self.inventory[file_id].text_size
 
-    def get_file_sha1(self, file_id):
+    def get_file_sha1(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         return self.inventory[file_id].text_sha1
 
     def contents_stats(self, file_id):
         if file_id not in self.contents:
             return None, None
-        text_sha1 = osutils.sha_file(self.get_file(file_id))
+        path = self.id2path(file_id)
+        text_sha1 = osutils.sha_file(self.get_file(path, file_id))
         return text_sha1, len(self.contents[file_id])
 
 
@@ -282,9 +291,10 @@ class BTreeTester(tests.TestCase):
         self.adds_test(btree)
 
     def adds_test(self, btree):
-        self.assertEqual(btree.id2path("e"), "grandparent/parent/file")
+        path = btree.id2path("e")
+        self.assertEqual(path, "grandparent/parent/file")
         self.assertEqual(btree.path2id("grandparent/parent/file"), "e")
-        self.assertEqual(btree.get_file("e").read(), "Extra cheese\n")
+        self.assertEqual(btree.get_file(path).read(), "Extra cheese\n")
         self.assertEqual(btree.get_symlink_target('f'), 'venus')
 
     def test_adds2(self):
@@ -307,8 +317,8 @@ class BTreeTester(tests.TestCase):
         return btree
 
     def get_file_test(self, btree):
-        self.assertEqual(btree.get_file("e").read(), "Lemon\n")
-        self.assertEqual(btree.get_file("c").read(), "Hello\n")
+        self.assertEqual(btree.get_file(btree.id2path("e")).read(), "Lemon\n")
+        self.assertEqual(btree.get_file(btree.id2path("c")).read(), "Hello\n")
 
     def test_get_file(self):
         """Get file contents"""
@@ -330,7 +340,7 @@ class BTreeTester(tests.TestCase):
     def test_delete(self):
         "Deletion by bundle"
         btree = self.make_tree_1()[0]
-        self.assertEqual(btree.get_file("c").read(), "Hello\n")
+        self.assertEqual(btree.get_file(btree.id2path("c")).read(), "Hello\n")
         btree.note_deletion("grandparent/parent/file")
         self.assertTrue(btree.id2path("c") is None)
         self.assertTrue(btree.path2id("grandparent/parent/file") is None)
@@ -516,13 +526,13 @@ class BundleTester(object):
                 # Now check that the file contents are all correct
                 for inventory_id in old.all_file_ids():
                     try:
-                        old_file = old.get_file(inventory_id)
+                        old_file = old.get_file(old.id2path(inventory_id))
                     except errors.NoSuchFile:
                         continue
                     if old_file is None:
                         continue
                     self.assertEqual(old_file.read(),
-                                     new.get_file(inventory_id).read())
+                                     new.get_file(new.id2path(inventory_id)).read())
             finally:
                 new.unlock()
                 old.unlock()
@@ -582,10 +592,10 @@ class BundleTester(object):
 
         for path, status, kind, fileid, entry in base_files:
             # Check that the meta information is the same
-            self.assertEqual(base_tree.get_file_size(fileid),
-                    to_tree.get_file_size(fileid))
-            self.assertEqual(base_tree.get_file_sha1(fileid),
-                    to_tree.get_file_sha1(fileid))
+            self.assertEqual(base_tree.get_file_size(path, fileid),
+                    to_tree.get_file_size(to_tree.id2path(fileid)))
+            self.assertEqual(base_tree.get_file_sha1(path, fileid),
+                    to_tree.get_file_sha1(to_tree.id2path(fileid)))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),
@@ -965,7 +975,7 @@ class BundleTester(object):
         self.tree1.commit('message', rev_id='revid1')
         bundle = self.get_valid_bundle('null:', 'revid1')
         tree = self.get_bundle_tree(bundle, 'revid1')
-        root_revision = tree.get_file_revision(tree.get_root_id())
+        root_revision = tree.get_file_revision(u'', tree.get_root_id())
         self.assertEqual('revid1', root_revision)
 
     def test_install_revisions(self):

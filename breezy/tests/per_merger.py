@@ -310,7 +310,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
 
     def test_change_vs_deleted(self):
         """Hook is used for (changed, deleted)"""
@@ -322,7 +322,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
 
     def test_result_can_be_delete(self):
         """A hook's result can be the deletion of a file."""
@@ -344,7 +344,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         # The hook still gets to set the file contents in this case, so that it
         # can insert custom conflict markers.
         self.assertEqual(
-            builder.this.get_file('1').read(),
+            builder.this.get_file('name1').read(),
             'text-with-conflict-markers-from-hook')
 
     def test_can_access_this_other_and_base_versions(self):
@@ -368,7 +368,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
         self.assertEqual([('inactive',), ('success',)], self.hook_log)
 
     def test_chain_when_not_applicable(self):
@@ -382,7 +382,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
         self.assertEqual([('no-op',), ('success',)], self.hook_log)
 
     def test_chain_stops_after_success(self):

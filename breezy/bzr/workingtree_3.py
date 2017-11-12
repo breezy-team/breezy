@@ -82,10 +82,8 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 trace.mutter('Could not write hashcache for %s\nError: %s',
                               self._hashcache.cache_file_name(), e)
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
         with self.lock_read():
-            if not path:
-                path = self._inventory.id2path(file_id)
             return self._hashcache.get_sha1(path, stat_value)
 
 

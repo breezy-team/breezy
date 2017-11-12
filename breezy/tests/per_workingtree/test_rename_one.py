@@ -81,7 +81,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.commit('initial')
         root_id = tree.get_root_id()
 
-        a_contents = tree.get_file_text(a_id)
+        a_contents = tree.get_file_text('a', a_id)
         tree.rename_one('a', 'foo')
         self.assertTreeLayout([('', root_id), ('b/', b_id), ('foo', a_id)],
                               tree)
@@ -99,7 +99,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.commit('initial')
         root_id = tree.get_root_id()
 
-        a_contents = tree.get_file_text(a_id)
+        a_contents = tree.get_file_text('a', a_id)
         tree.rename_one('a', 'b/foo')
         self.assertTreeLayout([('', root_id), ('b/', b_id), ('b/foo', a_id)],
                               tree)
@@ -121,7 +121,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                                ('b/c', c_id)], tree)
         self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
                                ('b/c', c_id)], tree.basis_tree())
-        a_contents = tree.get_file_text(a_id)
+        a_contents = tree.get_file_text('a', a_id)
         tree.rename_one('a', 'b/d')
         self.assertTreeLayout([('', root_id), ('b/', b_id), ('b/c', c_id),
                                ('b/d', a_id)], tree)
@@ -139,7 +139,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         c_id = tree.path2id('b/c')
         tree.commit('initial')
         root_id = tree.get_root_id()
-        c_contents = tree.get_file_text(c_id)
+        c_contents = tree.get_file_text('c', c_id)
         tree.rename_one('b/c', 'd')
         self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
                                ('d', c_id)], tree)

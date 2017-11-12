@@ -321,10 +321,12 @@ class BundleSerializerV08(BundleSerializer):
                           path, path)
 
         for path, file_id, kind in delta.unchanged:
-            new_rev = new_tree.get_file_revision(file_id)
+            new_rev = new_tree.get_file_revision(
+                    new_tree.id2path(file_id), file_id)
             if new_rev is None:
                 continue
-            old_rev = old_tree.get_file_revision(file_id)
+            old_rev = old_tree.get_file_revision(
+                    old_tree.id2path(file_id), file_id)
             if new_rev != old_rev:
                 action = Action('modified', [new_tree.kind(file_id),
                                              new_tree.id2path(file_id)])

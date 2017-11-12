@@ -1007,7 +1007,7 @@ class Merge3Merger(object):
                     def get_sha1(ie, tree):
                         if ie.kind != 'file':
                             return None
-                        return tree.get_file_sha1(file_id)
+                        return tree.get_file_sha1(tree.id2path(file_id), file_id)
                     base_sha1 = get_sha1(base_ie, self.base_tree)
                     lca_sha1s = [get_sha1(ie, tree) for ie, tree
                                  in zip(lca_entries, self._lca_trees)]
@@ -1071,10 +1071,11 @@ class Merge3Merger(object):
     def write_modified(self, results):
         modified_hashes = {}
         for path in results.modified_paths:
-            file_id = self.working_tree.path2id(self.working_tree.relpath(path))
+            wt_relpath = self.working_tree.relpath(path)
+            file_id = self.working_tree.path2id(wt_relpath)
             if file_id is None:
                 continue
-            hash = self.working_tree.get_file_sha1(file_id)
+            hash = self.working_tree.get_file_sha1(wt_relpath, file_id)
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
@@ -1097,9 +1098,11 @@ class Merge3Merger(object):
     @staticmethod
     def contents_sha1(tree, file_id):
         """Determine the sha1 of the file contents (used as a key method)."""
-        if not tree.has_id(file_id):
+        try:
+            path = tree.id2path(file_id)
+        except errors.NoSuchId:
             return None
-        return tree.get_file_sha1(file_id)
+        return tree.get_file_sha1(path, file_id)
 
     @staticmethod
     def executable(tree, file_id):
@@ -1258,9 +1261,10 @@ class Merge3Merger(object):
                 return (None, None)
             kind = tree.kind(file_id)
             if kind == "file":
-                contents = tree.get_file_sha1(file_id)
+                contents = tree.get_file_sha1(tree.id2path(file_id), file_id)
             elif kind == "symlink":
-                contents = tree.get_symlink_target(file_id)
+                contents = tree.get_symlink_target(
+                    tree.id2path(file_id), file_id)
             else:
                 contents = None
             return kind, contents
@@ -1414,10 +1418,12 @@ class Merge3Merger(object):
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
-        if tree.has_id(file_id):
-            return tree.get_file_lines(file_id)
-        else:
+        try:
+            path = tree.id2path(file_id)
+        except errors.NoSuchId:
             return []
+        else:
+            return tree.get_file_lines(path, file_id)
 
     def text_merge(self, file_id, trans_id):
         """Perform a three-way text merge on a file_id"""
@@ -1705,7 +1711,7 @@ class Diff3Merger(Merge3Merger):
         out_path = osutils.pathjoin(temp_dir, name)
         out_file = open(out_path, "wb")
         try:
-            in_file = tree.get_file(file_id)
+            in_file = tree.get_file(tree.id2path(file_id), file_id)
             for line in in_file:
                 out_file.write(line)
         finally:

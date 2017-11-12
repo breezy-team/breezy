@@ -85,16 +85,12 @@ class MemoryTree(MutableInventoryTree):
         missing files, so is a no-op.
         """
 
-    def get_file(self, file_id, path=None):
+    def get_file(self, path, file_id=None):
         """See Tree.get_file."""
-        if path is None:
-            path = self.id2path(file_id)
         return self._file_transport.get(path)
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
         """See Tree.get_file_sha1()."""
-        if path is None:
-            path = self.id2path(file_id)
         stream = self._file_transport.get(path)
         return sha_file(stream)
 
@@ -238,7 +234,7 @@ class MemoryTree(MutableInventoryTree):
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
                 self._file_transport.put_file(path,
-                    self._basis_tree.get_file(entry.file_id))
+                    self._basis_tree.get_file(path, entry.file_id))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 

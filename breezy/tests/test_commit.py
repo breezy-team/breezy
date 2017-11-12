@@ -101,13 +101,13 @@ class TestCommit(TestCaseWithTransport):
 
         tree1 = b.repository.revision_tree(rev1)
         tree1.lock_read()
-        text = tree1.get_file_text(file_id)
+        text = tree1.get_file_text('hello')
         tree1.unlock()
         self.assertEqual('hello world', text)
 
         tree2 = b.repository.revision_tree(rev2)
         tree2.lock_read()
-        text = tree2.get_file_text(file_id)
+        text = tree2.get_file_text('hello')
         tree2.unlock()
         self.assertEqual('version 2', text)
 
@@ -243,14 +243,14 @@ class TestCommit(TestCaseWithTransport):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         self.assertTrue(tree2.has_filename('hello'))
-        self.assertEqual(tree2.get_file_text('hello-id'), 'hello')
-        self.assertEqual(tree2.get_file_text('buongia-id'), 'new text')
+        self.assertEqual(tree2.get_file_text('hello'), 'hello')
+        self.assertEqual(tree2.get_file_text('buongia'), 'new text')
 
         tree3 = b.repository.revision_tree('test@rev-3')
         tree3.lock_read()
         self.addCleanup(tree3.unlock)
         self.assertFalse(tree3.has_filename('hello'))
-        self.assertEqual(tree3.get_file_text('buongia-id'), 'new text')
+        self.assertEqual(tree3.get_file_text('buongia'), 'new text')
 
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
@@ -268,18 +268,18 @@ class TestCommit(TestCaseWithTransport):
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
         eq(tree1.id2path('hello-id'), 'hello')
-        eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
+        eq(tree1.get_file_text('hello'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
         self.check_tree_shape(tree1, ['hello'])
-        eq(tree1.get_file_revision('hello-id'), 'test@rev-1')
+        eq(tree1.get_file_revision('hello'), 'test@rev-1')
 
         tree2 = b.repository.revision_tree('test@rev-2')
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
-        eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
+        eq(tree2.get_file_text('hello'), 'contents of hello\n')
         self.check_tree_shape(tree2, ['fruity'])
-        eq(tree2.get_file_revision('hello-id'), 'test@rev-2')
+        eq(tree2.get_file_revision('hello'), 'test@rev-2')
 
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""

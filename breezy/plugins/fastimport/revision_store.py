@@ -66,12 +66,14 @@ class _TreeShim(object):
         # TODO: Handle root renames?
         return self._basis_inv.root.file_id
 
-    def get_file_with_stat(self, file_id, path=None):
-        content = self.get_file_text(file_id, path)
+    def get_file_with_stat(self, path, file_id=None):
+        content = self.get_file_text(path, file_id)
         sio = StringIO(content)
         return sio, None
 
-    def get_file_text(self, file_id, path=None):
+    def get_file_text(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         try:
             return self._content_provider(file_id)
         except KeyError:

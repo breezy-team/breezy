@@ -270,8 +270,10 @@ class ShelfCreator(object):
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
-        target_lines = self.target_tree.get_file_lines(file_id)
-        work_lines = self.work_tree.get_file_lines(file_id)
+        target_path = self.target_tree.id2path(file_id)
+        target_lines = self.target_tree.get_file_lines(target_path, file_id)
+        wt_path = self.work_tree.id2path(file_id)
+        work_lines = self.work_tree.get_file_lines(wt_path, file_id)
         return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):

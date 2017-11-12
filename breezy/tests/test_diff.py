@@ -700,10 +700,9 @@ class DiffWasIs(diff.DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         self.to_file.write('was: ')
-        self.to_file.write(self.old_tree.get_file(file_id).read())
+        self.to_file.write(self.old_tree.get_file(old_path).read())
         self.to_file.write('is: ')
-        self.to_file.write(self.new_tree.get_file(file_id).read())
-        pass
+        self.to_file.write(self.new_tree.get_file(new_path).read())
 
 
 class TestDiffTree(tests.TestCaseWithTransport):

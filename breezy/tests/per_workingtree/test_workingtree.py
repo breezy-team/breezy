@@ -949,7 +949,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add('file')
         tree.commit('file added')
         os.unlink('file')
-        self.assertIs(None, tree.get_file_sha1(tree.path2id('file')))
+        self.assertIs(None, tree.get_file_sha1('file'))
 
     def test_no_file_sha1(self):
         """If a file is not present, get_file_sha1 should raise NoSuchId"""
@@ -964,7 +964,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo')
         tree.remove('file')
         self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
-                          file_id)
+                          'file')
 
     def test_case_sensitive(self):
         """If filesystem is case-sensitive, tree should report this.

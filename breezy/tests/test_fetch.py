@@ -251,7 +251,7 @@ class TestMergeFileHistory(TestCaseWithTransport):
                              ('2-2', 'agreement\n')]:
             self.assertEqualDiff(
                 br2.repository.revision_tree(
-                    rev_id).get_file_text('this-file-id'), text)
+                    rev_id).get_file_text('file'), text)
 
 
 class TestKnitToPackFetch(TestCaseWithTransport):

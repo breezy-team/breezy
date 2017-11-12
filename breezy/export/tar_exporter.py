@@ -49,7 +49,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     if force_mtime is not None:
         item.mtime = force_mtime
     else:
-        item.mtime = tree.get_file_mtime(entry.file_id, tree_path)
+        item.mtime = tree.get_file_mtime(tree_path, entry.file_id)
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
         if tree.is_executable(tree_path, entry.file_id):
@@ -60,7 +60,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         # the tarfile contract, which wants the size of the file up front.  We
         # want to make sure it doesn't change, and we need to read it in one
         # go for content filtering.
-        content = tree.get_file_text(entry.file_id, tree_path)
+        content = tree.get_file_text(tree_path, entry.file_id)
         item.size = len(content)
         fileobj = BytesIO(content)
     elif entry.kind == "directory":
@@ -124,7 +124,7 @@ def tgz_exporter_generator(tree, dest, root, subdir, force_mtime=None,
         rev = tree.repository.get_revision(tree.get_revision_id())
         root_mtime = rev.timestamp
     elif tree.get_root_id() is not None:
-        root_mtime = tree.get_file_mtime(tree.get_root_id())
+        root_mtime = tree.get_file_mtime('', tree.get_root_id())
     else:
         root_mtime = None
 

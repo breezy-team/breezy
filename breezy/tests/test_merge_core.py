@@ -252,8 +252,8 @@ class MergeTest(TestCaseWithTransport):
         builder.add_file("2", builder.tree_root, "name2", "hello1", True)
         builder.change_contents("2", other="text4")
         builder.merge(interesting_ids=["1"])
-        self.assertEqual(builder.this.get_file("1").read(), "text4" )
-        self.assertEqual(builder.this.get_file("2").read(), "hello1" )
+        self.assertEqual(builder.this.get_file("name1").read(), "text4" )
+        self.assertEqual(builder.this.get_file("name2").read(), "hello1" )
         builder.cleanup()
 
     def test_file_moves(self):
@@ -344,10 +344,10 @@ y
         conflicts = builder.merge(merge_factory)
         try:
             self.assertEqual([], conflicts)
-            self.assertEqual("text4", builder.this.get_file("1").read())
-            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("text4", builder.this.get_file("name1").read())
+            self.assertEqual("text2", builder.this.get_file("name2").read())
             self.assertEqual("a\nz\nc\nd\ne\nz\n",
-                             builder.this.get_file("5").read())
+                             builder.this.get_file("name7").read())
             self.assertTrue(builder.this.is_executable("name1"))
             self.assertFalse(builder.this.is_executable("name3"))
             self.assertTrue(builder.this.is_executable("name5"))
@@ -370,7 +370,7 @@ y
         self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
                                      ContentsConflict('name2', file_id='2'),
                                      ContentsConflict('name3', file_id='3')])
-        self.assertEqual(builder.this.get_file('2').read(), '\x00')
+        self.assertEqual(builder.this.get_file('name2').read(), '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -447,7 +447,7 @@ y
         builder.change_name('1', this='name2')
         builder.change_contents('1', other='text2')
         builder.merge(interesting_files=['name2'])
-        self.assertEqual('text2', builder.this.get_file('1').read())
+        self.assertEqual('text2', builder.this.get_file('name2').read())
         builder.cleanup()
 
 

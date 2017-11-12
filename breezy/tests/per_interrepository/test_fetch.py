@@ -77,10 +77,10 @@ class TestInterRepository(TestCaseWithInterRepository):
             tree = repo.revision_tree('rev1')
             tree.lock_read()
             self.addCleanup(tree.unlock)
-            tree.get_file_text('file1')
+            tree.get_file_text('foo')
             for file_id in tree.all_file_ids():
                 if tree.kind(file_id) == "file":
-                    tree.get_file(file_id).read()
+                    tree.get_file(tree.id2path(file_id)).read()
 
         # makes a target version repo
         repo_b = self.make_to_repository('b')
@@ -407,7 +407,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         """If fetching a delta, we should die if a basis is not present."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'])
         tree.commit('one', rev_id='rev-one')
         self.build_tree_contents([('tree/a', 'new contents\n')])
         tree.commit('two', rev_id='rev-two')
@@ -451,7 +451,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             try:
                 rt = to_repo.revision_tree('rev-two')
                 self.assertEqual('new contents\n',
-                                 rt.get_file_text('a-id'))
+                                 rt.get_file_text('a'))
             finally:
                 to_repo.unlock()
 
