@@ -1528,7 +1528,7 @@ class Merge3Merger(object):
         for suffix, tree, lines in data:
             try:
                 path = tree.id2path(file_id)
-            except KeyError:
+            except errors.NoSuchId:
                 pass
             else:
                 trans_id = self._conflict_file(

@@ -753,12 +753,13 @@ class CommonInventory(object):
             if (not yield_parents and specific_file_ids is not None and
                 len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
-                try:
-                    path = self.id2path(file_id)
-                except errors.NoSuchId:
-                    pass
-                else:
-                    yield path, self[file_id]
+                if file_id is not None:
+                    try:
+                        path = self.id2path(file_id)
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        yield path, self[file_id]
                 return
             from_dir = self.root
             if (specific_file_ids is None or yield_parents or
