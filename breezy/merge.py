@@ -1527,7 +1527,7 @@ class Merge3Merger(object):
         file_group = []
         for suffix, tree, lines in data:
             try:
-                path = tree.id2path(path)
+                path = tree.id2path(file_id)
             except KeyError:
                 pass
             else:
