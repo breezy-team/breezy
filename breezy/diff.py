@@ -857,7 +857,7 @@ class DiffFromTool(DiffPath):
                 old_path, new_path, file_id=file_id)
         self._execute(old_disk_path, new_disk_path)
 
-    def edit_file(self, file_id):
+    def edit_file(self, old_path, new_path, file_id=None):
         """Use this tool to edit a file.
 
         A temporary copy will be edited, and the new contents will be
@@ -866,12 +866,9 @@ class DiffFromTool(DiffPath):
         :param file_id: The id of the file to edit.
         :return: The new contents of the file.
         """
-        old_path = self.old_tree.id2path(file_id)
-        new_path = self.new_tree.id2path(file_id)
         old_abs_path, new_abs_path = self._prepare_files(
-                                            old_path, new_path,
-                                            allow_write_new=True,
-                                            force_temp=True, file_id=file_id)
+                old_path, new_path, allow_write_new=True, force_temp=True,
+                file_id=file_id)
         command = self._get_command(old_abs_path, new_abs_path)
         subprocess.call(command, cwd=self._root)
         new_file = open(new_abs_path, 'rb')

@@ -231,7 +231,6 @@ class Shelver(object):
             self.change_editor.finish()
         self.work_tree.unlock()
 
-
     def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
@@ -364,7 +363,10 @@ class Shelver(object):
             content of the file, and change_region_count is the number of
             changed regions.
         """
-        lines = osutils.split_lines(self.change_editor.edit_file(file_id))
+        lines = osutils.split_lines(self.change_editor.edit_file(
+            self.change_editor.old_tree.id2path(file_id),
+            self.change_editor.new_tree.id2path(file_id),
+            file_id=file_id))
         return lines, self._count_changed_regions(work_tree_lines, lines)
 
     @staticmethod

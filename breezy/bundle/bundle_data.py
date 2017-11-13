@@ -638,7 +638,7 @@ class BundleTree(Tree):
         file_patch = self.patches.get(path)
         if file_patch is None:
             if (patch_original is None and
-                self.kind(file_id) == 'directory'):
+                self.kind(path, file_id) == 'directory'):
                 return BytesIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
@@ -656,9 +656,10 @@ class BundleTree(Tree):
             return self.base_tree.get_symlink_target(path, file_id)
 
     def kind(self, path, file_id=None):
-        if file_id in self._kinds:
+        try:
             return self._kinds[path]
-        return self.base_tree.kind(path, file_id)
+        except KeyError:
+            return self.base_tree.kind(path, file_id)
 
     def get_file_revision(self, path, file_id=None):
         if path in self._last_changed:
@@ -703,32 +704,29 @@ class BundleTree(Tree):
         from os.path import dirname, basename
         inv = Inventory(None, self.revision_id)
 
-        def add_entry(file_id):
-            path = self.id2path(file_id)
-            if path is None:
-                return
+        def add_entry(path, file_id):
             if path == '':
                 parent_id = None
             else:
                 parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
-            kind = self.kind(file_id)
-            revision_id = self.get_last_changed(file_id)
+            kind = self.kind(path, file_id)
+            revision_id = self.get_last_changed(path, file_id)
 
             name = basename(path)
             if kind == 'directory':
                 ie = InventoryDirectory(file_id, name, parent_id)
             elif kind == 'file':
                 ie = InventoryFile(file_id, name, parent_id)
-                ie.executable = self.is_executable(file_id)
+                ie.executable = self.is_executable(path, file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(file_id, path)
+                ie.symlink_target = self.get_symlink_target(path, file_id)
             ie.revision = revision_id
 
             if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path, file_id)
                 if ie.text_size is None:
                     raise BzrError(
                         'Got a text_size of None for file_id %r' % file_id)
@@ -736,7 +734,7 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            add_entry(file_id)
+            add_entry(path, file_id)
 
         return inv
 

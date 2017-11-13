@@ -2257,6 +2257,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         """See Tree.get_file_mtime"""
         if file_id is None:
             file_id = self.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(
                     self._transform._tree.id2path(file_id), file_id)
