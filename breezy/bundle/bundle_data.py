@@ -726,7 +726,8 @@ class BundleTree(Tree):
             ie.revision = revision_id
 
             if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path, file_id)
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(
+                        path, file_id)
                 if ie.text_size is None:
                     raise BzrError(
                         'Got a text_size of None for file_id %r' % file_id)

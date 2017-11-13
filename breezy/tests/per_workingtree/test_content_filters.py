@@ -154,8 +154,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             expected = "fOO tXT"
         else:
             expected = "Foo Txt"
-        self.assertEqual(expected, basis.get_file_text(basis.id2path(txt_fileid)))
-        self.assertEqual('Foo Bin', basis.get_file_text(basis.id2path(bin_fileid)))
+        self.assertEqual(
+                expected,
+                basis.get_file_text(basis.id2path(txt_fileid)))
+        self.assertEqual(
+                'Foo Bin',
+                basis.get_file_text(basis.id2path(bin_fileid)))
         # Check that the working tree has the original content
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -239,9 +243,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.addCleanup(source.unlock)
 
         expected_canonical_form = 'Foo Txt\nend string\n'
-        self.assertEqual(source.get_file(source.id2path(txt_fileid), filtered=True).read(),
+        self.assertEqual(
+            source.get_file(source.id2path(txt_fileid), filtered=True).read(),
             expected_canonical_form)
-        self.assertEqual(source.get_file(source.id2path(txt_fileid), filtered=False).read(),
+        self.assertEqual(
+            source.get_file(source.id2path(txt_fileid), filtered=False).read(),
             'Foo Txt')
 
         # results are: kind, size, executable, sha1_or_link_target

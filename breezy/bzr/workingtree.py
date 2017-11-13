@@ -817,7 +817,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 try:
                     parent_tree = self.revision_tree(parent_id)
                 except errors.NoSuchRevisionInTree:
-                    parent_tree = self.branch.repository.revision_tree(parent_id)
+                    parent_tree = self.branch.repository.revision_tree(
+                            parent_id)
                 with parent_tree.lock_read():
 
                     try:
@@ -831,7 +832,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         continue
                     parent_path = parent_tree.id2path(file_id)
                     parent_text_key = (
-                        file_id, parent_tree.get_file_revision(parent_path, file_id))
+                        file_id,
+                        parent_tree.get_file_revision(parent_path, file_id))
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
             graph = _mod_graph.Graph(self.branch.repository.texts)

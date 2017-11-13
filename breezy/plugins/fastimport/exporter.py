@@ -488,7 +488,8 @@ class BzrFastExporter(object):
             if kind == 'file':
                 text = tree_new.get_file_text(path, id_)
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
-                    helpers.kind_to_mode('file', tree_new.is_executable(path, id_)),
+                    helpers.kind_to_mode(
+                        'file', tree_new.is_executable(path, id_)),
                     None, text))
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
@@ -496,9 +497,10 @@ class BzrFastExporter(object):
                     None, tree_new.get_symlink_target(path, id_)))
             elif kind == 'directory':
                 if not self.plain_format:
-                    file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
-                        helpers.kind_to_mode('directory', False),
-                        None, None))
+                    file_cmds.append(
+                            commands.FileModifyCommand(path.encode("utf-8"),
+                                helpers.kind_to_mode('directory', False), None,
+                                None))
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                     (path, kind))

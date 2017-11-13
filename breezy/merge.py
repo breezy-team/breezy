@@ -1030,7 +1030,8 @@ class Merge3Merger(object):
                     def get_target(ie, tree):
                         if ie.kind != 'symlink':
                             return None
-                        return tree.get_symlink_target(tree.id2path(file_id), file_id)
+                        path = tree.id2path(file_id)
+                        return tree.get_symlink_target(path, file_id)
                     base_target = get_target(base_ie, self.base_tree)
                     lca_targets = [get_target(ie, tree) for ie, tree
                                    in zip(lca_entries, self._lca_trees)]
@@ -1525,22 +1526,29 @@ class Merge3Merger(object):
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
-            if tree.has_id(file_id):
-                trans_id = self._conflict_file(name, parent_id, tree, file_id,
-                                               suffix, lines, filter_tree_path)
+            try:
+                path = tree.id2path(path)
+            except KeyError:
+                pass
+            else:
+                trans_id = self._conflict_file(
+                        name, parent_id, path, tree, file_id, suffix, lines,
+                        filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
                     self.tt.version_file(file_id, trans_id)
                     versioned = True
         return file_group
 
-    def _conflict_file(self, name, parent_id, tree, file_id, suffix,
+    def _conflict_file(self, name, parent_id, path, tree, file_id, suffix,
                        lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        transform.create_from_tree(self.tt, trans_id, tree, tree.id2path(file_id),
-                file_id=file_id, bytes=lines, filter_tree_path=filter_tree_path)
+        transform.create_from_tree(
+                self.tt, trans_id, tree, path,
+                file_id=file_id, bytes=lines,
+                filter_tree_path=filter_tree_path)
         return trans_id
 
     def merge_executable(self, file_id, file_status):

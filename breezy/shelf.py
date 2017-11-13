@@ -125,8 +125,10 @@ class ShelfCreator(object):
                 if kind[0] != kind [1]:
                     yield ('change kind', file_id, kind[0], kind[1], paths[0])
                 elif kind[0] == 'symlink':
-                    t_target = self.target_tree.get_symlink_target(paths[0], file_id)
-                    w_target = self.work_tree.get_symlink_target(paths[1], file_id)
+                    t_target = self.target_tree.get_symlink_target(
+                            paths[0], file_id)
+                    w_target = self.work_tree.get_symlink_target(
+                            paths[1], file_id)
                     yield ('modify target', file_id, paths[0], t_target,
                             w_target)
                 elif changed:
@@ -266,8 +268,9 @@ class ShelfCreator(object):
                 if kind is None:
                     to_transform.create_file('', s_trans_id)
                 else:
-                    transform.create_from_tree(to_transform, s_trans_id,
-                                               tree, tree.id2path(file_id), file_id)
+                    transform.create_from_tree(
+                            to_transform, s_trans_id, tree,
+                            tree.id2path(file_id), file_id)
         if version:
             to_transform.version_file(file_id, s_trans_id)
 

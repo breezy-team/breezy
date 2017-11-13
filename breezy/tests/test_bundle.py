@@ -536,8 +536,9 @@ class BundleTester(object):
                         continue
                     if old_file is None:
                         continue
-                    self.assertEqual(old_file.read(),
-                                     new.get_file(new.id2path(inventory_id)).read())
+                    self.assertEqual(
+                            old_file.read(),
+                            new.get_file(new.id2path(inventory_id)).read())
             finally:
                 new.unlock()
                 old.unlock()
