@@ -1264,7 +1264,10 @@ class Merge3Merger(object):
                 path = tree.id2path(file_id)
             except errors.NoSuchId:
                 return (None, None)
-            kind = tree.kind(path, file_id)
+            try:
+                kind = tree.kind(path, file_id)
+            except errors.NoSuchFile:
+                return (None, None)
             if kind == "file":
                 contents = tree.get_file_sha1(path, file_id)
             elif kind == "symlink":
