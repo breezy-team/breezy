@@ -200,7 +200,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         if kind == "file":
             blob = Blob()
             try:
-                file, stat_val = self.get_file_with_stat(None, path)
+                file, stat_val = self.get_file_with_stat(path)
             except (errors.NoSuchFile, IOError):
                 # TODO: Rather than come up with something here, use the old index
                 file = StringIO()
@@ -217,7 +217,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(
-                self.get_symlink_target(None, path).encode("utf-8"))
+                self.get_symlink_target(path).encode("utf-8"))
         else:
             raise AssertionError("unknown kind '%s'" % kind)
         # Add object to the repository if it didn't exist yet
@@ -521,11 +521,14 @@ class GitWorkingTree(workingtree.WorkingTree):
                 return path.decode("utf-8")
             raise errors.NoSuchId(self, file_id)
 
-    def get_file_mtime(self, file_id, path=None):
+    def get_file_mtime(self, path, file_id=None):
         """See Tree.get_file_mtime."""
-        if not path:
-            path = self.id2path(file_id)
-        return os.lstat(self.abspath(path)).st_mtime
+        try:
+            return os.lstat(self.abspath(path)).st_mtime
+        except OSError, (num, msg):
+            if num == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -575,21 +578,17 @@ class GitWorkingTree(workingtree.WorkingTree):
             self._basis_fileid_map = self.mapping.get_fileid_map(
                 self.store.__getitem__, self.store[head].tree)
 
-    def get_file_verifier(self, file_id, path=None, stat_value=None):
+    def get_file_verifier(self, path, file_id=None, stat_value=None):
         with self.lock_read():
-            if path is None:
-                path = self.id2path(file_id)
             try:
                 return ("GIT", self.index[path][-2])
             except KeyError:
                 if self._has_dir(path):
                     return ("GIT", None)
-                raise errors.NoSuchId(self, file_id)
+                raise errors.NoSuchFile(path)
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
         with self.lock_read():
-            if not path:
-                path = self.id2path(file_id)
             abspath = self.abspath(path).encode(osutils._fs_enc)
             try:
                 return osutils.sha_file_by_name(abspath)
@@ -635,12 +634,12 @@ class GitWorkingTree(workingtree.WorkingTree):
         kind = mode_kind(mode)
         ie = inventory.entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
-            ie.symlink_target = self.get_symlink_target(file_id)
+            ie.symlink_target = self.get_symlink_target(path, file_id)
         else:
-            data = self.get_file_text(file_id, path)
+            data = self.get_file_text(path, file_id)
             ie.text_sha1 = osutils.sha_string(data)
             ie.text_size = len(data)
-            ie.executable = self.is_executable(file_id, path)
+            ie.executable = self.is_executable(path, file_id)
         ie.revision = None
         return ie
 
@@ -648,28 +647,24 @@ class GitWorkingTree(workingtree.WorkingTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    def stored_kind(self, file_id, path=None):
+    def stored_kind(self, path, file_id=None):
         with self.lock_read():
-            if path is None:
-                path = self.id2path(file_id)
             try:
                 return mode_kind(self.index[path.encode("utf-8")][4])
             except KeyError:
                 # Maybe it's a directory?
                 if self._has_dir(path):
                     return "directory"
-                raise errors.NoSuchId(self, file_id)
+                raise errors.NoSuchFile(path)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
-            if not path:
-                path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         else:
             basis_tree = self.basis_tree()
             if file_id in basis_tree:
-                return basis_tree.is_executable(file_id)
+                return basis_tree.is_executable(path, file_id)
             # Default to not executable
             return False
 

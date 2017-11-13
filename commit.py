@@ -73,12 +73,12 @@ class GitCommitBuilder(CommitBuilder):
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         def link_sha1(path, file_id):
             blob = Blob()
-            blob.data = workingtree.get_symlink_target(file_id, path).encode("utf-8")
+            blob.data = workingtree.get_symlink_target(path, file_id).encode("utf-8")
             self.store.add_object(blob)
             return blob.id
         def text_sha1(path, file_id):
             blob = Blob()
-            blob.data = workingtree.get_file_text(file_id, path)
+            blob.data = workingtree.get_file_text(path, file_id)
             self.store.add_object(blob)
             return blob.id
         def treeref_sha1(path, file_id):
@@ -111,13 +111,13 @@ class GitCommitBuilder(CommitBuilder):
                 mode |= 0111
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
-            file_sha1 = workingtree.get_file_sha1(file_id, path[1])
+            file_sha1 = workingtree.get_file_sha1(path[1], file_id)
             if file_sha1 is None:
                 # File no longer exists
                 if path[0] is not None:
                     self._blobs[path[0].encode("utf-8")] = None
                 continue
-            _, st = workingtree.get_file_with_stat(file_id, path[1])
+            _, st = workingtree.get_file_with_stat(path[1], file_id)
             yield file_id, path[1], (file_sha1, st)
             self._override_fileids[encoded_new_path] = file_id
         if not seen_root and len(self.parents) == 0:
@@ -142,7 +142,7 @@ class GitCommitBuilder(CommitBuilder):
                     self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
                 elif entry.kind == "file":
                     blob = Blob()
-                    blob.data = basis_tree.get_file_text(entry.file_id, path)
+                    blob.data = basis_tree.get_file_text(path, entry.file_id)
                     self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
                 else:
                     (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), update_index=True)
