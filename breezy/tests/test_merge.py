@@ -2327,7 +2327,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
         self.assertEqual('barry', wt.id2path('foo-id'))
-        self.assertEqual('bar', wt.get_symlink_target('foo'))
+        self.assertEqual('bar', wt.get_symlink_target('barry'))
         wt.commit('E merges C & B', rev_id='E-id')
         wt.rename_one('barry', 'blah')
         wt.commit('F barry => blah', rev_id='F-id')

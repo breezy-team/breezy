@@ -727,17 +727,20 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
         differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
-        differ.diff_text('file-id', None, 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', None, 'old label',
+                         'new label', 'file-id', None)
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text(None, 'file-id', 'old label', 'new label')
+        differ.diff_text(None, 'newdir/newfile',
+                         'old label', 'new label', None, 'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -0,0 +1,1 @@\n+new\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text('file-id', 'file-id', 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', 'newdir/newfile',
+                         'old label', 'new label', 'file-id', 'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())

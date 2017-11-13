@@ -670,20 +670,22 @@ class DiffText(DiffPath):
             return self.CANNOT_DIFF
         from_label = '%s%s\t%s' % (self.old_label, old_path, old_date)
         to_label = '%s%s\t%s' % (self.new_label, new_path, new_date)
-        return self.diff_text(from_file_id, to_file_id, from_label, to_label,
-            old_path, new_path)
+        return self.diff_text(old_path, new_path, from_label, to_label,
+            from_file_id, to_file_id)
 
-    def diff_text(self, from_file_id, to_file_id, from_label, to_label,
-        from_path=None, to_path=None):
+    def diff_text(self, from_path, to_path, from_label, to_label,
+        from_file_id=None, to_file_id=None):
         """Diff the content of given files in two trees
 
-        :param from_file_id: The id of the file in the from tree.  If None,
+        :param from_path: The path in the from tree. If None,
             the file is not present in the from tree.
-        :param to_file_id: The id of the file in the to tree.  This may refer
-            to a different file from from_file_id.  If None,
+        :param to_path: The path in the to tree. This may refer
+            to a different file from from_path.  If None,
             the file is not present in the to tree.
-        :param from_path: The path in the from tree or None if unknown.
-        :param to_path: The path in the to tree or None if unknown.
+        :param from_file_id: The id of the file in the from tree or None if
+            unknown.
+        :param to_file_id: The id of the file in the to tree or None if
+            unknown.
         """
         def _get_text(tree, file_id, path):
             if file_id is None:

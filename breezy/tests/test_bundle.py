@@ -125,7 +125,7 @@ class MockTree(object):
         name = os.path.basename(path)
         kind = self.kind(path, file_id)
         parent_id = self.parent_id(file_id)
-        text_sha_1, text_size = self.contents_stats(file_id)
+        text_sha_1, text_size = self.contents_stats(path, file_id)
         if kind == 'directory':
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
@@ -159,7 +159,10 @@ class MockTree(object):
         if file_id is None:
             file_id = self.path2id(path)
         result = BytesIO()
-        result.write(self.contents[file_id])
+        try:
+            result.write(self.contents[file_id])
+        except KeyError:
+            raise errors.NoSuchFile(path)
         result.seek(0, 0)
         return result
 
@@ -178,10 +181,9 @@ class MockTree(object):
             file_id = self.path2id(path)
         return self.inventory[file_id].text_sha1
 
-    def contents_stats(self, file_id):
+    def contents_stats(self, path, file_id):
         if file_id not in self.contents:
             return None, None
-        path = self.id2path(file_id)
         text_sha1 = osutils.sha_file(self.get_file(path, file_id))
         return text_sha1, len(self.contents[file_id])
 
@@ -293,10 +295,10 @@ class BTreeTester(tests.TestCase):
         self.adds_test(btree)
 
     def adds_test(self, btree):
-        path = btree.id2path("e")
-        self.assertEqual(path, "grandparent/parent/file")
+        self.assertEqual(btree.id2path("e"), "grandparent/parent/file")
         self.assertEqual(btree.path2id("grandparent/parent/file"), "e")
-        self.assertEqual(btree.get_file(path).read(), "Extra cheese\n")
+        self.assertEqual(btree.get_file("grandparent/parent/file").read(),
+                         "Extra cheese\n")
         self.assertEqual(
             btree.get_symlink_target('grandparent/parent/symlink'), 'venus')
 

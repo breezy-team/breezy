@@ -462,15 +462,22 @@ class InventoryFile(InventoryEntry):
         from_file_id = self.file_id
         if to_entry:
             to_file_id = to_entry.file_id
+            to_path = to_tree.id2path(to_file_id)
         else:
             to_file_id = None
+            to_path = None
+        if from_file_id is not None:
+            from_path = tree.id2path(from_file_id)
+        else:
+            from_path = None
         if reverse:
             to_file_id, from_file_id = from_file_id, to_file_id
             tree, to_tree = to_tree, tree
             from_label, to_label = to_label, from_label
         differ = DiffText(tree, to_tree, output_to, 'utf-8', '', '',
                           text_diff)
-        return differ.diff_text(from_file_id, to_file_id, from_label, to_label)
+        return differ.diff_text(from_path, to_path, from_label, to_label,
+                                from_file_id, to_file_id)
 
     def has_text(self):
         """See InventoryEntry.has_text."""
