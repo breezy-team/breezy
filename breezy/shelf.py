@@ -127,7 +127,8 @@ class ShelfCreator(object):
                 elif kind[0] == 'symlink':
                     t_target = self.target_tree.get_symlink_target(paths[0], file_id)
                     w_target = self.work_tree.get_symlink_target(paths[1], file_id)
-                    yield ('modify target', file_id, paths[0], t_target, w_target)
+                    yield ('modify target', file_id, paths[0], t_target,
+                            w_target)
                 elif changed:
                     yield ('modify text', file_id)
 
@@ -142,7 +143,7 @@ class ShelfCreator(object):
         elif change[0] in ('change kind', 'modify text'):
             self.shelve_content_change(change[1])
         elif change[0] == 'modify target':
-            self.shelve_modify_target(change[1], change[2], change[3])
+            self.shelve_modify_target(change[1])
         else:
             raise ValueError('Unknown change kind: "%s"' % change[0])
 
@@ -170,20 +171,24 @@ class ShelfCreator(object):
         shelf_parent = self.shelf_transform.trans_id_file_id(parents[1])
         self.shelf_transform.adjust_path(names[1], shelf_parent, s_trans_id)
 
-    def shelve_modify_target(self, file_id, target_target, work_target):
+    def shelve_modify_target(self, file_id):
         """Shelve a change of symlink target.
 
         :param file_id: The file id of the symlink which changed target.
-        :param target_target: The target tree target
-        :param work_target: The work tree target
+        :param new_target: The target that the symlink should have due
+            to shelving.
         """
+        new_path = self.target_tree.id2path(file_id)
+        new_target = self.target_tree.get_symlink_target(new_path, file_id)
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
-        self.work_transform.create_symlink(work_target, w_trans_id)
+        self.work_transform.create_symlink(new_target, w_trans_id)
 
+        old_path = self.work_tree.id2path(file_id)
+        old_target = self.work_tree.get_symlink_target(old_path, file_id)
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         self.shelf_transform.delete_contents(s_trans_id)
-        self.shelf_transform.create_symlink(target_target, s_trans_id)
+        self.shelf_transform.create_symlink(old_target, s_trans_id)
 
     def shelve_lines(self, file_id, new_lines):
         """Shelve text changes to a file, using provided lines.
@@ -204,9 +209,7 @@ class ShelfCreator(object):
     def _content_from_tree(tt, tree, file_id):
         trans_id = tt.trans_id_file_id(file_id)
         tt.delete_contents(trans_id)
-        transform.create_from_tree(
-                tt, trans_id, tree, tree.id2path(file_id),
-                file_id=file_id)
+        transform.create_from_tree(tt, trans_id, tree, file_id)
 
     def shelve_content_change(self, file_id):
         """Shelve a kind change or binary file content change.
@@ -263,8 +266,7 @@ class ShelfCreator(object):
                     to_transform.create_file('', s_trans_id)
                 else:
                     transform.create_from_tree(to_transform, s_trans_id,
-                                               tree, tree.id2path(file_id),
-                                               file_id=file_id)
+                                               tree, file_id)
         if version:
             to_transform.version_file(file_id, s_trans_id)
 
@@ -272,8 +274,8 @@ class ShelfCreator(object):
         """Produce a version with only those changes removed from new_lines."""
         target_path = self.target_tree.id2path(file_id)
         target_lines = self.target_tree.get_file_lines(target_path, file_id)
-        wt_path = self.work_tree.id2path(file_id)
-        work_lines = self.work_tree.get_file_lines(wt_path, file_id)
+        work_path = self.work_tree.id2path(file_id)
+        work_lines = self.work_tree.get_file_lines(work_path, file_id)
         return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):
