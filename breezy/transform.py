@@ -2749,8 +2749,8 @@ def _content_match(tree, entry, file_id, kind, target_path):
         return False
     if entry.kind == "directory":
         return True
+    path = tree.id2path(file_id)
     if entry.kind == "file":
-        path = tree.id2path(file_id)
         f = file(target_path, 'rb')
         try:
             if tree.get_file_text(path, file_id) == f.read():
