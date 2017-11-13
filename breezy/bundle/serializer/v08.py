@@ -326,8 +326,8 @@ class BundleSerializerV08(BundleSerializer):
                 continue
             old_rev = old_tree.get_file_revision(path, file_id)
             if new_rev != old_rev:
-                action = Action(
-                        'modified', [new_tree.kind(path, file_id), path])
+                action = Action('modified', [new_tree.kind(file_id),
+                                             path])
                 action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)
 
