@@ -249,7 +249,9 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual(link_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
-        self.assertEqual(link_target, ptree.get_symlink_target('foo-id'))
+        self.assertEqual(
+                link_target,
+                ptree.get_symlink_target(ptree.id2path('foo-id'), 'foo-id'))
 
     def test_shelve_symlink_creation(self):
         self._test_shelve_symlink_creation('foo', 'bar')

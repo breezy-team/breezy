@@ -1456,7 +1456,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj = diff.DiffFromTool(['python', '-c',
                                       'print "@old_path @new_path"'],
                                      basis_tree, tree, output)
-        diff_obj._prepare_files('file-id', 'file', 'file')
+        diff_obj._prepare_files('file', 'file', file_id='file-id')
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, 'old\\file',
                                     r'R.*old\\file$')
@@ -1494,8 +1494,8 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
-        old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
-                                                     'newname')
+        old_path, new_path = diff_obj._prepare_files(
+                'oldname', 'newname', file_id='file-id')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
@@ -1504,7 +1504,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+        diff_obj._prepare_files('oldname2', 'newname2', file_id='file2-id')
 
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):

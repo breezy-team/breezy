@@ -798,10 +798,10 @@ class DiffFromTool(DiffPath):
         relpath_tmp = relpath_tmp.replace(u'?', u'_')
         return osutils.pathjoin(self._root, prefix, relpath_tmp)
 
-    def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
-                    allow_write=False):
+    def _write_file(self, relpath, tree, prefix, force_temp=False,
+                    allow_write=False, file_id=None):
         if not force_temp and isinstance(tree, WorkingTree):
-            full_path = tree.abspath(tree.id2path(file_id))
+            full_path = tree.abspath(relpath)
             if self._is_safepath(full_path):
                 return full_path
 
@@ -833,12 +833,12 @@ class DiffFromTool(DiffPath):
             osutils.make_readonly(full_path)
         return full_path
 
-    def _prepare_files(self, file_id, old_path, new_path, force_temp=False,
-                       allow_write_new=False):
-        old_disk_path = self._write_file(file_id, self.old_tree, 'old',
-                                         old_path, force_temp)
-        new_disk_path = self._write_file(file_id, self.new_tree, 'new',
-                                         new_path, force_temp,
+    def _prepare_files(self, old_path, new_path, force_temp=False,
+                       allow_write_new=False, file_id=None):
+        old_disk_path = self._write_file(old_path, self.old_tree, 'old',
+                                         force_temp, file_id=file_id)
+        new_disk_path = self._write_file(new_path, self.new_tree, 'new',
+                                         force_temp, file_id=file_id,
                                          allow_write=allow_write_new)
         return old_disk_path, new_disk_path
 
@@ -854,7 +854,7 @@ class DiffFromTool(DiffPath):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
         (old_disk_path, new_disk_path) = self._prepare_files(
-                                                file_id, old_path, new_path)
+                old_path, new_path, file_id=file_id)
         self._execute(old_disk_path, new_disk_path)
 
     def edit_file(self, file_id):
@@ -869,9 +869,9 @@ class DiffFromTool(DiffPath):
         old_path = self.old_tree.id2path(file_id)
         new_path = self.new_tree.id2path(file_id)
         old_abs_path, new_abs_path = self._prepare_files(
-                                            file_id, old_path, new_path,
+                                            old_path, new_path,
                                             allow_write_new=True,
-                                            force_temp=True)
+                                            force_temp=True, file_id=file_id)
         command = self._get_command(old_abs_path, new_abs_path)
         subprocess.call(command, cwd=self._root)
         new_file = open(new_abs_path, 'rb')
@@ -1026,7 +1026,7 @@ class DiffTree(object):
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))
             if changed_content:
-                self._diff(file_id, oldpath, newpath, kind[0], kind[1])
+                self._diff(oldpath, newpath, kind[0], kind[1], file_id=file_id)
                 has_changes = 1
             if renamed:
                 has_changes = 1
@@ -1047,9 +1047,9 @@ class DiffTree(object):
             new_kind = None
         else:
             new_kind = self.new_tree.kind(new_path, file_id)
-        self._diff(file_id, old_path, new_path, old_kind, new_kind)
+        self._diff(old_path, new_path, old_kind, new_kind, file_id=file_id)
 
-    def _diff(self, file_id, old_path, new_path, old_kind, new_kind):
+    def _diff(self, old_path, new_path, old_kind, new_kind, file_id):
         result = DiffPath._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)
         if result is DiffPath.CANNOT_DIFF:
