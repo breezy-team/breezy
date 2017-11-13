@@ -29,7 +29,7 @@ from __future__ import absolute_import
 
 
 
-CACHE_HEADER = "### bzr hashcache v5\n"
+CACHE_HEADER = b"### bzr hashcache v5\n"
 
 import os
 import stat
@@ -229,10 +229,10 @@ class HashCache(object):
             outf.write(CACHE_HEADER)
 
             for path, c  in viewitems(self._cache):
-                line_info = [path.encode('utf-8'), '// ', c[0], ' ']
-                line_info.append(' '.join([str(fld) for fld in c[1]]))
-                line_info.append('\n')
-                outf.write(''.join(line_info))
+                line_info = [path.encode('utf-8'), b'// ', c[0], b' ']
+                line_info.append(b'%d %d %d %d %d %d' % c[1])
+                line_info.append(b'\n')
+                outf.write(b''.join(line_info))
             outf.commit()
             self.needs_write = False
             ## mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
@@ -253,44 +253,42 @@ class HashCache(object):
 
         fn = self.cache_file_name()
         try:
-            inf = file(fn, 'rb', buffering=65000)
+            inf = open(fn, 'rb', buffering=65000)
         except IOError as e:
             trace.mutter("failed to open %s: %s", fn, e)
             # better write it now so it is valid
             self.needs_write = True
             return
 
-        hdr = inf.readline()
-        if hdr != CACHE_HEADER:
-            trace.mutter('cache header marker not found at top of %s;'
-                         ' discarding cache', fn)
-            self.needs_write = True
-            return
+        with inf:
+            hdr = inf.readline()
+            if hdr != CACHE_HEADER:
+                trace.mutter('cache header marker not found at top of %s;'
+                             ' discarding cache', fn)
+                self.needs_write = True
+                return
 
-        for l in inf:
-            pos = l.index('// ')
-            path = l[:pos].decode('utf-8')
-            if path in self._cache:
-                trace.warning('duplicated path %r in cache' % path)
-                continue
+            for l in inf:
+                pos = l.index(b'// ')
+                path = l[:pos].decode('utf-8')
+                if path in self._cache:
+                    trace.warning('duplicated path %r in cache' % path)
+                    continue
 
-            pos += 3
-            fields = l[pos:].split(' ')
-            if len(fields) != 7:
-                trace.warning("bad line in hashcache: %r" % l)
-                continue
+                pos += 3
+                fields = l[pos:].split(b' ')
+                if len(fields) != 7:
+                    trace.warning("bad line in hashcache: %r" % l)
+                    continue
 
-            sha1 = fields[0]
-            if len(sha1) != 40:
-                trace.warning("bad sha1 in hashcache: %r" % sha1)
-                continue
+                sha1 = fields[0]
+                if len(sha1) != 40:
+                    trace.warning("bad sha1 in hashcache: %r" % sha1)
+                    continue
 
-            fp = tuple(map(int, fields[1:]))
+                fp = tuple(map(int, fields[1:]))
 
-            self._cache[path] = (sha1, fp)
-
-        # GZ 2009-09-20: Should really use a try/finally block to ensure close
-        inf.close()
+                self._cache[path] = (sha1, fp)
 
         self.needs_write = False
 
