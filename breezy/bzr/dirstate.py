@@ -246,6 +246,7 @@ from .. import (
     )
 from ..sixish import (
     range,
+    text_type,
     viewitems,
     viewvalues,
     )
@@ -1946,7 +1947,7 @@ class DirState(object):
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
         fs_encoding = osutils._fs_enc
-        if isinstance(abspath, unicode):
+        if isinstance(abspath, text_type):
             # abspath is defined as the path to pass to lstat. readlink is
             # buggy in python < 2.6 (it doesn't encode unicode path into FS
             # encoding), so we need to encode ourselves knowing that unicode
@@ -3821,7 +3822,7 @@ class ProcessEntryPython(object):
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
-                osutils.parent_directories(new_path.encode('utf8')))
+                p.encode('utf8') for p in osutils.parent_directories(new_path))
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add(b'')

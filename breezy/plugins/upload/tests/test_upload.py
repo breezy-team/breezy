@@ -33,11 +33,9 @@ from ....tests import (
     features,
     per_branch,
     per_transport,
-    stub_sftp,
     )
 from ....transport import (
     ftp,
-    sftp,
     )
 from .. import (
     cmds,
@@ -48,9 +46,13 @@ def get_transport_scenarios():
     result = []
     basis = per_transport.transport_test_permutations()
     # Keep only the interesting ones for upload
+    usable_classes = {ftp.FtpTransport}
+    if features.paramiko.available():
+        from ....transport import sftp
+        usable_classes.add(sftp.SFTPTransport)
     for name, d in basis:
         t_class = d['transport_class']
-        if t_class in (ftp.FtpTransport, sftp.SFTPTransport):
+        if t_class in usable_classes:
             result.append((name, d))
     try:
         import breezy.plugins.local_test_server
@@ -138,7 +140,7 @@ class UploadUtilsMixin(object):
         # that's the client that will report it anyway.
         full_path = osutils.pathjoin(base, path)
         st = os.stat(full_path)
-        mode = st.st_mode & 0777
+        mode = st.st_mode & 0o777
         if expected_mode == mode:
             return
         raise AssertionError(
@@ -152,11 +154,8 @@ class UploadUtilsMixin(object):
         self.assertPathExists(osutils.pathjoin(base, path))
 
     def set_file_content(self, path, content, base=branch_dir):
-        f = file(osutils.pathjoin(base, path), 'wb')
-        try:
+        with open(osutils.pathjoin(base, path), 'wb') as f:
             f.write(content)
-        finally:
-            f.close()
 
     def add_file(self, path, content, base=branch_dir):
         self.set_file_content(path, content, base)
@@ -270,7 +269,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.do_upload()
 
         self.assertUpFileEqual('baz', fpath)
-        self.assertUpPathModeEqual(dir_name, 0775)
+        self.assertUpPathModeEqual(dir_name, 0o775)
 
     def test_create_file_in_dir(self):
         self._test_create_file_in_dir('dir', 'goodbye')
@@ -412,15 +411,15 @@ class TestUploadMixin(UploadUtilsMixin):
     def _test_make_file_executable(self, file_name):
         self.make_branch_and_working_tree()
         self.add_file(file_name, 'foo')
-        self.chmod_file(file_name, 0664)
+        self.chmod_file(file_name, 0o664)
         self.do_full_upload()
-        self.chmod_file(file_name, 0755)
+        self.chmod_file(file_name, 0o755)
 
-        self.assertUpPathModeEqual(file_name, 0664)
+        self.assertUpPathModeEqual(file_name, 0o664)
 
         self.do_upload()
 
-        self.assertUpPathModeEqual(file_name, 0775)
+        self.assertUpPathModeEqual(file_name, 0o775)
 
     def test_make_file_executable(self):
         self._test_make_file_executable('hello')
@@ -643,7 +642,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_full_upload()
 
         self.assertUpFileEqual('baz', 'dir/goodbye')
-        self.assertUpPathModeEqual('dir', 0775)
+        self.assertUpPathModeEqual('dir', 0o775)
 
 
 class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
@@ -776,7 +775,20 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
 
     def setUp(self):
         super(TestUploadFromRemoteBranch, self).setUp()
+        if self._will_escape_isolation(self.transport_server):
+            # FIXME: Some policy search ends up above the user home directory
+            # and are seen as attemps to escape test isolation
+            raise tests.TestNotApplicable('Escaping test isolation')
         self.remote_branch_url = self.make_remote_branch_without_working_tree()
+
+    @staticmethod
+    def _will_escape_isolation(transport_server):
+        if not features.paramiko.available():
+            return False
+        from ....tests import stub_sftp
+        if transport_server is stub_sftp.SFTPHomeDirServer:
+            return True
+        return False
 
     def make_remote_branch_without_working_tree(self):
         """Creates a branch without working tree to upload from.
@@ -788,10 +800,6 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
         self.add_file('hello', 'foo')
 
         remote_branch_url = self.get_url(self.remote_branch_dir)
-        if self.transport_server is stub_sftp.SFTPHomeDirServer:
-            # FIXME: Some policy search ends up above the user home directory
-            # and are seen as attemps to escape test isolation
-            raise tests.TestNotApplicable('Escaping test isolation')
         self.run_bzr(['push', remote_branch_url,
                       '--directory', self.branch_dir])
         return remote_branch_url
