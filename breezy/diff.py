@@ -1039,16 +1039,15 @@ class DiffTree(object):
         :param old_path: The path of the file in the old tree
         :param new_path: The path of the file in the new tree
         """
-        try:
-            old_kind = self.old_tree.kind(old_path, file_id)
-        except (errors.NoSuchId, errors.NoSuchFile):
+        if old_path is None:
             old_kind = None
-        try:
-            new_kind = self.new_tree.kind(new_path, file_id)
-        except (errors.NoSuchId, errors.NoSuchFile):
+        else:
+            old_kind = self.old_tree.kind(old_path, file_id)
+        if new_path is None:
             new_kind = None
+        else:
+            new_kind = self.new_tree.kind(new_path, file_id)
         self._diff(file_id, old_path, new_path, old_kind, new_kind)
-
 
     def _diff(self, file_id, old_path, new_path, old_kind, new_kind):
         result = DiffPath._diff_many(self.differs, file_id, old_path,
