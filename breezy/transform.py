@@ -2258,7 +2258,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         if file_id is None:
             file_id = self.path2id(path)
         if not self._content_change(file_id):
-            return self._transform._tree.get_file_mtime(path, file_id)
+            return self._transform._tree.get_file_mtime(
+                    self._transform._tree.id2path(file_id), file_id)
         return self._stat_limbo_file(file_id).st_mtime
 
     def _file_size(self, entry, stat_value):
