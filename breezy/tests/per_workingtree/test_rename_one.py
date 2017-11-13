@@ -139,7 +139,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         c_id = tree.path2id('b/c')
         tree.commit('initial')
         root_id = tree.get_root_id()
-        c_contents = tree.get_file_text('c', c_id)
+        c_contents = tree.get_file_text('b/c', c_id)
         tree.rename_one('b/c', 'd')
         self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id),
                                ('d', c_id)], tree)

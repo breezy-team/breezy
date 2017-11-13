@@ -397,7 +397,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # check file id is valid unconditionally.
         entry = self._get_entry(file_id=file_id, path=path)
         if entry[0] is None:
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchFile(self, path)
         if path is None:
             path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
 
@@ -1917,6 +1917,8 @@ class DirStateRevisionTree(InventoryTree):
 
     def get_symlink_target(self, path, file_id=None):
         entry = self._get_entry(file_id=file_id, path=path)
+        if entry is None:
+            raise errors.NoSuchId(tree=self, file_id=file_id)
         parent_index = self._get_parent_index()
         if entry[1][parent_index][0] != b'l':
             return None

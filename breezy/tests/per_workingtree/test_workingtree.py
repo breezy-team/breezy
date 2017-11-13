@@ -952,18 +952,18 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.get_file_sha1('file'))
 
     def test_no_file_sha1(self):
-        """If a file is not present, get_file_sha1 should raise NoSuchId"""
+        """If a file is not present, get_file_sha1 should raise NoSuchFile"""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
+        self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,
                           'nonexistant')
         self.build_tree(['file'])
         tree.add('file')
         file_id = tree.path2id('file')
         tree.commit('foo')
         tree.remove('file')
-        self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
+        self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,
                           'file')
 
     def test_case_sensitive(self):

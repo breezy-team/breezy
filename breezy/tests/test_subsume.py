@@ -93,7 +93,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         self.assertEqual('subtree-1',
                          basis_tree.get_file_revision('subtree/file2'))
         self.assertEqual('combined-1',
-                         basis_tree.get_file_revision(sub_root_id))
+                         basis_tree.get_file_revision('subtree', sub_root_id))
 
     def test_subsume_failure(self):
         base_tree, sub_tree = self.make_trees()

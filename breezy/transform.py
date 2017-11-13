@@ -2920,16 +2920,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
             target_versioned, wt_versioned = versioned
             target_parent, wt_parent = parent
             target_name, wt_name = name
-            target_path, wt_path = path
             target_kind, wt_kind = kind
             target_executable, wt_executable = executable
-            if basis_tree is not None:
-                try:
-                    basis_path = basis_tree.id2path(file_id)
-                except errors.NoSuchId:
-                    basis_path = None
-            else:
-                basis_path = None
             if skip_root and wt_parent is None:
                 continue
             trans_id = tt.trans_id_file_id(file_id)
@@ -2945,12 +2937,14 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-
-                        if basis_path is not None:
-                            if wt_sha1 != basis_tree.get_file_sha1(basis_path):
+                        try:
+                            basis_path = basis_tree.id2path(file_id)
+                        except errors.NoSuchId:
+                            if target_kind is None and not target_versioned:
                                 keep_content = True
-                        elif target_kind is None and not target_versioned:
-                            keep_content = True
+                        else:
+                            if wt_sha1 != basis_tree.get_file_sha1(basis_path, file_id):
+                                keep_content = True
                 if wt_kind is not None:
                     if not keep_content:
                         tt.delete_contents(trans_id)
@@ -2974,15 +2968,18 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                                 target_path, file_id)
                         tt.set_tree_reference(revision, trans_id)
                 elif target_kind == 'symlink':
-                    tt.create_symlink(
-                            target_tree.get_symlink_target(target_path, file_id),
-                            trans_id)
+                    tt.create_symlink(target_tree.get_symlink_target(
+                            target_path, file_id), trans_id)
                 elif target_kind == 'file':
                     deferred_files.append((file_id, (trans_id, mode_id)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(target_path, file_id)
+                    try:
+                        basis_path = basis_tree.id2path(file_id)
+                    except errors.NoSuchId:
+                        basis_path = None
                     if (basis_path is not None and
                         new_sha1 == basis_tree.get_file_sha1(basis_path, file_id)):
                         if file_id in merge_modified:

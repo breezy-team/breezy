@@ -283,7 +283,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
             creator.shelve_change(('modify target', 'foo-id', link_name,
                                    old_target, new_target))
         else:
-            creator.shelve_modify_target('foo-id', new_target, old_target)
+            creator.shelve_modify_target('foo-id', old_target, new_target)
         creator.transform()
         self.assertEqual(old_target, osutils.readlink(link_name))
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')

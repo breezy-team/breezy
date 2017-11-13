@@ -127,8 +127,7 @@ class ShelfCreator(object):
                 elif kind[0] == 'symlink':
                     t_target = self.target_tree.get_symlink_target(paths[0], file_id)
                     w_target = self.work_tree.get_symlink_target(paths[1], file_id)
-                    yield ('modify target', file_id, paths[0], t_target,
-                            w_target)
+                    yield ('modify target', file_id, paths[0], t_target, w_target)
                 elif changed:
                     yield ('modify text', file_id)
 
@@ -171,21 +170,20 @@ class ShelfCreator(object):
         shelf_parent = self.shelf_transform.trans_id_file_id(parents[1])
         self.shelf_transform.adjust_path(names[1], shelf_parent, s_trans_id)
 
-    def shelve_modify_target(self, file_id, old_target, new_target):
+    def shelve_modify_target(self, file_id, target_target, work_target):
         """Shelve a change of symlink target.
 
         :param file_id: The file id of the symlink which changed target.
-        :param old_target: The old target
-        :param new_target: The target that the symlink should have due
-            to shelving.
+        :param target_target: The target tree target
+        :param work_target: The work tree target
         """
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
-        self.work_transform.create_symlink(new_target, w_trans_id)
+        self.work_transform.create_symlink(work_target, w_trans_id)
 
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         self.shelf_transform.delete_contents(s_trans_id)
-        self.shelf_transform.create_symlink(old_target, s_trans_id)
+        self.shelf_transform.create_symlink(target_target, s_trans_id)
 
     def shelve_lines(self, file_id, new_lines):
         """Shelve text changes to a file, using provided lines.

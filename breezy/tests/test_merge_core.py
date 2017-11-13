@@ -319,7 +319,9 @@ e
 y
 >>>>>>> MERGE-SOURCE
 """
-        self.assertEqualDiff(builder.this.get_file("a").read(), expected)
+        self.assertEqualDiff(
+                builder.this.get_file(builder.this.id2path("a")).read(),
+                expected)
         builder.cleanup()
 
     def do_contents_test(self, merge_factory):
@@ -370,7 +372,9 @@ y
         self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
                                      ContentsConflict('name2', file_id='2'),
                                      ContentsConflict('name3', file_id='3')])
-        self.assertEqual(builder.this.get_file('name2').read(), '\x00')
+        self.assertEqual(
+            builder.this.get_file(builder.this.id2path('2')).read(),
+            '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):

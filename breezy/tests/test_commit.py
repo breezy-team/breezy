@@ -277,9 +277,9 @@ class TestCommit(TestCaseWithTransport):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
-        eq(tree2.get_file_text('hello'), 'contents of hello\n')
+        eq(tree2.get_file_text('fruity'), 'contents of hello\n')
         self.check_tree_shape(tree2, ['fruity'])
-        eq(tree2.get_file_revision('hello'), 'test@rev-2')
+        eq(tree2.get_file_revision('fruity'), 'test@rev-2')
 
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""

@@ -202,7 +202,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
         rev_tree2 = tree.branch.repository.revision_tree('rev-two')
         self.assertEqual('bar', rev_tree2.id2path('foo-id'))
-        self.assertEqual('content\n', rev_tree2.get_file_text('foo'))
+        self.assertEqual('content\n', rev_tree2.get_file_text('bar'))
 
     def test_rename_file_to_subdir(self):
         tree = self.make_branch_and_memory_tree('branch')

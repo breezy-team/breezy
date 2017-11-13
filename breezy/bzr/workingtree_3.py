@@ -84,6 +84,9 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
         with self.lock_read():
+            # To make sure NoSuchFile gets raised..
+            if self.path2id(path) is None:
+                raise errors.NoSuchFile(path)
             return self._hashcache.get_sha1(path, stat_value)
 
 
