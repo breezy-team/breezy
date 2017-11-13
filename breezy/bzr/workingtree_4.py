@@ -1689,6 +1689,8 @@ class DirStateRevisionTree(InventoryTree):
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
+        if file_id is None:
+            file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(path, file_id))
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
