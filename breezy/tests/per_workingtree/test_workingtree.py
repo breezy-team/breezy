@@ -938,7 +938,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.unlink('tree/a')
         os.rmdir('tree/b')
         self.assertEqual('file', tree.stored_kind(tree.path2id('a')))
-        self.assertEqual('directory', tree.stored_kind(tree.path2id('b')))
+        if tree.branch.repository._format.supports_versioned_directories:
+            self.assertEqual('directory', tree.stored_kind('b'))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
