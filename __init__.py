@@ -138,10 +138,10 @@ def debian_changelog_commit_message(commit, start_message):
         # Not a file in one tree
         if change[6][0] != 'file' or change[6][1] != 'file':
             return start_message
-        old_text = commit.work_tree.basis_tree().get_file(change[0],
-                path=change[1][0]).readlines()
-        new_text = commit.work_tree.get_file(change[0],
-                path=change[1][1]).readlines()
+        old_text = commit.work_tree.basis_tree().get_file(
+                change[1][0], file_id=change[0]).readlines()
+        new_text = commit.work_tree.get_file(
+                change[1][1], file_id=change[0]).readlines()
         import difflib
         sequencematcher = difflib.SequenceMatcher
         for group in sequencematcher(None, old_text,

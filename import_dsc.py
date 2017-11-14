@@ -454,7 +454,7 @@ class DistributionBranch(object):
             return None, None, None
         tree.lock_read()
         try:
-            config = ConfigObj(tree.get_file(c_fileid, path))
+            config = ConfigObj(tree.get_file(path, c_fileid))
             try:
                 config['BUILDDEB']
             except KeyError:

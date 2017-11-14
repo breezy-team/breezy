@@ -336,7 +336,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
             def __init__(self, this_tree):
                 self.this_tree = this_tree
             def get_lines(self, tree, file_id):
-                return tree.get_file_lines(file_id)
+                return tree.get_file_lines(tree.id2path(file_id), file_id)
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
