@@ -526,6 +526,60 @@ class LocalGitRepository(GitRepository):
             return inventorytree.InventoryRevisionTree(self, inv, revision_id)
         return GitRevisionTree(self, revision_id)
 
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
+        """Produce a generator of revision deltas.
+
+        Note that the input is a sequence of REVISIONS, not revision_ids.
+        Trees will be held in memory until the generator exits.
+        Each delta is relative to the revision's lefthand predecessor.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        # Get the revision-ids of interest
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            yield trees[revision.revision_id].changes_from(old_tree)
+
+    def _filtered_revision_trees(self, revision_ids, file_ids):
+        """Return Tree for a revision on this branch with only some files.
+
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        :param file_ids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        for t in self.revision_trees(revision_ids):
+            # Should we introduce a FilteredRevisionTree class rather
+            # than pre-filter the inventory here?
+            filtered_inv = inv.filter(file_ids)
+            yield inventorytree.InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
+
     def get_inventory(self, revision_id):
         raise NotImplementedError(self.get_inventory)
 
