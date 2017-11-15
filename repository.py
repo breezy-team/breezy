@@ -25,7 +25,7 @@ from ... import (
     graph as _mod_graph,
     lock,
     repository,
-    revision,
+    revision as _mod_revision,
     transactions,
     ui,
     version_info as breezy_version,
@@ -367,13 +367,13 @@ class LocalGitRepository(GitRepository):
         parent_map = {}
         for revision_id in revids:
             parents = self._get_parents(revision_id, no_alternates=no_alternates)
-            if revision_id == revision.NULL_REVISION:
+            if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
             if parents is None:
                 continue
             if len(parents) == 0:
-                parents = [revision.NULL_REVISION]
+                parents = [_mod_revision.NULL_REVISION]
             parent_map[revision_id] = tuple(parents)
         return parent_map
 
@@ -385,7 +385,7 @@ class LocalGitRepository(GitRepository):
         while pending:
             this_parent_map = {}
             for revid in pending:
-                if revid == revision.NULL_REVISION:
+                if revid == _mod_revision.NULL_REVISION:
                     continue
                 parents = self._get_parents(revid)
                 if parents is not None:
@@ -419,7 +419,7 @@ class LocalGitRepository(GitRepository):
         if mapping is None:
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
-            return revision.NULL_REVISION
+            return _mod_revision.NULL_REVISION
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
@@ -491,7 +491,7 @@ class LocalGitRepository(GitRepository):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision."""
-        if revision_id == revision.NULL_REVISION:
+        if revision_id == _mod_revision.NULL_REVISION:
             return True
         try:
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
@@ -519,8 +519,7 @@ class LocalGitRepository(GitRepository):
 
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
-        revision_id = revision.ensure_null(revision_id)
-        if revision_id == revision.NULL_REVISION:
+        if revision_id == _mod_revision.NULL_REVISION:
             inv = inventory.Inventory(root_id=None)
             inv.revision_id = revision_id
             return inventorytree.InventoryRevisionTree(self, inv, revision_id)
