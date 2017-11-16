@@ -253,8 +253,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_rename(self):
         builder = self.build_a_rev()
-        builder.build_snapshot('B-id', None,
-            [('rename', ('a', 'b'))])
+        builder.build_snapshot(None,
+            [('rename', ('a', 'b'))], revision_id='B-id')
         rev_tree = builder.get_branch().repository.revision_tree('B-id')
         self.assertTreeShape([(u'', 'a-root-id', 'directory'),
                               (u'b', 'a-id', 'file')], rev_tree)

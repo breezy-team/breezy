@@ -1671,7 +1671,7 @@ class TestMergerEntriesLCA(TestMergerBase):
             [('add', (u'', 'a-root-id', 'directory', None))],
             revision_id='A-id')
         builder.build_snapshot(['A-id'], [], revision_id='B-id')
-        builder.build_snapshot(['A-id'], [], reision_id='C-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
         builder.build_snapshot(['C-id', 'B-id'],
             [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
             revision_id='E-id')
@@ -2019,17 +2019,20 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_interesting_file_in_this(self):
         # This renamed the file, but it should still match the entry in other
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['C-id', 'B-id'],
             [('modify', ('a-id', 'new-content\n')),
-             ('modify', ('b-id', 'new-content\n'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'],
-            [('rename', ('b', 'c'))])
+             ('modify', ('b-id', 'new-content\n'))],
+            revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'],
+            [('rename', ('b', 'c'))],
+            revision_id='D-id')
         merge_obj = self.make_merge_obj(builder, 'E-id',
                                         interesting_files=['c'])
         entries = list(merge_obj._entries_lca())
@@ -2043,18 +2046,22 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_interesting_file_in_base(self):
         # This renamed the file, but it should still match the entry in BASE
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'c', 'c-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('rename', ('c', 'b'))])
-        builder.build_snapshot('C-id', ['A-id'],
-            [('rename', ('c', 'b'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+             ('add', (u'c', 'c-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('c', 'b'))],
+            revision_id='B-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('c', 'b'))],
+            revision_id='C-id')
+        builder.build_snapshot(['C-id', 'B-id'],
             [('modify', ('a-id', 'new-content\n')),
-             ('modify', ('c-id', 'new-content\n'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('modify', ('c-id', 'new-content\n'))],
+            revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         merge_obj = self.make_merge_obj(builder, 'E-id',
                                         interesting_files=['c'])
         entries = list(merge_obj._entries_lca())
@@ -2068,18 +2075,20 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_interesting_file_in_lca(self):
         # This renamed the file, but it should still match the entry in LCA
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('rename', ('b', 'c'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('b', 'c'))], revision_id='B-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['C-id', 'B-id'],
             [('modify', ('a-id', 'new-content\n')),
-             ('modify', ('b-id', 'new-content\n'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'],
-            [('rename', ('c', 'b'))])
+             ('modify', ('b-id', 'new-content\n'))],
+            revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'],
+            [('rename', ('c', 'b'))], revision_id='D-id')
         merge_obj = self.make_merge_obj(builder, 'E-id',
                                         interesting_files=['c'])
         entries = list(merge_obj._entries_lca())
@@ -2093,16 +2102,17 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_interesting_ids(self):
         # Two files modified, but we should filter one of them
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['C-id', 'B-id'],
             [('modify', ('a-id', 'new-content\n')),
-             ('modify', ('b-id', 'new-content\n'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('modify', ('b-id', 'new-content\n'))], revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         merge_obj = self.make_merge_obj(builder, 'E-id',
                                         interesting_ids=['b-id'])
         entries = list(merge_obj._entries_lca())
@@ -2145,14 +2155,16 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_simple_lca(self):
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'],
-            [('modify', ('a-id', 'a\nb\nc\nd\ne\nf\n'))])
+             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['C-id', 'B-id'], [], revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'],
+            [('modify', ('a-id', 'a\nb\nc\nd\ne\nf\n'))],
+            revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'E-id')
         self.assertEqual(0, conflicts)
         # The merge should have simply update the contents of 'a'
@@ -2171,17 +2183,18 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     |
         #     F     Path at 'baz' in F, which supersedes 'bar' and 'foo'
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('rename', ('foo', 'bar'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], # merge the rename
-            [('rename', ('foo', 'bar'))])
-        builder.build_snapshot('F-id', ['E-id'],
-            [('rename', ('bar', 'baz'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('foo', 'bar'))], revision_id='B-id', )
+        builder.build_snapshot(['C-id', 'B-id'], # merge the rename
+            [('rename', ('foo', 'bar'))], revision_id='E-id')
+        builder.build_snapshot(['E-id'],
+            [('rename', ('bar', 'baz'))], revision_id='F-id')
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
         # The merge should simply recognize that the final rename takes
@@ -2201,17 +2214,18 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     |
         #     F     F deletes 'bar'
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('rename', ('foo', 'bar'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], # merge the rename
-            [('rename', ('foo', 'bar'))])
-        builder.build_snapshot('F-id', ['E-id'],
-            [('unversion', 'foo-id')])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('foo', 'bar'))], revision_id='B-id')
+        builder.build_snapshot(['C-id', 'B-id'], # merge the rename
+            [('rename', ('foo', 'bar'))], revision_id='E-id')
+        builder.build_snapshot(['E-id'],
+            [('unversion', 'foo-id')], revision_id='F-id')
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
         self.assertRaises(errors.NoSuchId, wt.id2path, 'foo-id')
@@ -2227,13 +2241,14 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     |
         #     F     Executable bit changed
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
+        builder.build_snapshot(['C-id', 'B-id'], [], revision_id='E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
         tt = transform.TreeTransform(wt)
@@ -2268,12 +2283,13 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Have to use a real WT, because BranchBuilder and MemoryTree don't
         # have symlink support
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
-            [('add', (u'', 'a-root-id', 'directory', None))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot(None,
+            [('add', (u'', 'a-root-id', 'directory', None))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
+        builder.build_snapshot(['C-id', 'B-id'], [], revision_id='E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
         os.symlink('bar', 'path/foo')
@@ -2301,15 +2317,20 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # This must be done with a real WorkingTree, because normally their
         # inventory contains "None" rather than a real sha1
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('modify', ('foo-id', 'B content\n'))])
-        builder.build_snapshot('C-id', ['A-id'],
-            [('modify', ('foo-id', 'C content\n'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'],
+            [('modify', ('foo-id', 'B content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(['A-id'],
+            [('modify', ('foo-id', 'C content\n'))],
+            revision_id='C-id')
+        builder.build_snapshot(['C-id', 'B-id'], [],
+                revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'], [],
+                revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'E-id')
         self.assertEqual(1, conflicts)
         self.assertEqualDiff('<<<<<<< TREE\n'
@@ -2592,34 +2613,39 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     |
         #     F     Path at 'foo'
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('rename', ('foo', 'bar'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
-            [('rename', ('foo', 'bar'))]) # merge the rename
-        builder.build_snapshot('F-id', ['E-id'],
-            [('rename', ('bar', 'foo'))]) # Rename back to BASE
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('foo', 'bar'))], revision_id='B-id')
+        builder.build_snapshot(['C-id', 'B-id'],
+            [('rename', ('foo', 'bar'))], revision_id='E-id') # merge the rename
+        builder.build_snapshot(['E-id'],
+            [('rename', ('bar', 'foo'))], revision_id='F-id') # Rename back to BASE
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
         self.assertEqual('foo', wt.id2path('foo-id'))
 
     def test_other_reverted_content_to_base(self):
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('modify', ('foo-id', 'B content\n'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
-            [('modify', ('foo-id', 'B content\n'))]) # merge the content
-        builder.build_snapshot('F-id', ['E-id'],
-            [('modify', ('foo-id', 'base content\n'))]) # Revert back to BASE
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'],
+            [('modify', ('foo-id', 'B content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(['C-id', 'B-id'],
+            [('modify', ('foo-id', 'B content\n'))],
+            revision_id='E-id') # merge the content
+        builder.build_snapshot(['E-id'],
+            [('modify', ('foo-id', 'base content\n'))],
+            revision_id='F-id') # Revert back to BASE
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
         # TODO: We need to use the per-file graph to properly select a BASE
@@ -2629,17 +2655,21 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_other_modified_content(self):
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))])
-        builder.build_snapshot('C-id', ['A-id'], [])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('modify', ('foo-id', 'B content\n'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
-            [('modify', ('foo-id', 'B content\n'))]) # merge the content
-        builder.build_snapshot('F-id', ['E-id'],
-            [('modify', ('foo-id', 'F content\n'))]) # Override B content
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+        builder.build_snapshot(['A-id'],
+            [('modify', ('foo-id', 'B content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(['C-id', 'B-id'],
+            [('modify', ('foo-id', 'B content\n'))],
+            revision_id='E-id') # merge the content
+        builder.build_snapshot(['E-id'],
+            [('modify', ('foo-id', 'F content\n'))],
+            revision_id='F-id') # Override B content
+        builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
         self.assertEqual('F content\n', wt.get_file_text('foo-id'))
@@ -2655,19 +2685,23 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #   |X|
         #   D E E updates content, renames 'b' => 'c'
         builder = self.get_builder()
-        builder.build_snapshot('A-id', None,
+        builder.build_snapshot(None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'base content\n')),
-             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))])
-        builder.build_snapshot('B-id', ['A-id'],
-            [('modify', ('foo-id', 'B content\n'))])
-        builder.build_snapshot('C-id', ['A-id'],
-            [('rename', ('a', 'b'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'],
+            [('modify', ('foo-id', 'B content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(['A-id'],
+            [('rename', ('a', 'b'))],
+            revision_id='C-id')
+        builder.build_snapshot(['C-id', 'B-id'],
             [('rename', ('b', 'c')),
-             ('modify', ('foo-id', 'E content\n'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'],
-            [('rename', ('a', 'b'))]) # merged change
+             ('modify', ('foo-id', 'E content\n'))],
+            revision_id='E-id')
+        builder.build_snapshot(['B-id', 'C-id'],
+            [('rename', ('a', 'b'))], revision_id='D-id') # merged change
         wt_this = self.get_wt_from_builder(builder)
         wt_base = wt_this.controldir.sprout('base', 'A-id').open_workingtree()
         wt_base.lock_read()

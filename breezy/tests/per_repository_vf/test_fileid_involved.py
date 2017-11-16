@@ -43,9 +43,10 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
 
     def create_branch_with_ghost_text(self):
         builder = self.make_branch_builder('ghost')
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-file-id', 'file', 'some content\n'))])
+            ('add', ('a', 'a-file-id', 'file', 'some content\n'))],
+            revision_id='A-id')
         b = builder.get_branch()
         old_rt = b.repository.revision_tree('A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)

@@ -205,9 +205,10 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
     def test_get_keys(self):
         builder = self.make_branch_builder('b')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()
@@ -218,9 +219,10 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
     def test_get_keys_excludes_ghosts(self):
         builder = self.make_branch_builder('b')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('rev-2', ['rev-1', 'ghost'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1', 'ghost'], [], revision_id='rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()
