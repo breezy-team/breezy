@@ -123,24 +123,25 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         bld_inner = self.make_branch_builder('inner')
         bld_inner.start_series()
         bld_inner.build_snapshot(
-            '1', None,
+            None,
             [('add', ('', 'inner-root-id', 'directory', '')),
              ('add', ('dir', 'dir-id', 'directory', '')),
              ('add', ('dir/file1', 'file1-id', 'file', 'file1 content\n')),
              ('add', ('file3', 'file3-id', 'file', 'file3 content\n')),
-             ])
+             ], revision_id='1')
         bld_inner.build_snapshot(
-            '4', ['1'],
+            ['1'],
             [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))
-             ])
+             ], revision_id='4')
         bld_inner.build_snapshot(
-            '5', ['4'], [('rename', ('file4', 'dir/file4'))])
+            ['4'], [('rename', ('file4', 'dir/file4'))], revision_id='5')
         bld_inner.build_snapshot(
-            '3', ['1'], [('modify', ('file3-id', 'new file3 contents\n')),])
+            ['1'], [('modify', ('file3-id', 'new file3 contents\n')),],
+            revision_id='3')
         bld_inner.build_snapshot(
-            '2', ['1'],
+            ['1'],
             [('add', ('dir/file2', 'file2-id', 'file', 'file2 content\n')),
-             ])
+             ], revision_id='2')
         bld_inner.finish_series()
         br = bld_inner.get_branch()
         return br

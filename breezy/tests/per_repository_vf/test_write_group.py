@@ -209,10 +209,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def test_get_missing_parent_inventories_check(self):
         builder = self.make_branch_builder('test')
-        builder.build_snapshot('A-id', ['ghost-parent-id'], [
+        builder.build_snapshot(['ghost-parent-id'], [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))],
-            allow_leftmost_as_ghost=True)
+            allow_leftmost_as_ghost=True, revision_id='A-id')
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)

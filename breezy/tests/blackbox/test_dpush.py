@@ -44,9 +44,10 @@ class TestDpush(tests.TestCaseWithTransport):
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
-        builder.build_snapshot('revid', None,
+        builder.build_snapshot(None,
             [('add', ('', 'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', 'fooid', 'file', 'bar'))])
+             ('add', ('foo', 'fooid', 'file', 'bar'))],
+            revision_id='revid')
         return builder
 
     def test_dpush_native(self):
@@ -128,8 +129,8 @@ class TestDpush(tests.TestCaseWithTransport):
         self.build_tree_contents([("dc/foo", "bar")])
         dc_tree.commit('msg1')
 
-        builder.build_snapshot('revid2', None,
-          [('modify', ('fooid', 'blie'))])
+        builder.build_snapshot(None,
+          [('modify', ('fooid', 'blie'))], revision_id='revid2')
 
         output, error = self.run_bzr("dpush -d dc d", retcode=3)
         self.assertEqual(output, "")

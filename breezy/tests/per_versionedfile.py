@@ -2814,11 +2814,12 @@ class TestOrderingVersionedFilesDecorator(TestCaseWithMemoryTransport):
     def get_ordering_vf(self, key_priority):
         builder = self.make_branch_builder('test')
         builder.start_series()
-        builder.build_snapshot('A', None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None))])
-        builder.build_snapshot('B', ['A'], [])
-        builder.build_snapshot('C', ['B'], [])
-        builder.build_snapshot('D', ['C'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'TREE_ROOT', 'directory', None))],
+            revision_id='A')
+        builder.build_snapshot(['A'], [], revision_id='B')
+        builder.build_snapshot(['B'], [], revision_id='C')
+        builder.build_snapshot(['C'], [], revision_id='D')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()

@@ -125,16 +125,18 @@ class TestMergeImplementation(TestCaseWithTransport):
         # the modification should be considered a conflict
         builder = self.make_branch_builder('test')
         builder.start_series()
-        builder.build_snapshot('BASE-id', None,
+        builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
-            ])
+            ], revision_id='BASE-id')
         # Delete 'b\n'
-        builder.build_snapshot('OTHER-id', ['BASE-id'],
-            [('modify', ('foo-id', 'a\nc\nd\ne\n'))])
+        builder.build_snapshot(['BASE-id'],
+            [('modify', ('foo-id', 'a\nc\nd\ne\n'))],
+            revision_id='OTHER-id')
         # Modify 'b\n', add 'X\n'
-        builder.build_snapshot('THIS-id', ['BASE-id'],
-            [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))])
+        builder.build_snapshot(['BASE-id'],
+            [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))],
+            revision_id='THIS-id')
         builder.finish_series()
         branch = builder.get_branch()
         this_tree = branch.controldir.create_workingtree()

@@ -213,29 +213,31 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # 6
 
         # mainline
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='1')
+        builder.build_snapshot(['1'], [], revision_id='2')
         # branch
-        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot(['1'], [], revision_id='1.1.1')
         # merge branch into mainline
-        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        builder.build_snapshot(['2', '1.1.1'], [], revision_id='3')
         # new commits in branch
-        builder.build_snapshot('1.1.2', ['1.1.1'], [])
-        builder.build_snapshot('1.1.3', ['1.1.2'], [])
+        builder.build_snapshot(['1.1.1'], [], revision_id='1.1.2')
+        builder.build_snapshot(['1.1.2'], [], revision_id='1.1.3')
         # merge branch into mainline
-        builder.build_snapshot('4', ['3', '1.1.3'], [])
+        builder.build_snapshot(['3', '1.1.3'], [], revision_id='4')
         # merge mainline into branch
-        builder.build_snapshot('1.1.4', ['1.1.3', '4'], [])
+        builder.build_snapshot(['1.1.3', '4'], [], revision_id='1.1.4')
         # merge branch into mainline
-        builder.build_snapshot('5', ['4', '1.1.4'], [])
-        builder.build_snapshot('5.1.1', ['5'], [])
-        builder.build_snapshot('6', ['5', '5.1.1'], [])
+        builder.build_snapshot(['4', '1.1.4'], [], revision_id='5')
+        builder.build_snapshot(['5'], [], revision_id='5.1.1')
+        builder.build_snapshot(['5', '5.1.1'], [], revision_id='6')
         builder.finish_series()
 
     def test_n0(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4'],
                              ['1.1.4', '4', '1.1.3', '1.1.2', '3', '1.1.1'])
+
     def test_n0_forward(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4', '--forward'],
                              ['3', '1.1.1', '4', '1.1.2', '1.1.3', '1.1.4'])
@@ -284,17 +286,17 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         # 4        /
         # |       /
         # 5 -----/
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('2', ['1'], [])
-        builder.build_snapshot('1.1.1', ['1'], [])
-        builder.build_snapshot('2.1.1', ['2'], [])
-        builder.build_snapshot('3', ['2', '1.1.1'], [])
-        builder.build_snapshot('2.1.2', ['2.1.1'], [])
-        builder.build_snapshot('2.2.1', ['2.1.1'], [])
-        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
-        builder.build_snapshot('4', ['3', '2.1.3'], [])
-        builder.build_snapshot('5', ['4', '2.1.2'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))], revision_id='1')
+        builder.build_snapshot(['1'], [], revision_id='2')
+        builder.build_snapshot(['1'], [], revision_id='1.1.1')
+        builder.build_snapshot(['2'], [], revision_id='2.1.1')
+        builder.build_snapshot(['2', '1.1.1'], [], revision_id='3')
+        builder.build_snapshot(['2.1.1'], [], revision_id='2.1.2')
+        builder.build_snapshot(['2.1.1'], [], revision_id='2.2.1')
+        builder.build_snapshot(['2.1.2', '2.2.1'], [], revision_id='2.1.3')
+        builder.build_snapshot(['3', '2.1.3'], [], revision_id='4')
+        builder.build_snapshot(['4', '2.1.2'], [], revision_id='5')
         builder.finish_series()
         return builder
 

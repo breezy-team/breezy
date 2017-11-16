@@ -63,14 +63,16 @@ class TestMerge(tests.TestCaseWithTransport):
             conflict.
         """
         builder = self.make_branch_builder('branch')
-        builder.build_snapshot('rev1', None,
+        builder.build_snapshot(None,
             [('add', ('', 'root-id', 'directory', None)),
-             ('add', ('fname', 'f-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('rev2other', ['rev1'],
-            [('modify', ('f-id', 'a\nB\nD\n'))])
+             ('add', ('fname', 'f-id', 'file', 'a\nb\nc\n'))],
+            revision_id='rev1')
+        builder.build_snapshot(['rev1'],
+            [('modify', ('f-id', 'a\nB\nD\n'))],
+            revision_id='rev2other')
         other = builder.get_branch().controldir.sprout('other').open_branch()
-        builder.build_snapshot('rev2this', ['rev1'],
-            [('modify', ('f-id', 'a\nB\nC\n'))])
+        builder.build_snapshot(['rev1'],
+            [('modify', ('f-id', 'a\nB\nC\n'))], revision_id='rev2this')
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         return tree, other
 

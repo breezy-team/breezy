@@ -1496,19 +1496,19 @@ class V4_2aBundleTester(V4BundleTester):
     def make_merged_branch(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot('a@cset-0-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'original content\n')),
-            ])
-        builder.build_snapshot('a@cset-0-2a', ['a@cset-0-1'], [
+            ], revision_id='a@cset-0-1')
+        builder.build_snapshot(['a@cset-0-1'], [
             ('modify', ('file-id', 'new-content\n')),
-            ])
-        builder.build_snapshot('a@cset-0-2b', ['a@cset-0-1'], [
+            ], revision_id='a@cset-0-2a')
+        builder.build_snapshot(['a@cset-0-1'], [
             ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
-            ])
-        builder.build_snapshot('a@cset-0-3', ['a@cset-0-2a', 'a@cset-0-2b'], [
+            ], revision_id='a@cset-0-2b')
+        builder.build_snapshot(['a@cset-0-2a', 'a@cset-0-2b'], [
             ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
-            ])
+            ], revision_id='a@cset-0-3')
         builder.finish_series()
         self.b1 = builder.get_branch()
         self.b1.lock_read()

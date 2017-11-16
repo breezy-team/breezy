@@ -179,19 +179,23 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-id', 'file', 'first\n')),
-            ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com")
-        builder.build_snapshot('rev-2', ['rev-1'], [
+            ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com",
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('a-id', 'first\nsecond\n')),
-            ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com")
-        builder.build_snapshot('rev-1_1_1', ['rev-1'], [
+            ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com",
+            revision_id='rev-2')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('a-id', 'first\nthird\n')),
-            ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com")
-        builder.build_snapshot('rev-3', ['rev-2', 'rev-1_1_1'], [
+            ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com",
+            revision_id='rev-1_1_1')
+        builder.build_snapshot(['rev-2', 'rev-1_1_1'], [
             ('modify', ('a-id', 'first\nsecond\nthird\n')),
-            ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com")
+            ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com",
+            revision_id='rev-3')
         return builder
 
     def create_deeply_merged_trees(self):
@@ -218,23 +222,27 @@ class TestAnnotate(tests.TestCaseWithTransport):
         rev-6
         """
         builder = self.create_merged_trees()
-        builder.build_snapshot('rev-1_1_2', ['rev-1_1_1'], [])
-        builder.build_snapshot('rev-4', ['rev-3', 'rev-1_1_2'], [])
-        builder.build_snapshot('rev-1_2_1', ['rev-1_1_1'], [
+        builder.build_snapshot(['rev-1_1_1'], [], revision_id='rev-1_1_2')
+        builder.build_snapshot(['rev-3', 'rev-1_1_2'], [], revision_id='rev-4')
+        builder.build_snapshot(['rev-1_1_1'], [
             ('modify', ('a-id', 'first\nthird\nfourth\n')),
-            ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com")
-        builder.build_snapshot('rev-1_2_2', ['rev-1_2_1'], [],
-            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
-        builder.build_snapshot('rev-5', ['rev-4', 'rev-1_2_2'], [
+            ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com",
+            revision_id='rev-1_2_1')
+        builder.build_snapshot(['rev-1_2_1'], [],
+            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
+            revision_id='rev-1_2_2')
+        builder.build_snapshot(['rev-4', 'rev-1_2_2'], [
             ('modify', ('a-id', 'first\nsecond\nthird\nfourth\n')),
-            ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
-        builder.build_snapshot('rev-1_3_1', ['rev-1_2_1'], [
+            ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
+            revision_id='rev-5')
+        builder.build_snapshot(['rev-1_2_1'], [
             ('modify', ('a-id', 'first\nthird\nfourth\nfifth\nsixth\n')),
-            ], timestamp=1166046005.00, timezone=0, committer="george@foo.com")
-        builder.build_snapshot('rev-6', ['rev-5', 'rev-1_3_1'], [
+            ], timestamp=1166046005.00, timezone=0, committer="george@foo.com",
+            revision_id='rev-1_3_1')
+        builder.build_snapshot(['rev-5', 'rev-1_3_1'], [
             ('modify', ('a-id',
                         'first\nsecond\nthird\nfourth\nfifth\nsixth\n')),
-            ])
+            ], revision_id='rev-6')
         return builder
 
     def create_duplicate_lines_tree(self):
@@ -247,20 +255,25 @@ class TestAnnotate(tests.TestCaseWithTransport):
         c_text = ''.join(l for r, l in duplicate_C)
         d_text = ''.join(l for r, l in duplicate_D)
         e_text = ''.join(l for r, l in duplicate_E)
-        builder.build_snapshot('rev-base', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', base_text)),
-            ])
-        builder.build_snapshot('rev-A', ['rev-base'], [
-            ('modify', ('file-id', a_text))])
-        builder.build_snapshot('rev-B', ['rev-base'], [
-            ('modify', ('file-id', b_text))])
-        builder.build_snapshot('rev-C', ['rev-A'], [
-            ('modify', ('file-id', c_text))])
-        builder.build_snapshot('rev-D', ['rev-B', 'rev-A'], [
-            ('modify', ('file-id', d_text))])
-        builder.build_snapshot('rev-E', ['rev-C', 'rev-D'], [
-            ('modify', ('file-id', e_text))])
+            ], revision_id='rev-base')
+        builder.build_snapshot(['rev-base'], [
+            ('modify', ('file-id', a_text))],
+            revision_id='rev-A')
+        builder.build_snapshot(['rev-base'], [
+            ('modify', ('file-id', b_text))],
+            revision_id='rev-B')
+        builder.build_snapshot(['rev-A'], [
+            ('modify', ('file-id', c_text))],
+            revision_id='rev-C')
+        builder.build_snapshot(['rev-B', 'rev-A'], [
+            ('modify', ('file-id', d_text))],
+            revision_id='rev-D')
+        builder.build_snapshot(['rev-C', 'rev-D'], [
+            ('modify', ('file-id', e_text))],
+            revision_id='rev-E')
         return builder
 
     def assertAnnotateEqualDiff(self, actual, expected):

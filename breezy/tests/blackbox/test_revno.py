@@ -83,11 +83,12 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_dotted_revno_tree(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id', 'B-id'], [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id', 'B-id'], [], revision_id='C-id')
         builder.finish_series()
         b = builder.get_branch()
         co_b = b.create_checkout('checkout_b', lightweight=True,
@@ -102,11 +103,12 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_stale_revno_tree(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id'], [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
         builder.finish_series()
         b = builder.get_branch()
         # The branch is now at "C-id", but the checkout is still at "B-id"

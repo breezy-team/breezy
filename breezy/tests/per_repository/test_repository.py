@@ -568,8 +568,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_add_signature_text(self):
         builder = self.make_branch_builder('.')
         builder.start_series()
-        builder.build_snapshot('A', None, [
-            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()

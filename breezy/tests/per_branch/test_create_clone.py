@@ -114,12 +114,12 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
-        rev1 = builder.build_snapshot(None, None, [
+        rev1 = builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', ''))])
-        rev2 = builder.build_snapshot(None, [rev1], [])
-        other = builder.build_snapshot(None, None, [
+        rev2 = builder.build_snapshot([rev1], [])
+        other = builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', ''))])
-        rev3 = builder.build_snapshot(None, [rev2, other], [])
+        rev3 = builder.build_snapshot([rev2, other], [])
         builder.finish_series()
         local = builder.get_branch()
         local.controldir.clone(self.get_url('remote'), revision_id=rev3)

@@ -43,13 +43,13 @@ class TestMergeDirective(TestCaseWithRepository):
     def make_two_branches(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot('A', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('f', 'f-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('B', 'A', [
+            ], revision_id='A')
+        builder.build_snapshot('A', [
             ('modify', ('f-id', 'new content\n')),
-            ])
+            ], revision_id='B')
         builder.finish_series()
         b1 = builder.get_branch()
         b2 = b1.controldir.sprout('target', revision_id='A').open_branch()

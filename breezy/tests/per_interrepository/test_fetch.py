@@ -151,13 +151,16 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the source.")
         builder = self.make_branch_builder('full-branch')
         builder.start_series()
-        builder.build_snapshot('first', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('second', ['first'], [
-            ('modify', ('file-id', 'second content\n'))])
-        builder.build_snapshot('third', ['second'], [
-            ('modify', ('file-id', 'third content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='first')
+        builder.build_snapshot(['first'], [
+            ('modify', ('file-id', 'second content\n'))],
+            revision_id='second')
+        builder.build_snapshot(['second'], [
+            ('modify', ('file-id', 'third content\n'))],
+            revision_id='third')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_repository('stacking-base')
@@ -202,15 +205,19 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('left', ['base'], [
-            ('modify', ('file-id', 'left content\n'))])
-        builder.build_snapshot('right', ['base'], [
-            ('modify', ('file-id', 'right content\n'))])
-        builder.build_snapshot('merge', ['left', 'right'], [
-            ('modify', ('file-id', 'left and right content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='base')
+        builder.build_snapshot(['base'], [
+            ('modify', ('file-id', 'left content\n'))],
+            revision_id='left')
+        builder.build_snapshot(['base'], [
+            ('modify', ('file-id', 'right content\n'))],
+            revision_id='right')
+        builder.build_snapshot(['left', 'right'], [
+            ('modify', ('file-id', 'left and right content\n'))],
+            revision_id='merge')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
@@ -272,13 +279,16 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('second', ['base'], [
-            ('modify', ('file-id', 'second content\n'))])
-        builder.build_snapshot('third', ['second', 'ghost'], [
-            ('modify', ('file-id', 'third content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='base')
+        builder.build_snapshot(['base'], [
+            ('modify', ('file-id', 'second content\n'))],
+            revision_id='second')
+        builder.build_snapshot(['second', 'ghost'], [
+            ('modify', ('file-id', 'third content\n'))],
+            revision_id='third')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
@@ -333,15 +343,19 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('left', ['base'], [
-            ('modify', ('file-id', 'left content\n'))])
-        builder.build_snapshot('right', ['base'], [
-            ('modify', ('file-id', 'right content\n'))])
-        builder.build_snapshot('merge', ['left', 'right'], [
-            ('modify', ('file-id', 'left and right content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='base')
+        builder.build_snapshot(['base'], [
+            ('modify', ('file-id', 'left content\n'))],
+            revision_id='left')
+        builder.build_snapshot(['base'], [
+            ('modify', ('file-id', 'right content\n'))],
+            revision_id='right')
+        builder.build_snapshot(['left', 'right'], [
+            ('modify', ('file-id', 'left and right content\n'))],
+            revision_id='merge')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_repository('old-trunk')
