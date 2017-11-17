@@ -1419,19 +1419,27 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             inv.remove_recursive_id(to_id)
         inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths, file_ids=None):
+        """Remove the paths in paths from the current versioned set.
 
-        When a file_id is unversioned, all of its children are automatically
+        When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
+        :param paths: The file ids to stop versioning.
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
-            for file_id in file_ids:
-                if not self._inventory.has_id(file_id):
-                    raise errors.NoSuchId(self, file_id)
+            if file_ids is not None:
+                for file_id in file_ids:
+                    if not self._inventory.has_id(file_id):
+                        raise errors.NoSuchId(self, file_id)
+            else:
+                file_ids = set()
+                for path in paths:
+                    file_id = self._inventory.path2id(path)
+                    if file_id is None:
+                        raise errors.NoSuchFile(self, path)
+                    file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)

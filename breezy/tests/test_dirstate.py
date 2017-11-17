@@ -315,7 +315,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         tree, state, expected = self.create_basic_dirstate()
         # Now we will just remove and add every file so we get an extra entry
         # per entry. Unversion in reverse order so we handle subdirs
-        tree.unversion(['f-id', 'b-c-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
+        tree.unversion(['f', 'b-c', 'b/d/e', 'b/d', 'b/c', 'b', 'a'])
         tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f'],
                  ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'b-c-id2', 'f-id2'])
 

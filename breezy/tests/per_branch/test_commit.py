@@ -204,7 +204,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             # making changes
             tree.put_file_bytes_non_atomic('rootfile', 'jkl')
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
-            tree.unversion([to_be_unversioned_id])
+            tree.unversion(['to_be_unversioned'])
             tree.mkdir('added_dir')
             added_dir_id = tree.path2id('added_dir')
             # start to capture pre_commit delta

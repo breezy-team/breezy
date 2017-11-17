@@ -262,19 +262,21 @@ class MemoryTree(MutableInventoryTree):
         else:
             self._locks -= 1
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths, file_ids=None):
+        """Remove the paths from the current versioned set.
 
         When a file_id is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
+        :param paths: The paths to stop versioning.
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
             # XXX: This should be in mutabletree, but the inventory-save action
             # is not relevant to memory tree. Until that is done in unlock by
             # working tree, we cannot share the implementation.
+            if file_ids is None:
+                file_ids = {self.path2id(path) for path in paths}
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)

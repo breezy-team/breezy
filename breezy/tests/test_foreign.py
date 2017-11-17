@@ -423,7 +423,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         wt.commit('bla-a')
         root_id = wt.get_root_id()
         target = wt.controldir.sprout('br2').open_workingtree()
-        target.unversion(['bla-a'])
+        target.unversion(['bla'])
         target.add('bla', 'bla-b')
         target.commit('bla-b')
         target_basis = target.basis_tree()

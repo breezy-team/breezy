@@ -511,7 +511,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             tree.rename_one('a', new_path)
         self.assertEqual(new_path, tree.id2path('a-id'))
         tree.commit(u'b\xb5rry')
-        tree.unversion(['a-id'])
+        tree.unversion([new_path])
         self.assertRaises(errors.NoSuchId, tree.id2path, 'a-id')
         self.assertEqual('b', tree.id2path('b-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, 'c-id')
@@ -871,6 +871,6 @@ class TestInventoryCoherency(TestCaseWithTransport):
         inv = tree.root_inventory
         self.assertTrue(inv.has_id('a-id'))
         self.assertTrue(inv.has_id('b-id'))
-        tree.unversion(['a-id', 'b-id'])
+        tree.unversion(['a', 'a/b'])
         self.assertFalse(inv.has_id('a-id'))
         self.assertFalse(inv.has_id('b-id'))

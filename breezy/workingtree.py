@@ -917,14 +917,14 @@ class WorkingTree(mutabletree.MutableTree,
             return iter(
                 [subp for subp in self.extras() if not self.is_ignored(subp)])
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths):
+        """Remove the path in pahs from the current versioned set.
 
-        When a file_id is unversioned, all of its children are automatically
+        When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
-        :raises: NoSuchId if any fileid is not currently versioned.
+        :param paths: The file ids to stop versioning.
+        :raises: NoSuchFile if any fileid is not currently versioned.
         """
         raise NotImplementedError(self.unversion)
 

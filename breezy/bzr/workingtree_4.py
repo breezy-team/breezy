@@ -1187,20 +1187,27 @@ class DirStateWorkingTree(InventoryWorkingTree):
         finally:
             self.branch.unlock()
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths, file_ids=None):
+        """Remove the file ids in paths from the current versioned set.
 
         When a file_id is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
+        :param paths: The file ids to stop versioning.
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
-            if not file_ids:
+            if not paths:
                 return
             state = self.current_dirstate()
             state._read_dirblocks_if_needed()
+            if file_ids is None:
+                file_ids = set()
+                for path in paths:
+                    file_id = self.path2id(path)
+                    if file_id is None:
+                        raise errors.NoSuchFile(self, path)
+                    file_ids.add(file_id)
             ids_to_unversion = set(file_ids)
             paths_to_unversion = set()
             # sketch:

@@ -459,7 +459,9 @@ class Commit(object):
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such
         # as updating its basis and unversioning paths that were missing.
-        self.work_tree.unversion(self.deleted_ids)
+        self.work_tree.unversion(
+                {self.work_tree.id2path(file_id) for file_id in self.deleted_ids},
+                self.deleted_ids)
         self._set_progress_stage("Updating the working tree")
         self.work_tree.update_basis_by_delta(self.rev_id,
              self.builder.get_basis_delta())
