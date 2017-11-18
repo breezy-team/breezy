@@ -371,7 +371,7 @@ class GitBranch(ForeignBranch):
             return cs.get(("branch", self.name), "nick")
         except KeyError:
             pass
-        return self.name.encode('utf-8') or "HEAD"
+        return self.name.encode('utf-8') or u"HEAD"
 
     def _set_nick(self, nick):
         cf = self.repository._git.get_config()
