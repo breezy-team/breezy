@@ -35,7 +35,7 @@ class TestMerge2(TestCase):
         self.assertEqualDiff(''.join(mlines), expected)
 
     def test_reprocess(self):
-        struct = [('a', 'b'), ('c',), ('def','geh'), ('i',)]
+        struct = [('a', 'b'), ('c',), ('def', 'geh'), ('i',)]
         expect = [('a', 'b'), ('c',), ('d', 'g'), ('e',), ('f', 'h'), ('i',)]
         result = Merge2.reprocess_struct(struct)
         self.assertEqual(list(result), expect)

@@ -999,7 +999,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """See VersionedFiles._add_text()."""
         self._index._check_write_ok()
         self._check_add(key, None, random_id, check_content=False)
-        if text.__class__ is not str:
+        if not isinstance(text, bytes):
             raise errors.BzrBadParameterUnicode("text")
         if parents is None:
             # The caller might pass None if there is no graph data, but kndx

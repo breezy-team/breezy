@@ -250,9 +250,9 @@ class TestSetParents(TestParents):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Check that the symlink target is safely round-tripped in the trees.
-        self.assertEqual(target, tree.get_symlink_target('link-id'))
+        self.assertEqual(target, tree.get_symlink_target(link_name))
         basis = tree.basis_tree()
-        self.assertEqual(target, basis.get_symlink_target('link-id'))
+        self.assertEqual(target, basis.get_symlink_target(link_name))
 
 
 class TestAddParent(TestParents):
@@ -395,14 +395,16 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 self._repository = tree.branch.repository
                 self._inventory = shape
 
-            def get_file_text(self, file_id, path=None):
+            def get_file_text(self, path, file_id=None):
+                if file_id is None:
+                    file_id = self.path2id(path)
                 ie = self.root_inventory[file_id]
                 if ie.kind != "file":
                     return ""
                 return 'a' * ie.text_size
 
-            def get_file(self, file_id, path=None):
-                return BytesIO(self.get_file_text(file_id))
+            def get_file(self, path, file_id=None):
+                return BytesIO(self.get_file_text(path, file_id))
 
         tree.lock_write()
         try:

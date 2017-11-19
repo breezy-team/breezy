@@ -125,7 +125,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # If the last body line is blank, drop it off the list
         if len(body) > 0 and body[-1] == '':
             body.pop()
-        return (header,body,footer)
+        return (header, body, footer)
 
     def test_list_only(self):
         # check that brz selftest --list-only outputs no ui noise
@@ -133,8 +133,8 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             """Capture the arguments selftest was run with."""
             return True
         def outputs_nothing(cmdline):
-            out,err = self.run_bzr(cmdline)
-            (header,body,footer) = self._parse_test_list(out.splitlines())
+            out, err = self.run_bzr(cmdline)
+            (header, body, footer) = self._parse_test_list(out.splitlines())
             num_tests = len(body)
             self.assertLength(0, header)
             self.assertLength(0, footer)

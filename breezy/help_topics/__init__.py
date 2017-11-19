@@ -195,7 +195,7 @@ The keywords used as revision selection methods are the following:
         else:
             # Extract out the top line summary from the body and
             # clean-up the unwanted whitespace
-            summary,doc = doc.split("\n", 1)
+            summary, doc = doc.split("\n", 1)
             #doc = indent_re.sub('', doc)
             while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
                 doc = doc[:-1]
@@ -221,7 +221,7 @@ def _help_on_transport(name):
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
 
-    def sort_func(a,b):
+    def sort_func(a, b):
         a1 = a[:a.rfind("://")]
         b1 = b[:b.rfind("://")]
         if a1>b1:

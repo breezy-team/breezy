@@ -418,40 +418,30 @@ class WorkingTree(mutabletree.MutableTree,
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, file_id, path=None, filtered=True):
-        return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
+    def get_file(self, path, file_id=None, filtered=True):
+        return self.get_file_with_stat(path, file_id, filtered=filtered)[0]
 
-    def get_file_with_stat(self, file_id, path=None, filtered=True,
+    def get_file_with_stat(self, path, file_id=None, filtered=True,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
-        if path is None:
-            path = self.id2path(file_id)
-        file_obj = self.get_file_byname(path, filtered=False)
+        abspath = self.abspath(path)
+        file_obj = file(abspath, 'rb')
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
             file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
-    def get_file_text(self, file_id, path=None, filtered=True):
-        my_file = self.get_file(file_id, path=path, filtered=filtered)
+    def get_file_text(self, path, file_id=None, filtered=True):
+        my_file = self.get_file(path, file_id, filtered=filtered)
         try:
             return my_file.read()
         finally:
             my_file.close()
 
-    def get_file_byname(self, filename, filtered=True):
-        path = self.abspath(filename)
-        f = file(path, 'rb')
-        if filtered and self.supports_content_filtering():
-            filters = self._content_filter_stack(filename)
-            return _mod_filters.filtered_input_file(f, filters)
-        else:
-            return f
-
-    def get_file_lines(self, file_id, path=None, filtered=True):
+    def get_file_lines(self, path, file_id=None, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(file_id, path, filtered=filtered)
+        file = self.get_file(path, file_id, filtered=filtered)
         try:
             return file.readlines()
         finally:
@@ -526,12 +516,12 @@ class WorkingTree(mutabletree.MutableTree,
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
 
-    def get_file_size(self, file_id):
+    def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
         # canonical size
         try:
-            return os.path.getsize(self.id2abspath(file_id))
+            return os.path.getsize(self.abspath(path))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -789,7 +779,7 @@ class WorkingTree(mutabletree.MutableTree,
             self.add(path, file_id, 'directory')
             return file_id
 
-    def get_symlink_target(self, file_id, path=None):
+    def get_symlink_target(self, path, file_id=None):
         if path is not None:
             abspath = self.abspath(path)
         else:
@@ -837,7 +827,9 @@ class WorkingTree(mutabletree.MutableTree,
         """Write the in memory meta data to disk."""
         raise NotImplementedError(self.flush)
 
-    def _kind(self, relpath):
+    def kind(self, relpath, file_id=None):
+        if file_id is not None:
+            return osutils.file_kind(self.id2abspath(file_id))
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -925,14 +917,14 @@ class WorkingTree(mutabletree.MutableTree,
             return iter(
                 [subp for subp in self.extras() if not self.is_ignored(subp)])
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths):
+        """Remove the path in pahs from the current versioned set.
 
-        When a file_id is unversioned, all of its children are automatically
+        When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
-        :raises: NoSuchId if any fileid is not currently versioned.
+        :param paths: The file ids to stop versioning.
+        :raises: NoSuchFile if any fileid is not currently versioned.
         """
         raise NotImplementedError(self.unversion)
 
@@ -985,10 +977,10 @@ class WorkingTree(mutabletree.MutableTree,
                 self.set_parent_trees(parent_trees)
             return count
 
-    def put_file_bytes_non_atomic(self, file_id, bytes):
+    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
         with self.lock_write():
-            stream = file(self.id2abspath(file_id), 'wb')
+            stream = file(self.abspath(path), 'wb')
             try:
                 stream.write(bytes)
             finally:
@@ -1018,10 +1010,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.is_ignored)
 
-    def kind(self, file_id):
-        return osutils.file_kind(self.id2abspath(file_id))
-
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
         raise NotImplementedError(self.stored_kind)
 
@@ -1496,7 +1485,7 @@ class WorkingTree(mutabletree.MutableTree,
             conflict_re = re.compile('^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(conflict.file_id) != 'file'):
+                    self.kind(self.id2path(conflict.file_id), conflict.file_id) != 'file'):
                     un_resolved.append(conflict)
                     continue
                 my_file = open(self.id2abspath(conflict.file_id), 'rb')

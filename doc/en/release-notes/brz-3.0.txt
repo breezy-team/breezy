@@ -140,6 +140,12 @@ Bug Fixes
   Thanks to Augie Fackler for reporting.
   (Jelmer Vernooĳ, #1710979)
 
+* Mark all options as unicode. Allows using non-ASCII values in most
+  options. (Jelmer Vernooĳ, #563692)
+
+* Support automatic rename tracking into new directories.
+  (mnn, #373319)
+
 Documentation
 *************
 
@@ -219,6 +225,11 @@ API Changes
    ``breezy.mutabletree.needs_tree_write_lock`` have been deprecated.
    Instead, use the context managers returned by ``.lock_write``,
    ``.lock_read`` and ``.lock_tree_write`` respectively. (Jelmer Vernooĳ)
+
+ * ``Tree`` methods now take a ``path`` as primary key argument, rather
+   than a ``file_id``. ``file_id`` is still present as optional argument
+   for most functions, and can be specified to speed up lookups.
+   (Jelmer Vernooĳ)
 
 Internals
 *********

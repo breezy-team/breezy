@@ -1050,10 +1050,11 @@ class cmd_mv(Command):
                 into_existing = False
             else:
                 # 'fix' the case of a potential 'from'
-                from_id = tree.path2id(
-                            tree.get_canonical_inventory_path(rel_names[0]))
+                from_path = tree.get_canonical_inventory_path(rel_names[0])
+                from_id = tree.path2id(from_path)
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and tree.stored_kind(from_id) == "directory"):
+                    from_id and
+                    tree.stored_kind(from_path, from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
@@ -1418,7 +1419,7 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision',
         Option('hardlink', help='Hard-link working tree files where possible.'),
-        Option('files-from', type=str,
+        Option('files-from', type=text_type,
                help="Get file contents from this tree."),
         Option('no-tree',
             help="Create a branch without a working-tree."),
@@ -1621,7 +1622,7 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
-                     Option('files-from', type=str,
+                     Option('files-from', type=text_type,
                             help="Get file contents from this tree."),
                      Option('hardlink',
                             help='Hard-link working tree files where possible.'
@@ -2300,9 +2301,9 @@ class cmd_diff(Command):
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
-        Option('diff-options', type=str,
+        Option('diff-options', type=text_type,
                help='Pass these options to the external diff program.'),
-        Option('prefix', type=str,
+        Option('prefix', type=text_type,
                short_name='p',
                help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
@@ -2340,15 +2341,15 @@ class cmd_diff(Command):
         from .diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
-        if prefix == '0':
+        if prefix == u'0':
             # diff -p0 format
             old_label = ''
             new_label = ''
-        elif prefix == '1' or prefix is None:
+        elif prefix == u'1' or prefix is None:
             old_label = 'old/'
             new_label = 'new/'
-        elif ':' in prefix:
-            old_label, new_label = prefix.split(":")
+        elif u':' in prefix:
+            old_label, new_label = prefix.split(u":")
         else:
             raise errors.BzrCommandError(gettext(
                 '--prefix expects two values separated by a colon'
@@ -2670,7 +2671,7 @@ class cmd_log(Command):
             Option('message',
                    help='Show revisions whose message matches this '
                         'regular expression.',
-                   type=str,
+                   type=text_type,
                    hidden=True),
             Option('limit',
                    short_name='l',
@@ -2696,23 +2697,23 @@ class cmd_log(Command):
                 short_name='m',
                 help='Show revisions whose properties match this '
                 'expression.',
-                type=str),
+                type=text_type),
             ListOption('match-message',
                    help='Show revisions whose message matches this '
                    'expression.',
-                type=str),
+                type=text_type),
             ListOption('match-committer',
                    help='Show revisions whose committer matches this '
                    'expression.',
-                type=str),
+                type=text_type),
             ListOption('match-author',
                    help='Show revisions whose authors match this '
                    'expression.',
-                type=str),
+                type=text_type),
             ListOption('match-bugs',
                    help='Show revisions whose bugs match this '
                    'expression.',
-                type=str)
+                type=text_type)
             ]
     encoding_type = 'replace'
 
@@ -3301,7 +3302,7 @@ class cmd_export(Command):
         Option('filters', help='Apply content filters to export the '
                 'convenient form.'),
         Option('root',
-               type=str,
+               type=text_type,
                help="Name of the root directory inside the exported file."),
         Option('per-file-timestamps',
                help='Set modification time of files to that of the last '
@@ -3404,9 +3405,9 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            content = filter_tree.get_file_text(actual_file_id)
+            content = filter_tree.get_file_text(relpath, actual_file_id)
         else:
-            content = rev_tree.get_file_text(actual_file_id)
+            content = rev_tree.get_file_text(relpath, actual_file_id)
         self.cleanup_now()
         self.outf.write(content)
 
@@ -3480,7 +3481,7 @@ class cmd_commit(Command):
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
-            ListOption('exclude', type=str, short_name='x',
+            ListOption('exclude', type=text_type, short_name='x',
                 help="Do not consider changes made to a given path."),
             Option('message', type=text_type,
                    short_name='m',
@@ -3488,17 +3489,17 @@ class cmd_commit(Command):
             'verbose',
              Option('unchanged',
                     help='Commit even if nothing has changed.'),
-             Option('file', type=str,
+             Option('file', type=text_type,
                     short_name='F',
                     argname='msgfile',
                     help='Take commit message from this file.'),
              Option('strict',
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
-             Option('commit-time', type=str,
+             Option('commit-time', type=text_type,
                     help="Manually set a commit time using commit date "
                     "format, e.g. '2009-10-10 08:00:00 +0100'."),
-             ListOption('fixes', type=str,
+             ListOption('fixes', type=text_type,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"brz help bugs\")."),
              ListOption('author', type=text_type,
@@ -3553,7 +3554,7 @@ class cmd_commit(Command):
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
             except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
-                    "%s\nCommit refused.") % (str(e),))
+                    u"%s\nCommit refused.") % (e,))
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
@@ -4075,10 +4076,10 @@ class cmd_selftest(Command):
                         lazy_registry=('breezy.tests', 'parallel_registry'),
                         value_switches=False,
                         ),
-                     Option('randomize', type=str, argname="SEED",
+                     Option('randomize', type=text_type, argname="SEED",
                             help='Randomize the order of tests using the given'
                                  ' seed or "now" for the current time.'),
-                     ListOption('exclude', type=str, argname="PATTERN",
+                     ListOption('exclude', type=text_type, argname="PATTERN",
                                 short_name='x',
                                 help='Exclude tests that match this regular'
                                 ' expression.'),
@@ -4088,11 +4089,11 @@ class cmd_selftest(Command):
                             help='Output test progress via subunit v2.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
-                     Option('load-list', type=str, argname='TESTLISTFILE',
+                     Option('load-list', type=text_type, argname='TESTLISTFILE',
                             help='Load a test id list from a text file.'),
-                     ListOption('debugflag', type=str, short_name='E',
+                     ListOption('debugflag', type=text_type, short_name='E',
                                 help='Turn on a selftest debug flag.'),
-                     ListOption('starting-with', type=str, argname='TESTID',
+                     ListOption('starting-with', type=text_type, argname='TESTID',
                                 param_name='starting_with', short_name='s',
                                 help=
                                 'Load only the tests starting with TESTID.'),
@@ -4697,7 +4698,7 @@ class cmd_remerge(Command):
                 if file_id is None:
                     raise errors.NotVersionedError(filename)
                 interesting_ids.add(file_id)
-                if tree.kind(file_id) != "directory":
+                if tree.kind(filename, file_id) != "directory":
                     continue
 
                 # FIXME: Support nested trees
@@ -4904,7 +4905,7 @@ class cmd_missing(Command):
         Option('reverse', 'Reverse the order of revisions.'),
         Option('mine-only',
                'Display changes in the local branch only.'),
-        Option('this' , 'Same as --mine-only.'),
+        Option('this', 'Same as --mine-only.'),
         Option('theirs-only',
                'Display changes in the remote branch only.'),
         Option('other', 'Same as --theirs-only.'),
@@ -5190,11 +5191,11 @@ class cmd_annotate(Command):
         if wt is not None and revision is None:
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
-            annotate_file_tree(wt, file_id, self.outf, long, all,
-                show_ids=show_ids)
+            annotate_file_tree(wt, relpath, self.outf, long, all,
+                show_ids=show_ids, file_id=file_id)
         else:
-            annotate_file_tree(tree, file_id, self.outf, long, all,
-                show_ids=show_ids, branch=branch)
+            annotate_file_tree(tree, relpath, self.outf, long, all,
+                show_ids=show_ids, branch=branch, file_id=file_id)
 
 
 class cmd_re_sign(Command):
@@ -5506,7 +5507,7 @@ class cmd_serve(Command):
                lazy_registry=('breezy.transport', 'transport_server_registry'),
                value_switches=True),
         Option('listen',
-               help='Listen for connections on nominated address.', type=str),
+               help='Listen for connections on nominated address.', type=text_type),
         Option('port',
                help='Listen for connections on nominated port.  Passing 0 as '
                     'the port number will result in a dynamically allocated '
@@ -5647,9 +5648,9 @@ class cmd_merge_directive(Command):
             diff='Normal unified diff.',
             plain='No patch, just directive.'),
         Option('sign', help='GPG-sign the directive.'), 'revision',
-        Option('mail-to', type=str,
+        Option('mail-to', type=text_type,
             help='Instead of printing the directive, email to this address.'),
-        Option('message', type=str, short_name='m',
+        Option('message', type=text_type, short_name='m',
             help='Message to use when committing this merge.')
         ]
 
@@ -6116,7 +6117,7 @@ class cmd_reconfigure(Command):
             with_no_trees='Reconfigure repository to not create '
                 'working trees on branches by default.'
             ),
-        Option('bind-to', help='Branch to bind checkout to.', type=str),
+        Option('bind-to', help='Branch to bind checkout to.', type=text_type),
         Option('force',
             help='Perform reconfiguration even if local changes'
             ' will be lost.'),
@@ -6688,7 +6689,7 @@ class cmd_export_pot(Command):
     takes_options = [Option('plugin', 
                             help='Export help text from named command '\
                                  '(defaults to all built in commands).',
-                            type=str),
+                            type=text_type),
                      Option('include-duplicates',
                             help='Output multiple copies of the same msgid '
                                  'string if it appears more than once.'),

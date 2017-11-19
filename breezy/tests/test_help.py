@@ -400,7 +400,7 @@ zz{{:Options:
         cmd = cmd_WithSeeAlso()
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
-            helptext,'''\
+            helptext, '''\
   -q, --quiet    zz{{Only display errors and warnings.}}
   -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}

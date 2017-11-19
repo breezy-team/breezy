@@ -143,7 +143,7 @@ class TestFormat7(TestCaseWithTransport):
         control.create_branch()
         tree = control.create_workingtree()
         tree.add(['foo'], ['Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
+        tree.put_file_bytes_non_atomic('foo', 'content\n', 'Foo:Bar')
         try:
             tree.commit('first post', rev_id='first')
         except IllegalPath:

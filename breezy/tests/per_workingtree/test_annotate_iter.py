@@ -23,10 +23,10 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
 
     def make_single_rev_tree(self):
         builder = self.make_branch_builder('branch')
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
-            ])
+            ], revision_id='rev-1')
         b = builder.get_branch()
         tree = b.create_checkout('tree', lightweight=True)
         tree.lock_read()
@@ -35,7 +35,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
 
     def test_annotate_same_as_parent(self):
         tree = self.make_single_rev_tree()
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n')],
                          annotations)
 
@@ -43,7 +43,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree = self.make_single_rev_tree()
         self.build_tree_contents([('tree/file',
                                    'initial content\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('current:', 'new content\n'),
                          ], annotations)
@@ -51,16 +51,16 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_merge_parents(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('rev-2', ['rev-1'], [
+            ], revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('file-id', 'initial content\ncontent in 2\n')),
-            ])
-        builder.build_snapshot('rev-3', ['rev-1'], [
+            ], revision_id='rev-2')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('file-id', 'initial content\ncontent in 3\n')),
-            ])
+            ], revision_id='rev-3')
         builder.finish_series()
         b = builder.get_branch()
         tree = b.create_checkout('tree', revision_id='rev-2', lightweight=True)
@@ -70,7 +70,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    'initial content\ncontent in 2\n'
                                    'content in 3\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('rev-2', 'content in 2\n'),
                           ('rev-3', 'content in 3\n'),
@@ -80,13 +80,13 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_merge_parent_no_file(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ])
-        builder.build_snapshot('rev-2', ['rev-1'], [
+            ], revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('rev-3', ['rev-1'], [])
+            ], revision_id='rev-2')
+        builder.build_snapshot(['rev-1'], [], revision_id='rev-3')
         builder.finish_series()
         b = builder.get_branch()
         tree = b.create_checkout('tree', revision_id='rev-2', lightweight=True)
@@ -95,7 +95,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.set_parent_ids(['rev-2', 'rev-3'])
         self.build_tree_contents([('tree/file',
                                    'initial content\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-2', 'initial content\n'),
                           ('current:', 'new content\n'),
                          ], annotations)
@@ -103,15 +103,15 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_merge_parent_was_directory(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ])
-        builder.build_snapshot('rev-2', ['rev-1'], [
+            ], revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('rev-3', ['rev-1'], [
+            ], revision_id='rev-2')
+        builder.build_snapshot(['rev-1'], [
             ('add', ('a_dir', 'file-id', 'directory', None)),
-            ])
+            ], revision_id='rev-3')
         builder.finish_series()
         b = builder.get_branch()
         tree = b.create_checkout('tree', revision_id='rev-2', lightweight=True)
@@ -120,7 +120,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.set_parent_ids(['rev-2', 'rev-3'])
         self.build_tree_contents([('tree/file',
                                    'initial content\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-2', 'initial content\n'),
                           ('current:', 'new content\n'),
                          ], annotations)
@@ -128,15 +128,15 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_same_as_merge_parent(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('rev-2', ['rev-1'], [
-            ])
-        builder.build_snapshot('rev-3', ['rev-1'], [
+            ], revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
+            ], revision_id='rev-2')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('file-id', 'initial content\ncontent in 3\n')),
-            ])
+            ], revision_id='rev-3')
         builder.finish_series()
         b = builder.get_branch()
         tree = b.create_checkout('tree', revision_id='rev-2', lightweight=True)
@@ -145,7 +145,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.set_parent_ids(['rev-2', 'rev-3'])
         self.build_tree_contents([('tree/file',
                                    'initial content\ncontent in 3\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('rev-3', 'content in 3\n'),
                          ], annotations)
@@ -153,19 +153,19 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_same_as_merge_parent_supersedes(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('rev-2', ['rev-1'], [
+            ], revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('file-id', 'initial content\nnew content\n')),
-            ])
-        builder.build_snapshot('rev-3', ['rev-2'], [
+            ], revision_id='rev-2')
+        builder.build_snapshot(['rev-2'], [
             ('modify', ('file-id', 'initial content\ncontent in 3\n')),
-            ])
-        builder.build_snapshot('rev-4', ['rev-3'], [
+            ], revision_id='rev-3')
+        builder.build_snapshot(['rev-3'], [
             ('modify', ('file-id', 'initial content\nnew content\n')),
-            ])
+            ], revision_id='rev-4')
         # In this case, the content locally is the same as content in basis
         # tree, but the merge revision states that *it* should win
         builder.finish_series()
@@ -174,7 +174,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.set_parent_ids(['rev-2', 'rev-4'])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('rev-4', 'new content\n'),
                          ], annotations)

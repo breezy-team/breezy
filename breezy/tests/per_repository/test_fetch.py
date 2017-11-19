@@ -87,7 +87,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         rev1_tree = knit3_repo.revision_tree(rev1)
         rev1_tree.lock_read()
         try:
-            lines = rev1_tree.get_file_lines(rev1_tree.get_root_id())
+            lines = rev1_tree.get_file_lines(u'', rev1_tree.get_root_id())
         finally:
             rev1_tree.unlock()
         self.assertEqual([], lines)
@@ -105,7 +105,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         rev2_tree = knit3_repo.revision_tree(rev2)
         self.assertEqual(
             rev1,
-            rev2_tree.get_file_revision(rev2_tree.get_root_id()))
+            rev2_tree.get_file_revision(u'', rev2_tree.get_root_id()))
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
         snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
@@ -129,8 +129,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         builder = self.make_branch_builder('source', format='1.9')
         builder.start_series()
         for revision_id, parent_ids, actions in snapshots:
-            builder.build_snapshot(revision_id, parent_ids, actions,
-            allow_leftmost_as_ghost=allow_lefthand_ghost)
+            builder.build_snapshot(parent_ids, actions,
+            allow_leftmost_as_ghost=allow_lefthand_ghost,
+            revision_id=revision_id)
         builder.finish_series()
         source = builder.get_branch()
         if remote_format and not repo._format.rich_root_data:
@@ -319,10 +320,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def make_simple_branch_with_ghost(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id', 'ghost-id'], [], revision_id='B-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

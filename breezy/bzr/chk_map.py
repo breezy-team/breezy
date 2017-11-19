@@ -1012,7 +1012,7 @@ class InternalNode(Node):
             raise AssertionError("_search_prefix should not be None")
         if not prefix.startswith(self._search_prefix):
             raise AssertionError("prefixes mismatch: %s must start with %s"
-                % (prefix,self._search_prefix))
+                % (prefix, self._search_prefix))
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError("prefix wrong length: len(%s) is not %d" %
                 (prefix, len(self._search_prefix) + 1))
@@ -1680,7 +1680,7 @@ class CHKMapDifference(object):
         for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
             # TODO: Use StaticTuple here?
             self._all_old_items.update(items)
-            refs = [r for _,r in prefix_refs if r not in all_old_chks]
+            refs = [r for _, r in prefix_refs if r not in all_old_chks]
             self._old_queue.extend(refs)
             all_old_chks.update(refs)
 

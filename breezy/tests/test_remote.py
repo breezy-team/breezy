@@ -1442,8 +1442,9 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
         builder.start_series()
-        builder.build_snapshot('tip', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='tip')
         builder.finish_series()
         branch = builder.get_branch()
         # Add two tags to that branch
@@ -2363,7 +2364,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
         result = repo.gather_stats(None)
         self.assertEqual(
             [('call_expecting_body', 'Repository.gather_stats',
-             ('quack/','','no'))],
+             ('quack/', '', 'no'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18}, result)
 
@@ -2648,8 +2649,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
         builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='first')
         builder.finish_series()
         branch = builder.get_branch()
         repo = branch.repository
@@ -2900,7 +2902,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         # Then it should ask the fallback, using revno/revid from the
         # history-incomplete response as the known revno/revid.
         client.add_expected_call(
-            'Repository.get_rev_id_for_revno',('fallback/', 1, (2, 'rev-two')),
+            'Repository.get_rev_id_for_revno', ('fallback/', 1, (2, 'rev-two')),
             'success', ('ok', 'rev-one'))
         result = repo.get_rev_id_for_revno(1, (42, 'rev-foo'))
         self.assertEqual((True, 'rev-one'), result)
@@ -3886,9 +3888,9 @@ class TestStacking(tests.TestCaseWithTransport):
         base_transport = self.get_transport()
         base_builder = self.make_branch_builder('base', format='1.9')
         base_builder.start_series()
-        base_revid = base_builder.build_snapshot('rev-id', None,
+        base_revid = base_builder.build_snapshot(None,
             [('add', ('', None, 'directory', None))],
-            'message')
+            'message', revision_id='rev-id')
         base_builder.finish_series()
         stacked_branch = self.make_branch('stacked', format='1.9')
         stacked_branch.set_stacked_on_url('../base')
@@ -3972,7 +3974,7 @@ class TestStacking(tests.TestCaseWithTransport):
         tip = stacked.last_revision()
         stacked.repository._ensure_real()
         graph = stacked.repository.get_graph()
-        revs = [r for (r,ps) in graph.iter_ancestry([tip])
+        revs = [r for (r, ps) in graph.iter_ancestry([tip])
                 if r != NULL_REVISION]
         revs.reverse()
         search = vf_search.PendingAncestryResult([tip], stacked.repository)

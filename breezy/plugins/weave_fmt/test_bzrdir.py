@@ -337,13 +337,13 @@ class TestUpgrade(TestCaseWithTransport):
         foo_id = 'foo-20051004035605-91e788d1875603ae'
         rt.lock_read()
         try:
-            eq(rt.get_file_text(foo_id), 'initial contents\n')
+            eq(rt.get_file_text('foo', foo_id), 'initial contents\n')
         finally:
             rt.unlock()
         rt = b.repository.revision_tree(rh[1])
         rt.lock_read()
         try:
-            eq(rt.get_file_text(foo_id), 'new contents\n')
+            eq(rt.get_file_text('foo', foo_id), 'new contents\n')
         finally:
             rt.unlock()
         # check a backup was made:
@@ -552,7 +552,7 @@ class TestBoundBranch(TestCaseWithTransport):
 
     def test_bind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
-        out,err = self.run_bzr('bind ../master', retcode=3)
+        out, err = self.run_bzr('bind ../master', retcode=3)
         self.assertEqual('', out)
         # TODO: jam 20060427 Probably something like this really should
         #       print out the actual path, rather than the URL
@@ -562,7 +562,7 @@ class TestBoundBranch(TestCaseWithTransport):
 
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
-        out,err = self.run_bzr('unbind', retcode=3)
+        out, err = self.run_bzr('unbind', retcode=3)
         self.assertEqual('', out)
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('brz: ERROR: To use this feature you must '

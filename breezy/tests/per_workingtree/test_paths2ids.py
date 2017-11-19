@@ -137,7 +137,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
                  ['dir', 'child-moves', 'child-stays', 'child-goes'])
         tree.commit('create basis')
         basis = tree.basis_tree()
-        tree.unversion(['child-goes'])
+        tree.unversion(['dir/child-goes'])
         tree.rename_one('dir/child-moves', 'child-moves')
         self.build_tree(['tree/newdir/'])
         tree.add(['newdir'], ['newdir'])

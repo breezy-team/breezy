@@ -45,7 +45,7 @@ class TestSplit(tests.TestCaseWithTransport):
         self.build_tree(['tree/subtree/'])
         tree.add('subtree')
         tree.commit('added subtree')
-        self.run_bzr_error(('must upgrade your branch at .*tree','rich roots'),
+        self.run_bzr_error(('must upgrade your branch at .*tree', 'rich roots'),
                            'split tree/subtree')
 
     def split_formats(self, format, repo_format):

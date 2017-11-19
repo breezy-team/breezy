@@ -125,16 +125,18 @@ class TestMergeImplementation(TestCaseWithTransport):
         # the modification should be considered a conflict
         builder = self.make_branch_builder('test')
         builder.start_series()
-        builder.build_snapshot('BASE-id', None,
+        builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
-            ])
+            ], revision_id='BASE-id')
         # Delete 'b\n'
-        builder.build_snapshot('OTHER-id', ['BASE-id'],
-            [('modify', ('foo-id', 'a\nc\nd\ne\n'))])
+        builder.build_snapshot(['BASE-id'],
+            [('modify', ('foo-id', 'a\nc\nd\ne\n'))],
+            revision_id='OTHER-id')
         # Modify 'b\n', add 'X\n'
-        builder.build_snapshot('THIS-id', ['BASE-id'],
-            [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))])
+        builder.build_snapshot(['BASE-id'],
+            [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))],
+            revision_id='THIS-id')
         builder.finish_series()
         branch = builder.get_branch()
         this_tree = branch.controldir.create_workingtree()
@@ -310,7 +312,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
 
     def test_change_vs_deleted(self):
         """Hook is used for (changed, deleted)"""
@@ -322,7 +324,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
 
     def test_result_can_be_delete(self):
         """A hook's result can be the deletion of a file."""
@@ -344,7 +346,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         # The hook still gets to set the file contents in this case, so that it
         # can insert custom conflict markers.
         self.assertEqual(
-            builder.this.get_file('1').read(),
+            builder.this.get_file('name1').read(),
             'text-with-conflict-markers-from-hook')
 
     def test_can_access_this_other_and_base_versions(self):
@@ -368,7 +370,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
         self.assertEqual([('inactive',), ('success',)], self.hook_log)
 
     def test_chain_when_not_applicable(self):
@@ -382,7 +384,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertEqual(
-            builder.this.get_file('1').read(), 'text-merged-by-hook')
+            builder.this.get_file('name1').read(), 'text-merged-by-hook')
         self.assertEqual([('no-op',), ('success',)], self.hook_log)
 
     def test_chain_stops_after_success(self):

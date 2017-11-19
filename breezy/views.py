@@ -222,7 +222,7 @@ class PathBasedViews(_Views):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "%s=%s\n" % (key,keywords[key])
+            line = "%s=%s\n" % (key, keywords[key])
             lines.append(line.encode('utf-8'))
         if view_dict:
             lines.append("views:\n".encode('utf-8'))

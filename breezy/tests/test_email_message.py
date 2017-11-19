@@ -106,7 +106,7 @@ class TestEmailMessage(tests.TestCase):
 
     def test_empty_message(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject')
-        self.assertEqualDiff(EMPTY_MESSAGE , msg.as_string())
+        self.assertEqualDiff(EMPTY_MESSAGE, msg.as_string())
 
     def test_simple_message(self):
         pairs = {

@@ -252,7 +252,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         branch = control.create_branch()
         tree = control.create_workingtree()
         tree.add(['foo'], ['Nasty-IdC:'], ['file'])
-        tree.put_file_bytes_non_atomic('Nasty-IdC:', '')
+        tree.put_file_bytes_non_atomic('foo', '')
         tree.commit('1st post', rev_id='foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             '\nfoo fulltext 0 81  :')
@@ -508,7 +508,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree.lock_read()
         try:
             self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-                revision_tree.get_root_id())
+                u'', revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         format = bzrdir.BzrDirMetaFormat1()
@@ -518,7 +518,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree('dull')
         revision_tree.lock_read()
         try:
-            revision_tree.get_file_lines(revision_tree.get_root_id())
+            revision_tree.get_file_lines(u'', revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         tree.commit("Another dull commit", rev_id='dull2')
@@ -526,7 +526,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
         self.assertEqual('dull',
-                revision_tree.get_file_revision(revision_tree.get_root_id()))
+                revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -555,11 +555,13 @@ class Test2a(tests.TestCaseWithMemoryTransport):
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')
         builder.start_series()
-        builder.build_snapshot('1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('2', ['1'], [
-            ('modify', ('file-id', 'content-2\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='1')
+        builder.build_snapshot(['1'], [
+            ('modify', ('file-id', 'content-2\n'))],
+            revision_id='2')
         builder.finish_series()
         source = builder.get_branch()
         target = self.make_repository('target', format='2a')
@@ -577,11 +579,13 @@ class Test2a(tests.TestCaseWithMemoryTransport):
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')
         builder.start_series()
-        builder.build_snapshot('1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('2', ['1'], [
-            ('modify', ('file-id', 'content-2\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='1')
+        builder.build_snapshot(['1'], [
+            ('modify', ('file-id', 'content-2\n'))],
+            revision_id='2')
         builder.finish_series()
         source = builder.get_branch()
         target = self.make_repository('target', format='2a')
@@ -599,11 +603,13 @@ class Test2a(tests.TestCaseWithMemoryTransport):
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')
         builder.start_series()
-        builder.build_snapshot('1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('2', ['1'], [
-            ('modify', ('file-id', 'content-2\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='1')
+        builder.build_snapshot(['1'], [
+            ('modify', ('file-id', 'content-2\n'))],
+            revision_id='2')
         builder.finish_series()
         source = builder.get_branch()
         target = self.make_repository('target', format='2a')
@@ -698,14 +704,14 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                 content = 'content for %s\n' % (fname,)
                 entries.append(('add', (fname, fid, 'file', content)))
         source_builder.start_series()
-        source_builder.build_snapshot('rev-1', None, entries)
+        source_builder.build_snapshot(None, entries, revision_id='rev-1')
         # Now change a few of them, so we get a few new pages for the second
         # revision
-        source_builder.build_snapshot('rev-2', ['rev-1'], [
+        source_builder.build_snapshot(['rev-1'], [
             ('modify', ('aa-id', 'new content for aa-id\n')),
             ('modify', ('cc-id', 'new content for cc-id\n')),
             ('modify', ('zz-id', 'new content for zz-id\n')),
-            ])
+            ], revision_id='rev-2')
         source_builder.finish_series()
         source_branch = source_builder.get_branch()
         source_branch.lock_read()
@@ -829,8 +835,9 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
         self.builder = self.make_branch_builder('source')
         self.builder.start_series()
-        self.builder.build_snapshot('initial', None,
-            [('add', ('', 'tree-root', 'directory', None))])
+        self.builder.build_snapshot(None,
+            [('add', ('', 'tree-root', 'directory', None))],
+            revision_id='initial')
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
 
@@ -839,15 +846,15 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
             sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
 
     def test_simple(self):
-        self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', ['revid1'], [])
+        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(['revid1'], [], revision_id='revid2')
         rev_set = ['revid2']
         self.assertParentIds(['revid1'], rev_set)
 
     def test_not_first_parent(self):
-        self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', ['revid1'], [])
-        self.builder.build_snapshot('revid3', ['revid2'], [])
+        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(['revid1'], [], revision_id='revid2')
+        self.builder.build_snapshot(['revid2'], [], revision_id='revid3')
         rev_set = ['revid3', 'revid2']
         self.assertParentIds(['revid1'], rev_set)
 
@@ -856,26 +863,27 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         self.assertParentIds([], rev_set)
 
     def test_not_null_set(self):
-        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot(None, [], revision_id='revid1')
         rev_set = [_mod_revision.NULL_REVISION]
         self.assertParentIds([], rev_set)
 
     def test_ghost(self):
-        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot(None, [], revision_id='revid1')
         rev_set = ['ghost', 'revid1']
         self.assertParentIds(['initial'], rev_set)
 
     def test_ghost_parent(self):
-        self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', ['revid1', 'ghost'], [])
+        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(['revid1', 'ghost'], [], revision_id='revid2')
         rev_set = ['revid2', 'revid1']
         self.assertParentIds(['ghost', 'initial'], rev_set)
 
     def test_righthand_parent(self):
-        self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2a', ['revid1'], [])
-        self.builder.build_snapshot('revid2b', ['revid1'], [])
-        self.builder.build_snapshot('revid3', ['revid2a', 'revid2b'], [])
+        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(['revid1'], [], revision_id='revid2a')
+        self.builder.build_snapshot(['revid1'], [], revision_id='revid2b')
+        self.builder.build_snapshot(['revid2a', 'revid2b'], [],
+                                    revision_id='revid3')
         rev_set = ['revid3', 'revid2a']
         self.assertParentIds(['revid1', 'revid2b'], rev_set)
 
@@ -1467,15 +1475,19 @@ class TestPacker(TestCaseWithTransport):
     def test_pack_optimizes_pack_order(self):
         builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
-        builder.build_snapshot('A', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('f', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('B', ['A'],
-            [('modify', ('f-id', 'new-content\n'))])
-        builder.build_snapshot('C', ['B'],
-            [('modify', ('f-id', 'third-content\n'))])
-        builder.build_snapshot('D', ['C'],
-            [('modify', ('f-id', 'fourth-content\n'))])
+            ('add', ('f', 'f-id', 'file', 'content\n'))],
+            revision_id='A')
+        builder.build_snapshot(['A'],
+            [('modify', ('f-id', 'new-content\n'))],
+            revision_id='B')
+        builder.build_snapshot(['B'],
+            [('modify', ('f-id', 'third-content\n'))],
+            revision_id='C')
+        builder.build_snapshot(['C'],
+            [('modify', ('f-id', 'fourth-content\n'))],
+            revision_id='D')
         b = builder.get_branch()
         b.lock_read()
         builder.finish_series()
@@ -1520,14 +1532,16 @@ class TestGCCHKPacker(TestCaseWithTransport):
     def make_abc_branch(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot('A', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n')),
-            ])
-        builder.build_snapshot('B', ['A'], [
-            ('add', ('dir', 'dir-id', 'directory', None))])
-        builder.build_snapshot('C', ['B'], [
-            ('modify', ('file-id', 'new content\n'))])
+            ], revision_id='A')
+        builder.build_snapshot(['A'], [
+            ('add', ('dir', 'dir-id', 'directory', None))],
+            revision_id='B')
+        builder.build_snapshot(['B'], [
+            ('modify', ('file-id', 'new content\n'))],
+            revision_id='C')
         builder.finish_series()
         return builder.get_branch()
 

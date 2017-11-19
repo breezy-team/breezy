@@ -568,8 +568,9 @@ class TreeTransformBase(object):
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
+            path = self._tree.id2path(file_id)
             if file_id is not None:
-                if self._tree.stored_kind(file_id) == 'directory':
+                if self._tree.stored_kind(path, file_id) == 'directory':
                     parents.append(trans_id)
             elif self.tree_kind(trans_id) == 'directory':
                 parents.append(trans_id)
@@ -1078,7 +1079,8 @@ class TreeTransformBase(object):
     def _text_parent(self, trans_id):
         file_id = self.tree_file_id(trans_id)
         try:
-            if file_id is None or self._tree.kind(file_id) != 'file':
+            if (file_id is None or
+                    self._tree.kind(self._tree.id2path(file_id), file_id) != 'file'):
                 return None
         except errors.NoSuchFile:
             return None
@@ -1089,14 +1091,14 @@ class TreeTransformBase(object):
         file_id = self._text_parent(trans_id)
         if file_id is None:
             return ()
-        return (self._tree.get_file_text(file_id),)
+        return (self._tree.get_file_text(self._tree.id2path(file_id), file_id),)
 
     def _get_parents_lines(self, trans_id):
         """Get lines for compression parents of this file."""
         file_id = self._text_parent(trans_id)
         if file_id is None:
             return ()
-        return (self._tree.get_file_lines(file_id),)
+        return (self._tree.get_file_lines(self._tree.id2path(file_id), file_id),)
 
     def serialize(self, serializer):
         """Serialize this TreeTransform.
@@ -1787,7 +1789,8 @@ class TreeTransform(DiskTreeTransform):
                 needs_entry = False
                 kind = self.final_kind(trans_id)
                 if kind is None:
-                    kind = self._tree.stored_kind(file_id)
+                    kind = self._tree.stored_kind(
+                            self._tree.id2path(file_id), file_id)
                 parent_trans_id = self.final_parent(trans_id)
                 parent_file_id = new_path_file_ids.get(parent_trans_id)
                 if parent_file_id is None:
@@ -2008,11 +2011,12 @@ class _PreviewTree(inventorytree.InventoryTree):
             except errors.NoSuchRevisionInTree:
                 yield self._get_repository().revision_tree(revision_id)
 
-    def _get_file_revision(self, file_id, vf, tree_revision):
-        parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
-                       self._iter_parent_trees()]
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        parent_keys = [
+                (file_id, t.get_file_revision(t.id2path(file_id), file_id))
+                for t in self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
-                     self.get_file_lines(file_id))
+                     self.get_file_lines(path, file_id))
         repo = self._get_repository()
         base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
@@ -2038,7 +2042,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             executable = False
         else:
             file_id = self._transform.final_file_id(self._path2trans_id(path))
-            executable = self.is_executable(file_id, path)
+            executable = self.is_executable(path, file_id)
         return kind, executable, None
 
     def is_locked(self):
@@ -2156,7 +2160,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 continue
             kind = self._transform.final_kind(trans_id)
             if kind is None:
-                kind = self._transform._tree.stored_kind(file_id)
+                kind = self._transform._tree.stored_kind(
+                    self._transform._tree.id2path(file_id),
+                    file_id)
             new_entry = inventory.make_entry(
                 kind,
                 self._transform.final_name(trans_id),
@@ -2232,64 +2238,82 @@ class _PreviewTree(inventorytree.InventoryTree):
             for path, entry in entries:
                 yield path, 'V', entry.kind, entry.file_id, entry
 
-    def kind(self, file_id):
+    def kind(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         return self._transform.final_kind(trans_id)
 
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._transform._new_contents[trans_id]
         except KeyError:
-            return self._transform._tree.stored_kind(file_id)
+            return self._transform._tree.stored_kind(path, file_id)
 
-    def get_file_mtime(self, file_id, path=None):
+    def get_file_mtime(self, path, file_id=None):
         """See Tree.get_file_mtime"""
+        if file_id is None:
+            file_id = self.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
         if not self._content_change(file_id):
-            return self._transform._tree.get_file_mtime(file_id)
+            return self._transform._tree.get_file_mtime(
+                    self._transform._tree.id2path(file_id), file_id)
         return self._stat_limbo_file(file_id).st_mtime
 
     def _file_size(self, entry, stat_value):
-        return self.get_file_size(entry.file_id)
+        path = self.id2path(entry.file_id)
+        return self.get_file_size(path, entry.file_id)
 
-    def get_file_size(self, file_id):
+    def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
+        if file_id is None:
+            file_id = self.path2id(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         kind = self._transform.final_kind(trans_id)
         if kind != 'file':
             return None
         if trans_id in self._transform._new_contents:
             return self._stat_limbo_file(trans_id=trans_id).st_size
-        if self.kind(file_id) == 'file':
-            return self._transform._tree.get_file_size(file_id)
+        if self.kind(path, file_id) == 'file':
+            return self._transform._tree.get_file_size(path, file_id)
         else:
             return None
 
-    def get_file_verifier(self, file_id, path=None, stat_value=None):
+    def get_file_verifier(self, path, file_id=None, stat_value=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
-            return self._transform._tree.get_file_verifier(file_id)
+            return self._transform._tree.get_file_verifier(path, file_id)
         if kind == 'file':
-            fileobj = self.get_file(file_id)
+            fileobj = self.get_file(path, file_id)
             try:
                 return ("SHA1", sha_file(fileobj))
             finally:
                 fileobj.close()
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
-            return self._transform._tree.get_file_sha1(file_id)
+            return self._transform._tree.get_file_sha1(path, file_id)
         if kind == 'file':
-            fileobj = self.get_file(file_id)
+            fileobj = self.get_file(path, file_id)
             try:
                 return sha_file(fileobj)
             finally:
                 fileobj.close()
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         if file_id is None:
             return False
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -2297,7 +2321,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             return self._transform._new_executability[trans_id]
         except KeyError:
             try:
-                return self._transform._tree.is_executable(file_id, path)
+                return self._transform._tree.is_executable(path, file_id)
             except OSError as e:
                 if e.errno == errno.ENOENT:
                     return False
@@ -2365,19 +2389,23 @@ class _PreviewTree(inventorytree.InventoryTree):
             raise ValueError('want_unversioned is not supported')
         return self._transform.iter_changes()
 
-    def get_file(self, file_id, path=None):
+    def get_file(self, path, file_id=None):
         """See Tree.get_file"""
+        if file_id is None:
+            file_id = self.path2id(path)
         if not self._content_change(file_id):
-            return self._transform._tree.get_file(file_id, path)
+            return self._transform._tree.get_file(path, file_id)
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
-    def get_file_with_stat(self, file_id, path=None):
-        return self.get_file(file_id, path), None
+    def get_file_with_stat(self, path, file_id=None):
+        return self.get_file(path, file_id), None
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
+        if file_id is None:
+            file_id = self.path2id(path)
         changes = self._iter_changes_cache.get(file_id)
         if changes is None:
             get_old = True
@@ -2388,8 +2416,8 @@ class _PreviewTree(inventorytree.InventoryTree):
                 return None
             get_old = (kind[0] == 'file' and versioned[0])
         if get_old:
-            old_annotation = self._transform._tree.annotate_iter(file_id,
-                default_revision=default_revision)
+            old_annotation = self._transform._tree.annotate_iter(
+                    path, file_id=file_id, default_revision=default_revision)
         else:
             old_annotation = []
         if changes is None:
@@ -2404,13 +2432,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         #       It would be nice to be able to use the new Annotator based
         #       approach, as well.
         return annotate.reannotate([old_annotation],
-                                   self.get_file(file_id).readlines(),
+                                   self.get_file(path, file_id).readlines(),
                                    default_revision)
 
-    def get_symlink_target(self, file_id, path=None):
+    def get_symlink_target(self, path, file_id=None):
         """See Tree.get_symlink_target"""
+        if file_id is None:
+            file_id = self.path2id(path)
         if not self._content_change(file_id):
-            return self._transform._tree.get_symlink_target(file_id)
+            return self._transform._tree.get_symlink_target(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return osutils.readlink(name)
@@ -2433,7 +2463,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                     versioned_kind = kind
                 else:
                     kind = 'unknown'
-                    versioned_kind = self._transform._tree.stored_kind(file_id)
+                    versioned_kind = self._transform._tree.stored_kind(
+                            self._transform._tree.id2path(file_id),
+                            file_id)
                 if versioned_kind == 'directory':
                     subdirs.append(child_id)
                 children.append((path_from_root, basename, kind, None,
@@ -2613,14 +2645,14 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     trans_id = tt.create_path(entry.name, parent_id)
                     file_trans_id[file_id] = trans_id
                     tt.version_file(file_id, trans_id)
-                    executable = tree.is_executable(file_id, tree_path)
+                    executable = tree.is_executable(tree_path, file_id)
                     if executable:
                         tt.set_executability(executable, trans_id)
                     trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((file_id, trans_data))
                 else:
-                    file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
-                                                          tree)
+                    file_trans_id[file_id] = new_by_entry(
+                            tree_path, tt, entry, parent_id, tree)
                 if reparent:
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
@@ -2678,7 +2710,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
             else:
-                contents = accelerator_tree.get_file(file_id, accelerator_path)
+                contents = accelerator_tree.get_file(accelerator_path, file_id)
                 if wt.supports_content_filtering():
                     filters = wt._content_filter_stack(tree_path)
                     contents = filtered_output_bytes(contents, filters,
@@ -2720,15 +2752,16 @@ def _content_match(tree, entry, file_id, kind, target_path):
         return False
     if entry.kind == "directory":
         return True
+    path = tree.id2path(file_id)
     if entry.kind == "file":
         f = file(target_path, 'rb')
         try:
-            if tree.get_file_text(file_id) == f.read():
+            if tree.get_file_text(path, file_id) == f.read():
                 return True
         finally:
             f.close()
     elif entry.kind == "symlink":
-        if tree.get_symlink_target(file_id) == os.readlink(target_path):
+        if tree.get_symlink_target(path, file_id) == os.readlink(target_path):
             return True
     return False
 
@@ -2763,13 +2796,13 @@ def resolve_checkout(tt, conflicts, divert):
     return new_conflicts
 
 
-def new_by_entry(tt, entry, parent_id, tree):
+def new_by_entry(path, tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""
     name = entry.name
     kind = entry.kind
     if kind == 'file':
-        contents = tree.get_file(entry.file_id).readlines()
-        executable = tree.is_executable(entry.file_id)
+        contents = tree.get_file(path, entry.file_id).readlines()
+        executable = tree.is_executable(path, entry.file_id)
         return tt.new_file(name, parent_id, contents, entry.file_id,
                            executable)
     elif kind in ('directory', 'tree-reference'):
@@ -2778,26 +2811,26 @@ def new_by_entry(tt, entry, parent_id, tree):
             tt.set_tree_reference(entry.reference_revision, trans_id)
         return trans_id
     elif kind == 'symlink':
-        target = tree.get_symlink_target(entry.file_id)
+        target = tree.get_symlink_target(path, entry.file_id)
         return tt.new_symlink(name, parent_id, target, entry.file_id)
     else:
         raise errors.BadFileKindError(name, kind)
 
 
-def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
+def create_from_tree(tt, trans_id, tree, path, file_id=None, bytes=None,
     filter_tree_path=None):
     """Create new file contents according to tree contents.
-    
+
     :param filter_tree_path: the tree path to use to lookup
       content filters to apply to the bytes output in the working tree.
       This only applies if the working tree supports content filtering.
     """
-    kind = tree.kind(file_id)
+    kind = tree.kind(path, file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
     elif kind == "file":
         if bytes is None:
-            tree_file = tree.get_file(file_id)
+            tree_file = tree.get_file(path, file_id)
             try:
                 bytes = tree_file.readlines()
             finally:
@@ -2809,7 +2842,7 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
                 ContentFilterContext(filter_tree_path, tree))
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
-        tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
+        tt.create_symlink(tree.get_symlink_target(path, file_id), trans_id)
     else:
         raise AssertionError('Unknown kind %r' % kind)
 
@@ -2899,7 +2932,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
             if changed_content:
                 keep_content = False
                 if wt_kind == 'file' and (backups or target_kind is None):
-                    wt_sha1 = working_tree.get_file_sha1(file_id)
+                    wt_sha1 = working_tree.get_file_sha1(wt_path, file_id)
                     if merge_modified.get(file_id) != wt_sha1:
                         # acquire the basis tree lazily to prevent the
                         # expense of accessing it when it's not needed ?
@@ -2907,11 +2940,14 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        if basis_tree.has_id(file_id):
-                            if wt_sha1 != basis_tree.get_file_sha1(file_id):
+                        try:
+                            basis_path = basis_tree.id2path(file_id)
+                        except errors.NoSuchId:
+                            if target_kind is None and not target_versioned:
                                 keep_content = True
-                        elif target_kind is None and not target_versioned:
-                            keep_content = True
+                        else:
+                            if wt_sha1 != basis_tree.get_file_sha1(basis_path, file_id):
+                                keep_content = True
                 if wt_kind is not None:
                     if not keep_content:
                         tt.delete_contents(trans_id)
@@ -2931,20 +2967,24 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 if target_kind in ('directory', 'tree-reference'):
                     tt.create_directory(trans_id)
                     if target_kind == 'tree-reference':
-                        revision = target_tree.get_reference_revision(file_id,
-                                                                      target_path)
+                        revision = target_tree.get_reference_revision(
+                                target_path, file_id)
                         tt.set_tree_reference(revision, trans_id)
                 elif target_kind == 'symlink':
-                    tt.create_symlink(target_tree.get_symlink_target(file_id),
-                                      trans_id)
+                    tt.create_symlink(target_tree.get_symlink_target(
+                            target_path, file_id), trans_id)
                 elif target_kind == 'file':
                     deferred_files.append((file_id, (trans_id, mode_id)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
-                    new_sha1 = target_tree.get_file_sha1(file_id)
-                    if (basis_tree.has_id(file_id) and
-                        new_sha1 == basis_tree.get_file_sha1(file_id)):
+                    new_sha1 = target_tree.get_file_sha1(target_path, file_id)
+                    try:
+                        basis_path = basis_tree.id2path(file_id)
+                    except errors.NoSuchId:
+                        basis_path = None
+                    if (basis_path is not None and
+                        new_sha1 == basis_tree.get_file_sha1(basis_path, file_id)):
                         if file_id in merge_modified:
                             del merge_modified[file_id]
                     else:

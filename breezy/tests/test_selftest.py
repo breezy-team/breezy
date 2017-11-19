@@ -139,7 +139,7 @@ class TestTransportScenarios(tests.TestCase):
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
-        sample_permutation = [(1,2), (3,4)]
+        sample_permutation = [(1, 2), (3, 4)]
         from .per_transport import get_transport_test_permutations
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
@@ -3698,7 +3698,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
             def setUp(self):
                 super(Test, self).setUp()
                 self.hooks = hooks.Hooks()
-                self.hooks.add_hook('myhook', 'Foo bar blah', (2,4))
+                self.hooks.add_hook('myhook', 'Foo bar blah', (2, 4))
                 self.install_counter_hook(self.hooks, 'myhook')
 
             def no_hook(self):

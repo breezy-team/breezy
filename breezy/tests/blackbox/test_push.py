@@ -68,13 +68,13 @@ class TestPush(tests.TestCaseWithTransport):
         # If there is no parent location set, :parent isn't mentioned.
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-                ('','brz: ERROR: No push location known or specified.\n'))
+                ('', 'brz: ERROR: No push location known or specified.\n'))
 
         # If there is a parent location set, the error suggests :parent.
         tree_a.branch.set_parent(tree_b.branch.base)
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-            ('','brz: ERROR: No push location known or specified. '
+            ('', 'brz: ERROR: No push location known or specified. '
                 'To push to the parent branch '
                 '(at %s), use \'brz push :parent\'.\n' %
                 urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
@@ -103,7 +103,7 @@ class TestPush(tests.TestCaseWithTransport):
         # test push for failure without push location set
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('','brz: ERROR: No push location known or specified.\n'))
+                ('', 'brz: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
         self.run_bzr('push path/which/doesnt/exist',
@@ -117,7 +117,7 @@ class TestPush(tests.TestCaseWithTransport):
         out = self.run_bzr('push ../branch_b',
                            working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('','brz: ERROR: These branches have diverged.  '
+                ('', 'brz: ERROR: These branches have diverged.  '
                  'See "brz help diverged-branches" for more information.\n'))
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.controldir.open_branch()
@@ -254,10 +254,11 @@ class TestPush(tests.TestCaseWithTransport):
         target_repo = self.make_repository('target')
         source = self.make_branch_builder('source')
         source.start_series()
-        source.build_snapshot('A', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        source.build_snapshot('B', ['A'], [])
-        source.build_snapshot('C', ['A'], [])
+        source.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A')
+        source.build_snapshot(['A'], [], revision_id='B')
+        source.build_snapshot(['A'], [], revision_id='C')
         source.finish_series()
         self.run_bzr('push target -d source')
         self.addCleanup(target_repo.lock_read().unlock)
@@ -574,12 +575,14 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local', format='pack-0.92')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
-        builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))])
+            ('add', ('filename', 'f-id', 'file', 'content\n'))],
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
+        builder.build_snapshot(['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))],
+            revision_id='rev-3')
         builder.finish_series()
         branch = builder.get_branch()
         # Push rev-1 to "trunk", so that we can stack on it.
@@ -885,9 +888,10 @@ class TestPushForeign(tests.TestCaseWithTransport):
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
-        builder.build_snapshot('revid', None,
+        builder.build_snapshot(None,
             [('add', ('', 'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', 'fooid', 'file', 'bar'))])
+             ('add', ('foo', 'fooid', 'file', 'bar'))],
+            revision_id='revid')
         return builder
 
     def test_no_roundtripping(self):

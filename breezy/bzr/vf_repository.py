@@ -352,9 +352,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                                 change[3].revision]
                             parent_entries[change[2]] = {
                                 # basis parent
-                                basis_entry.revision:basis_entry,
+                                basis_entry.revision: basis_entry,
                                 # this parent 
-                                change[3].revision:change[3],
+                                change[3].revision: change[3],
                                 }
                         else:
                             merged_ids[change[2]] = [change[3].revision]
@@ -484,7 +484,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
-                    file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
+                    file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
                     try:
                         text = file_obj.read()
                     finally:
@@ -501,7 +501,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         entry.text_sha1 = parent_entry.text_sha1
                 elif kind == 'symlink':
                     # Wants a path hint?
-                    entry.symlink_target = tree.get_symlink_target(file_id)
+                    entry.symlink_target = tree.get_symlink_target(change[1][1], file_id)
                     if (carry_over_possible and
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
@@ -523,7 +523,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    reference_revision = tree.get_reference_revision(change[0])
+                    reference_revision = tree.get_reference_revision(change[1][1], change[0])
                     entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):
@@ -1537,6 +1537,45 @@ class VersionedFileRepository(Repository):
         for inv in inventories:
             yield inventorytree.InventoryRevisionTree(self, inv, inv.revision_id)
 
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
+        """Produce a generator of revision deltas.
+
+        Note that the input is a sequence of REVISIONS, not revision_ids.
+        Trees will be held in memory until the generator exits.
+        Each delta is relative to the revision's lefthand predecessor.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        # Get the revision-ids of interest
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            yield trees[revision.revision_id].changes_from(old_tree)
+
     def _filtered_revision_trees(self, revision_ids, file_ids):
         """Return Tree for a revision on this branch with only some files.
 
@@ -1565,7 +1604,7 @@ class VersionedFileRepository(Repository):
             elif revision_id is None:
                 raise ValueError('get_parent_map(None) is not valid')
             else:
-                query_keys.append((revision_id ,))
+                query_keys.append((revision_id,))
         for (revision_id,), parent_keys in viewitems(
                 self.revisions.get_parent_map(query_keys)):
             if parent_keys:
@@ -2839,11 +2878,13 @@ def _install_revision(repository, rev, revision_tree, signature,
         for revision, tree in viewitems(parent_trees):
             if not tree.has_id(ie.file_id):
                 continue
-            parent_id = tree.get_file_revision(ie.file_id)
+            path = tree.id2path(ie.file_id)
+            parent_id = tree.get_file_revision(path, ie.file_id)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))
-        lines = revision_tree.get_file(ie.file_id).readlines()
+        revision_tree_path = revision_tree.id2path(ie.file_id)
+        lines = revision_tree.get_file(revision_tree_path, ie.file_id).readlines()
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory

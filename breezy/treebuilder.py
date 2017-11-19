@@ -63,8 +63,7 @@ class TreeBuilder(object):
                 end = '\n'
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
                 self._tree.add(name, None, 'file')
-                file_id = self._tree.path2id(name)
-                self._tree.put_file_bytes_non_atomic(file_id, content)
+                self._tree.put_file_bytes_non_atomic(name, content)
 
     def _ensure_building(self):
         """Raise NotBuilding if there is no current tree being built."""

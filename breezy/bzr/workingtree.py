@@ -92,7 +92,7 @@ MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = b"BZR conflict list format 1"
 
 
-class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
+class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     """Base class for working trees that are inventory-oriented.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -427,7 +427,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                         else:
                             new_status = '?'
                         # XXX: Really should be a more abstract reporter interface
-                        kind_ch = osutils.kind_marker(self.kind(fid))
+                        kind_ch = osutils.kind_marker(self.kind(f, fid))
                         to_file.write(new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
@@ -565,7 +565,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file_byname(breezy.IGNORE_FILENAME)
+            f = self.get_file(breezy.IGNORE_FILENAME)
             try:
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
@@ -724,15 +724,13 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             mode=self.controldir._get_file_mode())
         self._inventory_is_modified = False
 
-    def get_file_mtime(self, file_id, path=None):
+    def get_file_mtime(self, path, file_id=None):
         """See Tree.get_file_mtime."""
-        if not path:
-            path = self.id2path(file_id)
         try:
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise FileTimestampUnavailable(path)
+                raise errors.NoSuchFile(path)
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
@@ -747,13 +745,11 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            inv, inv_file_id = self._unpack_file_id(file_id)
+            inv, inv_file_id = self._path2inv_file_id(path, file_id)
             return inv[inv_file_id].executable
         else:
-            if not path:
-                path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
@@ -799,7 +795,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         # raise if there was no inventory, or if we read the wrong inventory.
         raise errors.NoSuchRevisionInTree(self, revision_id)
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter
 
@@ -811,15 +807,19 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
         attribution will be correct).
         """
         with self.lock_read():
+            if file_id is None:
+                file_id = self.path2id(path)
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
                 try:
                     parent_tree = self.revision_tree(parent_id)
                 except errors.NoSuchRevisionInTree:
-                    parent_tree = self.branch.repository.revision_tree(parent_id)
+                    parent_tree = self.branch.repository.revision_tree(
+                            parent_id)
                 with parent_tree.lock_read():
+
                     try:
-                        kind = parent_tree.kind(file_id)
+                        kind = parent_tree.kind(path, file_id)
                     except errors.NoSuchId:
                         continue
                     if kind != 'file':
@@ -827,8 +827,10 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                         # directories have a "text" which is the empty text, and we
                         # know that won't mess up annotations. But it seems cleaner
                         continue
+                    parent_path = parent_tree.id2path(file_id)
                     parent_text_key = (
-                        file_id, parent_tree.get_file_revision(file_id))
+                        file_id,
+                        parent_tree.get_file_revision(parent_path, file_id))
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
             graph = _mod_graph.Graph(self.branch.repository.texts)
@@ -840,7 +842,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
 
             # Now we have the parents of this content
             annotator = self.branch.repository.texts.get_annotator()
-            text = self.get_file_text(file_id)
+            text = self.get_file_text(path, file_id)
             this_key =(file_id, default_revision)
             annotator.add_special_text(this_key, file_parent_keys, text)
             annotations = [(key[-1], line)
@@ -889,7 +891,8 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                     if not self.has_id(file_id):
                         continue
                     text_hash = s.get("hash")
-                    if text_hash == self.get_file_sha1(file_id):
+                    path = self.id2path(file_id)
+                    if text_hash == self.get_file_sha1(path, file_id):
                         merge_hashes[file_id] = text_hash
                 return merge_hashes
             finally:
@@ -1179,7 +1182,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                 from_tail = osutils.splitpath(from_rel)[-1]
                 from_inv, from_id = self._path2inv_file_id(from_rel)
                 if from_id is None:
-                    raise errors.BzrMoveFailedError(from_rel,to_dir,
+                    raise errors.BzrMoveFailedError(from_rel, to_dir,
                         errors.NotVersionedError(path=from_rel))
 
                 from_entry = from_inv[from_id]
@@ -1272,7 +1275,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             # check if the target changed directory and if the target directory is
             # versioned
             if to_dir_id is None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=to_dir))
 
             # all checks done. now we can continue with our actual work
@@ -1321,7 +1324,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
 
             # check the inventory for source and destination
             if from_id is None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=from_rel))
             if to_id is not None:
                 allowed = False
@@ -1333,14 +1336,14 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                             rename_entry.change_id = True
                             allowed = True
                 if not allowed:
-                    raise errors.BzrMoveFailedError(from_rel,to_rel,
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_id,to_rel,
+                    raise errors.BzrMoveFailedError(from_id, to_rel,
                         errors.NoSuchFile(path=to_rel,
                         extra="New file has not been created yet"))
                 only_change_inv = True
@@ -1413,19 +1416,28 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
             inv.remove_recursive_id(to_id)
         inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths, file_ids=None):
+        """Remove the paths in paths from the current versioned set.
 
-        When a file_id is unversioned, all of its children are automatically
+        When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
+        :param paths: The paths to stop versioning.
+        :param file_ids: Optional file_ids for the paths
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
-            for file_id in file_ids:
-                if not self._inventory.has_id(file_id):
-                    raise errors.NoSuchId(self, file_id)
+            if file_ids is not None:
+                for file_id in file_ids:
+                    if not self._inventory.has_id(file_id):
+                        raise errors.NoSuchId(self, file_id)
+            else:
+                file_ids = set()
+                for path in paths:
+                    file_id = self._inventory.path2id(path)
+                    if file_id is None:
+                        raise errors.NoSuchFile(self, path)
+                    file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)
@@ -1440,9 +1452,9 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                 # - RBC 20060907
                 self._write_inventory(self._inventory)
 
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         return inv[inv_file_id].kind
 
     def extras(self):

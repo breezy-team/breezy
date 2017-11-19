@@ -133,11 +133,11 @@ class TestSearchResultFromParentMap(TestGraphBase):
                                 missing_keys=[NULL_REVISION])
 
     def test_partial_search(self):
-        parent_map = dict((k,extended_history_shortcut[k])
+        parent_map = dict((k, extended_history_shortcut[k])
                           for k in ['e', 'f'])
         self.assertSearchResult(['e', 'f'], ['d', 'a'], 2,
                                 parent_map)
-        parent_map.update((k,extended_history_shortcut[k])
+        parent_map.update((k, extended_history_shortcut[k])
                           for k in ['d', 'a'])
         self.assertSearchResult(['e', 'f'], ['c', NULL_REVISION], 4,
                                 parent_map)
@@ -205,9 +205,10 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
     def test_get_keys(self):
         builder = self.make_branch_builder('b')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()
@@ -218,9 +219,10 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
     def test_get_keys_excludes_ghosts(self):
         builder = self.make_branch_builder('b')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('rev-2', ['rev-1', 'ghost'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1', 'ghost'], [], revision_id='rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()

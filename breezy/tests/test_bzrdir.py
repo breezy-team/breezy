@@ -840,7 +840,9 @@ class ChrootedTests(TestCaseWithTransport):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         self.assertPathExists('tree2/subtree/file')
-        self.assertEqual('tree-reference', tree2.kind('subtree-root'))
+        self.assertEqual(
+                'tree-reference',
+                tree2.kind('subtree', 'subtree-root'))
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""

@@ -388,7 +388,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Does not update the revision_history cache.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
-        out_string = '%d %s\n' % (revno, revision_id)
+        out_string = b'%d %s\n' % (revno, revision_id)
         self._transport.put_bytes('last-revision', out_string,
             mode=self.controldir._get_file_mode())
 

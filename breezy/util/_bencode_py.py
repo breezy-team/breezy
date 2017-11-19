@@ -109,10 +109,10 @@ class Bencached(object):
         self.bencoded = s
 
 
-def encode_bencached(x,r):
+def encode_bencached(x, r):
     r.append(x.bencoded)
 
-def encode_bool(x,r):
+def encode_bool(x, r):
     encode_int(int(x), r)
 
 def encode_int(x, r):
@@ -127,7 +127,7 @@ def encode_list(x, r):
         encode_func[type(i)](i, r)
     r.append(b'e')
 
-def encode_dict(x,r):
+def encode_dict(x, r):
     r.append(b'd')
     ilist = sorted(x.items())
     for k, v in ilist:

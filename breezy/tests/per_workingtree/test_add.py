@@ -64,7 +64,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.commit('first')
         root_id = tree.get_root_id()
         # And the entry should not have been added.
-        tree.unversion([file_id])
+        tree.unversion(['a'])
         tree.add(['b'], [file_id])
         self.assertTreeLayout([('', root_id), ('b', file_id)], tree)
         self.assertTreeLayout([('', root_id), ('a', file_id)],
@@ -168,7 +168,7 @@ class TestAdd(TestCaseWithWorkingTree):
         root_id = tree.get_root_id()
         tree.add(['dir'])
         tree.commit('dir')
-        tree.unversion([tree.path2id('dir')])
+        tree.unversion(['dir'])
         self.assertRaises(errors.NotVersionedError,
                           tree.add, ['dir/subdir'])
 
@@ -188,7 +188,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         tree.add(['foo'])
-        tree.unversion([tree.path2id('foo')])
+        tree.unversion(['foo'])
         tree.add(['foo'])
         self.assertTrue(tree.has_filename('foo'))
 
@@ -199,7 +199,7 @@ class TestAdd(TestCaseWithWorkingTree):
             self.skip("tree does not support setting file ids")
         self.build_tree(['foo'])
         tree.add(['foo'], ['foo-id'])
-        tree.unversion(['foo-id'])
+        tree.unversion(['foo'])
         tree.add(['foo'], ['foo-id'])
         self.assertEqual('foo-id', tree.path2id('foo'))
 
@@ -209,7 +209,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['foo'])
         tree.add(['foo'])
         tree.commit('add foo')
-        tree.unversion([tree.path2id('foo')])
+        tree.unversion(['foo'])
         tree.add(['foo'])
         self.assertTrue(tree.has_filename('foo'))
 
@@ -221,6 +221,6 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['foo'])
         tree.add(['foo'], ['foo-id'])
         tree.commit('add foo')
-        tree.unversion(['foo-id'])
+        tree.unversion(['foo'])
         tree.add(['foo'], ['foo-id'])
         self.assertEqual('foo-id', tree.path2id('foo'))

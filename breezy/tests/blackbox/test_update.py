@@ -83,7 +83,7 @@ $ brz update checkout
         self.run_bzr('add checkout/file')
         self.run_bzr('commit -m add-file checkout')
         # now branch should be out of date
-        out,err = self.run_bzr('update branch')
+        out, err = self.run_bzr('update branch')
         self.assertEqual('', out)
         self.assertEqualDiff("""+N  file
 All changes applied successfully.
@@ -101,7 +101,7 @@ Updated to revision 1 of branch %s
         self.run_bzr('add checkout/file')
         self.run_bzr('commit -m add-file checkout')
         # now checkout2 should be out of date
-        out,err = self.run_bzr('update checkout2')
+        out, err = self.run_bzr('update checkout2')
         self.assertEqualDiff('''+N  file
 All changes applied successfully.
 Updated to revision 1 of branch %s
@@ -127,7 +127,7 @@ Updated to revision 1 of branch %s
         a_file = file('checkout2/file', 'wt')
         a_file.write('Bar')
         a_file.close()
-        out,err = self.run_bzr('update checkout2', retcode=1)
+        out, err = self.run_bzr('update checkout2', retcode=1)
         self.assertEqualDiff(''' M  file
 Text conflict in file
 1 conflicts encountered.
@@ -365,26 +365,26 @@ $ brz update -r revid:m2
 
         tree=self.make_branch_and_tree('.')
 
-        f = open('hello','wt')
+        f = open('hello', 'wt')
         f.write('foo')
         f.close()
         tree.add('hello')
         tree.commit('fie')
 
-        f = open('hello','wt')
+        f = open('hello', 'wt')
         f.write('fee')
         f.close()
         tree.commit('fee')
 
         #tree.update() gives no such revision, so ...
-        self.run_bzr(['update','-r1'])
+        self.run_bzr(['update', '-r1'])
 
         #create conflict
-        f = open('hello','wt')
+        f = open('hello', 'wt')
         f.write('fie')
         f.close()
 
-        out, err = self.run_bzr(['update','--show-base'],retcode=1)
+        out, err = self.run_bzr(['update', '--show-base'], retcode=1)
 
         # check for conflict notification
         self.assertContainsString(err,

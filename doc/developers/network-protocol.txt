@@ -70,7 +70,7 @@ Sketch::
           machine until the request can be satisfied,
           sends structured data to the protocol.
 
-Request handlers are registered in the `bzrlib.smart.request` module.
+Request handlers are registered in the `breezy.smart.request` module.
 
 
 Client-side

@@ -66,12 +66,14 @@ class _TreeShim(object):
         # TODO: Handle root renames?
         return self._basis_inv.root.file_id
 
-    def get_file_with_stat(self, file_id, path=None):
-        content = self.get_file_text(file_id, path)
+    def get_file_with_stat(self, path, file_id=None):
+        content = self.get_file_text(path, file_id)
         sio = StringIO(content)
         return sio, None
 
-    def get_file_text(self, file_id, path=None):
+    def get_file_text(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         try:
             return self._content_provider(file_id)
         except KeyError:
@@ -83,13 +85,15 @@ class _TreeShim(object):
                                                         'unordered', True)
             return stream.next().get_bytes_as('fulltext')
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         if file_id in self._new_info_by_id:
             ie = self._new_info_by_id[file_id][1]
             return ie.symlink_target
         return self._basis_inv[file_id].symlink_target
 
-    def get_reference_revision(self, file_id, path=None):
+    def get_reference_revision(self, path, file_id=None):
         raise NotImplementedError(_TreeShim.get_reference_revision)
 
     def _delta_to_iter_changes(self):
@@ -222,12 +226,14 @@ class AbstractRevisionStore(object):
     def get_file_text(self, revision_id, file_id):
         """Get the text stored for a file in a given revision."""
         revtree = self.repo.revision_tree(revision_id)
-        return revtree.get_file_text(file_id)
+        path = revtree.id2path(file_id)
+        return revtree.get_file_text(path, file_id)
 
     def get_file_lines(self, revision_id, file_id):
         """Get the lines stored for a file in a given revision."""
         revtree = self.repo.revision_tree(revision_id)
-        return osutils.split_lines(revtree.get_file_text(file_id))
+        path = revtree.id2path(file_id)
+        return osutils.split_lines(revtree.get_file_text(path, file_id))
 
     def start_new_revision(self, revision, parents, parent_invs):
         """Init the metadata needed for get_parents_and_revision_for_entry().

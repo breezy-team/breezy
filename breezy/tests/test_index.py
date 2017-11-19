@@ -823,7 +823,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', ), ('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual({(index, ('name', ), 'data', ((('ref',),('ref',)),)),
+        self.assertEqual({(index, ('name', ), 'data', ((('ref',), ('ref',)),)),
             (index, ('ref', ), 'refdata', ((), ))},
             set(index.iter_entries([('name',), ('ref',)])))
 

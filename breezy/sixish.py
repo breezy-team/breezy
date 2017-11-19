@@ -24,6 +24,8 @@ from __future__ import absolute_import
 
 from six import (
     binary_type,
+    indexbytes,
+    int2byte,
     PY3,
     reraise,
     string_types,

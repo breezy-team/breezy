@@ -36,7 +36,7 @@ from breezy.tests.features import (
 
 class TestMove(TestCaseWithTransport):
 
-    def assertMoved(self,from_path,to_path):
+    def assertMoved(self, from_path, to_path):
         """Assert that to_path is existing and versioned but from_path not. """
         self.assertPathDoesNotExist(from_path)
         self.assertNotInWorkingTree(from_path)
@@ -51,20 +51,20 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a', 'c', 'subdir'])
 
         self.run_bzr('mv a b')
-        self.assertMoved('a','b')
+        self.assertMoved('a', 'b')
 
         self.run_bzr('mv b subdir')
-        self.assertMoved('b','subdir/b')
+        self.assertMoved('b', 'subdir/b')
 
         self.run_bzr('mv subdir/b a')
-        self.assertMoved('subdir/b','a')
+        self.assertMoved('subdir/b', 'a')
 
         self.run_bzr('mv a c subdir')
-        self.assertMoved('a','subdir/a')
-        self.assertMoved('c','subdir/c')
+        self.assertMoved('a', 'subdir/a')
+        self.assertMoved('c', 'subdir/c')
 
         self.run_bzr('mv subdir/a subdir/newa')
-        self.assertMoved('subdir/a','subdir/newa')
+        self.assertMoved('subdir/a', 'subdir/newa')
 
     def test_mv_unversioned(self):
         self.build_tree(['unversioned.txt'])
@@ -102,18 +102,18 @@ class TestMove(TestCaseWithTransport):
         tree.add(['hello.txt', 'sub1'])
 
         self.run_bzr('mv sub1 sub2')
-        self.assertMoved('sub1','sub2')
+        self.assertMoved('sub1', 'sub2')
 
         self.run_bzr('mv hello.txt sub2')
-        self.assertMoved('hello.txt','sub2/hello.txt')
+        self.assertMoved('hello.txt', 'sub2/hello.txt')
 
         self.build_tree(['sub1/'])
         tree.add(['sub1'])
         self.run_bzr('mv sub2/hello.txt sub1')
-        self.assertMoved('sub2/hello.txt','sub1/hello.txt')
+        self.assertMoved('sub2/hello.txt', 'sub1/hello.txt')
 
         self.run_bzr('mv sub2 sub1')
-        self.assertMoved('sub2','sub1/sub2')
+        self.assertMoved('sub2', 'sub1/sub2')
 
     def test_mv_relative(self):
         self.build_tree(['sub1/', 'sub1/sub2/', 'sub1/hello.txt'])
@@ -124,7 +124,7 @@ class TestMove(TestCaseWithTransport):
         self.assertPathExists('sub1/sub2/hello.txt')
 
         self.run_bzr('mv sub2/hello.txt .', working_dir='sub1')
-        self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
+        self.assertMoved('sub1/sub2/hello.txt', 'sub1/hello.txt')
 
     def test_mv_change_case_file(self):
         # test for bug #77740 (mv unable change filename case on Windows)
@@ -215,7 +215,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'b')
         self.run_bzr('mv a b')
-        self.assertMoved('a','b')
+        self.assertMoved('a', 'b')
 
     def test_mv_already_moved_file_to_versioned_target(self):
         """Test brz mv existing_file to versioned_file.
@@ -252,7 +252,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'sub/a')
         self.run_bzr('mv a sub/a')
-        self.assertMoved('a','sub/a')
+        self.assertMoved('a', 'sub/a')
 
     def test_mv_already_moved_file_into_unversioned_subdir(self):
         """Test brz mv original_file to unversioned_directory/file.
@@ -287,8 +287,8 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a1', 'sub/a1')
         self.run_bzr('mv a1 a2 sub')
-        self.assertMoved('a1','sub/a1')
-        self.assertMoved('a2','sub/a2')
+        self.assertMoved('a1', 'sub/a1')
+        self.assertMoved('a2', 'sub/a2')
 
     def test_mv_already_moved_files_into_unversioned_subdir(self):
         """Test brz mv original_file to unversioned_directory.

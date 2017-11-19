@@ -9,7 +9,7 @@ Status
 
 This document describes the proposed programming interface for streaming
 data from and into repositories. This programming interface should allow
-a single interface for pulling data from and inserting data into a Bazaar
+a single interface for pulling data from and inserting data into a Breezy
 repository.
 
 .. contents::

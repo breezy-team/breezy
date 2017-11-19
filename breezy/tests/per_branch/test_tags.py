@@ -466,9 +466,9 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
             raise tests.TestSkipped(
                 "BranchBuilder can't make reference branches.")
         self.builder = self.make_branch_builder('.')
-        self.builder.build_snapshot('foo', None,
+        self.builder.build_snapshot(None,
             [('add', ('', None, 'directory', None))],
-            message='foo')
+            message='foo', revision_id='foo')
         self.branch = self.builder.get_branch()
         if not self.branch._format.supports_tags():
             raise tests.TestSkipped(

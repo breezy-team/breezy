@@ -160,7 +160,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        a_contents = tree.get_file_text('a-id')
+        a_contents = tree.get_file_text('a', 'a-id')
         self.assertEqual([('a', 'b/a')],
             tree.move(['a'], 'b'))
         self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/a', 'a-id'),
@@ -177,7 +177,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         tree.commit('initial')
         root_id = tree.get_root_id()
-        c_contents = tree.get_file_text('c-id')
+        c_contents = tree.get_file_text('b/c', 'c-id')
         self.assertEqual([('b/c', 'c')],
             tree.move(['b/c'], ''))
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),

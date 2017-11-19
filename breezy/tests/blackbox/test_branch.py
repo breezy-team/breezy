@@ -91,7 +91,7 @@ class TestBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr('branches b')
         self.assertEqual("  orig\n  thiswasa\n", out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
+        out, err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)
         self.assertEqual(
             'brz: ERROR: Already a branch: "file:b,branch=orig".\n', err)
@@ -296,7 +296,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree_contents([('b/hello', 'bar')])  # different content
         self.build_tree_contents([('b/goodbye', 'baz')])# same content
         # fails without --use-existing-dir
-        out,err = self.run_bzr('branch a b', retcode=3)
+        out, err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Target directory "b" already exists.\n',
             err)
@@ -306,7 +306,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathExists('b/hello.moved')
         self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
-        out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
+        out, err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Already a branch: "b".\n', err)
 

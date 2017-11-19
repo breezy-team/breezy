@@ -410,7 +410,7 @@ Use --include-merged or -n0 to see merged revisions.
     def test_show_ids(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
+        wt.add(['f1', 'f2'])
         self.wt_commit(wt, 'first post', rev_id='a')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
@@ -431,7 +431,7 @@ Use --include-merged or -n0 to see merged revisions.
 
 """,
             wt.branch, log.ShortLogFormatter,
-            formatter_kwargs=dict(levels=0,show_ids=True))
+            formatter_kwargs=dict(levels=0, show_ids=True))
 
 
 class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
@@ -546,7 +546,7 @@ message:
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
+        wt.add(['f1', 'f2'])
         self.wt_commit(wt, 'first post')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         os.unlink('child/f1')
@@ -724,7 +724,7 @@ message:
     def test_show_ids(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
+        wt.add(['f1', 'f2'])
         self.wt_commit(wt, 'first post', rev_id='a')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
@@ -760,7 +760,7 @@ message:
   first post
 """,
             wt.branch, log.LongLogFormatter,
-            formatter_kwargs=dict(levels=0,show_ids=True))
+            formatter_kwargs=dict(levels=0, show_ids=True))
 
 
 class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
@@ -789,7 +789,7 @@ added:
     def test_long_verbose_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
+        wt.add(['f1', 'f2'])
         self.wt_commit(wt, 'first post')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         os.unlink('child/f1')
@@ -1589,13 +1589,14 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         # | /
         # 3
         builder.start_series()
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),])
-        builder.build_snapshot('1.1.1', ['1'], [])
-        builder.build_snapshot('2', ['1'], [])
-        builder.build_snapshot('1.2.1', ['1.1.1'], [])
-        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
-        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),],
+            revision_id='1')
+        builder.build_snapshot(['1'], [], revision_id='1.1.1')
+        builder.build_snapshot(['1'], [], revision_id='2')
+        builder.build_snapshot(['1.1.1'], [], revision_id='1.2.1')
+        builder.build_snapshot(['1.1.1', '1.2.1'], [], revision_id='1.1.2')
+        builder.build_snapshot(['2', '1.1.2'], [], revision_id='3')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()

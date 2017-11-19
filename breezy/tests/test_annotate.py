@@ -179,19 +179,23 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-id', 'file', 'first\n')),
-            ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com")
-        builder.build_snapshot('rev-2', ['rev-1'], [
+            ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com",
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('a-id', 'first\nsecond\n')),
-            ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com")
-        builder.build_snapshot('rev-1_1_1', ['rev-1'], [
+            ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com",
+            revision_id='rev-2')
+        builder.build_snapshot(['rev-1'], [
             ('modify', ('a-id', 'first\nthird\n')),
-            ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com")
-        builder.build_snapshot('rev-3', ['rev-2', 'rev-1_1_1'], [
+            ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com",
+            revision_id='rev-1_1_1')
+        builder.build_snapshot(['rev-2', 'rev-1_1_1'], [
             ('modify', ('a-id', 'first\nsecond\nthird\n')),
-            ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com")
+            ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com",
+            revision_id='rev-3')
         return builder
 
     def create_deeply_merged_trees(self):
@@ -218,23 +222,27 @@ class TestAnnotate(tests.TestCaseWithTransport):
         rev-6
         """
         builder = self.create_merged_trees()
-        builder.build_snapshot('rev-1_1_2', ['rev-1_1_1'], [])
-        builder.build_snapshot('rev-4', ['rev-3', 'rev-1_1_2'], [])
-        builder.build_snapshot('rev-1_2_1', ['rev-1_1_1'], [
+        builder.build_snapshot(['rev-1_1_1'], [], revision_id='rev-1_1_2')
+        builder.build_snapshot(['rev-3', 'rev-1_1_2'], [], revision_id='rev-4')
+        builder.build_snapshot(['rev-1_1_1'], [
             ('modify', ('a-id', 'first\nthird\nfourth\n')),
-            ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com")
-        builder.build_snapshot('rev-1_2_2', ['rev-1_2_1'], [],
-            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
-        builder.build_snapshot('rev-5', ['rev-4', 'rev-1_2_2'], [
+            ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com",
+            revision_id='rev-1_2_1')
+        builder.build_snapshot(['rev-1_2_1'], [],
+            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
+            revision_id='rev-1_2_2')
+        builder.build_snapshot(['rev-4', 'rev-1_2_2'], [
             ('modify', ('a-id', 'first\nsecond\nthird\nfourth\n')),
-            ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
-        builder.build_snapshot('rev-1_3_1', ['rev-1_2_1'], [
+            ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
+            revision_id='rev-5')
+        builder.build_snapshot(['rev-1_2_1'], [
             ('modify', ('a-id', 'first\nthird\nfourth\nfifth\nsixth\n')),
-            ], timestamp=1166046005.00, timezone=0, committer="george@foo.com")
-        builder.build_snapshot('rev-6', ['rev-5', 'rev-1_3_1'], [
+            ], timestamp=1166046005.00, timezone=0, committer="george@foo.com",
+            revision_id='rev-1_3_1')
+        builder.build_snapshot(['rev-5', 'rev-1_3_1'], [
             ('modify', ('a-id',
                         'first\nsecond\nthird\nfourth\nfifth\nsixth\n')),
-            ])
+            ], revision_id='rev-6')
         return builder
 
     def create_duplicate_lines_tree(self):
@@ -247,20 +255,25 @@ class TestAnnotate(tests.TestCaseWithTransport):
         c_text = ''.join(l for r, l in duplicate_C)
         d_text = ''.join(l for r, l in duplicate_D)
         e_text = ''.join(l for r, l in duplicate_E)
-        builder.build_snapshot('rev-base', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', base_text)),
-            ])
-        builder.build_snapshot('rev-A', ['rev-base'], [
-            ('modify', ('file-id', a_text))])
-        builder.build_snapshot('rev-B', ['rev-base'], [
-            ('modify', ('file-id', b_text))])
-        builder.build_snapshot('rev-C', ['rev-A'], [
-            ('modify', ('file-id', c_text))])
-        builder.build_snapshot('rev-D', ['rev-B', 'rev-A'], [
-            ('modify', ('file-id', d_text))])
-        builder.build_snapshot('rev-E', ['rev-C', 'rev-D'], [
-            ('modify', ('file-id', e_text))])
+            ], revision_id='rev-base')
+        builder.build_snapshot(['rev-base'], [
+            ('modify', ('file-id', a_text))],
+            revision_id='rev-A')
+        builder.build_snapshot(['rev-base'], [
+            ('modify', ('file-id', b_text))],
+            revision_id='rev-B')
+        builder.build_snapshot(['rev-A'], [
+            ('modify', ('file-id', c_text))],
+            revision_id='rev-C')
+        builder.build_snapshot(['rev-B', 'rev-A'], [
+            ('modify', ('file-id', d_text))],
+            revision_id='rev-D')
+        builder.build_snapshot(['rev-C', 'rev-D'], [
+            ('modify', ('file-id', e_text))],
+            revision_id='rev-E')
         return builder
 
     def assertAnnotateEqualDiff(self, actual, expected):
@@ -270,17 +283,17 @@ class TestAnnotate(tests.TestCaseWithTransport):
             self.assertEqualDiff(''.join('\t'.join(l) for l in expected),
                                  ''.join('\t'.join(l) for l in actual))
 
-    def assertBranchAnnotate(self, expected, branch, file_id, revision_id,
+    def assertBranchAnnotate(self, expected, branch, path, revision_id,
             verbose=False, full=False, show_ids=False):
         tree = branch.repository.revision_tree(revision_id)
         to_file = BytesIO()
-        annotate.annotate_file_tree(tree, file_id, to_file,
+        annotate.annotate_file_tree(tree, path, to_file,
             verbose=verbose, full=full, show_ids=show_ids, branch=branch)
         self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
 
-    def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
+    def assertRepoAnnotate(self, expected, repo, path, revision_id):
         """Assert that the revision is properly annotated."""
-        actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
+        actual = list(repo.revision_tree(revision_id).annotate_iter(path))
         self.assertAnnotateEqualDiff(actual, expected)
 
     def test_annotate_duplicate_lines(self):
@@ -289,12 +302,12 @@ class TestAnnotate(tests.TestCaseWithTransport):
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertRepoAnnotate(duplicate_base, repo, 'file-id', 'rev-base')
-        self.assertRepoAnnotate(duplicate_A, repo, 'file-id', 'rev-A')
-        self.assertRepoAnnotate(duplicate_B, repo, 'file-id', 'rev-B')
-        self.assertRepoAnnotate(duplicate_C, repo, 'file-id', 'rev-C')
-        self.assertRepoAnnotate(duplicate_D, repo, 'file-id', 'rev-D')
-        self.assertRepoAnnotate(duplicate_E, repo, 'file-id', 'rev-E')
+        self.assertRepoAnnotate(duplicate_base, repo, 'file', 'rev-base')
+        self.assertRepoAnnotate(duplicate_A, repo, 'file', 'rev-A')
+        self.assertRepoAnnotate(duplicate_B, repo, 'file', 'rev-B')
+        self.assertRepoAnnotate(duplicate_C, repo, 'file', 'rev-C')
+        self.assertRepoAnnotate(duplicate_D, repo, 'file', 'rev-D')
+        self.assertRepoAnnotate(duplicate_E, repo, 'file', 'rev-E')
 
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()
@@ -302,7 +315,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.assertBranchAnnotate('1     joe@foo | first\n'
                                   '2     joe@foo | second\n'
                                   '1.1.1 barry@f | third\n',
-                                  builder.get_branch(), 'a-id', 'rev-3')
+                                  builder.get_branch(), 'a', 'rev-3')
 
     def test_annotate_limits_dotted_revnos(self):
         """Annotate should limit dotted revnos to a depth of 12"""
@@ -314,7 +327,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   '1.2.1 jerry@f | fourth\n'
                                   '1.3.1 george@ | fifth\n'
                                   '              | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  builder.get_branch(), 'a', 'rev-6',
                                   verbose=False, full=False)
 
         self.assertBranchAnnotate('1     joe@foo | first\n'
@@ -323,7 +336,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   '1.2.1 jerry@f | fourth\n'
                                   '1.3.1 george@ | fifth\n'
                                   '1.3.1 george@ | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  builder.get_branch(), 'a', 'rev-6',
                                   verbose=False, full=True)
 
         # verbose=True shows everything, the full revno, user id, and date
@@ -333,7 +346,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   '1.2.1 jerry@foo.com  20061213 | fourth\n'
                                   '1.3.1 george@foo.com 20061213 | fifth\n'
                                   '                              | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  builder.get_branch(), 'a', 'rev-6',
                                   verbose=True, full=False)
 
         self.assertBranchAnnotate('1     joe@foo.com    20061213 | first\n'
@@ -342,7 +355,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   '1.2.1 jerry@foo.com  20061213 | fourth\n'
                                   '1.3.1 george@foo.com 20061213 | fifth\n'
                                   '1.3.1 george@foo.com 20061213 | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  builder.get_branch(), 'a', 'rev-6',
                                   verbose=True, full=True)
 
     def test_annotate_uses_branch_context(self):
@@ -358,7 +371,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   '1.2.1 jerry@f | fourth\n'
                                   '1.3.1 george@ | fifth\n'
                                   '              | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-1_3_1',
+                                  builder.get_branch(), 'a', 'rev-1_3_1',
                                   verbose=False, full=False)
 
     def test_annotate_show_ids(self):
@@ -371,7 +384,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   'rev-1_2_1 | fourth\n'
                                   'rev-1_3_1 | fifth\n'
                                   '          | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  builder.get_branch(), 'a', 'rev-6',
                                   show_ids=True, full=False)
 
         self.assertBranchAnnotate('    rev-1 | first\n'
@@ -380,7 +393,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   'rev-1_2_1 | fourth\n'
                                   'rev-1_3_1 | fifth\n'
                                   'rev-1_3_1 | sixth\n',
-                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  builder.get_branch(), 'a', 'rev-6',
                                   show_ids=True, full=True)
 
     def test_annotate_unicode_author(self):
@@ -406,18 +419,18 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         # this passes if no exception is raised
         to_file = BytesIO()
-        annotate.annotate_file_tree(revtree_1, 'a-id',
+        annotate.annotate_file_tree(revtree_1, 'a',
             to_file=to_file, branch=tree1.branch)
 
         sio = BytesIO()
         to_file = codecs.getwriter('ascii')(sio, 'replace')
-        annotate.annotate_file_tree(revtree_2, 'b-id',
+        annotate.annotate_file_tree(revtree_2, 'b',
             to_file=to_file, branch=tree1.branch)
         self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
         # test now with unicode file-like
         to_file = StringIOWithEncoding()
-        annotate.annotate_file_tree(revtree_2, 'b-id',
+        annotate.annotate_file_tree(revtree_2, 'b',
             to_file=to_file, branch=tree1.branch)
         self.assertContainsRe(u'2   p\xe9rez   | bye\n', to_file.getvalue())
 
@@ -441,11 +454,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.addCleanup(tree1.unlock)
 
         self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
-            'a-id', 'rev-1')
+            'a', 'rev-1')
 
         to_file = BytesIO()
         self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,
-            'b-id', 'rev-2')
+            'b', 'rev-2')
 
 
 class TestReannotate(tests.TestCase):

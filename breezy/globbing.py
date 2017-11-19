@@ -191,15 +191,15 @@ class Globster(object):
     pattern_types = [ "extension", "basename", "fullpath" ]
 
     pattern_info = {
-        "extension" : {
+        "extension": {
             "translator" : _sub_extension,
             "prefix" : r'(?:.*/)?(?!.*/)(?:.*\.)'
         },
-        "basename" : {
+        "basename": {
             "translator" : _sub_basename,
             "prefix" : r'(?:.*/)?(?!.*/)'
         },
-        "fullpath" : {
+        "fullpath": {
             "translator" : _sub_fullpath,
             "prefix" : r''
         },
@@ -208,9 +208,9 @@ class Globster(object):
     def __init__(self, patterns):
         self._regex_patterns = []
         pattern_lists = {
-            "extension" : [],
-            "basename" : [],
-            "fullpath" : [],
+            "extension": [],
+            "basename": [],
+            "fullpath": [],
         }
         for pat in patterns:
             pat = normalize_pattern(pat)
@@ -302,7 +302,7 @@ class ExceptionGlobster(object):
     that apply under paths specified by '!' exception patterns.
     """
     
-    def __init__(self,patterns):
+    def __init__(self, patterns):
         ignores = [[], [], []]
         for p in patterns:
             if p.startswith(u'!!'):

@@ -302,17 +302,18 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         builder.start_series()
 
         # Create an empty trunk
-        builder.build_snapshot('start', None, [
-                ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot(None, [
+                ('add', ('', 'root-id', 'directory', ''))],
+                revision_id='start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
-        builder.build_snapshot('base', ['start'], base_actions)
+        builder.build_snapshot(['start'], base_actions, revision_id='base')
         # Modify the base content in branch
         actions_other = self._get_actions(self._other['actions'])()
-        builder.build_snapshot('other', ['base'], actions_other)
+        builder.build_snapshot(['base'], actions_other, revision_id='other')
         # Modify the base content in trunk
         actions_this = self._get_actions(self._this['actions'])()
-        builder.build_snapshot('this', ['base'], actions_this)
+        builder.build_snapshot(['base'], actions_this, revision_id='this')
         # builder.get_branch() tip is now 'this'
 
         builder.finish_series()
@@ -1061,7 +1062,7 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # trunk switched. As such it should certainly produce the same
         # conflict.
         self.assertRaises(errors.MalformedTransform,
-                          self.run_script,"""
+                          self.run_script, """
 $ brz init trunk
 ...
 $ cd trunk
