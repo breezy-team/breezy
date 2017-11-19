@@ -319,7 +319,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
     def make_params(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot('A', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None)),
             ('add', ('debian', 'deb-id', 'directory', None)),
             ('add', ('debian/changelog', 'c-id', 'file', '')),

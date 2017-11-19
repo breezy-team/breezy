@@ -1,6 +1,8 @@
 breezy-debian (2.8.10) UNRELEASED; urgency=medium
 
   * debian/copyright: Fix package name.
+  * Fix compatibility with newer versions of breezy.
+  * Bump standards version to 4.1.1
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 08 Nov 2017 23:23:20 +0000
 
