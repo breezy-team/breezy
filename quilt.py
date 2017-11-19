@@ -153,13 +153,12 @@ def quilt_applied(tree):
     """Find the list of applied quilt patches.
 
     """
-    file_id = tree.path2id(".pc/applied-patches")
-    if file_id is None:
-        return []
     try:
         return [patch.rstrip("\n") for patch in
-            tree.get_file_lines(file_id, ".pc/applied-patches")
+            tree.get_file_lines(".pc/applied-patches")
             if patch.strip() != ""]
+    except errors.NoSuchFile:
+        return []
     except (IOError, OSError), e:
         if e.errno == errno.ENOENT:
             # File has already been removed
@@ -194,15 +193,14 @@ def quilt_series(tree):
 
     :param tree: Tree to read from
     """
-    file_id = tree.path2id("debian/patches/series")
-    if file_id is None:
-        return []
     try:
         return [patch.rstrip("\n") for patch in
-            tree.get_file_lines(file_id, "debian/patches/series")
+            tree.get_file_lines("debian/patches/series")
             if patch.strip() != ""]
     except (IOError, OSError), e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []
         raise
+    except errors.NoSuchFile:
+        return []

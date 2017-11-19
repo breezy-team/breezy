@@ -1826,7 +1826,7 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.add_upstream_file("b", "Renamed a")
         builder.build()
-        upstream_tree.unversion(['b-id'])
+        upstream_tree.unversion(['b'])
         os.unlink('upstream/b')
         upstream_tree.rename_one('a', 'b')
         # We don't add the new file upstream, as the new file id would

@@ -258,7 +258,7 @@ class UScanSource(UpstreamSource):
         (tmp, tempfilename) = tempfile.mkstemp()
         try:
             tmp = os.fdopen(tmp, 'wb')
-            watch = self.tree.get_file_text(watch_id)
+            watch = self.tree.get_file_text(watchfile, watch_id)
             tmp.write(watch)
         finally:
             tmp.close()

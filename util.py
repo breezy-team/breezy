@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 
+import errno
 try:
     import hashlib as md5
 except ImportError:
@@ -187,17 +188,15 @@ def find_changelog(t, merge, max_blocks=1):
             # If it is a "top_level" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
-            debian_file_id = t.path2id('debian')
-            if (debian_file_id is not None and 
-                t.kind(debian_file_id) == 'symlink' and 
-                t.get_symlink_target(t.path2id('debian')) == '.'):
+            if (t.path2id('debian') and
+                t.kind('debian') == 'symlink' and
+                t.get_symlink_target('debian') == '.'):
                 changelog_file = 'changelog'
                 top_level = True
         mutter("Using '%s' to get package information", changelog_file)
-        changelog_id = t.path2id(changelog_file)
-        if changelog_id is None:
+        if t.path2id(changelog_file) is None:
             raise AddChangelogError(changelog_file)
-        contents = t.get_file_text(changelog_id)
+        contents = t.get_file_text(changelog_file)
     finally:
        t.unlock()
     changelog = Changelog()
@@ -562,14 +561,14 @@ def debuild_config(tree, working_tree):
     user_config = None
     if (working_tree and tree.has_filename(new_local_conf)):
         if tree.path2id(new_local_conf) is None:
-            config_files.append((tree.get_file_byname(new_local_conf), True,
+            config_files.append((tree.get_file(new_local_conf), True,
                         "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
                     new_local_conf)
     if (working_tree and tree.has_filename(local_conf)):
         if tree.path2id(local_conf) is None:
-            config_files.append((tree.get_file_byname(local_conf), True,
+            config_files.append((tree.get_file(local_conf), True,
                         "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
@@ -577,10 +576,10 @@ def debuild_config(tree, working_tree):
     config_files.append((global_conf(), True))
     user_config = global_conf()
     if tree.path2id(new_conf):
-        config_files.append((tree.get_file(tree.path2id(new_conf)), False,
+        config_files.append((tree.get_file(new_conf), False,
                     "bzr-builddeb.conf"))
     if tree.path2id(default_conf):
-        config_files.append((tree.get_file(tree.path2id(default_conf)), False,
+        config_files.append((tree.get_file(default_conf), False,
                     "default.conf"))
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
@@ -664,10 +663,14 @@ def tree_get_source_format(tree):
     :return: String with package format
     """
     filename = "debian/source/format"
-    if not tree.has_filename(filename):
+    try:
+        text = tree.get_file_text(filename)
+    except IOError as (num, unused_msg):
+        if num == errno.ENOENT:
+            return FORMAT_1_0
+        raise
+    except errors.NoSuchFile:
         return FORMAT_1_0
-    file_id = tree.path2id(filename)
-    text = tree.get_file_text(file_id, filename)
     return text.strip()
 
 
