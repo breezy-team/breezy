@@ -92,7 +92,7 @@ def make_adduser_branch(test, relpath):
     """
     builder = test.make_branch_builder(relpath)
     builder.start_series()
-    builder.build_snapshot('base', None,
+    builder.build_snapshot(None,
                            [('add', ('', 'root-id', 'directory', '')),
                             # Create empty files
                             ('add', ('po', 'dir-id', 'directory', None),),
@@ -100,19 +100,19 @@ def make_adduser_branch(test, relpath):
                                      _Adduser['base_pot'])),
                             ('add', ('po/fr.po', 'po-id', 'file',
                                      _Adduser['base_po'])),
-            ])
+            ], revision_id='base')
     # The 'other' branch
-    builder.build_snapshot('other', ['base'],
+    builder.build_snapshot(['base'],
                            [('modify', ('pot-id',
                                         _Adduser['other_pot'])),
                             ('modify', ('po-id',
                                         _Adduser['other_po'])),
-                            ])
+                            ], revision_id='other')
     # The 'this' branch
-    builder.build_snapshot('this', ['base'],
+    builder.build_snapshot(['base'],
                            [('modify', ('pot-id', _Adduser['this_pot'])),
                             ('modify', ('po-id', _Adduser['this_po'])),
-                            ])
+                            ], revision_id='this')
     # builder.get_branch() tip is now 'this'
     builder.finish_series()
     return builder

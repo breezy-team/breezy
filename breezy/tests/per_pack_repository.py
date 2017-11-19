@@ -317,12 +317,15 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         builder = self.make_branch_builder('source', format=format)
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        builder.build_snapshot('B-id', None, [
-            ('add', ('file', 'file-id', 'file', 'B content\n'))])
-        builder.build_snapshot('C-id', None, [
-            ('modify', ('file-id', 'C content\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A-id')
+        builder.build_snapshot(None, [
+            ('add', ('file', 'file-id', 'file', 'B content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(None, [
+            ('modify', ('file-id', 'C content\n'))],
+            revision_id='C-id')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()
@@ -1008,9 +1011,12 @@ class TestKeyDependencies(TestCaseWithTransport):
     def create_source_and_target(self):
         builder = self.make_branch_builder('source', format=self.get_format())
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A-id')
+        builder.build_snapshot(
+                ['A-id', 'ghost-id'], [],
+                revision_id='B-id', )
         builder.finish_series()
         repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()

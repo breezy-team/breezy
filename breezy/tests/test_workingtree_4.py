@@ -280,12 +280,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('A', [], [
+        builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', 'content\n'))])
-        builder.build_snapshot('B', ['A'], [
+            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            revision_id='A')
+        builder.build_snapshot(['A'], [
             ('modify', ('a-id', 'new content\nfor a\n')),
-            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))],
+            revision_id='B')
         tree = self.make_workingtree('tree')
         source_branch = builder.get_branch()
         tree.branch.repository.fetch(source_branch.repository, 'B')
@@ -316,14 +318,17 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('A', [], [
+        builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', 'content\n'))])
-        builder.build_snapshot('B', ['A'], [
+            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            revision_id='A')
+        builder.build_snapshot(['A'], [
             ('modify', ('a-id', 'new content\nfor a\n')),
-            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
-        builder.build_snapshot('C', ['A'], [
-            ('add', ('c', 'c-id', 'file', 'c-content\n'))])
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))],
+            revision_id='B')
+        builder.build_snapshot(['A'], [
+            ('add', ('c', 'c-id', 'file', 'c-content\n'))],
+            revision_id='C')
         b_c = self.make_branch('branch_with_c')
         b_c.pull(builder.get_branch(), stop_revision='C')
         b_b = self.make_branch('branch_with_b')

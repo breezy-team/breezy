@@ -352,8 +352,9 @@ class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
 
     def make_simple_builder(self):
         builder = self.make_branch_builder('tip')
-        builder.build_snapshot('A', [], [
-            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot([], [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A')
         b = builder.get_branch()
         b.tags.set_tag('tip-1.0', 'A')
         return builder, b, b.tags.get_tag_dict()
@@ -365,7 +366,7 @@ class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
 
     def test_get_most_recent_tag_older(self):
         builder, b, tag_dict = self.make_simple_builder()
-        builder.build_snapshot('B', ['A'], [])
+        builder.build_snapshot(['A'], [], revision_id='B')
         self.assertEqual('B', b.last_revision())
         self.assertEqual('tip-1.0',
                          lp_api_lite.get_most_recent_tag(tag_dict, b))
@@ -390,8 +391,9 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
     def setUp(self):
         super(TestReportFreshness, self).setUp()
         builder = self.make_branch_builder('tip')
-        builder.build_snapshot('A', [], [
-            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot([], [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A')
         self.branch = builder.get_branch()
 
     def assertFreshnessReports(self, verbosity, latest_version, content):
@@ -451,8 +453,9 @@ class Test_GetNewestVersions(tests.TestCaseWithMemoryTransport):
     def setUp(self):
         super(Test_GetNewestVersions, self).setUp()
         builder = self.make_branch_builder('tip')
-        builder.build_snapshot('A', [], [
-            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot([], [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A')
         self.branch = builder.get_branch()
 
     def assertLatestVersions(self, latest_branch_version, pub_version):

@@ -34,16 +34,18 @@ class TestFetchBase(TestCaseWithRepository):
                    'which is a marginal amount of content\n'
                   ]
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-id', 'file', ''.join(content))),
-            ])
+            ], revision_id='A-id')
         content.append('and some more lines for B\n')
-        builder.build_snapshot('B-id', ['A-id'], [
-            ('modify', ('a-id', ''.join(content)))])
+        builder.build_snapshot(['A-id'], [
+            ('modify', ('a-id', ''.join(content)))],
+            revision_id='B-id')
         content.append('and yet even more content for C\n')
-        builder.build_snapshot('C-id', ['B-id'], [
-            ('modify', ('a-id', ''.join(content)))])
+        builder.build_snapshot(['B-id'], [
+            ('modify', ('a-id', ''.join(content)))],
+            revision_id='C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()
@@ -111,10 +113,11 @@ class TestFetch(TestFetchBase):
     def make_source_with_ghost_and_stacked_target(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id', 'ghost-id'], [], revision_id='B-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

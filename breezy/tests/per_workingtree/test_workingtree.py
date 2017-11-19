@@ -1069,19 +1069,22 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         builder.start_series()
         # mainline
         builder.build_snapshot(
-            '1', None,
+            None,
             [('add', ('', 'root-id', 'directory', '')),
-             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))])
+             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))],
+            revision_id='1')
         # branch
-        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot(['1'], [], revision_id='2')
         builder.build_snapshot(
-            '4', ['2'],
-            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))])
+            ['2'],
+            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))],
+            revision_id='4')
         # master
-        builder.build_snapshot('3', ['1'], [])
+        builder.build_snapshot(['1'], [], revision_id='3')
         builder.build_snapshot(
-            '5', ['3'],
-            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))])
+            ['3'],
+            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))],
+            revision_id='5')
         builder.finish_series()
         return builder, builder._branch.last_revision()
 

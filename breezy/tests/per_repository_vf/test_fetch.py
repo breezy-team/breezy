@@ -40,9 +40,9 @@ class TestSource(TestCaseWithRepository):
         # bug lp:376255 was reported about this.
         builder = self.make_branch_builder('repo')
         builder.start_series()
-        builder.build_snapshot('tip', ['ghost'],
+        builder.build_snapshot(['ghost'],
             [('add', ('', 'ROOT_ID', 'directory', ''))],
-            allow_leftmost_as_ghost=True)
+            allow_leftmost_as_ghost=True, revision_id='tip')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()

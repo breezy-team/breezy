@@ -1589,13 +1589,14 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         # | /
         # 3
         builder.start_series()
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),])
-        builder.build_snapshot('1.1.1', ['1'], [])
-        builder.build_snapshot('2', ['1'], [])
-        builder.build_snapshot('1.2.1', ['1.1.1'], [])
-        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
-        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),],
+            revision_id='1')
+        builder.build_snapshot(['1'], [], revision_id='1.1.1')
+        builder.build_snapshot(['1'], [], revision_id='2')
+        builder.build_snapshot(['1.1.1'], [], revision_id='1.2.1')
+        builder.build_snapshot(['1.1.1', '1.2.1'], [], revision_id='1.1.2')
+        builder.build_snapshot(['2', '1.1.2'], [], revision_id='3')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()

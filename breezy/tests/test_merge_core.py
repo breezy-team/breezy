@@ -520,15 +520,19 @@ class FunctionalMergeTest(TestCaseWithTransport):
         # current code uses A as the global base and 'foo' doesn't exist there.
         # It isn't trivial to create foo.BASE because it tries to look up
         # attributes like 'executable' in A.
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id'], [
-            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\n'))])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'], [
-            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], [
-            ('modify', ('foo-id', 'orig\ncontents\nand E\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'TREE_ROOT', 'directory', None))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id'], [
+            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\n'))],
+            revision_id='C-id')
+        builder.build_snapshot(['B-id', 'C-id'], [
+            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))],
+            revision_id='D-id')
+        builder.build_snapshot(['C-id', 'B-id'], [
+            ('modify', ('foo-id', 'orig\ncontents\nand E\n'))],
+            revision_id='E-id')
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         self.assertEqual(1, tree.merge_from_branch(tree.branch,
