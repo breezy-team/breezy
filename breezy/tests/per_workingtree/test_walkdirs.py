@@ -167,9 +167,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
-        ids = ['file1', 'file2', 'dir1', 'dir2']
         self.build_tree(paths)
-        tree.add(paths, ids)
+        tree.add(paths)
         tt = transform.TreeTransform(tree)
         root_transaction_id = tt.trans_id_tree_path('')
         tt.new_symlink('link1',
@@ -195,19 +194,19 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         link2_stat = os.lstat('link2')
         expected_dirblocks = [
              (('', tree.path2id('')),
-              [('dir1', 'dir1', 'file', dir1_stat, 'dir1', 'directory'),
-               ('dir2', 'dir2', 'symlink', dir2_stat, 'dir2', 'directory'),
-               ('file1', 'file1', 'directory', file1_stat, 'file1', 'file'),
-               ('file2', 'file2', 'symlink', file2_stat, 'file2', 'file'),
-               ('link1', 'link1', 'file', link1_stat, 'link1', 'symlink'),
-               ('link2', 'link2', 'directory', link2_stat, 'link2', 'symlink'),
+              [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
+               ('dir2', 'dir2', 'symlink', dir2_stat, tree.path2id('dir2'), 'directory'),
+               ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
+               ('file2', 'file2', 'symlink', file2_stat, tree.path2id('file2'), 'file'),
+               ('link1', 'link1', 'file', link1_stat, tree.path2id('link1'), 'symlink'),
+               ('link2', 'link2', 'directory', link2_stat, tree.path2id('link2'), 'symlink'),
               ]
              ),
-             (('dir1', 'dir1'),
+             (('dir1', tree.path2id('dir1')),
               [
               ]
              ),
-             (('dir2', 'dir2'),
+             (('dir2', tree.path2id('dir2')),
               [
               ]
              ),
@@ -233,9 +232,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         # but don't use symlinks for safe testing on win32
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'dir1/']
-        ids = ['file1', 'dir1']
         self.build_tree(paths)
-        tree.add(paths, ids)
+        tree.add(paths)
         tree.controldir.root_transport.delete_tree('dir1')
         tree.controldir.root_transport.delete('file1')
         changed_paths = ['dir1', 'file1/']
@@ -244,11 +242,11 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         file1_stat = os.lstat('file1')
         expected_dirblocks = [
              (('', tree.path2id('')),
-              [('dir1', 'dir1', 'file', dir1_stat, 'dir1', 'directory'),
-               ('file1', 'file1', 'directory', file1_stat, 'file1', 'file'),
+              [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
+               ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
               ]
              ),
-             (('dir1', 'dir1'),
+             (('dir1', tree.path2id('dir1')),
               [
               ]
              ),
