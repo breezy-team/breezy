@@ -121,16 +121,14 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     if ie.kind == "file":
         ie.executable = mode_is_executable(mode)
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
-        base_file_id = base_bzr_tree.path2id(path)
-        base_exec = base_bzr_tree.is_executable(base_file_id, path)
+        base_exec = base_bzr_tree.is_executable(path)
         if ie.kind == "symlink":
-            ie.symlink_target = base_bzr_tree.get_symlink_target(
-                base_file_id, path)
+            ie.symlink_target = base_bzr_tree.get_symlink_target(path)
         else:
-            ie.text_size = base_bzr_tree.get_file_size(base_file_id)
-            ie.text_sha1 = base_bzr_tree.get_file_sha1(base_file_id, path)
+            ie.text_size = base_bzr_tree.get_file_size(path)
+            ie.text_sha1 = base_bzr_tree.get_file_sha1(path)
         if ie.kind == "symlink" or ie.executable == base_exec:
-            ie.revision = base_bzr_tree.get_file_revision(base_file_id, path)
+            ie.revision = base_bzr_tree.get_file_revision(path)
         else:
             blob = lookup_object(hexsha)
     else:
@@ -145,17 +143,18 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     parent_keys = []
     for ptree in parent_bzr_trees:
         try:
-            pkind = ptree.kind(file_id)
+            ppath = ptree.id2path(file_id)
         except errors.NoSuchId:
             continue
+        pkind = ptree.kind(ppath, file_id)
         if (pkind == ie.kind and
-            ((pkind == "symlink" and ptree.get_symlink_target(file_id) == ie.symlink_target) or
-             (pkind == "file" and ptree.get_file_sha1(file_id) == ie.text_sha1 and
-                ptree.is_executable(file_id) == ie.executable))):
+            ((pkind == "symlink" and ptree.get_symlink_target(ppath, file_id) == ie.symlink_target) or
+             (pkind == "file" and ptree.get_file_sha1(ppath, file_id) == ie.text_sha1 and
+                ptree.is_executable(ppath, file_id) == ie.executable))):
             # found a revision in one of the parents to use
-            ie.revision = ptree.get_file_revision(file_id)
+            ie.revision = ptree.get_file_revision(ppath, file_id)
             break
-        parent_key = (file_id, ptree.get_file_revision(file_id))
+        parent_key = (file_id, ptree.get_file_revision(ppath, file_id))
         if not parent_key in parent_keys:
             parent_keys.append(parent_key)
     if ie.revision is None:

@@ -25,7 +25,7 @@ from ... import (
     graph as _mod_graph,
     lock,
     repository,
-    revision,
+    revision as _mod_revision,
     transactions,
     ui,
     version_info as breezy_version,
@@ -367,13 +367,13 @@ class LocalGitRepository(GitRepository):
         parent_map = {}
         for revision_id in revids:
             parents = self._get_parents(revision_id, no_alternates=no_alternates)
-            if revision_id == revision.NULL_REVISION:
+            if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
             if parents is None:
                 continue
             if len(parents) == 0:
-                parents = [revision.NULL_REVISION]
+                parents = [_mod_revision.NULL_REVISION]
             parent_map[revision_id] = tuple(parents)
         return parent_map
 
@@ -385,7 +385,7 @@ class LocalGitRepository(GitRepository):
         while pending:
             this_parent_map = {}
             for revid in pending:
-                if revid == revision.NULL_REVISION:
+                if revid == _mod_revision.NULL_REVISION:
                     continue
                 parents = self._get_parents(revid)
                 if parents is not None:
@@ -419,7 +419,7 @@ class LocalGitRepository(GitRepository):
         if mapping is None:
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
-            return revision.NULL_REVISION
+            return _mod_revision.NULL_REVISION
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
@@ -491,7 +491,7 @@ class LocalGitRepository(GitRepository):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision."""
-        if revision_id == revision.NULL_REVISION:
+        if revision_id == _mod_revision.NULL_REVISION:
             return True
         try:
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
@@ -519,12 +519,65 @@ class LocalGitRepository(GitRepository):
 
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
-        revision_id = revision.ensure_null(revision_id)
-        if revision_id == revision.NULL_REVISION:
+        if revision_id == _mod_revision.NULL_REVISION:
             inv = inventory.Inventory(root_id=None)
             inv.revision_id = revision_id
             return inventorytree.InventoryRevisionTree(self, inv, revision_id)
         return GitRevisionTree(self, revision_id)
+
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
+        """Produce a generator of revision deltas.
+
+        Note that the input is a sequence of REVISIONS, not revision_ids.
+        Trees will be held in memory until the generator exits.
+        Each delta is relative to the revision's lefthand predecessor.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        # Get the revision-ids of interest
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            yield trees[revision.revision_id].changes_from(old_tree)
+
+    def _filtered_revision_trees(self, revision_ids, file_ids):
+        """Return Tree for a revision on this branch with only some files.
+
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        :param file_ids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        for t in self.revision_trees(revision_ids):
+            # Should we introduce a FilteredRevisionTree class rather
+            # than pre-filter the inventory here?
+            filtered_inv = inv.filter(file_ids)
+            yield inventorytree.InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     def get_inventory(self, revision_id):
         raise NotImplementedError(self.get_inventory)

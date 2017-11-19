@@ -163,6 +163,8 @@ class GitDir(ControlDir):
         """See ControlDir.clone_on_transport."""
         from ...repository import InterRepository
         from .mapping import default_mapping
+        if stacked_on is not None:
+            raise _mod_branch.UnstackableBranchFormat(self._format, self.user_url)
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:

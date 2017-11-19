@@ -56,16 +56,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self.tree = commit.tree
         self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
 
-    def get_file_revision(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
+    def get_file_revision(self, path, file_id=None):
         change_scanner = self._repository._file_change_scanner
         (path, commit_id) = change_scanner.find_last_change_revision(path,
             self.commit_id)
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
 
-    def get_file_mtime(self, file_id, path=None):
-        revid = self.get_file_revision(file_id, path)
+    def get_file_mtime(self, path, file_id=None):
+        revid = self.get_file_revision(path, file_id)
         try:
             rev = self._repository.get_revision(revid)
         except errors.NoSuchRevision:
@@ -96,22 +94,18 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return False
         return self.has_filename(path)
 
-    def is_executable(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
+    def is_executable(self, path, file_id=None):
         try:
             (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path)
         except KeyError:
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, path)
         if mode is None:
             # the tree root is a directory
             return False
         return mode_is_executable(mode)
 
-    def kind(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
+    def kind(self, path, file_id=None):
         try:
             (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path)
@@ -220,30 +214,24 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_revision_id."""
         return self._revision_id
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        return osutils.sha_string(self.get_file_text(file_id, path))
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
+        return osutils.sha_string(self.get_file_text(path, file_id))
 
-    def get_file_verifier(self, file_id, path=None, stat_value=None):
-        if path is None:
-            path = self.id2path(file_id)
+    def get_file_verifier(self, path, file_id=None, stat_value=None):
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
             path)
         return ("GIT", hexsha)
 
-    def get_file_text(self, file_id, path=None):
+    def get_file_text(self, path, file_id=None):
         """See RevisionTree.get_file_text."""
-        if path is None:
-            path = self.id2path(file_id)
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
         if stat.S_ISREG(mode):
             return self.store[hexsha].data
         else:
             return ""
 
-    def get_symlink_target(self, file_id, path=None):
+    def get_symlink_target(self, path, file_id=None):
         """See RevisionTree.get_symlink_target."""
-        if path is None:
-            path = self.id2path(file_id)
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
         if stat.S_ISLNK(mode):
             return self.store[hexsha].data

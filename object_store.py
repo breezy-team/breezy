@@ -185,18 +185,19 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     def find_unchanged_parent_ie(file_id, kind, other, parent_trees):
         for ptree in parent_trees:
             try:
-                pkind = ptree.kind(file_id)
+                ppath = ptree.id2path(file_id)
             except errors.NoSuchId:
                 pass
             else:
+                pkind = ptree.kind(ppath, file_id)
                 if kind == "file":
                     if (pkind == "file" and
-                        ptree.get_file_sha1(file_id) == other):
-                        return (file_id, ptree.get_file_revision(file_id))
+                        ptree.get_file_sha1(ppath, file_id) == other):
+                        return (file_id, ptree.get_file_revision(ppath, file_id))
                 if kind == "symlink":
                     if (pkind == "symlink" and
-                        ptree.get_symlink_target(file_id) == other):
-                        return (file_id, ptree.get_file_revision(file_id))
+                        ptree.get_symlink_target(ppath, file_id) == other):
+                        return (file_id, ptree.get_file_revision(ppath, file_id))
         raise KeyError
 
     # Find all the changed blobs
@@ -205,7 +206,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         if kind[1] == "file":
             if changed_content:
                 try:
-                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(file_id), other_parent_trees)
+                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(path[1], file_id), other_parent_trees)
                 except KeyError:
                     pass
                 else:
@@ -221,17 +222,17 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 new_blobs.append((path[1], file_id))
         elif kind[1] == "symlink":
             if changed_content:
-                target = tree.get_symlink_target(file_id)
+                target = tree.get_symlink_target(path[1], file_id)
                 blob = symlink_to_blob(target)
                 shamap[file_id] = blob.id
                 try:
                     find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
-                    yield path[1], blob, (file_id, tree.get_file_revision(file_id, path[1]))
+                    yield path[1], blob, (file_id, tree.get_file_revision(path[1], file_id))
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
         for p in parent:
-            if p and tree.has_id(p) and tree.kind(p) == "directory":
+            if p and tree.has_id(p) and tree.kind(tree.id2path(p)) == "directory":
                 dirty_dirs.add(p)
 
     # Fetch contents of the blobs that were changed
@@ -239,7 +240,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         [(file_id, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
-        yield path, obj, (file_id, tree.get_file_revision(file_id, path))
+        yield path, obj, (file_id, tree.get_file_revision(path, file_id))
         shamap[file_id] = obj.id
 
     for path in unusual_modes:
@@ -291,7 +292,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     for path in sorted(trees.keys(), reverse=True):
         file_id = trees[path]
-        assert tree.kind(file_id) == 'directory'
+        assert tree.kind(path, file_id) == 'directory'
         ie = inv[file_id]
         obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
             dummy_file_name, path == "")
