@@ -43,10 +43,10 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         st = os.lstat('tree/one')
         tree.lock_read()
         try:
-            mtime_file_id = tree.get_file_mtime(file_id=one_id)
+            mtime_file_id = tree.get_file_mtime('one')
             self.assertIsInstance(mtime_file_id, (float, int))
             self.assertAlmostEqual(st.st_mtime, mtime_file_id)
-            mtime_path = tree.get_file_mtime(file_id=one_id, path='one')
+            mtime_path = tree.get_file_mtime('one', file_id=one_id)
             self.assertAlmostEqual(mtime_file_id, mtime_path)
         finally:
             tree.unlock()
@@ -61,10 +61,10 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
 
         tree.lock_read()
         try:
-            mtime = tree.get_file_mtime(file_id=one_id)
+            mtime = tree.get_file_mtime('one')
             self.assertAlmostEqual(st.st_mtime, mtime)
 
-            mtime = tree.get_file_mtime(file_id=one_id, path='one')
+            mtime = tree.get_file_mtime('one', one_id)
             self.assertAlmostEqual(st.st_mtime, mtime)
         finally:
             tree.unlock()
@@ -79,9 +79,9 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
 
         tree.lock_read()
         try:
-            mtime = tree.get_file_mtime(file_id=one_id)
+            mtime = tree.get_file_mtime('two')
             self.assertAlmostEqual(st.st_mtime, mtime)
-            mtime = tree.get_file_mtime(file_id=one_id, path='two')
+            mtime = tree.get_file_mtime('two', one_id)
             self.assertAlmostEqual(st.st_mtime, mtime)
         finally:
             tree.unlock()
@@ -98,9 +98,9 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         st = os.lstat('tree/e/a')
         tree.lock_read()
         try:
-            mtime = tree.get_file_mtime(file_id='a-id')
+            mtime = tree.get_file_mtime('e/a')
             self.assertAlmostEqual(st.st_mtime, mtime)
-            mtime = tree.get_file_mtime(file_id='a-id', path='e/a')
+            mtime = tree.get_file_mtime('e/a', 'a-id')
             self.assertAlmostEqual(st.st_mtime, mtime)
         finally:
             tree.unlock()
@@ -112,8 +112,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         os.remove('tree/one')
         tree.lock_read()
         try:
-            self.assertRaises(FileTimestampUnavailable,
-                tree.get_file_mtime, file_id=one_id)
+            self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'one')
         finally:
             tree.unlock()
 

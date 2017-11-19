@@ -88,7 +88,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tt.apply()
         tree.lock_write()
         try:
-            self.assertTrue(tree.is_executable('newfile-id'))
+            self.assertTrue(tree.is_executable('newfile'))
             tree.commit('added newfile')
         finally:
             tree.unlock()
@@ -104,10 +104,10 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = workingtree.WorkingTree.open('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.assertTrue(tree.is_executable('newfile-id'))
+        self.assertTrue(tree.is_executable('newfile'))
         transform.revert(tree, tree.basis_tree(), None, backups=True)
-        self.assertEqual('helooo!', tree.get_file('newfile-id').read())
-        self.assertTrue(tree.is_executable('newfile-id'))
+        self.assertEqual('helooo!', tree.get_file('newfile').read())
+        self.assertTrue(tree.is_executable('newfile'))
 
     def test_revert_executable(self):
         tree = self.tree_with_executable()
@@ -118,7 +118,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         transform.revert(tree, tree.basis_tree(), None)
-        self.assertTrue(tree.is_executable('newfile-id'))
+        self.assertTrue(tree.is_executable('newfile'))
 
     def test_revert_deletes_files_from_revert(self):
         tree = self.make_branch_and_tree('.')

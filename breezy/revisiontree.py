@@ -64,17 +64,19 @@ class RevisionTree(tree.Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    def get_file_revision(self, file_id, path=None):
+    def get_file_revision(self, path, file_id=None):
         """Return the revision id in which a file was last changed."""
         raise NotImplementedError(self.get_file_revision)
 
-    def get_file_text(self, file_id, path=None):
+    def get_file_text(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
         for (identifier, content) in self.iter_files_bytes([(file_id, None)]):
             ret = "".join(content)
         return ret
 
-    def get_file(self, file_id, path=None):
-        return BytesIO(self.get_file_text(file_id))
+    def get_file(self, path, file_id=None):
+        return BytesIO(self.get_file_text(path, file_id))
 
     def is_locked(self):
         return self._repository.is_locked()

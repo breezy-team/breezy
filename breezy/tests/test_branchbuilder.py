@@ -132,7 +132,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.addCleanup(rev_tree.unlock)
         self.assertTreeShape([(u'', 'a-root-id', 'directory'),
                               (u'a', 'a-id', 'file')], rev_tree)
-        self.assertEqual('contents', rev_tree.get_file_text('a-id'))
+        self.assertEqual('contents', rev_tree.get_file_text('a'))
 
     def test_add_second_file(self):
         builder = self.build_a_rev()
@@ -148,7 +148,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.assertTreeShape([(u'', 'a-root-id', 'directory'),
                               (u'a', 'a-id', 'file'),
                               (u'b', 'b-id', 'file')], rev_tree)
-        self.assertEqual('content_b', rev_tree.get_file_text('b-id'))
+        self.assertEqual('content_b', rev_tree.get_file_text('b'))
 
     def test_add_empty_dir(self):
         builder = self.build_a_rev()
@@ -207,7 +207,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree = branch.repository.revision_tree(rev_id2)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertEqual('new\ncontent\n', rev_tree.get_file_text('a-id'))
+        self.assertEqual('new\ncontent\n',
+                         rev_tree.get_file_text(rev_tree.id2path('a-id')))
 
     def test_delete_file(self):
         builder = self.build_a_rev()
@@ -304,7 +305,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.assertTreeShape([(u'', 'a-root-id', 'directory'),
                               (u'a', 'a-id', 'file'),
                              ], b_tree)
-        self.assertEqual('new\ncontent\n', b_tree.get_file_text('a-id'))
+        self.assertEqual('new\ncontent\n', b_tree.get_file_text('a'))
 
         # We should still be using the content from A in C, not from B
         c_tree = repo.revision_tree('C-id')
@@ -312,8 +313,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'a', 'a-id', 'file'),
                               (u'c', 'c-id', 'file'),
                              ], c_tree)
-        self.assertEqual('contents', c_tree.get_file_text('a-id'))
-        self.assertEqual('alt\ncontent\n', c_tree.get_file_text('c-id'))
+        self.assertEqual('contents', c_tree.get_file_text('a'))
+        self.assertEqual('alt\ncontent\n', c_tree.get_file_text('c'))
 
     def test_set_merge_parent(self):
         builder = self.build_a_rev()
@@ -363,7 +364,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                              ], d_tree)
         # Because we copied the exact text into *this* tree, the 'c' file
         # should look like it was not modified in the merge
-        self.assertEqual('C-id', d_tree.get_file_revision('c-id'))
+        self.assertEqual('C-id', d_tree.get_file_revision('c'))
 
     def test_set_parent_to_null(self):
         builder = self.build_a_rev()

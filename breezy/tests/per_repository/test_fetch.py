@@ -87,7 +87,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         rev1_tree = knit3_repo.revision_tree(rev1)
         rev1_tree.lock_read()
         try:
-            lines = rev1_tree.get_file_lines(rev1_tree.get_root_id())
+            lines = rev1_tree.get_file_lines(u'', rev1_tree.get_root_id())
         finally:
             rev1_tree.unlock()
         self.assertEqual([], lines)
@@ -105,7 +105,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         rev2_tree = knit3_repo.revision_tree(rev2)
         self.assertEqual(
             rev1,
-            rev2_tree.get_file_revision(rev2_tree.get_root_id()))
+            rev2_tree.get_file_revision(u'', rev2_tree.get_root_id()))
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
         snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):

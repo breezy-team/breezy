@@ -897,12 +897,11 @@ class RevisionSpec_annotate(RevisionIDSpec):
             self._raise_invalid(numstring, context_branch)
         tree, file_path = workingtree.WorkingTree.open_containing(path)
         with tree.lock_read():
-            file_id = tree.path2id(file_path)
-            if file_id is None:
+            if not tree.has_filename(file_path):
                 raise errors.InvalidRevisionSpec(self.user_spec,
                     context_branch, "File '%s' is not versioned." %
                     file_path)
-            revision_ids = [r for (r, l) in tree.annotate_iter(file_id)]
+            revision_ids = [r for (r, l) in tree.annotate_iter(file_path)]
         try:
             revision_id = revision_ids[index]
         except IndexError:

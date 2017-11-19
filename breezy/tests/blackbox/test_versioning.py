@@ -147,7 +147,7 @@ class SubdirCommit(TestCaseWithTransport):
         new.lock_read()
 
         def get_text_by_path(tree, path):
-            return tree.get_file_text(tree.path2id(path), path)
+            return tree.get_file_text(path)
 
         self.assertEqual(get_text_by_path(new, 'b/two'), 'old contents')
         self.assertEqual(get_text_by_path(new, 'top'), 'old contents')

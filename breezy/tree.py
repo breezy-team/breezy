@@ -231,17 +231,17 @@ class Tree(object):
                 if entry.kind == 'tree-reference':
                     yield path, entry.file_id
 
-    def kind(self, file_id):
+    def kind(self, path, file_id=None):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
 
-    def stored_kind(self, file_id):
+    def stored_kind(self, path, file_id=None):
         """File kind stored for this file_id.
 
         May not match kind on disk for working trees.  Always available
         for versioned files, even when the file itself is missing.
         """
-        return self.kind(file_id)
+        return self.kind(path, file_id)
 
     def path_content_summary(self, path):
         """Get a summary of the information about path.
@@ -261,7 +261,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, file_id, path=None):
+    def get_reference_revision(self, path, file_id=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
             % self.__class__.__name__)
@@ -280,7 +280,7 @@ class Tree(object):
     def _file_size(self, entry, stat_value):
         raise NotImplementedError(self._file_size)
 
-    def get_file(self, file_id, path=None):
+    def get_file(self, path, file_id=None):
         """Return a file object for the file file_id in the tree.
 
         If both file_id and path are defined, it is implementation defined as
@@ -288,49 +288,49 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file)
 
-    def get_file_with_stat(self, file_id, path=None):
+    def get_file_with_stat(self, path, file_id=None):
         """Get a file handle and stat object for file_id.
 
         The default implementation returns (self.get_file, None) for backwards
         compatibility.
 
-        :param file_id: The file id to read.
-        :param path: The path of the file, if it is known.
+        :param path: The path of the file.
+        :param file_id: The file id to read, if it is known.
         :return: A tuple (file_handle, stat_value_or_None). If the tree has
             no stat facility, or need for a stat cache feedback during commit,
             it may return None for the second element of the tuple.
         """
-        return (self.get_file(file_id, path), None)
+        return (self.get_file(path, file_id), None)
 
-    def get_file_text(self, file_id, path=None):
+    def get_file_text(self, path, file_id=None):
         """Return the byte content of a file.
 
-        :param file_id: The file_id of the file.
         :param path: The path of the file.
+        :param file_id: The file_id of the file.
 
         If both file_id and path are supplied, an implementation may use
         either one.
 
         :returns: A single byte string for the whole file.
         """
-        my_file = self.get_file(file_id, path)
+        my_file = self.get_file(path, file_id)
         try:
             return my_file.read()
         finally:
             my_file.close()
 
-    def get_file_lines(self, file_id, path=None):
+    def get_file_lines(self, path, file_id=None):
         """Return the content of a file, as lines.
 
-        :param file_id: The file_id of the file.
         :param path: The path of the file.
+        :param file_id: The file_id of the file.
 
         If both file_id and path are supplied, an implementation may use
         either one.
         """
-        return osutils.split_lines(self.get_file_text(file_id, path))
+        return osutils.split_lines(self.get_file_text(path, file_id))
 
-    def get_file_verifier(self, file_id, path=None, stat_value=None):
+    def get_file_verifier(self, path, file_id=None, stat_value=None):
         """Return a verifier for a file.
 
         The default implementation returns a sha1.
@@ -341,33 +341,33 @@ class Tree(object):
         :param stat_value: Optional stat value for the object
         :return: Tuple with verifier name and verifier data
         """
-        return ("SHA1", self.get_file_sha1(file_id, path=path,
+        return ("SHA1", self.get_file_sha1(path, file_id,
             stat_value=stat_value))
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
         """Return the SHA1 file for a file.
 
         :note: callers should use get_file_verifier instead
             where possible, as the underlying repository implementation may
             have quicker access to a non-sha1 verifier.
 
-        :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
+        :param file_id: The handle for this file.
             These must point to the same object.
         :param stat_value: Optional stat value for the object
         """
         raise NotImplementedError(self.get_file_sha1)
 
-    def get_file_mtime(self, file_id, path=None):
+    def get_file_mtime(self, path, file_id=None):
         """Return the modification time for a file.
 
-        :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
+        :param file_id: The handle for this file.
             These must point to the same object.
         """
         raise NotImplementedError(self.get_file_mtime)
 
-    def get_file_size(self, file_id):
+    def get_file_size(self, path, file_id=None):
         """Return the size of a file in bytes.
 
         This applies only to regular files.  If invoked on directories or
@@ -376,11 +376,11 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_size)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         """Check if a file is executable.
 
-        :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
+        :param file_id: The handle for this file.
             These must point to the same object.
         """
         raise NotImplementedError(self.is_executable)
@@ -408,10 +408,12 @@ class Tree(object):
             # of bytestrings.  (Technically, a bytestring is also an iterable
             # of bytestrings, but iterating through each character is not
             # performant.)
-            cur_file = (self.get_file_text(file_id),)
+            # TODO(jelmer): Pass paths into iter_files_bytes
+            path = self.id2path(file_id)
+            cur_file = (self.get_file_text(path, file_id),)
             yield identifier, cur_file
 
-    def get_symlink_target(self, file_id, path=None):
+    def get_symlink_target(self, path, file_id=None):
         """Get the target for a given file_id.
 
         It is assumed that the caller already knows that file_id is referencing
@@ -428,7 +430,7 @@ class Tree(object):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)
 
-    def annotate_iter(self, file_id,
+    def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
@@ -445,12 +447,15 @@ class Tree(object):
     def _get_plan_merge_data(self, file_id, other, base):
         from .bzr import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
-        last_revision_a = self._get_file_revision(file_id, vf, 'this:')
-        last_revision_b = other._get_file_revision(file_id, vf, 'other:')
+        last_revision_a = self._get_file_revision(
+                self.id2path(file_id), file_id, vf, 'this:')
+        last_revision_b = other._get_file_revision(
+                other.id2path(file_id), file_id, vf, 'other:')
         if base is None:
             last_revision_base = None
         else:
-            last_revision_base = base._get_file_revision(file_id, vf, 'base:')
+            last_revision_base = base._get_file_revision(
+                    base.id2path(file_id), file_id, vf, 'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
     def plan_file_merge(self, file_id, other, base=None):
@@ -487,19 +492,18 @@ class Tree(object):
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
 
-    def _get_file_revision(self, file_id, vf, tree_revision):
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
+            parent_keys = [(file_id, t.get_file_revision(path, file_id)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file_lines(file_id))
+                         self.get_file_lines(path, file_id))
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = self.get_file_revision(file_id)
+            last_revision = self.get_file_revision(path, file_id)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
@@ -853,12 +857,12 @@ class InterTree(InterObject):
                     target_path, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
-            if (self.source.get_symlink_target(file_id) !=
-                self.target.get_symlink_target(file_id)):
+            if (self.source.get_symlink_target(source_path, file_id) !=
+                self.target.get_symlink_target(target_path, file_id)):
                 changed_content = True
         elif source_kind == 'tree-reference':
-            if (self.source.get_reference_revision(file_id, source_path)
-                != self.target.get_reference_revision(file_id, target_path)):
+            if (self.source.get_reference_revision(source_path, file_id)
+                != self.target.get_reference_revision(target_path, file_id)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
@@ -1182,23 +1186,27 @@ class InterTree(InterObject):
         :return: Boolean indicating whether the files have the same contents
         """
         with self.lock_read():
+            if source_path is None:
+                source_path = self.source.id2path(source_file_id)
+            if target_path is None:
+                target_path = self.target.id2path(target_file_id)
             source_verifier_kind, source_verifier_data = (
                     self.source.get_file_verifier(
-                        source_file_id, source_path, source_stat))
+                        source_path, source_file_id, source_stat))
             target_verifier_kind, target_verifier_data = (
                 self.target.get_file_verifier(
-                    target_file_id, target_path, target_stat))
+                    target_path, target_file_id, target_stat))
             if source_verifier_kind == target_verifier_kind:
                 return (source_verifier_data == target_verifier_data)
             # Fall back to SHA1 for now
             if source_verifier_kind != "SHA1":
                 source_sha1 = self.source.get_file_sha1(
-                        source_file_id, source_path, source_stat)
+                        source_path, source_file_id, source_stat)
             else:
                 source_sha1 = source_verifier_data
             if target_verifier_kind != "SHA1":
                 target_sha1 = self.target.get_file_sha1(
-                        target_file_id, target_path, target_stat)
+                        target_path, target_file_id, target_stat)
             else:
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)

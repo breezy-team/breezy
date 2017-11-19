@@ -912,11 +912,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if has_symlinks():
             os.symlink('target', 'symlink')
             names.append('symlink')
-        tree.add(names, [n + '-id' for n in names])
+        tree.add(names)
         # now when we first look, we should see everything with the same kind
         # with which they were initially added
         for n in names:
-            actual_kind = tree.kind(n + '-id')
+            actual_kind = tree.kind(n)
             self.assertEqual(n, actual_kind)
         # move them around so the names no longer correspond to the types
         os.rename(names[0], 'tmp')
@@ -925,7 +925,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.rename('tmp', names[-1])
         # now look and expect to see the correct types again
         for i in range(len(names)):
-            actual_kind = tree.kind(names[i-1] + '-id')
+            actual_kind = tree.kind(names[i-1])
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
@@ -937,9 +937,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a', 'b'])
         os.unlink('tree/a')
         os.rmdir('tree/b')
-        self.assertEqual('file', tree.stored_kind(tree.path2id('a')))
+        self.assertEqual('file', tree.stored_kind('a'))
         if tree.branch.repository._format.supports_versioned_directories:
-            self.assertEqual('directory', tree.stored_kind(tree.path2id('b')))
+            self.assertEqual('directory', tree.stored_kind('b'))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
@@ -950,22 +950,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add('file')
         tree.commit('file added')
         os.unlink('file')
-        self.assertIs(None, tree.get_file_sha1(tree.path2id('file')))
+        self.assertIs(None, tree.get_file_sha1('file'))
 
     def test_no_file_sha1(self):
-        """If a file is not present, get_file_sha1 should raise NoSuchId"""
+        """If a file is not present, get_file_sha1 should raise NoSuchFile"""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
+        self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,
                           'nonexistant')
         self.build_tree(['file'])
         tree.add('file')
         file_id = tree.path2id('file')
         tree.commit('foo')
         tree.remove('file')
-        self.assertRaises(errors.NoSuchId, tree.get_file_sha1,
-                          file_id)
+        self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,
+                          'file')
 
     def test_case_sensitive(self):
         """If filesystem is case-sensitive, tree should report this.
@@ -1002,15 +1002,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree._supports_executable():
             tree.lock_read()
             try:
-                self.assertFalse(tree.is_executable(tree.path2id('filename')))
+                self.assertFalse(tree.is_executable('filename'))
             finally:
                 tree.unlock()
             os.chmod('filename', 0o755)
             self.addCleanup(tree.lock_read().unlock)
-            self.assertTrue(tree.is_executable(tree.path2id('filename')))
+            self.assertTrue(tree.is_executable('filename'))
         else:
             self.addCleanup(tree.lock_read().unlock)
-            self.assertFalse(tree.is_executable(tree.path2id('filename')))
+            self.assertFalse(tree.is_executable('filename'))
 
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')

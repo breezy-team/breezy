@@ -516,7 +516,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             tree.rename_one('a', new_path)
         self.assertEqual(new_path, tree.id2path('a-id'))
         tree.commit(u'b\xb5rry')
-        tree.unversion(['a-id'])
+        tree.unversion([new_path])
         self.assertRaises(errors.NoSuchId, tree.id2path, 'a-id')
         self.assertEqual('b', tree.id2path('b-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, 'c-id')
@@ -574,7 +574,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.add(['dir'], ['dir-id'])
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
-        self.assertEqual('directory', tree.kind('dir-id'))
+        self.assertEqual('directory', tree.kind('dir'))
         # a diff against the basis should give us a directory and the root (as
         # the root is new too).
         tree.lock_read()
@@ -755,10 +755,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # Explicit test to ensure we get a lstat value from WT4 trees.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        tree.add(['foo'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        file_obj, statvalue = tree.get_file_with_stat('foo-id')
+        file_obj, statvalue = tree.get_file_with_stat('foo')
         expected = os.lstat('foo')
         self.assertEqualStat(expected, statvalue)
         self.assertEqual(["contents of foo\n"], file_obj.readlines())
@@ -876,6 +876,6 @@ class TestInventoryCoherency(TestCaseWithTransport):
         inv = tree.root_inventory
         self.assertTrue(inv.has_id('a-id'))
         self.assertTrue(inv.has_id('b-id'))
-        tree.unversion(['a-id', 'b-id'])
+        tree.unversion(['a', 'a/b'])
         self.assertFalse(inv.has_id('a-id'))
         self.assertFalse(inv.has_id('b-id'))

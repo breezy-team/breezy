@@ -337,13 +337,13 @@ class TestUpgrade(TestCaseWithTransport):
         foo_id = 'foo-20051004035605-91e788d1875603ae'
         rt.lock_read()
         try:
-            eq(rt.get_file_text(foo_id), 'initial contents\n')
+            eq(rt.get_file_text('foo', foo_id), 'initial contents\n')
         finally:
             rt.unlock()
         rt = b.repository.revision_tree(rh[1])
         rt.lock_read()
         try:
-            eq(rt.get_file_text(foo_id), 'new contents\n')
+            eq(rt.get_file_text('foo', foo_id), 'new contents\n')
         finally:
             rt.unlock()
         # check a backup was made:

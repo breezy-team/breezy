@@ -651,9 +651,9 @@ class Merger(object):
             hook(merge)
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
-                sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
+                sub_tree = self.this_tree.get_nested_tree(relpath, file_id)
                 other_revision = self.other_tree.get_reference_revision(
-                    file_id, relpath)
+                    relpath, file_id)
                 if  other_revision == sub_tree.last_revision():
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
@@ -661,7 +661,9 @@ class Merger(object):
                 other_branch = self.other_branch.reference_parent(file_id,
                                                                   relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
-                base_revision = self.base_tree.get_reference_revision(file_id)
+                base_tree_path = self.base_tree.id2path(file_id)
+                base_revision = self.base_tree.get_reference_revision(
+                    base_tree_path, file_id)
                 sub_merge.base_tree = \
                     sub_tree.branch.repository.revision_tree(base_revision)
                 sub_merge.base_rev_id = base_revision
@@ -1005,7 +1007,7 @@ class Merge3Merger(object):
                     def get_sha1(ie, tree):
                         if ie.kind != 'file':
                             return None
-                        return tree.get_file_sha1(file_id)
+                        return tree.get_file_sha1(tree.id2path(file_id), file_id)
                     base_sha1 = get_sha1(base_ie, self.base_tree)
                     lca_sha1s = [get_sha1(ie, tree) for ie, tree
                                  in zip(lca_entries, self._lca_trees)]
@@ -1028,7 +1030,8 @@ class Merge3Merger(object):
                     def get_target(ie, tree):
                         if ie.kind != 'symlink':
                             return None
-                        return tree.get_symlink_target(file_id)
+                        path = tree.id2path(file_id)
+                        return tree.get_symlink_target(path, file_id)
                     base_target = get_target(base_ie, self.base_tree)
                     lca_targets = [get_target(ie, tree) for ie, tree
                                    in zip(lca_entries, self._lca_trees)]
@@ -1069,10 +1072,11 @@ class Merge3Merger(object):
     def write_modified(self, results):
         modified_hashes = {}
         for path in results.modified_paths:
-            file_id = self.working_tree.path2id(self.working_tree.relpath(path))
+            wt_relpath = self.working_tree.relpath(path)
+            file_id = self.working_tree.path2id(wt_relpath)
             if file_id is None:
                 continue
-            hash = self.working_tree.get_file_sha1(file_id)
+            hash = self.working_tree.get_file_sha1(wt_relpath, file_id)
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
@@ -1095,25 +1099,31 @@ class Merge3Merger(object):
     @staticmethod
     def contents_sha1(tree, file_id):
         """Determine the sha1 of the file contents (used as a key method)."""
-        if not tree.has_id(file_id):
+        try:
+            path = tree.id2path(file_id)
+        except errors.NoSuchId:
             return None
-        return tree.get_file_sha1(file_id)
+        return tree.get_file_sha1(path, file_id)
 
     @staticmethod
     def executable(tree, file_id):
         """Determine the executability of a file-id (used as a key method)."""
-        if not tree.has_id(file_id):
+        try:
+            path = tree.id2path(file_id)
+        except errors.NoSuchId:
             return None
-        if tree.kind(file_id) != "file":
+        if tree.kind(path, file_id) != "file":
             return False
-        return tree.is_executable(file_id)
+        return tree.is_executable(path, file_id)
 
     @staticmethod
-    def kind(tree, file_id):
+    def kind(tree, path, file_id):
         """Determine the kind of a file-id (used as a key method)."""
-        if not tree.has_id(file_id):
+        try:
+            path = tree.id2path(file_id)
+        except errors.NoSuchId:
             return None
-        return tree.kind(file_id)
+        return tree.kind(path, file_id)
 
     @staticmethod
     def _three_way(base, other, this):
@@ -1251,13 +1261,18 @@ class Merge3Merger(object):
     def _do_merge_contents(self, file_id):
         """Performs a merge on file_id contents."""
         def contents_pair(tree):
-            if not tree.has_id(file_id):
+            try:
+                path = tree.id2path(file_id)
+            except errors.NoSuchId:
                 return (None, None)
-            kind = tree.kind(file_id)
+            try:
+                kind = tree.kind(path, file_id)
+            except errors.NoSuchFile:
+                return (None, None)
             if kind == "file":
-                contents = tree.get_file_sha1(file_id)
+                contents = tree.get_file_sha1(path, file_id)
             elif kind == "symlink":
-                contents = tree.get_symlink_target(file_id)
+                contents = tree.get_symlink_target(path, file_id)
             else:
                 contents = None
             return kind, contents
@@ -1319,7 +1334,8 @@ class Merge3Merger(object):
                     # conflict
                     self.tt.version_file(file_id, trans_id)
                     transform.create_from_tree(
-                        self.tt, trans_id, self.other_tree, file_id,
+                        self.tt, trans_id, self.other_tree,
+                        self.other_tree.id2path(file_id), file_id=file_id,
                         filter_tree_path=self._get_filter_tree_path(file_id))
                     inhibit_content_conflict = True
             elif params.other_kind is None: # file_id is not in OTHER
@@ -1377,7 +1393,8 @@ class Merge3Merger(object):
         if self.other_tree.has_id(file_id):
             # OTHER changed the file
             transform.create_from_tree(
-                self.tt, trans_id, self.other_tree, file_id,
+                self.tt, trans_id, self.other_tree,
+                self.other_tree.id2path(file_id), file_id=file_id,
                 filter_tree_path=self._get_filter_tree_path(file_id))
             return 'done', None
         elif self.this_tree.has_id(file_id):
@@ -1411,20 +1428,26 @@ class Merge3Merger(object):
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
-        if tree.has_id(file_id):
-            return tree.get_file_lines(file_id)
-        else:
+        try:
+            path = tree.id2path(file_id)
+        except errors.NoSuchId:
             return []
+        else:
+            return tree.get_file_lines(path, file_id)
 
     def text_merge(self, file_id, trans_id):
         """Perform a three-way text merge on a file_id"""
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
-        if self.base_tree.has_id(file_id) and \
-            self.base_tree.kind(file_id) == "file":
-            base_lines = self.get_lines(self.base_tree, file_id)
-        else:
+        try:
+            base_path = self.base_tree.id2path(file_id)
+        except errors.NoSuchId:
             base_lines = []
+        else:
+            if self.base_tree.kind(base_path, file_id) == "file":
+                base_lines = self.get_lines(self.base_tree, file_id)
+            else:
+                base_lines = []
         other_lines = self.get_lines(self.other_tree, file_id)
         this_lines = self.get_lines(self.this_tree, file_id)
         m3 = merge3.Merge3(base_lines, this_lines, other_lines,
@@ -1503,22 +1526,29 @@ class Merge3Merger(object):
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
-            if tree.has_id(file_id):
-                trans_id = self._conflict_file(name, parent_id, tree, file_id,
-                                               suffix, lines, filter_tree_path)
+            try:
+                path = tree.id2path(file_id)
+            except errors.NoSuchId:
+                pass
+            else:
+                trans_id = self._conflict_file(
+                        name, parent_id, path, tree, file_id, suffix, lines,
+                        filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
                     self.tt.version_file(file_id, trans_id)
                     versioned = True
         return file_group
 
-    def _conflict_file(self, name, parent_id, tree, file_id, suffix,
+    def _conflict_file(self, name, parent_id, path, tree, file_id, suffix,
                        lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        transform.create_from_tree(self.tt, trans_id, tree, file_id, lines,
-            filter_tree_path)
+        transform.create_from_tree(
+                self.tt, trans_id, tree, path,
+                file_id=file_id, bytes=lines,
+                filter_tree_path=filter_tree_path)
         return trans_id
 
     def merge_executable(self, file_id, file_status):
@@ -1702,7 +1732,7 @@ class Diff3Merger(Merge3Merger):
         out_path = osutils.pathjoin(temp_dir, name)
         out_file = open(out_path, "wb")
         try:
-            in_file = tree.get_file(file_id)
+            in_file = tree.get_file(tree.id2path(file_id), file_id)
             for line in in_file:
                 out_file.write(line)
         finally:
@@ -1852,10 +1882,10 @@ class MergeIntoMergeType(Merge3Merger):
         try:
             entries = self._entries_to_incorporate()
             entries = list(entries)
-            for num, (entry, parent_id) in enumerate(entries):
+            for num, (entry, parent_id, path) in enumerate(entries):
                 child_pb.update(gettext('Preparing file merge'), num, len(entries))
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
-                trans_id = transform.new_by_entry(self.tt, entry,
+                trans_id = transform.new_by_entry(path, self.tt, entry,
                     parent_trans_id, self.other_tree)
         finally:
             child_pb.finished()
@@ -1887,17 +1917,17 @@ class MergeIntoMergeType(Merge3Merger):
             # an edge case, so we don't do anything special for those.  We let
             # them cause conflicts.
             merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
-        yield (merge_into_root, target_id)
+        yield (merge_into_root, target_id, '')
         if subdir.kind != 'directory':
             # No children, so we are done.
             return
-        for ignored_path, entry in other_inv.iter_entries_by_dir(subdir_id):
+        for path, entry in other_inv.iter_entries_by_dir(subdir_id):
             parent_id = entry.parent_id
             if parent_id == subdir.file_id:
                 # The root's parent ID has changed, so make sure children of
                 # the root refer to the new ID.
                 parent_id = merge_into_root.file_id
-            yield (entry, parent_id)
+            yield (entry, parent_id, path)
 
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,

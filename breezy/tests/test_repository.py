@@ -252,7 +252,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         branch = control.create_branch()
         tree = control.create_workingtree()
         tree.add(['foo'], ['Nasty-IdC:'], ['file'])
-        tree.put_file_bytes_non_atomic('Nasty-IdC:', '')
+        tree.put_file_bytes_non_atomic('foo', '')
         tree.commit('1st post', rev_id='foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             '\nfoo fulltext 0 81  :')
@@ -508,7 +508,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree.lock_read()
         try:
             self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-                revision_tree.get_root_id())
+                u'', revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         format = bzrdir.BzrDirMetaFormat1()
@@ -518,7 +518,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree('dull')
         revision_tree.lock_read()
         try:
-            revision_tree.get_file_lines(revision_tree.get_root_id())
+            revision_tree.get_file_lines(u'', revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         tree.commit("Another dull commit", rev_id='dull2')
@@ -526,7 +526,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
         self.assertEqual('dull',
-                revision_tree.get_file_revision(revision_tree.get_root_id()))
+                revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()

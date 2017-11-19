@@ -35,7 +35,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
 
     def test_annotate_same_as_parent(self):
         tree = self.make_single_rev_tree()
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n')],
                          annotations)
 
@@ -43,7 +43,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree = self.make_single_rev_tree()
         self.build_tree_contents([('tree/file',
                                    'initial content\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('current:', 'new content\n'),
                          ], annotations)
@@ -70,7 +70,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    'initial content\ncontent in 2\n'
                                    'content in 3\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('rev-2', 'content in 2\n'),
                           ('rev-3', 'content in 3\n'),
@@ -95,7 +95,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.set_parent_ids(['rev-2', 'rev-3'])
         self.build_tree_contents([('tree/file',
                                    'initial content\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-2', 'initial content\n'),
                           ('current:', 'new content\n'),
                          ], annotations)
@@ -120,7 +120,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.set_parent_ids(['rev-2', 'rev-3'])
         self.build_tree_contents([('tree/file',
                                    'initial content\nnew content\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-2', 'initial content\n'),
                           ('current:', 'new content\n'),
                          ], annotations)
@@ -145,7 +145,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.set_parent_ids(['rev-2', 'rev-3'])
         self.build_tree_contents([('tree/file',
                                    'initial content\ncontent in 3\n')])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('rev-3', 'content in 3\n'),
                          ], annotations)
@@ -174,7 +174,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.set_parent_ids(['rev-2', 'rev-4'])
-        annotations = tree.annotate_iter('file-id')
+        annotations = tree.annotate_iter('file')
         self.assertEqual([('rev-1', 'initial content\n'),
                           ('rev-4', 'new content\n'),
                          ], annotations)

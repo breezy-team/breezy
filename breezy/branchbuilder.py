@@ -280,10 +280,12 @@ class BranchBuilder(object):
         for from_relpath, to_relpath in pending.to_rename:
             tree.rename_one(from_relpath, to_relpath)
         if pending.to_unversion_ids:
-            tree.unversion(pending.to_unversion_ids)
+            tree.unversion([tree.id2path(fid) for fid in pending.to_unversion_ids])
         tree.add(pending.to_add_files, pending.to_add_file_ids, pending.to_add_kinds)
         for file_id, content in viewitems(pending.new_contents):
-            tree.put_file_bytes_non_atomic(file_id, content)
+            tree.put_file_bytes_non_atomic(
+                    tree.id2path(file_id), content,
+                    file_id=file_id)
 
     def get_branch(self):
         """Return the branch created by the builder."""

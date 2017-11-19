@@ -474,12 +474,12 @@ class TestMerge(TestCaseWithTransport):
         tt = tree_merger.make_preview_transform()
         self.addCleanup(tt.finalize)
         preview_tree = tt.get_preview_tree()
-        tree_file = this_tree.get_file('file-id')
+        tree_file = this_tree.get_file('file')
         try:
             self.assertEqual('1\n2a\n', tree_file.read())
         finally:
             tree_file.close()
-        preview_file = preview_tree.get_file('file-id')
+        preview_file = preview_tree.get_file('file')
         try:
             self.assertEqual('2b\n1\n2a\n', preview_file.read())
         finally:
@@ -502,7 +502,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         tt = tree_merger.do_merge()
-        tree_file = this_tree.get_file('file-id')
+        tree_file = this_tree.get_file('file')
         try:
             self.assertEqual('2b\n1\n2a\n', tree_file.read())
         finally:
@@ -2168,7 +2168,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt, conflicts = self.do_merge(builder, 'E-id')
         self.assertEqual(0, conflicts)
         # The merge should have simply update the contents of 'a'
-        self.assertEqual('a\nb\nc\nd\ne\nf\n', wt.get_file_text('a-id'))
+        self.assertEqual('a\nb\nc\nd\ne\nf\n', wt.get_file_text('a'))
 
     def test_conflict_without_lca(self):
         # This test would cause a merge conflict, unless we use the lca trees
@@ -2258,16 +2258,16 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         except:
             tt.finalize()
             raise
-        self.assertTrue(wt.is_executable('foo-id'))
+        self.assertTrue(wt.is_executable('foo'))
         wt.commit('F-id', rev_id='F-id')
         # Reset to D, so that we can merge F
         wt.set_parent_ids(['D-id'])
         wt.branch.set_last_revision_info(3, 'D-id')
         wt.revert()
-        self.assertFalse(wt.is_executable('foo-id'))
+        self.assertFalse(wt.is_executable('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.assertEqual(0, conflicts)
-        self.assertTrue(wt.is_executable('foo-id'))
+        self.assertTrue(wt.is_executable('foo'))
 
     def test_create_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2294,7 +2294,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt = self.get_wt_from_builder(builder)
         os.symlink('bar', 'path/foo')
         wt.add(['foo'], ['foo-id'])
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
         wt.commit('add symlink', rev_id='F-id')
         # Reset to D, so that we can merge F
         wt.set_parent_ids(['D-id'])
@@ -2304,7 +2304,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.assertEqual(0, conflicts)
         self.assertEqual('foo-id', wt.path2id('foo'))
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
 
     def test_both_sides_revert(self):
         # Both sides of a criss-cross revert the text to the lca
@@ -2338,7 +2338,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              '=======\n'
                              'C content\n'
                              '>>>>>>> MERGE-SOURCE\n',
-                             wt.get_file_text('foo-id'))
+                             wt.get_file_text('foo'))
 
     def test_modified_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2371,7 +2371,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        self.assertEqual('baz', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         os.remove('path/foo')
         os.symlink('bing', 'path/foo')
@@ -2383,7 +2383,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('D merges B & C', rev_id='D-id')
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.assertEqual(0, conflicts)
-        self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_renamed_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2414,7 +2414,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
         self.assertEqual('barry', wt.id2path('foo-id'))
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('barry'))
         wt.commit('E merges C & B', rev_id='E-id')
         wt.rename_one('barry', 'blah')
         wt.commit('F barry => blah', rev_id='F-id')
@@ -2468,7 +2468,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        self.assertEqual('baz', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         wt.set_last_revision('B-id')
         wt.branch.set_last_revision_info(2, 'B-id')
@@ -2488,7 +2488,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Now do a real merge, just to test the rest of the stack
         conflicts = wt.merge_from_branch(wt.branch, to_revision='E-id')
         self.assertEqual(0, conflicts)
-        self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_symlink_this_changed_kind(self):
         self.requireFeature(features.SymlinkFeature)
@@ -2514,7 +2514,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo'))
         os.remove('path/foo')
         # We have to change the link in E, or it won't try to do a comparison
         os.symlink('bing', 'path/foo')
@@ -2570,7 +2570,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         wt.commit('C', rev_id='C-id')
         wt.merge_from_branch(wt.branch, 'B-id')
-        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        self.assertEqual('baz', wt.get_symlink_target('foo'))
         wt.commit('E merges C & B', rev_id='E-id')
         os.remove('path/foo')
         os.symlink('bing', 'path/foo')
@@ -2651,7 +2651,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # TODO: We need to use the per-file graph to properly select a BASE
         #       before this will work. Or at least use the LCA trees to find
         #       the appropriate content base. (which is B, not A).
-        self.assertEqual('base content\n', wt.get_file_text('foo-id'))
+        self.assertEqual('base content\n', wt.get_file_text('foo'))
 
     def test_other_modified_content(self):
         builder = self.get_builder()
@@ -2672,7 +2672,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
-        self.assertEqual('F content\n', wt.get_file_text('foo-id'))
+        self.assertEqual('F content\n', wt.get_file_text('foo'))
 
     def test_all_wt(self):
         """Check behavior if all trees are Working Trees."""

@@ -91,9 +91,11 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
         builder = TreeBuilder()
         builder.start_tree(tree)
         builder.build(['foo', "bar/", "bar/file"])
-        self.assertEqual('contents of foo\n',
-            tree.get_file(tree.path2id('foo')).read())
-        self.assertEqual('contents of bar/file\n',
-            tree.get_file(tree.path2id('bar/file')).read())
+        self.assertEqual(
+            'contents of foo\n',
+            tree.get_file('foo').read())
+        self.assertEqual(
+            'contents of bar/file\n',
+            tree.get_file('bar/file').read())
         builder.finish_tree()
 

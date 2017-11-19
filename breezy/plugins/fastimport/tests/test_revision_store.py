@@ -98,7 +98,7 @@ class Test_TreeShim(tests.TestCase):
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[],
                                         content_provider=content_provider)
-        f_obj, stat_val = shim.get_file_with_stat('baz-id')
+        f_obj, stat_val = shim.get_file_with_stat('bar/baz', 'baz-id')
         self.assertIs(None, stat_val)
         self.assertEqualDiff('content of\nbaz-id\n', f_obj.read())
 
@@ -112,7 +112,8 @@ class Test_TreeShim(tests.TestCase):
         basis_inv.add(ie)
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[], content_provider=None)
-        self.assertEqual(u'link-target', shim.get_symlink_target('link-id'))
+        self.assertEqual(u'link-target',
+                         shim.get_symlink_target('link', 'link-id'))
 
     def test_get_symlink_target_from_delta(self):
         basis_inv = self.make_trivial_basis_inv()
@@ -122,7 +123,8 @@ class Test_TreeShim(tests.TestCase):
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=inv_delta,
                                         content_provider=None)
-        self.assertEqual(u'link-target', shim.get_symlink_target('link-id'))
+        self.assertEqual(u'link-target',
+                         shim.get_symlink_target('link', 'link-id'))
 
     def test__delta_to_iter_changes(self):
         basis_inv = self.make_trivial_basis_inv()

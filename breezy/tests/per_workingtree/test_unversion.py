@@ -32,9 +32,9 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.unlock()
 
     def test_unversion_missing_file(self):
-        """WT.unversion(['missing-id']) raises NoSuchId."""
+        """WT.unversion(['missing']) raises NoSuchId."""
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.NoSuchId, tree.unversion, ['missing-id'])
+        self.assertRaises(errors.NoSuchFile, tree.unversion, ['missing'])
 
     def test_unversion_parent_and_child_renamed_bug_187207(self):
         # When unversioning dirstate trees show a bug in dealing with
@@ -47,7 +47,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.commit('setup')
         tree.rename_one('del/sub', 'sub')
         self.assertEqual('sub/b', tree.id2path('b'))
-        tree.unversion(['del', 'b'])
+        tree.unversion(['del', 'sub/b'])
         self.assertRaises(errors.NoSuchId, tree.id2path, 'b')
 
     def test_unversion_several_files(self):
@@ -57,7 +57,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
         # within a lock unversion should take effect
         tree.lock_write()
-        tree.unversion(['a-id', 'b-id'])
+        tree.unversion(['a', 'b'])
         self.assertFalse(tree.has_id('a-id'))
         self.assertFalse(tree.has_id('b-id'))
         self.assertTrue(tree.has_id('c-id'))
@@ -84,7 +84,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
         # within a lock unversion should take effect
         tree.lock_write()
-        tree.unversion(['a-id'])
+        tree.unversion(['a'])
         self.assertFalse(tree.has_id('a-id'))
         self.assertFalse(tree.has_id('b-id'))
         self.assertTrue(tree.has_id('c-id'))
@@ -103,7 +103,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.add(['a', 'a/b', 'a/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
         tree.lock_write()
         try:
-            tree.unversion(['b-id', 'a-id'])
+            tree.unversion(['a/b', 'a'])
             self.assertFalse(tree.has_id('a-id'))
             self.assertFalse(tree.has_id('b-id'))
             self.assertFalse(tree.has_id('c-id'))
@@ -144,7 +144,7 @@ class TestUnversion(TestCaseWithWorkingTree):
                           ('dir2/f3', 'f3-id'),
                          ], paths)
 
-        tree.unversion({'dir-id'})
+        tree.unversion({'dir'})
         paths = [(path, ie.file_id)
                  for path, ie in tree.iter_entries_by_dir()]
 
@@ -170,7 +170,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         self.build_tree(['B/xyz/'])
         tree_b.add(['xyz'], ['xyz-id'])
         tree_b.rename_one('a/m', 'xyz/m')
-        tree_b.unversion(['a-id'])
+        tree_b.unversion(['a'])
         tree_b.commit('delete in B')
 
         paths = [(path, ie.file_id)
@@ -196,7 +196,7 @@ class TestUnversion(TestCaseWithWorkingTree):
                           ('a/n.OTHER', 'n-id'),
                           ('xyz/m', 'm-id'),
                          ], paths)
-        tree_b.unversion(['a-id'])
+        tree_b.unversion(['a'])
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),

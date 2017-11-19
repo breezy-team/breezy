@@ -45,11 +45,11 @@ class TestAnnotate(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([(revids[1], 'second\n'), (revids[0], 'content\n')],
-                         list(tree.annotate_iter(tree.path2id('one'))))
+                         list(tree.annotate_iter('one')))
 
     def test_annotate_with_ghost(self):
         tree, revids = self.get_tree_with_ghost()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([(revids[1], 'second\n'), (revids[0], 'content\n')],
-                         list(tree.annotate_iter(tree.path2id('one'))))
+                         list(tree.annotate_iter('one')))

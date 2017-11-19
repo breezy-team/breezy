@@ -153,12 +153,11 @@ class BzrUploader(object):
         if self._ignored is None:
             try:
                 ignore_file_path = '.bzrignore-upload'
-                ignore_file_id = self.tree.path2id(ignore_file_path)
-                ignore_file = self.tree.get_file(ignore_file_id,
-                                                 ignore_file_path)
-                ignored_patterns = ignores.parse_ignore_file(ignore_file)
-            except errors.NoSuchId:
+                ignore_file = self.tree.get_file(ignore_file_path)
+            except errors.NoSuchFile:
                 ignored_patterns = []
+            else:
+                ignored_patterns = ignores.parse_ignore_file(ignore_file)
             self._ignored = globbing.Globster(ignored_patterns)
         return self._ignored
 
@@ -177,13 +176,13 @@ class BzrUploader(object):
 
     def upload_file(self, relpath, id, mode=None):
         if mode is None:
-            if self.tree.is_executable(id):
+            if self.tree.is_executable(relpath, id):
                 mode = 0o775
             else:
                 mode = 0o664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % relpath)
-        self._up_put_bytes(relpath, self.tree.get_file_text(id), mode)
+        self._up_put_bytes(relpath, self.tree.get_file_text(relpath, id), mode)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.

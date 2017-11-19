@@ -1050,10 +1050,11 @@ class cmd_mv(Command):
                 into_existing = False
             else:
                 # 'fix' the case of a potential 'from'
-                from_id = tree.path2id(
-                            tree.get_canonical_inventory_path(rel_names[0]))
+                from_path = tree.get_canonical_inventory_path(rel_names[0])
+                from_id = tree.path2id(from_path)
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and tree.stored_kind(from_id) == "directory"):
+                    from_id and
+                    tree.stored_kind(from_path, from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
@@ -3404,9 +3405,9 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            content = filter_tree.get_file_text(actual_file_id)
+            content = filter_tree.get_file_text(relpath, actual_file_id)
         else:
-            content = rev_tree.get_file_text(actual_file_id)
+            content = rev_tree.get_file_text(relpath, actual_file_id)
         self.cleanup_now()
         self.outf.write(content)
 
@@ -4697,7 +4698,7 @@ class cmd_remerge(Command):
                 if file_id is None:
                     raise errors.NotVersionedError(filename)
                 interesting_ids.add(file_id)
-                if tree.kind(file_id) != "directory":
+                if tree.kind(filename, file_id) != "directory":
                     continue
 
                 # FIXME: Support nested trees
@@ -5190,11 +5191,11 @@ class cmd_annotate(Command):
         if wt is not None and revision is None:
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
-            annotate_file_tree(wt, file_id, self.outf, long, all,
-                show_ids=show_ids)
+            annotate_file_tree(wt, relpath, self.outf, long, all,
+                show_ids=show_ids, file_id=file_id)
         else:
-            annotate_file_tree(tree, file_id, self.outf, long, all,
-                show_ids=show_ids, branch=branch)
+            annotate_file_tree(tree, relpath, self.outf, long, all,
+                show_ids=show_ids, branch=branch, file_id=file_id)
 
 
 class cmd_re_sign(Command):

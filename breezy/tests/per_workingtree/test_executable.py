@@ -43,9 +43,9 @@ class TestExecutable(TestCaseWithWorkingTree):
     def check_exist(self, tree):
         """Just check that both files have the right executable bits set"""
         tree.lock_read()
-        self.assertTrue(tree.is_executable(self.a_id),
+        self.assertTrue(tree.is_executable('a'),
                         "'a' lost the execute bit")
-        self.assertFalse(tree.is_executable(self.b_id),
+        self.assertFalse(tree.is_executable('b'),
                     "'b' gained an execute bit")
         tree.unlock()
 
@@ -190,5 +190,5 @@ class TestExecutable(TestCaseWithWorkingTree):
     def test_use_exec_from_basis(self):
         self.wt._supports_executable = lambda: False
         self.addCleanup(self.wt.lock_read().unlock)
-        self.assertTrue(self.wt.is_executable(self.a_id))
-        self.assertFalse(self.wt.is_executable(self.b_id))
+        self.assertTrue(self.wt.is_executable('a'))
+        self.assertFalse(self.wt.is_executable('b'))

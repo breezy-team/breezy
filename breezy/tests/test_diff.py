@@ -700,10 +700,9 @@ class DiffWasIs(diff.DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         self.to_file.write('was: ')
-        self.to_file.write(self.old_tree.get_file(file_id).read())
+        self.to_file.write(self.old_tree.get_file(old_path).read())
         self.to_file.write('is: ')
-        self.to_file.write(self.new_tree.get_file(file_id).read())
-        pass
+        self.to_file.write(self.new_tree.get_file(new_path).read())
 
 
 class TestDiffTree(tests.TestCaseWithTransport):
@@ -728,17 +727,20 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
         differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
-        differ.diff_text('file-id', None, 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', None, 'old label',
+                         'new label', 'file-id', None)
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text(None, 'file-id', 'old label', 'new label')
+        differ.diff_text(None, 'newdir/newfile',
+                         'old label', 'new label', None, 'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -0,0 +1,1 @@\n+new\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text('file-id', 'file-id', 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', 'newdir/newfile',
+                         'old label', 'new label', 'file-id', 'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())
@@ -1454,7 +1456,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj = diff.DiffFromTool(['python', '-c',
                                       'print "@old_path @new_path"'],
                                      basis_tree, tree, output)
-        diff_obj._prepare_files('file-id', 'file', 'file')
+        diff_obj._prepare_files('file', 'file', file_id='file-id')
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, 'old\\file',
                                     r'R.*old\\file$')
@@ -1492,8 +1494,8 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
-        old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
-                                                     'newname')
+        old_path, new_path = diff_obj._prepare_files(
+                'oldname', 'newname', file_id='file-id')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
@@ -1502,7 +1504,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+        diff_obj._prepare_files('oldname2', 'newname2', file_id='file2-id')
 
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):

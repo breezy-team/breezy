@@ -103,7 +103,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
     def test_merge_type(self):
         this = self.make_branch_and_tree('this')
         self.build_tree_contents([('this/foo', 'foo')])
-        this.add('foo', 'foo-id')
+        this.add('foo')
         this.commit('added foo')
         other = this.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/foo', 'bar')])
@@ -114,7 +114,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
             def text_merge(self, file_id, trans_id):
                 self.tt.create_file('qux', trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
-        self.assertEqual('qux', this.get_file_text('foo-id'))
+        self.assertEqual('qux', this.get_file_text('foo'))
 
 
 class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):

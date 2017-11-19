@@ -482,7 +482,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     try:
-        mtime = tree.get_file_mtime(file_id, path)
+        mtime = tree.get_file_mtime(path, file_id)
     except FileTimestampUnavailable:
         mtime = 0
     return timestamp.format_patch_date(mtime)
@@ -602,13 +602,13 @@ class DiffSymlink(DiffPath):
         if 'symlink' not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         if old_kind == 'symlink':
-            old_target = self.old_tree.get_symlink_target(file_id)
+            old_target = self.old_tree.get_symlink_target(old_path, file_id)
         elif old_kind is None:
             old_target = None
         else:
             return self.CANNOT_DIFF
         if new_kind == 'symlink':
-            new_target = self.new_tree.get_symlink_target(file_id)
+            new_target = self.new_tree.get_symlink_target(new_path, file_id)
         elif new_kind is None:
             new_target = None
         else:
@@ -670,26 +670,27 @@ class DiffText(DiffPath):
             return self.CANNOT_DIFF
         from_label = '%s%s\t%s' % (self.old_label, old_path, old_date)
         to_label = '%s%s\t%s' % (self.new_label, new_path, new_date)
-        return self.diff_text(from_file_id, to_file_id, from_label, to_label,
-            old_path, new_path)
+        return self.diff_text(old_path, new_path, from_label, to_label,
+            from_file_id, to_file_id)
 
-    def diff_text(self, from_file_id, to_file_id, from_label, to_label,
-        from_path=None, to_path=None):
+    def diff_text(self, from_path, to_path, from_label, to_label,
+        from_file_id=None, to_file_id=None):
         """Diff the content of given files in two trees
 
-        :param from_file_id: The id of the file in the from tree.  If None,
+        :param from_path: The path in the from tree. If None,
             the file is not present in the from tree.
-        :param to_file_id: The id of the file in the to tree.  This may refer
-            to a different file from from_file_id.  If None,
+        :param to_path: The path in the to tree. This may refer
+            to a different file from from_path.  If None,
             the file is not present in the to tree.
-        :param from_path: The path in the from tree or None if unknown.
-        :param to_path: The path in the to tree or None if unknown.
+        :param from_file_id: The id of the file in the from tree or None if
+            unknown.
+        :param to_file_id: The id of the file in the to tree or None if
+            unknown.
         """
         def _get_text(tree, file_id, path):
-            if file_id is not None:
-                return tree.get_file_lines(file_id, path)
-            else:
+            if file_id is None:
                 return []
+            return tree.get_file_lines(path, file_id)
         try:
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
@@ -797,10 +798,10 @@ class DiffFromTool(DiffPath):
         relpath_tmp = relpath_tmp.replace(u'?', u'_')
         return osutils.pathjoin(self._root, prefix, relpath_tmp)
 
-    def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
-                    allow_write=False):
+    def _write_file(self, relpath, tree, prefix, force_temp=False,
+                    allow_write=False, file_id=None):
         if not force_temp and isinstance(tree, WorkingTree):
-            full_path = tree.abspath(tree.id2path(file_id))
+            full_path = tree.abspath(relpath)
             if self._is_safepath(full_path):
                 return full_path
 
@@ -813,7 +814,7 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(file_id, relpath)
+        source = tree.get_file(relpath, file_id)
         try:
             target = open(full_path, 'wb')
             try:
@@ -823,7 +824,7 @@ class DiffFromTool(DiffPath):
         finally:
             source.close()
         try:
-            mtime = tree.get_file_mtime(file_id)
+            mtime = tree.get_file_mtime(relpath, file_id)
         except FileTimestampUnavailable:
             pass
         else:
@@ -832,12 +833,12 @@ class DiffFromTool(DiffPath):
             osutils.make_readonly(full_path)
         return full_path
 
-    def _prepare_files(self, file_id, old_path, new_path, force_temp=False,
-                       allow_write_new=False):
-        old_disk_path = self._write_file(file_id, self.old_tree, 'old',
-                                         old_path, force_temp)
-        new_disk_path = self._write_file(file_id, self.new_tree, 'new',
-                                         new_path, force_temp,
+    def _prepare_files(self, old_path, new_path, force_temp=False,
+                       allow_write_new=False, file_id=None):
+        old_disk_path = self._write_file(old_path, self.old_tree, 'old',
+                                         force_temp, file_id=file_id)
+        new_disk_path = self._write_file(new_path, self.new_tree, 'new',
+                                         force_temp, file_id=file_id,
                                          allow_write=allow_write_new)
         return old_disk_path, new_disk_path
 
@@ -853,10 +854,10 @@ class DiffFromTool(DiffPath):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
         (old_disk_path, new_disk_path) = self._prepare_files(
-                                                file_id, old_path, new_path)
+                old_path, new_path, file_id=file_id)
         self._execute(old_disk_path, new_disk_path)
 
-    def edit_file(self, file_id):
+    def edit_file(self, old_path, new_path, file_id=None):
         """Use this tool to edit a file.
 
         A temporary copy will be edited, and the new contents will be
@@ -865,12 +866,9 @@ class DiffFromTool(DiffPath):
         :param file_id: The id of the file to edit.
         :return: The new contents of the file.
         """
-        old_path = self.old_tree.id2path(file_id)
-        new_path = self.new_tree.id2path(file_id)
         old_abs_path, new_abs_path = self._prepare_files(
-                                            file_id, old_path, new_path,
-                                            allow_write_new=True,
-                                            force_temp=True)
+                old_path, new_path, allow_write_new=True, force_temp=True,
+                file_id=file_id)
         command = self._get_command(old_abs_path, new_abs_path)
         subprocess.call(command, cwd=self._root)
         new_file = open(new_abs_path, 'rb')
@@ -1025,7 +1023,7 @@ class DiffTree(object):
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))
             if changed_content:
-                self._diff(file_id, oldpath, newpath, kind[0], kind[1])
+                self._diff(oldpath, newpath, kind[0], kind[1], file_id=file_id)
                 has_changes = 1
             if renamed:
                 has_changes = 1
@@ -1038,18 +1036,17 @@ class DiffTree(object):
         :param old_path: The path of the file in the old tree
         :param new_path: The path of the file in the new tree
         """
-        try:
-            old_kind = self.old_tree.kind(file_id)
-        except (errors.NoSuchId, errors.NoSuchFile):
+        if old_path is None:
             old_kind = None
-        try:
-            new_kind = self.new_tree.kind(file_id)
-        except (errors.NoSuchId, errors.NoSuchFile):
+        else:
+            old_kind = self.old_tree.kind(old_path, file_id)
+        if new_path is None:
             new_kind = None
-        self._diff(file_id, old_path, new_path, old_kind, new_kind)
+        else:
+            new_kind = self.new_tree.kind(new_path, file_id)
+        self._diff(old_path, new_path, old_kind, new_kind, file_id=file_id)
 
-
-    def _diff(self, file_id, old_path, new_path, old_kind, new_kind):
+    def _diff(self, old_path, new_path, old_kind, new_kind, file_id):
         result = DiffPath._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)
         if result is DiffPath.CANNOT_DIFF:

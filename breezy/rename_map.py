@@ -108,8 +108,7 @@ class RenameMap(object):
         try:
             for num, path in enumerate(paths):
                 task.update(gettext('Determining hash hits'), num, len(paths))
-                hits = self.hitcounts(self.tree.get_file_lines(None,
-                                                               path=path))
+                hits = self.hitcounts(self.tree.get_file_lines(path))
                 all_hits.extend((v, path, k) for k, v in viewitems(hits))
         finally:
             task.finished()

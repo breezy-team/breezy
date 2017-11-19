@@ -44,8 +44,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         tree.smart_add(['tree/link'])
         self.assertIsNot(None, tree.path2id('link'))
         self.assertIs(None, tree.path2id('target'))
-        self.assertEqual('symlink',
-            tree.kind(tree.path2id('link')))
+        self.assertEqual('symlink', tree.kind('link'))
 
     def test_smart_add_symlink_pointing_outside(self):
         tree = self.make_branch_and_tree('tree')
@@ -55,8 +54,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         tree.smart_add(['tree/link'])
         self.assertIsNot(None, tree.path2id('link'))
         self.assertIs(None, tree.path2id('target'))
-        self.assertEqual('symlink',
-            tree.kind(tree.path2id('link')))
+        self.assertEqual('symlink', tree.kind('link'))
 
     def test_add_file_under_symlink(self):
         # similar to 

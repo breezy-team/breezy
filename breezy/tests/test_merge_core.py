@@ -252,8 +252,8 @@ class MergeTest(TestCaseWithTransport):
         builder.add_file("2", builder.tree_root, "name2", "hello1", True)
         builder.change_contents("2", other="text4")
         builder.merge(interesting_ids=["1"])
-        self.assertEqual(builder.this.get_file("1").read(), "text4" )
-        self.assertEqual(builder.this.get_file("2").read(), "hello1" )
+        self.assertEqual(builder.this.get_file("name1").read(), "text4" )
+        self.assertEqual(builder.this.get_file("name2").read(), "hello1" )
         builder.cleanup()
 
     def test_file_moves(self):
@@ -319,7 +319,9 @@ e
 y
 >>>>>>> MERGE-SOURCE
 """
-        self.assertEqualDiff(builder.this.get_file("a").read(), expected)
+        self.assertEqualDiff(
+                builder.this.get_file(builder.this.id2path("a")).read(),
+                expected)
         builder.cleanup()
 
     def do_contents_test(self, merge_factory):
@@ -344,13 +346,13 @@ y
         conflicts = builder.merge(merge_factory)
         try:
             self.assertEqual([], conflicts)
-            self.assertEqual("text4", builder.this.get_file("1").read())
-            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("text4", builder.this.get_file("name1").read())
+            self.assertEqual("text2", builder.this.get_file("name3").read())
             self.assertEqual("a\nz\nc\nd\ne\nz\n",
-                             builder.this.get_file("5").read())
-            self.assertTrue(builder.this.is_executable("1"))
-            self.assertFalse(builder.this.is_executable("2"))
-            self.assertTrue(builder.this.is_executable("3"))
+                             builder.this.get_file("name7").read())
+            self.assertTrue(builder.this.is_executable("name1"))
+            self.assertFalse(builder.this.is_executable("name3"))
+            self.assertTrue(builder.this.is_executable("name5"))
         except:
             builder.unlock()
             raise
@@ -370,7 +372,9 @@ y
         self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
                                      ContentsConflict('name2', file_id='2'),
                                      ContentsConflict('name3', file_id='3')])
-        self.assertEqual(builder.this.get_file('2').read(), '\x00')
+        self.assertEqual(
+            builder.this.get_file(builder.this.id2path('2')).read(),
+            '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -393,9 +397,9 @@ y
             builder.change_target("2", base="target2")
             builder.change_target("3", other="target2")
             builder.merge()
-            self.assertEqual(builder.this.get_symlink_target("1"), "target2")
-            self.assertEqual(builder.this.get_symlink_target("2"), "target1")
-            self.assertEqual(builder.this.get_symlink_target("3"), "target2")
+            self.assertEqual(builder.this.get_symlink_target("name1"), "target2")
+            self.assertEqual(builder.this.get_symlink_target("name2"), "target1")
+            self.assertEqual(builder.this.get_symlink_target("name3"), "target2")
             builder.cleanup()
 
     def test_no_passive_add(self):
@@ -417,9 +421,9 @@ y
         builder.change_perms('4', this=True)
         builder.remove_file('4', base=True)
         builder.merge()
-        self.assertIs(builder.this.is_executable("1"), False)
-        self.assertIs(builder.this.is_executable("2"), True)
-        self.assertIs(builder.this.is_executable("3"), False)
+        self.assertIs(builder.this.is_executable("name1"), False)
+        self.assertIs(builder.this.is_executable("name2"), True)
+        self.assertIs(builder.this.is_executable("name3"), False)
         builder.cleanup();
 
     def test_new_suffix(self):
@@ -447,7 +451,7 @@ y
         builder.change_name('1', this='name2')
         builder.change_contents('1', other='text2')
         builder.merge(interesting_files=['name2'])
-        self.assertEqual('text2', builder.this.get_file('1').read())
+        self.assertEqual('text2', builder.this.get_file('name2').read())
         builder.cleanup()
 
 

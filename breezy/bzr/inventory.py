@@ -462,15 +462,22 @@ class InventoryFile(InventoryEntry):
         from_file_id = self.file_id
         if to_entry:
             to_file_id = to_entry.file_id
+            to_path = to_tree.id2path(to_file_id)
         else:
             to_file_id = None
+            to_path = None
+        if from_file_id is not None:
+            from_path = tree.id2path(from_file_id)
+        else:
+            from_path = None
         if reverse:
             to_file_id, from_file_id = from_file_id, to_file_id
             tree, to_tree = to_tree, tree
             from_label, to_label = to_label, from_label
         differ = DiffText(tree, to_tree, output_to, 'utf-8', '', '',
                           text_diff)
-        return differ.diff_text(from_file_id, to_file_id, from_label, to_label)
+        return differ.diff_text(from_path, to_path, from_label, to_label,
+                                from_file_id, to_file_id)
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -482,10 +489,10 @@ class InventoryFile(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.text_sha1 = work_tree.get_file_sha1(self.file_id, path=path)
+        self.text_sha1 = work_tree.get_file_sha1(path, self.file_id)
         # FIXME: 20050930 probe for the text size when getting sha1
         # in _read_tree_state
-        self.executable = work_tree.is_executable(self.file_id, path=path)
+        self.executable = work_tree.is_executable(path, self.file_id)
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s, revision=%s)"
@@ -576,7 +583,8 @@ class InventoryLink(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.symlink_target = work_tree.get_symlink_target(self.file_id)
+        self.symlink_target = work_tree.get_symlink_target(
+                work_tree.id2path(self.file_id), self.file_id)
 
     def _forget_tree_state(self):
         self.symlink_target = None
@@ -609,7 +617,7 @@ class TreeReference(InventoryEntry):
         """Populate fields in the inventory entry from the given tree.
         """
         self.reference_revision = work_tree.get_reference_revision(
-            self.file_id, path)
+            path, self.file_id)
 
     def _forget_tree_state(self):
         self.reference_revision = None
@@ -745,8 +753,13 @@ class CommonInventory(object):
             if (not yield_parents and specific_file_ids is not None and
                 len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
-                if self.has_id(file_id):
-                    yield self.id2path(file_id), self[file_id]
+                if file_id is not None:
+                    try:
+                        path = self.id2path(file_id)
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        yield path, self[file_id]
                 return
             from_dir = self.root
             if (specific_file_ids is None or yield_parents or
