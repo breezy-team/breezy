@@ -5,10 +5,17 @@
 
 from __future__ import absolute_import
 
-import cPickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+import operator
 import os
 import sys
-import thread
+try:
+    import _thread
+except ImportError:
+    import thread as _thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
@@ -107,7 +114,7 @@ class BzrProfiler(object):
     def _thread_profile(self, f, *args, **kwds):
         # we lose the first profile point for a new thread in order to
         # trampoline a new Profile object into place
-        thr = thread.get_ident()
+        thr = _thread.get_ident()
         self._g_threadmap[thr] = p = Profiler()
         # this overrides our sys.setprofile hook:
         p.enable(subcalls=True, builtins=True)
@@ -204,17 +211,14 @@ class Stats(object):
                 ext = os.path.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
-        outfile = open(filename, 'wb')
-        try:
+        with open(filename, 'wb') as outfile:
             if format == "callgrind":
                 self.calltree(outfile)
             elif format == "txt":
                 self.pprint(file=outfile)
             else:
                 self.freeze()
-                cPickle.dump(self, outfile, 2)
-        finally:
-            outfile.close()
+                pickle.dump(self, outfile, 2)
 
 
 class _CallTreeFilter(object):

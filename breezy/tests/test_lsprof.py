@@ -23,11 +23,15 @@ except ImportError:
     import pickle
 import threading
 
-import breezy
-from .. import errors, tests
-from . import (
-    features,
+from .. import (
+    errors,
+    osutils,
+    tests,
     )
+from ..tests import features
+
+
+lsprof = features.lsprof_feature.module
 
 
 _TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
@@ -41,8 +45,7 @@ def _junk_callable():
 
 def _collect_stats():
     "Collect and return some dummy profile data."
-    from breezy.lsprof import profile
-    ret, stats = profile(_junk_callable)
+    ret, stats = lsprof.profile(_junk_callable)
     return stats
 
 
@@ -54,36 +57,39 @@ class TestStatsSave(tests.TestCaseInTempDir):
         super(tests.TestCaseInTempDir, self).setUp()
         self.stats = _collect_stats()
 
-    def _tempfile(self, ext):
-        dir = self.test_dir
-        return breezy.osutils.pathjoin(dir, "tmp_profile_data." + ext)
+    def _temppath(self, ext):
+        return osutils.pathjoin(self.test_dir, "tmp_profile_data." + ext)
 
     def test_stats_save_to_txt(self):
-        f = self._tempfile("txt")
-        self.stats.save(f)
-        lines = open(f).readlines()
-        self.assertEqual(lines[0], _TXT_HEADER)
+        path = self._temppath("txt")
+        self.stats.save(path)
+        with open(path) as f:
+            lines = f.readlines()
+            self.assertEqual(lines[0], _TXT_HEADER)
 
     def test_stats_save_to_callgrind(self):
-        f = self._tempfile("callgrind")
-        self.stats.save(f)
-        lines = open(f).readlines()
-        self.assertEqual(lines[0], "events: Ticks\n")
-        f = breezy.osutils.pathjoin(self.test_dir, "callgrind.out.foo")
-        self.stats.save(f)
-        lines = open(f).readlines()
-        self.assertEqual(lines[0], "events: Ticks\n")
+        path1 = self._temppath("callgrind")
+        self.stats.save(path1)
+        with open(path1) as f:
+            self.assertEqual(f.readline(), "events: Ticks\n")
+
+        path2 = osutils.pathjoin(self.test_dir, "callgrind.out.foo")
+        self.stats.save(path2)
+        with open(path2) as f:
+            self.assertEqual(f.readline(), "events: Ticks\n")
+
         # Test explicit format nommination
-        f2 = self._tempfile("txt")
-        self.stats.save(f2, format="callgrind")
-        lines2 = open(f2).readlines()
-        self.assertEqual(lines2[0], "events: Ticks\n")
+        path3 = self._temppath("txt")
+        self.stats.save(path3, format="callgrind")
+        with open(path3) as f:
+            self.assertEqual(f.readline(), "events: Ticks\n")
 
     def test_stats_save_to_pickle(self):
-        f = self._tempfile("pkl")
-        self.stats.save(f)
-        data1 = pickle.load(open(f))
-        self.assertEqual(type(data1), breezy.lsprof.Stats)
+        path = self._temppath("pkl")
+        self.stats.save(path)
+        with open(path, 'rb') as f:
+            data1 = pickle.load(f)
+            self.assertEqual(type(data1), lsprof.Stats)
 
 
 class TestBzrProfiler(tests.TestCase):
@@ -91,7 +97,7 @@ class TestBzrProfiler(tests.TestCase):
     _test_needs_features = [features.lsprof_feature]
 
     def test_start_call_stuff_stop(self):
-        profiler = breezy.lsprof.BzrProfiler()
+        profiler = lsprof.BzrProfiler()
         profiler.start()
         try:
             def a_function():
@@ -106,19 +112,19 @@ class TestBzrProfiler(tests.TestCase):
 
     def test_block_0(self):
         # When profiler_block is 0, reentrant profile requests fail.
-        self.overrideAttr(breezy.lsprof.BzrProfiler, 'profiler_block', 0)
+        self.overrideAttr(lsprof.BzrProfiler, 'profiler_block', 0)
         inner_calls = []
         def inner():
-            profiler = breezy.lsprof.BzrProfiler()
+            profiler = lsprof.BzrProfiler()
             self.assertRaises(errors.BzrError, profiler.start)
             inner_calls.append(True)
-        breezy.lsprof.profile(inner)
+        lsprof.profile(inner)
         self.assertLength(1, inner_calls)
 
     def test_block_1(self):
         # When profiler_block is 1, concurrent profiles serialise.
         # This is tested by manually acquiring the profiler lock, then
-        # starting a thread that tries to profile, and releasing the lock. 
+        # starting a thread that tries to profile, and releasing the lock.
         # We know due to test_block_0 that two profiles at once hit the lock,
         # so while this isn't perfect (we'd want a callback on the lock being
         # entered to allow lockstep evaluation of the actions), its good enough
@@ -128,15 +134,15 @@ class TestBzrProfiler(tests.TestCase):
         def profiled():
             calls.append('profiled')
         def do_profile():
-            breezy.lsprof.profile(profiled)
+            lsprof.profile(profiled)
             calls.append('after_profiled')
         thread = threading.Thread(target=do_profile)
-        breezy.lsprof.BzrProfiler.profiler_lock.acquire()
+        lsprof.BzrProfiler.profiler_lock.acquire()
         try:
             try:
                 thread.start()
             finally:
-                breezy.lsprof.BzrProfiler.profiler_lock.release()
+                lsprof.BzrProfiler.profiler_lock.release()
         finally:
             thread.join()
         self.assertLength(2, calls)
