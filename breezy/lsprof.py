@@ -132,18 +132,19 @@ class Stats(object):
         self.data = data
         self.threads = threads
 
-    def sort(self, crit="inlinetime"):
+    def sort(self, crit="inlinetime", reverse=True):
         """Sort the data by the supplied critera.
 
         :param crit: the data attribute used as the sort key."""
-        if crit not in profiler_entry.__dict__:
+        if crit not in profiler_entry.__dict__ or crit == 'code':
             raise ValueError("Can't sort by %s" % crit)
-        self.data.sort(lambda b, a: cmp(getattr(a, crit),
-                                        getattr(b, crit)))
+
+        key_func = operator.attrgetter(crit)
+        self.data.sort(key=key_func, reverse=reverse)
+
         for e in self.data:
             if e.calls:
-                e.calls.sort(lambda b, a: cmp(getattr(a, crit),
-                                              getattr(b, crit)))
+                e.calls.sort(key=key_func, reverse=reverse)
 
     def pprint(self, top=None, file=None):
         """Pretty-print the data as plain text for human consumption.
