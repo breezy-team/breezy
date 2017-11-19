@@ -256,7 +256,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         except KeyError:
             # A directory, perhaps?
             for p in list(self.index):
-                if p.startswith(encoded_path+"/"):
+                if p.startswith(encoded_path+b"/"):
                     del self.index[p]
         # FIXME: remove empty directories
 
