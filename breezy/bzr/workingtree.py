@@ -747,10 +747,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            if file_id is None:
-                inv, inv_file_id = self._path2inv_file_id(path)
-            else:
-                inv, inv_file_id = self._unpack_file_id(file_id)
+            inv, inv_file_id = self._path2inv_file_id(path, file_id)
             return inv[inv_file_id].executable
         else:
             mode = os.lstat(self.abspath(path)).st_mode
@@ -1425,7 +1422,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param paths: The file ids to stop versioning.
+        :param paths: The paths to stop versioning.
+        :param file_ids: Optional file_ids for the paths
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
@@ -1456,10 +1454,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         return inv[inv_file_id].kind
 
     def extras(self):

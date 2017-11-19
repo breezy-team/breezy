@@ -170,14 +170,20 @@ class InventoryTree(Tree):
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
 
-    def _path2inv_file_id(self, path):
+    def _path2inv_file_id(self, path, file_id=None):
         """Lookup a inventory and inventory file id by path.
 
         :param path: Path to look up
+        :param file_id: Optional file_id matching path, if known.
         :return: tuple with inventory and inventory file id
         """
-        # FIXME: Support nested trees
-        return self.root_inventory, self.root_inventory.path2id(path)
+        if file_id is not None:
+            inv, inv_file_id = self._unpack_file_id(file_id)
+        else:
+            # FIXME: Support nested trees
+            inv = self.root_inventory
+            inv_file_id = self.root_inventory.path2id(path)
+        return inv, inv_file_id
 
     def id2path(self, file_id):
         """Return the path for a file id.
@@ -607,10 +613,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         self._inventory = inv
 
     def get_file_mtime(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         try:
             ie = inv[inv_file_id]
         except errors.NoSuchId:
@@ -622,35 +625,23 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return revision.timestamp
 
     def get_file_size(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         return inv[inv_file_id].text_size
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         ie = inv[inv_file_id]
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_revision(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         ie = inv[inv_file_id]
         return ie.revision
 
     def is_executable(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         ie = inv[inv_file_id]
         if ie.kind != "file":
             return False
@@ -677,19 +668,13 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         ie = inv[inv_file_id]
         # Inventories store symlink targets in unicode
         return ie.symlink_target
 
     def get_reference_revision(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         return inv[inv_file_id].reference_revision
 
     def get_root_id(self):
@@ -697,10 +682,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             return self.root_inventory.root.file_id
 
     def kind(self, path, file_id=None):
-        if file_id is None:
-            inv, inv_file_id = self._path2inv_file_id(path)
-        else:
-            inv, inv_file_id = self._unpack_file_id(file_id)
+        inv, inv_file_id = self._path2inv_file_id(path, file_id)
         return inv[inv_file_id].kind
 
     def path_content_summary(self, path):
