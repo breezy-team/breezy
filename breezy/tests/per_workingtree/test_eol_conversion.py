@@ -92,7 +92,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.patch_rules_searcher(eol)
         wt2 = wt.controldir.sprout('tree-%s' % eol).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
-        content = wt2.get_file('file1-id', filtered=False).read()
+        content = wt2.get_file('file1', filtered=False).read()
         if sys.platform == 'win32':
             self.assertEqual(expected_win, content)
         else:
@@ -110,7 +110,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         :param roundtrip_to: the set of formats (excluding exact) we
           can round-trip to or None for all
         """
-        basis_content = basis.get_file('file1-id').read()
+        basis_content = basis.get_file('file1').read()
         self.assertEqual(expected_raw, basis_content)
 
         # No setting and exact should always roundtrip

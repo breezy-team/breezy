@@ -61,12 +61,12 @@ class TestRevno(tests.TestCaseWithTransport):
         wt.commit('mkfile')
 
         # Make sure revno says we're on 1
-        out,err = self.run_bzr('revno checkout')
+        out, err = self.run_bzr('revno checkout')
         self.assertEqual('', err)
         self.assertEqual('1\n', out)
 
         # Make sure --tree knows it's still on 0
-        out,err = self.run_bzr('revno --tree checkout')
+        out, err = self.run_bzr('revno --tree checkout')
         self.assertEqual('', err)
         self.assertEqual('0\n', out)
 
@@ -75,7 +75,7 @@ class TestRevno(tests.TestCaseWithTransport):
         b = self.make_branch('branch')
 
         # Try getting it's --tree revno
-        out,err = self.run_bzr('revno --tree branch', retcode=3)
+        out, err = self.run_bzr('revno --tree branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)
@@ -83,11 +83,12 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_dotted_revno_tree(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id', 'B-id'], [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id', 'B-id'], [], revision_id='C-id')
         builder.finish_series()
         b = builder.get_branch()
         co_b = b.create_checkout('checkout_b', lightweight=True,
@@ -102,11 +103,12 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_stale_revno_tree(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id'], [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+        builder.build_snapshot(['A-id'], [], revision_id='C-id')
         builder.finish_series()
         b = builder.get_branch()
         # The branch is now at "C-id", but the checkout is still at "B-id"

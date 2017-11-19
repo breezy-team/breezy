@@ -266,7 +266,7 @@ class TestRemove(TestCaseWithTransport):
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
         self.assertEqual(tree.path2id(a), a + _id)
-        self.assertFilesUnversioned([b,c])
+        self.assertFilesUnversioned([b, c])
 
     def test_remove_with_new_in_dir2(self):
         tree = self._make_tree_and_add(files)

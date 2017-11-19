@@ -119,9 +119,9 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertRaises(errors.NoSuchId, basis.kind, 'a-id')
+        self.assertRaises(errors.NoSuchId, basis.kind, 'a')
         self.assertEqual(['directory', 'file'],
-                         [basis.kind('b-id'), basis.kind('c-id')])
+                         [basis.kind('b'), basis.kind('b/c')])
         try:
             other = tree.revision_tree(parents[1])
         except errors.NoSuchRevisionInTree:
@@ -130,6 +130,6 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
                 % type(tree))
         other.lock_read()
         self.addCleanup(other.unlock)
-        self.assertRaises(errors.NoSuchId, other.kind, 'b-id')
-        self.assertRaises(errors.NoSuchId, other.kind, 'c-id')
-        self.assertEqual('file', other.kind('a-id'))
+        self.assertRaises(errors.NoSuchId, other.kind, 'b')
+        self.assertRaises(errors.NoSuchId, other.kind, 'c')
+        self.assertEqual('file', other.kind('a'))

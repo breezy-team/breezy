@@ -79,7 +79,7 @@ class TestMkdir(TestCaseWithTransport):
 
         self.assertEqual(len(delta.added), 2)
         self.assertEqual(delta.added[0][0], 'dir')
-        self.assertEqual(delta.added[1][0], pathjoin('dir','subdir'))
+        self.assertEqual(delta.added[1][0], pathjoin('dir', 'subdir'))
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
@@ -147,7 +147,7 @@ class SubdirCommit(TestCaseWithTransport):
         new.lock_read()
 
         def get_text_by_path(tree, path):
-            return tree.get_file_text(tree.path2id(path), path)
+            return tree.get_file_text(path)
 
         self.assertEqual(get_text_by_path(new, 'b/two'), 'old contents')
         self.assertEqual(get_text_by_path(new, 'top'), 'old contents')

@@ -314,9 +314,9 @@ def report_changes(change_iterator, reporter):
     :param reporter: The _ChangeReporter that will report the changes.
     """
     versioned_change_map = {
-        (True, True)  : 'unchanged',
-        (True, False) : 'removed',
-        (False, True) : 'added',
+        (True, True): 'unchanged',
+        (True, False): 'removed',
+        (False, True): 'added',
         (False, False): 'unversioned',
         }
     for (file_id, path, content_change, versioned, parent_id, name, kind,

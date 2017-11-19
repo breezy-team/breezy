@@ -280,12 +280,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('A', [], [
+        builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', 'content\n'))])
-        builder.build_snapshot('B', ['A'], [
+            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            revision_id='A')
+        builder.build_snapshot(['A'], [
             ('modify', ('a-id', 'new content\nfor a\n')),
-            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))],
+            revision_id='B')
         tree = self.make_workingtree('tree')
         source_branch = builder.get_branch()
         tree.branch.repository.fetch(source_branch.repository, 'B')
@@ -316,14 +318,17 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('A', [], [
+        builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', 'content\n'))])
-        builder.build_snapshot('B', ['A'], [
+            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            revision_id='A')
+        builder.build_snapshot(['A'], [
             ('modify', ('a-id', 'new content\nfor a\n')),
-            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
-        builder.build_snapshot('C', ['A'], [
-            ('add', ('c', 'c-id', 'file', 'c-content\n'))])
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))],
+            revision_id='B')
+        builder.build_snapshot(['A'], [
+            ('add', ('c', 'c-id', 'file', 'c-content\n'))],
+            revision_id='C')
         b_c = self.make_branch('branch_with_c')
         b_c.pull(builder.get_branch(), stop_revision='C')
         b_b = self.make_branch('branch_with_b')
@@ -511,7 +516,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             tree.rename_one('a', new_path)
         self.assertEqual(new_path, tree.id2path('a-id'))
         tree.commit(u'b\xb5rry')
-        tree.unversion(['a-id'])
+        tree.unversion([new_path])
         self.assertRaises(errors.NoSuchId, tree.id2path, 'a-id')
         self.assertEqual('b', tree.id2path('b-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, 'c-id')
@@ -569,7 +574,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.add(['dir'], ['dir-id'])
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
-        self.assertEqual('directory', tree.kind('dir-id'))
+        self.assertEqual('directory', tree.kind('dir'))
         # a diff against the basis should give us a directory and the root (as
         # the root is new too).
         tree.lock_read()
@@ -750,10 +755,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # Explicit test to ensure we get a lstat value from WT4 trees.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        tree.add(['foo'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        file_obj, statvalue = tree.get_file_with_stat('foo-id')
+        file_obj, statvalue = tree.get_file_with_stat('foo')
         expected = os.lstat('foo')
         self.assertEqualStat(expected, statvalue)
         self.assertEqual(["contents of foo\n"], file_obj.readlines())
@@ -781,7 +786,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
             # Now add in an invalid entry, a rename with a dangling pointer
             state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
                                             [('f', '', 0, False, ''),
-                                             ('r', 'bar', 0 , False, '')]))
+                                             ('r', 'bar', 0, False, '')]))
             self.assertListRaises(dirstate.DirstateCorrupt,
                                   tree.iter_changes, tree.basis_tree())
         finally:
@@ -871,6 +876,6 @@ class TestInventoryCoherency(TestCaseWithTransport):
         inv = tree.root_inventory
         self.assertTrue(inv.has_id('a-id'))
         self.assertTrue(inv.has_id('b-id'))
-        tree.unversion(['a-id', 'b-id'])
+        tree.unversion(['a', 'a/b'])
         self.assertFalse(inv.has_id('a-id'))
         self.assertFalse(inv.has_id('b-id'))

@@ -296,7 +296,7 @@ class FtpTransport(ConnectedTransport):
         """
         abspath = self._remote_path(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
-                        os.getpid(), random.randint(0,0x7FFFFFFF))
+                        os.getpid(), random.randint(0, 0x7FFFFFFF))
         bytes = None
         if getattr(fp, 'read', None) is None:
             # hand in a string IO

@@ -390,8 +390,9 @@ class TestCommit(TestCaseWithWorkingTree):
         sub_basis = subtree.basis_tree()
         sub_basis.lock_read()
         self.addCleanup(sub_basis.unlock)
-        self.assertEqual(subsubtree.last_revision(),
-            sub_basis.get_reference_revision(sub_basis.path2id('subtree')))
+        self.assertEqual(
+                subsubtree.last_revision(),
+                sub_basis.get_reference_revision('subtree'))
         # the intermediate tree has changed, so should have had a commit
         # take place.
         self.assertNotEqual(None, subtree.last_revision())
@@ -401,7 +402,7 @@ class TestCommit(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertEqual(subtree.last_revision(),
-            basis.get_reference_revision(basis.path2id('subtree')))
+            basis.get_reference_revision('subtree'))
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
 
@@ -417,7 +418,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['subtree/file'])
         subtree.add(['file'])
         rev_id = tree.commit('added reference', allow_pointless=False)
-        tree.get_reference_revision(tree.path2id('subtree'))
+        tree.get_reference_revision('subtree')
         child_revid = subtree.last_revision()
         # now change the child tree
         self.build_tree_contents([('subtree/file', 'new-content')])
@@ -435,7 +436,7 @@ class TestCommit(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertEqual(subtree.last_revision(),
-            basis.get_reference_revision(basis.path2id('subtree')))
+            basis.get_reference_revision('subtree'))
         self.assertNotEqual(rev_id, rev_id2)
 
     def test_nested_pointless_commits_are_pointless(self):

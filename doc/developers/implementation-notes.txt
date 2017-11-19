@@ -10,7 +10,7 @@ Implementation notes
    lca_tree_merging
 
 
-* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How bzr decides
+* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How Breezy decides
   to pre-read extra nodes in the btree index.
 
 * `Computing last_modified values <last-modified.html>`_ for inventory

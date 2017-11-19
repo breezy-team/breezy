@@ -34,25 +34,25 @@ class TestParseIgnoreFile(TestCase):
 
     def test_parse_fancy(self):
         ignored = ignores.parse_ignore_file(BytesIO(
-                './rootdir\n'
-                'randomfile*\n'
-                'path/from/ro?t\n'
-                'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
-                'dos\r\n'
-                '\n' # empty line
-                '#comment\n'
-                ' xx \n' # whitespace
-                '!RE:^\\.z.*\n'
-                '!!./.zcompdump\n'
+                b'./rootdir\n'
+                b'randomfile*\n'
+                b'path/from/ro?t\n'
+                b'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
+                b'dos\r\n'
+                b'\n' # empty line
+                b'#comment\n'
+                b' xx \n' # whitespace
+                b'!RE:^\\.z.*\n'
+                b'!!./.zcompdump\n'
                 ))
-        self.assertEqual({'./rootdir',
-                          'randomfile*',
-                          'path/from/ro?t',
+        self.assertEqual({u'./rootdir',
+                          u'randomfile*',
+                          u'path/from/ro?t',
                           u'unicode\xb5',
-                          'dos',
-                          ' xx ',
-                          '!RE:^\\.z.*',
-                          '!!./.zcompdump',
+                          u'dos',
+                          u' xx ',
+                          u'!RE:^\\.z.*',
+                          u'!!./.zcompdump',
                          }, ignored)
 
     def test_parse_empty(self):
@@ -62,13 +62,13 @@ class TestParseIgnoreFile(TestCase):
     def test_parse_non_utf8(self):
         """Lines with non utf 8 characters should be discarded."""
         ignored = ignores.parse_ignore_file(BytesIO(
-                'utf8filename_a\n'
-                'invalid utf8\x80\n'
-                'utf8filename_b\n'
+                b'utf8filename_a\n'
+                b'invalid utf8\x80\n'
+                b'utf8filename_b\n'
                 ))
         self.assertEqual({
-                        'utf8filename_a',
-                        'utf8filename_b',
+                        u'utf8filename_a',
+                        u'utf8filename_b',
                        }, ignored)
 
 
@@ -82,15 +82,12 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
 
         self.assertPathExists(ignore_path)
-        f = open(ignore_path, 'rb')
-        try:
+        with open(ignore_path, 'rb') as f:
             entries = ignores.parse_ignore_file(f)
-        finally:
-            f.close()
         self.assertEqual(set(ignores.USER_DEFAULTS), entries)
 
     def test_use_existing(self):
-        patterns = ['*.o', '*.py[co]', u'\xe5*']
+        patterns = [u'*.o', u'*.py[co]', u'\xe5*']
         ignores._set_user_ignores(patterns)
 
         user_ignores = ignores.get_user_ignores()
@@ -173,40 +170,40 @@ class TestRuntimeIgnores(TestCase):
 
 
 class TestTreeIgnores(TestCaseWithTransport):
-    
+
     def assertPatternsEquals(self, patterns):
-        contents = open(".bzrignore", 'rU').read().strip().split('\n')
+        with open(".bzrignore", "rb") as f:
+            contents = f.read().decode("utf-8").splitlines()
         self.assertEqual(sorted(patterns), sorted(contents))
 
     def test_new_file(self):
         tree = self.make_branch_and_tree(".")
-        ignores.tree_ignores_add_patterns(tree, ["myentry"])
+        ignores.tree_ignores_add_patterns(tree, [u"myentry"])
         self.assertTrue(tree.has_filename(".bzrignore"))
         self.assertPatternsEquals(["myentry"])
 
     def test_add_to_existing(self):
         tree = self.make_branch_and_tree(".")
-        self.build_tree_contents([('.bzrignore', "myentry1\n")])
+        self.build_tree_contents([('.bzrignore', b"myentry1\n")])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
+        ignores.tree_ignores_add_patterns(tree, [u"myentry2", u"foo"])
         self.assertPatternsEquals(["myentry1", "myentry2", "foo"])
 
     def test_adds_ending_newline(self):
         tree = self.make_branch_and_tree(".")
-        self.build_tree_contents([('.bzrignore', "myentry1")])
+        self.build_tree_contents([('.bzrignore', b"myentry1")])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, ["myentry2"])
+        ignores.tree_ignores_add_patterns(tree, [u"myentry2"])
         self.assertPatternsEquals(["myentry1", "myentry2"])
-        text = open(".bzrignore", 'r').read()
-        self.assertTrue(text.endswith('\r\n') or
-                        text.endswith('\n') or
-                        text.endswith('\r'))
+        with open(".bzrignore") as f:
+            text = f.read()
+        self.assertTrue(text.endswith(('\r\n', '\n', '\r')))
 
     def test_does_not_add_dupe(self):
         tree = self.make_branch_and_tree(".")
-        self.build_tree_contents([('.bzrignore', "myentry\n")])
+        self.build_tree_contents([('.bzrignore', b"myentry\n")])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, ["myentry"])
+        ignores.tree_ignores_add_patterns(tree, [u"myentry"])
         self.assertPatternsEquals(["myentry"])
 
     def test_non_ascii(self):
@@ -215,13 +212,13 @@ class TestTreeIgnores(TestCaseWithTransport):
                                    u"myentry\u1234\n".encode('utf-8'))])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, [u"myentry\u5678"])
-        self.assertPatternsEquals([u"myentry\u1234".encode('utf-8'),
-                                   u"myentry\u5678".encode('utf-8')])
+        self.assertPatternsEquals([u"myentry\u1234", u"myentry\u5678"])
 
     def test_crlf(self):
         tree = self.make_branch_and_tree(".")
-        self.build_tree_contents([('.bzrignore', "myentry1\r\n")])
+        self.build_tree_contents([('.bzrignore', b"myentry1\r\n")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
-        self.assertEqual(open('.bzrignore', 'rb').read(), 'myentry1\r\nmyentry2\r\nfoo\r\n')
+        with open('.bzrignore') as f:
+            self.assertEqual(f.read(), 'myentry1\r\nmyentry2\r\nfoo\r\n')
         self.assertPatternsEquals(["myentry1", "myentry2", "foo"])

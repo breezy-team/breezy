@@ -237,10 +237,11 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('cannot initialize this format')
         source.start_series()
-        source.build_snapshot('A', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        source.build_snapshot('B', ['A'], [])
-        source.build_snapshot('C', ['A'], [])
+        source.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id='A')
+        source.build_snapshot(['A'], [], revision_id='B')
+        source.build_snapshot(['A'], [], revision_id='C')
         source.finish_series()
         b = source.get_branch()
         # Note: We can't read lock the source branch. Some formats take a write
@@ -277,12 +278,14 @@ class TestPush(per_branch.TestCaseWithBranch):
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
-        builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))])
+            ('add', ('filename', 'f-id', 'file', 'content\n'))],
+            revision_id='rev-1',)
+        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
+        builder.build_snapshot(['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))],
+            revision_id='rev-3')
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.

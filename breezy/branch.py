@@ -1421,7 +1421,7 @@ class Branch(controldir.ControlComponent):
             for path, file_id in basis_tree.iter_references():
                 reference_parent = self.reference_parent(file_id, path)
                 reference_parent.create_checkout(tree.abspath(path),
-                    basis_tree.get_reference_revision(file_id, path),
+                    basis_tree.get_reference_revision(path, file_id),
                     lightweight)
         return tree
 
@@ -1700,7 +1700,7 @@ class BranchHooks(Hooks):
             "basis revision. hooks MUST NOT modify this delta. "
             " future_tree is an in-memory tree obtained from "
             "CommitBuilder.revision_tree() and hooks MUST NOT modify this "
-            "tree.", (0,91))
+            "tree.", (0, 91))
         self.add_hook('post_commit',
             "Called in the bzr client after a commit has completed. "
             "post_commit is called with (local, master, old_revno, old_revid, "

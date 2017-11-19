@@ -187,7 +187,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             # setting up a playground
             tree.add('rootfile')
             rootfile_id = tree.path2id('rootfile')
-            tree.put_file_bytes_non_atomic(rootfile_id, 'abc')
+            tree.put_file_bytes_non_atomic('rootfile', 'abc')
             tree.add('dir')
             dir_id = tree.path2id('dir')
             tree.add('dir/subfile')
@@ -202,9 +202,9 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         try:
             # making changes
-            tree.put_file_bytes_non_atomic(rootfile_id, 'jkl')
+            tree.put_file_bytes_non_atomic('rootfile', 'jkl')
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
-            tree.unversion([to_be_unversioned_id])
+            tree.unversion(['to_be_unversioned'])
             tree.mkdir('added_dir')
             added_dir_id = tree.path2id('added_dir')
             # start to capture pre_commit delta

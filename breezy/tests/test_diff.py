@@ -150,9 +150,9 @@ class TestDiff(tests.TestCase):
     def test_binary_lines(self):
         empty = []
         uni_lines = [1023 * 'a' + '\x00']
-        self.assertRaises(errors.BinaryFile, udiff_lines, uni_lines , empty)
+        self.assertRaises(errors.BinaryFile, udiff_lines, uni_lines, empty)
         self.assertRaises(errors.BinaryFile, udiff_lines, empty, uni_lines)
-        udiff_lines(uni_lines , empty, allow_binary=True)
+        udiff_lines(uni_lines, empty, allow_binary=True)
         udiff_lines(empty, uni_lines, allow_binary=True)
 
     def test_external_diff(self):
@@ -254,10 +254,10 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_default_context(self):
         output = BytesIO()
-        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','old_text\n'],
-                           'new', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','new_text\n'], output)
+        diff.internal_diff('old', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'old_text\n'],
+                           'new', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'new_text\n'], output)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
         self.assertEqual(['--- old\n',
@@ -274,10 +274,10 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_no_context(self):
         output = BytesIO()
-        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','old_text\n'],
-                           'new', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','new_text\n'], output,
+        diff.internal_diff('old', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'old_text\n'],
+                           'new', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'new_text\n'], output,
                            context_lines=0)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
@@ -292,10 +292,10 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_more_context(self):
         output = BytesIO()
-        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','old_text\n'],
-                           'new', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','new_text\n'], output,
+        diff.internal_diff('old', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'old_text\n'],
+                           'new', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'new_text\n'], output,
                            context_lines=4)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
@@ -700,10 +700,9 @@ class DiffWasIs(diff.DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         self.to_file.write('was: ')
-        self.to_file.write(self.old_tree.get_file(file_id).read())
+        self.to_file.write(self.old_tree.get_file(old_path).read())
         self.to_file.write('is: ')
-        self.to_file.write(self.new_tree.get_file(file_id).read())
-        pass
+        self.to_file.write(self.new_tree.get_file(new_path).read())
 
 
 class TestDiffTree(tests.TestCaseWithTransport):
@@ -728,17 +727,20 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
         differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
-        differ.diff_text('file-id', None, 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', None, 'old label',
+                         'new label', 'file-id', None)
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text(None, 'file-id', 'old label', 'new label')
+        differ.diff_text(None, 'newdir/newfile',
+                         'old label', 'new label', None, 'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -0,0 +1,1 @@\n+new\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text('file-id', 'file-id', 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', 'newdir/newfile',
+                         'old label', 'new label', 'file-id', 'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())
@@ -886,14 +888,14 @@ class TestPatienceDiffLib(tests.TestCase):
         self.assertEqual(unique_lcs('', ''), [])
         self.assertEqual(unique_lcs('', 'a'), [])
         self.assertEqual(unique_lcs('a', ''), [])
-        self.assertEqual(unique_lcs('a', 'a'), [(0,0)])
+        self.assertEqual(unique_lcs('a', 'a'), [(0, 0)])
         self.assertEqual(unique_lcs('a', 'b'), [])
-        self.assertEqual(unique_lcs('ab', 'ab'), [(0,0), (1,1)])
-        self.assertEqual(unique_lcs('abcde', 'cdeab'), [(2,0), (3,1), (4,2)])
-        self.assertEqual(unique_lcs('cdeab', 'abcde'), [(0,2), (1,3), (2,4)])
-        self.assertEqual(unique_lcs('abXde', 'abYde'), [(0,0), (1,1),
-                                                         (3,3), (4,4)])
-        self.assertEqual(unique_lcs('acbac', 'abc'), [(2,1)])
+        self.assertEqual(unique_lcs('ab', 'ab'), [(0, 0), (1, 1)])
+        self.assertEqual(unique_lcs('abcde', 'cdeab'), [(2, 0), (3, 1), (4, 2)])
+        self.assertEqual(unique_lcs('cdeab', 'abcde'), [(0, 2), (1, 3), (2, 4)])
+        self.assertEqual(unique_lcs('abXde', 'abYde'), [(0, 0), (1, 1),
+                                                         (3, 3), (4, 4)])
+        self.assertEqual(unique_lcs('acbac', 'abc'), [(2, 1)])
 
     def test_recurse_matches(self):
         def test_one(a, b, matches):
@@ -909,7 +911,7 @@ class TestPatienceDiffLib(tests.TestCase):
         # Even though 'bc' is not unique globally, and is surrounded by
         # non-matching lines, we should still match, because they are locally
         # unique
-        test_one('abcdbce', 'afbcgdbce', [(0,0), (1, 2), (2, 3), (3, 5),
+        test_one('abcdbce', 'afbcgdbce', [(0, 0), (1, 2), (2, 3), (3, 5),
                                           (4, 6), (5, 7), (6, 8)])
 
         # recurse_matches doesn't match non-unique
@@ -920,7 +922,7 @@ class TestPatienceDiffLib(tests.TestCase):
         #test_one('aBccDe', 'abccde', [(0,0), (2,2), (3,3), (5,5)])
 
         # This is what it currently gives:
-        test_one('aBccDe', 'abccde', [(0,0), (5,5)])
+        test_one('aBccDe', 'abccde', [(0, 0), (5, 5)])
 
     def assertDiffBlocks(self, a, b, expected_blocks):
         """Check that the sequence matcher returns the correct blocks.
@@ -968,19 +970,19 @@ class TestPatienceDiffLib(tests.TestCase):
 
         # non unique lines surrounded by non-matching lines
         # won't be found
-        self.assertDiffBlocks('aBccDe', 'abccde', [(0,0,1), (5,5,1)])
+        self.assertDiffBlocks('aBccDe', 'abccde', [(0, 0, 1), (5, 5, 1)])
 
         # But they only need to be locally unique
-        self.assertDiffBlocks('aBcDec', 'abcdec', [(0,0,1), (2,2,1), (4,4,2)])
+        self.assertDiffBlocks('aBcDec', 'abcdec', [(0, 0, 1), (2, 2, 1), (4, 4, 2)])
 
         # non unique blocks won't be matched
-        self.assertDiffBlocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (8,8,1)])
+        self.assertDiffBlocks('aBcdEcdFg', 'abcdecdfg', [(0, 0, 1), (8, 8, 1)])
 
         # but locally unique ones will
-        self.assertDiffBlocks('aBcdEeXcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
-                                              (5,4,1), (7,5,2), (10,8,1)])
+        self.assertDiffBlocks('aBcdEeXcdFg', 'abcdecdfg', [(0, 0, 1), (2, 2, 2),
+                                              (5, 4, 1), (7, 5, 2), (10, 8, 1)])
 
-        self.assertDiffBlocks('abbabbXd', 'cabbabxd', [(7,7,1)])
+        self.assertDiffBlocks('abbabbXd', 'cabbabxd', [(7, 7, 1)])
         self.assertDiffBlocks('abbabbbb', 'cabbabbc', [])
         self.assertDiffBlocks('bbbbbbbb', 'cbbbbbbc', [])
 
@@ -1015,35 +1017,35 @@ class TestPatienceDiffLib(tests.TestCase):
 
         chk_ops('', '', [])
         chk_ops([], [], [])
-        chk_ops('abc', '', [('delete', 0,3, 0,0)])
-        chk_ops('', 'abc', [('insert', 0,0, 0,3)])
-        chk_ops('abcd', 'abcd', [('equal',    0,4, 0,4)])
-        chk_ops('abcd', 'abce', [('equal',   0,3, 0,3),
-                                 ('replace', 3,4, 3,4)
+        chk_ops('abc', '', [('delete', 0, 3, 0, 0)])
+        chk_ops('', 'abc', [('insert', 0, 0, 0, 3)])
+        chk_ops('abcd', 'abcd', [('equal',    0, 4, 0, 4)])
+        chk_ops('abcd', 'abce', [('equal',   0, 3, 0, 3),
+                                 ('replace', 3, 4, 3, 4)
                                 ])
-        chk_ops('eabc', 'abce', [('delete', 0,1, 0,0),
-                                 ('equal',  1,4, 0,3),
-                                 ('insert', 4,4, 3,4)
+        chk_ops('eabc', 'abce', [('delete', 0, 1, 0, 0),
+                                 ('equal',  1, 4, 0, 3),
+                                 ('insert', 4, 4, 3, 4)
                                 ])
-        chk_ops('eabce', 'abce', [('delete', 0,1, 0,0),
-                                  ('equal',  1,5, 0,4)
+        chk_ops('eabce', 'abce', [('delete', 0, 1, 0, 0),
+                                  ('equal',  1, 5, 0, 4)
                                  ])
-        chk_ops('abcde', 'abXde', [('equal',   0,2, 0,2),
-                                   ('replace', 2,3, 2,3),
-                                   ('equal',   3,5, 3,5)
+        chk_ops('abcde', 'abXde', [('equal',   0, 2, 0, 2),
+                                   ('replace', 2, 3, 2, 3),
+                                   ('equal',   3, 5, 3, 5)
                                   ])
-        chk_ops('abcde', 'abXYZde', [('equal',   0,2, 0,2),
-                                     ('replace', 2,3, 2,5),
-                                     ('equal',   3,5, 5,7)
+        chk_ops('abcde', 'abXYZde', [('equal',   0, 2, 0, 2),
+                                     ('replace', 2, 3, 2, 5),
+                                     ('equal',   3, 5, 5, 7)
                                     ])
-        chk_ops('abde', 'abXYZde', [('equal',  0,2, 0,2),
-                                    ('insert', 2,2, 2,5),
-                                    ('equal',  2,4, 5,7)
+        chk_ops('abde', 'abXYZde', [('equal',  0, 2, 0, 2),
+                                    ('insert', 2, 2, 2, 5),
+                                    ('equal',  2, 4, 5, 7)
                                    ])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [('equal',  0,6,  0,6),
-                 ('insert', 6,6,  6,11),
-                 ('equal',  6,16, 11,21)
+                [('equal',  0, 6,  0, 6),
+                 ('insert', 6, 6,  6, 11),
+                 ('equal',  6, 16, 11, 21)
                 ])
         chk_ops(
                 [ 'hello there\n'
@@ -1051,37 +1053,37 @@ class TestPatienceDiffLib(tests.TestCase):
                 , 'how are you today?\n'],
                 [ 'hello there\n'
                 , 'how are you today?\n'],
-                [('equal',  0,1, 0,1),
-                 ('delete', 1,2, 1,1),
-                 ('equal',  2,3, 1,2),
+                [('equal',  0, 1, 0, 1),
+                 ('delete', 1, 2, 1, 1),
+                 ('equal',  2, 3, 1, 2),
                 ])
         chk_ops('aBccDe', 'abccde',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,5, 1,5),
-                 ('equal',   5,6, 5,6),
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 5, 1, 5),
+                 ('equal',   5, 6, 5, 6),
                 ])
         chk_ops('aBcDec', 'abcdec',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,2, 1,2),
-                 ('equal',   2,3, 2,3),
-                 ('replace', 3,4, 3,4),
-                 ('equal',   4,6, 4,6),
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 2, 1, 2),
+                 ('equal',   2, 3, 2, 3),
+                 ('replace', 3, 4, 3, 4),
+                 ('equal',   4, 6, 4, 6),
                 ])
         chk_ops('aBcdEcdFg', 'abcdecdfg',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,8, 1,8),
-                 ('equal',   8,9, 8,9)
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 8, 1, 8),
+                 ('equal',   8, 9, 8, 9)
                 ])
         chk_ops('aBcdEeXcdFg', 'abcdecdfg',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,2, 1,2),
-                 ('equal',   2,4, 2,4),
-                 ('delete', 4,5, 4,4),
-                 ('equal',   5,6, 4,5),
-                 ('delete', 6,7, 5,5),
-                 ('equal',   7,9, 5,7),
-                 ('replace', 9,10, 7,8),
-                 ('equal',   10,11, 8,9)
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 2, 1, 2),
+                 ('equal',   2, 4, 2, 4),
+                 ('delete', 4, 5, 4, 4),
+                 ('equal',   5, 6, 4, 5),
+                 ('delete', 6, 7, 5, 5),
+                 ('equal',   7, 9, 5, 7),
+                 ('replace', 9, 10, 7, 8),
+                 ('equal',   10, 11, 8, 9)
                 ])
 
     def test_grouped_opcodes(self):
@@ -1091,33 +1093,33 @@ class TestPatienceDiffLib(tests.TestCase):
 
         chk_ops('', '', [])
         chk_ops([], [], [])
-        chk_ops('abc', '', [[('delete', 0,3, 0,0)]])
-        chk_ops('', 'abc', [[('insert', 0,0, 0,3)]])
+        chk_ops('abc', '', [[('delete', 0, 3, 0, 0)]])
+        chk_ops('', 'abc', [[('insert', 0, 0, 0, 3)]])
         chk_ops('abcd', 'abcd', [])
-        chk_ops('abcd', 'abce', [[('equal',   0,3, 0,3),
-                                  ('replace', 3,4, 3,4)
+        chk_ops('abcd', 'abce', [[('equal',   0, 3, 0, 3),
+                                  ('replace', 3, 4, 3, 4)
                                  ]])
-        chk_ops('eabc', 'abce', [[('delete', 0,1, 0,0),
-                                 ('equal',  1,4, 0,3),
-                                 ('insert', 4,4, 3,4)
+        chk_ops('eabc', 'abce', [[('delete', 0, 1, 0, 0),
+                                 ('equal',  1, 4, 0, 3),
+                                 ('insert', 4, 4, 3, 4)
                                 ]])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [[('equal',  3,6, 3,6),
-                  ('insert', 6,6, 6,11),
-                  ('equal',  6,9, 11,14)
+                [[('equal',  3, 6, 3, 6),
+                  ('insert', 6, 6, 6, 11),
+                  ('equal',  6, 9, 11, 14)
                   ]])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [[('equal',  2,6, 2,6),
-                  ('insert', 6,6, 6,11),
-                  ('equal',  6,10, 11,15)
+                [[('equal',  2, 6, 2, 6),
+                  ('insert', 6, 6, 6, 11),
+                  ('equal',  6, 10, 11, 15)
                   ]], 4)
         chk_ops('Xabcdef', 'abcdef',
-                [[('delete', 0,1, 0,0),
-                  ('equal',  1,4, 0,3)
+                [[('delete', 0, 1, 0, 0),
+                  ('equal',  1, 4, 0, 3)
                   ]])
         chk_ops('abcdef', 'abcdefX',
-                [[('equal',  3,6, 3,6),
-                  ('insert', 6,6, 6,7)
+                [[('equal',  3, 6, 3, 6),
+                  ('insert', 6, 6, 6, 7)
                   ]])
 
 
@@ -1130,7 +1132,7 @@ class TestPatienceDiffLib(tests.TestCase):
 
         self.assertDiffBlocks('ABCd efghIjk  L',
                               'AxyzBCn mo pqrstuvwI1 2  L',
-                              [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
+                              [(0, 0, 1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
         # These are rot13 code snippets.
         self.assertDiffBlocks('''\
@@ -1177,7 +1179,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True)
-, [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
+, [(0, 0, 1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
     def test_patience_unified_diff(self):
         txt_a = ['hello there\n',
@@ -1454,7 +1456,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj = diff.DiffFromTool(['python', '-c',
                                       'print "@old_path @new_path"'],
                                      basis_tree, tree, output)
-        diff_obj._prepare_files('file-id', 'file', 'file')
+        diff_obj._prepare_files('file', 'file', file_id='file-id')
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, 'old\\file',
                                     r'R.*old\\file$')
@@ -1492,8 +1494,8 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
-        old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
-                                                     'newname')
+        old_path, new_path = diff_obj._prepare_files(
+                'oldname', 'newname', file_id='file-id')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
@@ -1502,7 +1504,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+        diff_obj._prepare_files('oldname2', 'newname2', file_id='file2-id')
 
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):

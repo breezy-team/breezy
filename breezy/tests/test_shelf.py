@@ -249,7 +249,9 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual(link_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
-        self.assertEqual(link_target, ptree.get_symlink_target('foo-id'))
+        self.assertEqual(
+                link_target,
+                ptree.get_symlink_target(ptree.id2path('foo-id'), 'foo-id'))
 
     def test_shelve_symlink_creation(self):
         self._test_shelve_symlink_creation('foo', 'bar')
@@ -290,7 +292,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual(new_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
-        self.assertEqual(new_target, ptree.get_symlink_target('foo-id'))
+        self.assertEqual(new_target, ptree.get_symlink_target(ptree.id2path('foo-id')))
 
     def test_shelve_symlink_target_change(self):
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
@@ -333,7 +335,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo/',), ('tree/foo/bar', 'baz')])
         tree.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
         tree.commit('Added file and directory')
-        tree.unversion(['foo-id', 'bar-id'])
+        tree.unversion(['foo', 'foo/bar'])
         os.unlink('tree/foo/bar')
         os.rmdir('tree/foo')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
@@ -426,7 +428,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.build_tree(['tree/foo',])
         tree.add('foo', 'foo-id')
         tree.commit('Added file and directory')
-        tree.unversion(['foo-id'])
+        tree.unversion(['foo'])
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
@@ -575,7 +577,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo/',), ('tree/foo/bar', 'baz')])
         tree.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
         tree.commit('Added file and directory')
-        tree.unversion(['foo-id', 'bar-id'])
+        tree.unversion(['foo', 'foo/bar'])
         os.unlink('tree/foo/bar')
         os.rmdir('tree/foo')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())

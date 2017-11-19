@@ -152,7 +152,7 @@ class _GrepDiffOutputter(object):
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
         else:
@@ -403,7 +403,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
-        rpath = osutils.pathjoin('..',relpath)
+        rpath = osutils.pathjoin('..', relpath)
 
     from_dir = osutils.pathjoin(relpath, path)
     if opts.from_root:
@@ -428,7 +428,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_id = tree.get_file_revision(fid)
+                cache_id = tree.get_file_revision(fp, fid)
                 if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,
@@ -455,7 +455,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
         for (path, fid), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
             _file_grep(chunks[0], path, opts, revno, path_prefix,
-                tree.get_file_revision(fid, path))
+                tree.get_file_revision(path, fid))
 
 
 def _make_display_path(relpath, path):
@@ -478,7 +478,7 @@ def versioned_file_grep(tree, id, relpath, path, opts, revno, path_prefix = None
     """
 
     path = _make_display_path(relpath, path)
-    file_text = tree.get_file_text(id)
+    file_text = tree.get_file_text(relpath, id)
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
@@ -548,7 +548,7 @@ class _Outputter(object):
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
             path_start = FG.MAGENTA

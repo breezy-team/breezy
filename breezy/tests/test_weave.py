@@ -345,7 +345,7 @@ class BadInsert(TestBase):
         k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
-                frozenset([0,1,2]),
+                frozenset([0, 1, 2]),
                 ]
         k._weave = [('{', 0),
                 'foo {',
@@ -378,7 +378,7 @@ class InsertNested(TestBase):
         k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
-                frozenset([0,1,2]),
+                frozenset([0, 1, 2]),
                 ]
         k._weave = [('{', 0),
                 'foo {',

@@ -216,7 +216,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
     def redirect_to(self, host, port):
         """Redirect all requests to a specific host:port"""
         self.redirections = [('(.*)',
-                              r'http://%s:%s\1' % (host, port) ,
+                              r'http://%s:%s\1' % (host, port),
                               301)]
 
     def is_redirected(self, path):
@@ -374,7 +374,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
         header = 'Digest realm="%s", ' % tcs.auth_realm
         header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
                                                               'MD5')
-        self.send_header(tcs.auth_header_sent,header)
+        self.send_header(tcs.auth_header_sent, header)
 
 
 class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
@@ -392,7 +392,7 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
         header = 'Digest realm="%s", ' % tcs.auth_realm
         header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
                                                               'MD5')
-        self.send_header(tcs.auth_header_sent,header)
+        self.send_header(tcs.auth_header_sent, header)
 
 
 class AuthServer(http_server.HttpServer):

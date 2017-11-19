@@ -244,7 +244,7 @@ class TestPull(tests.TestCaseWithTransport):
         # test pull for failure without parent set
         out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                ('','brz: ERROR: No pull location known or specified.\n'))
+                ('', 'brz: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
         self.build_tree(['branch_b/d'])
         tree_b.add('d')
@@ -252,7 +252,7 @@ class TestPull(tests.TestCaseWithTransport):
         out = self.run_bzr('pull ../branch_a', retcode=3,
                            working_dir='branch_b')
         self.assertEqual(out,
-                ('','brz: ERROR: These branches have diverged.'
+                ('', 'brz: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
         tree_b = tree_b.controldir.open_workingtree()
@@ -483,14 +483,14 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree = self.example_branch('a')
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
-        with open(osutils.pathjoin('a', 'hello'),'wt') as f:
+        with open(osutils.pathjoin('a', 'hello'), 'wt') as f:
             f.write('fee')
         a_tree.commit('fee')
 
-        with open(osutils.pathjoin('b', 'hello'),'wt') as f:
+        with open(osutils.pathjoin('b', 'hello'), 'wt') as f:
             f.write('fie')
 
-        out,err=self.run_bzr(['pull','-d','b','a','--show-base'])
+        out, err=self.run_bzr(['pull', '-d', 'b', 'a', '--show-base'])
 
         # check for message here
         self.assertEqual(
@@ -509,7 +509,7 @@ class TestPull(tests.TestCaseWithTransport):
         see https://bugs.launchpad.net/bzr/+bug/1022160"""
         self.make_branch('from')
         self.make_branch('to')
-        out = self.run_bzr(['pull','-d','to','from','--show-base'])
+        out = self.run_bzr(['pull', '-d', 'to', 'from', '--show-base'])
         self.assertEqual(out, ('No revisions or tags to pull.\n',
                                'No working tree, ignoring --show-base\n'))
 
@@ -520,7 +520,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.branch.tags.set_tag("mytag", "somerevid")
         to_tree = self.make_branch_and_tree('to')
         to_tree.branch.tags.set_tag("mytag", "anotherrevid")
-        out = self.run_bzr(['pull','-d','to','from'],retcode=1)
+        out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
         self.assertEqual(out,
             ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
 

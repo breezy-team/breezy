@@ -49,10 +49,10 @@ def make_scenarios(transport_server, transport_readonly_server,
             branch_format.__class__.__name__)
         scenario_name += name_suffix
         scenario = (scenario_name, {
-            "transport_server":transport_server,
-            "transport_readonly_server":transport_readonly_server,
-            "bzrdir_format":bzrdir_format,
-            "branch_format":branch_format,
+            "transport_server": transport_server,
+            "transport_readonly_server": transport_readonly_server,
+            "bzrdir_format": bzrdir_format,
+            "branch_format": branch_format,
                 })
         result.append(scenario)
     return result

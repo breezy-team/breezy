@@ -214,12 +214,13 @@ class TestPush(TestCaseWithInterBranch):
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_from_branch_builder('repo/local')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
-        builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))])
+            ('add', ('filename', 'f-id', 'file', 'content\n'))],
+            revision_id='rev-1')
+        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
+        builder.build_snapshot(['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))], revision_id='rev-3')
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
@@ -252,11 +253,12 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('second', ['first'], [])
-        builder.build_snapshot('third', ['second'], [])
-        builder.build_snapshot('fourth', ['third'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='first')
+        builder.build_snapshot(['first'], [], revision_id='second')
+        builder.build_snapshot(['second'], [], revision_id='third')
+        builder.build_snapshot(['third'], [], revision_id='fourth')
         builder.finish_series()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions

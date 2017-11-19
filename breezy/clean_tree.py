@@ -83,12 +83,12 @@ def _filter_out_nested_controldirs(deletables):
             try:
                 controldir.ControlDir.open(path)
             except errors.NotBranchError:
-                result.append((path,subp))
+                result.append((path, subp))
             else:
                 # TODO may be we need to notify user about skipped directories?
                 pass
         else:
-            result.append((path,subp))
+            result.append((path, subp))
     return result
 
 

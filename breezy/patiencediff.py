@@ -82,7 +82,7 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
         tofiledate = '\t' + str(tofiledate)
 
     started = False
-    for group in sequencematcher(None,a,b).get_grouped_opcodes(n):
+    for group in sequencematcher(None, a, b).get_grouped_opcodes(n):
         if not started:
             yield '--- %s%s%s' % (fromfile, fromfiledate, lineterm)
             yield '+++ %s%s%s' % (tofile, tofiledate, lineterm)

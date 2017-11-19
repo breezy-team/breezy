@@ -14,7 +14,7 @@ Functional Requirements
 A push or pull operation must:
  * Copy all the data to reconstruct the selected revisions in the target
    branch. This is the goal of push and pull after all.
- * Reject corrupt data. As bzr has no innate mechanism for discarding corrupted
+ * Reject corrupt data. As brz has no innate mechanism for discarding corrupted
    data, corrupted data should not be incorporated accidentally.
 
 Factors which should add work for push/pull

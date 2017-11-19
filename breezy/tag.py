@@ -359,8 +359,8 @@ def sort_natural(branch, tags):
     :param tags: List of tuples with tag name and revision id.
     """
     def natural_sort_key(tag):
-        return [f(s) for f,s in
-                zip(itertools.cycle((unicode.lower,int)),
+        return [f(s) for f, s in
+                zip(itertools.cycle((unicode.lower, int)),
                                     re.split('([0-9]+)', tag[0]))]
     tags.sort(key=natural_sort_key)
 

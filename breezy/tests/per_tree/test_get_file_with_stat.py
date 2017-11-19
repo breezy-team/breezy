@@ -31,8 +31,7 @@ class TestGetFileWithStat(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        file_obj, statvalue = tree.get_file_with_stat(
-            tree.path2id('foo'))
+        file_obj, statvalue = tree.get_file_with_stat('foo')
         self.addCleanup(file_obj.close)
         if statvalue is not None:
             expected = os.lstat('foo')
@@ -46,8 +45,7 @@ class TestGetFileWithStat(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        file_obj, statvalue = tree.get_file_with_stat(
-            tree.path2id('foo'), 'foo')
+        file_obj, statvalue = tree.get_file_with_stat('foo')
         self.addCleanup(file_obj.close)
         if statvalue is not None:
             expected = os.lstat('foo')

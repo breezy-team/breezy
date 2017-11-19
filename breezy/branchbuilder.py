@@ -45,12 +45,14 @@ class BranchBuilder(object):
     >>> from breezy.transport.memory import MemoryTransport
     >>> builder = BranchBuilder(MemoryTransport("memory:///"))
     >>> builder.start_series()
-    >>> builder.build_snapshot('rev-id', None, [
+    >>> builder.build_snapshot(None, [
     ...     ('add', ('', 'root-id', 'directory', '')),
-    ...     ('add', ('filename', 'f-id', 'file', 'content\n'))])
+    ...     ('add', ('filename', 'f-id', 'file', 'content\n'))],
+    ...     revision_id='rev-id')
     'rev-id'
-    >>> builder.build_snapshot('rev2-id', ['rev-id'],
-    ...     [('modify', ('f-id', 'new-content\n'))])
+    >>> builder.build_snapshot(['rev-id'],
+    ...     [('modify', ('f-id', 'new-content\n'))],
+    ...     revision_id='rev2-id')
     'rev2-id'
     >>> builder.finish_series()
     >>> branch = builder.get_branch()
@@ -178,9 +180,9 @@ class BranchBuilder(object):
         self._tree.unlock()
         self._tree = None
 
-    def build_snapshot(self, revision_id, parent_ids, actions,
-        message=None, timestamp=None, allow_leftmost_as_ghost=False,
-        committer=None, timezone=None, message_callback=None):
+    def build_snapshot(self, parent_ids, actions, message=None, timestamp=None,
+            allow_leftmost_as_ghost=False, committer=None, timezone=None,
+            message_callback=None, revision_id=None):
         """Build a commit, shaped in a specific way.
 
         Most of the actions are self-explanatory.  'flush' is special action to
@@ -188,7 +190,6 @@ class BranchBuilder(object):
         (such as unversioning a file-id and re-adding it with a different kind)
         can be expressed in a way that will clearly work.
 
-        :param revision_id: The handle for the new commit, can be None
         :param parent_ids: A list of parent_ids to use for the commit.
             It can be None, which indicates to use the last commit.
         :param actions: A list of actions to perform. Supported actions are:
@@ -207,6 +208,7 @@ class BranchBuilder(object):
         :param committer: An optional username to use for commit
         :param allow_leftmost_as_ghost: True if the leftmost parent should be
             permitted to be a ghost.
+        :param revision_id: The handle for the new commit, can be None
         :return: The revision_id of the new commit
         """
         if parent_ids is not None:
@@ -278,10 +280,12 @@ class BranchBuilder(object):
         for from_relpath, to_relpath in pending.to_rename:
             tree.rename_one(from_relpath, to_relpath)
         if pending.to_unversion_ids:
-            tree.unversion(pending.to_unversion_ids)
+            tree.unversion([tree.id2path(fid) for fid in pending.to_unversion_ids])
         tree.add(pending.to_add_files, pending.to_add_file_ids, pending.to_add_kinds)
         for file_id, content in viewitems(pending.new_contents):
-            tree.put_file_bytes_non_atomic(file_id, content)
+            tree.put_file_bytes_non_atomic(
+                    tree.id2path(file_id), content,
+                    file_id=file_id)
 
     def get_branch(self):
         """Return the branch created by the builder."""

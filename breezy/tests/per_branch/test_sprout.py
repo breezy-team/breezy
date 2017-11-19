@@ -176,12 +176,9 @@ class TestSprout(TestCaseWithBranch):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Check that the symlink target is safely round-tripped in the trees.
-        self.assertEqual(
-            target,
-            tree.get_symlink_target(tree.path2id(link_name)))
-        self.assertEqual(
-            target,
-            tree.basis_tree().get_symlink_target(tree.path2id(link_name)))
+        self.assertEqual(target, tree.get_symlink_target(link_name))
+        self.assertEqual(target,
+                tree.basis_tree().get_symlink_target(link_name))
 
     def test_sprout_with_ghost_in_mainline(self):
         tree = self.make_branch_and_tree('tree1')

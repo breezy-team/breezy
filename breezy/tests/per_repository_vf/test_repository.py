@@ -271,7 +271,7 @@ class TestRepository(TestCaseWithRepository):
         try:
             self.assertEqual(set(), set(repo.texts.keys()))
             tree.add(['foo'], [file_id], ['file'])
-            tree.put_file_bytes_non_atomic(file_id, 'content\n')
+            tree.put_file_bytes_non_atomic('foo', 'content\n', file_id=file_id)
             try:
                 rev_key = (tree.commit("foo"),)
             except errors.IllegalPath:
@@ -294,16 +294,16 @@ class TestRepository(TestCaseWithRepository):
             tree.unlock()
         tree2 = self.make_branch_and_tree('tree2')
         tree2.pull(tree.branch)
-        tree2.put_file_bytes_non_atomic('Foo:Bar', 'right\n')
+        tree2.put_file_bytes_non_atomic('foo', 'right\n', file_id='Foo:Bar')
         right_key = (tree2.commit('right'),)
         keys.add(file_key + right_key)
         parents[file_key + right_key] = (file_key + rev_key,)
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'left\n')
+        tree.put_file_bytes_non_atomic('foo', 'left\n', file_id='Foo:Bar')
         left_key = (tree.commit('left'),)
         keys.add(file_key + left_key)
         parents[file_key + left_key] = (file_key + rev_key,)
         tree.merge_from_branch(tree2.branch)
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'merged\n')
+        tree.put_file_bytes_non_atomic('foo', 'merged\n', file_id='Foo:Bar')
         try:
             tree.auto_resolve()
         except errors.UnsupportedOperation:

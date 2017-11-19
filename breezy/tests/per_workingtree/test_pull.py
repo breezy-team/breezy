@@ -80,13 +80,16 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         builder.start_series()
 
         # Create an empty trunk
-        builder.build_snapshot('1', None, [
-                ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('2', ['1'], [
+        builder.build_snapshot(None, [
+                ('add', ('', 'root-id', 'directory', ''))],
+                revision_id='1')
+        builder.build_snapshot(['1'], [
                 ('add', ('dir', 'dir-id', 'directory', '')),
-                ('add', ('file', 'file-id', 'file', 'trunk content\n')),])
-        builder.build_snapshot('3', ['2'], [
-                ('unversion', 'dir-id'),])
+                ('add', ('file', 'file-id', 'file', 'trunk content\n')),],
+                revision_id='2')
+        builder.build_snapshot(['2'], [
+                ('unversion', 'dir-id'),],
+                revision_id='3')
         builder.finish_series()
         return builder.get_branch()
 

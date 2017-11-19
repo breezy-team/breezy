@@ -825,9 +825,9 @@ def _rebase_merge_depth(view_revisions):
     """Adjust depths upwards so the top level is 0."""
     # If either the first or last revision have a merge_depth of 0, we're done
     if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
-        min_depth = min([d for r,n,d in view_revisions])
+        min_depth = min([d for r, n, d in view_revisions])
         if min_depth != 0:
-            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+            view_revisions = [(r, n, d-min_depth) for r, n, d in view_revisions]
     return view_revisions
 
 
@@ -906,7 +906,7 @@ def _match_filter(searchRE, rev):
                }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
-    for (k,v) in searchRE:
+    for (k, v) in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
             return False
     return True
@@ -1769,16 +1769,16 @@ class GnuChangelogLogFormatter(LogFormatter):
                                show_offset=False)
         committer_str = self.authors(revision.rev, 'first', sep=', ')
         committer_str = committer_str.replace(' <', '  <')
-        to_file.write('%s  %s\n\n' % (date_str,committer_str))
+        to_file.write('%s  %s\n\n' % (date_str, committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
                 path, = c[:1]
                 to_file.write('\t* %s:\n' % (path,))
             for c in revision.delta.renamed:
-                oldpath,newpath = c[:2]
+                oldpath, newpath = c[:2]
                 # For renamed files, show both the old and the new path
-                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath,newpath))
+                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath, newpath))
             to_file.write('\n')
 
         if not revision.rev.message:
@@ -2062,7 +2062,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
         tree1 = None
         for fp in relpaths:
             file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, file_id)
+            kind = _get_kind_for_file_id(tree, fp, file_id)
             if file_id is None:
                 # go back to when time began
                 if tree1 is None:
@@ -2076,7 +2076,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
                         tree1 = b.repository.revision_tree(rev1)
                 if tree1:
                     file_id = tree1.path2id(fp)
-                    kind = _get_kind_for_file_id(tree1, file_id)
+                    kind = _get_kind_for_file_id(tree1, fp, file_id)
             info_list.append((fp, file_id, kind))
 
     elif start_rev_info == end_rev_info:
@@ -2084,7 +2084,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
         tree = b.repository.revision_tree(end_rev_info.rev_id)
         for fp in relpaths:
             file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, file_id)
+            kind = _get_kind_for_file_id(tree, fp, file_id)
             info_list.append((fp, file_id, kind))
 
     else:
@@ -2098,7 +2098,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
         tree1 = None
         for fp in relpaths:
             file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, file_id)
+            kind = _get_kind_for_file_id(tree, fp, file_id)
             if file_id is None:
                 if tree1 is None:
                     rev_id = start_rev_info.rev_id
@@ -2108,15 +2108,15 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
                     else:
                         tree1 = b.repository.revision_tree(rev_id)
                 file_id = tree1.path2id(fp)
-                kind = _get_kind_for_file_id(tree1, file_id)
+                kind = _get_kind_for_file_id(tree1, fp, file_id)
             info_list.append((fp, file_id, kind))
     return b, info_list, start_rev_info, end_rev_info
 
 
-def _get_kind_for_file_id(tree, file_id):
+def _get_kind_for_file_id(tree, path, file_id):
     """Return the kind of a file-id or None if it doesn't exist."""
     if file_id is not None:
-        return tree.kind(file_id)
+        return tree.kind(path, file_id)
     else:
         return None
 

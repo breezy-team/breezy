@@ -103,10 +103,10 @@ class TestDirExport(tests.TestCaseWithTransport):
     def test_files_same_timestamp(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot(None, None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('a', 'a-id', 'file', 'content\n'))])
-        builder.build_snapshot(None, None, [
+        builder.build_snapshot(None, [
             ('add', ('b', 'b-id', 'file', 'content\n'))])
         builder.finish_series()
         b = builder.get_branch()
@@ -134,11 +134,11 @@ class TestDirExport(tests.TestCaseWithTransport):
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         a_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
         b_time = time.mktime((1980, 0o1, 0o1, 0, 0, 0, 0, 0, 0))
-        builder.build_snapshot(None, None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('a', 'a-id', 'file', 'content\n'))],
             timestamp=a_time)
-        builder.build_snapshot(None, None, [
+        builder.build_snapshot(None, [
             ('add', ('b', 'b-id', 'file', 'content\n'))],
             timestamp=b_time)
         builder.finish_series()
@@ -155,7 +155,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         foo_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
-        builder.build_snapshot(None, None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('subdir', 'subdir-id', 'directory', '')),
             ('add', ('subdir/foo.txt', 'foo-id', 'file', 'content\n'))],

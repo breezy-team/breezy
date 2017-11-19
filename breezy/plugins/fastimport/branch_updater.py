@@ -119,7 +119,7 @@ class BranchUpdater(object):
                 location = dir_policy(name, ref_name)
                 try:
                     br = self.make_branch(location)
-                    branch_tips.append((br,tip))
+                    branch_tips.append((br, tip))
                     continue
                 except errors.BzrError, ex:
                     show_error("ERROR: failed to create branch %s: %s",
@@ -168,7 +168,7 @@ class BranchUpdater(object):
         if self.tags:
             graph = self.repo.get_graph()
             ancestry = [r for (r, ps) in graph.iter_ancestry([last_rev_id]) if ps is not None]
-            for tag,rev in self.tags.items():
+            for tag, rev in self.tags.items():
                 if rev in ancestry:
                     my_tags[tag] = rev
             if my_tags:

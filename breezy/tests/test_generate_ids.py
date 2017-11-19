@@ -130,7 +130,7 @@ class TestGenRevisionId(tests.TestCase):
     def test_gen_revision_id_email(self):
         """gen_revision_id uses email address if present"""
         regex = r'user\+joe_bar@foo-bar\.com-\d{14}-[a-z0-9]{16}'
-        self.assertGenRevisionId(regex,'user+joe_bar@foo-bar.com')
+        self.assertGenRevisionId(regex, 'user+joe_bar@foo-bar.com')
         self.assertGenRevisionId(regex, '<user+joe_bar@foo-bar.com>')
         self.assertGenRevisionId(regex, 'Joe Bar <user+joe_bar@foo-bar.com>')
         self.assertGenRevisionId(regex, 'Joe Bar <user+Joe_Bar@Foo-Bar.com>')

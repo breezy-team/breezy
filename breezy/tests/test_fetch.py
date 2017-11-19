@@ -251,7 +251,7 @@ class TestMergeFileHistory(TestCaseWithTransport):
                              ('2-2', 'agreement\n')]:
             self.assertEqualDiff(
                 br2.repository.revision_tree(
-                    rev_id).get_file_text('this-file-id'), text)
+                    rev_id).get_file_text('file'), text)
 
 
 class TestKnitToPackFetch(TestCaseWithTransport):
@@ -407,12 +407,12 @@ class TestKnitToPackFetch(TestCaseWithTransport):
             fname = 'file%03d' % (i,)
             fileid = '%s-%s' % (fname, osutils.rand_chars(64))
             to_add.append(('add', (fname, fileid, 'file', 'content\n')))
-        builder.build_snapshot('A', None, to_add)
-        builder.build_snapshot('B', ['A'], [])
-        builder.build_snapshot('C', ['A'], [])
-        builder.build_snapshot('D', ['C'], [])
-        builder.build_snapshot('E', ['D'], [])
-        builder.build_snapshot('F', ['E', 'B'], [])
+        builder.build_snapshot(None, to_add, revision_id='A')
+        builder.build_snapshot(['A'], [], revision_id='B')
+        builder.build_snapshot(['A'], [], revision_id='C')
+        builder.build_snapshot(['C'], [], revision_id='D')
+        builder.build_snapshot(['D'], [], revision_id='E')
+        builder.build_snapshot(['E', 'B'], [], revision_id='F')
         builder.finish_series()
         source_branch = builder.get_branch()
         source_branch.controldir.sprout('base', revision_id='B')
