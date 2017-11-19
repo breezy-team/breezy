@@ -323,12 +323,16 @@ def label(code, calltree=False):
         return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
 
 
-if __name__ == '__main__':
-    import os
+def main():
     sys.argv = sys.argv[1:]
     if not sys.argv:
         sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
-    sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
-    stats = sorted(profile(execfile, sys.argv[0], globals(), locals()))
+    import runpy
+    result, stats = profile(runpy.run_path, sys.argv[0], run_name='__main__')
+    stats.sort()
     stats.pprint()
+
+
+if __name__ == '__main__':
+    main()
