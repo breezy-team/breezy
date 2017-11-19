@@ -13,7 +13,7 @@ XS-Testsuite: autopkgtest
 
 Package: brz-debian
 Architecture: all
-Depends: brz (>= 3.0.0~bzr6819), python-breezy ((>= 3.0.0~bzr6819)), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}
+Depends: brz (>= 3.0.0~bzr6819), python-breezy (>= 3.0.0~bzr6819), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}
 Recommends: python-launchpadlib, libalgorithm-merge-perl, python-distro-info
 Suggests: python-lzma
 Provides: brz-buildpackage

@@ -1,4 +1,4 @@
-breezy-debian (2.8.10) UNRELEASED; urgency=medium
+breezy-debian (2.8.10) unstable; urgency=medium
 
   * debian/copyright: Fix package name.
   * Fix compatibility with newer versions of breezy.
