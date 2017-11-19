@@ -5,6 +5,7 @@
 
 from __future__ import absolute_import
 
+import codecs
 try:
     import cPickle as pickle
 except ImportError:
@@ -214,9 +215,12 @@ class Stats(object):
                     format = ext[1:]
         with open(filename, 'wb') as outfile:
             if format == "callgrind":
-                self.calltree(outfile)
+                # The callgrind format states it is 'ASCII based':
+                # <http://valgrind.org/docs/manual/cl-format.html>
+                # But includes filenames so lets ignore and use UTF-8.
+                self.calltree(codecs.getwriter('utf-8')(outfile))
             elif format == "txt":
-                self.pprint(file=outfile)
+                self.pprint(file=codecs.getwriter('utf-8')(outfile))
             else:
                 self.freeze()
                 pickle.dump(self, outfile, 2)
