@@ -120,13 +120,13 @@ class LRUTreeCacheTests(TestCaseWithTransport):
     def test_get(self):
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
-        bb.build_snapshot('BASE-id', None,
+        revid = bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
-        tree = self.cache.revision_tree("BASE-id")
-        self.assertEquals("BASE-id", tree.get_revision_id())
+        tree = self.cache.revision_tree(revid)
+        self.assertEquals(revid, tree.get_revision_id())
 
 
 class BazaarObjectStoreTests(TestCaseWithTransport):
@@ -146,7 +146,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
-        bb.build_snapshot('BASE-id', None,
+        bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])
@@ -165,7 +165,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertRaises(KeyError, self.store.get_raw, b.id)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
-        bb.build_snapshot('BASE-id', None,
+        bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])
@@ -184,7 +184,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertFalse(b.id in self.store)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
-        bb.build_snapshot('BASE-id', None,
+        bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])

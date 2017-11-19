@@ -176,6 +176,10 @@ class GitWorkingTree(workingtree.WorkingTree):
     def merge_modified(self):
         return {}
 
+    def set_merge_modified(self):
+        # TODO(jelmer)
+        pass
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         self.set_parent_ids([p for p, t in parents_list])
 
@@ -256,10 +260,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                     del self.index[p]
         # FIXME: remove empty directories
 
-    def unversion(self, file_ids):
+    def unversion(self, paths, file_ids=None):
         with self.lock_tree_write():
-            for file_id in file_ids:
-                path = self.id2path(file_id)
+            for path in paths:
                 self._unversion_path(path)
             self.flush()
 
