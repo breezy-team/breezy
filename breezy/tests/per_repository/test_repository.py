@@ -584,7 +584,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             b.repository.start_write_group()
             self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
-                b.repository.add_signature_text, 'A',
+                b.repository.add_signature_text, rev_a,
                 'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository
