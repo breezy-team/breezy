@@ -498,7 +498,8 @@ class LocalGitBranch(GitBranch):
             format = self._get_checkout_format(lightweight=True)
             checkout = format.initialize_on_transport(t)
             from breezy.bzr.branch import BranchReferenceFormat
-            from_branch = BranchReferenceFormat().initialize(checkout, self)
+            from_branch = BranchReferenceFormat().initialize(
+                    checkout, target_branch=self)
             tree = checkout.create_workingtree(revision_id,
                 from_branch=from_branch, hardlink=hardlink)
             return tree
