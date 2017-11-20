@@ -118,6 +118,22 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_setting_revision_ids',
             (True, False))
 
+    def test_attribute_format_supports_overriding_transport(self):
+        repo = self.make_repository('repo')
+        self.assertSubset(
+            [repo._format.supports_overriding_transport], (True, False))
+
+        repo.control_transport.copy_tree('.', '../repository.backup')
+        backup_transport = repo.control_transport.clone('../repository.backup')
+        if repo._format.supports_overriding_transport:
+            backup = repo._format.open(
+                    repo.controldir,
+                    _override_transport=backup_transport)
+            self.assertIs(backup_transport, backup.control_transport)
+        else:
+            self.assertRaises(TypeError, repo._format.open,
+                    repo.controldir, _override_transport=backup_transport)
+
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
         self.assertSubset([repo._format.is_deprecated()], (True, False))

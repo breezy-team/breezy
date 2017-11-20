@@ -279,6 +279,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
     _fetch_reconcile = True
     fast_deltas = False
     supports_leaving_lock = False
+    supports_overriding_transport = False
     # XXX: This is an old format that we don't support full checking on, so
     # just claim that checking for this inconsistency is not required.
     revision_graph_can_have_wrong_parents = False

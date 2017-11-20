@@ -942,6 +942,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     _matchingcontroldir = RemoteBzrDirFormat()
     supports_full_versioned_files = True
     supports_leaving_lock = True
+    supports_overriding_transport = False
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)

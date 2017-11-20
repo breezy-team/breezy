@@ -1295,6 +1295,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     # Is it possible for revisions to be present without being referenced
     # somewhere ?
     supports_unreferenced_revisions = None
+    # Does the format support overriding the transport to use
+    supports_overriding_transport = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
