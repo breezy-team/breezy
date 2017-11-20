@@ -176,7 +176,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def merge_modified(self):
         return {}
 
-    def set_merge_modified(self):
+    def set_merge_modified(self, modified_hashes):
         # TODO(jelmer)
         pass
 
