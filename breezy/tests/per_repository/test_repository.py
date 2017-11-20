@@ -568,24 +568,23 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_add_signature_text(self):
         builder = self.make_branch_builder('.')
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
+        rev_a = builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()
         self.addCleanup(b.unlock)
         if b.repository._format.supports_revision_signatures:
             b.repository.start_write_group()
-            b.repository.add_signature_text('A', 'This might be a signature')
+            b.repository.add_signature_text(rev_a, 'This might be a signature')
             b.repository.commit_write_group()
             self.assertEqual('This might be a signature',
-                             b.repository.get_signature_text('A'))
+                             b.repository.get_signature_text(rev_a))
         else:
             b.repository.start_write_group()
             self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
-                b.repository.add_signature_text, 'A',
+                b.repository.add_signature_text, rev_a,
                 'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository

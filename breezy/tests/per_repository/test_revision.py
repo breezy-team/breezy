@@ -84,7 +84,9 @@ class TestRevisionAttributes(TestCaseWithRepository):
                      timestamp=rev_a.timestamp,
                      timezone=rev_a.timezone,
                      committer=rev_a.committer,
-                     rev_id=rev_a.revision_id,
+                     rev_id=(rev_a.revision_id
+                         if tree2.branch.repository._format.supports_setting_revision_ids
+                         else None),
                      revprops=rev_a.properties,
                      allow_pointless=True, # there's nothing in this commit
                      strict=True,
