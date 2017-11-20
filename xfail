@@ -2,7 +2,6 @@ breezy.tests.per_branch.test_branch.ChrootedTests.test_open_containing(GitBranch
 breezy.tests.per_branch.test_branch.TestBranch.test_clone_branch_parent(GitBranchFormat)
 breezy.tests.per_branch.test_branch.TestBranch.test_commit_nicks(GitBranchFormat)
 breezy.tests.per_branch.test_branch.TestBranch.test_create_checkout(GitBranchFormat)
-breezy.tests.per_branch.test_branch.TestBranch.test_nicks(GitBranchFormat)
 breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_delta(GitBranchFormat)
 breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_fails(GitBranchFormat)
 breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_passes(GitBranchFormat)

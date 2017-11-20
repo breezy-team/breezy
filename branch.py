@@ -368,14 +368,14 @@ class GitBranch(ForeignBranch):
         """
         cs = self.repository._git.get_config_stack()
         try:
-            return cs.get(("branch", self.name), "nick")
+            return cs.get((b"branch", self.name.encode('utf-8')), b"nick").decode("utf-8")
         except KeyError:
             pass
-        return self.name.encode('utf-8') or u"HEAD"
+        return self.name or u"HEAD"
 
     def _set_nick(self, nick):
         cf = self.repository._git.get_config()
-        cf.set(("branch", self.name), "nick", nick)
+        cf.set((b"branch", self.name.encode('utf-8')), b"nick", nick.encode("utf-8"))
         f = StringIO()
         cf.write_to_file(f)
         self.controldir.control_transport.put_bytes('config', f.getvalue())
