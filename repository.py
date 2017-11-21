@@ -609,6 +609,8 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     revision_graph_can_have_wrong_parents = False
     supports_unreferenced_revisions = True
     supports_setting_revision_ids = False
+    supports_storing_branch_nick = False
+    supports_overriding_transport = False
 
     @property
     def _matchingcontroldir(self):
