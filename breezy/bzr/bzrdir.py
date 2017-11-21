@@ -1737,9 +1737,14 @@ class ConvertMetaToMeta(controldir.Converter):
         except errors.NoRepositoryPresent:
             pass
         else:
-            if not isinstance(repo._format, self.target_format.repository_format.__class__):
+            repo_fmt = self.target_format.repository_format
+            if not isinstance(repo._format, repo_fmt.__class__):
                 from ..repository import CopyConverter
                 ui.ui_factory.note(gettext('starting repository conversion'))
+                if not repo_fmt.supports_overriding_transport:
+                    raise AssertionError(
+                            "Repository in metadir does not support "
+                            "overriding transport")
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         for branch in self.controldir.list_branches():

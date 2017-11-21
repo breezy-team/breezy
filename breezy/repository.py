@@ -1298,6 +1298,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     # Does this format store the current Branch.nick in a revision when
     # creating commits?
     supports_storing_branch_nick = True
+    # Does the format support overriding the transport to use
+    supports_overriding_transport = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
