@@ -214,23 +214,22 @@ class TestPush(TestCaseWithInterBranch):
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_from_branch_builder('repo/local')
         builder.start_series()
-        builder.build_snapshot(None, [
+        revid1 = builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))],
-            revision_id='rev-1')
-        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
-        builder.build_snapshot(['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))], revision_id='rev-3')
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        revid2 = builder.build_snapshot([revid1], [])
+        revid3 = builder.build_snapshot([revid2],
+            [('modify', ('f-id', 'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id=revid1)
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
         self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
-        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
+        push._show_push_branch(trunk, revid2, self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = Branch.open(self.get_url('remote'))
@@ -253,17 +252,16 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))],
-            revision_id='first')
-        builder.build_snapshot(['first'], [], revision_id='second')
-        builder.build_snapshot(['second'], [], revision_id='third')
-        builder.build_snapshot(['third'], [], revision_id='fourth')
+        first = builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        second = builder.build_snapshot([first], [])
+        third = builder.build_snapshot([second], [])
+        fourth = builder.build_snapshot([third], [])
         builder.finish_series()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
         remote_bzrdir = local.controldir.sprout(
-            self.get_url('remote'), revision_id='third')
+            self.get_url('remote'), revision_id=third)
         remote = remote_bzrdir.open_branch()
         # Push fourth revision
         self.reset_smart_call_log()
