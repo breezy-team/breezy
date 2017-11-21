@@ -29,7 +29,7 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(TestIterMergeSortedRevisionsSimpleGraph, self).setUp()
-        builder = self.make_builder_with_merges('.')
+        builder, self.revids = self.make_builder_with_merges('.')
         self.branch = builder.get_branch()
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
@@ -47,21 +47,25 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         # | 1.1.1
         # |/
         # 3
-        builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),],
-            revision_id='1')
-        builder.build_snapshot(['1'], [], revision_id='1.1.1')
-        builder.build_snapshot(['1'], [], revision_id='2')
-        builder.build_snapshot(['2', '1.1.1'], [], revision_id='3')
+        revids = {}
+        revids['1'] = builder.build_snapshot(None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        revids['1.1.1'] = builder.build_snapshot([revids['1']], [])
+        revids['2'] = builder.build_snapshot([revids['1']], [])
+        revids['3'] = builder.build_snapshot([revids['2'], revids['1.1.1']], [])
         builder.finish_series()
-        return builder
+        return builder, revids
 
     def assertIterRevids(self, expected, *args, **kwargs):
+        if kwargs.get('stop_revision_id') is not None:
+            kwargs['stop_revision_id'] = self.revids[kwargs['stop_revision_id']]
+        if kwargs.get('start_revision_id') is not None:
+            kwargs['start_revision_id'] = self.revids[kwargs['start_revision_id']]
         # We don't care about depths and revnos here, only about returning the
         # right revids.
         revids = [revid for (revid, depth, revno, eom) in
                   self.branch.iter_merge_sorted_revisions(*args, **kwargs)]
-        self.assertEqual(expected, revids)
+        self.assertEqual([self.revids[short] for short in expected], revids)
 
     def test_merge_sorted(self):
         self.assertIterRevids(['3', '1.1.1', '2', '1'])
