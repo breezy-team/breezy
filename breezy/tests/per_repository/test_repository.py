@@ -69,7 +69,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def assertFormatAttribute(self, attribute, allowed_values):
         """Assert that the format has an attribute 'attribute'."""
         repo = self.make_repository('repo')
-        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+        self.assertIn(getattr(repo._format, attribute), allowed_values)
 
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
@@ -120,8 +120,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_attribute_format_supports_overriding_transport(self):
         repo = self.make_repository('repo')
-        self.assertSubset(
-            [repo._format.supports_overriding_transport], (True, False))
+        self.assetIn(repo._format.supports_overriding_transport, (True, False))
 
         repo.control_transport.copy_tree('.', '../repository.backup')
         backup_transport = repo.control_transport.clone('../repository.backup')
@@ -136,11 +135,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
-        self.assertSubset([repo._format.is_deprecated()], (True, False))
+        self.assertIn(repo._format.is_deprecated(), (True, False))
 
     def test_format_is_supported(self):
         repo = self.make_repository('repo')
-        self.assertSubset([repo._format.is_supported()], (True, False))
+        self.assertIn(repo._format.is_supported(), (True, False))
 
     def test_clone_to_default_format(self):
         #TODO: Test that cloning a repository preserves all the information
@@ -384,8 +383,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_format_supports_external_lookups(self):
         repo = self.make_repository('.')
-        self.assertSubset(
-            [repo._format.supports_external_lookups], (True, False))
+        self.assertIn(repo._format.supports_external_lookups, (True, False))
 
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
