@@ -37,12 +37,15 @@ class TestRevProps(TestCaseWithRepository):
         rev = b.repository.get_revision(rev1)
         self.assertTrue('flavor' in rev.properties)
         self.assertEqual(rev.properties['flavor'], 'choc-mint')
-        self.assertEqual([('branch-nick', 'Nicholas'),
-                           ('condiment', 'orange\n  mint\n\tcandy'),
-                           ('empty', ''),
-                           ('flavor', 'choc-mint'),
-                           ('non_ascii', u'\xb5'),
-                          ], sorted(rev.properties.items()))
+        expected_revprops = {
+            'condiment': 'orange\n  mint\n\tcandy',
+            'empty': '',
+            'flavor': 'choc-mint',
+            'non_ascii': u'\xb5',
+            }
+        if b.repository._format.supports_storing_branch_nick:
+            expected_revprops['branch-nick'] = 'Nicholas'
+        self.assertEqual(expected_revprops, rev.properties)
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""

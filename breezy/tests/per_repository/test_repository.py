@@ -118,6 +118,10 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_setting_revision_ids',
             (True, False))
 
+    def test_attribute_format_supports_storing_branch_nick(self):
+        self.assertFormatAttribute('supports_storing_branch_nick',
+            (True, False))
+
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
         self.assertSubset([repo._format.is_deprecated()], (True, False))
