@@ -25,7 +25,11 @@ from dulwich.index import (
 import os
 import stat
 
+from ...bzr.inventory import (
+    entry_factory,
+    )
 from ... import (
+    osutils,
     revision as _mod_revision,
     )
 from ...errors import (
@@ -63,6 +67,7 @@ class GitCommitBuilder(CommitBuilder):
         self._validate_revprops(self._revprops)
         self.store = self.repository._git.object_store
         self._blobs = {}
+        self._inv_delta = []
         self._any_changes = False
         self._override_fileids = {}
         self._mapping = self.repository.get_mapping()
@@ -71,16 +76,6 @@ class GitCommitBuilder(CommitBuilder):
         return self._any_changes
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
-        def link_sha1(path, file_id):
-            blob = Blob()
-            blob.data = workingtree.get_symlink_target(path, file_id).encode("utf-8")
-            self.store.add_object(blob)
-            return blob.id
-        def text_sha1(path, file_id):
-            blob = Blob()
-            blob.data = workingtree.get_file_text(path, file_id)
-            self.store.add_object(blob)
-            return blob.id
         def treeref_sha1(path, file_id):
             return Repo.open(os.path.join(workingtree.basedir, path)).head()
         seen_root = False
@@ -88,27 +83,44 @@ class GitCommitBuilder(CommitBuilder):
              executable) in iter_changes:
             self._any_changes = True
             if kind[1] in ("directory",):
+                self._inv_delta.append((path[0], path[1], file_id, entry_factory[kind[1]](file_id, name[1], parent[1])))
                 if kind[0] in ("file", "symlink"):
                     self._blobs[path[0].encode("utf-8")] = None
                 if path[1] == "":
                     seen_root = True
                 continue
             if path[1] is None:
+                self._inv_delta.append((path[0], path[1], file_id, None))
                 self._blobs[path[0].encode("utf-8")] = None
                 continue
+            entry = entry_factory[kind[1]](file_id, name[1], parent[1])
             if kind[1] == "file":
+                entry.executable = executable[1]
                 mode = stat.S_IFREG
-                sha = text_sha1(path[1], file_id)
+                blob = Blob()
+                blob.data = workingtree.get_file_text(path[1], file_id)
+                entry.text_size = len(blob.data)
+                entry.text_sha1 = osutils.sha_string(blob.data)
+                self.store.add_object(blob)
+                sha = blob.id
             elif kind[1] == "symlink":
                 mode = stat.S_IFLNK
-                sha = link_sha1(path[1], file_id)
+                symlink_target = workingtree.get_symlink_target(path[1], file_id)
+                blob = Blob()
+                blob.data = symlink_target.encode("utf-8")
+                self.store.add_object(blob)
+                sha = blob.id
+                entry.symlink_target = symlink_target
             elif kind[1] == "tree-reference":
                 mode = S_IFGITLINK
                 sha = treeref_sha1(path[1], file_id)
+                reference_revision = workingtree.get_reference_revision(path[1], file_id)
+                entry.reference_revision = reference_revision
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
             if executable[1]:
                 mode |= 0111
+            self._inv_delta.append((path[0], path[1], file_id, entry))
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
             file_sha1 = workingtree.get_file_sha1(path[1], file_id)
@@ -216,5 +228,10 @@ class GitCommitBuilder(CommitBuilder):
         return self.repository.revision_tree(self._new_revision_id)
 
     def get_basis_delta(self):
-        # TODO(jelmer): This shouldn't be called, it's for inventory deltas.
-        return []
+        for (oldpath, newpath, file_id, entry) in self._inv_delta:
+            if entry is not None:
+                entry.revision = self._new_revision_id
+        return self._inv_delta
+
+    def update_basis_by_delta(self, revid, delta):
+        pass
