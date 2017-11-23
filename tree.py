@@ -232,9 +232,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_symlink_target(self, path, file_id=None):
         """See RevisionTree.get_symlink_target."""
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path.encode('utf-8'))
         if stat.S_ISLNK(mode):
-            return self.store[hexsha].data
+            return self.store[hexsha].data.decode('utf-8')
         else:
             return None
 
@@ -334,7 +334,6 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
             newparent = None
         else:
             newpath = newpath.decode("utf-8")
-            assert newmode is not None
             if newmode is not None:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
