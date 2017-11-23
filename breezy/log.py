@@ -110,31 +110,31 @@ def find_touching_revisions(branch, file_id):
     history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
         [_mod_revision.NULL_REVISION]))
     for revision_id in reversed(history):
-        this_inv = branch.repository.get_inventory(revision_id)
-        if this_inv.has_id(file_id):
-            this_ie = this_inv[file_id]
-            this_path = this_inv.id2path(file_id)
+        this_tree = branch.repository.revision_tree(revision_id)
+        try:
+            this_path = this_tree.id2path(file_id)
+        except errors.NoSuchId:
+            this_verifier = this_path = None
         else:
-            this_ie = this_path = None
+            this_verifier = this_tree.get_file_verifier(this_path, file_id)
 
         # now we know how it was last time, and how it is in this revision.
         # are those two states effectively the same or not?
 
-        if not this_ie and not last_ie:
+        if not this_verifier and not last_ie:
             # not present in either
             pass
-        elif this_ie and not last_ie:
+        elif this_verifier and not last_ie:
             yield revno, revision_id, "added " + this_path
-        elif not this_ie and last_ie:
+        elif not this_verifier and last_ie:
             # deleted here
             yield revno, revision_id, "deleted " + last_path
         elif this_path != last_path:
             yield revno, revision_id, ("renamed %s => %s" % (last_path, this_path))
-        elif (this_ie.text_size != last_ie.text_size
-              or this_ie.text_sha1 != last_ie.text_sha1):
+        elif (this_verifier != last_ie):
             yield revno, revision_id, "modified " + this_path
 
-        last_ie = this_ie
+        last_ie = this_verifier
         last_path = this_path
         revno += 1
 
