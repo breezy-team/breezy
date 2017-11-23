@@ -854,6 +854,13 @@ class GitWorkingTree(workingtree.WorkingTree):
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
 
+    def apply_inventory_delta(self, changes):
+        for (old_path, new_path, file_id, ie) in changes:
+            if old_path is not None:
+                del self.index[old_path.encode('utf-8')]
+            if new_path is not None and ie.kind != 'directory':
+                self._index_add_entry(new_path, ie.kind)
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 

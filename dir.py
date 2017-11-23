@@ -301,7 +301,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         controldir = self.initialize_on_transport(transport)
         repository = controldir.open_repository()
         repository.lock_write()
-        return (repository, controldir, False, CreateRepository(controldir))
+        return (repository, controldir, False,
+                UseExistingRepository(controldir.open_repository()))
 
     def is_supported(self):
         return True
