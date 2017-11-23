@@ -29,13 +29,14 @@ from ... import (
     revision as _mod_revision,
     urlutils,
     )
-from ...bzr.bzrdir import CreateRepository
+from ...controldir import RepositoryAcquisitionPolicy
 from ...transport import do_catching_redirections
 
 from ...controldir import (
     ControlDir,
     ControlDirFormat,
     format_registry,
+    RepositoryAcquisitionPolicy,
     )
 
 
@@ -61,6 +62,31 @@ class GitControlDirFormat(ControlDirFormat):
 
     def network_name(self):
         return "git"
+
+
+class UseExistingRepository(RepositoryAcquisitionPolicy):
+    """A policy of reusing an existing repository"""
+
+    def __init__(self, repository, stack_on=None, stack_on_pwd=None,
+                 require_stacking=False):
+        """Constructor.
+
+        :param repository: The repository to use.
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        """
+        super(UseExistingRepository, self).__init__(
+                stack_on, stack_on_pwd, require_stacking)
+        self._repository = repository
+
+    def acquire_repository(self, make_working_trees=None, shared=False,
+            possible_transports=None):
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+
+        Returns an existing repository to use.
+        """
+        return self._repository, False
 
 
 class GitDir(ControlDir):
@@ -213,7 +239,7 @@ class GitDir(ControlDir):
         :param stack_on_pwd: If stack_on is relative, the location it is
             relative to.
         """
-        raise NotImplementedError(self.determine_repository_policy)
+        return UseExistingRepository(self.open_repository())
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):
