@@ -93,7 +93,11 @@ class GitCommitBuilder(CommitBuilder):
                 self._inv_delta.append((path[0], path[1], file_id, None))
                 self._blobs[path[0].encode("utf-8")] = None
                 continue
-            entry = entry_factory[kind[1]](file_id, name[1], parent[1])
+            try:
+                entry_kls = entry_factory[kind[1]]
+            except KeyError:
+                raise KeyError("unknown kind %s" % kind[1])
+            entry = entry_kls(file_id, name[1], parent[1])
             if kind[1] == "file":
                 entry.executable = executable[1]
                 mode = stat.S_IFREG
