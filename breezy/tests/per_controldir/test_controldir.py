@@ -314,6 +314,8 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         rev1 = tree.commit('revision 1')
         tree_repo = tree.branch.repository
+        if not tree_repo._format.supports_revision_signatures:
+            self.skipTest('repository format does not support signing')
         tree_repo.lock_write()
         tree_repo.start_write_group()
         tree_repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
