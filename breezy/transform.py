@@ -2070,8 +2070,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         tree_ids.update(viewvalues(self._transform._new_id))
         return tree_ids
 
-    def __iter__(self):
-        return iter(self.all_file_ids())
+    def all_versioned_paths(self):
+        return {self.id2path(fid) for fid in self.all_file_ids()}
 
     def _has_id(self, file_id, fallback_check):
         if file_id in self._transform._r_new_id:
@@ -2572,7 +2572,7 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
 
 def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     """See build_tree."""
-    for num, _unused in enumerate(wt.all_file_ids()):
+    for num, _unused in enumerate(wt.all_versioned_paths()):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
@@ -2599,7 +2599,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         try:
             deferred_contents = []
             num = 0
-            total = len(tree.all_file_ids())
+            total = len(tree.all_versioned_paths())
             if delta_from_tree:
                 precomputed_delta = []
             else:

@@ -432,7 +432,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEqual({root_id, "bla-b"}, set(wt.all_file_ids()))
+            self.assertEqual({'', "bla"}, set(wt.all_versioned_paths()))
         finally:
             wt.unlock()
 

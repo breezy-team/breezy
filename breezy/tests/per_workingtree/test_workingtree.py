@@ -1023,8 +1023,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a', 'b'])
         os.unlink('tree/a')
         self.assertEqual(
-                {tree.path2id('a'), tree.path2id('b'), tree.get_root_id()},
-                tree.all_file_ids())
+                {'a', 'b', ''},
+                set(tree.all_versioned_paths()))
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)
