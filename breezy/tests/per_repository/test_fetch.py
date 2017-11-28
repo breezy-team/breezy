@@ -320,27 +320,26 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def make_simple_branch_with_ghost(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
-        builder.build_snapshot(None, [
+        a_revid = builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id', 'ghost-id'], [], revision_id='B-id')
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        b_revid = builder.build_snapshot([a_revid, 'ghost-id'], [])
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
-        return source_b
+        return source_b, b_revid
 
     def test_fetch_with_ghost(self):
-        source_b = self.make_simple_branch_with_ghost()
+        source_b, b_revid = self.make_simple_branch_with_ghost()
         target = self.make_repository('target')
         target.lock_write()
         self.addCleanup(target.unlock)
-        target.fetch(source_b.repository, revision_id='B-id')
+        target.fetch(source_b.repository, revision_id=b_revid)
 
     def test_fetch_into_smart_with_ghost(self):
         trans = self.make_smart_server('target')
-        source_b = self.make_simple_branch_with_ghost()
+        source_b, b_revid = self.make_simple_branch_with_ghost()
         if not source_b.controldir._format.supports_transport(trans):
             raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
@@ -349,7 +348,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         target.lock_write()
         self.addCleanup(target.unlock)
         try:
-            target.fetch(source_b.repository, revision_id='B-id')
+            target.fetch(source_b.repository, revision_id=b_revid)
         except errors.TokenLockingNotSupported:
             # The code inside fetch() that tries to lock and then fails, also
             # causes weird problems with 'lock_not_held' later on...
@@ -359,7 +358,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_from_smart_with_ghost(self):
         trans = self.make_smart_server('source')
-        source_b = self.make_simple_branch_with_ghost()
+        source_b, b_revid = self.make_simple_branch_with_ghost()
         if not source_b.controldir._format.supports_transport(trans):
             raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
@@ -369,5 +368,5 @@ class TestFetchSameRepository(TestCaseWithRepository):
         source = repository.Repository.open(trans.base)
         source.lock_read()
         self.addCleanup(source.unlock)
-        target.fetch(source, revision_id='B-id')
+        target.fetch(source, revision_id=b_revid)
 
