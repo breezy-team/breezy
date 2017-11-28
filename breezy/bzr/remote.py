@@ -308,8 +308,8 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                     remote_repo.dont_leave_lock_in_place()
             else:
                 remote_repo.lock_write()
-            policy = _mod_bzrdir.UseExistingRepository(remote_repo, final_stack,
-                final_stack_pwd, require_stacking)
+            policy = _mod_bzrdir.UseExistingRepository(remote_repo,
+                    final_stack, final_stack_pwd, require_stacking)
             policy.acquire_repository()
         else:
             remote_repo = None
