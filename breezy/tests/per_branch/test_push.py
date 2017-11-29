@@ -237,11 +237,10 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('cannot initialize this format')
         source.start_series()
-        source.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
-        source.build_snapshot(['A'], [], revision_id='B')
-        source.build_snapshot(['A'], [], revision_id='C')
+        revid_a = source.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        revid_b = source.build_snapshot([revid_a], [])
+        revid_c = source.build_snapshot([revid_a], [])
         source.finish_series()
         b = source.get_branch()
         # Note: We can't read lock the source branch. Some formats take a write
@@ -251,9 +250,9 @@ class TestPush(per_branch.TestCaseWithBranch):
         # This means 'push the source branch into this dir'
         bzrdir.push_branch(b)
         self.addCleanup(repo.lock_read().unlock)
-        # We should have pushed 'C', but not 'B', since it isn't in the
+        # We should have pushed revid_c, but not revid_b, since it isn't in the
         # ancestry
-        self.assertEqual(['A', 'C'], sorted(repo.all_revision_ids()))
+        self.assertEqual([revid_a, revid_c], sorted(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -278,24 +277,22 @@ class TestPush(per_branch.TestCaseWithBranch):
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
-        builder.build_snapshot(None, [
+        revid1 = builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))],
-            revision_id='rev-1',)
-        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
-        builder.build_snapshot(['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))],
-            revision_id='rev-3')
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        revid2 = builder.build_snapshot([revid1], [])
+        revid3 = builder.build_snapshot([revid2],
+            [('modify', ('f-id', 'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id=revid1)
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
         self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
-        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
+        push._show_push_branch(trunk, revid2, self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = branch.Branch.open(self.get_url('remote'))

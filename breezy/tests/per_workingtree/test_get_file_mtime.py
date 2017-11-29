@@ -57,7 +57,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         one_id = tree.path2id('one')
 
         st = os.lstat('tree/one')
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one')
 
         tree.lock_read()
         try:

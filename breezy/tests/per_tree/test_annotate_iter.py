@@ -32,6 +32,8 @@ class TestAnnotate(TestCaseWithTree):
 
     def get_tree_with_ghost(self):
         tree = self.make_branch_and_tree('tree')
+        if not tree.branch.repository._format.supports_ghosts:
+            self.skipTest('repository format does not support ghosts')
         self.build_tree_contents([('tree/one', 'first\ncontent\n')])
         tree.add(['one'])
         rev_1 = tree.commit('one')
