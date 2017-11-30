@@ -175,7 +175,7 @@ class GitTags(tag.BasicTags):
                 result[n] = bzr_revid
                 updates[n] = bzr_revid
             else:
-                conflicts.append((n, result[n], bzr_revid))
+                conflicts.append((n, bzr_revid, result[n]))
         to_tags._set_tag_dict(result)
         if len(unpeeled_map) > 0:
             map_file = UnpeelMap.from_repository(to_tags.branch.repository)
