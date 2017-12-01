@@ -328,7 +328,6 @@ class GitBranch(ForeignBranch):
         return self.controldir.control_transport
 
     def __init__(self, controldir, repository, ref):
-        self.base = controldir.root_transport.base
         self.repository = repository
         self._format = GitBranchFormat()
         self.controldir = controldir
@@ -336,11 +335,19 @@ class GitBranch(ForeignBranch):
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
         self.ref = ref
+        self._head = None
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:
             self.name = None
-        self._head = None
+            if self.ref is not None:
+                self.user_transport.set_segment_parameter(
+                    "ref", urlutils.escape(self.ref))
+        else:
+            if self.name != "":
+                self.user_transport.set_segment_parameter(
+                    "branch", urlutils.escape(self.name))
+        self.base = self.user_transport.base
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
