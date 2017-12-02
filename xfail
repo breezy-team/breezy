@@ -27,8 +27,6 @@ breezy.tests.per_branch.test_pull.TestPull.test_pull_returns_result(GitBranchFor
 breezy.tests.per_branch.test_pull.TestPull.test_pull_updates_checkout_and_master(GitBranchFormat)
 breezy.tests.per_branch.test_push.TestPush.test_push_convergence_simple(GitBranchFormat)
 breezy.tests.per_branch.test_push.TestPush.test_push_merged_indirect(GitBranchFormat)
-breezy.tests.per_branch.test_push.TestPush.test_push_repository_no_branch_doesnt_fetch_all_revs(GitBranchFormat)
-breezy.tests.per_branch.test_tags.TestBranchTags.test_merge_tags(GitBranchFormat)
 breezy.tests.per_branch.test_tags.TestBranchTags.test_read_lock_caches_tags(GitBranchFormat)
 breezy.tests.per_controldir_colo.test_supported.TestColocatedBranchSupport.test_open_by_url(BareLocalGitControlDirFormat)
 breezy.tests.per_controldir_colo.test_supported.TestColocatedBranchSupport.test_open_by_url(LocalGitControlDirFormat)
