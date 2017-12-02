@@ -50,10 +50,6 @@ from dulwich.repo import Repo
 from .mapping import (
     entry_mode,
     )
-from .roundtrip import (
-    CommitSupplement,
-    inject_bzr_metadata,
-    )
 
 
 class GitCommitBuilder(CommitBuilder):
@@ -203,22 +199,16 @@ class GitCommitBuilder(CommitBuilder):
         c.tree = commit_tree(self.store, self._iterblobs())
         c.encoding = 'utf-8'
         c.committer = self._committer.encode(c.encoding)
-        c.author = self._revprops.get('author', self._committer).encode(c.encoding)
+        c.author = self._revprops.pop('author', self._committer).encode(c.encoding)
         if c.author != c.committer:
             self._revprops.remove("author")
+        if self._revprops:
+            raise NotImplementedError(self._revprops)
         c.commit_time = int(self._timestamp)
         c.author_time = int(self._timestamp)
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode(c.encoding)
-        if not self._lossy:
-            commit_supplement = CommitSupplement()
-            commit_supplement.revision_id = None
-            commit_supplement.properties = self._revprops
-            commit_supplement.explicit_parent_ids = self.parents
-            if commit_supplement:
-                c.message = inject_bzr_metadata(c.message, commit_supplement, "utf-8")
-
         assert len(c.id) == 40
         self.store.add_object(c)
         self.repository.commit_write_group()
