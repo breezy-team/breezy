@@ -29,10 +29,21 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(TestIterMergeSortedRevisionsSimpleGraph, self).setUp()
-        builder, self.revids = self.make_builder_with_merges('.')
+        self.revids = {}
+        builder = self.make_builder_with_merges('.')
         self.branch = builder.get_branch()
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
+
+    def make_snapshot(self, builder, parents, revid_name):
+        self.assertNotIn(revid_name, self.revids)
+        if parents is None:
+            files = [('add', ('', 'TREE_ROOT', 'directory', '')),]
+        else:
+            parents = [self.revids[name] for name in parents]
+            files = []
+        self.revids[revid_name] = builder.build_snapshot(
+                parents, files, message="Revision %s" % revid_name)
 
     def make_builder_with_merges(self, relpath):
         try:
@@ -40,16 +51,6 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
-        revids = {}
-        def make_snapshot(parents, revid_name):
-            self.assertNotIn(revid_name, revids)
-            if parents is None:
-                files = [('add', ('', 'TREE_ROOT', 'directory', '')),]
-            else:
-                parents = [revids[name] for name in parents]
-                files = []
-            revids[revid_name] = builder.build_snapshot(
-                    parents, files, message="Revision %s" % revid_name)
         # 1
         # |\
         # 2 |
@@ -57,12 +58,12 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         # | 1.1.1
         # |/
         # 3
-        make_snapshot(None, '1')
-        make_snapshot(['1'], '1.1.1')
-        make_snapshot(['1'], '2')
-        make_snapshot(['2', '1.1.1'], '3')
+        self.make_snapshot(builder, None, '1')
+        self.make_snapshot(builder, ['1'], '1.1.1')
+        self.make_snapshot(builder, ['1'], '2')
+        self.make_snapshot(builder, ['2', '1.1.1'], '3')
         builder.finish_series()
-        return builder, revids
+        return builder
 
     def assertIterRevids(self, expected, *args, **kwargs):
         if kwargs.get('stop_revision_id') is not None:
