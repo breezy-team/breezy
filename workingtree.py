@@ -729,6 +729,21 @@ class GitWorkingTree(workingtree.WorkingTree):
                 ids[path] = self.path2id(path)
             return set(ids.values())
 
+    def all_versioned_paths(self):
+        with self.lock_read():
+            paths = {u""}
+            for path in self.index:
+                if self.mapping.is_special_file(path):
+                    continue
+                path = path.decode("utf-8")
+                paths.add(path)
+                while path != "":
+                    path = posixpath.dirname(path).strip("/")
+                    if path in paths:
+                        break
+                    paths.add(path)
+            return paths
+
     def _directory_is_tree_reference(self, path):
         # FIXME: Check .gitsubmodules for path
         return False

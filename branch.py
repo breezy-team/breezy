@@ -1069,7 +1069,6 @@ class InterToGitBranch(branch.GenericInterBranch):
         return ret
 
     def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
-        assert limit is None
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         ret = []
@@ -1077,7 +1076,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             for k, v in self.source.tags.get_tag_dict().iteritems():
                 ret.append((None, v))
         ret.append((None, stop_revision))
-        self.interrepo.fetch_objects(ret, lossy=lossy)
+        self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True):
