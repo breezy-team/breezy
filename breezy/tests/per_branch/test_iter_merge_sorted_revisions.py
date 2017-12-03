@@ -40,6 +40,16 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
+        revids = {}
+        def make_snapshot(parents, revid_name):
+            self.assertNotIn(revid_name, revids)
+            if parents is None:
+                files = [('add', ('', 'TREE_ROOT', 'directory', '')),]
+            else:
+                parents = [revids[name] for name in parents]
+                files = []
+            revids[revid_name] = builder.build_snapshot(
+                    parents, files, message="Revision %s" % revid_name)
         # 1
         # |\
         # 2 |
@@ -47,12 +57,10 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         # | 1.1.1
         # |/
         # 3
-        revids = {}
-        revids['1'] = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),])
-        revids['1.1.1'] = builder.build_snapshot([revids['1']], [])
-        revids['2'] = builder.build_snapshot([revids['1']], [])
-        revids['3'] = builder.build_snapshot([revids['2'], revids['1.1.1']], [])
+        make_snapshot(None, '1')
+        make_snapshot(['1'], '1.1.1')
+        make_snapshot(['1'], '2')
+        make_snapshot(['2', '1.1.1'], '3')
         builder.finish_series()
         return builder, revids
 
@@ -144,6 +152,10 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 
 class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
 
+    def setUp(self):
+        super(TestIterMergeSortedRevisionsBushyGraph, self).setUp()
+        self.revids = {}
+
     def make_branch_builder(self, relpath):
         try:
             builder = super(TestIterMergeSortedRevisionsBushyGraph,
@@ -152,8 +164,19 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('format not directly constructable')
         return builder
 
+    def make_snapshot(self, builder, parents, revid_name):
+        self.assertNotIn(revid_name, self.revids)
+        if parents is None:
+            files = [('add', ('', 'TREE_ROOT', 'directory', '')),]
+        else:
+            parents = [self.revids[name] for name in parents]
+            files = []
+        self.revids[revid_name] = builder.build_snapshot(
+                parents, files, message="Revision %s" % revid_name)
+
     def make_branch_with_embedded_merges(self, relpath='.'):
         builder = self.make_branch_builder(relpath)
+
         # 1
         # |\
         # | 1.1.1
@@ -172,17 +195,15 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         # |/
         # 4
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),],
-            revision_id='1')
-        builder.build_snapshot(['1'], [], revision_id='1.1.1')
-        builder.build_snapshot(['1', '1.1.1'], [], revision_id='2')
-        builder.build_snapshot(['2'], [], revision_id='2.1.1')
-        builder.build_snapshot(['2.1.1'], [], revision_id='2.1.2')
-        builder.build_snapshot(['2.1.1'], [], revision_id='2.2.1')
-        builder.build_snapshot(['2.1.2', '2.2.1'], [], revision_id='2.1.3')
-        builder.build_snapshot(['2'], [], revision_id='3')
-        builder.build_snapshot(['3', '2.1.3'], [], revision_id='4')
+        self.make_snapshot(builder, None, '1')
+        self.make_snapshot(builder, ['1'], '1.1.1')
+        self.make_snapshot(builder, ['1', '1.1.1'], '2')
+        self.make_snapshot(builder, ['2'], '2.1.1')
+        self.make_snapshot(builder, ['2.1.1'], '2.1.2')
+        self.make_snapshot(builder, ['2.1.1'], '2.2.1')
+        self.make_snapshot(builder, ['2.1.2', '2.2.1'], '2.1.3')
+        self.make_snapshot(builder, ['2'], '3')
+        self.make_snapshot(builder, ['3', '2.1.3'], '4')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()
@@ -209,27 +230,24 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         # |/
         # 4
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),],
-            revision_id='1')
-        builder.build_snapshot(['1'], [], revision_id='2')
-        builder.build_snapshot(['1'], [], revision_id='1.1.1')
-        builder.build_snapshot(['1.1.1'], [], revision_id='1.1.2')
-        builder.build_snapshot(['1.1.1'], [], revision_id='1.2.1')
-        builder.build_snapshot(['1.2.1'], [], revision_id='1.2.2')
-        builder.build_snapshot(['1.2.1'], [], revision_id='1.3.1')
-        builder.build_snapshot(['1.3.1'], [], revision_id='1.3.2')
-        builder.build_snapshot(['1.3.1'], [], revision_id='1.4.1')
-        builder.build_snapshot(['1.3.2', '1.4.11'], [], revision_id='1.3.3')
-        builder.build_snapshot(['1.2.2', '1.3.3'], [], revision_id='1.2.3')
-        builder.build_snapshot(['2'], [], revision_id='2.1.1')
-        builder.build_snapshot(['2.1.1'], [], revision_id='2.1.2')
-        builder.build_snapshot(['2.1.1'], [], revision_id='2.2.1')
-        builder.build_snapshot(['2.1.2', '2.2.1'], [], revision_id='2.1.3')
-        builder.build_snapshot(['2',  '1.2.3'], [], revision_id='3')
+        self.make_snapshot(builder, None, '1')
+        self.make_snapshot(builder, ['1'], '2')
+        self.make_snapshot(builder, ['1'], '1.1.1')
+        self.make_snapshot(builder, ['1.1.1'], '1.1.2')
+        self.make_snapshot(builder, ['1.1.1'], '1.2.1')
+        self.make_snapshot(builder, ['1.2.1'], '1.2.2')
+        self.make_snapshot(builder, ['1.2.1'], '1.3.1')
+        self.make_snapshot(builder, ['1.3.1'], '1.3.2')
+        self.make_snapshot(builder, ['1.3.1'], '1.4.1')
+        self.make_snapshot(builder, ['1.3.2'], '1.3.3')
+        self.make_snapshot(builder, ['1.2.2', '1.3.3'], '1.2.3')
+        self.make_snapshot(builder, ['2'], '2.1.1')
+        self.make_snapshot(builder, ['2.1.1'], '2.1.2')
+        self.make_snapshot(builder, ['2.1.1'], '2.2.1')
+        self.make_snapshot(builder, ['2.1.2', '2.2.1'], '2.1.3')
+        self.make_snapshot(builder, ['2',  '1.2.3'], '3')
         # .. to bring them all and ... bind them
-        builder.build_snapshot(['3', '2.1.3'],
-                               [], revision_id='4')
+        self.make_snapshot(builder, ['3', '2.1.3'], '4')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()
@@ -254,13 +272,12 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         # | /
         # 3
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),], revision_id='1')
-        builder.build_snapshot(['1'], [], revision_id='1.1.1')
-        builder.build_snapshot(['1', '1.1.1'], [], revision_id='2')
-        builder.build_snapshot(['1.1.1'], [], revision_id='1.2.1')
-        builder.build_snapshot(['1.1.1', '1.2.1'], [], revision_id='1.1.2')
-        builder.build_snapshot(['2', '1.1.2'], [], revision_id='3')
+        self.make_snapshot(builder, None, '1')
+        self.make_snapshot(builder, ['1'], '1.1.1')
+        self.make_snapshot(builder, ['1', '1.1.1'], '2')
+        self.make_snapshot(builder, ['1.1.1'], '1.2.1')
+        self.make_snapshot(builder, ['1.1.1', '1.2.1'], '1.1.2')
+        self.make_snapshot(builder, ['2', '1.1.2'], '3')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()
@@ -268,11 +285,15 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         return br
 
     def assertIterRevids(self, expected, branch, *args, **kwargs):
+        if kwargs.get('stop_revision_id') is not None:
+            kwargs['stop_revision_id'] = self.revids[kwargs['stop_revision_id']]
+        if kwargs.get('start_revision_id') is not None:
+            kwargs['start_revision_id'] = self.revids[kwargs['start_revision_id']]
         # We don't care about depths and revnos here, only about returning the
         # right revids.
-        revs = list(branch.iter_merge_sorted_revisions(*args, **kwargs))
-        revids = [revid for (revid, depth, revno, eom) in revs]
-        self.assertEqual(expected, revids)
+        revids = [revid for (revid, depth, revno, eom) in
+                  branch.iter_merge_sorted_revisions(*args, **kwargs)]
+        self.assertEqual([self.revids[short] for short in expected], revids)
 
     def test_merge_sorted_starting_at_embedded_merge(self):
         branch = self.make_branch_with_embedded_merges()
