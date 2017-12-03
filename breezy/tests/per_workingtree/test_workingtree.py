@@ -409,17 +409,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('source')
         self.build_tree(['added', 'deleted', 'notadded'],
                         transport=wt.controldir.transport.clone('..'))
-        wt.add('deleted', 'deleted')
+        wt.add('deleted')
         wt.commit('add deleted')
         wt.remove('deleted')
-        wt.add('added', 'added')
+        wt.add('added')
         cloned_dir = wt.controldir.clone('target')
         cloned = cloned_dir.open_workingtree()
         cloned_transport = cloned.controldir.transport.clone('..')
         self.assertFalse(cloned_transport.has('deleted'))
         self.assertTrue(cloned_transport.has('added'))
         self.assertFalse(cloned_transport.has('notadded'))
-        self.assertEqual('added', cloned.path2id('added'))
+        self.assertIsNot(None, cloned.path2id('added'))
         self.assertEqual(None, cloned.path2id('deleted'))
         self.assertEqual(None, cloned.path2id('notadded'))
 
@@ -799,12 +799,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['foo.pyc'])
         # ensure that foo.pyc is ignored
         self.build_tree_contents([('.bzrignore', 'foo.pyc')])
-        tree.add('foo.pyc', 'anid')
+        tree.add('foo.pyc')
+        anid = tree.path2id('foo.pyc')
         tree.lock_read()
         files = sorted(list(tree.list_files()))
         tree.unlock()
         self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
-        self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
+        self.assertEqual((u'foo.pyc', 'V', 'file', anid), files[1][:-1])
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):

@@ -32,6 +32,8 @@ class TestSetRootId(TestCaseWithWorkingTree):
         # deliberately tests concurrent access that isn't possible on windows.
         self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('a-tree')
+        if not tree.supports_setting_file_ids():
+            self.skipTest('format does not support setting file ids')
         # setting the root id allows it to be read via get_root_id.
         root_id = u'\xe5n-id'.encode('utf8')
         tree.lock_write()
@@ -57,6 +59,8 @@ class TestSetRootId(TestCaseWithWorkingTree):
 
     def test_set_root_id(self):
         tree = self.make_branch_and_tree('.')
+        if not tree.supports_setting_file_ids():
+            self.skipTest('format does not support setting file ids')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         orig_root_id = tree.get_root_id()

@@ -58,6 +58,8 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_old_id(self):
         """We can add an old id, as long as it doesn't exist now."""
         tree = self.make_branch_and_tree('.')
+        if not tree.supports_setting_file_ids():
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         file_id = tree.path2id('a')
