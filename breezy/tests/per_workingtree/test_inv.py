@@ -30,14 +30,14 @@ class TestRevert(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('b1')
         wt.lock_tree_write()
         self.addCleanup(wt.unlock)
-        self.assertEqual(len(wt.all_file_ids()), 1)
+        self.assertEqual(len(list(wt.all_versioned_paths())), 1)
         with open('b1/a', 'wb') as f: f.write('a test\n')
         wt.add('a')
-        self.assertEqual(len(wt.all_file_ids()), 2)
+        self.assertEqual(len(list(wt.all_versioned_paths())), 2)
         wt.flush() # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
         wt.revert()
-        self.assertEqual(len(wt.all_file_ids()), 1)
+        self.assertEqual(len(list(wt.all_versioned_paths())), 1)
 
 
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):

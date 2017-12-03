@@ -90,6 +90,9 @@ class MockTree(object):
     def all_file_ids(self):
         return set(self.paths.keys())
 
+    def all_versioned_paths(self):
+        return set(self.paths.values())
+
     def is_executable(self, path, file_id):
         # Not all the files are executable.
         return False
@@ -529,16 +532,13 @@ class BundleTester(object):
                                  % (ancestor,))
 
                 # Now check that the file contents are all correct
-                for inventory_id in old.all_file_ids():
+                for path in old.all_versioned_paths():
                     try:
-                        old_file = old.get_file(old.id2path(inventory_id))
+                        old_file = old.get_file(path)
                     except errors.NoSuchFile:
                         continue
-                    if old_file is None:
-                        continue
                     self.assertEqual(
-                            old_file.read(),
-                            new.get_file(new.id2path(inventory_id)).read())
+                            old_file.read(), new.get_file(path).read())
             finally:
                 new.unlock()
                 old.unlock()

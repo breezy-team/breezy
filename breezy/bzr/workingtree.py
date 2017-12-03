@@ -655,6 +655,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             ret.add(ie.file_id)
         return ret
 
+    def all_versioned_paths(self):
+        return {path for path, ie in self.iter_entries_by_dir()}
+
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
         with self.lock_tree_write():

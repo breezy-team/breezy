@@ -180,7 +180,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         tree.add('')
-        self.assertEqual([tree.path2id('')], list(tree.all_file_ids()))
+        self.assertEqual([''], list(tree.all_versioned_paths()))
         # the root should have been changed to be a new unique root.
         self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
         tree.unlock()

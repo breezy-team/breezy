@@ -32,7 +32,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
-        self.assertEqual(['empty-root-id'], list(tree.all_file_ids()))
+        self.assertEqual([''], list(tree.all_versioned_paths()))
         self.assertEqual(
             [('', 'empty-root-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -47,8 +47,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('b/c')},
-            set(tree.all_file_ids()))
+            {'', 'a', 'b', 'b/c'},
+            set(tree.all_versioned_paths()))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -65,8 +65,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('b/c')},
-            set(tree.all_file_ids()))
+            {'', 'a', 'b', 'b/c'},
+            set(tree.all_versioned_paths()))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -83,8 +83,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('b/c')},
-            set(tree.all_file_ids()))
+            {'', 'a', 'b', 'b/c'},
+            set(tree.all_versioned_paths()))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -101,8 +101,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {tree.path2id(''), tree.path2id('b'), tree.path2id('d'), tree.path2id('b/c')},
-            set(tree.all_file_ids()))
+            {'', 'b', 'd', 'b/c'},
+            set(tree.all_versioned_paths()))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -119,8 +119,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {tree.path2id(''), tree.path2id('d'), tree.path2id('b'), tree.path2id('b/c')},
-            set(tree.all_file_ids()))
+            {'', 'd', 'b', 'b/c'},
+            set(tree.all_versioned_paths()))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'b', 'd',  'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -137,8 +137,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            {tree.path2id(''), tree.path2id('a'), tree.path2id('b'), tree.path2id('e')},
-            set(tree.all_file_ids()))
+            {'', 'a', 'b', 'e'},
+            set(tree.all_versioned_paths()))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b',  'e']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
