@@ -516,8 +516,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def all_versioned_paths(self):
         self._must_be_locked()
-        for path, entry in self.root_inventory.iter_entries(recursive=True):
-            yield path
+        return {path for path, entry in
+                    self.root_inventory.iter_entries(recursive=True)}
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
