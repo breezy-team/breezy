@@ -272,12 +272,12 @@ class InterToLocalGitRepository(InterToGitRepository):
             self.source_store.unlock()
         return revidmap, old_refs, new_refs
 
-    def fetch_objects(self, revs, lossy):
+    def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport()
         self.source_store.lock_read()
         try:
-            todo = list(self.missing_revisions(revs))
+            todo = list(self.missing_revisions(revs))[:limit]
             revidmap = {}
             pb = ui.ui_factory.nested_progress_bar()
             try:

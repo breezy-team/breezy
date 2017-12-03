@@ -589,8 +589,9 @@ class LocalGitRepository(GitRepository):
             self._git.get_config().set(("core", ), "bare", "true")
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
-        progress=None):
-        return self._git.fetch_objects(determine_wants, graph_walker, progress)
+        progress=None, limit=None):
+        return self._git.fetch_objects(determine_wants, graph_walker, progress,
+            limit=limit)
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):
