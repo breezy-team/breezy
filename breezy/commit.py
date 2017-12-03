@@ -212,7 +212,8 @@ class Commit(object):
             revprops = {}
         if possible_master_transports is None:
             possible_master_transports = []
-        if not 'branch-nick' in revprops:
+        if (not 'branch-nick' in revprops and
+                branch.repository._format.supports_storing_branch_nick):
             revprops['branch-nick'] = branch._get_nick(
                 local,
                 possible_master_transports)
