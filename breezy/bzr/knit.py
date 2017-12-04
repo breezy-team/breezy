@@ -995,21 +995,6 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             parent_texts, left_matching_blocks, nostore_sha, random_id,
             line_bytes=line_bytes)
 
-    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
-        """See VersionedFiles._add_text()."""
-        self._index._check_write_ok()
-        self._check_add(key, None, random_id, check_content=False)
-        if not isinstance(text, bytes):
-            raise errors.BzrBadParameterUnicode("text")
-        if parents is None:
-            # The caller might pass None if there is no graph data, but kndx
-            # indexes can't directly store that, so we give them
-            # an empty tuple instead.
-            parents = ()
-        return self._add(key, None, parents,
-            None, None, nostore_sha, random_id,
-            line_bytes=text)
-
     def _add(self, key, lines, parents, parent_texts,
         left_matching_blocks, nostore_sha, random_id,
         line_bytes):

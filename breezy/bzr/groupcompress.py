@@ -1305,24 +1305,6 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                                                nostore_sha=nostore_sha))[0]
         return sha1, length, None
 
-    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
-        """See VersionedFiles._add_text()."""
-        self._index._check_write_ok()
-        self._check_add(key, None, random_id, check_content=False)
-        if not isinstance(text, bytes):
-            raise errors.BzrBadParameterUnicode("text")
-        if parents is None:
-            # The caller might pass None if there is no graph data, but kndx
-            # indexes can't directly store that, so we give them
-            # an empty tuple instead.
-            parents = ()
-        # double handling for now. Make it work until then.
-        length = len(text)
-        record = FulltextContentFactory(key, parents, None, text)
-        sha1 = list(self._insert_record_stream([record], random_id=random_id,
-                                               nostore_sha=nostore_sha))[0]
-        return sha1, length, None
-
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
 
