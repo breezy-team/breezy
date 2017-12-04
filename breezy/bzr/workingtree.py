@@ -32,9 +32,12 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
+from bisect import bisect_left
 import breezy
 import collections
 import errno
+import itertools
+import operator
 import os
 import stat
 import sys
@@ -651,6 +654,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         for path, ie in self.iter_entries_by_dir():
             ret.add(ie.file_id)
         return ret
+
+    def all_versioned_paths(self):
+        return {path for path, ie in self.iter_entries_by_dir()}
 
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
@@ -1500,6 +1506,127 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             for subf in fl:
                 subp = osutils.pathjoin(path, subf)
                 yield subp
+
+    def walkdirs(self, prefix=""):
+        """Walk the directories of this tree.
+
+        returns a generator which yields items in the form:
+                ((curren_directory_path, fileid),
+                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                   file1_kind), ... ])
+
+        This API returns a generator, which is only valid during the current
+        tree transaction - within a single lock_read or lock_write duration.
+
+        If the tree is not locked, it may cause an error to be raised,
+        depending on the tree implementation.
+        """
+        disk_top = self.abspath(prefix)
+        if disk_top.endswith('/'):
+            disk_top = disk_top[:-1]
+        top_strip_len = len(disk_top) + 1
+        inventory_iterator = self._walkdirs(prefix)
+        disk_iterator = osutils.walkdirs(disk_top, prefix)
+        try:
+            current_disk = next(disk_iterator)
+            disk_finished = False
+        except OSError as e:
+            if not (e.errno == errno.ENOENT or
+                (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
+                raise
+            current_disk = None
+            disk_finished = True
+        try:
+            current_inv = next(inventory_iterator)
+            inv_finished = False
+        except StopIteration:
+            current_inv = None
+            inv_finished = True
+        while not inv_finished or not disk_finished:
+            if current_disk:
+                ((cur_disk_dir_relpath, cur_disk_dir_path_from_top),
+                    cur_disk_dir_content) = current_disk
+            else:
+                ((cur_disk_dir_relpath, cur_disk_dir_path_from_top),
+                    cur_disk_dir_content) = ((None, None), None)
+            if not disk_finished:
+                # strip out .bzr dirs
+                if (cur_disk_dir_path_from_top[top_strip_len:] == '' and
+                    len(cur_disk_dir_content) > 0):
+                    # osutils.walkdirs can be made nicer -
+                    # yield the path-from-prefix rather than the pathjoined
+                    # value.
+                    bzrdir_loc = bisect_left(cur_disk_dir_content,
+                        ('.bzr', '.bzr'))
+                    if (bzrdir_loc < len(cur_disk_dir_content)
+                        and self.controldir.is_control_filename(
+                            cur_disk_dir_content[bzrdir_loc][0])):
+                        # we dont yield the contents of, or, .bzr itself.
+                        del cur_disk_dir_content[bzrdir_loc]
+            if inv_finished:
+                # everything is unknown
+                direction = 1
+            elif disk_finished:
+                # everything is missing
+                direction = -1
+            else:
+                direction = cmp(current_inv[0][0], cur_disk_dir_relpath)
+            if direction > 0:
+                # disk is before inventory - unknown
+                dirblock = [(relpath, basename, kind, stat, None, None) for
+                    relpath, basename, kind, stat, top_path in
+                    cur_disk_dir_content]
+                yield (cur_disk_dir_relpath, None), dirblock
+                try:
+                    current_disk = next(disk_iterator)
+                except StopIteration:
+                    disk_finished = True
+            elif direction < 0:
+                # inventory is before disk - missing.
+                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                    for relpath, basename, dkind, stat, fileid, kind in
+                    current_inv[1]]
+                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                try:
+                    current_inv = next(inventory_iterator)
+                except StopIteration:
+                    inv_finished = True
+            else:
+                # versioned present directory
+                # merge the inventory and disk data together
+                dirblock = []
+                for relpath, subiterator in itertools.groupby(sorted(
+                    current_inv[1] + cur_disk_dir_content,
+                    key=operator.itemgetter(0)), operator.itemgetter(1)):
+                    path_elements = list(subiterator)
+                    if len(path_elements) == 2:
+                        inv_row, disk_row = path_elements
+                        # versioned, present file
+                        dirblock.append((inv_row[0],
+                            inv_row[1], disk_row[2],
+                            disk_row[3], inv_row[4],
+                            inv_row[5]))
+                    elif len(path_elements[0]) == 5:
+                        # unknown disk file
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], path_elements[0][2],
+                            path_elements[0][3], None, None))
+                    elif len(path_elements[0]) == 6:
+                        # versioned, absent file.
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], 'unknown', None,
+                            path_elements[0][4], path_elements[0][5]))
+                    else:
+                        raise NotImplementedError('unreachable code')
+                yield current_inv[0], dirblock
+                try:
+                    current_inv = next(inventory_iterator)
+                except StopIteration:
+                    inv_finished = True
+                try:
+                    current_disk = next(disk_iterator)
+                except StopIteration:
+                    disk_finished = True
 
     def _walkdirs(self, prefix=""):
         """Walk the directories of this tree.

@@ -409,17 +409,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('source')
         self.build_tree(['added', 'deleted', 'notadded'],
                         transport=wt.controldir.transport.clone('..'))
-        wt.add('deleted', 'deleted')
+        wt.add('deleted')
         wt.commit('add deleted')
         wt.remove('deleted')
-        wt.add('added', 'added')
+        wt.add('added')
         cloned_dir = wt.controldir.clone('target')
         cloned = cloned_dir.open_workingtree()
         cloned_transport = cloned.controldir.transport.clone('..')
         self.assertFalse(cloned_transport.has('deleted'))
         self.assertTrue(cloned_transport.has('added'))
         self.assertFalse(cloned_transport.has('notadded'))
-        self.assertEqual('added', cloned.path2id('added'))
+        self.assertIsNot(None, cloned.path2id('added'))
         self.assertEqual(None, cloned.path2id('deleted'))
         self.assertEqual(None, cloned.path2id('notadded'))
 
@@ -799,12 +799,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['foo.pyc'])
         # ensure that foo.pyc is ignored
         self.build_tree_contents([('.bzrignore', 'foo.pyc')])
-        tree.add('foo.pyc', 'anid')
+        tree.add('foo.pyc')
+        anid = tree.path2id('foo.pyc')
         tree.lock_read()
         files = sorted(list(tree.list_files()))
         tree.unlock()
         self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
-        self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
+        self.assertEqual((u'foo.pyc', 'V', 'file', anid), files[1][:-1])
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
@@ -884,7 +885,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertEqual('foo-id', tree.path2id('foo/'))
         else:
             tree.add(['foo'])
-            self.assertIsInstance(str, tree.path2id('foo'))
+            if tree.branch.repository._format.supports_versioned_directories:
+                self.assertIsInstance(str, tree.path2id('foo'))
+            else:
+                self.skipTest('format does not support versioning directories')
 
     def test_filter_unversioned_files(self):
         # smoke test for filter_unversioned_files
@@ -1020,8 +1024,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a', 'b'])
         os.unlink('tree/a')
         self.assertEqual(
-                {tree.path2id('a'), tree.path2id('b'), tree.get_root_id()},
-                tree.all_file_ids())
+                {'a', 'b', ''},
+                set(tree.all_versioned_paths()))
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)
@@ -1067,26 +1071,24 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         format = self.workingtree_format.get_controldir_for_branch()
         builder = self.make_branch_builder(".", format=format)
         builder.start_series()
+        revids = {}
         # mainline
-        builder.build_snapshot(
+        revids['1'] = builder.build_snapshot(
             None,
             [('add', ('', 'root-id', 'directory', '')),
-             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))],
-            revision_id='1')
+             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))])
         # branch
-        builder.build_snapshot(['1'], [], revision_id='2')
-        builder.build_snapshot(
-            ['2'],
-            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))],
-            revision_id='4')
+        revids['2'] = builder.build_snapshot([revids['1']], [])
+        revids['4'] = builder.build_snapshot(
+            [revids['1']],
+            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))])
         # master
-        builder.build_snapshot(['1'], [], revision_id='3')
-        builder.build_snapshot(
-            ['3'],
-            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))],
-            revision_id='5')
+        revids['3'] = builder.build_snapshot([revids['1']], [])
+        revids['5'] = builder.build_snapshot(
+            [revids['3']],
+            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))])
         builder.finish_series()
-        return builder, builder._branch.last_revision()
+        return (builder, builder._branch.last_revision(), revids)
 
     def make_checkout_and_master(self, builder, wt_path, master_path, wt_revid,
                                  master_revid=None, branch_revid=None):
@@ -1128,27 +1130,28 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
 
         And the changes in 4 have been removed from the WT.
         """
-        builder, tip = self.make_diverged_master_branch()
+        builder, tip, revids = self.make_diverged_master_branch()
         wt, master = self.make_checkout_and_master(
-            builder, 'checkout', 'master', '4',
-            master_revid=tip, branch_revid='2')
+            builder, 'checkout', 'master', revids['4'],
+            master_revid=tip, branch_revid=revids['2'])
         # First update the branch
         old_tip = wt.branch.update()
-        self.assertEqual('2', old_tip)
+        self.assertEqual(revids['2'], old_tip)
         # No conflicts should occur
         self.assertEqual(0, wt.update(old_tip=old_tip))
         # We are in sync with the master
         self.assertEqual(tip, wt.branch.last_revision())
         # We have the right parents ready to be committed
-        self.assertEqual(['5', '2'], wt.get_parent_ids())
+        self.assertEqual([revids['5'], revids['2']],
+                         wt.get_parent_ids())
 
     def test_update_revision(self):
-        builder, tip = self.make_diverged_master_branch()
+        builder, tip, revids = self.make_diverged_master_branch()
         wt, master = self.make_checkout_and_master(
-            builder, 'checkout', 'master', '4',
-            master_revid=tip, branch_revid='2')
-        self.assertEqual(0, wt.update(revision='1'))
-        self.assertEqual('1', wt.last_revision())
+            builder, 'checkout', 'master', revids['4'],
+            master_revid=tip, branch_revid=revids['2'])
+        self.assertEqual(0, wt.update(revision=revids['1']))
+        self.assertEqual(revids['1'], wt.last_revision())
         self.assertEqual(tip, wt.branch.last_revision())
         self.assertPathExists('checkout/file1')
         self.assertPathDoesNotExist('checkout/file4')

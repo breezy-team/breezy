@@ -37,12 +37,15 @@ class TestRevProps(TestCaseWithRepository):
         rev = b.repository.get_revision(rev1)
         self.assertTrue('flavor' in rev.properties)
         self.assertEqual(rev.properties['flavor'], 'choc-mint')
-        self.assertEqual([('branch-nick', 'Nicholas'),
-                           ('condiment', 'orange\n  mint\n\tcandy'),
-                           ('empty', ''),
-                           ('flavor', 'choc-mint'),
-                           ('non_ascii', u'\xb5'),
-                          ], sorted(rev.properties.items()))
+        expected_revprops = {
+            'condiment': 'orange\n  mint\n\tcandy',
+            'empty': '',
+            'flavor': 'choc-mint',
+            'non_ascii': u'\xb5',
+            }
+        if b.repository._format.supports_storing_branch_nick:
+            expected_revprops['branch-nick'] = 'Nicholas'
+        self.assertEqual(expected_revprops, rev.properties)
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""
@@ -84,7 +87,9 @@ class TestRevisionAttributes(TestCaseWithRepository):
                      timestamp=rev_a.timestamp,
                      timezone=rev_a.timezone,
                      committer=rev_a.committer,
-                     rev_id=rev_a.revision_id,
+                     rev_id=(rev_a.revision_id
+                         if tree2.branch.repository._format.supports_setting_revision_ids
+                         else None),
                      revprops=rev_a.properties,
                      allow_pointless=True, # there's nothing in this commit
                      strict=True,

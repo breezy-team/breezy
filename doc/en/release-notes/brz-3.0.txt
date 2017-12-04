@@ -210,6 +210,12 @@ API Changes
    doesn't support passing revision ids to ``CommitBuilder.commit``.
    (Jelmer Vernooĳ)
 
+ * A new ``RepositoryFormat.supports_overriding_transport`` property
+   has been added that can be set to False to indicate a repository
+   doesn't support passing an alternative transport to
+   ``RepositoryFormat.open``.
+   (Jelmer Vernooĳ)
+
  * ``Repository.print_file`` and ``Branch.print_file`` have been removed.
    (Jelmer Vernooĳ)
 

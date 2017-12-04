@@ -308,8 +308,8 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                     remote_repo.dont_leave_lock_in_place()
             else:
                 remote_repo.lock_write()
-            policy = _mod_bzrdir.UseExistingRepository(remote_repo, final_stack,
-                final_stack_pwd, require_stacking)
+            policy = _mod_bzrdir.UseExistingRepository(remote_repo,
+                    final_stack, final_stack_pwd, require_stacking)
             policy.acquire_repository()
         else:
             remote_repo = None
@@ -942,6 +942,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     _matchingcontroldir = RemoteBzrDirFormat()
     supports_full_versioned_files = True
     supports_leaving_lock = True
+    supports_overriding_transport = False
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)

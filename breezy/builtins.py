@@ -2443,12 +2443,11 @@ class cmd_added(Command):
         basis = wt.basis_tree()
         self.add_cleanup(basis.lock_read().unlock)
         root_id = wt.get_root_id()
-        for file_id in wt.all_file_ids():
-            if basis.has_id(file_id):
+        for path in wt.all_versioned_paths():
+            if basis.has_filename(path):
                 continue
-            if root_id == file_id:
+            if path == u'':
                 continue
-            path = wt.id2path(file_id)
             if not os.access(osutils.pathjoin(wt.basedir, path), os.F_OK):
                 continue
             if null:

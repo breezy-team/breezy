@@ -116,29 +116,31 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
             self.fail("didn't get expected exception")
 
     def test_merge_tags(self):
-        b1 = self.make_branch_with_revisions('b1', ['revid', 'revid-1'])
-        b2 = self.make_branch_with_revisions('b2', ['revid', 'revid-2'])
+        b1, [revid, revid1] = self.make_branch_with_revision_tuple('b1', 2)
+        w2 = b1.controldir.sprout('b2', revision_id=revid).open_workingtree()
+        revid2 = w2.commit('revision 2')
+        b2 = w2.branch
         # if there are tags in the source and not the destination, then they
         # just go across
-        b1.tags.set_tag('tagname', 'revid')
+        b1.tags.set_tag('tagname', revid)
         b1.tags.merge_to(b2.tags)
-        self.assertEqual(b2.tags.lookup_tag('tagname'), 'revid')
+        self.assertEqual(b2.tags.lookup_tag('tagname'), revid)
         # if a tag is in the destination and not in the source, it is not
         # removed when we merge them
-        b2.tags.set_tag('in-destination', 'revid')
+        b2.tags.set_tag('in-destination', revid)
         updates, conflicts = b1.tags.merge_to(b2.tags)
         self.assertEqual(list(conflicts), [])
         self.assertEqual(updates, {})
-        self.assertEqual(b2.tags.lookup_tag('in-destination'), 'revid')
+        self.assertEqual(b2.tags.lookup_tag('in-destination'), revid)
         # if there's a conflicting tag, it's reported -- the command line
         # interface will say "these tags couldn't be copied"
-        b1.tags.set_tag('conflicts', 'revid-1')
-        b2.tags.set_tag('conflicts', 'revid-2')
+        b1.tags.set_tag('conflicts', revid1)
+        b2.tags.set_tag('conflicts', revid2)
         updates, conflicts = b1.tags.merge_to(b2.tags)
-        self.assertEqual(list(conflicts), [('conflicts', 'revid-1', 'revid-2')])
+        self.assertEqual(list(conflicts), [('conflicts', revid1, revid2)])
         # and it keeps the same value
         self.assertEqual(updates, {})
-        self.assertEqual(b2.tags.lookup_tag('conflicts'), 'revid-2')
+        self.assertEqual(b2.tags.lookup_tag('conflicts'), revid2)
 
     def test_unicode_tag(self):
         tag_name = u'\u3070'
@@ -238,7 +240,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def test_merge_to_invalides_cache(self):
         b1, revids = self.make_write_locked_branch_with_one_tag()
-        b2 = self.make_branch_with_revisions('b2', [revids[1], revids[0]])
+        b2 = b1.controldir.sprout('b2').open_branch()
         b2.tags.set_tag('two', revids[1])
         b2.tags.merge_to(b1.tags)
         self.assertEqual(
@@ -468,7 +470,7 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
         self.builder = self.make_branch_builder('.')
         self.builder.build_snapshot(None,
             [('add', ('', None, 'directory', None))],
-            message='foo', revision_id='foo')
+            message='foo')
         self.branch = self.builder.get_branch()
         if not self.branch._format.supports_tags():
             raise tests.TestSkipped(
