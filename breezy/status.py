@@ -84,7 +84,7 @@ def report_changes(to_file, old, new, specific_files,
                            classify=classify)
 
 
-def show_tree_status(wt, show_unchanged=None,
+def show_tree_status(wt,
                      specific_files=None,
                      show_ids=False,
                      to_file=None,
@@ -127,10 +127,6 @@ def show_tree_status(wt, show_unchanged=None,
     :param show_long_callback: A callback: message = show_long_callback(to_file, delta,
         show_ids, show_unchanged, indent, filter), only used with the long output
     """
-    if show_unchanged is not None:
-        warn("show_tree_status with show_unchanged has been deprecated "
-             "since breezy 0.9", DeprecationWarning, stacklevel=2)
-
     if to_file is None:
         to_file = sys.stdout
 
