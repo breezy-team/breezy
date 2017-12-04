@@ -146,6 +146,9 @@ Bug Fixes
 * Support automatic rename tracking into new directories.
   (mnn, #373319)
 
+* Avoid writing directly to sys.stdout, but use self.outf in
+  Command implementations instead. (#268573, B. Clausius)
+
 Documentation
 *************
 
