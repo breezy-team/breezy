@@ -2370,7 +2370,7 @@ class cmd_diff(Command):
             file_list, revision, old, new, self.add_cleanup, apply_view=True)
         # GNU diff on Windows uses ANSI encoding for filenames
         path_encoding = osutils.get_diff_header_encoding()
-        return show_diff_trees(old_tree, new_tree, sys.stdout,
+        return show_diff_trees(old_tree, new_tree, self.outf,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
@@ -4505,7 +4505,7 @@ class cmd_merge(Command):
         writer = breezy.option.diff_writer_registry.get()
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter(),
-                                   diff_writer=writer(sys.stdout))
+                                   diff_writer=writer(self.outf))
         try:
             shelver.run()
         finally:
@@ -5488,8 +5488,8 @@ class cmd_wait_until_signalled(Command):
     hidden = True
 
     def run(self):
-        sys.stdout.write("running\n")
-        sys.stdout.flush()
+        self.outf.write("running\n")
+        self.outf.flush()
         sys.stdin.readline()
 
 
@@ -6539,7 +6539,7 @@ class cmd_shelve(Command):
         if writer is None:
             writer = breezy.option.diff_writer_registry.get()
         try:
-            shelver = Shelver.from_args(writer(sys.stdout), revision, all,
+            shelver = Shelver.from_args(writer(self.outf), revision, all,
                 file_list, message, destroy=destroy, directory=directory)
             try:
                 shelver.run()
