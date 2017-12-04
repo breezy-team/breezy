@@ -5,10 +5,18 @@
 
 from __future__ import absolute_import
 
-import cPickle
+import codecs
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+import operator
 import os
 import sys
-import thread
+try:
+    import _thread
+except ImportError:
+    import thread as _thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
@@ -107,7 +115,7 @@ class BzrProfiler(object):
     def _thread_profile(self, f, *args, **kwds):
         # we lose the first profile point for a new thread in order to
         # trampoline a new Profile object into place
-        thr = thread.get_ident()
+        thr = _thread.get_ident()
         self._g_threadmap[thr] = p = Profiler()
         # this overrides our sys.setprofile hook:
         p.enable(subcalls=True, builtins=True)
@@ -125,18 +133,19 @@ class Stats(object):
         self.data = data
         self.threads = threads
 
-    def sort(self, crit="inlinetime"):
+    def sort(self, crit="inlinetime", reverse=True):
         """Sort the data by the supplied critera.
 
         :param crit: the data attribute used as the sort key."""
-        if crit not in profiler_entry.__dict__:
+        if crit not in profiler_entry.__dict__ or crit == 'code':
             raise ValueError("Can't sort by %s" % crit)
-        self.data.sort(lambda b, a: cmp(getattr(a, crit),
-                                        getattr(b, crit)))
+
+        key_func = operator.attrgetter(crit)
+        self.data.sort(key=key_func, reverse=reverse)
+
         for e in self.data:
             if e.calls:
-                e.calls.sort(lambda b, a: cmp(getattr(a, crit),
-                                              getattr(b, crit)))
+                e.calls.sort(key=key_func, reverse=reverse)
 
     def pprint(self, top=None, file=None):
         """Pretty-print the data as plain text for human consumption.
@@ -204,17 +213,17 @@ class Stats(object):
                 ext = os.path.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
-        outfile = open(filename, 'wb')
-        try:
+        with open(filename, 'wb') as outfile:
             if format == "callgrind":
-                self.calltree(outfile)
+                # The callgrind format states it is 'ASCII based':
+                # <http://valgrind.org/docs/manual/cl-format.html>
+                # But includes filenames so lets ignore and use UTF-8.
+                self.calltree(codecs.getwriter('utf-8')(outfile))
             elif format == "txt":
-                self.pprint(file=outfile)
+                self.pprint(file=codecs.getwriter('utf-8')(outfile))
             else:
                 self.freeze()
-                cPickle.dump(self, outfile, 2)
-        finally:
-            outfile.close()
+                pickle.dump(self, outfile, 2)
 
 
 class _CallTreeFilter(object):
@@ -314,12 +323,16 @@ def label(code, calltree=False):
         return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
 
 
-if __name__ == '__main__':
-    import os
+def main():
     sys.argv = sys.argv[1:]
     if not sys.argv:
         sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
-    sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
-    stats = sorted(profile(execfile, sys.argv[0], globals(), locals()))
+    import runpy
+    result, stats = profile(runpy.run_path, sys.argv[0], run_name='__main__')
+    stats.sort()
     stats.pprint()
+
+
+if __name__ == '__main__':
+    main()

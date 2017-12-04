@@ -46,7 +46,7 @@ class TestAdd(TestCaseWithWorkingTree):
         """Adding an entry with a pre-existing id raises DuplicateFileId"""
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
-            self.skip("tree does not support setting file ids")
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         self.assertRaises(errors.DuplicateFileId,
@@ -58,6 +58,8 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_old_id(self):
         """We can add an old id, as long as it doesn't exist now."""
         tree = self.make_branch_and_tree('.')
+        if not tree.supports_setting_file_ids():
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         file_id = tree.path2id('a')
@@ -103,7 +105,7 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_subdir_with_ids(self):
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
-            self.skip("tree does not support setting file ids")
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['dir'], ['dir-id'])
         tree.add(['dir/subdir'], ['subdir-id'])
@@ -143,7 +145,7 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_multiple_with_file_ids(self):
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
-            self.skip("tree does not support setting file ids")
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'],
                  ['a-id', 'b-id', 'dir-id', 'subdir-id', 'foo-id'])
@@ -178,7 +180,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         tree.add('')
-        self.assertEqual([tree.path2id('')], list(tree.all_file_ids()))
+        self.assertEqual([''], list(tree.all_versioned_paths()))
         # the root should have been changed to be a new unique root.
         self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
         tree.unlock()
@@ -196,7 +198,7 @@ class TestAdd(TestCaseWithWorkingTree):
         # adding a path that was previously added should work
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
-            self.skip("tree does not support setting file ids")
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['foo'])
         tree.add(['foo'], ['foo-id'])
         tree.unversion(['foo'])
@@ -217,7 +219,7 @@ class TestAdd(TestCaseWithWorkingTree):
         # adding a path that was present in the basis should work.
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
-            self.skip("tree does not support setting file ids")
+            self.skipTest("tree does not support setting file ids")
         self.build_tree(['foo'])
         tree.add(['foo'], ['foo-id'])
         tree.commit('add foo')

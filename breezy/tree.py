@@ -166,6 +166,10 @@ class Tree(object):
         """Iterate through all file ids, including ids for missing files."""
         raise NotImplementedError(self.all_file_ids)
 
+    def all_versioned_paths(self):
+        """Iterate through all paths, including paths for missing files."""
+        raise NotImplementedError(self.all_versioned_paths)
+
     def id2path(self, file_id):
         """Return the path for a file id.
 

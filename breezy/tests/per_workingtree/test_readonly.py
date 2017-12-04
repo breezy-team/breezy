@@ -109,8 +109,8 @@ class TestReadonly(TestCaseWithWorkingTree):
             if hack_dirstate:
                 tree._dirstate._sha_cutoff_time = self._custom_cutoff_time
             # Make sure we check all the files
-            for file_id in tree.all_file_ids():
-                size = tree.get_file_size(tree.id2path(file_id))
-                sha1 = tree.get_file_sha1(tree.id2path(file_id))
+            for path in tree.all_versioned_paths():
+                size = tree.get_file_size(path)
+                sha1 = tree.get_file_sha1(path)
         finally:
             tree.unlock()

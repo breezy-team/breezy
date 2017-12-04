@@ -204,6 +204,9 @@ class InventoryTree(Tree):
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 
+    def all_versioned_paths(self):
+        return {path for path, entry in self.iter_entries_by_dir()}
+
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
 

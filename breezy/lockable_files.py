@@ -292,7 +292,7 @@ class TransportLock(object):
     def create(self, mode=None):
         """Create lock mechanism"""
         # for old-style locks, create the file now
-        self._transport.put_bytes(self._escaped_name, '',
+        self._transport.put_bytes(self._escaped_name, b'',
                             mode=self._file_modebits)
 
     def validate_token(self, token):

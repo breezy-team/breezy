@@ -69,7 +69,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def assertFormatAttribute(self, attribute, allowed_values):
         """Assert that the format has an attribute 'attribute'."""
         repo = self.make_repository('repo')
-        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+        self.assertIn(getattr(repo._format, attribute), allowed_values)
 
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
@@ -118,13 +118,32 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_setting_revision_ids',
             (True, False))
 
+    def test_attribute_format_supports_storing_branch_nick(self):
+        self.assertFormatAttribute('supports_storing_branch_nick',
+            (True, False))
+
+    def test_attribute_format_supports_overriding_transport(self):
+        repo = self.make_repository('repo')
+        self.assertIn(repo._format.supports_overriding_transport, (True, False))
+
+        repo.control_transport.copy_tree('.', '../repository.backup')
+        backup_transport = repo.control_transport.clone('../repository.backup')
+        if repo._format.supports_overriding_transport:
+            backup = repo._format.open(
+                    repo.controldir,
+                    _override_transport=backup_transport)
+            self.assertIs(backup_transport, backup.control_transport)
+        else:
+            self.assertRaises(TypeError, repo._format.open,
+                    repo.controldir, _override_transport=backup_transport)
+
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
-        self.assertSubset([repo._format.is_deprecated()], (True, False))
+        self.assertIn(repo._format.is_deprecated(), (True, False))
 
     def test_format_is_supported(self):
         repo = self.make_repository('repo')
-        self.assertSubset([repo._format.is_supported()], (True, False))
+        self.assertIn(repo._format.is_supported(), (True, False))
 
     def test_clone_to_default_format(self):
         #TODO: Test that cloning a repository preserves all the information
@@ -368,8 +387,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_format_supports_external_lookups(self):
         repo = self.make_repository('.')
-        self.assertSubset(
-            [repo._format.supports_external_lookups], (True, False))
+        self.assertIn(repo._format.supports_external_lookups, (True, False))
 
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
@@ -568,24 +586,23 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_add_signature_text(self):
         builder = self.make_branch_builder('.')
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
+        rev_a = builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()
         self.addCleanup(b.unlock)
         if b.repository._format.supports_revision_signatures:
             b.repository.start_write_group()
-            b.repository.add_signature_text('A', 'This might be a signature')
+            b.repository.add_signature_text(rev_a, 'This might be a signature')
             b.repository.commit_write_group()
             self.assertEqual('This might be a signature',
-                             b.repository.get_signature_text('A'))
+                             b.repository.get_signature_text(rev_a))
         else:
             b.repository.start_write_group()
             self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
-                b.repository.add_signature_text, 'A',
+                b.repository.add_signature_text, rev_a,
                 'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository

@@ -191,7 +191,7 @@ class LocalTransport(transport.Transport):
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                'raw_bytes must be bytes, not %s' % type(raw_bytes))
         path = relpath
         try:
             path = self._abspath(relpath)
