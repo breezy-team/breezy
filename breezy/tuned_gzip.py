@@ -22,7 +22,7 @@ from __future__ import absolute_import
 import struct
 import zlib
 
-__all__ = ["bytes_to_gzip", "chunks_to_gzip"]
+__all__ = ["chunks_to_gzip"]
 
 
 def U32(i):
@@ -38,14 +38,6 @@ def U32(i):
 def LOWU32(i):
     """Return the low-order 32 bits of an int, as a non-negative int."""
     return i & 0xFFFFFFFF
-
-
-def bytes_to_gzip(bytes, factory=zlib.compressobj,
-    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
-    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
-    crc32=zlib.crc32):
-    """Create a gzip file containing bytes and return its content."""
-    return chunks_to_gzip([bytes])
 
 
 def chunks_to_gzip(chunks, factory=zlib.compressobj,

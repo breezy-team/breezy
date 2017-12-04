@@ -32,9 +32,7 @@ class TestToGzip(tests.TestCase):
     def assertToGzip(self, chunks):
         raw_bytes = b''.join(chunks)
         gzfromchunks = tuned_gzip.chunks_to_gzip(chunks)
-        gzfrombytes = tuned_gzip.bytes_to_gzip(raw_bytes)
-        self.assertEqual(gzfrombytes, gzfromchunks)
-        decoded = gzip.GzipFile(fileobj=BytesIO(gzfromchunks)).read()
+        decoded = gzip.GzipFile(fileobj=BytesIO(b''.join(gzfromchunks))).read()
         lraw, ldecoded = len(raw_bytes), len(decoded)
         self.assertEqual(lraw, ldecoded,
                          'Expecting data length %d, got %d' % (lraw, ldecoded))
