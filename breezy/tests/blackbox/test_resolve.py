@@ -18,7 +18,10 @@ from breezy import (
     conflicts,
     tests,
     )
-from breezy.tests import script
+from breezy.tests import (
+    script,
+    KnownFailure,
+    )
 from breezy.tests.blackbox import test_conflicts
 
 
@@ -71,6 +74,61 @@ $ brz resolve -d branch --all
 2>3 conflicts resolved, 0 remaining
 $ brz conflicts -d branch
 """)
+
+    def test_bug_842575_manual_rm(self):
+        self.run_script("""\
+$ brz init -q trunk
+$ echo original > trunk/foo
+$ brz add -q trunk/foo
+$ brz commit -q -m first trunk
+$ brz checkout -q trunk tree
+$ brz rm -q trunk/foo
+$ brz commit -q -m second trunk
+$ echo modified > tree/foo
+$ brz update tree
+2>RM  foo => foo.THIS
+2>Contents conflict in foo
+2>1 conflicts encountered.
+2>Updated to revision 2 of branch ...
+$ rm tree/foo.BASE tree/foo.THIS
+$ brz resolve --all -d tree
+2>1 conflict resolved, 0 remaining
+""")
+        try:
+            self.run_script("""\
+$ brz status tree
+""")
+        except AssertionError:
+            raise KnownFailure("bug #842575")
+
+    def test_bug_842575_take_other(self):
+        self.run_script("""\
+$ brz init -q trunk
+$ echo original > trunk/foo
+$ brz add -q trunk/foo
+$ brz commit -q -m first trunk
+$ brz checkout -q --lightweight trunk tree
+$ brz rm -q trunk/foo
+$ brz ignore -d trunk foo
+$ brz commit -q -m second trunk
+$ echo modified > tree/foo
+$ brz update tree
+2>+N  .bzrignore
+2>RM  foo => foo.THIS
+2>Contents conflict in foo
+2>1 conflicts encountered.
+2>Updated to revision 2 of branch ...
+$ brz resolve --take-other --all -d tree
+2>1 conflict resolved, 0 remaining
+""")
+        try:
+            self.run_script("""\
+$ brz status tree
+$ echo mustignore > tree/foo
+$ brz status tree
+""")
+        except AssertionError:
+            raise KnownFailure("bug 842575")
 
 
 class TestBug788000(script.TestCaseWithTransportAndScript):
