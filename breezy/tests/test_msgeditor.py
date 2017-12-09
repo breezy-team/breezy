@@ -204,7 +204,7 @@ if len(sys.argv) == 2:
             os.chmod('fed.py', 0o755)
             self.overrideEnv('BRZ_EDITOR', './fed.py')
 
-    def test_edit_commit_message(self):
+    def test_edit_commit_message_without_infotext(self):
         working_tree = self.make_uncommitted_tree()
         self.make_fake_editor()
 
@@ -212,9 +212,17 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(''))
 
+    def test_edit_commit_message_with_ascii_infotext(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message with ascii string infotext')
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message('spam'))
+
+    def test_edit_commit_message_with_unicode_infotext(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
 
         mutter('edit_commit_message with unicode infotext')
         self.assertEqual('test message from fed\n',
