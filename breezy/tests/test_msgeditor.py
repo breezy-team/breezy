@@ -40,6 +40,7 @@ from . import (
     TestSkipped,
     multiply_tests,
     probe_bad_non_ascii,
+    probe_unicode_in_user_encoding,
     split_suite_by_re,
     )
 from .EncodingAdapter import encoding_scenarios
@@ -225,8 +226,14 @@ if len(sys.argv) == 2:
         self.make_fake_editor()
 
         mutter('edit_commit_message with unicode infotext')
+        uni_val, ue_val = probe_unicode_in_user_encoding()
+        if ue_val is None:
+            raise TestSkipped(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+
         self.assertEqual('test message from fed\n',
-                         msgeditor.edit_commit_message(u'\u1234'))
+                         msgeditor.edit_commit_message(uni_val))
 
         tmpl = edit_commit_message_encoded(u'\u1234'.encode("utf8"))
         self.assertEqual('test message from fed\n', tmpl)
