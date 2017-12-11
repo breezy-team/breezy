@@ -141,14 +141,14 @@ class BisectCurrentUnitTests(BisectTestCase):
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
         sio = StringIO()
-        bisect.BisectCurrent(self.tree.controldir).show_rev_log(out=sio)
+        bisect.BisectCurrent(self.tree.controldir).show_rev_log(outf=sio)
 
     def testShowLogSubtree(self):
         """Test that a subtree's log can be shown."""
         current = bisect.BisectCurrent(self.tree.controldir)
         current.switch(self.subtree_rev)
         sio = StringIO()
-        current.show_rev_log(out=sio)
+        current.show_rev_log(outf=sio)
 
     def testSwitchVersions(self):
         """Test switching versions."""
