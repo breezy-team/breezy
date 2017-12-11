@@ -1374,18 +1374,6 @@ class _BreadthFirstSearcher(object):
         included_keys = self.seen.difference(excludes)
         return self._started_keys, excludes, included_keys
 
-    def _get_result(self):
-        """Get a SearchResult for the current state of this searcher.
-
-        :return: A SearchResult for this search so far. The SearchResult is
-            static - the search can be advanced and the search result will not
-            be invalidated or altered.
-        """
-        from breezy.vf_search import SearchResult
-        (started_keys, excludes, included_keys) = self.get_state()
-        return SearchResult(started_keys, excludes, len(included_keys),
-            included_keys)
-
     def step(self):
         try:
             return next(self)
