@@ -18,6 +18,7 @@ import os
 
 from .. import (
     errors,
+    ignores,
     osutils,
     shelf,
     tests,
@@ -29,6 +30,10 @@ from ..bzr import (
     )
 from . import (
     features,
+    KnownFailure,
+    )
+from ..errors import (
+    MalformedTransform,
     )
 
 
@@ -225,6 +230,29 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_change(('add file', 'bar-id', 'directory', 'bar'))
         creator.transform()
         self.check_shelve_creation(creator, tree)
+
+    def test_shelve_directory_with_ignored(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('Empty tree')
+        self.build_tree_contents([('foo', 'a\n'), ('bar/',), ('bar/ignored','ign\n')])
+        tree.add(['foo', 'bar'], ['foo-id', 'bar-id'])
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('add file', 'bar-id', 'directory', 'bar'),
+                          ('add file', 'foo-id', 'file', 'foo')],
+                          sorted(list(creator.iter_shelvable())))
+        ignores._set_user_ignores([])
+        in_patterns = ['ignored',]
+        ignores.add_unique_user_ignores(in_patterns)
+
+        creator.shelve_change(('add file', 'bar-id', 'directory', 'bar'))
+        try:
+            creator.transform()
+            self.check_shelve_creation(creator, tree)
+        except MalformedTransform:
+            raise KnownFailure('shelving directory with ignored file: see bug #611739')
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
