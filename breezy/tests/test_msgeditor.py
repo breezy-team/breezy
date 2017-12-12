@@ -37,7 +37,6 @@ from . import (
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
-    TestSkipped,
     multiply_tests,
     probe_bad_non_ascii,
     probe_unicode_in_user_encoding,
@@ -64,7 +63,7 @@ class MsgEditorTest(TestCaseWithTransport):
         try:
             self.build_tree_contents([(filename, 'contents of hello')])
         except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
+            self.skipTest("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
@@ -228,7 +227,7 @@ if len(sys.argv) == 2:
         mutter('edit_commit_message with unicode infotext')
         uni_val, ue_val = probe_unicode_in_user_encoding()
         if ue_val is None:
-            raise TestSkipped(
+            self.skipTest(
                 'Cannot find a unicode character that works in encoding %s'
                 % (osutils.get_user_encoding(),))
 
@@ -348,7 +347,7 @@ if len(sys.argv) == 2:
         # in default user encoding
         char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
-            raise TestSkipped('Cannot find suitable non-ascii character '
+            self.skipTest('Cannot find suitable non-ascii character '
                 'for user_encoding (%s)' % osutils.get_user_encoding())
 
         self.make_fake_editor(message=char)
