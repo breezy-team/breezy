@@ -32,7 +32,7 @@ from . import (
     features,
     KnownFailure,
     )
-from .errors import (
+from ..errors import (
     MalformedTransform,
     )
 
