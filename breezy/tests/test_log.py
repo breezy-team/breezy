@@ -284,6 +284,37 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual('add file1 and file2', logentry.rev.message)
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
 
+    def test_bug_842695_log_restricted_to_dir(self):
+        # Comments here indicate revision numbers in trunk  # VVVVV
+        trunk = self.make_branch_and_tree('this')
+        trunk.commit('initial trunk')                       # 1
+        adder = trunk.controldir.sprout('adder').open_workingtree()
+        merger = trunk.controldir.sprout('merger').open_workingtree()
+        self.build_tree_contents([
+            ('adder/dir/',),
+            ('adder/dir/file', 'foo'),
+            ])
+        adder.add(['dir', 'dir/file'])
+        adder.commit('added dir')                           # 1.1.1
+        trunk.merge_from_branch(adder.branch)
+        trunk.commit('merged adder into trunk')             # 2
+        merger.merge_from_branch(trunk.branch)
+        merger.commit('merged trunk into merger')           # 1.2.1
+        # Commits are processed in increments of 200 revisions, so
+        # make sure the two merges into trunk are in different chunks.
+        for i in xrange(200):
+            trunk.commit('intermediate commit %d' % i)      # 3-202
+        trunk.merge_from_branch(merger.branch)
+        trunk.commit('merged merger into trunk')            # 203
+        file_id = trunk.path2id('dir')
+        lf = LogCatcher()
+        lf.supports_merge_revisions = True
+        log.show_log(trunk.branch, lf, file_id)
+        try:
+            self.assertEqual(['2', '1.1.1'], [r.revno for r in lf.revisions])
+        except AssertionError:
+            raise tests.KnownFailure("bug #842695")
+
 
 class TestFormatSignatureValidity(tests.TestCaseWithTransport):
     class UTFLoopbackGPGStrategy(gpg.LoopbackGPGStrategy):
