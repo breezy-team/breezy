@@ -49,6 +49,7 @@ from dulwich.repo import Repo
 
 from .mapping import (
     entry_mode,
+    fix_person_identifier,
     )
 
 
@@ -198,8 +199,8 @@ class GitCommitBuilder(CommitBuilder):
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
         c.encoding = 'utf-8'
-        c.committer = self._committer.encode(c.encoding)
-        c.author = self._revprops.pop('author', self._committer).encode(c.encoding)
+        c.committer = fix_person_identifier(self._committer.encode(c.encoding))
+        c.author = fix_person_identifier(self._revprops.pop('author', self._committer).encode(c.encoding))
         if c.author != c.committer:
             self._revprops.remove("author")
         if self._revprops:
