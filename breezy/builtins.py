@@ -1010,8 +1010,6 @@ class cmd_cp(Command):
         for file_name in rel_names[0:-1]:
             if file_name == '':
                 raise errors.BzrCommandError(gettext("can not copy root of branch"))
-        if tree is None:
-            PNIC
         self.add_cleanup(tree.lock_tree_write().unlock)
         into_existing = osutils.isdir(names_list[-1])
         if not into_existing:
