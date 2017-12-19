@@ -991,7 +991,8 @@ class cmd_cp(Command):
     are copied into it.  Otherwise, there must be exactly two arguments
     and the file is copied to a new name.
 
-    Files cannot be copied between branches.
+    Files cannot be copied between branches. Only files can be copied
+    at the moment.
     """
 
     takes_args = ['names*']
@@ -1025,7 +1026,6 @@ class cmd_cp(Command):
             pairs = [(n, osutils.joinpath([rel_names[-1], osutils.basename(n)]))
                      for n in rel_names[:-1]]
 
-        # TODO(jelmer): Ask the tree to make the copy
         for src, dst in pairs:
             try:
                 src_kind = tree.stored_kind(src)
@@ -1054,6 +1054,7 @@ class cmd_cp(Command):
                             gettext('Could not copy to %s: %s is not a directory.')
                             % (dst_parent, dst_parent))
 
+            # TODO(jelmer): Ask the tree to make the copy
             shutil.copyfile(tree.abspath(src), tree.abspath(dst))
             tree.add(dst)
 
