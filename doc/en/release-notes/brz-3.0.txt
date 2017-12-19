@@ -113,6 +113,9 @@ Improvements
  * The ``repodebug`` plugin is now bundled.
    (Jelmer Vernooĳ)
 
+ * New ``bzr cp`` command which copies files (but does not currently track
+   history). (Jelmer Vernooĳ, start towards #269095)
+
 Bug Fixes
 *********
 

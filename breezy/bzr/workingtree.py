@@ -1461,6 +1461,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        if inv_file_id is None:
+            raise errors.NoSuchFile(self, path)
         return inv[inv_file_id].kind
 
     def extras(self):
