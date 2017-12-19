@@ -979,6 +979,58 @@ class cmd_inventory(Command):
                 self.outf.write('\n')
 
 
+class cmd_cp(Command):
+    __doc__ = """Copy a file.
+
+    :Usage:
+        brz cp OLDNAME NEWNAME
+
+        brz cp SOURCE... DESTINATION
+
+    If the last argument is a versioned directory, all the other names
+    are copied into it.  Otherwise, there must be exactly two arguments
+    and the file is copied to a new name.
+
+    Files cannot be copied between branches.
+    """
+
+    takes_args = ['names*']
+    takes_options = []
+    aliases = ['copy']
+    encoding_type = 'replace'
+
+    def run(self, names_list):
+        import shutil
+        if names_list is None:
+            names_list = []
+        if len(names_list) < 2:
+            raise errors.BzrCommandError(gettext("missing file argument"))
+        tree, rel_names = WorkingTree.open_containing_paths(names_list, canonicalize=False)
+        for file_name in rel_names[0:-1]:
+            if file_name == '':
+                raise errors.BzrCommandError(gettext("can not copy root of branch"))
+        self.add_cleanup(tree.lock_tree_write().unlock)
+        into_existing = osutils.isdir(names_list[-1])
+        if into_existing:
+            dst = rel_names[-1]
+            srcs = rel_names[:-1]
+            # TODO(jelmer): Ask the tree to make the copy
+            for src in srcs:
+                dst_path = osutils.joinpath([dst, osutils.basename(src)])
+                shutil.copy(tree.abspath(src), tree.abspath(dst_path))
+                tree.add(dst_path)
+        else:
+            try:
+                (src, dst) = rel_names
+            except IndexError:
+                raise errors.BzrCommandError(gettext('to copy multiple files the'
+                                                     ' destination must be a versioned'
+                                                     ' directory'))
+            # TODO(jelmer): Ask the tree to make the copy
+            shutil.copy(tree.abspath(src), tree.abspath(dst))
+            tree.add(dst)
+
+
 class cmd_mv(Command):
     __doc__ = """Move or rename a file.
 
