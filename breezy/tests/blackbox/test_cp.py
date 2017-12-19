@@ -39,13 +39,13 @@ class TestCopy(TestCaseWithTransport):
     def test_cp_unversioned(self):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
-            ["^brz: ERROR: Could not copy unversioned.txt => elsewhere."
+            ["^brz: ERROR: Could not copy .*unversioned.txt => .*elsewhere."
              " .*unversioned.txt is not versioned\\.$"],
             'cp unversioned.txt elsewhere')
 
     def test_cp_nonexisting(self):
         self.run_bzr_error(
-            ["^brz: ERROR: Could not copy doesnotexist => somewhereelse."
+            ["^brz: ERROR: Could not copy .*doesnotexist => .*somewhereelse."
              " .*doesnotexist is not versioned\\.$"],
             'cp doesnotexist somewhereelse')
 
@@ -58,7 +58,8 @@ class TestCopy(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^brz: ERROR: Could not copy to sub1: sub1 is not versioned\\.$"],
+            ["^brz: ERROR: Could not copy test.txt => sub1/test.txt: "
+                "sub1 is not versioned\\.$"],
             'cp test.txt sub1')
 
         self.run_bzr_error(
@@ -71,8 +72,27 @@ class TestCopy(TestCaseWithTransport):
         self.build_tree(['hello.txt', 'sub1/'])
         tree.add(['hello.txt', 'sub1'])
 
-        self.run_bzr('cp sub1 sub2')
+        self.run_bzr_error(
+            ["^brz: ERROR: Could not copy sub1 => sub2 . "
+             "sub1 is a directory\\.$"],
+            'cp sub1 sub2')
+
+    def test_cp_file_into(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['sub1/', 'sub1/hello.txt', 'sub2/'])
+        tree.add(['sub1', 'sub1/hello.txt', 'sub2'])
+
+        self.run_bzr('cp sub1/hello.txt sub2')
         self.assertInWorkingTree('sub1')
         self.assertInWorkingTree('sub1/hello.txt')
         self.assertInWorkingTree('sub2')
         self.assertInWorkingTree('sub2/hello.txt')
+
+    def test_cp_file(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt'])
+        tree.add(['hello.txt'])
+
+        self.run_bzr('cp hello.txt hallo.txt')
+        self.assertInWorkingTree('hello.txt')
+        self.assertInWorkingTree('hallo.txt')

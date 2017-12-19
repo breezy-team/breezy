@@ -1009,25 +1009,52 @@ class cmd_cp(Command):
         for file_name in rel_names[0:-1]:
             if file_name == '':
                 raise errors.BzrCommandError(gettext("can not copy root of branch"))
+        if tree is None:
+            PNIC
         self.add_cleanup(tree.lock_tree_write().unlock)
         into_existing = osutils.isdir(names_list[-1])
-        if into_existing:
-            dst = rel_names[-1]
-            srcs = rel_names[:-1]
-            # TODO(jelmer): Ask the tree to make the copy
-            for src in srcs:
-                dst_path = osutils.joinpath([dst, osutils.basename(src)])
-                shutil.copy(tree.abspath(src), tree.abspath(dst_path))
-                tree.add(dst_path)
-        else:
+        if not into_existing:
             try:
                 (src, dst) = rel_names
             except IndexError:
                 raise errors.BzrCommandError(gettext('to copy multiple files the'
                                                      ' destination must be a versioned'
                                                      ' directory'))
-            # TODO(jelmer): Ask the tree to make the copy
-            shutil.copy(tree.abspath(src), tree.abspath(dst))
+            pairs = [(src, dst)]
+        else:
+            pairs = [(n, osutils.joinpath([rel_names[-1], osutils.basename(n)]))
+                     for n in rel_names[:-1]]
+
+        # TODO(jelmer): Ask the tree to make the copy
+        for src, dst in pairs:
+            try:
+                src_kind = tree.stored_kind(src)
+            except errors.NoSuchFile:
+                raise errors.BzrCommandError(
+                        gettext('Could not copy %s => %s: %s is not versioned.')
+                        % (src, dst, src))
+            if src_kind is None:
+                raise errors.BzrCommandError(
+                    gettext('Could not copy %s => %s . %s is not versioned\.'
+                        % (src, dst, src)))
+            if src_kind == 'directory':
+                raise errors.BzrCommandError(
+                    gettext('Could not copy %s => %s . %s is a directory.'
+                        % (src, dst, src)))
+            dst_parent = osutils.split(dst)[0]
+            if dst_parent != '':
+                try:
+                    dst_parent_kind = tree.stored_kind(dst_parent)
+                except errors.NoSuchFile:
+                    raise errors.BzrCommandError(
+                            gettext('Could not copy %s => %s: %s is not versioned.')
+                            % (src, dst, dst_parent))
+                if dst_parent_kind != 'directory':
+                    raise errors.BzrCommandError(
+                            gettext('Could not copy to %s: %s is not a directory.')
+                            % (dst_parent, dst_parent))
+
+            shutil.copyfile(tree.abspath(src), tree.abspath(dst))
             tree.add(dst)
 
 
@@ -1785,7 +1812,7 @@ class cmd_update(Command):
 
     def run(self, dir=None, revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
-            raise errors.brzCommandError(gettext(
+            raise errors.BzrCommandError(gettext(
                 "brz update --revision takes exactly one revision"))
         if dir is None:
             tree = WorkingTree.open_containing('.')[0]
