@@ -38,7 +38,8 @@ def get_filename(options):
 
 def infogen(options, outfile):
     """Create manual in RSTX format"""
-    tt = breezy.osutils.gmtime()
+    t = time.time()
+    tt = time.gmtime(t)
     params = \
            { "brzcmd": options.brz_name,
              "datestamp": time.strftime("%Y-%m-%d", tt),

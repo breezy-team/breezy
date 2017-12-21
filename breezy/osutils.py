@@ -27,7 +27,6 @@ import codecs
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-from datetime import timedelta
 import getpass
 import locale
 import ntpath
@@ -824,16 +823,6 @@ def compare_files(a, b):
             return True
 
 
-def gmtime(seconds=None):
-    """Convert seconds since the Epoch to a time tuple expressing UTC (a.k.a.
-    GMT). When 'seconds' is not passed in, convert the current time instead.
-    Handy replacement for time.gmtime() buggy on Windows and 32-bit platforms.
-    """
-    if seconds is None:
-        seconds = time.time()
-    return (datetime(1970, 1, 1) + timedelta(seconds=seconds)).timetuple()
-
-
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
     if t is None:
@@ -879,7 +868,7 @@ def format_date_with_offset_in_original_timezone(t, offset=0,
     """
     if offset is None:
         offset = 0
-    tt = gmtime(t + offset)
+    tt = time.gmtime(t + offset)
     date_fmt = _default_format_by_weekday_num[tt[6]]
     date_str = time.strftime(date_fmt, tt)
     offset_str = _cache.get(offset, None)
@@ -911,12 +900,12 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
-        tt = gmtime(t)
+        tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
         if offset is None:
             offset = 0
-        tt = gmtime(t + offset)
+        tt = time.gmtime(t + offset)
     elif timezone == 'local':
         tt = time.localtime(t)
         offset = local_time_offset(t)
@@ -932,7 +921,7 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
 
 
 def compact_date(when):
-    return time.strftime('%Y%m%d%H%M%S', gmtime(when))
+    return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
 
 
 def format_delta(delta):
