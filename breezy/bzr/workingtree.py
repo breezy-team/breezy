@@ -1430,7 +1430,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         :param paths: The paths to stop versioning.
         :param file_ids: Optional file_ids for the paths
-        :raises: NoSuchId if any fileid is not currently versioned.
+        :raises NoSuchFile: if any path is not currently versioned.
+        :raises NoSuchId: if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
             if file_ids is not None:
