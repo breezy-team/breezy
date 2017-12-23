@@ -297,7 +297,10 @@ class LocalGitRepository(GitRepository):
                 raise errors.RevisionNotPresent(revid, self)
             root_tree = commit.tree
             for fileid, identifier in files:
-                path = mapping.parse_file_id(fileid)
+                try:
+                    path = mapping.parse_file_id(fileid)
+                except ValueError:
+                    raise errors.RevisionNotPresent((fileid, revid), self)
                 try:
                     obj = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree, path)

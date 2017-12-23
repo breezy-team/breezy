@@ -978,7 +978,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     disk_mode = S_IFGITLINK
                     git_id = subrepo.head()
             elif stat.S_ISLNK(disk_mode):
-                blob = Blob.from_string(os.readlink(disk_path).encode('utf-8'))
+                blob = Blob.from_string(os.readlink(disk_path))
                 git_id = blob.id
             elif stat.S_ISREG(disk_mode):
                 with open(disk_path, 'r') as f:

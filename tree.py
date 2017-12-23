@@ -198,7 +198,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             path, tree_sha, parent_id = todo.pop()
             ie = self._get_dir_ie(path, parent_id)
             if specific_paths is None or path in specific_paths:
-                yield path, ie
+                yield path.decode("utf-8"), ie
             tree = self.store[tree_sha]
             for name, mode, hexsha  in tree.iteritems():
                 if self.mapping.is_special_file(name):
@@ -209,7 +209,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                         any(filter(lambda p: p.startswith(child_path), specific_paths))):
                         todo.add((child_path, hexsha, ie.file_id))
                 elif specific_paths is None or child_path in specific_paths:
-                    yield (child_path,
+                    yield (child_path.decode("utf-8"),
                             self._get_file_ie(child_path, name, mode, hexsha,
                            ie.file_id))
 

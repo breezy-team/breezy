@@ -145,13 +145,13 @@ class GitCommitBuilder(CommitBuilder):
             basis_tree = self.repository.revision_tree(basis_revid)
         # Fill in entries that were not changed
         for path, entry in basis_tree.iter_entries_by_dir():
+            assert isinstance(path, unicode)
             if entry.kind not in ("file", "symlink", "tree-reference"):
                 continue
             if not path in self._blobs:
                 if entry.kind == "symlink":
                     blob = Blob()
-                    blob.data = basis_tree.get_symlink_target(entry.file_id,
-                        path)
+                    blob.data = basis_tree.get_symlink_target(path, entry.file_id).encode('utf-8')
                     self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
                 elif entry.kind == "file":
                     blob = Blob()
