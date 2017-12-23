@@ -127,7 +127,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = Repository.open('.')
         tree = repo.revision_tree(revid)
         self.assertEquals(tree.get_revision_id(), revid)
-        self.assertEquals("text\n", tree.get_file_text(tree.path2id("data")))
+        self.assertEquals("text\n", tree.get_file_text("data"))
 
 
 class TestGitRepository(tests.TestCaseWithTransport):

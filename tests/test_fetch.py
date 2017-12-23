@@ -145,13 +145,12 @@ class RepositoryFetchTests(object):
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree1 = newrepo.revision_tree(revid1)
         tree2 = newrepo.revision_tree(revid2)
-        fileid = tree1.path2id("mylink")
-        self.assertEquals(revid1, tree1.get_file_revision(fileid))
-        self.assertEquals("directory", tree1.kind(fileid))
-        self.assertEquals(None, tree1.get_symlink_target(fileid))
-        self.assertEquals(revid2, tree2.get_file_revision(fileid))
-        self.assertEquals("symlink", tree2.kind(fileid))
-        self.assertEquals("target/", tree2.get_symlink_target(fileid))
+        self.assertEquals(revid1, tree1.get_file_revision("mylink"))
+        self.assertEquals("directory", tree1.kind("mylink"))
+        self.assertEquals(None, tree1.get_symlink_target("mylink"))
+        self.assertEquals(revid2, tree2.get_file_revision("mylink"))
+        self.assertEquals("symlink", tree2.kind("mylink"))
+        self.assertEquals("target/", tree2.get_symlink_target("mylink"))
 
     def test_symlink_becomes_dir(self):
         self.make_git_repo("d")
@@ -171,13 +170,12 @@ class RepositoryFetchTests(object):
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree1 = newrepo.revision_tree(revid1)
         tree2 = newrepo.revision_tree(revid2)
-        fileid = tree1.path2id("mylink")
-        self.assertEquals(revid1, tree1.get_file_revision(fileid))
-        self.assertEquals("symlink", tree1.kind(fileid))
-        self.assertEquals("target/", tree1.get_symlink_target(fileid))
-        self.assertEquals(revid2, tree2.get_file_revision(fileid))
-        self.assertEquals("directory", tree2.kind(fileid))
-        self.assertEquals(None, tree2.get_symlink_target(fileid))
+        self.assertEquals(revid1, tree1.get_file_revision("mylink"))
+        self.assertEquals("symlink", tree1.kind("mylink"))
+        self.assertEquals("target/", tree1.get_symlink_target("mylink"))
+        self.assertEquals(revid2, tree2.get_file_revision("mylink"))
+        self.assertEquals("directory", tree2.kind("mylink"))
+        self.assertEquals(None, tree2.get_symlink_target("mylink"))
 
     def test_changing_symlink(self):
         self.make_git_repo("d")
@@ -197,11 +195,10 @@ class RepositoryFetchTests(object):
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree1 = newrepo.revision_tree(revid1)
         tree2 = newrepo.revision_tree(revid2)
-        fileid = tree1.path2id("mylink")
-        self.assertEquals(revid1, tree1.get_file_revision(fileid))
-        self.assertEquals("target", tree1.get_symlink_target(fileid))
-        self.assertEquals(revid2, tree2.get_file_revision(fileid))
-        self.assertEquals("target/", tree2.get_symlink_target(fileid))
+        self.assertEquals(revid1, tree1.get_file_revision("mylink"))
+        self.assertEquals("target", tree1.get_symlink_target("mylink"))
+        self.assertEquals(revid2, tree2.get_file_revision("mylink"))
+        self.assertEquals("target/", tree2.get_symlink_target("mylink"))
 
     def test_executable(self):
         self.make_git_repo("d")
@@ -217,9 +214,9 @@ class RepositoryFetchTests(object):
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         tree = newrepo.revision_tree(revid)
         self.assertTrue(tree.has_filename("foobar"))
-        self.assertEquals(True, tree.is_executable(tree.path2id("foobar")))
+        self.assertEquals(True, tree.is_executable("foobar"))
         self.assertTrue(tree.has_filename("notexec"))
-        self.assertEquals(False, tree.is_executable(tree.path2id("notexec")))
+        self.assertEquals(False, tree.is_executable("notexec"))
 
     def test_becomes_executable(self):
         self.make_git_repo("d")
@@ -236,9 +233,8 @@ class RepositoryFetchTests(object):
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree = newrepo.revision_tree(revid)
         self.assertTrue(tree.has_filename("foobar"))
-        fileid = tree.path2id("foobar")
-        self.assertEquals(True, tree.is_executable(fileid))
-        self.assertEquals(revid, tree.get_file_revision(fileid))
+        self.assertEquals(True, tree.is_executable("foobar"))
+        self.assertEquals(revid, tree.get_file_revision("foobar"))
 
     def test_into_stacked_on(self):
         r = self.make_git_repo("d")
@@ -345,8 +341,8 @@ class ImportObjects(TestCaseWithTransport):
             base_inv, None, "somerevid", [], objs.__getitem__, 
             (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
-        self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
+        self.assertEquals(set([('git:bla', 'somerevid')]), self._texts.keys())
+        self.assertEquals(self._texts.get_record_stream([('git:bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
         self.assertEquals(1, len(ret)) 
         self.assertEquals(None, ret[0][0])
@@ -386,7 +382,7 @@ class ImportObjects(TestCaseWithTransport):
            (None, stat.S_IFDIR), DummyStoreUpdater(),
            self._mapping.generate_file_id)
         self.assertEquals(child_modes, {})
-        self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
+        self.assertEquals(set([("git:bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -417,7 +413,7 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEquals("directory", ie.kind)
         ie = ret[1][3]
         self.assertEquals("file", ie.kind)
-        self.assertEquals("bla/foo", ie.file_id)
+        self.assertEquals("git:bla/foo", ie.file_id)
         self.assertEquals("somerevid", ie.revision)
         self.assertEquals(osutils.sha_strings(["bar1"]), ie.text_sha1)
         self.assertEquals(False, ie.executable)

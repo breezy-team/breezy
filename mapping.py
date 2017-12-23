@@ -64,6 +64,8 @@ HG_EXTRA = "HG:extra"
 # This HG extra is used to indicate the commit that this commit was based on.
 HG_EXTRA_AMEND_SOURCE = "amend_source"
 
+FILE_ID_PREFIX = b'git:'
+
 
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s').replace('\x0c', '_c')
@@ -83,7 +85,7 @@ def unescape_file_id(file_id):
             elif file_id[i+1] == 'c':
                 ret.append("\x0c")
             else:
-                raise AssertionError("unknown escape character %s" %
+                raise ValueError("unknown escape character %s" %
                     file_id[i+1])
             i += 1
         i += 1
@@ -148,7 +150,7 @@ class BzrGitMapping(foreign.VcsMapping):
             return ROOT_ID
         if type(path) is unicode:
             path = path.encode("utf-8")
-        return escape_file_id(path)
+        return FILE_ID_PREFIX + escape_file_id(path)
 
     def is_control_file(self, path):
         return path in (self.BZR_FILE_IDS_FILE, self.BZR_DUMMY_FILE)
@@ -156,7 +158,9 @@ class BzrGitMapping(foreign.VcsMapping):
     def parse_file_id(self, file_id):
         if file_id == ROOT_ID:
             return ""
-        return unescape_file_id(file_id)
+        if not file_id.startswith(FILE_ID_PREFIX):
+            raise ValueError
+        return unescape_file_id(file_id[len(FILE_ID_PREFIX):])
 
     def revid_as_refname(self, revid):
         import urllib

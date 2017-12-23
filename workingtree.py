@@ -434,6 +434,9 @@ class GitWorkingTree(workingtree.WorkingTree):
     def get_root_id(self):
         return self.path2id("")
 
+    def has_filename(self, filename):
+        return osutils.lexists(self.abspath(filename))
+
     def _has_dir(self, path):
         if path == "":
             return True
@@ -518,7 +521,10 @@ class GitWorkingTree(workingtree.WorkingTree):
         assert type(file_id) is str, "file id not a string: %r" % file_id
         file_id = osutils.safe_utf8(file_id)
         with self.lock_read():
-            path = self._fileid_map.lookup_path(file_id)
+            try:
+                path = self._fileid_map.lookup_path(file_id)
+            except ValueError:
+                raise errors.NoSuchId(self, file_id)
             # FIXME: What about directories?
             if self._is_versioned(path):
                 return path.decode("utf-8")
@@ -754,8 +760,10 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise NotImplementedError(self.iter_entries_by_dir)
         with self.lock_read():
             if specific_file_ids is not None:
-                specific_paths = [
-                        self.id2path(file_id) for file_id in specific_file_ids]
+                specific_paths = []
+                for file_id in specific_file_ids:
+                    assert file_id is not None, "file id %r" % file_id
+                    specific_paths.append(self.id2path(file_id))
                 if specific_paths in ([u""], []):
                     specific_paths = None
                 else:

@@ -71,7 +71,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return rev.timestamp
 
     def id2path(self, file_id):
-        return self._fileid_map.lookup_path(file_id)
+        try:
+            return self._fileid_map.lookup_path(file_id)
+        except ValueError:
+            raise errors.NoSuchId(file_id)
 
     def path2id(self, path):
         if self.mapping.is_special_file(path):
