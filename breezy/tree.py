@@ -148,12 +148,6 @@ class Tree(object):
         """True if the tree has given filename."""
         raise NotImplementedError(self.has_filename)
 
-    def has_id(self, file_id):
-        raise NotImplementedError(self.has_id)
-
-    def has_or_had_id(self, file_id):
-        raise NotImplementedError(self.has_or_had_id)
-
     def is_ignored(self, filename):
         """Check whether the filename is ignored by this tree.
 

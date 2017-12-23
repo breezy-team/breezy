@@ -168,7 +168,19 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # So we don't store the reference_revision in the working dirstate,
         # it's just recorded at the moment of commit.
         with self.lock_tree_write():
-            self._add_reference(sub_tree)
+            try:
+                sub_tree_path = self.relpath(sub_tree.basedir)
+            except errors.PathNotChild:
+                raise errors.BadReferenceTarget(self, sub_tree,
+                                                'Target not inside tree.')
+            sub_tree_id = sub_tree.get_root_id()
+            if sub_tree_id == self.get_root_id():
+                raise errors.BadReferenceTarget(self, sub_tree,
+                                         'Trees have the same root id.')
+            if self.has_id(sub_tree_id):
+                raise errors.BadReferenceTarget(self, sub_tree,
+                                                'Root id already present in tree')
+            self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
 
     def break_lock(self):
         """Break a lock if one is present from another instance.

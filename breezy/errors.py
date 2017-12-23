@@ -2134,17 +2134,6 @@ class SubsumeTargetNeedsUpgrade(BzrError):
         self.other_tree = other_tree
 
 
-class BadReferenceTarget(InternalBzrError):
-
-    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." \
-           "%(reason)s"
-
-    def __init__(self, tree, other_tree, reason):
-        self.tree = tree
-        self.other_tree = other_tree
-        self.reason = reason
-
-
 class NoSuchTag(BzrError):
 
     _fmt = "No such tag: %(tag_name)s"
