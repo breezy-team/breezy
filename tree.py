@@ -74,7 +74,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         try:
             return self._fileid_map.lookup_path(file_id)
         except ValueError:
-            raise errors.NoSuchId(file_id)
+            raise errors.NoSuchId(self, file_id)
 
     def path2id(self, path):
         if self.mapping.is_special_file(path):
