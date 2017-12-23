@@ -5640,6 +5640,7 @@ class cmd_join(Command):
             ]
 
     def run(self, tree, reference=False):
+        from breezy.mutabletree import BadReferenceTarget
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
@@ -5652,7 +5653,7 @@ class cmd_join(Command):
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
-            except errors.BadReferenceTarget as e:
+            except BadReferenceTarget as e:
                 # XXX: Would be better to just raise a nicely printable
                 # exception from the real origin.  Also below.  mbp 20070306
                 raise errors.BzrCommandError(

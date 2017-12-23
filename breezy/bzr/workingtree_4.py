@@ -64,6 +64,7 @@ from .inventorytree import (
     InventoryRevisionTree,
     )
 from ..mutabletree import (
+    BadReferenceTarget,
     MutableTree,
     )
 from ..osutils import (
@@ -171,15 +172,15 @@ class DirStateWorkingTree(InventoryWorkingTree):
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
             except errors.PathNotChild:
-                raise errors.BadReferenceTarget(self, sub_tree,
-                                                'Target not inside tree.')
+                raise BadReferenceTarget(self, sub_tree,
+                                         'Target not inside tree.')
             sub_tree_id = sub_tree.get_root_id()
             if sub_tree_id == self.get_root_id():
-                raise errors.BadReferenceTarget(self, sub_tree,
+                raise BadReferenceTarget(self, sub_tree,
                                          'Trees have the same root id.')
             if self.has_id(sub_tree_id):
-                raise errors.BadReferenceTarget(self, sub_tree,
-                                                'Root id already present in tree')
+                raise BadReferenceTarget(self, sub_tree,
+                                         'Root id already present in tree')
             self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
 
     def break_lock(self):
