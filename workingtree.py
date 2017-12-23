@@ -553,8 +553,12 @@ class GitWorkingTree(workingtree.WorkingTree):
         match = self._global_ignoreglobster.match(filename)
         if match is not None:
             return match
-        if osutils.file_kind(self.abspath(filename)) == 'directory':
-            filename += b'/'
+        try:
+            if self.kind(filename) == 'directory':
+                filename += b'/'
+        except errors.NoSuchFile:
+            pass
+        filename = filename.lstrip(b'/')
         ignore_manager = self._get_ignore_manager()
         ps = list(ignore_manager.find_matching(filename))
         if not ps:
@@ -571,6 +575,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         ignore_manager = IgnoreFilterManager.from_repo(self.repository._git)
         self._ignoremanager = ignore_manager
         return ignore_manager
+
+    def _flush_ignore_list_cache(self):
+        self._ignoremanager = None
 
     def set_last_revision(self, revid):
         self._change_last_revision(revid)
@@ -753,6 +760,24 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _directory_is_tree_reference(self, path):
         # FIXME: Check .gitsubmodules for path
         return False
+
+    def iter_child_entries(self, path, file_id=None):
+        encoded_path = path.encode('utf-8')
+        for item_path, value in self.index.iteritems():
+            if self.mapping.is_special_file(item_path):
+                continue
+            if not item_path.startswith(encoded_path + b'/'):
+                continue
+            subpath = item_path[len(encoded_path)+1:]
+            if b'/' in subpath:
+                continue
+            (parent, name) = posixpath.split(item_path)
+            try:
+                file_ie = self._get_file_ie(name, item_path, value, None)
+            except IOError:
+                continue
+            file_ie.parent_id = self.path2id(parent)
+            yield file_ie
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Is return order correct?
