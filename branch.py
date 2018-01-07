@@ -23,6 +23,7 @@ from cStringIO import StringIO
 from collections import defaultdict
 
 from dulwich.objects import (
+    NotCommitError,
     ZERO_SHA,
     )
 from dulwich.repo import check_ref_format
@@ -112,8 +113,11 @@ class GitTags(tag.BasicTags):
             if peeled is None:
                 peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
             assert type(tag_name) is unicode
-            yield (tag_name, peeled, unpeeled,
-                   self.branch.lookup_foreign_revision_id(peeled))
+            try:
+                foreign_peeled = self.branch.lookup_foreign_revision_id(peeled)
+            except NotCommitError:
+                continue
+            yield (tag_name, peeled, unpeeled, foreign_peeled)
 
     def _merge_to_remote_git(self, target_repo, new_refs, overwrite=False):
         updates = {}
