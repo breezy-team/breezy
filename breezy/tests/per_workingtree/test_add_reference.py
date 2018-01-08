@@ -17,6 +17,7 @@
 import os
 
 from breezy import errors, tests, workingtree
+from breezy.mutabletree import BadReferenceTarget
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -76,7 +77,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
         sub_tree.set_root_id('root-id')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
+            self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sub_tree)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
@@ -88,7 +89,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.skipTest('format does not support setting file ids')
         sub_tree.set_root_id(tree.path2id('file1'))
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
+            self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sub_tree)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
@@ -98,7 +99,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         os.rename('tree/sub-tree', 'sibling')
         sibling = workingtree.WorkingTree.open('sibling')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
+            self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sibling)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
