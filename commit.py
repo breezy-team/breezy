@@ -78,14 +78,15 @@ class GitCommitBuilder(CommitBuilder):
         seen_root = False
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
-            self._any_changes = True
             if kind[1] in ("directory",):
                 self._inv_delta.append((path[0], path[1], file_id, entry_factory[kind[1]](file_id, name[1], parent[1])))
                 if kind[0] in ("file", "symlink"):
                     self._blobs[path[0].encode("utf-8")] = None
+                    self._any_changes = True
                 if path[1] == "":
                     seen_root = True
                 continue
+            self._any_changes = True
             if path[1] is None:
                 self._inv_delta.append((path[0], path[1], file_id, None))
                 self._blobs[path[0].encode("utf-8")] = None
