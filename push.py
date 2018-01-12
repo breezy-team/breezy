@@ -253,7 +253,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_refs(self, update_refs, lossy):
         if not lossy and not self.mapping.roundtripping:
-            raise NoPushSupport()
+            raise NoPushSupport(self.source, self.target, self.mapping)
         self.source_store.lock_read()
         try:
             old_refs = self._get_target_bzr_refs()
@@ -274,7 +274,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
-            raise NoPushSupport()
+            raise NoPushSupport(self.source, self.target, self.mapping)
         self.source_store.lock_read()
         try:
             todo = list(self.missing_revisions(revs))[:limit]
@@ -305,7 +305,7 @@ class InterToLocalGitRepository(InterToGitRepository):
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
         if not self.mapping.roundtripping:
-            raise NoPushSupport()
+            raise NoPushSupport(self.source, self.target, self.mapping)
         if mapped_refs is not None:
             stop_revisions = mapped_refs
         elif revision_id is not None:
@@ -332,7 +332,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
     def fetch_refs(self, update_refs, lossy):
         """Import the gist of the ancestry of a particular revision."""
         if not lossy and not self.mapping.roundtripping:
-            raise NoPushSupport()
+            raise NoPushSupport(self.source, self.target, self.mapping)
         unpeel_map = UnpeelMap.from_repository(self.source)
         revidmap = {}
         def determine_wants(old_refs):

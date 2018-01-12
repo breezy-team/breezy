@@ -62,6 +62,7 @@ from ... import (
     transport as _mod_transport,
     )
 from ...errors import (
+    AlreadyControlDirError,
     FileExists,
     NoSuchFile,
     TransportNotPossible,
@@ -397,13 +398,22 @@ class TransportRepo(BaseRepo):
     @classmethod
     def init(cls, transport, bare=False):
         if not bare:
-            transport.mkdir(".git")
+            try:
+                transport.mkdir(".git")
+            except FileExists:
+                raise AlreadyControlDirError(transport.base)
             control_transport = transport.clone(".git")
         else:
             control_transport = transport
         for d in BASE_DIRECTORIES:
-            control_transport.mkdir("/".join(d))
-        control_transport.mkdir(OBJECTDIR)
+            try:
+                control_transport.mkdir("/".join(d))
+            except FileExists:
+                pass
+        try:
+            control_transport.mkdir(OBJECTDIR)
+        except FileExists:
+            raise AlreadyControlDirError(transport.base)
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
         ret = cls(transport, bare)
         ret.refs.set_symbolic_ref("HEAD", "refs/heads/master")
@@ -637,6 +647,12 @@ class TransportObjectStore(PackBasedObjectStore):
 
     @classmethod
     def init(cls, transport):
-        transport.mkdir('info')
-        transport.mkdir(PACKDIR)
+        try:
+            transport.mkdir('info')
+        except FileExists:
+            pass
+        try:
+            transport.mkdir(PACKDIR)
+        except FileExists:
+            pass
         return cls(transport)
