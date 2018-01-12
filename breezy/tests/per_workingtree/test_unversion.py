@@ -43,24 +43,28 @@ class TestUnversion(TestCaseWithWorkingTree):
         # points later into the dirstate.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['del/', 'del/sub/', 'del/sub/b'])
-        tree.add(['del', 'del/sub', 'del/sub/b'], ['del', 'sub', 'b'])
+        tree.add(['del', 'del/sub', 'del/sub/b'])
+        b_id = tree.path2id('del/sub/b')
         tree.commit('setup')
         tree.rename_one('del/sub', 'sub')
-        self.assertEqual('sub/b', tree.id2path('b'))
+        self.assertEqual('sub/b', tree.id2path(b_id))
         tree.unversion(['del', 'sub/b'])
-        self.assertRaises(errors.NoSuchId, tree.id2path, 'b')
+        self.assertRaises(errors.NoSuchId, tree.id2path, b_id)
 
     def test_unversion_several_files(self):
         """After unversioning several files, they should not be versioned."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
-        tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'b', 'c'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('b')
+        c_id = tree.path2id('c')
         # within a lock unversion should take effect
         tree.lock_write()
         tree.unversion(['a', 'b'])
-        self.assertFalse(tree.has_id('a-id'))
-        self.assertFalse(tree.has_id('b-id'))
-        self.assertTrue(tree.has_id('c-id'))
+        self.assertFalse(tree.has_id(a_id))
+        self.assertFalse(tree.has_id(b_id))
+        self.assertTrue(tree.has_id(c_id))
         self.assertTrue(tree.has_filename('a'))
         self.assertTrue(tree.has_filename('b'))
         self.assertTrue(tree.has_filename('c'))
@@ -68,26 +72,28 @@ class TestUnversion(TestCaseWithWorkingTree):
         # the changes should have persisted to disk - reopen the workingtree
         # to be sure.
         tree = tree.controldir.open_workingtree()
-        tree.lock_read()
-        self.assertFalse(tree.has_id('a-id'))
-        self.assertFalse(tree.has_id('b-id'))
-        self.assertTrue(tree.has_id('c-id'))
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertFalse(tree.has_id(a_id))
+        self.assertFalse(tree.has_id(b_id))
+        self.assertTrue(tree.has_id(c_id))
         self.assertTrue(tree.has_filename('a'))
         self.assertTrue(tree.has_filename('b'))
         self.assertTrue(tree.has_filename('c'))
-        tree.unlock()
 
     def test_unversion_subtree(self):
         """Unversioning the root of a subtree unversions the entire subtree."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'c'])
-        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'a/b', 'c'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('c')
         # within a lock unversion should take effect
         tree.lock_write()
         tree.unversion(['a'])
-        self.assertFalse(tree.has_id('a-id'))
-        self.assertFalse(tree.has_id('b-id'))
-        self.assertTrue(tree.has_id('c-id'))
+        self.assertFalse(tree.has_id(a_id))
+        self.assertFalse(tree.has_id(b_id))
+        self.assertTrue(tree.has_id(c_id))
         self.assertTrue(tree.has_filename('a'))
         self.assertTrue(tree.has_filename('a/b'))
         self.assertTrue(tree.has_filename('c'))
@@ -100,14 +106,18 @@ class TestUnversion(TestCaseWithWorkingTree):
         """
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c', 'd'])
-        tree.add(['a', 'a/b', 'a/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree.add(['a', 'a/b', 'a/c', 'd'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('d')
         tree.lock_write()
         try:
             tree.unversion(['a/b', 'a'])
-            self.assertFalse(tree.has_id('a-id'))
-            self.assertFalse(tree.has_id('b-id'))
-            self.assertFalse(tree.has_id('c-id'))
-            self.assertTrue(tree.has_id('d-id'))
+            self.assertFalse(tree.has_id(a_id))
+            self.assertFalse(tree.has_id(b_id))
+            self.assertFalse(tree.has_id(c_id))
+            self.assertTrue(tree.has_id(d_id))
             # The files are still on disk
             self.assertTrue(tree.has_filename('a'))
             self.assertTrue(tree.has_filename('a/b'))
@@ -120,8 +130,12 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('a')
         self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir/f3',
                          'a/dir2/'])
-        tree.add(['dir', 'dir/f1', 'dir/f2', 'dir/f3', 'dir2'],
-                 ['dir-id', 'f1-id', 'f2-id', 'f3-id', 'dir2-id'])
+        tree.add(['dir', 'dir/f1', 'dir/f2', 'dir/f3', 'dir2'])
+        dir_id = tree.path2id('dir')
+        dir2_id = tree.path2id('dir2')
+        f1_id = tree.path2id('dir/f1')
+        f2_id = tree.path2id('dir/f2')
+        f3_id = tree.path2id('dir/f3')
         rev_id1 = tree.commit('init')
         # Start off by renaming entries, and then unversion a bunch of entries
         # https://bugs.launchpad.net/bzr/+bug/114615
@@ -137,11 +151,11 @@ class TestUnversion(TestCaseWithWorkingTree):
         finally:
             tree.unlock()
         self.assertEqual([('', root_id),
-                          ('dir', 'dir-id'),
-                          ('dir2', 'dir2-id'),
-                          ('dir/a', 'f1-id'),
-                          ('dir/z', 'f2-id'),
-                          ('dir2/f3', 'f3-id'),
+                          ('dir', dir_id),
+                          ('dir2', dir2_id),
+                          ('dir/a', f1_id),
+                          ('dir/z', f2_id),
+                          ('dir2/f3', f3_id),
                          ], paths)
 
         tree.unversion({'dir'})
@@ -149,15 +163,18 @@ class TestUnversion(TestCaseWithWorkingTree):
                  for path, ie in tree.iter_entries_by_dir()]
 
         self.assertEqual([('', root_id),
-                          ('dir2', 'dir2-id'),
-                          ('dir2/f3', 'f3-id'),
+                          ('dir2', dir2_id),
+                          ('dir2/f3', f3_id),
                          ], paths)
 
     def test_unversion_after_conflicted_merge(self):
         # Test for bug #114615
         tree_a = self.make_branch_and_tree('A')
         self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
-        tree_a.add(['a', 'a/m', 'a/n'], ['a-id', 'm-id', 'n-id'])
+        tree_a.add(['a', 'a/m', 'a/n'])
+        a_id = tree_a.path2id('a')
+        m_id = tree_a.path2id('a/m')
+        n_id = tree_a.path2id('a/n')
         tree_a.commit('init')
 
         tree_a.lock_read()
@@ -168,7 +185,8 @@ class TestUnversion(TestCaseWithWorkingTree):
 
         tree_b = tree_a.controldir.sprout('B').open_workingtree()
         self.build_tree(['B/xyz/'])
-        tree_b.add(['xyz'], ['xyz-id'])
+        tree_b.add(['xyz'])
+        xyz_id = tree_b.path2id('xyz')
         tree_b.rename_one('a/m', 'xyz/m')
         tree_b.unversion(['a'])
         tree_b.commit('delete in B')
@@ -176,8 +194,8 @@ class TestUnversion(TestCaseWithWorkingTree):
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),
-                          ('xyz', 'xyz-id'),
-                          ('xyz/m', 'm-id'),
+                          ('xyz', xyz_id),
+                          ('xyz/m', m_id),
                          ], paths)
 
         self.build_tree_contents([('A/a/n', 'new contents for n\n')])
@@ -191,15 +209,15 @@ class TestUnversion(TestCaseWithWorkingTree):
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),
-                          ('a', 'a-id'),
-                          ('xyz', 'xyz-id'),
-                          ('a/n.OTHER', 'n-id'),
-                          ('xyz/m', 'm-id'),
+                          ('a', a_id),
+                          ('xyz', xyz_id),
+                          ('a/n.OTHER', n_id),
+                          ('xyz/m', m_id),
                          ], paths)
         tree_b.unversion(['a'])
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),
-                          ('xyz', 'xyz-id'),
-                          ('xyz/m', 'm-id'),
+                          ('xyz', xyz_id),
+                          ('xyz/m', m_id),
                          ], paths)

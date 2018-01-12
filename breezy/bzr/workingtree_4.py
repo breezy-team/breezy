@@ -1237,7 +1237,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     key[2] in ids_to_unversion):
                     # I haven't written the code to unversion / yet - it should be
                     # supported.
-                    raise errors.BzrError('Unversioning the / is not currently supported')
+                    raise errors.BzrError(
+                        'Unversioning the / is not currently supported')
             block_index = 0
             while block_index < len(state._dirblocks):
                 # process one directory at a time.

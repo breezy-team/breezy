@@ -920,8 +920,8 @@ class WorkingTree(mutabletree.MutableTree,
         When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param paths: The file ids to stop versioning.
-        :raises: NoSuchFile if any fileid is not currently versioned.
+        :param paths: The paths to stop versioning.
+        :raises NoSuchFile: if any path is not currently versioned.
         """
         raise NotImplementedError(self.unversion)
 
