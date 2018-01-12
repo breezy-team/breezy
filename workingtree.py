@@ -56,6 +56,7 @@ from ... import (
     ignores,
     lock,
     osutils,
+    revision as _mod_revision,
     trace,
     tree,
     workingtree,
@@ -182,6 +183,59 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         self.set_parent_ids([p for p, t in parents_list])
+
+    def _set_merges_from_parent_ids(self, parent_ids):
+        merges = parent_ids[1:]
+        self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
+            mode=self.controldir._get_file_mode())
+
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parent ids to revision_ids.
+
+        See also set_parent_trees. This api will try to retrieve the tree data
+        for each element of revision_ids from the trees repository. If you have
+        tree data already available, it is more efficient to use
+        set_parent_trees rather than set_parent_ids. set_parent_ids is however
+        an easier API to use.
+
+        :param revision_ids: The revision_ids to set as the parent ids of this
+            working tree. Any of these may be ghosts.
+        """
+        with self.lock_tree_write():
+            self._check_parents_for_ghosts(revision_ids,
+                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+            for revision_id in revision_ids:
+                _mod_revision.check_not_reserved_id(revision_id)
+
+            revision_ids = self._filter_parent_ids_by_ancestry(revision_ids)
+
+            if len(revision_ids) > 0:
+                self.set_last_revision(revision_ids[0])
+            else:
+                self.set_last_revision(_mod_revision.NULL_REVISION)
+
+            self._set_merges_from_parent_ids(revision_ids)
+
+    def get_parent_ids(self):
+        """See Tree.get_parent_ids.
+
+        This implementation reads the pending merges list and last_revision
+        value and uses that to decide what the parents list should be.
+        """
+        last_rev = _mod_revision.ensure_null(self._last_revision())
+        if _mod_revision.NULL_REVISION == last_rev:
+            parents = []
+        else:
+            parents = [last_rev]
+        try:
+            merges_bytes = self.control_transport.get_bytes('MERGE_HEAD')
+        except errors.NoSuchFile:
+            pass
+        else:
+            for l in osutils.split_lines(merges_bytes):
+                revision_id = l.rstrip('\n')
+                parents.append(revision_id)
+        return parents
 
     def iter_children(self, file_id):
         dpath = self.id2path(file_id) + "/"
@@ -580,7 +634,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._ignoremanager = None
 
     def set_last_revision(self, revid):
-        self._change_last_revision(revid)
+        if _mod_revision.is_null(revid):
+            self.branch.set_last_revision_info(0, revid)
+            return False
+        _mod_revision.check_not_reserved_id(revid)
+        try:
+            self.branch.generate_revision_history(revid)
+        except errors.NoSuchRevision:
+            raise errors.GhostRevisionUnusableHere(revid)
 
     def _reset_data(self):
         try:
