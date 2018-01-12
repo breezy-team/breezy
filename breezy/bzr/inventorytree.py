@@ -244,10 +244,13 @@ class InventoryTree(Tree):
             return self.root_inventory.iter_entries_by_dir(
                 specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
-    def iter_child_entries(self, file_id, path=None):
+    def iter_child_entries(self, path, file_id=None):
         with self.lock_read():
-            inv, inv_file_id = self._unpack_file_id(file_id)
-            return iter(viewvalues(inv[inv_file_id].children))
+            inv, inv_file_id = self._path2inv_file_id(path, file_id)
+            try:
+                return iter(viewvalues(inv[inv_file_id].children))
+            except errors.NoSuchId:
+                raise errors.NoSuchFile(path)
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""

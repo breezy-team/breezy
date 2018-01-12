@@ -274,16 +274,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
-        wt.set_root_id('fixed-root')
         rev1 = wt.commit('lala!', allow_pointless=True)
+        root_id = wt.path2id('')
         tree = wt.branch.repository.revision_tree(rev1)
         tree.lock_read()
         try:
             self.assertEqual(rev1,
                 tree.get_file_revision(u'', tree.get_root_id()))
-            expected = inventory.InventoryDirectory('fixed-root', '', None)
+            expected = inventory.InventoryDirectory(root_id, '', None)
             expected.revision = rev1
-            self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+            self.assertEqual([('', 'V', 'directory', root_id, expected)],
                              list(tree.list_files(include_root=True)))
         finally:
             tree.unlock()
@@ -523,6 +523,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo.get_graph()
 
     def test_graph_ghost_handling(self):
+        if not self.repository_format.supports_ghosts:
+            raise tests.TestNotApplicable('format does not support ghosts')
         tree = self.make_branch_and_tree('here')
         tree.lock_write()
         self.addCleanup(tree.unlock)

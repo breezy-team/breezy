@@ -358,7 +358,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
         # set last-revision to one not in the history
-        wt.set_last_revision('A')
+        if wt.branch.repository._format.supports_ghosts:
+            wt.set_last_revision('A')
         # set it back to None for an empty tree.
         wt.set_last_revision('null:')
         a = wt.commit('A', allow_pointless=True)

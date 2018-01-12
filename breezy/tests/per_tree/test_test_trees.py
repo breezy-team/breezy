@@ -34,7 +34,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         self.assertEqual([''], list(tree.all_versioned_paths()))
         self.assertEqual(
-            [('', 'empty-root-id')],
+            [('', tree.path2id(''))],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
 
     def test_abc_tree_no_parents(self):
@@ -136,11 +136,15 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
+        expected_paths = (
+                ['', 'a'] +
+                (['b'] if tree.has_versioned_directories() else []) +
+                ['e'])
         self.assertEqual(
-            {'', 'a', 'b', 'e'},
+            set(expected_paths),
             set(tree.all_versioned_paths()))
         self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'a', 'b',  'e']],
+            [(p, tree.path2id(p)) for p in expected_paths],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('e'))
