@@ -537,7 +537,10 @@ class LocalGitDir(GitDir):
             write_index(f, [])
         finally:
             f.close()
-        return self.open_workingtree()
+        wt = self.open_workingtree()
+        if revision_id is not None:
+            wt.set_last_revision(revision_id)
+        return wt
 
     def _find_or_create_repository(self, force_new_repo=None):
         return self.create_repository(shared=False)
