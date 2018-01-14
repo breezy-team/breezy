@@ -10,7 +10,7 @@ package them into a fresh directory or archive. For example,
 this command will package the last committed version into
 a ``tar.gz`` archive file::
 
-  bzr export ../releases/my-stuff-1.5.tar.gz
+  brz export ../releases/my-stuff-1.5.tar.gz
 
 The ``export`` command uses the suffix of the archive file
 to work out the type of archive to create as shown below.
@@ -38,11 +38,11 @@ Rather than remembering which version was used to package a release,
 it's useful to define a symbolic name for a version using the ``tag``
 command like this::
 
-  bzr tag version-1-5
+  brz tag version-1-5
 
 That tag can be used later whenever a revision identifier is
 required, e.g.::
 
-  bzr diff -r tag:version-1-5
+  brz diff -r tag:version-1-5
 
 To see the list of tags defined in a branch, use the ``tags`` command.

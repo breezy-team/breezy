@@ -1,0 +1,197 @@
+Configuring Breezy
+==================
+
+Telling Breezy about yourself
+-----------------------------
+
+One function of a version control system is to keep track of who changed
+what.  In a decentralized system, that requires an identifier for each
+author that is globally unique.  Most people already have one of these: an
+email address. Breezy is smart enough to automatically generate an email
+address by looking up your username and hostname. If you don't like the
+guess that Breezy makes, then use the ``whoami`` command to set the
+identifier you want::
+
+    % brz whoami "Your Name <email@example.com>"
+
+If ``whoami`` is used without an argument, the current value is displayed.
+
+Using a network proxy
+---------------------
+
+If your network requires that you use an HTTP proxy for outbound
+connections, you must set the ``http_proxy`` variable.  If the proxy is
+also required for https connections, you need to set ``https_proxy`` too.
+If you need these and don't have them set, you may find that connections
+to Launchpad or other external servers fail or time out.
+
+On Unix you typically want to set these in ``/etc/environment`` or
+``~/.bash_profile`` and on Windows in the user profile.
+
+::
+
+  http_proxy=http://proxy.example.com:3128/
+  https_proxy=http://proxy.example.com:3128/
+
+The ``no_proxy`` variable can be set to a comma-separated list of hosts
+which shouldn't be reached by the proxy.  (See
+<http://docs.python.org/library/urllib.html> for more details.)
+
+Various ways to configure
+-------------------------
+
+As shown in the example above, there are various ways to
+configure Breezy, they all share some common properties though.
+An option has:
+
+- a name which is generally a valid python identifier,
+
+- a value which is a string. In some cases, Breezy will be able
+  to recognize special values like 'True', 'False' to infer a
+  boolean type, but basically, as a user, you will always specify
+  a value as a string.
+
+Options are grouped in various contexts so the option name
+uniquely identifies it in this context. When needed, options can
+be made persistent by recording them in a configuration file.
+
+
+Configuration files
+-------------------
+
+Configuration files are located in ``$HOME/.config/breezy`` on Unix and
+``C:\Documents and Settings\<username>\Application Data\Breezy\2.0`` on
+Windows. There are three primary configuration files in this location:
+
+* ``breezy.conf`` describes default configuration options,
+
+* ``locations.conf`` describes configuration information for
+  specific branch locations,
+
+* ``authentication.conf`` describes credential information for
+  remote servers.
+
+Each branch can also contain a configuration file that sets values specific
+to that branch. This file is found at ``.brz/branch/branch.conf`` within the
+branch. This file is visible to **all users of a branch**. If you wish to
+override one of the values for a branch with a setting that is specific to you,
+then you can do so in ``locations.conf``.
+
+Here is sample content of ``breezy.conf`` after setting an email address using
+the ``whoami`` command::
+
+  [DEFAULT]
+  email = Your Name <email@example.com>
+
+For further details on the syntax and configuration settings supported, see
+`Configuration Settings <../user-reference/index.html#configuration-settings>`_
+in the Breezy User Reference.
+
+
+Looking at the active configuration
+-----------------------------------
+
+To look at all the currently defined options, you can use the following
+command::
+
+  brz config
+
+``brz`` implements some rules to decide where to get the value of a
+configuration option.
+
+The current policy is to examine the existing configurations files in a
+given order for matching definitions.
+
+  * ``locations.conf`` is searched first for a section whose name matches the
+    location considered (working tree, branch or remote branch),
+
+  * the current ``branch.conf`` is searched next,
+
+  * ``breezy.conf`` is searched next,
+
+  * finally, some options can have default values generally defined in the
+    code itself and not displayed by ``brz config`` (see `Configuration
+    Settings <../user-reference/index.html#configuration-settings>`_).
+
+This is better understood by using ```brz config`` with no arguments, which
+will display some output of the form::
+
+  locations:
+    post_commit_to = commits@example.com
+    news_merge_files = NEWS
+  branch:
+    parent_location = bzr+ssh://bazaar.launchpad.net/+branch/brz/
+    nickname = config-modify
+    push_location = bzr+ssh://bazaar.launchpad.net/~vila/brz/config-modify/
+  breezy:
+    debug_flags = hpss,
+
+Each configuration file is associated with a given scope whose name is
+displayed before each set of defined options.
+
+If you need to look at a specific option, you can use::
+
+  brz config <option>
+
+This will display only the option value and is intended to be used in
+scripts.
+
+Modifying the active configuration
+----------------------------------
+
+To set an option to a given value use::
+
+  brz config opt=value
+
+An option value can reference another option by enclosing it in curly
+braces::
+
+  brz config opt={other_opt}/subdir
+
+If ``other_opt`` is set to ``'root``, ``brz config opt`` will display::
+
+  root/subdir
+
+Note that when ``--all`` is used, the references are left as-is to better
+reflect the content of the config files and make it easier to organize them::
+
+  brz config --all .*opt
+
+  breezy:
+    [DEFAULT]
+    opt = {other_opt}/subdir
+    other_opt = root
+
+
+
+
+
+To remove an option use::
+
+  brz config --remove opt
+
+
+Rule-based preferences
+----------------------
+
+Some commands and plugins provide custom processing on files matching
+certain patterns. Per-user rule-based preferences are defined in
+``BZR_HOME/rules``.
+
+For further information on how rules are searched and the detailed syntax of
+the relevant files, see `Rules <../user-reference/index.html#rules>`_
+in the Breezy User Reference.
+
+
+Escaping command lines
+----------------------
+
+When you give a program name or command line in configuration, you can quote
+to include special characters or whitespace.  The same rules are used across
+all platforms.
+
+The rules are: strings surrounded by double-quotes are interpreted as single
+"words" even if they contain whitespace, and backslash may be used to quote
+quotation marks.  For example::
+
+    BZR_EDITOR="C:\Program Files\My Editor\myeditor.exe"

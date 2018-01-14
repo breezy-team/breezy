@@ -1,0 +1,24 @@
+The Transport API in breezy provides URL based access to network resources.
+
+   >>> import os
+   >>> import sys
+   >>> from breezy.osutils import getcwd, dirname
+   >>> from breezy.urlutils import local_path_from_url
+   >>> import breezy.transport as transport
+   >>> if sys.platform == 'win32':
+   ...     root = transport.get_transport_from_url('file:///C:/')
+   ... else:
+   ...     root = transport.get_transport_from_url('file:///')
+   >>>
+
+Each Transport instance represents a single logical directory.
+
+   >>> dir = transport.get_transport_from_path(".")
+   >>> local_path_from_url(dir.base) == getcwd() + '/'
+   True
+
+You can change directories via the clone method:
+
+   >>> parent = dir.clone('..')
+   >>> local_path_from_url(parent.base) == (dirname(getcwd()).rstrip('/') + '/')
+   True

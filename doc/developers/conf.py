@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Bazaar documentation build configuration file, created by
+# Breezy documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -12,14 +12,14 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path = [os.path.abspath('../..')] + sys.path
 
-# Most of the configuration for Bazaar docs is defined here ...
-from bzrlib.doc_generate.conf import *
+# Most of the configuration for Breezy docs is defined here ...
+from breezy.doc_generate.conf import *
 
 
 ## Configuration specific to this site ##
 
 # The locale code for this documentation set
-bzr_locale = 'en'
+brz_locale = 'en'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 html_short_title = u"Developer Document Catalog (%s)" % (release,)
@@ -29,20 +29,30 @@ html_short_title = u"Developer Document Catalog (%s)" % (release,)
 #html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'bzr-developers'
+htmlhelp_basename = 'brz-developers'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
-latex_documents = [
-  ('HACKING', 'bzr-en-developer-guide.tex', u'Bazaar Developer Guide',
-   u'Bazaar Developers', 'manual'),
-  ('testing', 'bzr-en-testing-guide.tex', u'Bazaar Testing Guide',
-   u'Bazaar Developers', 'manual'),
-  ('overview', 'bzr-en-architecture-overview.tex', u'Bazaar Architecture Overview',
-   u'Bazaar Developers', 'howto'),
-  ('integration', 'bzr-en-integration-guide.tex', u'Bazaar Integration Guide',
-   u'Bazaar Developers', 'howto'),
+brz_documents = [
+  ('HACKING', 'brz-en-developer-guide', u'Breezy Developer Guide',
+   u'Breezy Developers', 'manual'),
+  ('testing', 'brz-en-testing-guide', u'Breezy Testing Guide',
+   u'Breezy Developers', 'manual'),
+  ('overview', 'brz-en-architecture-overview', u'Breezy Architecture Overview',
+   u'Breezy Developers', 'howto'),
+  ('integration', 'brz-en-integration-guide', u'Breezy Integration Guide',
+   u'Breezy Developers', 'howto'),
 ]
+
+latex_documents = [
+    (start, target+'.tex', title, author, doc_class)
+    for start, target, title, author, doc_class in brz_documents
+    ]
+
+texinfo_documents = [
+    (start, target, title, author, doc_class)
+    for start, target, title, author, doc_class in brz_documents
+    ]
 
 # List of documents that shouldn't be included in the build.
 # Note: Maybe some of them *ought* to be linked in somewhere?

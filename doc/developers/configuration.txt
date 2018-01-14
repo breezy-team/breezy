@@ -1,10 +1,10 @@
-Configuring Bazaar
+Configuring Breezy
 ==================
 
 .. contents::
    :depth: 2
 
-As a Bazaar developer there are a few things you need to know about
+As a Breezy developer there are a few things you need to know about
 configuration:
 
 * how to add a new option,
@@ -31,7 +31,7 @@ Add a new option
 ----------------
 
 You add a new ``Option`` to the ``option_registry``, either inside
-``bzrlib/config.py`` or during initialization of your plugin (use
+``breezy/config.py`` or during initialization of your plugin (use
 ``register_lazy`` in this case). New plugins should have systematic
 hierarchical names so that related values are grouped together::
 
@@ -55,7 +55,7 @@ Modify an option value or delete an option
 
 Just reading an option is what is needed most of the time, modifying option
 values or removing options is usually something that is not automated but
-left to the user (with ``bzr config``).
+left to the user (with ``brz config``).
 
 Nevertheless, if you need to save a modified option value, use
 ``.set(option_name, value)`` and ``.remove(option_name)`` to delete the
@@ -63,7 +63,7 @@ option. Both methods are provided by the ``Stack`` object.
 
 But before doing that, you must be sure that the stack you're using have a
 writable section (this is true for ``GlobalStack`` which uses the
-``DEFAULT`` section in ``bazaar.conf`` and for ``BranchStack``which uses the
+``DEFAULT`` section in ``breezy.conf`` and for ``BranchStack``which uses the
 no-name section in ``branch.conf``).
 
 Old and new configuration code
@@ -98,6 +98,13 @@ that can allow further simplifications like:
 * convert the unicode string provided by the user into a suitable
   representation (integer, list, etc).
 
+If you start migrating a given option to the config stacks, don't stop
+mid-way, all its uses should be covered (tests included). There are some
+edge cases where updates via one API will be not be seen by the other API
+(see http://pad.lv/948339 and http://pad.lv/948344 for details). Roughly,
+the old API always trigger an IO while the new one cache values to avoid
+them. This works fine as long as a given option is handled via a single API.
+
 Adding a new stack
 ------------------
 
@@ -105,7 +112,7 @@ Stacks capture the various places an option can be declared by the user with
 associated levels of generality and query them in the appropriate order
 returning the first definition found. For example, the
 ``append_revisions_only`` option may be declared for all branches of a user
-in ``bazaar.conf``, or for a hierarchy of branches in ``locations.conf`` or
+in ``breezy.conf``, or for a hierarchy of branches in ``locations.conf`` or
 in a single branch in ``branch.conf``.
 
 Defining a new stack means you need a new way to expose these levels to the
@@ -128,18 +135,18 @@ achieved with ``Store`` and ``SectionMatcher`` objects.
 Adding a new store
 ------------------
 
-The following stores are used by ``bzr`` in ways that illustrate various
+The following stores are used by ``brz`` in ways that illustrate various
 uses of sections.
 
-bazaar.conf
+breezy.conf
 ===========
 
-``bzr`` itself defines two sections here:
+``brz`` itself defines two sections here:
 
 * ``DEFAULT`` where global options are defined,
 
 * ``ALIASES`` where command aliases are defined. This section is *not*
-  available via ``GlobalStack``, instead, the ``bzr alias`` command uses it
+  available via ``GlobalStack``, instead, the ``brz alias`` command uses it
   for its own purposes.
 
 Plugins can define either additional options in the ``DEFAULT`` section or
@@ -164,7 +171,7 @@ after the package followed by the no-name section.
 location.conf
 =============
 
-``bzr`` defines sections corresponding to URLs there and includes the
+``brz`` defines sections corresponding to URLs there and includes the
 relevant sections in ``LocationStack`` and ``BranchStack``. No no-name
 section is recognized in this file.
 
@@ -202,7 +209,7 @@ The Option object is used to define its properties:
   summary and can be followed by a blank line and a more detailed
   explanation. This will be displayed to the user with::
 
-    bzr help <option name>
+    brz help <option name>
 
 * invalid: the action to be taken when an invalid value is encountered in a
   store (during a Stack.get()).
@@ -254,7 +261,7 @@ Depending on the object it is associated with (or not) a ``Store`` also needs
 to implement a locking mechanism. ``LockableIniFileStore`` implements such a
 mechanism for ``IniFileStore`` based stores.
 
-Classes are provided for the usual Bazaar configuration files and could be
+Classes are provided for the usual Breezy configuration files and could be
 used as examples to define new ones if needed. The associated tests provides a
 basis for new classes which only need to register themselves in the right
 places to inherit from the existing basic tests and add their own specific
@@ -266,7 +273,7 @@ A ``Store`` defines how option values are stored, this includes:
 
 * defining how the values are quoted/unquoted for storage purposes. Stacks
   use the unquoted values internally (default value handling and option
-  expansion are simpler this way) and ``bzr config`` quote them when they
+  expansion are simpler this way) and ``brz config`` quote them when they
   need to be displayed.
 
 
@@ -303,7 +310,7 @@ inside the section that defines them.
 Specific section matchers can be implemented by overriding ``get_sections``
 or just ``match``.
 
-``bzrlib`` provides:
+``breezy`` provides:
 
 * ``NameMatcher(store, unique_id)``: To select a single section matching
   ``unique_id``.
@@ -319,7 +326,7 @@ Stacks
 
 An option can take different values depending on the context it is
 used. This can involve configuration files, options from the command line,
-default values in bzrlib and then some.
+default values in breezy and then some.
 
 Such a context is implemented by creating a list of ``Section`` stacked upon
 each other. A ``Stack`` can then be asked for an option value and returns the
@@ -354,6 +361,6 @@ Also note that ``MemoryStack`` can be used without any disk resources which
 allows for simpler and faster tests. A common pattern is to accept a
 ``config`` parameter related to a given feature and test it with predefined
 configurations without involving the whole
-stack. ``bzrlib.tests.test_commit``, ``bzrlib.tests.test_gpg`` and
-``bzrlib.tests.test_smtp_connection`` are good examples.
+stack. ``breezy.tests.test_commit``, ``breezy.tests.test_gpg`` and
+``breezy.tests.test_smtp_connection`` are good examples.
 

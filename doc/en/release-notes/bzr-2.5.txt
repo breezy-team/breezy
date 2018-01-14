@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5.1
+bzr 2.5.2
 #########
 
-:2.5.1: NOT RELEASED YET
+:2.5.2: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -31,6 +31,37 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr config`` properly handles aliases and references in the
+  ``--directory`` parameter (Vincent Ladeuil, Wouter van Heyst, #947049)
+
+* Empty arguments in EDITOR are now properly preserved.
+  (Ross Lagerwall, #1089792)
+
+* Fix a traceback when trying to checkout a tree that also has an entry
+  with file-id `TREE_ROOT` somewhere other than at the root directory.
+  (John Arbash Meinel, #830947)
+
+* Lightweight checkouts of remote repositories had a bug with how they
+  extracted texts from the repository. (Just an ordering constraint on how
+  they consumed the stream.) (John Arbash Meinel, #1046284)
+
+* ``osutils.send_all`` now detects if we get a series of zero bytes sent,
+  and fails with a ECONNRESET. It seems if paramiko gets disconnected, it
+  will get into a state where it returns 0 bytes sent, but doesn't raise
+  an error. This change allows us to get a couple hiccups of no content
+  sent, but if it is consistent, we will consider it to be a failure.
+  (John Arbash Meinel, #1047309)
+
+* Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
+
+* Some filesystems give ``EOPNOTSUPP`` when trying to call ``fdatasync``.
+  This shouldn't be treated as a fatal error.
+  (John Arbash Meinel, #1075108)
+
+* Some small bug fixes wrt lightweight checkouts and remote repositories.
+  A test permutation was added that runs all working tree tests against a
+  lightweight checkout. (John Arbash Meinel, #1046697)
 
 Documentation
 *************
@@ -55,6 +86,76 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5.1
+#########
+
+:2.5.1: 2012-05-22
+
+This is a bugfix release. Most of the bugs dealt with https and colocated
+branches glitches. Upgrading is recommended for all users of earlier 2.5
+releases.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+* ``bzr rmbranch`` now supports removing colocated branches.
+  (Jelmer Vernooij, #920653)
+
+* ``bzr rmbranch`` no longer removes active branches unless ``--force``
+  is specified. (Jelmer Vernooij, #922953)
+
+Bug Fixes
+*********
+
+* Connecting with HTTPS via HTTP now correctly uses the host name of the
+  destination rather than the proxy when checking certificates.
+  (Martin Packman, #944696)
+
+* Fixed merge tool availability checking and invocation to search the
+  Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
+
+* Fixed problem with getting errors about failing to open /dev/tty when using
+  Bazaar Explorer to sign commits. (Mark Grandi, #847388)
+
+* Fix UnicodeEncodeError when translated progress task messages contain
+  non-ascii text. (Martin Packman, #966934)
+
+* Make sure configuration options can provide their own help topic.
+  (Jelmer Vernooij, #941672)
+
+Documentation
+*************
+
+* The alpha-quality texinfo sphinx builder has been deprecated. Sphinx >=
+  1.1.2 now provides a better one. Most of the documentation can now be
+  generated to the texinfo format with ``make texinfo-sphinx``. This will
+  generate both the ``.texi`` files and the ``.info`` ones.
+  (Vincent Ladeuil, #940164)
+
+API Changes
+***********
+
+None.
+
+Testing
+*******
+
+* Add support for pyftpdlib >= 0.7.0 and drop support for previous pyftpdlib
+  versions. (Vincent Ladeuil, #956027)
+
+* Run smoketest for setup.py isolated in a tempdir. (Martin Packman, #140874)
 
 
 bzr 2.5.0
@@ -154,13 +255,13 @@ Improvements
   a control directory (but no branch or working tree).
   (Jelmer Vernooij, #913980)
 
-* Checkouts of colocated branches are now always lightweight.
-  (Jelmer Vernooij, #918828)
-
 * Colocated branches can now have names including forward slashes, to
   allow for namespaces. (Jelmer Vernooij, #907980)
 
 * New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
+
+* Checkouts of colocated branches are now always lightweight.
+  (Jelmer Vernooij, #918828)
 
 Bug Fixes
 *********

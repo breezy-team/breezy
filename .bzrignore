@@ -6,7 +6,8 @@
 # Generated files
 CHANGELOG
 # generated documents
-bzr.1
+brz.1
+MANIFEST
 ./doc/*.html
 ./doc/*/_build/
 ./doc/*/Makefile
@@ -25,6 +26,7 @@ BRANCH-INFO
 # setup.py working directory
 ./build
 ./build-win32
+./breezy/locale
 # Editor temporary/working/backup files
 *$
 .*.sw[nop]
@@ -33,7 +35,7 @@ BRANCH-INFO
 [#]*#
 .#*
 ./tags
-./bzrlib/tags
+./breezy/tags
 ./TAGS
 # The shelf plugin uses this dir
 ./.shelf
@@ -41,31 +43,31 @@ BRANCH-INFO
 .DS_Store
 # win32 installer generated files
 ./doc/*.html
-./doc/bzr_man.txt
+./doc/brz_man.txt
 ./py2exe.log
 ./tools/win32/bzr.iss
 ./dist
 # performance history data file
 ./.perf_history
 # Pyrex
-bzrlib/_annotator_pyx.c
-bzrlib/_bencode_pyx.c
-bzrlib/_btree_serializer_pyx.c
-bzrlib/_chk_map_pyx.c
-bzrlib/_chunks_to_lines_pyx.c
-bzrlib/_dirstate_helpers_pyx.c
-bzrlib/_groupcompress_pyx.c
-bzrlib/_knit_load_data_pyx.c
-bzrlib/_known_graph_pyx.c
-bzrlib/_readdir_pyx.c
-bzrlib/_rio_pyx.c
-bzrlib/_simple_set_pyx.c
-bzrlib/_simple_set_pyx.h
-bzrlib/_simple_set_pyx_api.h
-bzrlib/_walkdirs_win32.c
+breezy/_annotator_pyx.c
+breezy/_bencode_pyx.c
+breezy/bzr/_btree_serializer_pyx.c
+breezy/bzr/_chk_map_pyx.c
+breezy/_chunks_to_lines_pyx.c
+breezy/bzr/_dirstate_helpers_pyx.c
+breezy/bzr/_groupcompress_pyx.c
+breezy/bzr/_knit_load_data_pyx.c
+breezy/_known_graph_pyx.c
+breezy/_readdir_pyx.c
+breezy/_rio_pyx.c
+breezy/_simple_set_pyx.c
+breezy/_simple_set_pyx.h
+breezy/_simple_set_pyx_api.h
+breezy/_walkdirs_win32.c
 # built extension modules
-bzrlib/_*.dll
-bzrlib/_*.so
-bzrlib/_*.pyd
+breezy/_*.dll
+breezy/_*.so
+breezy/_*.pyd
 ./.ccache
 .testrepository

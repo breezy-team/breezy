@@ -1,3 +1,12 @@
-include bzr README setup.py
-recursive-include bzrlib *.py *.pyx *.pxd *.txt *.c *.h
+include brz README setup.py COPYING.txt
+# FIXME: Not needed, remove after 2.7.0 -- vila 2016-02-07
+include BRANCH.TODO INSTALL Makefile MANIFEST.in NEWS profile_imports.py README_BDIST_RPM .rsyncexclude .testr.conf TODO tools/bzr_epydoc tools/packaging/lp-upload-release tools/subunit-sum breezy/plugins/news_merge/README breezy/plugins/po_merge/README breezy/tests/ssl_certs/ca.key breezy/tests/ssl_certs/server.csr breezy/plugins/grep/.bzrignore breezy/plugins/grep/NEWS
+# bzr export still create some empty dirs that need to be removed
+# breezy/plugins/weave_fmt/tests/ breezy/store/revision/ doc/ja/_templates/ man1/ man1
+recursive-include tools/win32 *
+recursive-include breezy *.py *.pyx *.pxd *.txt *.c *.h
 recursive-include tools *.py *.sh
+recursive-include apport *
+recursive-include contrib *
+recursive-include doc *
+recursive-include po *

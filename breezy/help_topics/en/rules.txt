@@ -1,0 +1,40 @@
+Rules
+=====
+
+Introduction
+------------
+
+Rules are defined in ini file format where the sections are file glob
+patterns and the contents of each section are the preferences for files
+matching that pattern(s). For example::
+
+    [name *.bat]
+    eol = native
+
+    [name *.html *.xml]
+    keywords = xml_escape
+
+Preferences like these are useful for commands and plugins wishing to
+provide custom behaviour for selected files.  For more information on 
+end of line conversion see :doc:`eol-help`.
+Keyword support is provided by the `keywords plugin
+<http://doc.bazaar.canonical.com/plugins/en/keywords-plugin.html>`_.
+
+Files
+-----
+
+Default rules for all branches are defined in the optional file
+``BRZ_HOME/rules``. 
+
+Rule Patterns
+-------------
+
+Patterns are ordered and searching stops as soon as one matches.
+As a consequence, more explicit patterns should be placed towards
+the top of the file. Rule patterns use exactly the same conventions
+as ignore patterns. See :doc:`patterns-help` for details.
+
+.. note::
+
+   Patterns containing square brackets or spaces should be
+   surrounded in quotes to ensure they are correctly parsed.

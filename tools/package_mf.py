@@ -23,7 +23,7 @@ import sys
 
 class CustomModuleFinder(modulefinder.ModuleFinder):
     """Custom module finder for processing python packages,
-    e.g. bzr plugins packages.
+    e.g. brz plugins packages.
 
     :param  path:   list of directories to search for modules;
                     if not specified, python standard library only is used.
@@ -59,8 +59,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
 
     def get_result(self):
         """Return 2-tuple: (list of packages, list of modules)"""
-        keys = self.modules.keys()
-        keys.sort()
+        keys = sorted(self.modules.keys())
         mods = []
         packs = []
         for key in keys:
@@ -82,8 +81,8 @@ if __name__ == '__main__':
 
     packs, mods = mf.get_result()
 
-    print 'Packages:'
-    print packs
+    print('Packages:')
+    print(packs)
 
-    print 'Modules:'
-    print mods
+    print('Modules:')
+    print(mods)
