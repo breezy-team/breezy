@@ -1102,6 +1102,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     supports_store_uncommitted = False
 
+    supports_leftmost_parent_id_as_ghost = False
+
     @property
     def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
