@@ -84,6 +84,20 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def all_file_ids(self):
         return set(self._fileid_map.all_file_ids())
 
+    def all_versioned_paths(self):
+        ret = set()
+        todo = set([('', self.tree)])
+        while todo:
+            (path, tree_id) = todo.pop()
+            tree = self.store[tree_id]
+            for name, mode, hexsha in tree.iteritems():
+                subpath = posixpath.join(path, name)
+                if stat.S_ISDIR(mode):
+                    todo.add((subpath, hexsha))
+                else:
+                    ret.add(subpath)
+        return ret
+
     def get_root_id(self):
         return self.path2id("")
 
