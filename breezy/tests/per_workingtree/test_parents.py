@@ -87,7 +87,7 @@ class TestSetParents(TestParents):
 
     def test_set_one_ghost_parent_force(self):
         t = self.make_branch_and_tree('.')
-        if t.branch.repository._format.supports_ghosts:
+        if t._format.supports_leftmost_parent_id_as_ghost:
             t.set_parent_trees([('missing-revision-id', None)],
                 allow_leftmost_as_ghost=True)
             self.assertConsistentParents(['missing-revision-id'], t)
@@ -139,7 +139,7 @@ class TestSetParents(TestParents):
 
     def test_set_one_ghost_parent_ids_force(self):
         t = self.make_branch_and_tree('.')
-        if t.branch.repository._format.supports_ghosts:
+        if t._format.supports_leftmost_parent_id_as_ghost:
             t.set_parent_ids(['missing-revision-id'],
                 allow_leftmost_as_ghost=True)
             self.assertConsistentParents(['missing-revision-id'], t)
@@ -287,9 +287,9 @@ class TestAddParent(TestParents):
         try:
             tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         except errors.GhostRevisionUnusableHere:
-            self.assertFalse(tree.branch.repository._format.supports_ghosts)
+            self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
         else:
-            self.assertTrue(tree.branch.repository._format.supports_ghosts)
+            self.assertTrue(tree._format.supports_leftmost_parent_id_as_ghost)
             self.assertConsistentParents(['first-revision'], tree)
 
     def test_add_second_parent_id_with_ghost_first(self):
@@ -298,7 +298,7 @@ class TestAddParent(TestParents):
         try:
             tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         except errors.GhostRevisionUnusableHere:
-            self.assertFalse(tree.branch.repository._format.supports_ghosts)
+            self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
         else:
             tree.add_parent_tree_id('second')
             self.assertConsistentParents(['first-revision', 'second'], tree)
@@ -341,9 +341,9 @@ class TestAddParent(TestParents):
             tree.add_parent_tree(('first-revision', None),
                 allow_leftmost_as_ghost=True)
         except errors.GhostRevisionUnusableHere:
-            self.assertFalse(tree.branch.repository._format.supports_ghosts)
+            self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
         else:
-            self.assertTrue(tree.branch.repository._format.supports_ghosts)
+            self.assertTrue(tree._format.supports_leftmost_parent_id_as_ghost)
             self.assertConsistentParents(['first-revision'], tree)
 
     def test_add_second_parent_tree(self):

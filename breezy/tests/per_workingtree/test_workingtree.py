@@ -786,6 +786,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         text = tree._format.get_format_description()
         self.assertTrue(len(text))
 
+    def test_format_leftmost_parent_id_as_ghost(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertIn(
+                tree._format.supports_leftmost_parent_id_as_ghost, (True, False))
+
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a
         # configurable attribute
