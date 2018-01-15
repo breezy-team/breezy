@@ -318,6 +318,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.fetch(tree.branch.repository)
 
     def make_simple_branch_with_ghost(self):
+        if not self.repository_format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support "
+                 "ghosts")
         builder = self.make_branch_builder('source')
         builder.start_series()
         a_revid = builder.build_snapshot(None, [

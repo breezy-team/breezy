@@ -202,11 +202,11 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
-    def iter_child_entries(self, file_id, path=None):
+    def iter_child_entries(self, path, file_id=None):
         """Iterate over the children of a directory or tree reference.
 
-        :param file_id: File id of the directory/tree-reference
-        :param path: Optional path of the directory
+        :param path: Path of the directory
+        :param file_id: Optional file id of the directory/tree-reference
         :raise NoSuchId: When the file_id does not exist
         :return: Iterator over entries in the directory
         """

@@ -1483,6 +1483,8 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     supports_store_uncommitted = True
     """If this format supports shelve-like functionality."""
 
+    supports_leftmost_parent_id_as_ghost = True
+
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.

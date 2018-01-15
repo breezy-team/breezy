@@ -87,9 +87,14 @@ class TestSetParents(TestParents):
 
     def test_set_one_ghost_parent_force(self):
         t = self.make_branch_and_tree('.')
-        t.set_parent_trees([('missing-revision-id', None)],
-            allow_leftmost_as_ghost=True)
-        self.assertConsistentParents(['missing-revision-id'], t)
+        if t._format.supports_leftmost_parent_id_as_ghost:
+            t.set_parent_trees([('missing-revision-id', None)],
+                allow_leftmost_as_ghost=True)
+            self.assertConsistentParents(['missing-revision-id'], t)
+        else:
+            self.assertRaises(errors.GhostRevisionUnusableHere,
+                t.set_parent_trees, [('missing-revision-id', None)])
+            self.assertConsistentParents([], t)
 
     def test_set_two_parents_one_ghost(self):
         t = self.make_branch_and_tree('.')
@@ -134,9 +139,14 @@ class TestSetParents(TestParents):
 
     def test_set_one_ghost_parent_ids_force(self):
         t = self.make_branch_and_tree('.')
-        t.set_parent_ids(['missing-revision-id'],
-            allow_leftmost_as_ghost=True)
-        self.assertConsistentParents(['missing-revision-id'], t)
+        if t._format.supports_leftmost_parent_id_as_ghost:
+            t.set_parent_ids(['missing-revision-id'],
+                allow_leftmost_as_ghost=True)
+            self.assertConsistentParents(['missing-revision-id'], t)
+        else:
+            self.assertRaises(
+                errors.GhostRevisionUnusableHere, t.set_parent_ids,
+                ['missing-revision-id'], allow_leftmost_as_ghost=True)
 
     def test_set_two_parents_one_ghost_ids(self):
         t = self.make_branch_and_tree('.')
@@ -242,7 +252,7 @@ class TestSetParents(TestParents):
         target = u'\u03a9'
         link_name = u'\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
-        tree.add([link_name], ['link-id'])
+        tree.add([link_name])
 
         revision1 = tree.commit('added a link to a Unicode target')
         revision2 = tree.commit('this revision will be discarded')
@@ -274,15 +284,24 @@ class TestAddParent(TestParents):
     def test_add_first_parent_id_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
-        tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
-        self.assertConsistentParents(['first-revision'], tree)
+        try:
+            tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
+        except errors.GhostRevisionUnusableHere:
+            self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
+        else:
+            self.assertTrue(tree._format.supports_leftmost_parent_id_as_ghost)
+            self.assertConsistentParents(['first-revision'], tree)
 
     def test_add_second_parent_id_with_ghost_first(self):
         """Test adding the second parent when the first is a ghost."""
         tree = self.make_branch_and_tree('.')
-        tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
-        tree.add_parent_tree_id('second')
-        self.assertConsistentParents(['first-revision', 'second'], tree)
+        try:
+            tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
+        except errors.GhostRevisionUnusableHere:
+            self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
+        else:
+            tree.add_parent_tree_id('second')
+            self.assertConsistentParents(['first-revision', 'second'], tree)
 
     def test_add_second_parent_id(self):
         """Test adding the second parent id"""
@@ -318,9 +337,14 @@ class TestAddParent(TestParents):
     def test_add_first_parent_tree_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
-        tree.add_parent_tree(('first-revision', None),
-            allow_leftmost_as_ghost=True)
-        self.assertConsistentParents(['first-revision'], tree)
+        try:
+            tree.add_parent_tree(('first-revision', None),
+                allow_leftmost_as_ghost=True)
+        except errors.GhostRevisionUnusableHere:
+            self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
+        else:
+            self.assertTrue(tree._format.supports_leftmost_parent_id_as_ghost)
+            self.assertConsistentParents(['first-revision'], tree)
 
     def test_add_second_parent_tree(self):
         """Test adding the second parent id"""

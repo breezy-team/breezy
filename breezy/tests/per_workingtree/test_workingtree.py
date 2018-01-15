@@ -358,7 +358,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
         # set last-revision to one not in the history
-        wt.set_last_revision('A')
+        if wt.branch.repository._format.supports_ghosts:
+            wt.set_last_revision('A')
         # set it back to None for an empty tree.
         wt.set_last_revision('null:')
         a = wt.commit('A', allow_pointless=True)
@@ -784,6 +785,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         text = tree._format.get_format_description()
         self.assertTrue(len(text))
+
+    def test_format_leftmost_parent_id_as_ghost(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertIn(
+                tree._format.supports_leftmost_parent_id_as_ghost, (True, False))
 
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a

@@ -90,7 +90,8 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         one_id = tree.path2id('one')
         self.build_tree(['tree/d/', 'tree/d/a'])
-        tree.add(['d', 'd/a'], ['d-id', 'a-id'])
+        tree.add(['d', 'd/a'])
+        a_id = tree.path2id('d/a')
         tree.commit('1', rev_id='rev-1')
 
         tree.rename_one('d', 'e')
@@ -100,7 +101,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         try:
             mtime = tree.get_file_mtime('e/a')
             self.assertAlmostEqual(st.st_mtime, mtime)
-            mtime = tree.get_file_mtime('e/a', 'a-id')
+            mtime = tree.get_file_mtime('e/a', a_id)
             self.assertAlmostEqual(st.st_mtime, mtime)
         finally:
             tree.unlock()

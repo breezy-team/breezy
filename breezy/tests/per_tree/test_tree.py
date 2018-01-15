@@ -262,10 +262,10 @@ class TestIterChildEntries(TestCaseWithTree):
         work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
         tree = self._convert_tree(work_tree)
         output = [e.name for e in
-            tree.iter_child_entries(tree.get_root_id())]
+            tree.iter_child_entries('', tree.get_root_id())]
         self.assertEqual({'a', 'f'}, set(output))
         output = [e.name for e in
-            tree.iter_child_entries(tree.path2id('a'))]
+            tree.iter_child_entries('a', tree.path2id('a'))]
         self.assertEqual({'b', 'd'}, set(output))
 
     def test_does_not_exist(self):
@@ -273,7 +273,7 @@ class TestIterChildEntries(TestCaseWithTree):
         self.build_tree(['a/'])
         work_tree.add(['a'])
         tree = self._convert_tree(work_tree)
-        self.assertRaises(errors.NoSuchId, lambda:
+        self.assertRaises(errors.NoSuchFile, lambda:
             list(tree.iter_child_entries('unknown')))
 
 

@@ -65,42 +65,42 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_no_autodelete_renamed_away(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir2/'])
-        tree_a.add(['dir', 'dir/f1', 'dir/f2', 'dir2'],
-                   ['dir-id', 'f1-id', 'f2-id', 'dir2-id'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2', 'dir2'])
+        dir2_id =  tree_a.path2id('dir2')
+        f1_id = tree_a.path2id('dir/f1')
         rev_id1 = tree_a.commit('init')
         # Rename one entry out of this directory
         tree_a.rename_one('dir/f1', 'dir2/a')
         osutils.rmtree('a/dir')
         tree_a.commit('autoremoved')
 
-        tree_a.lock_read()
-        try:
+        with tree_a.lock_read():
             root_id = tree_a.get_root_id()
             paths = [(path, ie.file_id)
                      for path, ie in tree_a.iter_entries_by_dir()]
-        finally:
-            tree_a.unlock()
         # The only paths left should be the root
-        self.assertEqual([('', root_id), ('dir2', 'dir2-id'),
-                          ('dir2/a', 'f1-id'),
+        self.assertEqual([('', root_id),
+                          ('dir2', dir2_id),
+                          ('dir2/a', f1_id),
                          ], paths)
 
     def test_no_autodelete_alternate_renamed(self):
         # Test for bug #114615
         tree_a = self.make_branch_and_tree('A')
         self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
-        tree_a.add(['a', 'a/m', 'a/n'], ['a-id', 'm-id', 'n-id'])
+        tree_a.add(['a', 'a/m', 'a/n'])
+        a_id = tree_a.path2id('a')
+        m_id = tree_a.path2id('a/m')
+        n_id = tree_a.path2id('a/n')
         tree_a.commit('init')
 
-        tree_a.lock_read()
-        try:
+        with tree_a.lock_read():
             root_id = tree_a.get_root_id()
-        finally:
-            tree_a.unlock()
 
         tree_b = tree_a.controldir.sprout('B').open_workingtree()
         self.build_tree(['B/xyz/'])
-        tree_b.add(['xyz'], ['xyz-id'])
+        tree_b.add(['xyz'])
+        xyz_id = tree_b.path2id('xyz')
         tree_b.rename_one('a/m', 'xyz/m')
         osutils.rmtree('B/a')
         tree_b.commit('delete in B')
@@ -108,8 +108,8 @@ class TestCommit(TestCaseWithWorkingTree):
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),
-                          ('xyz', 'xyz-id'),
-                          ('xyz/m', 'm-id'),
+                          ('xyz', xyz_id),
+                          ('xyz/m', m_id),
                          ], paths)
 
         self.build_tree_contents([('A/a/n', 'new contents for n\n')])
@@ -122,10 +122,10 @@ class TestCommit(TestCaseWithWorkingTree):
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),
-                          ('a', 'a-id'),
-                          ('xyz', 'xyz-id'),
-                          ('a/n.OTHER', 'n-id'),
-                          ('xyz/m', 'm-id'),
+                          ('a', a_id),
+                          ('xyz', xyz_id),
+                          ('a/n.OTHER', n_id),
+                          ('xyz/m', m_id),
                          ], paths)
         osutils.rmtree('B/a')
         try:
@@ -139,8 +139,8 @@ class TestCommit(TestCaseWithWorkingTree):
         paths = [(path, ie.file_id)
                  for path, ie in tree_b.iter_entries_by_dir()]
         self.assertEqual([('', root_id),
-                          ('xyz', 'xyz-id'),
-                          ('xyz/m', 'm-id'),
+                          ('xyz', xyz_id),
+                          ('xyz/m', m_id),
                          ], paths)
 
     def test_commit_exclude_pending_merge_fails(self):
@@ -233,12 +233,13 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
         wt = self.make_branch_and_tree('.')
-        wt.add(['a'], ['a-id'], ['file'])
+        wt.add(['a'], None, ['file'])
+        a_id = wt.path2id('a')
         def fail_message(obj):
             raise errors.BzrCommandError("empty commit message")
         self.assertRaises(errors.BzrCommandError, wt.commit,
             message_callback=fail_message)
-        self.assertEqual('a', wt.id2path('a-id'))
+        self.assertEqual('a', wt.id2path(a_id))
 
     def test_local_commit_ignores_master(self):
         # a --local commit does not require access to the master branch
@@ -279,6 +280,9 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_record_initial_ghost(self):
         """The working tree needs to record ghosts during commit."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable(
+                'format does not support ghosts')
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit('commit against a ghost first parent.')
@@ -290,6 +294,9 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_record_two_ghosts(self):
         """The working tree should preserve all the parents during commit."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable(
+                'format does not support ghosts')
         wt.set_parent_ids([
                 'foo@azkhazan-123123-abcabc',
                 'wibble@fofof--20050401--1928390812',
@@ -307,7 +314,11 @@ class TestCommit(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
         self.build_tree(['a', 'b/', 'b/c', 'd'])
-        wt.add(['a', 'b', 'b/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
+        wt.add(['a', 'b', 'b/c', 'd'])
+        a_id = wt.path2id('a')
+        b_id = wt.path2id('b')
+        c_id = wt.path2id('b/c')
+        d_id = wt.path2id('d')
         this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         this_dir.delete('d')
@@ -315,10 +326,10 @@ class TestCommit(TestCaseWithWorkingTree):
         # a present on disk. After commit b-id, c-id and d-id should be
         # missing from the inventory, within the same tree transaction.
         wt.commit('commit stuff')
-        self.assertTrue(wt.has_id('a-id'))
-        self.assertFalse(wt.has_or_had_id('b-id'))
-        self.assertFalse(wt.has_or_had_id('c-id'))
-        self.assertFalse(wt.has_or_had_id('d-id'))
+        self.assertTrue(wt.has_id(a_id))
+        self.assertFalse(wt.has_or_had_id(b_id))
+        self.assertFalse(wt.has_or_had_id(c_id))
+        self.assertFalse(wt.has_or_had_id(d_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
@@ -328,10 +339,10 @@ class TestCommit(TestCaseWithWorkingTree):
         # to be sure.
         wt = wt.controldir.open_workingtree()
         wt.lock_read()
-        self.assertTrue(wt.has_id('a-id'))
-        self.assertFalse(wt.has_or_had_id('b-id'))
-        self.assertFalse(wt.has_or_had_id('c-id'))
-        self.assertFalse(wt.has_or_had_id('d-id'))
+        self.assertTrue(wt.has_id(a_id))
+        self.assertFalse(wt.has_or_had_id(b_id))
+        self.assertFalse(wt.has_or_had_id(c_id))
+        self.assertFalse(wt.has_or_had_id(d_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
@@ -341,16 +352,19 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_deleted_subtree_with_removed(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c', 'd'])
-        wt.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        wt.add(['a', 'b', 'b/c'])
+        a_id = wt.path2id('a')
+        b_id = wt.path2id('b')
+        c_id = wt.path2id('b/c')
         wt.commit('first')
         wt.remove('b/c')
         this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
-        self.assertTrue(wt.has_id('a-id'))
-        self.assertFalse(wt.has_or_had_id('b-id'))
-        self.assertFalse(wt.has_or_had_id('c-id'))
+        self.assertTrue(wt.has_id(a_id))
+        self.assertFalse(wt.has_or_had_id(b_id))
+        self.assertFalse(wt.has_or_had_id(c_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
