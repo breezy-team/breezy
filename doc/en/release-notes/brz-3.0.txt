@@ -152,6 +152,9 @@ Bug Fixes
 * Avoid writing directly to sys.stdout, but use self.outf in
   Command implementations instead. (#268573, B. Clausius)
 
+* It is now possible to version files with backslashes in their name
+  on platforms that support it. (Jelmer Vernooij, #81844)
+
 Documentation
 *************
 
