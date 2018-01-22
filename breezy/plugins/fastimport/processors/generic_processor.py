@@ -25,6 +25,7 @@ from .... import (
     errors,
     osutils,
     progress,
+    revision as _mod_revision,
     )
 from ....bzr.knitpack_repo import KnitPackRepository
 from ....trace import (
@@ -466,7 +467,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def _init_id_map(self):
         """Load the id-map and check it matches the repository.
-        
+
         :return: the number of entries in the map
         """
         # Currently, we just check the size. In the future, we might
@@ -474,6 +475,9 @@ class GenericProcessor(processor.ImportProcessor):
         # are identical as well.
         self.cache_mgr.marks, known = idmapfile.load_id_map(
             self.id_map_path)
+        if self.cache_mgr.add_mark('0', _mod_revision.NULL_REVISION):
+            known += 1
+
         existing_count = len(self.repo.all_revision_ids())
         if existing_count < known:
             raise plugin_errors.BadRepositorySize(known, existing_count)

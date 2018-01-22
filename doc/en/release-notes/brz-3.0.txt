@@ -155,6 +155,8 @@ Bug Fixes
 * It is now possible to version files with backslashes in their name
   on platforms that support it. (Jelmer Vernooij, #81844)
 
+* Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
+
 Documentation
 *************
 
