@@ -163,45 +163,13 @@ class RemoteGitProber(Prober):
         base_url, _ = urlutils.split_segment_parameters(transport.external_url())
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
         from ...transport.http._urllib import HttpTransport_urllib, Request
-        if isinstance(transport, HttpTransport_urllib):
-            req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
-                          headers={"Content-Type": "application/x-git-upload-pack-request"})
-            req.follow_redirections = True
-            resp = transport._perform(req)
-            if resp.code in (404, 405):
-                raise bzr_errors.NotBranchError(transport.base)
-            headers = resp.headers
-            refs_text = resp.read()
-        else:
-            try:
-                from ...transport.http._pycurl import PyCurlTransport
-            except bzr_errors.DependencyNotPresent:
-                raise bzr_errors.NotBranchError(transport.base)
-            else:
-                import pycurl
-                from cStringIO import StringIO
-                if isinstance(transport, PyCurlTransport):
-                    conn = transport._get_curl()
-                    conn.setopt(pycurl.URL, url)
-                    conn.setopt(pycurl.FOLLOWLOCATION, 1)
-                    transport._set_curl_options(conn)
-                    conn.setopt(pycurl.HTTPGET, 1)
-                    header = StringIO()
-                    data = StringIO()
-                    conn.setopt(pycurl.HEADERFUNCTION, header.write)
-                    conn.setopt(pycurl.WRITEFUNCTION, data.write)
-                    transport._curl_perform(conn, header,
-                        ["Content-Type: application/x-git-upload-pack-request"])
-                    code = conn.getinfo(pycurl.HTTP_CODE)
-                    if code in (404, 405):
-                        raise bzr_errors.NotBranchError(transport.base)
-                    if code != 200:
-                        raise bzr_errors.InvalidHttpResponse(transport._path,
-                            str(code))
-                    headers = transport._parse_headers(header)
-                else:
-                    raise bzr_errors.NotBranchError(transport.base)
-                refs_text = data.getvalue()
+        req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
+                      headers={"Content-Type": "application/x-git-upload-pack-request"})
+        req.follow_redirections = True
+        resp = transport._perform(req)
+        if resp.code in (404, 405):
+            raise bzr_errors.NotBranchError(transport.base)
+        headers = resp.headers
         ct = headers.getheader("Content-Type")
         if ct is None:
             raise bzr_errors.NotBranchError(transport.base)
@@ -213,7 +181,7 @@ class RemoteGitProber(Prober):
                 BareLocalGitControlDirFormat,
                 )
             ret = BareLocalGitControlDirFormat()
-            ret._refs_text = refs_text
+            ret._refs_text = resp.read()
             return ret
 
     def probe_transport(self, transport):
