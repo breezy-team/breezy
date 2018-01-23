@@ -277,7 +277,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 except KeyError:
                     # no-change merge ?
                     blob = Blob()
-                    blob.data = tree.get_file_text(ie.file_id)
+                    path = tree.id2path(ie.file_id)
+                    blob.data = tree.get_file_text(path, ie.file_id)
                     return blob.id
             elif ie.kind == "directory":
                 # Not all cache backends store the tree information,
