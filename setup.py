@@ -65,6 +65,7 @@ META_INFO = {
     'extras_require': {
         'fastimport': [],
         'git': [],
+        'launchpad': ['launchpadlib>=1.6.3'],
         },
     'tests_require': [
         'testtools',
