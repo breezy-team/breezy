@@ -339,13 +339,13 @@ class LocalGitRepository(GitRepository):
             yield o.id, rev.revision_id, roundtrip_revid
 
     def all_revision_ids(self):
-        ret = set([])
+        ret = set()
         for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
             if roundtrip_revid:
                 ret.add(roundtrip_revid)
             else:
                 ret.add(revid)
-        return ret
+        return list(ret)
 
     def _get_parents(self, revid, no_alternates=False):
         if type(revid) != str:

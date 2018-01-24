@@ -155,7 +155,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEquals(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))
 
     def test_all_revision_ids_none(self):
-        self.assertEquals(set([]), self.git_repo.all_revision_ids())
+        self.assertEquals([], self.git_repo.all_revision_ids())
 
     def test_get_known_graph_ancestry(self):
         cid = self._do_commit()
@@ -170,7 +170,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
     def test_all_revision_ids(self):
         commit_id = self._do_commit()
         self.assertEquals(
-                set([default_mapping.revision_id_foreign_to_bzr(commit_id)]),
+                [default_mapping.revision_id_foreign_to_bzr(commit_id)],
                 self.git_repo.all_revision_ids())
 
     def assertIsNullInventory(self, inv):
