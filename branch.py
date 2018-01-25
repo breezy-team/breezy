@@ -260,21 +260,6 @@ class DictTagDict(tag.BasicTags):
         return self._tags
 
 
-class GitSymrefBranchFormat(branch.BranchFormat):
-
-    def get_format_description(self):
-        return 'Git Symbolic Reference Branch'
-
-    def network_name(self):
-        return "git"
-
-    def get_reference(self, controldir, name=None):
-        return controldir.get_branch_reference(name)
-
-    def set_reference(self, controldir, name, target):
-        return controldir.set_branch_reference(target, name)
-
-
 class GitBranchFormat(branch.BranchFormat):
 
     def get_format_description(self):
@@ -322,6 +307,12 @@ class GitBranchFormat(branch.BranchFormat):
             raise errors.IncompatibleFormat(self, a_controldir._format)
         return a_controldir.create_branch(repository=repository, name=name,
             append_revisions_only=append_revisions_only)
+
+    def get_reference(self, controldir, name=None):
+        return controldir.get_branch_reference(name)
+
+    def set_reference(self, controldir, name, target):
+        return controldir.set_branch_reference(target, name)
 
 
 class GitBranch(ForeignBranch):

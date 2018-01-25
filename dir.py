@@ -428,7 +428,7 @@ class LocalGitDir(GitDir):
         if sha is None:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     controldir=self)
-        return LocalGitBranch(self, repo, ref)
+        return LocalGitBranch(self, repo, ref_chain[-1])
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
