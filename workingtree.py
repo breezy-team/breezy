@@ -1079,7 +1079,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         return (index_sha, index_mode)
 
     def get_shelf_manager(self):
-        raise workingtree.ShelvingUnsupported(self)
+        raise workingtree.ShelvingUnsupported()
 
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
