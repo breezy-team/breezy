@@ -57,6 +57,9 @@ META_INFO = {
         'Programming Language :: C',
         'Topic :: Software Development :: Version Control',
         ],
+    'install_requires': [
+        'six>=1.9.0',
+        ],
     }
 
 # The list of packages is automatically generated later. Add other things
