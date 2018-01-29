@@ -841,7 +841,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             yield file_ie
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
-        # FIXME: Is return order correct?
         if yield_parents:
             raise NotImplementedError(self.iter_entries_by_dir)
         with self.lock_read():
@@ -871,9 +870,10 @@ class GitWorkingTree(workingtree.WorkingTree):
                     file_ie = self._get_file_ie(name, path, value, None)
                 except IOError:
                     continue
-                for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
-                        dir_ids):
-                    yield dir_path, dir_ie
+                if yield_parents or specific_file_ids is None:
+                    for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
+                            dir_ids):
+                        yield dir_path, dir_ie
                 file_ie.parent_id = self.path2id(parent)
                 yield path, file_ie
 
