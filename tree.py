@@ -30,6 +30,7 @@ from ... import (
     revisiontree,
     tree,
     )
+from ...revision import NULL_REVISION
 from ...bzr import (
     inventory,
     )
@@ -37,6 +38,7 @@ from ...bzr import (
 from .mapping import (
     mode_is_executable,
     mode_kind,
+    GitFileIdMap,
     )
 
 
@@ -49,12 +51,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self.store = repository._git.object_store
         assert isinstance(revision_id, str)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
-        try:
-            commit = self.store[self.commit_id]
-        except KeyError, r:
-            raise errors.NoSuchRevision(repository, revision_id)
-        self.tree = commit.tree
-        self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
+        if revision_id == NULL_REVISION:
+            self.tree = None
+            self._fileid_map = GitFileIdMap({}, None)
+        else:
+            try:
+                commit = self.store[self.commit_id]
+            except KeyError, r:
+                raise errors.NoSuchRevision(repository, revision_id)
+            self.tree = commit.tree
+            self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
 
     def get_file_revision(self, path, file_id=None):
         change_scanner = self._repository._file_change_scanner
@@ -389,12 +395,8 @@ class InterGitRevisionTrees(tree.InterTree):
             raise AssertionError
         changes = self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged)
-        source_fileid_map = self.source.mapping.get_fileid_map(
-            self.source._repository._git.object_store.__getitem__,
-            self.source.tree)
-        target_fileid_map = self.target.mapping.get_fileid_map(
-            self.target._repository._git.object_store.__getitem__,
-            self.target.tree)
+        source_fileid_map = self.source._fileid_map
+        target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
             (source_fileid_map, target_fileid_map),
             specific_file=specific_files)

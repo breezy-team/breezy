@@ -19,6 +19,7 @@
 
 from __future__ import absolute_import
 
+import itertools
 from cStringIO import (
     StringIO,
     )
@@ -1147,8 +1148,7 @@ class InterIndexGitTree(tree.InterTree):
             # FIXME: Handle include_root
             changes = changes_between_git_tree_and_index(
                 self.source.store, self.source.tree,
-                self.target, want_unchanged=want_unchanged,
-                want_unversioned=want_unversioned)
+                self.target, want_unchanged=want_unchanged)
             source_fileid_map = self.source._fileid_map
             target_fileid_map = self.target._fileid_map
             ret = tree_delta_from_git_changes(changes, self.target.mapping,
@@ -1156,7 +1156,8 @@ class InterIndexGitTree(tree.InterTree):
                 specific_file=specific_files, require_versioned=require_versioned)
             if want_unversioned:
                 for e in self.target.extras():
-                    ret.unversioned.append((e, None,
+                    ret.unversioned.append(
+                        (osutils.normalized_filename(e), None,
                         osutils.file_kind(self.target.abspath(e))))
             return ret
 
@@ -1166,8 +1167,11 @@ class InterIndexGitTree(tree.InterTree):
         with self.lock_read():
             changes = changes_between_git_tree_and_index(
                 self.source.store, self.source.tree,
-                self.target, want_unchanged=include_unchanged,
-                want_unversioned=want_unversioned)
+                self.target, want_unchanged=include_unchanged)
+            if want_unversioned:
+                changes = itertools.chain(
+                        changes,
+                        untracked_changes(self.target))
             return changes_from_git_changes(
                     changes, self.target.mapping, specific_file=specific_files)
 
@@ -1175,8 +1179,21 @@ class InterIndexGitTree(tree.InterTree):
 tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
+def untracked_changes(tree):
+    for e in tree.extras():
+        ap = tree.abspath(e)
+        st = os.stat(ap)
+        try:
+            np, accessible  = osutils.normalized_filename(e)
+        except UnicodeDecodeError:
+            raise errors.BadFilenameEncoding(
+                e, osutils._fs_enc)
+        yield (np, st.st_mode,
+               blob_from_path_and_stat(ap, st).id)
+
+
 def changes_between_git_tree_and_index(object_store, tree, target,
-        want_unchanged=False, want_unversioned=False, update_index=False):
+        want_unchanged=False, update_index=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
