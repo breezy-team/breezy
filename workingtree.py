@@ -1157,7 +1157,7 @@ class InterIndexGitTree(tree.InterTree):
             if want_unversioned:
                 for e in self.target.extras():
                     ret.unversioned.append(
-                        (osutils.normalized_filename(e), None,
+                        (osutils.normalized_filename(e)[0], None,
                         osutils.file_kind(self.target.abspath(e))))
             return ret
 
