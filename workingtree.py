@@ -338,15 +338,13 @@ class GitWorkingTree(workingtree.WorkingTree):
         :param force: Delete files and directories, even if they are changed
             and even if the directories are not empty.
         """
-        all_files = set() # specified and nested files
-
         if isinstance(files, basestring):
             files = [files]
 
         if to_file is None:
             to_file = sys.stdout
 
-        files = list(all_files)
+        files = list(files)
 
         if len(files) == 0:
             return # nothing to do
@@ -363,6 +361,8 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         with self.lock_tree_write():
             for f in files:
+                if f == '':
+                    continue
                 fid = self.path2id(f)
                 if not fid:
                     message = "%s is not versioned." % (f,)
