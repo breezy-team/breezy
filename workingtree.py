@@ -409,19 +409,26 @@ class GitWorkingTree(workingtree.WorkingTree):
         added = []
         ignored = {}
         user_dirs = []
+        def call_action(filepath, kind):
+            if action is not None:
+                parent_path = posixpath.dirname(filepath)
+                parent_id = self.path2id(parent_path)
+                parent_ie = self._get_dir_ie(parent_path, parent_id)
+                file_id = action(self, parent_ie, filepath, kind)
+                if file_id is not None:
+                    raise workingtree.SettingFileIdUnsupported()
+
         with self.lock_tree_write():
             for filepath in osutils.canonical_relpaths(self.basedir, file_list):
                 abspath = self.abspath(filepath)
                 kind = osutils.file_kind(abspath)
-                if action is not None:
-                    file_id = action(self, None, filepath, kind)
-                else:
-                    file_id = None
                 if kind in ("file", "symlink"):
+                    call_action(filepath, kind)
                     if save:
                         self._index_add_entry(filepath, kind)
                     added.append(filepath)
                 elif kind == "directory":
+                    call_action(filepath, kind)
                     if recurse:
                         user_dirs.append(filepath)
                 else:
@@ -441,10 +448,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
-                        if action is not None:
-                            file_id = action(self, None, filepath, kind)
-                        else:
-                            file_id = None
+                        call_action(filepath, kind)
                         if save:
                             self._index_add_entry(subp, kind)
             if added and save:
