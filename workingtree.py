@@ -478,14 +478,27 @@ class GitWorkingTree(workingtree.WorkingTree):
         from_path = from_rel.encode("utf-8")
         to_path = to_rel.encode("utf-8")
         with self.lock_tree_write():
-            if not self.has_filename(to_rel):
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NoSuchFile(to_rel))
+            if not after:
+                if not self.has_filename(from_rel):
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.NoSuchFile(from_rel))
+            else:
+                if not self.has_filename(to_rel):
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.NoSuchFile(to_rel))
+
             if not from_path in self.index:
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=from_rel))
+
             if not after:
-                os.rename(self.abspath(from_rel), self.abspath(to_rel))
+                try:
+                    os.rename(self.abspath(from_rel), self.abspath(to_rel))
+                except OSError as e:
+                    if e.errno == errno.ENOENT:
+                        raise errors.BzrMoveFailedError(from_rel, to_rel,
+                            errors.NoSuchFile(to_rel))
+                    raise
             self.index[to_path] = self.index[from_path]
             del self.index[from_path]
             self.flush()
