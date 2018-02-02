@@ -842,22 +842,25 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def iter_child_entries(self, path, file_id=None):
         encoded_path = path.encode('utf-8')
+        parent_id = self.path2id(path)
         found_any = False
+        seen_children = set()
         for item_path, value in self.index.iteritems():
             if self.mapping.is_special_file(item_path):
                 continue
-            if not item_path.startswith(encoded_path + b'/'):
+            if not osutils.is_inside(encoded_path, item_path):
                 continue
             found_any = True
-            subpath = item_path[len(encoded_path)+1:]
+            subpath = posixpath.relpath(item_path, encoded_path)
             if b'/' in subpath:
-                continue
-            (parent, name) = posixpath.split(item_path)
-            try:
-                file_ie = self._get_file_ie(name, item_path, value, None)
-            except IOError:
-                continue
-            file_ie.parent_id = self.path2id(parent)
+                dirname = subpath.split(b'/', 1)[0]
+                file_ie = self._get_dir_ie(posixpath.join(path, dirname), parent_id)
+            else:
+                (parent, name) = posixpath.split(item_path)
+                try:
+                    file_ie = self._get_file_ie(name, item_path, value, parent_id)
+                except IOError:
+                    continue
             yield file_ie
         if not found_any:
             raise errors.NoSuchFile(path)
