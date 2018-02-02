@@ -881,8 +881,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             else:
                 specific_paths = None
             root_ie = self._get_dir_ie(u"", None)
+            ret = {}
             if specific_paths is None:
-                yield u"", root_ie
+                ret[(None, u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
             for path, value in self.index.iteritems():
                 if self.mapping.is_special_file(path):
@@ -898,9 +899,10 @@ class GitWorkingTree(workingtree.WorkingTree):
                 if yield_parents or specific_file_ids is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
                             dir_ids):
-                        yield dir_path, dir_ie
+                        ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
                 file_ie.parent_id = self.path2id(parent)
-                yield path, file_ie
+                ret[(posixpath.dirname(path), path)] = file_ie
+            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
     def conflicts(self):
         with self.lock_read():
