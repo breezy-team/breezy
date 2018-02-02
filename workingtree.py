@@ -842,11 +842,13 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def iter_child_entries(self, path, file_id=None):
         encoded_path = path.encode('utf-8')
+        found_any = False
         for item_path, value in self.index.iteritems():
             if self.mapping.is_special_file(item_path):
                 continue
             if not item_path.startswith(encoded_path + b'/'):
                 continue
+            found_any = True
             subpath = item_path[len(encoded_path)+1:]
             if b'/' in subpath:
                 continue
@@ -857,6 +859,8 @@ class GitWorkingTree(workingtree.WorkingTree):
                 continue
             file_ie.parent_id = self.path2id(parent)
             yield file_ie
+        if not found_any:
+            raise errors.NoSuchFile(path)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         if yield_parents:

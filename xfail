@@ -145,7 +145,6 @@ breezy.tests.per_tree.test_test_trees.TestTreeShapes.test_tree_with_subdirs_and_
 breezy.tests.per_tree.test_test_trees.TestTreeShapes.test_tree_with_subdirs_and_all_content_types_wo_symlinks(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_test_trees.TestTreeShapes.test_tree_with_utf8(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_tree.TestAnnotate.test_annotate(GitWorkingTreeFormat)
-breezy.tests.per_tree.test_tree.TestIterChildEntries.test_does_not_exist(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_tree.TestIterChildEntries.test_iteration_order(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_tree.TestIterEntriesByDir.test_iteration_order(GitWorkingTreeFormat)
 breezy.tests.per_tree.test_tree.TestPlanFileMerge.test_plan_file_merge(GitWorkingTreeFormat)
