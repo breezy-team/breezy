@@ -89,7 +89,8 @@ class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
     def __init__(self, controldir, repo, branch, index):
-        self.basedir = controldir.root_transport.local_abspath('.').encode(osutils._fs_enc)
+        basedir = controldir.root_transport.local_abspath('.')
+        self.basedir = osutils.realpath(basedir)
         self.controldir = controldir
         self.repository = repo
         self.store = self.repository._git.object_store
@@ -946,7 +947,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         entry = self.index[path]
         index_mode = entry[-6]
         index_sha = entry[-2]
-        disk_path = os.path.join(self.basedir, path)
+        disk_path = self.abspath(path.decode('utf-8')).encode(
+            osutils._fs_enc)
         try:
             disk_stat = os.lstat(disk_path)
         except OSError, (num, msg):
