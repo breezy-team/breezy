@@ -430,8 +430,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             def get_file(self, path, file_id=None):
                 return BytesIO(self.get_file_text(path, file_id))
 
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             if shape.root.revision is None:
                 shape.root.revision = revid
             builder = tree.branch.get_commit_builder(
@@ -449,8 +448,6 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 base_tree.get_revision_id(), changes))
             builder.finish_inventory()
             builder.commit("Message")
-        finally:
-            tree.unlock()
 
     def add_entry(self, inv, rev_id, entry):
         entry.revision = rev_id

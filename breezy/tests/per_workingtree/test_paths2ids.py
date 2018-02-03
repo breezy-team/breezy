@@ -172,6 +172,8 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         # should not raise an error: it must be unversioned in *all* trees to
         # error.
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_setting_file_ids():
+            raise TestNotApplicable('tree does not support setting file ids')
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.build_tree(['tree/in-one'])

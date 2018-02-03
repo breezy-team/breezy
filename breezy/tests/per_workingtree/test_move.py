@@ -105,8 +105,11 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'b'])
         tree.add(['b'])
         tree.commit('initial')
-        self.assertRaises(errors.BzrMoveFailedError,
-                          tree.move, ['b'], 'a')
+        if tree.has_versioned_directories():
+            self.assertRaises(errors.BzrMoveFailedError,
+                              tree.move, ['b'], 'a')
+        else:
+            tree.move(['b'], 'a')
         tree._validate()
 
     def test_move_unversioned(self):

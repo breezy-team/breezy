@@ -25,6 +25,7 @@ from ... import (
     osutils,
     tests,
     trace,
+    workingtree,
     )
 from ...sixish import (
     BytesIO,
@@ -259,14 +260,20 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(['file1', 'dir1/', 'dir1/file2'])
 
         wt = self.make_branch_and_tree('.')
+        if not wt._format.supports_setting_file_ids:
+            self.assertRaises(
+                workingtree.SettingFileIdUnsupported,
+                wt.smart_add, ['.'], action=action)
+            return
+
         wt.smart_add(['.'], action=action)
         # The order of adds is not strictly fixed:
         sio.seek(0)
         lines = sorted(sio.readlines())
-        self.assertEqualDiff(['added dir1 with id directory-dir1\n',
-                              'added dir1/file2 with id file-dir1%file2\n',
-                              'added file1 with id file-file1\n',
-                             ], lines)
+        self.assertEqual(['added dir1 with id directory-dir1\n',
+                          'added dir1/file2 with id file-dir1%file2\n',
+                          'added file1 with id file-file1\n', ]
+                          , lines)
         wt.lock_read()
         self.addCleanup(wt.unlock)
         self.assertEqual([('', wt.path2id('')),
