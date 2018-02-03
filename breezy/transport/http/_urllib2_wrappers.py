@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Implementation of urllib2 tailored to bzr needs
+"""Implementation of urllib2 tailored to Breezy's needs
 
 This file complements the urllib2 class hierarchy with custom classes.
 
@@ -461,7 +461,7 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
             if ca_certs is None:
                 trace.warning(
                     "No valid trusted SSL CA certificates file set. See "
-                    "'bzr help ssl.ca_certs' for more information on setting "
+                    "'brz help ssl.ca_certs' for more information on setting "
                     "trusted CAs.")
         try:
             ssl_sock = ssl.SSLSocket(self.sock, self.key_file, self.cert_file,
@@ -470,7 +470,7 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
         except ssl.SSLError:
             trace.note(
                 "\n"
-                "See `bzr help ssl.ca_certs` for how to specify trusted CA"
+                "See `brz help ssl.ca_certs` for how to specify trusted CA"
                 "certificates.\n"
                 "Pass -Ossl.cert_reqs=none to disable certificate "
                 "verification entirely.\n")
@@ -659,7 +659,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        'User-agent': 'bzr/%s (urllib)' % breezy_version,
+                        'User-agent': 'Breezy/%s' % breezy_version,
                         'Accept': '*/*',
                         }
 
@@ -907,7 +907,7 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
     """
     _debuglevel = DEBUG
     # RFC2616 says that only read requests should be redirected
-    # without interacting with the user. But bzr use some
+    # without interacting with the user. But Breezy uses some
     # shortcuts to optimize against roundtrips which can leads to
     # write requests being issued before read requests of
     # containing dirs can be redirected. So we redirect write
@@ -928,7 +928,7 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
         # as errors:
 
         # 300: Multiple choices for different representations of
-        #      the URI. Using that mechanisn with bzr will violate the
+        #      the URI. Using that mechanisn with Breezy will violate the
         #      protocol neutrality of Transport.
 
         # 304: Not modified (SHOULD only occurs with conditional
@@ -1773,7 +1773,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
 
 
 class HTTPDefaultErrorHandler(urllib_request.HTTPDefaultErrorHandler):
-    """Translate common errors into bzr Exceptions"""
+    """Translate common errors into Breezy Exceptions"""
 
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
