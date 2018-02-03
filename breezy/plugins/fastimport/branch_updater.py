@@ -99,11 +99,11 @@ class BranchUpdater(object):
         git_bzr_items.extend(sorted(git_to_bzr_map.items(), key=itemgetter(1)))
 
         # Policy for locating branches
-        def dir_under_current(name, ref_name):
+        def dir_under_current(name):
             # Using the Bazaar name, get a directory under the current one
             repo_base = self.repo.controldir.transport.base
             return osutils.pathjoin(repo_base, "..", name)
-        def dir_sister_branch(name, ref_name):
+        def dir_sister_branch(name):
             # Using the Bazaar name, get a sister directory to the branch
             return osutils.pathjoin(self.branch.base, "..", name)
         if self.branch is not None:
@@ -112,18 +112,19 @@ class BranchUpdater(object):
             dir_policy = dir_under_current
 
         # Create/track missing branches
-        shared_repo = self.repo.is_shared()
+        can_create_branches = (
+                self.repo.is_shared() or
+                self.repo.controldir._format.colocated_branches)
         for ref_name, name in git_bzr_items:
             tip = self.heads_by_ref[ref_name][0]
-            if shared_repo:
-                location = dir_policy(name, ref_name)
+            if can_create_branches:
                 try:
-                    br = self.make_branch(location)
+                    br = self.make_branch(name, ref_name, dir_policy)
                     branch_tips.append((br, tip))
                     continue
                 except errors.BzrError, ex:
                     show_error("ERROR: failed to create branch %s: %s",
-                        location, ex)
+                        name, ex)
             lost_head = self.cache_mgr.lookup_committish(tip)
             lost_info = (name, lost_head)
             lost_heads.append(lost_info)
@@ -137,17 +138,25 @@ class BranchUpdater(object):
         # Use the last reference in the import stream
         return self.last_ref
 
-    def make_branch(self, location):
+    def make_branch(self, name, ref_name, dir_policy):
         """Make a branch in the repository if not already there."""
-        to_transport = transport.get_transport(location)
-        to_transport.create_prefix()
-        try:
-            return controldir.ControlDir.open(location).open_branch()
-        except errors.NotBranchError, ex:
-            return controldir.ControlDir.create_branch_convenience(
-                location,
-                format=self._branch_format,
-                possible_transports=[to_transport])
+        if self.repo.is_shared():
+            location = dir_policy(name)
+            to_transport = transport.get_transport(location)
+            to_transport.create_prefix()
+            try:
+                return controldir.ControlDir.open(location).open_branch()
+            except errors.NotBranchError, ex:
+                return controldir.ControlDir.create_branch_convenience(
+                    location,
+                    format=self._branch_format,
+                    possible_transports=[to_transport])
+        else:
+            try:
+                return self.repo.controldir.open_branch(name)
+            except errors.NotBranchError, ex:
+                return self.repo.controldir.create_branch(name)
+
 
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information.

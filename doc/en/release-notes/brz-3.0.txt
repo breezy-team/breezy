@@ -103,6 +103,9 @@ New Features
    It will provide suggestions if the user typoes a command.
    (Jelmer Vernooĳ)
 
+ * Support the creation of colocated branches in ``brz fast-import``.
+   (Jelmer Vernooĳ, #1744626)
+
 Improvements
 ************
 
