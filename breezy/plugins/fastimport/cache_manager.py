@@ -124,7 +124,9 @@ class CacheManager(object):
 
     def add_mark(self, mark, commit_id):
         assert mark[0] != ':'
+        is_new = (mark in self.marks)
         self.marks[mark] = commit_id
+        return is_new
 
     def lookup_committish(self, committish):
         """Resolve a 'committish' to a revision id.
