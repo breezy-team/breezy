@@ -2183,8 +2183,11 @@ class _PreviewTree(inventorytree.InventoryTree):
                 ordered_ids.append((trans_id, parent_file_id))
         return ordered_ids
 
-    def iter_child_entries(self, file_id, path=None):
-        self.id2path(file_id)
+    def iter_child_entries(self, path, file_id=None):
+        if file_id is None:
+            file_id = self.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
         trans_id = self._transform.trans_id_file_id(file_id)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]

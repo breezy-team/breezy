@@ -979,6 +979,84 @@ class cmd_inventory(Command):
                 self.outf.write('\n')
 
 
+class cmd_cp(Command):
+    __doc__ = """Copy a file.
+
+    :Usage:
+        brz cp OLDNAME NEWNAME
+
+        brz cp SOURCE... DESTINATION
+
+    If the last argument is a versioned directory, all the other names
+    are copied into it.  Otherwise, there must be exactly two arguments
+    and the file is copied to a new name.
+
+    Files cannot be copied between branches. Only files can be copied
+    at the moment.
+    """
+
+    takes_args = ['names*']
+    takes_options = []
+    aliases = ['copy']
+    encoding_type = 'replace'
+
+    def run(self, names_list):
+        import shutil
+        if names_list is None:
+            names_list = []
+        if len(names_list) < 2:
+            raise errors.BzrCommandError(gettext("missing file argument"))
+        tree, rel_names = WorkingTree.open_containing_paths(names_list, canonicalize=False)
+        for file_name in rel_names[0:-1]:
+            if file_name == '':
+                raise errors.BzrCommandError(gettext("can not copy root of branch"))
+        self.add_cleanup(tree.lock_tree_write().unlock)
+        into_existing = osutils.isdir(names_list[-1])
+        if not into_existing:
+            try:
+                (src, dst) = rel_names
+            except IndexError:
+                raise errors.BzrCommandError(gettext('to copy multiple files the'
+                                                     ' destination must be a versioned'
+                                                     ' directory'))
+            pairs = [(src, dst)]
+        else:
+            pairs = [(n, osutils.joinpath([rel_names[-1], osutils.basename(n)]))
+                     for n in rel_names[:-1]]
+
+        for src, dst in pairs:
+            try:
+                src_kind = tree.stored_kind(src)
+            except errors.NoSuchFile:
+                raise errors.BzrCommandError(
+                        gettext('Could not copy %s => %s: %s is not versioned.')
+                        % (src, dst, src))
+            if src_kind is None:
+                raise errors.BzrCommandError(
+                    gettext('Could not copy %s => %s . %s is not versioned\.'
+                        % (src, dst, src)))
+            if src_kind == 'directory':
+                raise errors.BzrCommandError(
+                    gettext('Could not copy %s => %s . %s is a directory.'
+                        % (src, dst, src)))
+            dst_parent = osutils.split(dst)[0]
+            if dst_parent != '':
+                try:
+                    dst_parent_kind = tree.stored_kind(dst_parent)
+                except errors.NoSuchFile:
+                    raise errors.BzrCommandError(
+                            gettext('Could not copy %s => %s: %s is not versioned.')
+                            % (src, dst, dst_parent))
+                if dst_parent_kind != 'directory':
+                    raise errors.BzrCommandError(
+                            gettext('Could not copy to %s: %s is not a directory.')
+                            % (dst_parent, dst_parent))
+
+            # TODO(jelmer): Ask the tree to make the copy
+            shutil.copyfile(tree.abspath(src), tree.abspath(dst))
+            tree.add(dst)
+
+
 class cmd_mv(Command):
     __doc__ = """Move or rename a file.
 
@@ -1733,7 +1811,7 @@ class cmd_update(Command):
 
     def run(self, dir=None, revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
-            raise errors.brzCommandError(gettext(
+            raise errors.BzrCommandError(gettext(
                 "brz update --revision takes exactly one revision"))
         if dir is None:
             tree = WorkingTree.open_containing('.')[0]
@@ -2370,7 +2448,7 @@ class cmd_diff(Command):
             file_list, revision, old, new, self.add_cleanup, apply_view=True)
         # GNU diff on Windows uses ANSI encoding for filenames
         path_encoding = osutils.get_diff_header_encoding()
-        return show_diff_trees(old_tree, new_tree, sys.stdout,
+        return show_diff_trees(old_tree, new_tree, self.outf,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
@@ -4505,7 +4583,7 @@ class cmd_merge(Command):
         writer = breezy.option.diff_writer_registry.get()
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter(),
-                                   diff_writer=writer(sys.stdout))
+                                   diff_writer=writer(self.outf))
         try:
             shelver.run()
         finally:
@@ -5488,8 +5566,8 @@ class cmd_wait_until_signalled(Command):
     hidden = True
 
     def run(self):
-        sys.stdout.write("running\n")
-        sys.stdout.flush()
+        self.outf.write("running\n")
+        self.outf.flush()
         sys.stdin.readline()
 
 
@@ -5562,6 +5640,7 @@ class cmd_join(Command):
             ]
 
     def run(self, tree, reference=False):
+        from breezy.mutabletree import BadReferenceTarget
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
@@ -5574,7 +5653,7 @@ class cmd_join(Command):
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
-            except errors.BadReferenceTarget as e:
+            except BadReferenceTarget as e:
                 # XXX: Would be better to just raise a nicely printable
                 # exception from the real origin.  Also below.  mbp 20070306
                 raise errors.BzrCommandError(
@@ -6539,7 +6618,7 @@ class cmd_shelve(Command):
         if writer is None:
             writer = breezy.option.diff_writer_registry.get()
         try:
-            shelver = Shelver.from_args(writer(sys.stdout), revision, all,
+            shelver = Shelver.from_args(writer(self.outf), revision, all,
                 file_list, message, destroy=destroy, directory=directory)
             try:
                 shelver.run()

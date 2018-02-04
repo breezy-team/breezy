@@ -59,6 +59,8 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
 
     def test_pull_changes_root_id(self):
         tree = self.make_branch_and_tree('from')
+        if not tree._format.supports_versioned_directories:
+            self.skipTest('format does not support custom root ids')
         tree.set_root_id('first_root_id')
         self.build_tree(['from/file'])
         tree.add(['file'])

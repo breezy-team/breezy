@@ -1430,7 +1430,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         :param paths: The paths to stop versioning.
         :param file_ids: Optional file_ids for the paths
-        :raises: NoSuchId if any fileid is not currently versioned.
+        :raises NoSuchFile: if any path is not currently versioned.
+        :raises NoSuchId: if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
             if file_ids is not None:
@@ -1461,6 +1462,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        if inv_file_id is None:
+            raise errors.NoSuchFile(self, path)
         return inv[inv_file_id].kind
 
     def extras(self):

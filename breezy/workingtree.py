@@ -920,8 +920,8 @@ class WorkingTree(mutabletree.MutableTree,
         When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param paths: The file ids to stop versioning.
-        :raises: NoSuchFile if any fileid is not currently versioned.
+        :param paths: The paths to stop versioning.
+        :raises NoSuchFile: if any path is not currently versioned.
         """
         raise NotImplementedError(self.unversion)
 
@@ -1482,6 +1482,8 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_store_uncommitted = True
     """If this format supports shelve-like functionality."""
+
+    supports_leftmost_parent_id_as_ghost = True
 
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

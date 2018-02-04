@@ -22,7 +22,10 @@ find_ids_across_trees.
 """
 
 from breezy import errors
-from breezy.tests import features
+from breezy.tests import (
+    features,
+    TestNotApplicable,
+    )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -79,6 +82,9 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def test_find_tree_basis_roots(self):
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_setting_file_ids():
+            raise TestNotApplicable('tree does not support setting file ids')
+
         tree.commit('basis')
         basis = tree.basis_tree()
         basis_root_id = basis.path2id('')
@@ -166,6 +172,8 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         # should not raise an error: it must be unversioned in *all* trees to
         # error.
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_setting_file_ids():
+            raise TestNotApplicable('tree does not support setting file ids')
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.build_tree(['tree/in-one'])

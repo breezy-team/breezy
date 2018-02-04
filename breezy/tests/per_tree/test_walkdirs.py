@@ -28,19 +28,19 @@ class TestWalkdirs(TestCaseWithTree):
     def get_all_subdirs_expected(self, tree, symlinks):
         dirblocks = [
             (('', tree.path2id('')),
-             [('0file', '0file', 'file', None, '2file', 'file'),
+             [('0file', '0file', 'file', None, tree.path2id('0file'), 'file'),
               ('1top-dir', '1top-dir', 'directory', None,
-               '1top-dir', 'directory'),
+               tree.path2id('1top-dir'), 'directory'),
               (u'2utf\u1234file', u'2utf\u1234file', 'file', None,
-               u'0utf\u1234file'.encode('utf8'), 'file'),
+               tree.path2id(u'2utf\u1234file'), 'file'),
               ]),
-            (('1top-dir', '1top-dir'),
+            (('1top-dir', tree.path2id('1top-dir')),
              [('1top-dir/0file-in-1topdir', '0file-in-1topdir',
-               'file', None, '1file-in-1topdir', 'file'),
+               'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file'),
               ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir',
-               'directory', None, '0dir-in-1topdir', 'directory'),
+               'directory', None, tree.path2id('1top-dir/1dir-in-1topdir'), 'directory'),
               ]),
-            (('1top-dir/1dir-in-1topdir', '0dir-in-1topdir'),
+            (('1top-dir/1dir-in-1topdir', tree.path2id('1top-dir/1dir-in-1topdir')),
              []),
             ]
         if symlinks:

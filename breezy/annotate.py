@@ -211,7 +211,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
             rev = revisions[origin]
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d',
-                                     osutils.gmtime(rev.timestamp + tz))
+                                     time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
             author = rev.get_apparent_authors()[0]

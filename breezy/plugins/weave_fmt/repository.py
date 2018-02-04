@@ -608,11 +608,13 @@ class TextVersionedFiles(VersionedFiles):
             raise errors.ReadOnlyError(self)
         if '/' in key[-1]:
             raise ValueError('bad idea to put / in %r' % (key,))
-        text = ''.join(lines)
+        chunks = lines
         if self._compressed:
-            text = tuned_gzip.bytes_to_gzip(text)
+            chunks = tuned_gzip.chunks_to_gzip(chunks)
         path = self._map(key)
-        self._transport.put_bytes_non_atomic(path, text, create_parent_dir=True)
+        self._transport.put_file_non_atomic(
+                path, BytesIO(b''.join(chunks)),
+                create_parent_dir=True)
 
     def insert_record_stream(self, stream):
         adapters = {}

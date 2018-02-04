@@ -60,7 +60,7 @@ class TestRemove(TestCaseWithWorkingTree):
         """Check that a directory is unversioned but not deleted."""
         tree = self.make_branch_and_tree('.')
         subtree = self.make_branch_and_tree('subtree')
-        tree.add('subtree', 'subtree-id')
+        tree.add('subtree')
 
         tree.remove('subtree')
         self.assertRemovedAndNotDeleted('subtree')

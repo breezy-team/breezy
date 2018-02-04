@@ -231,6 +231,16 @@ class TestImportToPackTag(TestCaseForGenericProcessor):
         handler.process(self.file_command_iter(path))
 
 
+class TestImportZeroMarker(TestCaseForGenericProcessor):
+
+    def test_tag(self):
+        handler, branch = self.get_handler()
+        def command_list():
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            yield commands.TagCommand('tag1', ':0', committer, "tag 1")
+        handler.process(command_list)
+
+
 class TestImportToPackModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',

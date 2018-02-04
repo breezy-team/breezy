@@ -1521,26 +1521,6 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         records.sort()
         self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
 
-    def test__add_text(self):
-        f = self.get_versionedfiles()
-        key0 = self.get_simple_key('r0')
-        key1 = self.get_simple_key('r1')
-        key2 = self.get_simple_key('r2')
-        keyf = self.get_simple_key('foo')
-        f._add_text(key0, [], 'a\nb\n')
-        if self.graph:
-            f._add_text(key1, [key0], 'b\nc\n')
-        else:
-            f._add_text(key1, [], 'b\nc\n')
-        keys = f.keys()
-        self.assertTrue(key0 in keys)
-        self.assertTrue(key1 in keys)
-        records = []
-        for record in f.get_record_stream([key0, key1], 'unordered', True):
-            records.append((record.key, record.get_bytes_as('fulltext')))
-        records.sort()
-        self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
-
     def test_annotate(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
@@ -1628,8 +1608,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 sha, _, _ = vf.add_lines(self.get_simple_key(version), [],
                                          lines)
             else:
-                sha, _, _ = vf._add_text(self.get_simple_key(version), [],
-                                         ''.join(lines))
+                sha, _, _ = vf.add_lines(self.get_simple_key(version), [],
+                                         lines)
             shas.append(sha)
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
@@ -1639,7 +1619,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 vf.add_lines, new_key, [], lines,
                 nostore_sha=sha)
             self.assertRaises(errors.ExistingContent,
-                vf._add_text, new_key, [], ''.join(lines),
+                vf.add_lines, new_key, [], lines,
                 nostore_sha=sha)
             # and no new version should have been added.
             record = next(vf.get_record_stream([new_key], 'unordered', True))
@@ -1647,9 +1627,6 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def test_add_lines_nostoresha(self):
         self._add_content_nostoresha(add_lines=True)
-
-    def test__add_text_nostoresha(self):
-        self._add_content_nostoresha(add_lines=False)
 
     def test_add_lines_return(self):
         files = self.get_versionedfiles()

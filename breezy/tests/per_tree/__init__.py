@@ -246,13 +246,13 @@ class TestCaseWithTree(TestCaseWithControlDir):
                             by breezy.osutils.has_symlinks() function.
 
         The returned tree has the following inventory:
-            [('', inventory.ROOT_ID),
-             ('0file', '2file'),
-             ('1top-dir', '1top-dir'),
-             (u'2utf\u1234file', u'0utf\u1234file'),
-             ('symlink', 'symlink'),            # only if symlinks arg is True
-             ('1top-dir/0file-in-1topdir', '1file-in-1topdir'),
-             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir')]
+            ['',
+             '0file',
+             '1top-dir',
+             u'2utf\u1234file',
+             'symlink',            # only if symlinks arg is True
+             '1top-dir/0file-in-1topdir',
+             '1top-dir/1dir-in-1topdir']
         where each component has the type of its name -
         i.e. '1file..' is afile.
 
@@ -267,15 +267,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
             '1top-dir/0file-in-1topdir',
             '1top-dir/1dir-in-1topdir/'
             ]
-        ids = [
-            '2file',
-            '1top-dir',
-            u'0utf\u1234file'.encode('utf8'),
-            '1file-in-1topdir',
-            '0dir-in-1topdir'
-            ]
         self.build_tree(paths)
-        tree.add(paths, ids)
+        tree.add(paths)
         tt = transform.TreeTransform(tree)
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')

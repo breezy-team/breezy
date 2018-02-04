@@ -25,7 +25,7 @@ Standards-Version: 4.1.1
 X-Python-Version: >= 2.7
 Vcs-Bzr: https://anonscm.debian.org/bzr/pkg-bazaar/breezy/3.0
 Vcs-Browser: https://bzr.debian.org/loggerhead/pkg-bazaar/breezy/3.0
-Homepage: https://launchpad.net/brz
+Homepage: https://www.breezy-vcs.org/
 XS-Testsuite: autopkgtest
 
 Package: brz

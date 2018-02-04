@@ -155,3 +155,12 @@ class TestUnicodeFilenameFeature(tests.TestCase):
         # We can't test much more than that because the behaviour depends
         # on the platform.
         features.UnicodeFilenameFeature._probe()
+
+
+class TestBackslashFilenameFeature(tests.TestCase):
+
+    def test_probe_passes(self):
+        """BackslashFilenameFeature._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        features.BackslashFilenameFeature._probe()

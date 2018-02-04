@@ -31,7 +31,6 @@ import breezy
 import breezy.help
 import breezy.help_topics
 import breezy.commands
-import breezy.osutils
 from breezy.doc_generate import get_autodoc_datetime
 
 from breezy.plugin import load_plugins

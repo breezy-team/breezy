@@ -35,6 +35,17 @@ from .sixish import (
     )
 
 
+class BadReferenceTarget(errors.InternalBzrError):
+
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." \
+           "%(reason)s"
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
+
+
 class MutableTree(tree.Tree):
     """A MutableTree is a specialisation of Tree which is able to be mutated.
 
@@ -127,24 +138,11 @@ class MutableTree(tree.Tree):
             self._add(files, ids, kinds)
 
     def add_reference(self, sub_tree):
-        """Add a TreeReference to the tree, pointing at sub_tree"""
-        raise errors.UnsupportedOperation(self.add_reference, self)
+        """Add a TreeReference to the tree, pointing at sub_tree.
 
-    def _add_reference(self, sub_tree):
-        """Standard add_reference implementation, for use by subclasses"""
-        try:
-            sub_tree_path = self.relpath(sub_tree.basedir)
-        except errors.PathNotChild:
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                            'Target not inside tree.')
-        sub_tree_id = sub_tree.get_root_id()
-        if sub_tree_id == self.get_root_id():
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                     'Trees have the same root id.')
-        if self.has_id(sub_tree_id):
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                            'Root id already present in tree')
-        self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+        :param sub_tree: subtree to add.
+        """
+        raise errors.UnsupportedOperation(self.add_reference, self)
 
     def _add(self, files, ids, kinds):
         """Helper function for add - updates the inventory.

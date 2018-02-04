@@ -159,7 +159,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
     def make_outer_tree(self):
         outer = self.make_branch_and_tree('outer')
         self.build_tree_contents([('outer/foo', 'foo')])
-        outer.add('foo', 'foo-id')
+        outer.add('foo')
         outer.commit('added foo')
         inner = self.make_inner_branch()
         outer.merge_from_branch(inner, to_revision='1', from_revision='null:')
