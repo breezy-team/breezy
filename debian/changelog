@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6852-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6852-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Update homepage field.
