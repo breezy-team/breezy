@@ -185,8 +185,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         # This does not try to validate data correctness in the delta.
         self.build_tree(['rootfile', 'dir/', 'dir/subfile'])
         tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # setting up a playground
             tree.add('rootfile')
             rootfile_id = tree.path2id('rootfile')
@@ -197,13 +196,10 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             dir_subfile_id = tree.path2id('dir/subfile')
             tree.mkdir('to_be_unversioned')
             to_be_unversioned_id = tree.path2id('to_be_unversioned')
-            tree.put_file_bytes_non_atomic(dir_subfile_id, 'def')
+            tree.put_file_bytes_non_atomic('dir/subfile', 'def')
             revid1 = tree.commit('first revision')
-        finally:
-            tree.unlock()
 
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # making changes
             tree.put_file_bytes_non_atomic('rootfile', 'jkl')
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
@@ -214,8 +210,6 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             branch.Branch.hooks.install_named_hook(
                 "pre_commit", self.capture_pre_commit_hook, None)
             revid2 = tree.commit('second revision')
-        finally:
-            tree.unlock()
 
         expected_delta = delta.TreeDelta()
         expected_delta.added = [('added_dir', added_dir_id, 'directory')]

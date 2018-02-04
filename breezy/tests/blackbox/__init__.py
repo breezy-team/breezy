@@ -54,6 +54,7 @@ def load_tests(loader, basic_tests, pattern):
                      'test_commit',
                      'test_config',
                      'test_conflicts',
+                     'test_cp',
                      'test_debug',
                      'test_deleted',
                      'test_diff',

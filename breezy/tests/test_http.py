@@ -427,14 +427,14 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertEqual(t.has('foo/bar'), True)
         self.assertEqual(len(server.logs), 1)
         self.assertContainsRe(server.logs[0],
-            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "bzr/')
+            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "Breezy/')
 
     def test_http_has_not_found(self):
         server = self.get_readonly_server()
         t = self.get_readonly_transport()
         self.assertEqual(t.has('not-found'), False)
         self.assertContainsRe(server.logs[1],
-            r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
+            r'"HEAD /not-found HTTP/1.." 404 - "-" "Breezy/')
 
     def test_http_get(self):
         server = self.get_readonly_server()
@@ -445,7 +445,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(server.logs[0].find(
-            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/%s'
             % breezy.__version__) > -1)
 
     def test_has_on_bogus_host(self):

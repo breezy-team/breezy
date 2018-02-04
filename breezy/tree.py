@@ -148,12 +148,6 @@ class Tree(object):
         """True if the tree has given filename."""
         raise NotImplementedError(self.has_filename)
 
-    def has_id(self, file_id):
-        raise NotImplementedError(self.has_id)
-
-    def has_or_had_id(self, file_id):
-        raise NotImplementedError(self.has_or_had_id)
-
     def is_ignored(self, filename):
         """Check whether the filename is ignored by this tree.
 
@@ -208,11 +202,11 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
-    def iter_child_entries(self, file_id, path=None):
+    def iter_child_entries(self, path, file_id=None):
         """Iterate over the children of a directory or tree reference.
 
-        :param file_id: File id of the directory/tree-reference
-        :param path: Optional path of the directory
+        :param path: Path of the directory
+        :param file_id: Optional file id of the directory/tree-reference
         :raise NoSuchId: When the file_id does not exist
         :return: Iterator over entries in the directory
         """

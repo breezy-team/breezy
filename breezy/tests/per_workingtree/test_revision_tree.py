@@ -70,12 +70,17 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         # cached, so we force this by setting a basis that is a ghost and
         # thus cannot be cached.
         tree = self.make_branch_and_tree('.')
+        if not tree.branch.repository._format.supports_ghosts:
+            self.skipTest('format does not support ghosts')
         tree.set_parent_ids(['a-ghost'], allow_leftmost_as_ghost=True)
         self.assertRaises(errors.NoSuchRevision, tree.revision_tree, 'a-ghost')
 
     def test_revision_tree_different_root_id(self):
         """A revision tree might have a very different root."""
         tree = self.make_branch_and_tree('tree1')
+        if not tree.supports_setting_file_ids():
+            raise tests.TestNotApplicable(
+                'tree does not support setting file ids')
         tree.set_root_id('one')
         rev1 = tree.commit('first post')
         tree.set_root_id('two')
@@ -95,8 +100,7 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
-        tree.set_root_id('root-id')
-        tree.add(files, ['a-id', 'b-id', 'c-id'])
+        tree.add(files)
         tree.commit('a, b and b/c', rev_id='base')
         tree2 = tree.controldir.sprout(relpath + '2').open_workingtree()
         # Delete 'a' in tree

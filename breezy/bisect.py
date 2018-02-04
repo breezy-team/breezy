@@ -71,12 +71,12 @@ class BisectCurrent(object):
         """Is the current revision a merge point?"""
         return len(self.get_parent_revids()) > 1
 
-    def show_rev_log(self, out = sys.stdout):
+    def show_rev_log(self, outf):
         """Write the current revision's log entry to a file."""
         rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
-        out.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
-                                                  rev.message))
+        outf.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
+                                                   rev.message))
 
     def switch(self, revid):
         """Switch the current revision to the given revid."""
@@ -186,7 +186,7 @@ class BisectLog(object):
     def _switch_wc_to_revno(self, revno, outf):
         """Move the working tree to the given revno."""
         self._current.switch(revno)
-        self._current.show_rev_log(out=outf)
+        self._current.show_rev_log(outf=outf)
 
     def _set_status(self, revid, status):
         """Set the bisect status for the given revid."""
@@ -330,7 +330,7 @@ class cmd_bisect(Command):
         bisect_log = BisectLog(controldir)
         if bisect_log.is_done():
             note("No further bisection is possible.\n")
-            bisect_log._current.show_rev_log(self.outf)
+            bisect_log._current.show_rev_log(outf=self.outf)
             return True
 
         if revspec:
@@ -409,7 +409,7 @@ class cmd_bisect(Command):
         """Move to a different revision manually."""
         current = BisectCurrent(controldir)
         current.switch(revspec)
-        current.show_rev_log(out=self.outf)
+        current.show_rev_log(outf=self.outf)
 
     def log(self, controldir, filename):
         """Write the current bisect log to a file."""

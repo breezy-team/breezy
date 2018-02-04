@@ -700,6 +700,14 @@ class TestDeltaApplication(TestCaseWithTransport):
 
 class TestInventoryEntry(TestCase):
 
+    def test_file_invalid_entry_name(self):
+        self.assertRaises(errors.InvalidEntryName, inventory.InventoryFile,
+            '123', 'a/hello.c', ROOT_ID)
+
+    def test_file_backslash(self):
+        file = inventory.InventoryFile('123', 'h\\ello.c', ROOT_ID)
+        self.assertEquals(file.name, 'h\\ello.c')
+
     def test_file_kind_character(self):
         file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
         self.assertEqual(file.kind_character(), '')

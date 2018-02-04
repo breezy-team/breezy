@@ -533,6 +533,29 @@ class Win32Feature(Feature):
 win32_feature = Win32Feature()
 
 
+class _BackslashFilenameFeature(Feature):
+    """Does the filesystem support backslashes in filenames?"""
+
+    def _probe(self):
+
+        try:
+            fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
+        except (IOError, OSError):
+            return False
+        else:
+            try:
+                os.stat(name)
+            except (IOError, OSError):
+                # mkstemp succeeded but the file wasn't actually created
+                return False
+            os.close(fileno)
+            os.remove(name)
+            return True
+
+
+BackslashFilenameFeature = _BackslashFilenameFeature()
+
+
 class _ColorFeature(Feature):
 
     def _probe(self):

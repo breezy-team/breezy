@@ -327,7 +327,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.add(['dir/content'])
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.get_file_revision('dir'))
+        if self.repository_format.supports_versioned_directories:
+            # In VCSes that don't support empty directories, 'dir' doesn't
+            # exist in rev1.
+            self.assertEqual(rev1, tree1.get_file_revision('dir'))
         self.assertEqual(rev1, tree2.get_file_revision('dir'))
         expected_graph = {}
         expected_graph[(dir_id, rev1)] = ()
@@ -755,6 +758,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
     def test_last_modified_dir_file(self):
+        if not self.repository_format.supports_versioned_directories:
+            # TODO(jelmer): Perhaps test this by creating a directory
+            # with a file in it?
+            raise tests.TestNotApplicable(
+                'format does not support versioned directories')
         try:
             self._check_kind_change(self.make_dir, self.make_file,
                 expect_fs_hash=True,
@@ -765,6 +773,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 "directory to file")
 
     def test_last_modified_dir_link(self):
+        if not self.repository_format.supports_versioned_directories:
+            # TODO(jelmer): Perhaps test this by creating a directory
+            # with a file in it?
+            raise tests.TestNotApplicable(
+                'format does not support versioned directories')
         try:
             self._check_kind_change(self.make_dir, self.make_link,
                 mini_commit=self.mini_commit_record_iter_changes)
@@ -779,10 +792,22 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_link_dir(self):
+        if not self.repository_format.supports_versioned_directories:
+            # TODO(jelmer): Perhaps test this by creating a directory
+            # with a file in it?
+            raise tests.TestNotApplicable(
+                'format does not support versioned directories')
+
         self._check_kind_change(self.make_link, self.make_dir,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_file_dir(self):
+        if not self.repository_format.supports_versioned_directories:
+            # TODO(jelmer): Perhaps test this by creating a directory
+            # with a file in it?
+            raise tests.TestNotApplicable(
+                'format does not support versioned directories')
+
         self._check_kind_change(self.make_file, self.make_dir,
             mini_commit=self.mini_commit_record_iter_changes)
 

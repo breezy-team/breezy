@@ -84,7 +84,7 @@ def report_changes(to_file, old, new, specific_files,
                            classify=classify)
 
 
-def show_tree_status(wt, show_unchanged=None,
+def show_tree_status(wt,
                      specific_files=None,
                      show_ids=False,
                      to_file=None,
@@ -107,8 +107,6 @@ def show_tree_status(wt, show_unchanged=None,
     If showing the status of a working tree, extra information is included
     about unknown files, conflicts, and pending merges.
 
-    :param show_unchanged: Deprecated parameter. If set, includes unchanged
-        files.
     :param specific_files: If set, a list of filenames whose status should be
         shown.  It is an error to give a filename that is not in the working
         tree, or in the working inventory or in the basis inventory.
@@ -127,10 +125,6 @@ def show_tree_status(wt, show_unchanged=None,
     :param show_long_callback: A callback: message = show_long_callback(to_file, delta,
         show_ids, show_unchanged, indent, filter), only used with the long output
     """
-    if show_unchanged is not None:
-        warn("show_tree_status with show_unchanged has been deprecated "
-             "since breezy 0.9", DeprecationWarning, stacklevel=2)
-
     if to_file is None:
         to_file = sys.stdout
 
@@ -171,9 +165,8 @@ def show_tree_status(wt, show_unchanged=None,
                 unversioned_filter=new.is_ignored, classify=classify)
             report_changes(to_file, old, new, specific_files,
                            reporter, show_long_callback,
-                           short=short, want_unchanged=show_unchanged,
-                           want_unversioned=want_unversioned, show_ids=show_ids,
-                           classify=classify)
+                           short=short, want_unversioned=want_unversioned,
+                           show_ids=show_ids, classify=classify)
 
             # show the ignored files among specific files (i.e. show the files
             # identified from input that we choose to ignore).

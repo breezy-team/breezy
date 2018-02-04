@@ -103,6 +103,9 @@ New Features
    It will provide suggestions if the user typoes a command.
    (Jelmer Vernooĳ)
 
+ * Support the creation of colocated branches in ``brz fast-import``.
+   (Jelmer Vernooĳ, #1744626)
+
 Improvements
 ************
 
@@ -112,6 +115,9 @@ Improvements
 
  * The ``repodebug`` plugin is now bundled.
    (Jelmer Vernooĳ)
+
+ * New ``bzr cp`` command which copies files (but does not currently track
+   history). (Jelmer Vernooĳ, start towards #269095)
 
 Bug Fixes
 *********
@@ -145,6 +151,14 @@ Bug Fixes
 
 * Support automatic rename tracking into new directories.
   (mnn, #373319)
+
+* Avoid writing directly to sys.stdout, but use self.outf in
+  Command implementations instead. (#268573, B. Clausius)
+
+* It is now possible to version files with backslashes in their name
+  on platforms that support it. (Jelmer Vernooij, #81844)
+
+* Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
 
 Documentation
 *************

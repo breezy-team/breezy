@@ -59,23 +59,29 @@ class TestListFiles(TestCaseWithTree):
         tree = self.get_tree_no_parents_abc_content(work_tree)
         expected = [('', 'V', 'directory', tree.path2id('')),
                     ('a', 'V', 'file', tree.path2id('a')),
-                    ('b', 'V', 'directory', tree.path2id('b')),
                    ]
-        tree.lock_read()
-        try:
+        if tree.has_versioned_directories():
+            expected.append(
+                ('b', 'V', 'directory', tree.path2id('b')))
+        else:
+            expected.append(
+                ('b', '?', 'directory', None))
+        with tree.lock_read():
             actual = [(path, status, kind, file_id)
                 for path, status, kind, file_id, ie in
                     tree.list_files(include_root=True, recursive=False)]
-        finally:
-            tree.unlock()
         self.assertEqual(expected, actual)
 
     def test_list_files_no_root_no_recurse(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', tree.path2id('a')),
-                    ('b', 'V', 'directory', tree.path2id('b')),
-                   ]
+        expected = [('a', 'V', 'file', tree.path2id('a'))]
+        if tree.has_versioned_directories():
+            expected.append(
+                ('b', 'V', 'directory', tree.path2id('b')))
+        else:
+            expected.append(
+                ('b', '?', 'directory', None))
         tree.lock_read()
         try:
             actual = [(path, status, kind, file_id)
@@ -103,14 +109,15 @@ class TestListFiles(TestCaseWithTree):
         # The test trees don't have much nesting so test with an explicit root
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', tree.path2id('a')),
-                    ('b', 'V', 'directory', tree.path2id('b')),
-                   ]
-        tree.lock_read()
-        try:
+        expected = [('a', 'V', 'file', tree.path2id('a'))]
+        if tree.has_versioned_directories():
+            expected.append(
+                ('b', 'V', 'directory', tree.path2id('b')))
+        else:
+            expected.append(('b', '?', 'directory', None))
+
+        with tree.lock_read():
             actual = [(path, status, kind, file_id)
                       for path, status, kind, file_id, ie in
                           tree.list_files(from_dir='', recursive=False)]
-        finally:
-            tree.unlock()
         self.assertEqual(expected, actual)

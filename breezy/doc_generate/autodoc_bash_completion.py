@@ -21,7 +21,6 @@ from __future__ import absolute_import
 import breezy
 import breezy.help
 import breezy.commands
-import breezy.osutils
 from breezy.doc_generate import get_autodoc_datetime
 
 
