@@ -163,26 +163,21 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         self.assertEqual(
-            {tree_root,
-                '2file',
-                '1top-dir',
-                '1file-in-1topdir',
-                '0dir-in-1topdir',
-                 u'0utf\u1234file'.encode('utf8'),
-                'symlink',
-                 },
+            {tree.path2id(p) for p in [
+                '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
+                '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
             set(tree.all_file_ids()))
         # note that the order of the paths and fileids is deliberately
         # mismatched to ensure that the result order is path based.
         self.assertEqual(
-            [('', tree_root, 'directory'),
-             ('0file', '2file', 'file'),
-             ('1top-dir', '1top-dir', 'directory'),
-             (u'2utf\u1234file', u'0utf\u1234file'.encode('utf8'), 'file'),
-             ('symlink', 'symlink', 'symlink'),
-             ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
-             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
-            [(path, node.file_id, node.kind) for path, node in tree.iter_entries_by_dir()])
+            [('', 'directory'),
+             ('0file', 'file'),
+             ('1top-dir', 'directory'),
+             (u'2utf\u1234file', 'file'),
+             ('symlink', 'symlink'),
+             ('1top-dir/0file-in-1topdir', 'file'),
+             ('1top-dir/1dir-in-1topdir', 'directory')],
+            [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
 
     def test_tree_with_subdirs_and_all_content_types_wo_symlinks(self):
         # currently this test tree requires unicode. It might be good
@@ -197,24 +192,19 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         self.assertEqual(
-            {tree_root,
-                '2file',
-                '1top-dir',
-                '1file-in-1topdir',
-                '0dir-in-1topdir',
-                 u'0utf\u1234file'.encode('utf8'),
-                 },
-            set(tree.all_file_ids()))
+            {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
+             '1top-dir/1dir-in-1topdir', u'2utf\u1234file'},
+            set(tree.all_versioned_paths()))
         # note that the order of the paths and fileids is deliberately
         # mismatched to ensure that the result order is path based.
         self.assertEqual(
-            [('', tree_root, 'directory'),
-             ('0file', '2file', 'file'),
-             ('1top-dir', '1top-dir', 'directory'),
-             (u'2utf\u1234file', u'0utf\u1234file'.encode('utf8'), 'file'),
-             ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
-             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
-            [(path, node.file_id, node.kind) for path, node in tree.iter_entries_by_dir()])
+            [('', 'directory'),
+             ('0file', 'file'),
+             ('1top-dir', 'directory'),
+             (u'2utf\u1234file', 'file'),
+             ('1top-dir/0file-in-1topdir', 'file'),
+             ('1top-dir/1dir-in-1topdir', 'directory')],
+            [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
 
     def test_tree_with_utf8(self):
         tree = self.make_branch_and_tree('.')

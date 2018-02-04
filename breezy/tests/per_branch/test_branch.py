@@ -644,7 +644,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         try:
             this_branch._format.set_reference(this_branch.controldir, None,
                 other_branch)
-        except NotImplementedError:
+        except (NotImplementedError, errors.IncompatibleFormat):
             # that's ok
             pass
         else:

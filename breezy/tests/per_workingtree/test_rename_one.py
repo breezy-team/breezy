@@ -61,8 +61,11 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'b'])
         tree.add(['b'])
         tree.commit('initial')
-        self.assertRaises(errors.BzrMoveFailedError,
-                          tree.rename_one, 'b', 'a/b')
+        if tree.has_versioned_directories():
+            self.assertRaises(errors.BzrMoveFailedError,
+                              tree.rename_one, 'b', 'a/b')
+        else:
+            tree.rename_one('b', 'a/b')
 
     def test_rename_one_unversioned(self):
         tree = self.make_branch_and_tree('.')
