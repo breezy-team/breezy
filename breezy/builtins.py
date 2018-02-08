@@ -1052,9 +1052,7 @@ class cmd_cp(Command):
                             gettext('Could not copy to %s: %s is not a directory.')
                             % (dst_parent, dst_parent))
 
-            # TODO(jelmer): Ask the tree to make the copy
-            shutil.copyfile(tree.abspath(src), tree.abspath(dst))
-            tree.add(dst)
+            tree.copy_one(src, dst)
 
 
 class cmd_mv(Command):

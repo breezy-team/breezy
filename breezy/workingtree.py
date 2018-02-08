@@ -32,6 +32,7 @@ from __future__ import absolute_import
 import errno
 import os
 import re
+import shutil
 import sys
 
 import breezy
@@ -878,29 +879,17 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.move)
 
-    def rename_one(self, from_rel, to_rel, after=False):
-        """Rename one file.
+    def copy_one(self, from_rel, to_rel):
+        """Copy a file in the tree to a new location.
 
-        This can change the directory or the filename or both.
+        This default implementation just copies the file, then
+        adds the target.
 
-        rename_one has several 'modes' to work. First, it can rename a physical
-        file and change the file_id. That is the normal mode. Second, it can
-        only change the file_id without touching any physical file.
-
-        rename_one uses the second mode if 'after == True' and 'to_rel' is
-        either not versioned or newly added, and present in the working tree.
-
-        rename_one uses the second mode if 'after == False' and 'from_rel' is
-        versioned but no longer in the working tree, and 'to_rel' is not
-        versioned but present in the working tree.
-
-        rename_one uses the first mode if 'after == False' and 'from_rel' is
-        versioned and present in the working tree, and 'to_rel' is not
-        versioned and not present in the working tree.
-
-        Everything else results in an error.
+        :param from_rel: From location (relative to tree root)
+        :param to_rel: Target location (relative to tree root)
         """
-        raise NotImplementedError(self.rename_one)
+        shutil.copyfile(self.abspath(from_rel), self.abspath(to_rel))
+        self.add(to_rel)
 
     def unknowns(self):
         """Return all unknown files.
