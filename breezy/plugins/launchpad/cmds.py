@@ -143,6 +143,30 @@ class cmd_launchpad_login(Command):
                                                                         (name,))
 
 
+class cmd_launchpad_logout(Command):
+    __doc__ = """Unset the Launchpad user ID.
+
+    When communicating with Launchpad, some commands need to know your
+    Launchpad user ID.  This command will log you out from Launchpad.
+    This means that communication with Launchpad will happen over
+    HTTPS, and will not require one of your SSH keys to be available.
+    """
+    aliases = ['lp-logout']
+    takes_options = ['verbose']
+
+    def run(self, verbose=False):
+        from . import account
+        old_username = account.get_lp_login()
+        if old_username is None:
+            self.outf.write(gettext('Not logged into Launchpad.\n'))
+            return 1
+        account.set_lp_login(None)
+        if verbose:
+            self.outf.write(gettext(
+                "Launchpad user ID %s logged out.\n") %
+                old_username)
+
+
 # XXX: cmd_launchpad_mirror is untested
 class cmd_launchpad_mirror(Command):
     __doc__ = """Ask Launchpad to mirror a branch now."""
