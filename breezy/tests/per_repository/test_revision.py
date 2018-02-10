@@ -16,6 +16,7 @@
 
 """Tests for revision properties."""
 
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_repository import (
     TestCaseWithRepository,
     )
@@ -27,30 +28,40 @@ class TestRevProps(TestCaseWithRepository):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         b.nick = 'Nicholas'
-        props = dict(flavor='choc-mint',
-                     condiment='orange\n  mint\n\tcandy',
-                     empty='',
-                     non_ascii=u'\xb5')
+        if b.repository._format.supports_custom_revision_properties:
+            props = dict(flavor='choc-mint',
+                         condiment='orange\n  mint\n\tcandy',
+                         empty='',
+                         non_ascii=u'\xb5')
+        else:
+            props = {}
         rev1 = wt.commit(message='initial null commit',
                  revprops=props,
                  allow_pointless=True)
         rev = b.repository.get_revision(rev1)
-        self.assertTrue('flavor' in rev.properties)
-        self.assertEqual(rev.properties['flavor'], 'choc-mint')
-        expected_revprops = {
-            'condiment': 'orange\n  mint\n\tcandy',
-            'empty': '',
-            'flavor': 'choc-mint',
-            'non_ascii': u'\xb5',
-            }
+        if b.repository._format.supports_custom_revision_properties:
+            self.assertTrue('flavor' in rev.properties)
+            self.assertEqual(rev.properties['flavor'], 'choc-mint')
+            expected_revprops = {
+                'condiment': 'orange\n  mint\n\tcandy',
+                'empty': '',
+                'flavor': 'choc-mint',
+                'non_ascii': u'\xb5',
+                }
+        else:
+            expected_revprops = {}
         if b.repository._format.supports_storing_branch_nick:
             expected_revprops['branch-nick'] = 'Nicholas'
-        self.assertEqual(expected_revprops, rev.properties)
+        for name, value in expected_revprops.items():
+            self.assertEqual(rev.properties[name], value)
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
+        if not b.repository._format.supports_custom_revision_properties:
+            raise TestNotApplicable(
+                    'format does not support custom revision properties')
         self.assertRaises(ValueError,
                           wt.commit,
                           message='invalid',
@@ -69,15 +80,17 @@ class TestRevisionAttributes(TestCaseWithRepository):
         same as the ones that go in.
         """
         tree1 = self.make_branch_and_tree("br1")
-
-        # create a revision
-        rev1 = tree1.commit(message="quux", allow_pointless=True,
-            committer="jaq",
+        if tree1.branch.repository._format.supports_custom_revision_properties:
             revprops={'empty':'',
                       'value':'one',
                       'unicode':u'\xb5',
                       'multiline':'foo\nbar\n\n'
-                      })
+                      }
+        else:
+            revprops = {}
+        # create a revision
+        rev1 = tree1.commit(message="quux", allow_pointless=True,
+            committer="jaq", revprops=revprops)
         self.assertEqual(tree1.branch.last_revision(), rev1)
         rev_a = tree1.branch.repository.get_revision(
                             tree1.branch.last_revision())

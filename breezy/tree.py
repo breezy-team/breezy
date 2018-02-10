@@ -1082,7 +1082,7 @@ class InterTree(InterObject):
         """
         try:
             inventory = tree.root_inventory
-        except NotImplementedError:
+        except (AttributeError, NotImplementedError):
             # No inventory available.
             try:
                 iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])

@@ -1300,6 +1300,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_storing_branch_nick = True
     # Does the format support overriding the transport to use
     supports_overriding_transport = True
+    # Does the format support setting custom revision properties?
+    supports_custom_revision_properties = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
