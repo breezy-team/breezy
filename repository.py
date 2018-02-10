@@ -290,7 +290,10 @@ class LocalGitRepository(GitRepository):
             per_revision.setdefault(revision_id, []).append(
                 (file_id, identifier))
         for revid, files in per_revision.iteritems():
-            (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
+            try:
+                (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
+            except errors.NoSuchRevision:
+                raise errors.RevisionNotPresent(revid, self)
             try:
                 commit = self._git.object_store[commit_id]
             except KeyError:
