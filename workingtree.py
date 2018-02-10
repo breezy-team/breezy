@@ -493,7 +493,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(to_rel))
 
-            if not from_path in self.index:
+            kind = self.kind(from_rel)
+            if not from_path in self.index and kind != 'directory':
+                # It's not a file
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=from_rel))
 
@@ -505,8 +507,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                         raise errors.BzrMoveFailedError(from_rel, to_rel,
                             errors.NoSuchFile(to_rel))
                     raise
-            self.index[to_path] = self.index[from_path]
-            del self.index[from_path]
+            if kind != 'directory':
+                self.index[to_path] = self.index[from_path]
+                del self.index[from_path]
             self.flush()
 
     def get_root_id(self):
