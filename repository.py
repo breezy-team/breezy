@@ -612,6 +612,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_setting_revision_ids = False
     supports_storing_branch_nick = False
     supports_overriding_transport = False
+    supports_custom_revision_properties = False
 
     @property
     def _matchingcontroldir(self):
