@@ -203,6 +203,13 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return inventory.InventoryDirectory(file_id,
             posixpath.basename(path).decode("utf-8"), parent_id)
 
+    def iter_children(self, file_id):
+        path = self._fileid_map.lookup_path(file_id)
+        mode, tree_sha = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        if stat.S_ISDIR(mode):
+            for name, mode, hexsha  in self.store[tree_sha].iteritems():
+                yield self._fileid_map.lookup_file_id(posixpath.join(path, name))
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Support yield parents
         if specific_file_ids is not None:
