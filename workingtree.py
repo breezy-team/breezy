@@ -1065,7 +1065,7 @@ class InterIndexGitTree(tree.InterTree):
             target_fileid_map = self.target._fileid_map
             ret = tree_delta_from_git_changes(changes, self.target.mapping,
                 (source_fileid_map, target_fileid_map),
-                specific_file=specific_files, require_versioned=require_versioned)
+                specific_files=specific_files, require_versioned=require_versioned)
             if want_unversioned:
                 for e in self.target.extras():
                     ret.unversioned.append(
@@ -1085,7 +1085,7 @@ class InterIndexGitTree(tree.InterTree):
                         changes,
                         untracked_changes(self.target))
             return changes_from_git_changes(
-                    changes, self.target.mapping, specific_file=specific_files)
+                    changes, self.target.mapping, specific_files=specific_files)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)

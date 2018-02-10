@@ -545,19 +545,8 @@ class LocalGitRepository(GitRepository):
             required_trees.add(revision.revision_id)
             required_trees.update(revision.parent_ids[:1])
 
-        # Get the matching filtered trees. Note that it's more
-        # efficient to pass filtered trees to changes_from() rather
-        # than doing the filtering afterwards. changes_from() could
-        # arguably do the filtering itself but it's path-based, not
-        # file-id based, so filtering before or afterwards is
-        # currently easier.
-        if specific_fileids is None:
-            trees = dict((t.get_revision_id(), t) for
-                t in self.revision_trees(required_trees))
-        else:
-            trees = dict((t.get_revision_id(), t) for
-                t in self._filtered_revision_trees(required_trees,
-                specific_fileids))
+        trees = dict((t.get_revision_id(), t) for
+            t in self.revision_trees(required_trees))
 
         # Calculate the deltas
         for revision in revisions:
@@ -565,7 +554,12 @@ class LocalGitRepository(GitRepository):
                 old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
             else:
                 old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
+            new_tree = trees[revision.revision_id]
+            if specific_fileids is not None:
+                specific_files = [new_tree.id2path(fid) for fid in specific_fileids]
+            else:
+                specific_files = None
+            yield new_tree.changes_from(old_tree, specific_files=specific_files)
 
     def _filtered_revision_trees(self, revision_ids, file_ids):
         """Return Tree for a revision on this branch with only some files.

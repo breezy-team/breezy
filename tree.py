@@ -133,7 +133,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path)
         except KeyError:
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchFile(self, path)
         if mode is None:
             # the tree root is a directory
             return "directory"
@@ -284,7 +284,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
 
 def tree_delta_from_git_changes(changes, mapping,
-        (old_fileid_map, new_fileid_map), specific_file=None,
+        (old_fileid_map, new_fileid_map), specific_files=None,
         require_versioned=False):
     """Create a TreeDelta from two git trees.
 
@@ -293,6 +293,10 @@ def tree_delta_from_git_changes(changes, mapping,
     """
     ret = delta.TreeDelta()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if not (specific_files is None or
+                (oldpath is not None and osutils.is_inside_any(specific_files, oldpath)) or
+                (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
+            continue
         if mapping.is_control_file(oldpath):
             oldpath = None
         if mapping.is_control_file(newpath):
@@ -320,7 +324,7 @@ def tree_delta_from_git_changes(changes, mapping,
     return ret
 
 
-def changes_from_git_changes(changes, mapping, specific_file=None,
+def changes_from_git_changes(changes, mapping, specific_files=None,
                                 require_versioned=False):
     """Create a iter_changes-like generator from a git stream.
 
@@ -328,6 +332,10 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
         (filename, sha, mode)
     """
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if not (specific_files is None or
+                (oldpath is not None and osutils.is_inside_any(specific_files, oldpath)) or
+                (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
+            continue
         path = (oldpath, newpath)
         if mapping.is_special_file(oldpath) or mapping.is_special_file(newpath):
             continue
@@ -399,7 +407,7 @@ class InterGitRevisionTrees(tree.InterTree):
         target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
             (source_fileid_map, target_fileid_map),
-            specific_file=specific_files)
+            specific_files=specific_files)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
         pb=None, extra_trees=[], require_versioned=True,
@@ -410,7 +418,7 @@ class InterGitRevisionTrees(tree.InterTree):
             self.source.tree, self.target.tree,
             want_unchanged=include_unchanged)
         return changes_from_git_changes(changes, self.target.mapping,
-            specific_file=specific_files)
+            specific_files=specific_files)
 
 
 tree.InterTree.register_optimiser(InterGitRevisionTrees)
