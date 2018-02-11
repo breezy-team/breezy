@@ -39,6 +39,7 @@ from .mapping import (
     mode_is_executable,
     mode_kind,
     GitFileIdMap,
+    default_mapping,
     )
 
 
@@ -53,7 +54,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:
             self.tree = None
-            self._fileid_map = GitFileIdMap({}, None)
+            self.mapping = default_mapping
+            self._fileid_map = GitFileIdMap(
+                {'': self.mapping.generate_file_id(b'')},
+                default_mapping)
         else:
             try:
                 commit = self.store[self.commit_id]
@@ -95,6 +99,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         todo = set([('', self.tree)])
         while todo:
             (path, tree_id) = todo.pop()
+            if tree_id is None:
+                continue
             tree = self.store[tree_id]
             for name, mode, hexsha in tree.iteritems():
                 subpath = posixpath.join(path, name)
@@ -151,6 +157,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None:
             from_dir = u""
+        if self.tree is None:
+            return
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
             from_dir.encode("utf-8"))
         if mode is None: # Root
@@ -226,6 +234,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
             ie = self._get_dir_ie(path, parent_id)
             if specific_paths is None or path in specific_paths:
                 yield path.decode("utf-8"), ie
+            if tree_sha is None:
+                continue
             tree = self.store[tree_sha]
             for name, mode, hexsha  in tree.iteritems():
                 if self.mapping.is_special_file(name):
