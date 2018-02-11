@@ -136,12 +136,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def kind(self, path, file_id=None):
         if self.tree is None:
-            raise errors.NoSuchFile(self, path)
+            raise errors.NoSuchFile(path)
         try:
             (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path)
         except KeyError:
-            raise errors.NoSuchFile(self, path)
+            raise errors.NoSuchFile(path)
         if mode is None:
             # the tree root is a directory
             return "directory"
@@ -268,6 +268,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_text(self, path, file_id=None):
         """See RevisionTree.get_file_text."""
+        if self.tree is None:
+            raise errors.NoSuchFile(path)
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
         if stat.S_ISREG(mode):
             return self.store[hexsha].data
@@ -306,7 +308,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
 def tree_delta_from_git_changes(changes, mapping,
         (old_fileid_map, new_fileid_map), specific_files=None,
-        require_versioned=False):
+        require_versioned=False, include_root=False):
     """Create a TreeDelta from two git trees.
 
     source and target are iterators over tuples with:
@@ -314,9 +316,11 @@ def tree_delta_from_git_changes(changes, mapping,
     """
     ret = delta.TreeDelta()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if newpath == u'' and not include_root:
+            continue
         if not (specific_files is None or
-                (oldpath is not None and osutils.is_inside_any(specific_files, oldpath)) or
-                (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
+                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
+                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
             continue
         if mapping.is_control_file(oldpath):
             oldpath = None
@@ -363,8 +367,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
     """
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if not (specific_files is None or
-                (oldpath is not None and osutils.is_inside_any(specific_files, oldpath)) or
-                (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
+                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
+                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
             continue
         path = (oldpath, newpath)
         if oldpath is not None and mapping.is_special_file(oldpath):
@@ -436,7 +440,7 @@ class InterGitTrees(tree.InterTree):
         target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
             (source_fileid_map, target_fileid_map),
-            specific_files=specific_files)
+            specific_files=specific_files, include_root=include_root)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
                      pb=None, extra_trees=[], require_versioned=True,
