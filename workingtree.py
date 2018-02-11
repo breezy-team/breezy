@@ -34,6 +34,7 @@ from dulwich.index import (
     changes_from_tree,
     cleanup_mode,
     index_entry_from_stat,
+    refresh_index,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -308,14 +309,18 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _unversion_path(self, path):
         assert self._lock_mode is not None
         encoded_path = path.encode("utf-8")
+        count = 0
         try:
             del self.index[encoded_path]
         except KeyError:
             # A directory, perhaps?
             for p in list(self.index):
                 if p.startswith(encoded_path+b"/"):
+                    count += 1
                     del self.index[p]
-        # FIXME: remove empty directories
+        else:
+            count = 1
+        return count
 
     def unversion(self, paths, file_ids=None):
         with self.lock_tree_write():
@@ -370,9 +375,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             for f in files:
                 if f == '':
                     continue
-                fid = self.path2id(f)
-                if not fid:
-                    message = "%s is not versioned." % (f,)
                 else:
                     abs_path = self.abspath(f)
                     if verbose:
@@ -382,24 +384,32 @@ class GitWorkingTree(workingtree.WorkingTree):
                         else:
                             new_status = '?'
                         # XXX: Really should be a more abstract reporter interface
-                        kind_ch = osutils.kind_marker(self.kind(fid))
+                        kind_ch = osutils.kind_marker(self.kind(f))
                         to_file.write(new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
-                    # FIXME: _unversion_path() is O(size-of-index) for directories
-                    self._unversion_path(f)
-                    message = "removed %s" % (f,)
-                    if osutils.lexists(abs_path):
+                    # TODO(jelmer): _unversion_path() is O(size-of-index) for directories
+                    if self._unversion_path(f) == 0:
                         if (osutils.isdir(abs_path) and
-                            len(os.listdir(abs_path)) > 0):
-                            if force:
-                                osutils.rmtree(abs_path)
-                                message = "deleted %s" % (f,)
-                            else:
-                                message = backup(f)
-                        else:
+                            len(os.listdir(abs_path)) == 0):
                             if not keep_files:
                                 osutils.delete_any(abs_path)
-                                message = "deleted %s" % (f,)
+                            message = "removed %s" % (f,)
+                        else:
+                            message = "%s is not versioned." % (f,)
+                    else:
+                        message = "removed %s" % (f,)
+                        if osutils.lexists(abs_path):
+                            if (osutils.isdir(abs_path) and
+                                len(os.listdir(abs_path)) > 0):
+                                if force:
+                                    osutils.rmtree(abs_path)
+                                    message = "deleted %s" % (f,)
+                                else:
+                                    message = backup(f)
+                            else:
+                                if not keep_files:
+                                    osutils.delete_any(abs_path)
+                                    message = "deleted %s" % (f,)
 
                 # print only one message (if any) per file.
                 if message is not None:
@@ -553,11 +563,10 @@ class GitWorkingTree(workingtree.WorkingTree):
             return set(self._iter_files_recursive()) - set(self.index)
 
     def flush(self):
-        with self.lock_tree_write():
-            # TODO: Maybe this should only write on dirty ?
-            if self._lock_mode != 'w':
-                raise errors.NotWriteLocked(self)
-            self.index.write()
+        # TODO: Maybe this should only write on dirty ?
+        if self._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        self.index.write()
 
     def __iter__(self):
         with self.lock_read():
@@ -607,7 +616,6 @@ class GitWorkingTree(workingtree.WorkingTree):
                 path = self._fileid_map.lookup_path(file_id)
             except ValueError:
                 raise errors.NoSuchId(self, file_id)
-            # FIXME: What about directories?
             if self._is_versioned(path):
                 return path.decode("utf-8")
             raise errors.NoSuchId(self, file_id)
@@ -1080,7 +1088,8 @@ class InterIndexGitTree(InterGitTrees):
             target_fileid_map = self.target._fileid_map
             ret = tree_delta_from_git_changes(changes, self.target.mapping,
                 (source_fileid_map, target_fileid_map),
-                specific_files=specific_files, require_versioned=require_versioned)
+                specific_files=specific_files, require_versioned=require_versioned,
+                include_root=include_root)
             if want_unversioned:
                 for e in self.target.extras():
                     ret.unversioned.append(
@@ -1128,6 +1137,8 @@ def changes_between_git_tree_and_index(store, from_tree_sha, target,
     """
     # TODO(jelmer): Avoid creating and storing tree objects; ideally, use
     # dulwich.index.changes_from_tree with a include_trees argument.
+    refresh_index(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
     to_tree_sha = target.index.commit(store)
+    target.index.write()
     return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
             want_unchanged=want_unchanged)

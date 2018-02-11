@@ -30,10 +30,6 @@ from ... import (
     ui,
     version_info as breezy_version,
     )
-from ...bzr import (
-    inventory,
-    inventorytree,
-    )
 from ...decorators import only_raises
 from ...foreign import (
     ForeignRepository,
@@ -525,6 +521,8 @@ class LocalGitRepository(GitRepository):
 
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
+        if revision_id is None:
+            raise ValueError('invalid revision id %s' % revision_id)
         return GitRevisionTree(self, revision_id)
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
@@ -560,29 +558,11 @@ class LocalGitRepository(GitRepository):
                 specific_files = None
             yield new_tree.changes_from(old_tree, specific_files=specific_files)
 
-    def _filtered_revision_trees(self, revision_ids, file_ids):
-        """Return Tree for a revision on this branch with only some files.
-
-        :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
-        :param file_ids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        for t in self.revision_trees(revision_ids):
-            # Should we introduce a FilteredRevisionTree class rather
-            # than pre-filter the inventory here?
-            filtered_inv = inv.filter(file_ids)
-            yield inventorytree.InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
-
     def get_inventory(self, revision_id):
         raise NotImplementedError(self.get_inventory)
 
     def set_make_working_trees(self, trees):
-        if trees:
-            self._git.get_config().set(("core", ), "bare", "false")
-        else:
-            self._git.get_config().set(("core", ), "bare", "true")
+        raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
         progress=None, limit=None):

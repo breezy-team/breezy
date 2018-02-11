@@ -212,8 +212,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self._fileid_map.lookup_file_id(path)
-        return inventory.InventoryDirectory(file_id,
+        ie = inventory.InventoryDirectory(file_id,
             posixpath.basename(path).decode("utf-8"), parent_id)
+        ie.revision = self.get_file_revision(path)
+        return ie
 
     def iter_children(self, file_id):
         path = self._fileid_map.lookup_path(file_id)
@@ -259,6 +261,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._revision_id
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
+        if self.tree is None:
+            raise errors.NoSuchFile(path)
         return osutils.sha_string(self.get_file_text(path, file_id))
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
