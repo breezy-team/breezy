@@ -56,7 +56,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             self.tree = None
             self.mapping = default_mapping
             self._fileid_map = GitFileIdMap(
-                {'': self.mapping.generate_file_id(b'')},
+                {},
                 default_mapping)
         else:
             try:
@@ -135,6 +135,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return mode_is_executable(mode)
 
     def kind(self, path, file_id=None):
+        if self.tree is None:
+            raise errors.NoSuchFile(self, path)
         try:
             (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path)
@@ -146,6 +148,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return mode_kind(mode)
 
     def has_filename(self, path):
+        if self.tree is None:
+            return False
         try:
             tree_lookup_path(self.store.__getitem__, self.tree,
                 path.encode("utf-8"))
@@ -219,6 +223,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield self._fileid_map.lookup_file_id(posixpath.join(path, name))
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        if self.tree is None:
+            return
         # FIXME: Support yield parents
         if specific_file_ids is not None:
             specific_paths = [self.id2path(file_id) for file_id in specific_file_ids]
@@ -234,8 +240,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
             ie = self._get_dir_ie(path, parent_id)
             if specific_paths is None or path in specific_paths:
                 yield path.decode("utf-8"), ie
-            if tree_sha is None:
-                continue
             tree = self.store[tree_sha]
             for name, mode, hexsha  in tree.iteritems():
                 if self.mapping.is_special_file(name):
