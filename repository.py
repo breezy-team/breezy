@@ -525,10 +525,6 @@ class LocalGitRepository(GitRepository):
 
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
-        if revision_id == _mod_revision.NULL_REVISION:
-            inv = inventory.Inventory(root_id=None)
-            inv.revision_id = revision_id
-            return inventorytree.InventoryRevisionTree(self, inv, revision_id)
         return GitRevisionTree(self, revision_id)
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
