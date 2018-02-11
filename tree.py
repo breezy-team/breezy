@@ -326,9 +326,9 @@ def tree_delta_from_git_changes(changes, mapping,
                 (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
                 (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
             continue
-        if mapping.is_control_file(oldpath):
+        if mapping.is_special_file(oldpath):
             oldpath = None
-        if mapping.is_control_file(newpath):
+        if mapping.is_special_file(newpath):
             newpath = None
         if oldpath is None and newpath is None:
             continue

@@ -152,9 +152,6 @@ class BzrGitMapping(foreign.VcsMapping):
             path = path.encode("utf-8")
         return FILE_ID_PREFIX + escape_file_id(path)
 
-    def is_control_file(self, path):
-        return path in (self.BZR_FILE_IDS_FILE, self.BZR_DUMMY_FILE)
-
     def parse_file_id(self, file_id):
         if file_id == ROOT_ID:
             return ""

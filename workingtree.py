@@ -54,12 +54,14 @@ import sys
 from ... import (
     errors,
     conflicts as _mod_conflicts,
+    controldir as _mod_controldir,
     globbing,
     ignores,
     lock,
     osutils,
     revision as _mod_revision,
     trace,
+    transport as _mod_transport,
     tree,
     workingtree,
     )
@@ -452,6 +454,20 @@ class GitWorkingTree(workingtree.WorkingTree):
                     raise errors.BadFileKindError(filename=abspath, kind=kind)
             for user_dir in user_dirs:
                 abs_user_dir = self.abspath(user_dir)
+                if user_dir != '':
+                    try:
+                        transport = _mod_transport.get_transport_from_path(abs_user_dir)
+                        _mod_controldir.ControlDirFormat.find_format(transport)
+                        subtree = True
+                    except errors.NotBranchError:
+                        subtree = False
+                    except errors.UnsupportedFormatError:
+                        subtree = False
+                else:
+                    subtree = False
+                if subtree:
+                    continue
+
                 for name in os.listdir(abs_user_dir):
                     subp = os.path.join(user_dir, name)
                     if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
