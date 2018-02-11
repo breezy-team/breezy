@@ -39,6 +39,7 @@ from .mapping import (
     mode_is_executable,
     mode_kind,
     GitFileIdMap,
+    default_mapping,
     )
 
 
@@ -53,7 +54,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:
             self.tree = None
-            self._fileid_map = GitFileIdMap({}, None)
+            self.mapping = default_mapping
+            self._fileid_map = GitFileIdMap(
+                {},
+                default_mapping)
         else:
             try:
                 commit = self.store[self.commit_id]
@@ -95,6 +99,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         todo = set([('', self.tree)])
         while todo:
             (path, tree_id) = todo.pop()
+            if tree_id is None:
+                continue
             tree = self.store[tree_id]
             for name, mode, hexsha in tree.iteritems():
                 subpath = posixpath.join(path, name)
@@ -129,17 +135,21 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return mode_is_executable(mode)
 
     def kind(self, path, file_id=None):
+        if self.tree is None:
+            raise errors.NoSuchFile(path)
         try:
             (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path)
         except KeyError:
-            raise errors.NoSuchFile(self, path)
+            raise errors.NoSuchFile(path)
         if mode is None:
             # the tree root is a directory
             return "directory"
         return mode_kind(mode)
 
     def has_filename(self, path):
+        if self.tree is None:
+            return False
         try:
             tree_lookup_path(self.store.__getitem__, self.tree,
                 path.encode("utf-8"))
@@ -151,6 +161,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None:
             from_dir = u""
+        if self.tree is None:
+            return
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
             from_dir.encode("utf-8"))
         if mode is None: # Root
@@ -200,8 +212,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self._fileid_map.lookup_file_id(path)
-        return inventory.InventoryDirectory(file_id,
+        ie = inventory.InventoryDirectory(file_id,
             posixpath.basename(path).decode("utf-8"), parent_id)
+        ie.revision = self.get_file_revision(path)
+        return ie
 
     def iter_children(self, file_id):
         path = self._fileid_map.lookup_path(file_id)
@@ -211,6 +225,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield self._fileid_map.lookup_file_id(posixpath.join(path, name))
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        if self.tree is None:
+            return
         # FIXME: Support yield parents
         if specific_file_ids is not None:
             specific_paths = [self.id2path(file_id) for file_id in specific_file_ids]
@@ -245,6 +261,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._revision_id
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
+        if self.tree is None:
+            raise errors.NoSuchFile(path)
         return osutils.sha_string(self.get_file_text(path, file_id))
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
@@ -254,6 +272,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_text(self, path, file_id=None):
         """See RevisionTree.get_file_text."""
+        if self.tree is None:
+            raise errors.NoSuchFile(path)
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
         if stat.S_ISREG(mode):
             return self.store[hexsha].data
@@ -292,7 +312,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
 def tree_delta_from_git_changes(changes, mapping,
         (old_fileid_map, new_fileid_map), specific_files=None,
-        require_versioned=False):
+        require_versioned=False, include_root=False):
     """Create a TreeDelta from two git trees.
 
     source and target are iterators over tuples with:
@@ -300,9 +320,11 @@ def tree_delta_from_git_changes(changes, mapping,
     """
     ret = delta.TreeDelta()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if newpath == u'' and not include_root:
+            continue
         if not (specific_files is None or
-                (oldpath is not None and osutils.is_inside_any(specific_files, oldpath)) or
-                (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
+                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
+                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
             continue
         if mapping.is_control_file(oldpath):
             oldpath = None
@@ -318,13 +340,22 @@ def tree_delta_from_git_changes(changes, mapping,
             ret.removed.append((oldpath.decode('utf-8'), file_id, mode_kind(oldmode)))
         elif oldpath != newpath:
             file_id = old_fileid_map.lookup_file_id(oldpath)
-            ret.renamed.append((oldpath.decode('utf-8'), newpath.decode('utf-8'), file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            ret.renamed.append(
+                (oldpath.decode('utf-8'), newpath.decode('utf-8'), file_id,
+                mode_kind(newmode), (oldsha != newsha),
+                (oldmode != newmode)))
         elif mode_kind(oldmode) != mode_kind(newmode):
             file_id = new_fileid_map.lookup_file_id(newpath)
-            ret.kind_changed.append((newpath.decode('utf-8'), file_id, mode_kind(oldmode), mode_kind(newmode)))
+            ret.kind_changed.append(
+                (newpath.decode('utf-8'), file_id, mode_kind(oldmode),
+                mode_kind(newmode)))
         elif oldsha != newsha or oldmode != newmode:
+            if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
+                continue
             file_id = new_fileid_map.lookup_file_id(newpath)
-            ret.modified.append((newpath.decode('utf-8'), file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            ret.modified.append(
+                (newpath.decode('utf-8'), file_id, mode_kind(newmode),
+                (oldsha != newsha), (oldmode != newmode)))
         else:
             file_id = new_fileid_map.lookup_file_id(newpath)
             ret.unchanged.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
@@ -340,11 +371,13 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
     """
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if not (specific_files is None or
-                (oldpath is not None and osutils.is_inside_any(specific_files, oldpath)) or
-                (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
+                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
+                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
             continue
         path = (oldpath, newpath)
-        if mapping.is_special_file(oldpath) or mapping.is_special_file(newpath):
+        if oldpath is not None and mapping.is_special_file(oldpath):
+            continue
+        if newpath is not None and mapping.is_special_file(newpath):
             continue
         if oldpath is None:
             fileid = mapping.generate_file_id(newpath)
@@ -391,8 +424,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
              (oldkind, newkind), (oldexe, newexe))
 
 
-class InterGitRevisionTrees(tree.InterTree):
-    """InterTree that works between two git revision trees."""
+class InterGitTrees(tree.InterTree):
+    """InterTree that works between two git trees."""
 
     _matching_from_tree_format = None
     _matching_to_tree_format = None
@@ -406,26 +439,42 @@ class InterGitRevisionTrees(tree.InterTree):
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        if self.source._repository._git.object_store != self.target._repository._git.object_store:
-            raise AssertionError
-        changes = self.source._repository._git.object_store.tree_changes(
-            self.source.tree, self.target.tree, want_unchanged=want_unchanged)
+        changes = self._iter_git_changes(want_unchanged=want_unchanged)
         source_fileid_map = self.source._fileid_map
         target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
             (source_fileid_map, target_fileid_map),
-            specific_files=specific_files)
+            specific_files=specific_files, include_root=include_root)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
-        pb=None, extra_trees=[], require_versioned=True,
-        want_unversioned=False):
-        if self.source._repository._git.object_store != self.target._repository._git.object_store:
-            raise AssertionError
-        changes = self.source._repository._git.object_store.tree_changes(
-            self.source.tree, self.target.tree,
-            want_unchanged=include_unchanged)
+                     pb=None, extra_trees=[], require_versioned=True,
+                     want_unversioned=False):
+        changes = self._iter_git_changes(want_unchanged=include_unchanged)
         return changes_from_git_changes(changes, self.target.mapping,
             specific_files=specific_files)
+
+    def _iter_git_changes(self, want_unchanged=False):
+        raise NotImplementedError(self._iter_git_changes)
+
+
+class InterGitRevisionTrees(InterGitTrees):
+    """InterTree that works between two git revision trees."""
+
+    _matching_from_tree_format = None
+    _matching_to_tree_format = None
+    _test_mutable_trees_to_test_trees = None
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        return (isinstance(source, GitRevisionTree) and
+                isinstance(target, GitRevisionTree))
+
+    def _iter_git_changes(self, want_unchanged=False):
+        if self.source._repository._git.object_store != self.target._repository._git.object_store:
+            raise AssertionError
+        return self.source._repository._git.object_store.tree_changes(
+            self.source.tree, self.target.tree, want_unchanged=want_unchanged,
+            include_trees=True)
 
 
 tree.InterTree.register_optimiser(InterGitRevisionTrees)
