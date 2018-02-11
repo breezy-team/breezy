@@ -102,10 +102,10 @@ class GitDir(ControlDir):
         pass
 
     def cloning_metadir(self, stacked=False):
-        return format_registry.make_controldir("default")
+        return format_registry.make_controldir("git")
 
     def checkout_metadir(self, stacked=False):
-        return format_registry.make_controldir("default")
+        return format_registry.make_controldir("git")
 
     def _get_default_ref(self):
         return "HEAD"
