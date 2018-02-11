@@ -52,14 +52,16 @@ from .  import TestCaseWithWorkingTree
 from ...bzr.workingtree import (
     InventoryWorkingTree,
     )
-from ...workingtree import (
-    SettingFileIdUnsupported,
+from ...tree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
-    WorkingTree,
     )
 from ...conflicts import ConflictList, TextConflict, ContentsConflict
+from ...workingtree import (
+    SettingFileIdUnsupported,
+    WorkingTree,
+    )
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):

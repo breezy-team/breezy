@@ -61,6 +61,52 @@ class FileTimestampUnavailable(errors.BzrError):
         self.path = path
 
 
+class TreeEntry(object):
+    """An entry that implements the minimum interface used by commands.
+    """
+
+    def __eq__(self, other):
+        # yes, this us ugly, TODO: best practice __eq__ style.
+        return (isinstance(other, TreeEntry)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return "???"
+
+
+class TreeDirectory(TreeEntry):
+    """See TreeEntry. This is a directory in a working tree."""
+
+    def __eq__(self, other):
+        return (isinstance(other, TreeDirectory)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return "/"
+
+
+class TreeFile(TreeEntry):
+    """See TreeEntry. This is a regular file in a working tree."""
+
+    def __eq__(self, other):
+        return (isinstance(other, TreeFile)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return ''
+
+
+class TreeLink(TreeEntry):
+    """See TreeEntry. This is a symlink in a working tree."""
+
+    def __eq__(self, other):
+        return (isinstance(other, TreeLink)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return ''
+
+
 class Tree(object):
     """Abstract file tree.
 
