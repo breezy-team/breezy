@@ -468,6 +468,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                         call_action(filepath, kind)
                         if save:
                             self._index_add_entry(subp, kind)
+                        added.append(subp)
             if added and save:
                 self.flush()
             return added, ignored
