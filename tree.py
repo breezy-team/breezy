@@ -328,13 +328,22 @@ def tree_delta_from_git_changes(changes, mapping,
             ret.removed.append((oldpath.decode('utf-8'), file_id, mode_kind(oldmode)))
         elif oldpath != newpath:
             file_id = old_fileid_map.lookup_file_id(oldpath)
-            ret.renamed.append((oldpath.decode('utf-8'), newpath.decode('utf-8'), file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            ret.renamed.append(
+                (oldpath.decode('utf-8'), newpath.decode('utf-8'), file_id,
+                mode_kind(newmode), (oldsha != newsha),
+                (oldmode != newmode)))
         elif mode_kind(oldmode) != mode_kind(newmode):
             file_id = new_fileid_map.lookup_file_id(newpath)
-            ret.kind_changed.append((newpath.decode('utf-8'), file_id, mode_kind(oldmode), mode_kind(newmode)))
+            ret.kind_changed.append(
+                (newpath.decode('utf-8'), file_id, mode_kind(oldmode),
+                mode_kind(newmode)))
         elif oldsha != newsha or oldmode != newmode:
+            if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
+                continue
             file_id = new_fileid_map.lookup_file_id(newpath)
-            ret.modified.append((newpath.decode('utf-8'), file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            ret.modified.append(
+                (newpath.decode('utf-8'), file_id, mode_kind(newmode),
+                (oldsha != newsha), (oldmode != newmode)))
         else:
             file_id = new_fileid_map.lookup_file_id(newpath)
             ret.unchanged.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
@@ -354,7 +363,9 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
                 (newpath is not None and osutils.is_inside_any(specific_files, newpath))):
             continue
         path = (oldpath, newpath)
-        if mapping.is_special_file(oldpath) or mapping.is_special_file(newpath):
+        if oldpath is not None and mapping.is_special_file(oldpath):
+            continue
+        if newpath is not None and mapping.is_special_file(newpath):
             continue
         if oldpath is None:
             fileid = mapping.generate_file_id(newpath)
@@ -401,8 +412,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
              (oldkind, newkind), (oldexe, newexe))
 
 
-class InterGitRevisionTrees(tree.InterTree):
-    """InterTree that works between two git revision trees."""
+class InterGitTrees(tree.InterTree):
+    """InterTree that works between two git trees."""
 
     _matching_from_tree_format = None
     _matching_to_tree_format = None
@@ -416,10 +427,7 @@ class InterGitRevisionTrees(tree.InterTree):
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        if self.source._repository._git.object_store != self.target._repository._git.object_store:
-            raise AssertionError
-        changes = self.source._repository._git.object_store.tree_changes(
-            self.source.tree, self.target.tree, want_unchanged=want_unchanged)
+        changes = self._iter_git_changes(want_unchanged=want_unchanged)
         source_fileid_map = self.source._fileid_map
         target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
@@ -427,15 +435,34 @@ class InterGitRevisionTrees(tree.InterTree):
             specific_files=specific_files)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
-        pb=None, extra_trees=[], require_versioned=True,
-        want_unversioned=False):
-        if self.source._repository._git.object_store != self.target._repository._git.object_store:
-            raise AssertionError
-        changes = self.source._repository._git.object_store.tree_changes(
-            self.source.tree, self.target.tree,
-            want_unchanged=include_unchanged)
+                     pb=None, extra_trees=[], require_versioned=True,
+                     want_unversioned=False):
+        changes = self._iter_git_changes(want_unchanged=include_unchanged)
         return changes_from_git_changes(changes, self.target.mapping,
             specific_files=specific_files)
+
+    def _iter_git_changes(self, want_unchanged=False):
+        raise NotImplementedError(self._iter_git_changes)
+
+
+class InterGitRevisionTrees(InterGitTrees):
+    """InterTree that works between two git revision trees."""
+
+    _matching_from_tree_format = None
+    _matching_to_tree_format = None
+    _test_mutable_trees_to_test_trees = None
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        return (isinstance(source, GitRevisionTree) and
+                isinstance(target, GitRevisionTree))
+
+    def _iter_git_changes(self, want_unchanged=False):
+        if self.source._repository._git.object_store != self.target._repository._git.object_store:
+            raise AssertionError
+        return self.source._repository._git.object_store.tree_changes(
+            self.source.tree, self.target.tree, want_unchanged=want_unchanged,
+            include_trees=True)
 
 
 tree.InterTree.register_optimiser(InterGitRevisionTrees)

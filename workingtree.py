@@ -76,6 +76,7 @@ from .dir import (
 from .tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
+    InterGitTrees,
     )
 from .mapping import (
     GitFileIdMap,
@@ -1043,7 +1044,7 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         return wt
 
 
-class InterIndexGitTree(tree.InterTree):
+class InterIndexGitTree(InterGitTrees):
     """InterTree that works between a Git revision tree and an index."""
 
     def __init__(self, source, target):
@@ -1056,14 +1057,25 @@ class InterIndexGitTree(tree.InterTree):
         return (isinstance(source, GitRevisionTree) and
                 isinstance(target, GitWorkingTree))
 
+    def _iter_git_changes(self, want_unchanged=False, specific_files=None,
+            require_versioned=False, include_root=False):
+        # TODO(jelmer): Handle include_root
+        # TODO(jelmer): Handle require_versioned
+        # TODO(jelmer): Restrict to specific_files, for performance reasons.
+        with self.lock_read():
+            return changes_between_git_tree_and_index(
+                self.source.store, self.source.tree,
+                self.target, want_unchanged=want_unchanged)
+
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
         with self.lock_read():
-            # FIXME: Handle include_root
-            changes = changes_between_git_tree_and_index(
-                self.source.store, self.source.tree,
-                self.target, want_unchanged=want_unchanged)
+            changes = self._iter_git_changes(
+                    want_unchanged=want_unchanged,
+                    specific_files=specific_files,
+                    require_versioned=require_versioned,
+                    include_root=include_root)
             source_fileid_map = self.source._fileid_map
             target_fileid_map = self.target._fileid_map
             ret = tree_delta_from_git_changes(changes, self.target.mapping,
@@ -1077,18 +1089,20 @@ class InterIndexGitTree(tree.InterTree):
             return ret
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
-        pb=None, extra_trees=[], require_versioned=True,
-        want_unversioned=False):
+                     pb=None, extra_trees=[], require_versioned=True,
+                     want_unversioned=False):
         with self.lock_read():
-            changes = changes_between_git_tree_and_index(
-                self.source.store, self.source.tree,
-                self.target, want_unchanged=include_unchanged)
+            changes = self._iter_git_changes(
+                    want_unchanged=include_unchanged,
+                    specific_files=specific_files,
+                    require_versioned=require_versioned)
             if want_unversioned:
                 changes = itertools.chain(
                         changes,
                         untracked_changes(self.target))
             return changes_from_git_changes(
-                    changes, self.target.mapping, specific_files=specific_files)
+                    changes, self.target.mapping,
+                    specific_files=specific_files)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
@@ -1107,15 +1121,13 @@ def untracked_changes(tree):
                blob_from_path_and_stat(ap, st).id)
 
 
-def changes_between_git_tree_and_index(object_store, tree, target,
+def changes_between_git_tree_and_index(store, from_tree_sha, target,
         want_unchanged=False, update_index=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
-
-    names = target.index._byname.keys()
-    for (name, mode, sha) in changes_from_tree(names, target._lookup_entry,
-            object_store, tree, want_unchanged=want_unchanged):
-        if name == (None, None):
-            continue
-        yield (name, mode, sha)
+    # TODO(jelmer): Avoid creating and storing tree objects; ideally, use
+    # dulwich.index.changes_from_tree with a include_trees argument.
+    to_tree_sha = target.index.commit(store)
+    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
+            want_unchanged=want_unchanged)
