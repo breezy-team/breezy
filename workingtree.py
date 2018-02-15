@@ -33,8 +33,9 @@ from dulwich.index import (
     Index,
     changes_from_tree,
     cleanup_mode,
+    commit_tree,
     index_entry_from_stat,
-    refresh_index,
+    iter_fresh_blobs,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -1086,7 +1087,7 @@ class InterIndexGitTree(InterGitTrees):
         # TODO(jelmer): Handle require_versioned
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
-            return changes_between_git_tree_and_index(
+            return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged)
 
@@ -1150,10 +1151,17 @@ def changes_between_git_tree_and_index(store, from_tree_sha, target,
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    # TODO(jelmer): Avoid creating and storing tree objects; ideally, use
-    # dulwich.index.changes_from_tree with a include_trees argument.
-    refresh_index(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
     to_tree_sha = target.index.commit(store)
-    target.index.write()
+    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
+            want_unchanged=want_unchanged)
+
+
+def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
+        want_unchanged=False, update_index=False):
+    """Determine the changes between a git tree and a working tree with index.
+
+    """
+    blobs = iter_fresh_blobs(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
+    to_tree_sha = commit_tree(store, blobs)
     return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
             want_unchanged=want_unchanged)
