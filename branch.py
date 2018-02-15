@@ -151,9 +151,9 @@ class GitTags(tag.BasicTags):
                 pass
             elif overwrite or not k in target_repo._git.refs:
                 target_repo._git.refs[k] = unpeeled or peeled
-                updates[name] = target_repo.lookup_foreign_revision_id(peeled)
+                updates[name] = self.repository.lookup_foreign_revision_id(peeled)
             else:
-                conflicts.append((name, peeled, target_repo._git.refs[k]))
+                conflicts.append((name, self.repository.lookup_foreign_revision_id(peeled), target_repo.lookup_foreign_revision_id(target_repo._git.refs[k])))
         return updates, conflicts
 
     def _merge_to_git(self, to_tags, refs, overwrite=False):
@@ -380,7 +380,7 @@ class GitBranch(ForeignBranch):
         cf.set((b"branch", self.name.encode('utf-8')), b"nick", nick.encode("utf-8"))
         f = StringIO()
         cf.write_to_file(f)
-        self.controldir.control_transport.put_bytes('config', f.getvalue())
+        self.repository._git._put_named_file('config', f.getvalue())
 
     nick = property(_get_nick, _set_nick)
 
@@ -421,14 +421,22 @@ class GitBranch(ForeignBranch):
         # Git doesn't do stacking (yet...)
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
-    def get_parent(self):
+    def _get_parent_location(self):
         """See Branch.get_parent()."""
         # FIXME: Set "origin" url from .git/config ?
-        return None
+        cs = self.repository._git.get_config_stack()
+        try:
+            return cs.get((b"remote", b'origin'), b"url").decode("utf-8")
+        except KeyError:
+            return None
 
-    def set_parent(self, url):
+    def set_parent(self, location):
         # FIXME: Set "origin" url in .git/config ?
-        pass
+        cs = self.repository._git.get_config()
+        cs.set((b"remote", b"origin"), b"url", location)
+        f = StringIO()
+        cs.write_to_file(f)
+        self.repository._git._put_named_file('config', f.getvalue())
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
