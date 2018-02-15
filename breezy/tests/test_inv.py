@@ -622,7 +622,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv.add(file1)
         delta = [(u'path', None, 'file-id', None)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
-        self.assertEqual(None, res_inv.path2id('path'))
+        self.assertFalse(res_inv.is_versioned('path'))
         self.assertRaises(errors.NoSuchId, res_inv.id2path, 'file-id')
 
     def test_rename_file(self):
@@ -632,7 +632,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2 = self.make_file_ie(name='path2', parent_id=inv.root.file_id)
         delta = [(u'path', 'path2', 'file-id', file2)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
-        self.assertEqual(None, res_inv.path2id('path'))
+        self.assertFalse(res_inv.is_versioned('path'))
         self.assertEqual('file-id', res_inv.path2id('path2'))
 
     def test_replaced_at_new_path(self):
@@ -676,7 +676,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         # The file should be accessible under the new path
         self.assertEqual('file-id-1', res_inv.path2id('dir2/name1'))
-        self.assertEqual(None, res_inv.path2id('dir2/name2'))
+        self.assertFalse(res_inv.is_versioned('dir2/name2'))
         self.assertEqual('file-id-2', res_inv.path2id('name2'))
 
     def test_is_root(self):

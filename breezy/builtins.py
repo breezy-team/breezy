@@ -875,7 +875,7 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_with_parents(cls, wt, relpath):
-        if wt.path2id(relpath) is not None:
+        if wt.is_versioned(relpath):
             return
         cls.add_file_with_parents(wt, osutils.dirname(relpath))
         wt.add([relpath])

@@ -813,7 +813,7 @@ class WorkingTree(mutabletree.MutableTree,
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-    def extract(self, file_id, format=None):
+    def extract(self, path, file_id=None, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.

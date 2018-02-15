@@ -89,7 +89,6 @@ class TestCommit(TestCaseWithTransport):
         with open('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         rev1 = wt.commit(message='add hello')
-        file_id = wt.path2id('hello')
 
         with open('hello', 'w') as f: f.write('version 2')
         rev2 = wt.commit(message='commit 2')
@@ -616,12 +615,9 @@ create_signatures=always
         tree.remove(['a', 'b'])
         tree.commit('removed a', specific_files='a')
         basis = tree.basis_tree()
-        tree.lock_read()
-        try:
-            self.assertIs(None, basis.path2id('a'))
-            self.assertFalse(basis.path2id('b') is None)
-        finally:
-            tree.unlock()
+        with tree.lock_read():
+            self.assertFalse(basis.is_versioned('a'))
+            self.assertTrue(basis.is_versioned('b'))
 
     def test_commit_saves_1ms_timestamp(self):
         """Passing in a timestamp is saved with 1ms resolution"""
