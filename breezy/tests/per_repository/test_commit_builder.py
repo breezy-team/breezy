@@ -449,6 +449,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=False, mini_commit=None):
         tree.add([name])
         file_id = tree.path2id(name)
+        self.assertIsNot(None, file_id)
         self._commit_change_check_changed(
             tree, name, file_id,
             changer, expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
@@ -500,6 +501,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             result = list(builder.record_iter_changes(tree, parent_ids[0],
                 changes))
             file_id = tree.path2id(new_name)
+            self.assertIsNot(None, file_id)
             if expect_fs_hash:
                 tree_file_stat = tree.get_file_with_stat(new_name)
                 tree_file_stat[0].close()
@@ -598,6 +600,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         """Do a rename in both trees."""
         rev1, tree2 = self._commit_sprout(tree1, name)
         file_id = tree2.path2id(name)
+        self.assertIsNot(None, file_id)
         # change both sides equally
         rev2 = self._rename_in_tree(tree1, name)
         rev3 = self._rename_in_tree(tree2, name)
@@ -643,6 +646,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # Part 1: change in the merged branch.
         rev1, tree2 = self._commit_sprout(tree1, name)
         file_id = tree2.path2id(name)
+        self.assertIsNot(None, file_id)
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
@@ -676,6 +680,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make('t2/name')
         tree2.add(['name'])
         file_id = tree2.path2id('name')
+        self.assertIsNot(None, file_id)
         rev2 = tree2.commit('')
         tree1.merge_from_branch(tree2.branch)
         rev3 = mini_commit(tree1, None, 'name', False)

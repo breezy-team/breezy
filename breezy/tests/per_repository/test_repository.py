@@ -122,6 +122,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_storing_branch_nick',
             (True, False))
 
+    def test_attribute_format_supports_custom_revision_properties(self):
+        self.assertFormatAttribute(
+                'supports_custom_revision_properties',
+                (True, False))
+
     def test_attribute_format_supports_overriding_transport(self):
         repo = self.make_repository('repo')
         self.assertIn(repo._format.supports_overriding_transport, (True, False))
