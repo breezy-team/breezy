@@ -106,6 +106,9 @@ New Features
  * Support the creation of colocated branches in ``brz fast-import``.
    (Jelmer Vernooĳ, #1744626)
 
+ * New ``lp-logout`` command to unset launchpad username.
+   (Jelmer Vernooĳ, #349143)
+
 Improvements
 ************
 
