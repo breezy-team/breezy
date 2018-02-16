@@ -529,17 +529,20 @@ class LocalGitDir(GitDir):
         accelerator_tree=None, hardlink=False):
         if self._git.bare:
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
-        from dulwich.index import write_index
-        from dulwich.pack import SHA1Writer
-        f = open(self.transport.local_abspath("index"), 'w+')
-        try:
-            f = SHA1Writer(f)
-            write_index(f, [])
-        finally:
-            f.close()
+        from dulwich.index import build_index_from_tree
+        from dulwich.objects import ZERO_SHA
+        if revision_id is None:
+            revision_id = self.open_branch().last_revision()
+        repo = self.open_repository()
+        store = repo._git.object_store
+        (commit_id, mapping) = repo.lookup_bzr_revision_id(revision_id)
+        build_index_from_tree(
+            self.root_transport.local_abspath('.'),
+            self.transport.local_abspath("index"),
+            store,
+            None if commit_id == ZERO_SHA else store[commit_id].tree)
         wt = self.open_workingtree()
-        if revision_id is not None:
-            wt.set_last_revision(revision_id)
+        wt.set_last_revision(revision_id)
         return wt
 
     def _find_or_create_repository(self, force_new_repo=None):
