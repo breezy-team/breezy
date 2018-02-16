@@ -533,6 +533,14 @@ class Tree(object):
         """Return the id for path in this tree."""
         raise NotImplementedError(self.path2id)
 
+    def is_versioned(self, path):
+        """Check whether path is versioned.
+
+        :param path: Path to check
+        :return: boolean
+        """
+        return self.path2id(path) is not None
+
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
 

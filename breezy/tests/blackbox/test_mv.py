@@ -453,8 +453,8 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
-        self.assertIsNot(None, tree.path2id('b'))
-        self.assertIsNot(None, tree.path2id('d'))
+        self.assertTrue(tree.is_versioned('b'))
+        self.assertTrue(tree.is_versioned('d'))
 
     def test_mv_auto_one_path(self):
         self.make_abcd_tree()
@@ -462,8 +462,8 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
-        self.assertIsNot(None, tree.path2id('b'))
-        self.assertIsNot(None, tree.path2id('d'))
+        self.assertTrue(tree.is_versioned('b'))
+        self.assertTrue(tree.is_versioned('d'))
 
     def test_mv_auto_two_paths(self):
         self.make_abcd_tree()
@@ -477,8 +477,8 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
-        self.assertIsNot(None, tree.path2id('a'))
-        self.assertIsNot(None, tree.path2id('c'))
+        self.assertTrue(tree.is_versioned('a'))
+        self.assertTrue(tree.is_versioned('c'))
 
     def test_mv_no_auto_dry_run(self):
         self.make_abcd_tree()

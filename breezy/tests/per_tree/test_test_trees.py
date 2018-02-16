@@ -49,6 +49,9 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             {'', 'a', 'b', 'b/c'},
             set(tree.all_versioned_paths()))
+        self.assertTrue(tree.is_versioned('a'))
+        self.assertTrue(tree.is_versioned('b'))
+        self.assertTrue(tree.is_versioned('b/c'))
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])

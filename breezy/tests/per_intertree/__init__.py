@@ -62,7 +62,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
             raise tests.TestNotApplicable('cannot represent unversioned files')
 
     def not_applicable_if_missing_in(self, relpath, tree):
-        if not tree.path2id(relpath):
+        if not tree.is_versioned(relpath):
             # The locked test trees conversion could not preserve the missing
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
