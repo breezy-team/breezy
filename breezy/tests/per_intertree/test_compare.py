@@ -702,7 +702,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected_result = sorted([self.added(tree2, b'root-id'),
             self.added(tree2, b'a-id'), self.added(tree2, b'b-id'),
-            self.added(tree2, b'c-id'), self.deleted(tree1b, 'empty-root-id')])
+            self.added(tree2, b'c-id'), self.deleted(tree1, 'empty-root-id')])
         self.assertEqual(expected_result,
             self.do_iter_changes(tree1, tree2, specific_files=['a', 'b/c']))
 

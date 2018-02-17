@@ -260,7 +260,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
                                      'directory')]
         self.assertEqual(other_delta, delta)
         self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
-            " kind_changed=[(u'filename', b'file-id', 'file', 'directory')],"
+            " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
             " modified=[], unchanged=[], unversioned=[])", repr(delta))
         self.assertEqual('K  filename (file => directory) file-id\n',
                          self.show_string(delta, show_ids=True,
