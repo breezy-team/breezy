@@ -814,15 +814,15 @@ class InterGitGitRepository(InterFromGitRepository):
               isinstance(self.target, LocalGitRepository)):
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                f, commit = self.target._git.object_store.add_pack()
+                f, commit, abort = self.target._git.object_store.add_pack()
                 try:
                     refs = self.source.controldir.fetch_pack(
                         determine_wants, graphwalker, f.write,
                         lambda text: report_git_progress(pb, text))
                     commit()
                     return (None, None, refs)
-                except:
-                    f.close()
+                except BaseException:
+                    abort()
                     raise
             finally:
                 pb.finished()
