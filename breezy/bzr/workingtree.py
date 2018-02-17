@@ -77,11 +77,13 @@ from ..sixish import (
     text_type,
     )
 from ..trace import mutter, note
-from ..tree import FileTimestampUnavailable
-from ..workingtree import (
+from ..tree import (
+    FileTimestampUnavailable,
     TreeDirectory,
     TreeFile,
     TreeLink,
+    )
+from ..workingtree import (
     WorkingTree,
     WorkingTreeFormat,
     format_registry,

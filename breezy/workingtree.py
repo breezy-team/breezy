@@ -81,61 +81,6 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
-class TreeEntry(object):
-    """An entry that implements the minimum interface used by commands.
-
-    This needs further inspection, it may be better to have
-    InventoryEntries without ids - though that seems wrong. For now,
-    this is a parallel hierarchy to InventoryEntry, and needs to become
-    one of several things: decorates to that hierarchy, children of, or
-    parents of it.
-    Another note is that these objects are currently only used when there is
-    no InventoryEntry available - i.e. for unversioned objects.
-    Perhaps they should be UnversionedEntry et al. ? - RBC 20051003
-    """
-
-    def __eq__(self, other):
-        # yes, this us ugly, TODO: best practice __eq__ style.
-        return (isinstance(other, TreeEntry)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "???"
-
-
-class TreeDirectory(TreeEntry):
-    """See TreeEntry. This is a directory in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeDirectory)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "/"
-
-
-class TreeFile(TreeEntry):
-    """See TreeEntry. This is a regular file in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeFile)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
-class TreeLink(TreeEntry):
-    """See TreeEntry. This is a symlink in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeLink)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
 class WorkingTree(mutabletree.MutableTree,
     controldir.ControlComponent):
     """Working copy tree.
