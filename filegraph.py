@@ -41,19 +41,21 @@ class GitFileLastChangeScanner(object):
         target_mode, target_sha = tree_lookup_path(self.store.__getitem__,
             commit.tree, path)
         while True:
-            parent_commits = [self.store[c] for c in commit.parents]
-            for parent_commit in parent_commits:
+            parent_commits = []
+            for parent_commit in [self.store[c] for c in commit.parents]:
                 try:
                     mode, sha = tree_lookup_path(self.store.__getitem__,
                         parent_commit.tree, path)
                 except (NotTreeError, KeyError):
                     continue
+                else:
+                    parent_commits.append(parent_commit)
                 if mode != target_mode or sha != target_sha:
                     return (path, commit.id)
             if parent_commits == []:
                 break
             commit = parent_commits[0]
-        raise KeyError
+        return (path, commit.id)
 
 
 class GitFileParentProvider(object):

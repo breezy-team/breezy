@@ -68,11 +68,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_revision(self, path, file_id=None):
         change_scanner = self._repository._file_change_scanner
-        try:
-            (path, commit_id) = change_scanner.find_last_change_revision(path,
-                self.commit_id)
-        except KeyError:
-            commit_id = self.commit_id
+        (path, commit_id) = change_scanner.find_last_change_revision(path,
+            self.commit_id)
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
 
     def get_file_mtime(self, path, file_id=None):
