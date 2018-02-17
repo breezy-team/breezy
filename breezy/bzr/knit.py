@@ -2053,7 +2053,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     'data must be plain bytes was %s' % type(chunk))
         if lines and lines[-1][-1] != '\n':
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = tuned_gzip.chunks_to_gzip(chunks)
+        compressed_bytes = b''.join(tuned_gzip.chunks_to_gzip(chunks))
         return len(compressed_bytes), compressed_bytes
 
     def _split_header(self, line):
