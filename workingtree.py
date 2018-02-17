@@ -1032,6 +1032,61 @@ class GitWorkingTree(workingtree.WorkingTree):
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
 
+    def annotate_iter(self, path, file_id=None,
+                      default_revision=_mod_revision.CURRENT_REVISION):
+        """See Tree.annotate_iter
+
+        This implementation will use the basis tree implementation if possible.
+        Lines not in the basis are attributed to CURRENT_REVISION
+
+        If there are pending merges, lines added by those merges will be
+        incorrectly attributed to CURRENT_REVISION (but after committing, the
+        attribution will be correct).
+        """
+        with self.lock_read():
+            maybe_file_parent_keys = []
+            for parent_id in self.get_parent_ids():
+                try:
+                    parent_tree = self.revision_tree(parent_id)
+                except errors.NoSuchRevisionInTree:
+                    parent_tree = self.branch.repository.revision_tree(
+                            parent_id)
+                with parent_tree.lock_read():
+                    # TODO(jelmer): Use rename/copy tracker to find path name in parent
+                    parent_path = path
+                    try:
+                        kind = parent_tree.kind(parent_path)
+                    except errors.NoSuchFile:
+                        continue
+                    if kind != 'file':
+                        # Note: this is slightly unnecessary, because symlinks and
+                        # directories have a "text" which is the empty text, and we
+                        # know that won't mess up annotations. But it seems cleaner
+                        continue
+                    parent_text_key = (
+                        parent_path,
+                        parent_tree.get_file_revision(parent_path))
+                    if parent_text_key not in maybe_file_parent_keys:
+                        maybe_file_parent_keys.append(parent_text_key)
+            graph = self.branch.repository.get_file_graph()
+            heads = graph.heads(maybe_file_parent_keys)
+            file_parent_keys = []
+            for key in maybe_file_parent_keys:
+                if key in heads:
+                    file_parent_keys.append(key)
+
+            # Now we have the parents of this content
+            from breezy.annotate import Annotator
+            from .annotate import AnnotateProvider
+            annotator = Annotator(AnnotateProvider(
+                self.branch.repository._file_change_scanner))
+            text = self.get_file_text(path)
+            this_key = (path, default_revision)
+            annotator.add_special_text(this_key, file_parent_keys, text)
+            annotations = [(key[-1], line)
+                           for key, line in annotator.annotate_flat(this_key)]
+            return annotations
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 

@@ -347,7 +347,7 @@ class LocalGitRepository(GitRepository):
         return list(ret)
 
     def _get_parents(self, revid, no_alternates=False):
-        if type(revid) != str:
+        if type(revid) != bytes:
             raise ValueError
         try:
             (hexsha, mapping) = self.lookup_bzr_revision_id(revid)

@@ -53,7 +53,7 @@ class GitFileLastChangeScanner(object):
             if parent_commits == []:
                 break
             commit = parent_commits[0]
-        return (path, commit.id)
+        raise KeyError
 
 
 class GitFileParentProvider(object):
@@ -68,7 +68,10 @@ class GitFileParentProvider(object):
         path = mapping.parse_file_id(file_id)
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
-            (_, text_parent) = self.change_scanner.find_last_change_revision(path, commit_parent)
+            try:
+                (path, text_parent) = self.change_scanner.find_last_change_revision(path, commit_parent)
+            except KeyError:
+                continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
         return tuple([(file_id,
@@ -80,6 +83,7 @@ class GitFileParentProvider(object):
         for key in keys:
             (file_id, text_revision) = key
             if text_revision == NULL_REVISION:
+                ret[key] = ()
                 continue
             try:
                 ret[key] = self._get_parents(file_id, text_revision)
