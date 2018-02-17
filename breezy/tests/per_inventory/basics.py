@@ -72,8 +72,8 @@ class TestInventory(TestCaseWithInventory):
                      ('Makefile', 'file', 'makefile-id')]:
             ie = inv.add_path(*args)
             if args[1] == 'file':
-                ie.text_sha1 = osutils.sha_string('content\n')
-                ie.text_size = len('content\n')
+                ie.text_sha1 = osutils.sha_string(b'content\n')
+                ie.text_size = len(b'content\n')
         return self.inv_to_test_inv(inv)
 
 

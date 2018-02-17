@@ -374,7 +374,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Knit Repository Format 1"
+        return b"Bazaar-NG Knit Repository Format 1"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -417,7 +417,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
+        return b"Bazaar Knit Repository Format 3 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -459,7 +459,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return 'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
+        return b'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

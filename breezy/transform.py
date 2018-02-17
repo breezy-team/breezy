@@ -1967,7 +1967,7 @@ class TransformPreview(DiskTreeTransform):
         file_id = self.tree_file_id(parent_id)
         if file_id is None:
             return
-        entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+        entry = next(self._tree.iter_entries_by_dir([file_id]))[1]
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)

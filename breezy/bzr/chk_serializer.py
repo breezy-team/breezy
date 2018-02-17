@@ -84,23 +84,23 @@ class BEncodeRevisionSerializer1(object):
         # This lets us control the ordering, so that we are able to create
         # smaller deltas
         ret = [
-            ("format", 10),
-            ("committer", encode_utf8(rev.committer)[0]),
+            (b"format", 10),
+            (b"committer", encode_utf8(rev.committer)[0]),
         ]
         if rev.timezone is not None:
-            ret.append(("timezone", rev.timezone))
+            ret.append((b"timezone", rev.timezone))
         # For bzr revisions, the most common property is just 'branch-nick'
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.items():
             revprops[key] = encode_utf8(value)[0]
-        ret.append(('properties', revprops))
+        ret.append((b'properties', revprops))
         ret.extend([
-            ("timestamp", "%.3f" % rev.timestamp),
-            ("revision-id", rev.revision_id),
-            ("parent-ids", rev.parent_ids),
-            ("inventory-sha1", rev.inventory_sha1),
-            ("message", encode_utf8(rev.message)[0]),
+            (b"timestamp", b"%.3f" % rev.timestamp),
+            (b"revision-id", rev.revision_id),
+            (b"parent-ids", rev.parent_ids),
+            (b"inventory-sha1", rev.inventory_sha1),
+            (b"message", encode_utf8(rev.message)[0]),
         ])
         return bencode.bencode(ret)
 

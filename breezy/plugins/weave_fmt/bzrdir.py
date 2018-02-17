@@ -116,7 +116,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 5\n"
+        return b"Bazaar-NG branch, format 5\n"
 
     def get_branch_format(self):
         from .branch import BzrBranchFormat4
@@ -180,7 +180,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 6\n"
+        return b"Bazaar-NG branch, format 6\n"
 
     def get_format_description(self):
         """See ControlDirFormat.get_format_description()."""
@@ -689,7 +689,7 @@ class BzrDirFormat4(BzrDirFormat):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 0.0.4\n"
+        return b"Bazaar-NG branch, format 0.0.4\n"
 
     def get_format_description(self):
         """See ControlDirFormat.get_format_description()."""

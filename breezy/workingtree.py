@@ -423,7 +423,7 @@ class WorkingTree(mutabletree.MutableTree,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         abspath = self.abspath(path)
-        file_obj = file(abspath, 'rb')
+        file_obj = open(abspath, 'rb')
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
@@ -1527,12 +1527,12 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingcontroldir
 
 
-format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
-format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
-format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
-format_registry.register_lazy("Bazaar-NG Working Tree format 3",
+format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
     "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
-format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")
+format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")

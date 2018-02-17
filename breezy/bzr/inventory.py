@@ -900,7 +900,7 @@ class CommonInventory(object):
         entries = self.iter_entries()
         if self.root is None:
             return Inventory(root_id=None)
-        other = Inventory(entries.next()[1].file_id)
+        other = Inventory(next(entries)[1].file_id)
         other.root.revision = self.root.revision
         other.revision_id = self.revision_id
         directories_to_expand = set()
@@ -1102,7 +1102,7 @@ class Inventory(CommonInventory):
         entries = self.iter_entries()
         if self.root is None:
             return Inventory(root_id=None)
-        other = Inventory(entries.next()[1].file_id)
+        other = Inventory(next(entries)[1].file_id)
         other.root.revision = self.root.revision
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...

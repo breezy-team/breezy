@@ -84,10 +84,10 @@ class TestDefaultFormat(TestCaseWithTransport):
 
     def test_from_string(self):
         self.assertIsInstance(
-            SampleTreeFormat.from_string("Sample tree format."),
+            SampleTreeFormat.from_string(b"Sample tree format."),
             SampleTreeFormat)
         self.assertRaises(AssertionError,
-            SampleTreeFormat.from_string, "Different format string.")
+            SampleTreeFormat.from_string, b"Different format string.")
 
     def test_get_set_default_format_by_key(self):
         old_format = workingtree.format_registry.get_default()
@@ -140,7 +140,7 @@ class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Sample tree format."
+        return b"Sample tree format."
 
     def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -223,16 +223,16 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.update_feature_flags({"name": "necessity"})
+        tree.update_feature_flags({b"name": b"necessity"})
         found_format = bzrworkingtree.WorkingTreeFormatMetaDir.find_format(
             tree.controldir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
-        self.assertEqual(found_format.features.get("name"), "necessity")
+        self.assertEqual(found_format.features.get(b"name"), b"necessity")
         self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(bzrworkingtree.WorkingTreeFormatMetaDir.unregister_feature,
-            "name")
-        bzrworkingtree.WorkingTreeFormatMetaDir.register_feature("name")
+            b"name")
+        bzrworkingtree.WorkingTreeFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
 
@@ -286,9 +286,9 @@ class TestWorkingTreeFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleTreeFormat()
         self.registry.register(format)
-        self.assertEqual(format, self.registry.get("Sample tree format."))
+        self.assertEqual(format, self.registry.get(b"Sample tree format."))
         self.registry.remove(format)
-        self.assertRaises(KeyError, self.registry.get, "Sample tree format.")
+        self.assertRaises(KeyError, self.registry.get, b"Sample tree format.")
 
     def test_get_all(self):
         format = SampleTreeFormat()
@@ -326,13 +326,13 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         # stat-cache = ??
         # no inventory.basis yet
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar-NG Working Tree format 3',
+        self.assertEqualDiff(b'Bazaar-NG Working Tree format 3',
                              t.get('format').read())
         self.assertEqualDiff(t.get('inventory').read(),
-                              '<inventory format="5">\n'
-                              '</inventory>\n',
+                              b'<inventory format="5">\n'
+                              b'</inventory>\n',
                              )
-        self.assertEqualDiff('### bzr hashcache v5\n',
+        self.assertEqualDiff(b'### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
@@ -379,7 +379,7 @@ class TestRevert(TestCaseWithTransport):
     def test_revert_conflicts_recursive(self):
         this_tree = self.make_branch_and_tree('this-tree')
         self.build_tree_contents([('this-tree/foo/',),
-                                  ('this-tree/foo/bar', 'bar')])
+                                  ('this-tree/foo/bar', b'bar')])
         this_tree.add(['foo', 'foo/bar'])
         this_tree.commit('created foo/bar')
         other_tree = this_tree.controldir.sprout('other-tree').open_workingtree()
@@ -397,15 +397,15 @@ class TestAutoResolve(TestCaseWithTransport):
 
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
-        self.build_tree_contents([('base/hello', 'Hello')])
+        self.build_tree_contents([('base/hello', b'Hello')])
         base.add('hello', 'hello_id')
         base.commit('Hello')
         other = base.controldir.sprout('other').open_workingtree()
-        self.build_tree_contents([('other/hello', 'hELLO')])
+        self.build_tree_contents([('other/hello', b'hELLO')])
         other.commit('Case switch')
         this = base.controldir.sprout('this').open_workingtree()
         self.assertPathExists('this/hello')
-        self.build_tree_contents([('this/hello', 'Hello World')])
+        self.build_tree_contents([('this/hello', b'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
@@ -413,20 +413,20 @@ class TestAutoResolve(TestCaseWithTransport):
         this.auto_resolve()
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', '<<<<<<<')])
+        self.build_tree_contents([('this/hello', b'<<<<<<<')])
         this.auto_resolve()
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', '=======')])
+        self.build_tree_contents([('this/hello', b'=======')])
         this.auto_resolve()
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', '\n>>>>>>>')])
+        self.build_tree_contents([('this/hello', b'\n>>>>>>>')])
         remaining, resolved = this.auto_resolve()
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
-        self.build_tree_contents([('this/hello', 'hELLO wORLD')])
+        self.build_tree_contents([('this/hello', b'hELLO wORLD')])
         remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],

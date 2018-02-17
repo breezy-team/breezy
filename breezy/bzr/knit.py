@@ -990,7 +990,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
-        line_bytes = ''.join(lines)
+        line_bytes = b''.join(lines)
         return self._add(key, lines, parents,
             parent_texts, left_matching_blocks, nostore_sha, random_id,
             line_bytes=line_bytes)
