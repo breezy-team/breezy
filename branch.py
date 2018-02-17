@@ -111,12 +111,20 @@ class GitTags(tag.BasicTags):
                 continue
             peeled = refs.get_peeled(k)
             if peeled is None:
-                peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
+                try:
+                    peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
+                except KeyError:
+                    # Let's just hope it's a commit
+                    peeled = unpeeled
             assert type(tag_name) is unicode
             try:
                 foreign_peeled = self.branch.lookup_foreign_revision_id(peeled)
             except NotCommitError:
                 continue
+            except KeyError:
+                # Let's try..
+                foreign_peeled = self.branch.mapping.revision_id_foreign_to_bzr(
+                    peeled)
             yield (tag_name, peeled, unpeeled, foreign_peeled)
 
     def _merge_to_remote_git(self, target_repo, new_refs, overwrite=False):
