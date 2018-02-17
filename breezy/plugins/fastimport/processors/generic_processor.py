@@ -534,7 +534,7 @@ class GenericProcessor(processor.ImportProcessor):
         try:
             handler.process()
         except:
-            print "ABORT: exception occurred processing commit %s" % (cmd.id)
+            print("ABORT: exception occurred processing commit %s" % (cmd.id))
             raise
         self.cache_mgr.add_mark(mark, handler.revision_id)
         self._revision_count += 1

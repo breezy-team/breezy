@@ -383,9 +383,9 @@ class GenericCommitHandler(processor.CommitHandler):
             try:
                 self.record_new(path, ie)
             except:
-                print "failed to add path '%s' with entry '%s' in command %s" \
-                    % (path, ie, self.command.id)
-                print "parent's children are:\n%r\n" % (ie.parent_id.children,)
+                print("failed to add path '%s' with entry '%s' in command %s" \
+                    % (path, ie, self.command.id))
+                print("parent's children are:\n%r\n" % (ie.parent_id.children,))
                 raise
 
     def _ensure_directory(self, path, inv):

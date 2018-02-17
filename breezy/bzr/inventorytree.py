@@ -254,7 +254,7 @@ class InventoryTree(Tree):
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        entry = next(self.iter_entries_by_dir([file_id]))[1]
         for child in viewvalues(getattr(entry, 'children', {})):
             yield child.file_id
 
@@ -384,7 +384,7 @@ class _SmartAddHelper(object):
         inv_path = self.tree._fix_case_of_inventory_path(inv_path)
         file_id = self.tree.path2id(inv_path)
         if file_id is not None:
-            return self.tree.iter_entries_by_dir([file_id]).next()[1]
+            return next(self.tree.iter_entries_by_dir([file_id]))[1]
         return None
 
     def _convert_to_directory(self, this_ie, inv_path):

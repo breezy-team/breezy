@@ -611,7 +611,7 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        self.build_tree_contents([('b1/one', 'one\n')])
+        self.build_tree_contents([('b1/one', b'one\n')])
         self.tree1.add('one', 'one-id')
         self.tree1.set_root_id('root-id')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
@@ -630,8 +630,8 @@ class BundleTester(object):
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
                 ])
-        self.build_tree_contents([('b1/sub/sub/emptyfile.txt', ''),
-                                  ('b1/dir/nolastnewline.txt', 'bloop')])
+        self.build_tree_contents([('b1/sub/sub/emptyfile.txt', b''),
+                                  ('b1/dir/nolastnewline.txt', b'bloop')])
         tt = TreeTransform(self.tree1)
         tt.new_file('executable', tt.root, '#!/bin/sh\n', 'exe-1', True)
         tt.apply()
@@ -1055,13 +1055,13 @@ class BundleTester(object):
     def test_bundle_with_ghosts(self):
         tree = self.make_branch_and_tree('tree')
         self.b1 = tree.branch
-        self.build_tree_contents([('tree/file', 'content1')])
+        self.build_tree_contents([('tree/file', b'content1')])
         tree.add(['file'])
         tree.commit('rev1')
-        self.build_tree_contents([('tree/file', 'content2')])
-        tree.add_parent_tree_id('ghost')
-        tree.commit('rev2', rev_id='rev2')
-        bundle = self.get_valid_bundle('null:', 'rev2')
+        self.build_tree_contents([('tree/file', b'content2')])
+        tree.add_parent_tree_id(b'ghost')
+        tree.commit('rev2', rev_id=b'rev2')
+        bundle = self.get_valid_bundle(b'null:', b'rev2')
 
     def make_simple_tree(self, format=None):
         tree = self.make_branch_and_tree('b1', format=format)

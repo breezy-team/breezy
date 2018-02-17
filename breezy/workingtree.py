@@ -638,7 +638,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._transport.put_bytes('pending-merges', '\n'.join(merges),
+        self._transport.put_bytes('pending-merges', b'\n'.join(merges),
             mode=self.controldir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):

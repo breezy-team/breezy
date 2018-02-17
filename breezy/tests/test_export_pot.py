@@ -247,7 +247,7 @@ class TestWriteOption(tests.TestCase):
 
     def test_option_hidden(self):
         opt = option.Option("hidden", help="Unseen.", hidden=True)
-        self.assertEqual("", self.pot_from_option(opt))
+        self.assertEqual(b"", self.pot_from_option(opt))
 
     def test_option_context_missing(self):
         context = export_pot._ModuleContext("remote.py", 3)

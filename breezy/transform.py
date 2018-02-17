@@ -909,7 +909,7 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+            from_entry = next(self._tree.iter_entries_by_dir([file_id]))[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:

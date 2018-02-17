@@ -136,7 +136,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
             modify.
         """
         if empty_tree.supports_setting_file_ids():
-            empty_tree.set_root_id('empty-root-id')
+            empty_tree.set_root_id(b'empty-root-id')
         return self._convert_tree(empty_tree, converter)
 
     def _make_abc_tree(self, tree):
@@ -296,10 +296,10 @@ class TestCaseWithTree(TestCaseWithControlDir):
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
-        file_ids = ['TREE_ROOT',
-                    'fo\xe2\x82\xaco-id',
-                    'ba\xe2\x82\xacr-id',
-                    'ba\xe2\x82\xacz-id',
+        file_ids = [b'TREE_ROOT',
+                    b'fo\xe2\x82\xaco-id',
+                    b'ba\xe2\x82\xacr-id',
+                    b'ba\xe2\x82\xacz-id',
                    ]
         self.build_tree(paths[1:])
         if tree.get_root_id() is None:

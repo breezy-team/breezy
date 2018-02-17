@@ -26,7 +26,7 @@ or via the ControlDir:
 A branch has a history of revisions on it:
 
    >>> new_branch.last_revision()
-   'null:'
+   b'null:'
 
 We need to write some more documentation, showing
 push and pull operations. Cloning might also be nice.

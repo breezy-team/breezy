@@ -133,9 +133,9 @@ def _read_weave_v5(f, w):
     # read weave header.
     while True:
         l = next(lines)
-        if l[0] == 'i':
+        if l[0:1] == b'i':
             if len(l) > 2:
-                w._parents.append(list(map(int, l[2:].split(' '))))
+                w._parents.append(list(map(int, l[2:].split(b' '))))
             else:
                 w._parents.append([])
             l = lines.next()[:-1]
@@ -146,7 +146,7 @@ def _read_weave_v5(f, w):
             w._name_map[name] = ver
             l = next(lines)
             ver += 1
-        elif l == 'w\n':
+        elif l == b'w\n':
             break
         else:
             raise WeaveFormatError('unexpected line %r' % l)
@@ -154,14 +154,14 @@ def _read_weave_v5(f, w):
     # read weave body
     while True:
         l = next(lines)
-        if l == 'W\n':
+        if l == b'W\n':
             break
-        elif '. ' == l[0:2]:
+        elif b'. ' == l[0:2]:
             w._weave.append(l[2:])  # include newline
-        elif ', ' == l[0:2]:
+        elif b', ' == l[0:2]:
             w._weave.append(l[2:-1])        # exclude newline
-        elif l == '}\n':
-            w._weave.append(('}', None))
+        elif l == b'}\n':
+            w._weave.append((b'}', None))
         else:
             w._weave.append((intern(l[0]), int(l[2:])))
     return w

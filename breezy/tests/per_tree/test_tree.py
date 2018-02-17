@@ -49,16 +49,16 @@ class TestPlanFileMerge(TestCaseWithTree):
 
     def test_plan_file_merge(self):
         work_a = self.make_branch_and_tree('wta')
-        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        self.build_tree_contents([('wta/file', b'a\nb\nc\nd\n')])
         work_a.add('file')
         file_id = work_a.path2id('file')
         work_a.commit('base version')
         work_b = work_a.controldir.sprout('wtb').open_workingtree()
-        self.build_tree_contents([('wta/file', 'b\nc\nd\ne\n')])
+        self.build_tree_contents([('wta/file', b'b\nc\nd\ne\n')])
         tree_a = self.workingtree_to_test_tree(work_a)
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
-        self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
+        self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
         tree_b = self.workingtree_to_test_tree(work_b)
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
@@ -84,8 +84,8 @@ class TestReference(TestCaseWithTree):
         try:
             self.skip_if_no_reference(work_tree)
             subtree = self.make_branch_and_tree('wt/subtree')
-            subtree.set_root_id('sub-root')
-            subtree.commit('foo', rev_id='sub-1')
+            subtree.set_root_id(b'sub-root')
+            subtree.commit('foo', rev_id=b'sub-1')
             work_tree.add_reference(subtree)
         finally:
             work_tree.unlock()
@@ -97,8 +97,8 @@ class TestReference(TestCaseWithTree):
         tree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        path = tree.id2path('sub-root')
-        self.assertEqual('sub-1',
+        path = tree.id2path(b'sub-root')
+        self.assertEqual(b'sub-1',
             tree.get_reference_revision(path, 'sub-root'))
 
     def test_iter_references(self):
@@ -201,7 +201,7 @@ class TestFileContent(TestCaseWithTree):
 
     def test_get_file_lines_multi_line_breaks(self):
         work_tree = self.make_branch_and_tree('wt')
-        self.build_tree_contents([('wt/foobar', 'a\rb\nc\r\nd')])
+        self.build_tree_contents([('wt/foobar', b'a\rb\nc\r\nd')])
         work_tree.add('foobar')
         tree = self._convert_tree(work_tree)
         tree.lock_read()
@@ -214,9 +214,9 @@ class TestExtractFilesBytes(TestCaseWithTree):
 
     def test_iter_files_bytes(self):
         work_tree = self.make_branch_and_tree('wt')
-        self.build_tree_contents([('wt/foo', 'foo'),
-                                  ('wt/bar', 'bar'),
-                                  ('wt/baz', 'baz')])
+        self.build_tree_contents([('wt/foo', b'foo'),
+                                  ('wt/bar', b'bar'),
+                                  ('wt/baz', b'baz')])
         work_tree.add(['foo', 'bar', 'baz'])
         tree = self._convert_tree(work_tree)
         tree.lock_read()
@@ -315,7 +315,7 @@ class TestGetFileSha1(TestCaseWithTree):
 
     def test_get_file_sha1(self):
         work_tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'file content')])
+        self.build_tree_contents([('tree/file', b'file content')])
         work_tree.add('file')
         tree = self._convert_tree(work_tree)
         tree.lock_read()
@@ -329,8 +329,8 @@ class TestGetFileVerifier(TestCaseWithTree):
     def test_get_file_verifier(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
-            ('tree/file1', 'file content'),
-            ('tree/file2', 'file content')])
+            ('tree/file1', b'file content'),
+            ('tree/file2', b'file content')])
         work_tree.add(['file1', 'file2'])
         tree = self._convert_tree(work_tree)
         tree.lock_read()

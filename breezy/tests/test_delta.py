@@ -235,12 +235,12 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         """Doing a status when a file has changed kind should work"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['filename'])
-        tree.add('filename', 'file-id')
+        tree.add('filename', b'file-id')
         tree.commit('added filename')
         os.unlink('filename')
         self.build_tree(['filename/'])
         delta = tree.changes_from(tree.basis_tree())
-        self.assertEqual([('filename', 'file-id', 'file', 'directory')],
+        self.assertEqual([('filename', b'file-id', 'file', 'directory')],
                          delta.kind_changed)
         self.assertEqual([], delta.added)
         self.assertEqual([], delta.removed)
@@ -248,19 +248,19 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         self.assertEqual([], delta.modified)
         self.assertEqual([], delta.unchanged)
         self.assertTrue(delta.has_changed())
-        self.assertTrue(delta.touches_file_id('file-id'))
+        self.assertTrue(delta.touches_file_id(b'file-id'))
         self.assertEqual('kind changed:\n  filename (file => directory)\n',
                          self.show_string(delta))
         other_delta = _mod_delta.TreeDelta()
         self.assertNotEqual(other_delta, delta)
-        other_delta.kind_changed = [('filename', 'file-id', 'file',
+        other_delta.kind_changed = [('filename', b'file-id', 'file',
                                      'symlink')]
         self.assertNotEqual(other_delta, delta)
-        other_delta.kind_changed = [('filename', 'file-id', 'file',
+        other_delta.kind_changed = [('filename', b'file-id', 'file',
                                      'directory')]
         self.assertEqual(other_delta, delta)
         self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
-            " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
+            " kind_changed=[(u'filename', b'file-id', 'file', 'directory')],"
             " modified=[], unchanged=[], unversioned=[])", repr(delta))
         self.assertEqual('K  filename (file => directory) file-id\n',
                          self.show_string(delta, show_ids=True,
@@ -271,10 +271,10 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         self.assertEqual([], delta.kind_changed)
         # This loses the fact that kind changed, remembering it as a
         # modification
-        self.assertEqual([('filename', 'dirname', 'file-id', 'directory',
+        self.assertEqual([('filename', 'dirname', b'file-id', 'directory',
                            True, False)], delta.renamed)
         self.assertTrue(delta.has_changed())
-        self.assertTrue(delta.touches_file_id('file-id'))
+        self.assertTrue(delta.touches_file_id(b'file-id'))
 
 
 class TestDeltaShow(tests.TestCaseWithTransport):
