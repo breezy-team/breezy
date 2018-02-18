@@ -4197,8 +4197,8 @@ class cmd_selftest(Command):
         # error reporting for past duplicate imports won't have useful
         # backtraces.
         if sys.version_info[0] < 3:
-            # TODO(jelmer): Disable proxying on Python 3, until it's fixed.
-            # pad.lv/1696545
+            # TODO(pad.lv/1696545): Allow proxying on Python 3, since
+            # disallowing it currently leads to failures in many places.
             lazy_import.disallow_proxying()
 
         from . import tests
