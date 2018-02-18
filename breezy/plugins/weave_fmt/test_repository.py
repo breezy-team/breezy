@@ -142,10 +142,10 @@ class TestFormat7(TestCaseWithTransport):
         # disk.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], ['Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('foo', 'content\n', 'Foo:Bar')
+        tree.add(['foo'], [b'Foo:Bar'], ['file'])
+        tree.put_file_bytes_non_atomic('foo', 'content\n', b'Foo:Bar')
         try:
-            tree.commit('first post', rev_id='first')
+            tree.commit('first post', rev_id=b'first')
         except IllegalPath:
             if sys.platform != 'win32':
                 raise

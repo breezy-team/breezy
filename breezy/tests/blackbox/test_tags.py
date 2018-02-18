@@ -58,7 +58,7 @@ class TestTagging(TestCaseWithTransport):
     def test_tag_current_rev(self):
         t = self.make_branch_and_tree('branch')
         t.commit(allow_pointless=True, message='initial commit',
-            rev_id='first-revid')
+            rev_id=b'first-revid')
         # make a tag through the command line
         out, err = self.run_bzr('tag -d branch NEWTAG')
         self.assertContainsRe(err, 'Created tag NEWTAG.')
@@ -85,9 +85,9 @@ class TestTagging(TestCaseWithTransport):
     def test_tag_same_revision(self):
         t = self.make_branch_and_tree('branch')
         t.commit(allow_pointless=True, message='initial commit',
-            rev_id='first-revid')
+            rev_id=b'first-revid')
         t.commit(allow_pointless=True, message='second commit',
-            rev_id='second-revid')
+            rev_id=b'second-revid')
         out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
         out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
         self.assertContainsRe(err,
@@ -103,7 +103,7 @@ class TestTagging(TestCaseWithTransport):
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')
         t.commit(allow_pointless=True, message='initial commit',
-            rev_id='first-revid')
+            rev_id=b'first-revid')
         b1 = t.branch
         b1.tags.set_tag('tag1', 'first-revid')
         # branching copies the tag across
@@ -120,7 +120,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertEqual(b2.tags.lookup_tag('tag3'), 'san')
         # make a new tag and merge it
         t.commit(allow_pointless=True, message='second commit',
-            rev_id='second-revid')
+            rev_id=b'second-revid')
         t2 = WorkingTree.open('branch2')
         t2.commit(allow_pointless=True, message='commit in second')
         b1.tags.set_tag('tag4', 'second-revid')
@@ -133,7 +133,7 @@ class TestTagging(TestCaseWithTransport):
 
     def make_master_and_checkout(self):
         builder = self.make_branch_builder('master')
-        builder.build_commit(message='Initial commit.', rev_id='rev-1')
+        builder.build_commit(message='Initial commit.', rev_id=b'rev-1')
         master = builder.get_branch()
         child = master.create_checkout(self.get_url('child'))
         return master, child
@@ -142,9 +142,9 @@ class TestTagging(TestCaseWithTransport):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
         self.addCleanup(fork.lock_write().unlock)
         with transform.TransformPreview(fork.basis_tree()) as tt:
-            tt.commit(fork, message='Commit in fork.', revision_id='fork-0')
+            tt.commit(fork, message='Commit in fork.', revision_id=b'fork-0')
         with transform.TransformPreview(fork.basis_tree()) as tt:
-            tt.commit(fork, message='Commit in fork.', revision_id='fork-1')
+            tt.commit(fork, message='Commit in fork.', revision_id=b'fork-1')
         return fork
 
     def test_merge_without_commit_does_not_propagate_tags_to_master(self):
@@ -208,9 +208,9 @@ class TestTagging(TestCaseWithTransport):
     def test_list_tags(self):
         tree1 = self.make_branch_and_tree('branch1')
         tree1.commit(allow_pointless=True, message='revision 1',
-                rev_id='revid-1', timestamp=10)
+                rev_id=b'revid-1', timestamp=10)
         tree1.commit(allow_pointless=True, message='revision 2',
-                rev_id='revid-2', timestamp=15)
+                rev_id=b'revid-2', timestamp=15)
 
         b1 = tree1.branch
         # note how the tag for revid-1 sorts after the one for revid-2
@@ -254,14 +254,14 @@ class TestTagging(TestCaseWithTransport):
         # now test dotted revnos
         tree2 = tree1.controldir.sprout('branch2').open_workingtree()
         tree1.commit(allow_pointless=True, message='revision 3 in branch1',
-                rev_id='revid-3a')
+                rev_id=b'revid-3a')
         tree2.commit(allow_pointless=True, message='revision 3 in branch2',
-                rev_id='revid-3b')
+                rev_id=b'revid-3b')
 
         b2 = tree2.branch
         b2.tags.set_tag('tagD', 'revid-3b')
         self.run_bzr('merge -d branch1 branch2')
-        tree1.commit('merge', rev_id='revid-4')
+        tree1.commit('merge', rev_id=b'revid-4')
 
         out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
         self.assertEqual(err, '')
@@ -284,13 +284,13 @@ class TestTagging(TestCaseWithTransport):
     def test_list_tags_revision_filtering(self):
         tree1 = self.make_branch_and_tree('.')
         tree1.commit(allow_pointless=True, message='revision 1',
-                rev_id='revid-1')
+                rev_id=b'revid-1')
         tree1.commit(allow_pointless=True, message='revision 2',
-                rev_id='revid-2')
+                rev_id=b'revid-2')
         tree1.commit(allow_pointless=True, message='revision 3',
-                rev_id='revid-3')
+                rev_id=b'revid-3')
         tree1.commit(allow_pointless=True, message='revision 4',
-                rev_id='revid-4')
+                rev_id=b'revid-4')
         b1 = tree1.branch
         b1.tags.set_tag(u'tag 1', 'revid-1')
         b1.tags.set_tag(u'tag 2', 'revid-2')
@@ -324,9 +324,9 @@ class TestTagging(TestCaseWithTransport):
 
         tree1 = self.make_branch_and_tree('branch1')
         tree1.commit(allow_pointless=True, message='revision 1',
-                rev_id='revid-1', timestamp=10)
+                rev_id=b'revid-1', timestamp=10)
         tree1.commit(allow_pointless=True, message='revision 2',
-                rev_id='revid-2', timestamp=15)
+                rev_id=b'revid-2', timestamp=15)
 
         b1 = tree1.branch
 
@@ -393,8 +393,8 @@ class TestTagging(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree1')
         tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
-        tree.commit('msg1', rev_id='rev1')
-        tree.commit('msg2', rev_id='rev2')
+        tree.commit('msg1', rev_id=b'rev1')
+        tree.commit('msg2', rev_id=b'rev2')
         tree.branch.tags.set_tag('unknown', 'out-of-mainline')
         tree.branch.tags.set_tag('ghost', 'spooky')
         tree.branch.tags.set_tag('tag1', 'rev1')
@@ -414,7 +414,7 @@ class TestSmartServerCat(TestCaseWithTransport):
     def test_set_tag(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
@@ -431,7 +431,7 @@ class TestSmartServerCat(TestCaseWithTransport):
     def test_show_tags(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         t.branch.tags.set_tag("sometag", "rev1")

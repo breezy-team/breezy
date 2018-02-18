@@ -35,8 +35,8 @@ from . import (
 
 # the regex removes any weird characters; we don't escape them
 # but rather just pull them out
-_file_id_chars_re = lazy_regex.lazy_compile(r'[^\w.]')
-_rev_id_chars_re = lazy_regex.lazy_compile(r'[^-\w.+@]')
+_file_id_chars_re = lazy_regex.lazy_compile(b'[^\\w.]')
+_rev_id_chars_re = lazy_regex.lazy_compile(b'[^-\\w.+@]')
 _gen_file_id_suffix = None
 _gen_file_id_serial = 0
 

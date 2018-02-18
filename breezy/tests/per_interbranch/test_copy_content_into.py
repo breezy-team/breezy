@@ -39,7 +39,7 @@ class TestCopyContentInto(TestCaseWithInterBranch):
             StubMatchingInter)
         branch.InterBranch.register_optimiser(StubMatchingInter)
         del StubMatchingInter._uses[:]
-        self.tree1.branch.copy_content_into(StubWithFormat(), revision_id='54')
+        self.tree1.branch.copy_content_into(StubWithFormat(), revision_id=b'54')
         self.assertLength(1, StubMatchingInter._uses)
         use = StubMatchingInter._uses[0]
         self.assertEqual('copy_content_into', use[1])

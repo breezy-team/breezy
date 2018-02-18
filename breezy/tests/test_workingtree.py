@@ -241,38 +241,38 @@ class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
     def make_simple_tree(self):
         tree = self.make_branch_and_tree('tree', format='development-subtree')
         self.build_tree(['tree/a/', 'tree/a/b/', 'tree/a/b/c'])
-        tree.set_root_id('root-id')
-        tree.add(['a', 'a/b', 'a/b/c'], ['a-id', 'b-id', 'c-id'])
+        tree.set_root_id(b'root-id')
+        tree.add(['a', 'a/b', 'a/b/c'], [b'a-id', b'b-id', b'c-id'])
         tree.commit('initial')
         return tree
 
     def test_just_directory(self):
         tree = self.make_simple_tree()
-        self.assertEqual([('directory', 'root-id'),
-                          ('directory', 'a-id'),
-                          ('directory', 'b-id'),
-                          ('file', 'c-id')],
+        self.assertEqual([('directory', b'root-id'),
+                          ('directory', b'a-id'),
+                          ('directory', b'b-id'),
+                          ('file', b'c-id')],
                          [(ie.kind, ie.file_id)
                           for path, ie in tree.iter_entries_by_dir()])
         subtree = self.make_branch_and_tree('tree/a/b')
-        self.assertEqual([('tree-reference', 'b-id')],
+        self.assertEqual([('tree-reference', b'b-id')],
                          [(ie.kind, ie.file_id)
-                          for path, ie in tree.iter_entries_by_dir(['b-id'])])
+                          for path, ie in tree.iter_entries_by_dir([b'b-id'])])
 
     def test_direct_subtree(self):
         tree = self.make_simple_tree()
         subtree = self.make_branch_and_tree('tree/a/b')
-        self.assertEqual([('directory', 'root-id'),
-                          ('directory', 'a-id'),
-                          ('tree-reference', 'b-id')],
+        self.assertEqual([('directory', b'root-id'),
+                          ('directory', b'a-id'),
+                          ('tree-reference', b'b-id')],
                          [(ie.kind, ie.file_id)
                           for path, ie in tree.iter_entries_by_dir()])
 
     def test_indirect_subtree(self):
         tree = self.make_simple_tree()
         subtree = self.make_branch_and_tree('tree/a')
-        self.assertEqual([('directory', 'root-id'),
-                          ('tree-reference', 'a-id')],
+        self.assertEqual([('directory', b'root-id'),
+                          ('tree-reference', b'a-id')],
                          [(ie.kind, ie.file_id)
                           for path, ie in tree.iter_entries_by_dir()])
 
@@ -383,9 +383,9 @@ class TestRevert(TestCaseWithTransport):
         this_tree.add(['foo', 'foo/bar'])
         this_tree.commit('created foo/bar')
         other_tree = this_tree.controldir.sprout('other-tree').open_workingtree()
-        self.build_tree_contents([('other-tree/foo/bar', 'baz')])
+        self.build_tree_contents([('other-tree/foo/bar', b'baz')])
         other_tree.commit('changed bar')
-        self.build_tree_contents([('this-tree/foo/bar', 'qux')])
+        self.build_tree_contents([('this-tree/foo/bar', b'qux')])
         this_tree.commit('changed qux')
         this_tree.merge_from_branch(other_tree.branch)
         self.assertEqual(1, len(this_tree.conflicts()))
@@ -398,7 +398,7 @@ class TestAutoResolve(TestCaseWithTransport):
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', b'Hello')])
-        base.add('hello', 'hello_id')
+        base.add('hello', b'hello_id')
         base.commit('Hello')
         other = base.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/hello', b'hELLO')])
@@ -408,36 +408,36 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('this/hello', b'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', b'<<<<<<<')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', b'=======')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', b'\n>>>>>>>')])
         remaining, resolved = this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', b'hELLO wORLD')])
         remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          resolved)
         self.assertPathDoesNotExist('this/hello.BASE')
 
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
-        tree.add('hello', 'hello-id')
-        file_conflict = conflicts.TextConflict('file', 'hello-id')
+        tree.add('hello', b'hello-id')
+        file_conflict = conflicts.TextConflict('file', b'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         tree.auto_resolve()
 
@@ -459,8 +459,8 @@ class TestStoredUncommitted(TestCaseWithTransport):
     def store_uncommitted(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('get root in there')
-        self.build_tree_contents([('tree/file', 'content')])
-        tree.add('file', 'file-id')
+        self.build_tree_contents([('tree/file', b'content')])
+        tree.add('file', b'file-id')
         tree.store_uncommitted()
         return tree
 

@@ -815,7 +815,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         """Create a DirState tracking a single object named 'a'"""
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
-        state.add('a', 'a-id', 'file', None, '')
+        state.add('a', b'a-id', 'file', None, '')
         entry = state._get_entry(0, path_utf8='a')
         return state, entry
 
@@ -856,7 +856,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_write()
         empty_revid = tree.commit('empty')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'], [b'a-id'])
         with_a_id = tree.commit('with_a')
         self.addCleanup(tree.unlock)
         state.set_parent_trees(
@@ -1050,7 +1050,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
+        tree.add(['a'], [b'a-id'])
         with_a_id = tree.commit('witha')
         self.addCleanup(tree.unlock)
         state.set_parent_trees(
@@ -1073,7 +1073,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     def test_update_entry_tree_reference(self):
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
-        state.add('r', 'r-id', 'tree-reference', None, '')
+        state.add('r', b'r-id', 'tree-reference', None, '')
         self.build_tree(['r/'])
         entry = state._get_entry(0, path_utf8='r')
         self.do_update_entry(state, entry, 'r')
@@ -1225,10 +1225,10 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def _prepare_tree(self):
         # Create a tree
-        text = 'Hello World\n'
+        text = b'Hello World\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/a file', text)])
-        tree.add('a file', 'a-file-id')
+        tree.add('a file', b'a-file-id')
         # Note: dirstate does not sha prior to the first commit
         # so commit now in order for the test to work
         tree.commit('first')
@@ -1317,21 +1317,21 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
     def test_simple_changes(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add(['file'], ['file-id'])
-        self.assertChangedFileIds([tree.get_root_id(), 'file-id'], tree)
+        tree.add(['file'], [b'file-id'])
+        self.assertChangedFileIds([tree.get_root_id(), b'file-id'], tree)
         tree.commit('one')
         self.assertChangedFileIds([], tree)
 
     def test_sha1provider_stat_and_sha1_used(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add(['file'], ['file-id'])
+        tree.add(['file'], [b'file-id'])
         tree.commit('one')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         state = tree._current_dirstate()
         state._sha1_provider = UppercaseSHA1Provider()
-        self.assertChangedFileIds(['file-id'], tree)
+        self.assertChangedFileIds([b'file-id'], tree)
 
 
 class TestPackStat(tests.TestCase):

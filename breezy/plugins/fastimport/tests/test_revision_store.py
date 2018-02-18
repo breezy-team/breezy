@@ -59,10 +59,10 @@ class Test_TreeShim(tests.TestCase):
         basis_inv = self.make_trivial_basis_inv()
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[], content_provider=None)
-        self.assertEqual('', shim.id2path('TREE_ROOT'))
-        self.assertEqual('foo', shim.id2path('foo-id'))
-        self.assertEqual('bar', shim.id2path('bar-id'))
-        self.assertEqual('bar/baz', shim.id2path('baz-id'))
+        self.assertEqual('', shim.id2path(b'TREE_ROOT'))
+        self.assertEqual('foo', shim.id2path(b'foo-id'))
+        self.assertEqual('bar', shim.id2path(b'bar-id'))
+        self.assertEqual('bar/baz', shim.id2path(b'baz-id'))
         self.assertRaises(errors.NoSuchId, shim.id2path, 'qux-id')
 
     def test_id2path_with_delta(self):
@@ -75,10 +75,10 @@ class Test_TreeShim(tests.TestCase):
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=inv_delta,
                                         content_provider=None)
-        self.assertEqual('', shim.id2path('TREE_ROOT'))
-        self.assertEqual('foo2', shim.id2path('foo-id'))
-        self.assertEqual('bar', shim.id2path('bar-id'))
-        self.assertRaises(errors.NoSuchId, shim.id2path, 'baz-id')
+        self.assertEqual('', shim.id2path(b'TREE_ROOT'))
+        self.assertEqual('foo2', shim.id2path(b'foo-id'))
+        self.assertEqual('bar', shim.id2path(b'bar-id'))
+        self.assertRaises(errors.NoSuchId, shim.id2path, b'baz-id')
 
     def test_path2id(self):
         basis_inv = self.make_trivial_basis_inv()

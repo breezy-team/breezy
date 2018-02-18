@@ -43,7 +43,7 @@ class TestReference(TestCaseWithTransport):
     def make_tree_with_reference(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/newpath'])
-        tree.add('newpath', 'file-id')
+        tree.add('newpath', b'file-id')
         tree.branch.set_reference_info('file-id', 'path', 'http://example.org')
         tree.branch.set_reference_info('file-id2', 'lath',
                                        'http://example.org/2')
@@ -74,7 +74,7 @@ class TestReference(TestCaseWithTransport):
     def test_two_args_sets(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add('file', 'file-id')
+        tree.add('file', b'file-id')
         out, err = self.run_bzr('reference tree/file http://example.org')
         path, location = tree.branch.get_reference_info('file-id')
         self.assertEqual('http://example.org', location)

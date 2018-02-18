@@ -825,11 +825,11 @@ class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
 
     def make_diverged_tree_and_upload_location(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        tree_a.commit('message 1', rev_id='rev1')
-        tree_a.commit('message 2', rev_id='rev2a')
+        tree_a.commit('message 1', rev_id=b'rev1')
+        tree_a.commit('message 2', rev_id=b'rev2a')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         uncommit.uncommit(tree_b.branch, tree=tree_b)
-        tree_b.commit('message 2', rev_id='rev2b')
+        tree_b.commit('message 2', rev_id=b'rev2b')
         # upload tree a
         self.do_full_upload(directory=tree_a.basedir)
         return tree_b
@@ -843,12 +843,12 @@ class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
         self.assertRaises(cmds.DivergedUploadedTree,
                           self.do_incremental_upload,
                           directory=self.diverged_tree.basedir)
-        self.assertRevidUploaded('rev2a')
+        self.assertRevidUploaded(b'rev2a')
 
     def test_upload_diverged_with_overwrite(self):
         self.do_incremental_upload(directory=self.diverged_tree.basedir,
                                    overwrite=True)
-        self.assertRevidUploaded('rev2b')
+        self.assertRevidUploaded(b'rev2b')
 
 
 class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):

@@ -8698,6 +8698,9 @@ breezy.tests.test_wsgi.TestWSGI.test_relpath_setter
 breezy.tests.test_wsgi.TestWSGI.test_relpath_setter_bad_path_prefix
 breezy.tests.test_wsgi.TestWSGI.test_relpath_setter_bad_path_suffix
 breezy.tests.test_xml.TestMisc.test_unescape_xml
+breezy.tests.test_xml.TestSerializer.test_unpack_inventory_5a
+breezy.tests.test_xml.TestSerializer.test_unpack_inventory_5a_cache_and_copy
+breezy.tests.test_xml.TestSerializer.test_unpack_inventory_5a_cache_no_copy
 breezy.tests.test_xml.TestSerializer.test_wrong_format_v7
 breezy.timestamp.format_highres_date
 breezy.transport.http.unhtml_roughly

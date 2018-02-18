@@ -501,11 +501,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     def test_id2path(self):
         tree = self.make_workingtree('tree')
         self.build_tree(['tree/a', 'tree/b'])
-        tree.add(['a'], ['a-id'])
-        self.assertEqual(u'a', tree.id2path('a-id'))
+        tree.add(['a'], [b'a-id'])
+        self.assertEqual(u'a', tree.id2path(b'a-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         tree.commit('a')
-        tree.add(['b'], ['b-id'])
+        tree.add(['b'], [b'b-id'])
 
         try:
             new_path = u'b\u03bcrry'
@@ -514,12 +514,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             # support running the test on non-unicode platforms
             new_path = 'c'
             tree.rename_one('a', new_path)
-        self.assertEqual(new_path, tree.id2path('a-id'))
+        self.assertEqual(new_path, tree.id2path(b'a-id'))
         tree.commit(u'b\xb5rry')
         tree.unversion([new_path])
-        self.assertRaises(errors.NoSuchId, tree.id2path, 'a-id')
-        self.assertEqual('b', tree.id2path('b-id'))
-        self.assertRaises(errors.NoSuchId, tree.id2path, 'c-id')
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'a-id')
+        self.assertEqual('b', tree.id2path(b'b-id'))
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'c-id')
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id
@@ -545,12 +545,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             finally:
                 wt.unlock()
         wt = self.make_workingtree('tree')
-        wt.set_root_id('TREE-ROOTID')
+        wt.set_root_id(b'TREE-ROOTID')
         validate()
         wt.commit('somenthing')
         validate()
         # now switch and commit again
-        wt.set_root_id('tree-rootid')
+        wt.set_root_id(b'tree-rootid')
         validate()
         wt.commit('again')
         validate()
@@ -570,8 +570,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertFalse(tree.supports_tree_reference())
         self.build_tree(['dir/'])
         # for testing easily.
-        tree.set_root_id('root')
-        tree.add(['dir'], ['dir-id'])
+        tree.set_root_id(b'root')
+        tree.add(['dir'], [b'dir-id'])
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
         self.assertEqual('directory', tree.kind('dir'))
@@ -637,7 +637,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                          'versioned2/unversioned/b/',
                         ])
         tree.add(['versioned', 'versioned2', 'versioned2/a'])
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
         # Trap osutils._walkdirs_utf8 to spy on what dirs have been accessed.
         returned = []
         def walkdirs_spy(*args, **kwargs):
@@ -668,8 +668,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             paths list contains all unversioned entries only.
         """
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/bar', '')])
-        tree.add(['bar'], ['bar-id'])
+        self.build_tree_contents([('tree/bar', b'')])
+        tree.add(['bar'], [b'bar-id'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
         tree_iter_changes = lambda files: [
@@ -684,8 +684,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         """Unversioned non-ascii paths should be reported as unicode"""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('f', '')])
-        tree.add(['f'], ['f-id'])
+        self.build_tree_contents([('f', b'')])
+        tree.add(['f'], [b'f-id'])
         def tree_iter_changes(tree, files):
             return list(tree.iter_changes(tree.basis_tree(),
                 specific_files=files, require_versioned=True))
@@ -699,8 +699,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.build_tree_contents([('foo', 'a bit of content for foo\n')])
-        tree.add(['foo'], ['foo-id'])
+        self.build_tree_contents([('foo', b'a bit of content for foo\n')])
+        tree.add(['foo'], [b'foo-id'])
         tree.current_dirstate()._cutoff_time = time.time() + 60
         return tree
 
@@ -735,7 +735,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     def test_observed_sha1_new_file(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        tree.add(['foo'], [b'foo-id'])
         tree.lock_read()
         try:
             current_sha1 = tree._get_entry(path="foo")[1][0][1]
@@ -815,7 +815,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
         tree = self.create_wt4()
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
         first_revision_id = tree.commit('init')
 
         root_id = tree.path2id('')
@@ -823,28 +823,28 @@ class TestCorruptDirstate(TestCaseWithTransport):
         state._read_dirblocks_if_needed()
         self.assertEqual([
             ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', 'file-id'), ['f', 'f'])]),
+            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', b'file-id'), ['f', 'f'])]),
         ],  self.get_simple_dirblocks(state))
 
         tree.remove(['dir/file'])
         self.assertEqual([
             ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
+            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', b'file-id'), ['a', 'f'])]),
         ],  self.get_simple_dirblocks(state))
         # Make sure the removal is written to disk
         tree.flush()
 
         # self.assertRaises(Exception, tree.update_basis_by_delta,
-        new_dir = inventory.InventoryDirectory('dir-id', 'new-dir', root_id)
-        new_dir.revision = 'new-revision-id'
-        new_file = inventory.InventoryFile('file-id', 'new-file', root_id)
-        new_file.revision = 'new-revision-id'
+        new_dir = inventory.InventoryDirectory(b'dir-id', 'new-dir', root_id)
+        new_dir.revision = b'new-revision-id'
+        new_file = inventory.InventoryFile(b'file-id', 'new-file', root_id)
+        new_file.revision = b'new-revision-id'
         self.assertRaises(errors.InconsistentDelta,
-            tree.update_basis_by_delta, 'new-revision-id',
-            [('dir', 'new-dir', 'dir-id', new_dir),
-             ('dir/file', 'new-dir/new-file', 'file-id', new_file),
+            tree.update_basis_by_delta, b'new-revision-id',
+            [('dir', 'new-dir', b'dir-id', new_dir),
+             ('dir/file', 'new-dir/new-file', b'file-id', new_file),
             ])
         del state
 
@@ -856,8 +856,8 @@ class TestCorruptDirstate(TestCaseWithTransport):
         state._read_dirblocks_if_needed()
         self.assertEqual([
             ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
+            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', b'file-id'), ['a', 'f'])]),
         ],  self.get_simple_dirblocks(state))
 
 
@@ -867,7 +867,7 @@ class TestInventoryCoherency(TestCaseWithTransport):
         """Unversioning the root of a subtree unversions the entire subtree."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'c/'])
-        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'a/b', 'c'], [b'a-id', b'b-id', b'c-id'])
         # within a lock unversion should take effect
         tree.lock_write()
         self.addCleanup(tree.unlock)

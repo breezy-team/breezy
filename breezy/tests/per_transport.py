@@ -1310,7 +1310,7 @@ class TransportTests(TestTransportImplementation):
         self.assertFalse(t3.has('b/d'))
 
         if t1.is_readonly():
-            self.build_tree_contents([('b/d', 'newfile\n')])
+            self.build_tree_contents([('b/d', b'newfile\n')])
         else:
             t2.put_bytes('d', b'newfile\n')
 

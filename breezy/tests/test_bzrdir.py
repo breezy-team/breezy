@@ -831,7 +831,7 @@ class ChrootedTests(TestCaseWithTransport):
                                          format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
             format='development-subtree')
-        sub_tree.set_root_id('subtree-root')
+        sub_tree.set_root_id(b'subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')

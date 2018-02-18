@@ -49,7 +49,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         expected = conflicts.ContentsConflict('lala')
         self.assertEqual(list(tree.conflicts()), [expected])
         file('lala', 'wb').write('la')
-        tree.add('lala', 'lala-id')
+        tree.add('lala', b'lala-id')
         expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         file('lala.THIS', 'wb').write('lathis')
@@ -65,12 +65,12 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
     def test_detect_conflicts(self):
         """Conflicts are detected properly"""
         tree = self.create_format2_tree('.')
-        self.build_tree_contents([('hello', 'hello world4'),
-                                  ('hello.THIS', 'hello world2'),
-                                  ('hello.BASE', 'hello world1'),
-                                  ('hello.OTHER', 'hello world3'),
-                                  ('hello.sploo.BASE', 'yellowworld'),
-                                  ('hello.sploo.OTHER', 'yellowworld2'),
+        self.build_tree_contents([('hello', b'hello world4'),
+                                  ('hello.THIS', b'hello world2'),
+                                  ('hello.BASE', b'hello world1'),
+                                  ('hello.OTHER', b'hello world3'),
+                                  ('hello.sploo.BASE', b'yellowworld'),
+                                  ('hello.sploo.OTHER', b'yellowworld2'),
                                   ])
         tree.lock_read()
         self.assertLength(6, list(tree.list_files()))

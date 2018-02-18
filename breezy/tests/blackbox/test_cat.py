@@ -27,13 +27,13 @@ class TestCat(tests.TestCaseWithTransport):
 
     def test_cat(self):
         tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/a', 'foo\n')])
+        self.build_tree_contents([('branch/a', b'foo\n')])
         tree.add('a')
         # 'brz cat' without an option should cat the last revision
         self.run_bzr(['cat', 'a'], retcode=3, working_dir='branch')
 
         tree.commit(message='1')
-        self.build_tree_contents([('branch/a', 'baz\n')])
+        self.build_tree_contents([('branch/a', b'baz\n')])
 
         self.assertEqual('foo\n',
                           self.run_bzr(['cat', 'a'], working_dir='branch')[0])
@@ -77,12 +77,12 @@ class TestCat(tests.TestCaseWithTransport):
         # current trees later in the test case
         # a-rev-tree is special because it appears in both the revision
         # tree and the working tree
-        self.build_tree_contents([('a-rev-tree', 'foo\n'),
-            ('c-rev', 'baz\n'), ('d-rev', 'bar\n'), ('e-rev', 'qux\n')])
+        self.build_tree_contents([('a-rev-tree', b'foo\n'),
+            ('c-rev', b'baz\n'), ('d-rev', b'bar\n'), ('e-rev', b'qux\n')])
         tree.lock_write()
         try:
             tree.add(['a-rev-tree', 'c-rev', 'd-rev', 'e-rev'])
-            tree.commit('add test files', rev_id='first')
+            tree.commit('add test files', rev_id=b'first')
             # remove currently uses self._write_inventory -
             # work around that for now.
             tree.flush()
@@ -90,7 +90,7 @@ class TestCat(tests.TestCaseWithTransport):
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
             tree.rename_one('e-rev', 'old-rev')
-            self.build_tree_contents([('e-rev', 'new\n')])
+            self.build_tree_contents([('e-rev', b'new\n')])
             tree.add(['e-rev'])
         finally:
             # calling brz as another process require free lock on win32
@@ -165,7 +165,7 @@ class TestCat(tests.TestCaseWithTransport):
         from ...tree import Tree
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            ('README', "junk\nline 1 of README\nline 2 of README\n"),
+            ('README', b"junk\nline 1 of README\nline 2 of README\n"),
             ])
         wt.add('README')
         wt.commit('Making sure there is a basis_tree available')
@@ -223,7 +223,7 @@ class TestSmartServerCat(tests.TestCaseWithTransport):
     def test_simple_branch_cat(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

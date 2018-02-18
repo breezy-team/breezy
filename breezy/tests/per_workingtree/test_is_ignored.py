@@ -37,23 +37,23 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         # because at the moment tree format is orthogonal to user data, and
         # .bzrignore is user data so must not be changed by a tree format.
         self.build_tree_contents([
-            ('.bzrignore', './rootdir\n'
-                           'randomfile*\n'
-                           '*bar\n'
-                           '!bazbar\n'
-                           '?foo\n'
-                           '*.~*\n'
-                           'dir1/*f1\n'
-                           'dir1/?f2\n'
-                           'RE:dir2/.*\\.wombat\n'
-                           'path/from/ro?t\n'
-                           '**/piffle.py\n'
-                           '!b/piffle.py\n'
-                           'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
-                           'dos\r\n'
-                           '\n' # empty line
-                           '#comment\n'
-                           ' xx \n' # whitespace
+            ('.bzrignore', b'./rootdir\n'
+                           b'randomfile*\n'
+                           b'*bar\n'
+                           b'!bazbar\n'
+                           b'?foo\n'
+                           b'*.~*\n'
+                           b'dir1/*f1\n'
+                           b'dir1/?f2\n'
+                           b'RE:dir2/.*\\.wombat\n'
+                           b'path/from/ro?t\n'
+                           b'**/piffle.py\n'
+                           b'!b/piffle.py\n'
+                           b'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
+                           b'dos\r\n'
+                           b'\n' # empty line
+                           b'#comment\n'
+                           b' xx \n' # whitespace
             )])
         # We set user ignore file to contain '' to avoid patterns from
         # user ignore being used instead of bzrignore. For .e.g. If we
@@ -185,7 +185,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
     def test_mixed_is_ignored(self):
         tree = self.make_branch_and_tree('.')
         ignores._set_user_ignores(['*.py[co]', './.shelf'])
-        self.build_tree_contents([('.bzrignore', './rootdir\n*.swp\n')])
+        self.build_tree_contents([('.bzrignore', b'./rootdir\n*.swp\n')])
 
         self.assertEqual('*.py[co]', tree.is_ignored('foo.pyc'))
         self.assertEqual('./.shelf', tree.is_ignored('.shelf'))
@@ -196,7 +196,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
     def test_runtime_ignores(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('.bzrignore', '')])
+        self.build_tree_contents([('.bzrignore', b'')])
         ignores._set_user_ignores([])
 
         orig_runtime = ignores._runtime_ignores
@@ -220,5 +220,5 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         # Bug #129694 specifically references WorkingTree.unknowns()
         tree.unknowns()
 
-        self.build_tree_contents([('.bzrignore', 'ignoreme')])
+        self.build_tree_contents([('.bzrignore', b'ignoreme')])
         self.assertEqual('ignoreme', tree.is_ignored('ignoreme'))

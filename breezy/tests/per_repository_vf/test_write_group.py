@@ -67,20 +67,20 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         trunk = repo.controldir.create_branch()
         tree = memorytree.MemoryTree.create_on_branch(trunk)
         tree.lock_write()
-        tree.add([''], ['TREE_ROOT'], ['directory'])
-        tree.add(['dir'], ['dir-id'], ['directory'])
-        tree.add(['filename'], ['file-id'], ['file'])
+        tree.add([''], [b'TREE_ROOT'], ['directory'])
+        tree.add(['dir'], [b'dir-id'], ['directory'])
+        tree.add(['filename'], [b'file-id'], ['file'])
         tree.put_file_bytes_non_atomic(
                 'filename', 'content\n',
-                file_id='file-id')
-        tree.commit('Trunk commit', rev_id='rev-0')
-        tree.commit('Trunk commit', rev_id='rev-1')
+                file_id=b'file-id')
+        tree.commit('Trunk commit', rev_id=b'rev-0')
+        tree.commit('Trunk commit', rev_id=b'rev-1')
         tree.unlock()
 
     def make_new_commit_in_new_repo(self, trunk_repo, parents=None):
         tree = self.branch_trunk_and_make_tree(trunk_repo, 'branch')
         tree.set_parent_ids(parents)
-        tree.commit('Branch commit', rev_id='rev-2')
+        tree.commit('Branch commit', rev_id=b'rev-2')
         branch_repo = tree.branch.repository
         branch_repo.lock_read()
         self.addCleanup(branch_repo.unlock)

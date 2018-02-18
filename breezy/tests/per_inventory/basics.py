@@ -41,13 +41,13 @@ from breezy.tests.per_inventory import TestCaseWithInventory
 class TestInventory(TestCaseWithInventory):
 
     def make_init_inventory(self):
-        inv = inventory.Inventory('tree-root')
-        inv.revision = 'initial-rev'
-        inv.root.revision = 'initial-rev'
+        inv = inventory.Inventory(b'tree-root')
+        inv.revision = b'initial-rev'
+        inv.root.revision = b'initial-rev'
         return self.inv_to_test_inv(inv)
 
     def make_file(self, file_id, name, parent_id, content='content\n',
-                  revision='new-test-rev'):
+                  revision=b'new-test-rev'):
         ie = InventoryFile(file_id, name, parent_id)
         ie.text_sha1 = osutils.sha_string(content)
         ie.text_size = len(content)
@@ -60,16 +60,16 @@ class TestInventory(TestCaseWithInventory):
         return ie
 
     def prepare_inv_with_nested_dirs(self):
-        inv = inventory.Inventory('tree-root')
-        for args in [('src', 'directory', 'src-id'),
-                     ('doc', 'directory', 'doc-id'),
-                     ('src/hello.c', 'file', 'hello-id'),
-                     ('src/bye.c', 'file', 'bye-id'),
-                     ('zz', 'file', 'zz-id'),
-                     ('src/sub/', 'directory', 'sub-id'),
-                     ('src/zz.c', 'file', 'zzc-id'),
-                     ('src/sub/a', 'file', 'a-id'),
-                     ('Makefile', 'file', 'makefile-id')]:
+        inv = inventory.Inventory(b'tree-root')
+        for args in [('src', 'directory', b'src-id'),
+                     ('doc', 'directory', b'doc-id'),
+                     ('src/hello.c', 'file', b'hello-id'),
+                     ('src/bye.c', 'file', b'bye-id'),
+                     ('zz', 'file', b'zz-id'),
+                     ('src/sub/', 'directory', b'sub-id'),
+                     ('src/zz.c', 'file', b'zzc-id'),
+                     ('src/sub/a', 'file', b'a-id'),
+                     ('Makefile', 'file', b'makefile-id')]:
             ie = inv.add_path(*args)
             if args[1] == 'file':
                 ie.text_sha1 = osutils.sha_string(b'content\n')
@@ -86,39 +86,39 @@ class TestInventoryCreateByApplyDelta(TestInventory):
     def test_add(self):
         inv = self.make_init_inventory()
         inv = inv.create_by_apply_delta([
-            (None, "a", "a-id", self.make_file('a-id', 'a', 'tree-root')),
-            ], 'new-test-rev')
-        self.assertEqual('a', inv.id2path('a-id'))
+            (None, "a", "a-id", self.make_file(b'a-id', 'a', b'tree-root')),
+            ], b'new-test-rev')
+        self.assertEqual('a', inv.id2path(b'a-id'))
 
     def test_delete(self):
         inv = self.make_init_inventory()
         inv = inv.create_by_apply_delta([
-            (None, "a", "a-id", self.make_file('a-id', 'a', 'tree-root')),
-            ], 'new-rev-1')
-        self.assertEqual('a', inv.id2path('a-id'))
+            (None, "a", "a-id", self.make_file(b'a-id', 'a', b'tree-root')),
+            ], b'new-rev-1')
+        self.assertEqual('a', inv.id2path(b'a-id'))
         inv = inv.create_by_apply_delta([
-            ("a", None, "a-id", None),
-            ], 'new-rev-2')
-        self.assertRaises(errors.NoSuchId, inv.id2path, 'a-id')
+            ("a", None, b"a-id", None),
+            ], b'new-rev-2')
+        self.assertRaises(errors.NoSuchId, inv.id2path, b'a-id')
 
     def test_rename(self):
         inv = self.make_init_inventory()
         inv = inv.create_by_apply_delta([
-            (None, "a", "a-id", self.make_file('a-id', 'a', 'tree-root')),
-            ], 'new-rev-1')
-        self.assertEqual('a', inv.id2path('a-id'))
-        a_ie = inv['a-id']
+            (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
+            ], b'new-rev-1')
+        self.assertEqual('a', inv.id2path(b'a-id'))
+        a_ie = inv[b'a-id']
         b_ie = self.make_file(a_ie.file_id, "b", a_ie.parent_id)
-        inv = inv.create_by_apply_delta([("a", "b", "a-id", b_ie)], 'new-rev-2')
-        self.assertEqual("b", inv.id2path('a-id'))
+        inv = inv.create_by_apply_delta([("a", "b", b"a-id", b_ie)], b'new-rev-2')
+        self.assertEqual("b", inv.id2path(b'a-id'))
 
     def test_illegal(self):
         # A file-id cannot appear in a delta more than once
         inv = self.make_init_inventory()
         self.assertRaises(errors.InconsistentDelta, inv.create_by_apply_delta, [
-            (None, "a", "id-1", self.make_file('id-1', 'a', 'tree-root')),
-            (None, "b", "id-1", self.make_file('id-1', 'b', 'tree-root')),
-            ], 'new-rev-1')
+            (None, "a", b"id-1", self.make_file(b'id-1', 'a', b'tree-root')),
+            (None, "b", b"id-1", self.make_file(b'id-1', 'b', b'tree-root')),
+            ], b'new-rev-1')
 
 
 class TestInventoryReads(TestInventory):
@@ -154,8 +154,8 @@ class TestInventoryReads(TestInventory):
     def test_non_directory_children(self):
         """Test path2id when a parent directory has no children"""
         inv = inventory.Inventory('tree-root')
-        inv.add(self.make_file('file-id', 'file', 'tree-root'))
-        inv.add(self.make_link('link-id', 'link', 'tree-root'))
+        inv.add(self.make_file(b'file-id', 'file', 'tree-root'))
+        inv.add(self.make_link(b'link-id', 'link', 'tree-root'))
         self.assertIs(None, inv.path2id('file/subfile'))
         self.assertIs(None, inv.path2id('link/subfile'))
 

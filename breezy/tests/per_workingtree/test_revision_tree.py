@@ -81,9 +81,9 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             raise tests.TestNotApplicable(
                 'tree does not support setting file ids')
-        tree.set_root_id('one')
+        tree.set_root_id(b'one')
         rev1 = tree.commit('first post')
-        tree.set_root_id('two')
+        tree.set_root_id(b'two')
         try:
             cached_revision_tree = tree.revision_tree(rev1)
         except errors.NoSuchRevision:
@@ -101,15 +101,15 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
         tree.add(files)
-        tree.commit('a, b and b/c', rev_id='base')
+        tree.commit('a, b and b/c', rev_id=b'base')
         tree2 = tree.controldir.sprout(relpath + '2').open_workingtree()
         # Delete 'a' in tree
         tree.remove('a', keep_files=False)
-        tree.commit('remove a', rev_id='this')
+        tree.commit('remove a', rev_id=b'this')
         # Delete 'c' in tree2
         tree2.remove('b/c', keep_files=False)
         tree2.remove('b', keep_files=False)
-        tree2.commit('remove b/c', rev_id='other')
+        tree2.commit('remove b/c', rev_id=b'other')
         # Merge tree2 into tree
         tree.merge_from_branch(tree2.branch)
         return tree

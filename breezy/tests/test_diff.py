@@ -355,35 +355,35 @@ class TestDiffDates(tests.TestCaseWithTransport):
         self.wt = self.make_branch_and_tree('.')
         self.b = self.wt.branch
         self.build_tree_contents([
-            ('file1', 'file1 contents at rev 1\n'),
-            ('file2', 'file2 contents at rev 1\n')
+            ('file1', b'file1 contents at rev 1\n'),
+            ('file2', b'file2 contents at rev 1\n')
             ])
         self.wt.add(['file1', 'file2'])
         self.wt.commit(
             message='Revision 1',
             timestamp=1143849600, # 2006-04-01 00:00:00 UTC
             timezone=0,
-            rev_id='rev-1')
-        self.build_tree_contents([('file1', 'file1 contents at rev 2\n')])
+            rev_id=b'rev-1')
+        self.build_tree_contents([('file1', b'file1 contents at rev 2\n')])
         self.wt.commit(
             message='Revision 2',
             timestamp=1143936000, # 2006-04-02 00:00:00 UTC
             timezone=28800,
-            rev_id='rev-2')
-        self.build_tree_contents([('file2', 'file2 contents at rev 3\n')])
+            rev_id=b'rev-2')
+        self.build_tree_contents([('file2', b'file2 contents at rev 3\n')])
         self.wt.commit(
             message='Revision 3',
             timestamp=1144022400, # 2006-04-03 00:00:00 UTC
             timezone=-3600,
-            rev_id='rev-3')
+            rev_id=b'rev-3')
         self.wt.remove(['file2'])
         self.wt.commit(
             message='Revision 4',
             timestamp=1144108800, # 2006-04-04 00:00:00 UTC
             timezone=0,
-            rev_id='rev-4')
+            rev_id=b'rev-4')
         self.build_tree_contents([
-            ('file1', 'file1 contents in working tree\n')
+            ('file1', b'file1 contents in working tree\n')
             ])
         # set the date stamps for files in the working tree to known values
         os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
@@ -483,11 +483,11 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_modified_file(self):
         """Test when a file is modified."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'contents\n')])
-        tree.add(['file'], ['file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/file', b'contents\n')])
+        tree.add(['file'], [b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
-        self.build_tree_contents([('tree/file', 'new contents\n')])
+        self.build_tree_contents([('tree/file', b'new contents\n')])
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== modified file 'file'\n")
         self.assertContainsRe(d, '--- old/file\t')
@@ -499,12 +499,12 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """Test when a file is modified in a renamed directory."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/'])
-        self.build_tree_contents([('tree/dir/file', 'contents\n')])
-        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/dir/file', b'contents\n')])
+        tree.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('dir', 'other')
-        self.build_tree_contents([('tree/other/file', 'new contents\n')])
+        self.build_tree_contents([('tree/other/file', b'new contents\n')])
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed directory 'dir' => 'other'\n")
         self.assertContainsRe(d, "=== modified file 'other/file'\n")
@@ -519,9 +519,9 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """Test when only a directory is only renamed."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/'])
-        self.build_tree_contents([('tree/dir/file', 'contents\n')])
-        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/dir/file', b'contents\n')])
+        tree.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('dir', 'newdir')
         d = get_diff_as_string(tree.basis_tree(), tree)
@@ -532,9 +532,9 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_renamed_file(self):
         """Test when a file is only renamed."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'contents\n')])
-        tree.add(['file'], ['file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/file', b'contents\n')])
+        tree.add(['file'], [b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('file', 'newname')
         d = get_diff_as_string(tree.basis_tree(), tree)
@@ -546,12 +546,12 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_renamed_and_modified_file(self):
         """Test when a file is only renamed."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'contents\n')])
-        tree.add(['file'], ['file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/file', b'contents\n')])
+        tree.add(['file'], [b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('file', 'newname')
-        self.build_tree_contents([('tree/newname', 'new contents\n')])
+        self.build_tree_contents([('tree/newname', b'new contents\n')])
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed file 'file' => 'newname'\n")
         self.assertContainsRe(d, '--- old/file\t')
@@ -571,7 +571,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tt.new_file('e', tt.root, 'contents\n', 'control-e-id', True)
         tt.new_file('f', tt.root, 'contents\n', 'control-f-id', False)
         tt.apply()
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
 
         tt = transform.TreeTransform(tree)
         tt.set_executability(False, tt.trans_id_file_id('a-id'))
@@ -609,8 +609,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
             [('tree/' + alpha, chr(0)),
              ('tree/' + omega,
               ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
-        tree.add([alpha], ['file-id'])
-        tree.add([omega], ['file-id-2'])
+        tree.add([alpha], [b'file-id'])
+        tree.add([omega], [b'file-id-2'])
         diff_content = StubO()
         diff.show_diff_trees(tree.basis_tree(), tree, diff_content)
         diff_content.check_types(self, bytes)
@@ -630,20 +630,20 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
 
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/ren_'+alpha, 'contents\n')])
-        tree.add(['ren_'+alpha], ['file-id-2'])
-        self.build_tree_contents([('tree/del_'+alpha, 'contents\n')])
-        tree.add(['del_'+alpha], ['file-id-3'])
-        self.build_tree_contents([('tree/mod_'+alpha, 'contents\n')])
-        tree.add(['mod_'+alpha], ['file-id-4'])
+        self.build_tree_contents([('tree/ren_'+alpha, b'contents\n')])
+        tree.add(['ren_'+alpha], [b'file-id-2'])
+        self.build_tree_contents([('tree/del_'+alpha, b'contents\n')])
+        tree.add(['del_'+alpha], [b'file-id-3'])
+        self.build_tree_contents([('tree/mod_'+alpha, b'contents\n')])
+        tree.add(['mod_'+alpha], [b'file-id-4'])
 
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('ren_'+alpha, 'ren_'+omega)
         tree.remove('del_'+alpha)
-        self.build_tree_contents([('tree/add_'+alpha, 'contents\n')])
-        tree.add(['add_'+alpha], ['file-id'])
-        self.build_tree_contents([('tree/mod_'+alpha, 'contents_mod\n')])
+        self.build_tree_contents([('tree/add_'+alpha, b'contents\n')])
+        tree.add(['add_'+alpha], [b'file-id'])
+        self.build_tree_contents([('tree/mod_'+alpha, b'contents_mod\n')])
 
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d,
@@ -665,8 +665,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
 
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            (test_txt, 'foo\n'),
-            (u1234, 'foo\n'),
+            (test_txt, b'foo\n'),
+            (u1234, b'foo\n'),
             (directory, None),
             ])
         tree.add([test_txt, u1234, directory])
@@ -719,46 +719,46 @@ class TestDiffTree(tests.TestCaseWithTransport):
 
     def test_diff_text(self):
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree_contents([('new-tree/newdir/',),
-                                  ('new-tree/newdir/newfile', 'new\n')])
+                                  ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
         differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
         differ.diff_text('olddir/oldfile', None, 'old label',
-                         'new label', 'file-id', None)
+                         'new label', b'file-id', None)
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
         differ.diff_text(None, 'newdir/newfile',
-                         'old label', 'new label', None, 'file-id')
+                         'old label', 'new label', None, b'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -0,0 +1,1 @@\n+new\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
         differ.diff_text('olddir/oldfile', 'newdir/newfile',
-                         'old label', 'new label', 'file-id', 'file-id')
+                         'old label', 'new label', b'file-id', b'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())
 
     def test_diff_deletion(self):
-        self.build_tree_contents([('old-tree/file', 'contents'),
-                                  ('new-tree/file', 'contents')])
-        self.old_tree.add('file', 'file-id')
-        self.new_tree.add('file', 'file-id')
+        self.build_tree_contents([('old-tree/file', b'contents'),
+                                  ('new-tree/file', b'contents')])
+        self.old_tree.add('file', b'file-id')
+        self.new_tree.add('file', b'file-id')
         os.unlink('new-tree/file')
         self.differ.show_diff(None)
         self.assertContainsRe(self.differ.to_file.getvalue(), '-contents')
 
     def test_diff_creation(self):
-        self.build_tree_contents([('old-tree/file', 'contents'),
-                                  ('new-tree/file', 'contents')])
-        self.old_tree.add('file', 'file-id')
-        self.new_tree.add('file', 'file-id')
+        self.build_tree_contents([('old-tree/file', b'contents'),
+                                  ('new-tree/file', b'contents')])
+        self.old_tree.add('file', b'file-id')
+        self.new_tree.add('file', b'file-id')
         os.unlink('old-tree/file')
         self.differ.show_diff(None)
         self.assertContainsRe(self.differ.to_file.getvalue(), r'\+contents')
@@ -781,13 +781,13 @@ class TestDiffTree(tests.TestCaseWithTransport):
 
     def test_diff(self):
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree_contents([('new-tree/newdir/',),
-                                  ('new-tree/newdir/newfile', 'new\n')])
+                                  ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
         self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
@@ -797,13 +797,13 @@ class TestDiffTree(tests.TestCaseWithTransport):
     def test_diff_kind_change(self):
         self.requireFeature(features.SymlinkFeature)
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree(['new-tree/newdir/'])
         os.symlink('new', 'new-tree/newdir/newfile')
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
         self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
@@ -814,19 +814,19 @@ class TestDiffTree(tests.TestCaseWithTransport):
 
     def test_diff_directory(self):
         self.build_tree(['new-tree/new-dir/'])
-        self.new_tree.add('new-dir', 'new-dir-id')
-        self.differ.diff('new-dir-id', None, 'new-dir')
+        self.new_tree.add('new-dir', b'new-dir-id')
+        self.differ.diff(b'new-dir-id', None, 'new-dir')
         self.assertEqual(self.differ.to_file.getvalue(), '')
 
     def create_old_new(self):
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree_contents([('new-tree/newdir/',),
-                                  ('new-tree/newdir/newfile', 'new\n')])
+                                  ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
 
     def test_register_diff(self):
         self.create_old_new()
@@ -1445,8 +1445,8 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.requireFeature(features.AttribFeature)
         output = BytesIO()
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'content')])
-        tree.add('file', 'file-id')
+        self.build_tree_contents([('tree/file', b'content')])
+        tree.add('file', b'file-id')
         tree.commit('old tree')
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -1456,7 +1456,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj = diff.DiffFromTool(['python', '-c',
                                       'print "@old_path @new_path"'],
                                      basis_tree, tree, output)
-        diff_obj._prepare_files('file', 'file', file_id='file-id')
+        diff_obj._prepare_files('file', 'file', file_id=b'file-id')
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, 'old\\file',
                                     r'R.*old\\file$')
@@ -1474,16 +1474,16 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
     def test_prepare_files(self):
         output = BytesIO()
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/oldname', 'oldcontent')])
-        self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
-        tree.add('oldname', 'file-id')
-        tree.add('oldname2', 'file2-id')
+        self.build_tree_contents([('tree/oldname', b'oldcontent')])
+        self.build_tree_contents([('tree/oldname2', b'oldcontent2')])
+        tree.add('oldname', b'file-id')
+        tree.add('oldname2', b'file2-id')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         tree.commit('old tree', timestamp=315532800)
         tree.rename_one('oldname', 'newname')
         tree.rename_one('oldname2', 'newname2')
-        self.build_tree_contents([('tree/newname', 'newcontent')])
-        self.build_tree_contents([('tree/newname2', 'newcontent2')])
+        self.build_tree_contents([('tree/newname', b'newcontent')])
+        self.build_tree_contents([('tree/newname2', b'newcontent2')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
@@ -1572,10 +1572,10 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def test_with_rev_specs(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'oldcontent')])
-        tree.add('file', 'file-id')
-        tree.commit('old tree', timestamp=0, rev_id="old-id")
-        self.build_tree_contents([('tree/file', 'newcontent')])
+        self.build_tree_contents([('tree/file', b'oldcontent')])
+        tree.add('file', b'file-id')
+        tree.commit('old tree', timestamp=0, rev_id=b"old-id")
+        self.build_tree_contents([('tree/file', b'newcontent')])
         tree.commit('new tree', timestamp=0, rev_id="new-id")
 
         revisions = [revisionspec.RevisionSpec.from_string('1'),

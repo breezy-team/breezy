@@ -66,7 +66,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
             self.rev_tree.get_file_revision(u'', self.rev_tree.get_root_id()))
 
     def test_get_file_revision(self):
-        self.build_tree_contents([('a', 'initial')])
+        self.build_tree_contents([('a', b'initial')])
         self.t.add(['a'])
         revid1 = self.t.commit('add a')
         revid2 = self.t.commit('another change', allow_pointless=True)

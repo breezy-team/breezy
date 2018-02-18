@@ -107,9 +107,9 @@ class TestAdd(TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
-        tree.add(['dir'], ['dir-id'])
-        tree.add(['dir/subdir'], ['subdir-id'])
-        tree.add(['dir/subdir/foo'], ['foo-id'])
+        tree.add(['dir'], [b'dir-id'])
+        tree.add(['dir/subdir'], [b'subdir-id'])
+        tree.add(['dir/subdir/foo'], [b'foo-id'])
         root_id = tree.get_root_id()
 
         self.assertTreeLayout([('', root_id), ('dir/', 'dir-id'),
@@ -200,10 +200,10 @@ class TestAdd(TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        tree.add(['foo'], [b'foo-id'])
         tree.unversion(['foo'])
-        tree.add(['foo'], ['foo-id'])
-        self.assertEqual('foo-id', tree.path2id('foo'))
+        tree.add(['foo'], [b'foo-id'])
+        self.assertEqual(b'foo-id', tree.path2id('foo'))
 
     def test_add_present_in_basis(self):
         # adding a path that was present in the basis should work.
@@ -221,8 +221,8 @@ class TestAdd(TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        tree.add(['foo'], [b'foo-id'])
         tree.commit('add foo')
         tree.unversion(['foo'])
-        tree.add(['foo'], ['foo-id'])
-        self.assertEqual('foo-id', tree.path2id('foo'))
+        tree.add(['foo'], [b'foo-id'])
+        self.assertEqual(b'foo-id', tree.path2id('foo'))

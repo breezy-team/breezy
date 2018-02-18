@@ -36,11 +36,11 @@ class TestRevisionInfo(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
 
         # Make history with a non-mainline rev
-        wt.commit('Commit one', rev_id='a@r-0-1')
-        wt.commit('Commit two', rev_id='a@r-0-1.1.1')
+        wt.commit('Commit one', rev_id=b'a@r-0-1')
+        wt.commit('Commit two', rev_id=b'a@r-0-1.1.1')
         wt.set_parent_ids(['a@r-0-1', 'a@r-0-1.1.1'])
         wt.branch.set_last_revision_info(1, 'a@r-0-1')
-        wt.commit('Commit three', rev_id='a@r-0-2')
+        wt.commit('Commit three', rev_id=b'a@r-0-2')
 
         # This is expected to work even if the working tree is removed
         wt.controldir.destroy_workingtree()
@@ -88,17 +88,17 @@ class TestRevisionInfo(TestCaseWithTransport):
         """Test that 'brz revision-info' honors the '-d' option."""
         wt = self.make_branch_and_tree('branch')
 
-        wt.commit('Commit one', rev_id='a@r-0-1')
+        wt.commit('Commit one', rev_id=b'a@r-0-1')
         self.check_output('1 a@r-0-1\n', 'revision-info -d branch')
 
     def test_revision_info_tree(self):
         # Make branch and checkout
         wt = self.make_branch_and_tree('branch')
-        wt.commit('Commit one', rev_id='a@r-0-1')
+        wt.commit('Commit one', rev_id=b'a@r-0-1')
 
         # Make checkout and move the branch forward
         wt.branch.create_checkout('checkout', lightweight=True)
-        wt.commit('Commit two', rev_id='a@r-0-2')
+        wt.commit('Commit two', rev_id=b'a@r-0-2')
 
         # Make sure the checkout gives the right answer for branch and
         # tree
@@ -120,9 +120,9 @@ class TestRevisionInfo(TestCaseWithTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id'], [], revision_id='B-id')
-        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+            revision_id=b'A-id')
+        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
         builder.finish_series()
         self.check_output('  1 A-id\n??? B-id\n  2 C-id\n',
                           'revision-info -d branch'

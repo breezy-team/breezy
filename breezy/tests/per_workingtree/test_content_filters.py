@@ -77,9 +77,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
                 return []
         tree._content_filter_stack = _content_filter_stack
         self.build_tree_contents([
-            (dir + '/file1.txt', 'Foo Txt'),
-            (dir + '/file2.bin', 'Foo Bin')])
-        tree.add(['file1.txt', 'file2.bin'])
+            (dir + '/file1.txt', b'Foo Txt'),
+            (dir + '/file2.bin', b'Foo Bin')])
+        tree.add(['file1.txt', b'file2.bin'])
         tree.commit('commit raw content')
         txt_fileid = tree.path2id('file1.txt')
         bin_fileid = tree.path2id('file2.bin')
@@ -95,9 +95,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
                 return []
         tree._content_filter_stack = _content_filter_stack
         self.build_tree_contents([
-            (dir + '/file1.txt', 'Foo Txt'),
-            (dir + '/file2.bin', 'Foo Bin'),
-            (dir + '/file3.txt', 'Bar Txt'),
+            (dir + '/file1.txt', b'Foo Txt'),
+            (dir + '/file2.bin', b'Foo Bin'),
+            (dir + '/file3.txt', b'Bar Txt'),
             ])
         tree.add(['file1.txt', 'file2.bin', 'file3.txt'])
         tree.commit('commit raw content')
@@ -108,8 +108,8 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # the change includes a modification, an addition and a deletion.
         # Renames are more complex and need a separate set of tests later.
         self.build_tree_contents([
-            (dir + '/file1.txt', 'Foo ROCKS!'),
-            (dir + '/file4.txt', 'Hello World'),
+            (dir + '/file1.txt', b'Foo ROCKS!'),
+            (dir + '/file4.txt', b'Hello World'),
             ])
         tree.add(['file4.txt'])
         tree.remove(['file3.txt'], keep_files=False)
@@ -372,11 +372,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
         # Now modify & rename a file, revert it and check the content
         self.build_tree_contents([
-            ('source/file1.txt', 'Foo Txt with new content')])
+            ('source/file1.txt', b'Foo Txt with new content')])
         source.rename_one('file1.txt', 'file1.bin')
         self.assertTrue(os.path.exists('source/file1.bin'))
         self.assertFalse(os.path.exists('source/file1.txt'))
-        self.assertFileEqual("Foo Txt with new content", 'source/file1.bin')
+        self.assertFileEqual(b"Foo Txt with new content", 'source/file1.bin')
         source.revert(['file1.bin'])
         self.assertFalse(os.path.exists('source/file1.bin'))
         self.assertTrue(os.path.exists('source/file1.txt'))

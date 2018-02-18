@@ -418,7 +418,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
 
     def test_update_workingtree(self):
         wt = self.make_branch_and_tree('br1')
-        self.build_tree_contents([('br1/bla', 'original contents\n')])
+        self.build_tree_contents([('br1/bla', b'original contents\n')])
         wt.add('bla', 'bla-a')
         wt.commit('bla-a')
         root_id = wt.get_root_id()

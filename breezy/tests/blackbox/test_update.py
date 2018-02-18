@@ -192,7 +192,7 @@ Your local commits will now show as pending merges with 'brz status', and can be
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file'])
         master.add(['file'])
-        master.commit('one', rev_id='m1')
+        master.commit('one', rev_id=b'm1')
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
@@ -203,12 +203,12 @@ Your local commits will now show as pending merges with 'brz status', and can be
         other = master.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/file2'])
         other.add(['file2'])
-        other.commit('other2', rev_id='o2')
+        other.commit('other2', rev_id=b'o2')
 
         # Create a new commit in the master branch
         self.build_tree(['master/file3'])
         master.add(['file3'])
-        master.commit('f3', rev_id='m2')
+        master.commit('f3', rev_id=b'm2')
 
         # Merge the other branch into checkout
         os.chdir('checkout1')
@@ -248,7 +248,7 @@ Updated to revision 2 of branch %s
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file'])
         master.add(['file'])
-        master.commit('one', rev_id='m1')
+        master.commit('one', rev_id=b'm1')
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
@@ -259,7 +259,7 @@ Updated to revision 2 of branch %s
         other = master.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/file2'])
         other.add(['file2'])
-        other.commit('other2', rev_id='o2')
+        other.commit('other2', rev_id=b'o2')
 
         # Merge the other branch into checkout -  'start reviewing a patch'
         checkout1.merge_from_branch(other.branch)
@@ -267,7 +267,7 @@ Updated to revision 2 of branch %s
 
         # Create a new commit in the master branch - 'someone else lands its'
         master.merge_from_branch(other.branch)
-        master.commit('f3', rev_id='m2')
+        master.commit('f3', rev_id=b'm2')
 
         # This should not report about local commits being pending
         # merges, because they were real merges (but are now gone).
@@ -286,10 +286,10 @@ Updated to revision 2 of branch %s
         os.chdir('master')
         self.build_tree(['./file1'])
         master.add(['file1'])
-        master.commit('one', rev_id='m1')
+        master.commit('one', rev_id=b'm1')
         self.build_tree(['./file2'])
         master.add(['file2'])
-        master.commit('two', rev_id='m2')
+        master.commit('two', rev_id=b'm2')
 
         sr = ScriptRunner()
         sr.run_script(self, '''
@@ -308,19 +308,19 @@ $ brz update -r 1
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file1'])
         master.add(['file1'])
-        master.commit('one', rev_id='m1')
+        master.commit('one', rev_id=b'm1')
 
         # Create a second branch, with extra commits
         other = master.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/file2', 'other/file3'])
         other.add(['file2'])
-        other.commit('other2', rev_id='o2')
+        other.commit('other2', rev_id=b'o2')
         other.add(['file3'])
-        other.commit('other3', rev_id='o3')
+        other.commit('other3', rev_id=b'o3')
 
         os.chdir('master')
         self.run_bzr('merge ../other')
-        master.commit('merge', rev_id='merge')
+        master.commit('merge', rev_id=b'merge')
 
         # Switch to o2. file3 was added only in o3 and should be deleted.
         out, err = self.run_bzr('update -r revid:o2')
@@ -340,14 +340,14 @@ $ brz update -r 1
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file1'])
         master.add(['file1'])
-        master.commit('one', rev_id='m1')
+        master.commit('one', rev_id=b'm1')
 
         self.run_bzr('checkout master checkout')
 
         # add a revision in the master.
         self.build_tree(['master/file2'])
         master.add(['file2'])
-        master.commit('two', rev_id='m2')
+        master.commit('two', rev_id=b'm2')
 
         os.chdir('checkout')
         sr = ScriptRunner()
@@ -400,9 +400,9 @@ $ brz update -r revid:m2
         """"Launchpad bug 113809 in brz "update performs two merges"
         https://launchpad.net/bugs/113809"""
         master = self.make_branch_and_tree('master')
-        self.build_tree_contents([('master/file', 'initial contents\n')])
+        self.build_tree_contents([('master/file', b'initial contents\n')])
         master.add(['file'])
-        master.commit('one', rev_id='m1')
+        master.commit('one', rev_id=b'm1')
 
         checkout = master.branch.create_checkout('checkout')
         lightweight = checkout.branch.create_checkout('lightweight',
@@ -410,19 +410,19 @@ $ brz update -r revid:m2
 
         # time to create a mess
         # add a commit to the master
-        self.build_tree_contents([('master/file', 'master\n')])
-        master.commit('two', rev_id='m2')
-        self.build_tree_contents([('master/file', 'master local changes\n')])
+        self.build_tree_contents([('master/file', b'master\n')])
+        master.commit('two', rev_id=b'm2')
+        self.build_tree_contents([('master/file', b'master local changes\n')])
 
         # local commit on the checkout
-        self.build_tree_contents([('checkout/file', 'checkout\n')])
-        checkout.commit('tree', rev_id='c2', local=True)
+        self.build_tree_contents([('checkout/file', b'checkout\n')])
+        checkout.commit('tree', rev_id=b'c2', local=True)
         self.build_tree_contents([('checkout/file',
-                                   'checkout local changes\n')])
+                                   b'checkout local changes\n')])
 
         # lightweight 
         self.build_tree_contents([('lightweight/file',
-                                   'lightweight local changes\n')])
+                                   b'lightweight local changes\n')])
 
         # now update (and get conflicts)
         out, err = self.run_bzr('update lightweight', retcode=1)
@@ -439,7 +439,7 @@ checkout
 
         # resolve it
         self.build_tree_contents([('lightweight/file',
-                                   'lightweight+checkout\n')])
+                                   b'lightweight+checkout\n')])
         self.run_bzr('resolve lightweight/file')
 
         # check we get the second conflict
@@ -466,7 +466,7 @@ master
         """
         self.make_branch_and_tree('.')
         self.build_tree_contents([('a/',),
-            ('a/file', 'content')])
+            ('a/file', b'content')])
         sr = ScriptRunner()
         sr.run_script(self, '''
             $ brz update ./a

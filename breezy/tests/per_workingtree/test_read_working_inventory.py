@@ -43,7 +43,7 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
         # inventory
         tree.lock_write()
         try:
-            tree.set_root_id('new-root')
+            tree.set_root_id(b'new-root')
             # having dirtied the inventory, we can now expect an
             # InventoryModified exception when doing a read_working_inventory()
             # OR, the call can be ignored and the changes preserved

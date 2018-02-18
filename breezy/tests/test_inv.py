@@ -172,7 +172,7 @@ def _populate_different_tree(tree, basis, delta):
     """Put all entries into tree, but at a unique location."""
     added_ids = set()
     added_paths = set()
-    tree.add(['unique-dir'], ['unique-dir-id'], ['directory'])
+    tree.add(['unique-dir'], [b'unique-dir-id'], ['directory'])
     for path, ie in basis.iter_entries_by_dir():
         if ie.file_id in added_ids:
             continue
@@ -337,19 +337,19 @@ class TestInventoryUpdates(TestCase):
             revision=b'rev', reference_revision=b'rev2'))
 
     def test_error_encoding(self):
-        inv = inventory.Inventory('tree-root')
-        inv.add(InventoryFile('a-id', u'\u1234', 'tree-root'))
+        inv = inventory.Inventory(b'tree-root')
+        inv.add(InventoryFile(b'a-id', u'\u1234', b'tree-root'))
         e = self.assertRaises(errors.InconsistentDelta, inv.add,
-            InventoryFile('b-id', u'\u1234', 'tree-root'))
+            InventoryFile(b'b-id', u'\u1234', b'tree-root'))
         self.assertContainsRe(str(e), r'\\u1234')
 
     def test_add_recursive(self):
-        parent = InventoryDirectory('src-id', 'src', 'tree-root')
-        child = InventoryFile('hello-id', 'hello.c', 'src-id')
+        parent = InventoryDirectory(b'src-id', 'src', b'tree-root')
+        child = InventoryFile(b'hello-id', 'hello.c', b'src-id')
         parent.children[child.file_id] = child
-        inv = inventory.Inventory('tree-root')
+        inv = inventory.Inventory(b'tree-root')
         inv.add(parent)
-        self.assertEqual('src/hello.c', inv.id2path('hello-id'))
+        self.assertEqual('src/hello.c', inv.id2path(b'hello-id'))
 
 
 
@@ -1038,46 +1038,46 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test_has_id_true(self):
         inv = Inventory()
-        inv.revision_id = "revid"
-        inv.root.revision = "rootrev"
-        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.revision_id = b"revid"
+        inv.root.revision = b"rootrev"
+        inv.add(InventoryFile(b"fileid", "file", inv.root.file_id))
+        inv[b"fileid"].revision = "filerev"
+        inv[b"fileid"].executable = True
+        inv[b"fileid"].text_sha1 = "ffff"
+        inv[b"fileid"].text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        self.assertTrue(chk_inv.has_id('fileid'))
+        self.assertTrue(chk_inv.has_id(b'fileid'))
         self.assertTrue(chk_inv.has_id(inv.root.file_id))
 
     def test_has_id_not(self):
         inv = Inventory()
-        inv.revision_id = "revid"
-        inv.root.revision = "rootrev"
+        inv.revision_id = b"revid"
+        inv.root.revision = b"rootrev"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        self.assertFalse(chk_inv.has_id('fileid'))
+        self.assertFalse(chk_inv.has_id(b'fileid'))
 
     def test_id2path(self):
         inv = Inventory()
-        inv.revision_id = "revid"
-        inv.root.revision = "rootrev"
-        direntry = InventoryDirectory("dirid", "dir", inv.root.file_id)
+        inv.revision_id = b"revid"
+        inv.root.revision = b"rootrev"
+        direntry = InventoryDirectory(b"dirid", "dir", inv.root.file_id)
         fileentry = InventoryFile("fileid", "file", "dirid")
         inv.add(direntry)
         inv.add(fileentry)
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
-        inv["dirid"].revision = "filerev"
+        inv[b"fileid"].revision = b"filerev"
+        inv[b"fileid"].executable = True
+        inv[b"fileid"].text_sha1 = "ffff"
+        inv[b"fileid"].text_size = 1
+        inv[b"dirid"].revision = b"filerev"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
-        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, (b"revid",))
         self.assertEqual('', new_inv.id2path(inv.root.file_id))
-        self.assertEqual('dir', new_inv.id2path('dirid'))
-        self.assertEqual('dir/file', new_inv.id2path('fileid'))
+        self.assertEqual('dir', new_inv.id2path(b'dirid'))
+        self.assertEqual('dir/file', new_inv.id2path(b'fileid'))
 
     def test_path2id(self):
         inv = Inventory()
@@ -1432,7 +1432,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         return factory(trans)
 
     def make_dir(self, inv, name, parent_id):
-        inv.add(inv.make_entry('directory', name, parent_id, name + '-id'))
+        inv.add(inv.make_entry('directory', name, parent_id, name.encode('utf-8') + b'-id'))
 
     def make_file(self, inv, name, parent_id, content='content\n'):
         ie = inv.make_entry('file', name, parent_id, name + '-id')

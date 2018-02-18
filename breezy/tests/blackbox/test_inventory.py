@@ -29,8 +29,8 @@ class TestInventory(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
 
-        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
-        tree.commit('init', rev_id='one')
+        tree.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
+        tree.commit('init', rev_id=b'one')
         self.tree = tree
 
     def assertInventoryEqual(self, expected, args=None, **kwargs):
@@ -91,7 +91,7 @@ class TestInventory(TestCaseWithTransport):
 
     def test_inventory_revision(self):
         self.build_tree(['b/d', 'e'])
-        self.tree.add(['b/d', 'e'], ['d-id', 'e-id'])
+        self.tree.add(['b/d', 'e'], [b'd-id', b'e-id'])
         self.tree.commit('add files')
 
         self.tree.rename_one('b/d', 'd')

@@ -68,24 +68,24 @@ class TestCommands(TestCaseWithTransport):
         ignores._set_user_ignores(['*.tmp'])
 
         self.build_tree_contents(
-            [('foo.tmp', '.tmp files are ignored by default')])
+            [('foo.tmp', b'.tmp files are ignored by default')])
         self.assertEqual(list(tree.unknowns()), [])
 
-        self.build_tree_contents([('foo.c', 'int main() {}')])
+        self.build_tree_contents([('foo.c', b'int main() {}')])
         self.assertEqual(list(tree.unknowns()), ['foo.c'])
 
         tree.add('foo.c')
         self.assertEqual(list(tree.unknowns()), [])
 
         # 'ignore' works when creating the .bzrignore file
-        self.build_tree_contents([('foo.blah', 'blah')])
+        self.build_tree_contents([('foo.blah', b'blah')])
         self.assertEqual(list(tree.unknowns()), ['foo.blah'])
         self.run_bzr('ignore *.blah')
         self.assertEqual(list(tree.unknowns()), [])
         self.check_file_contents('.bzrignore', '*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
-        self.build_tree_contents([('garh', 'garh')])
+        self.build_tree_contents([('garh', b'garh')])
         self.assertEqual(list(tree.unknowns()), ['garh'])
         self.run_bzr('ignore garh')
         self.assertEqual(list(tree.unknowns()), [])

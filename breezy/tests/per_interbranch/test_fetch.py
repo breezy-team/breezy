@@ -28,7 +28,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         """Test fetch-revision operation."""
         wt = self.make_from_branch_and_tree('b1')
         b1 = wt.branch
-        self.build_tree_contents([('b1/foo', 'hello')])
+        self.build_tree_contents([('b1/foo', b'hello')])
         wt.add(['foo'])
         rev1 = wt.commit('lala!', allow_pointless=False)
 
@@ -67,7 +67,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         """Test incremental fetch-revision operation with limit."""
         wt = self.make_from_branch_and_tree('b1')
         b1 = wt.branch
-        self.build_tree_contents([('b1/foo', 'hello')])
+        self.build_tree_contents([('b1/foo', b'hello')])
         wt.add(['foo'])
         rev1 = wt.commit('lala!', allow_pointless=False)
 

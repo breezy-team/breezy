@@ -49,10 +49,10 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def example_branch(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
-        self.build_tree_contents([(path + '/hello', 'foo')])
+        self.build_tree_contents([(path + '/hello', b'foo')])
         tree.add('hello')
         tree.commit(message='setup')
-        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        self.build_tree_contents([(path + '/goodbye', b'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
         return tree
@@ -216,16 +216,16 @@ class TestBranch(tests.TestCaseWithTransport):
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
-        tree_a.commit('commit a-1', rev_id='a-1')
+        tree_a.commit('commit a-1', rev_id=b'a-1')
         f = open('repo/a/file', 'ab')
         f.write('more stuff\n')
         f.close()
-        tree_a.commit('commit a-2', rev_id='a-2')
+        tree_a.commit('commit a-2', rev_id=b'a-2')
 
         tree_b = make_shared_tree('b')
         self.build_tree(['repo/b/file'])
         tree_b.add('file')
-        tree_b.commit('commit b-1', rev_id='b-1')
+        tree_b.commit('commit b-1', rev_id=b'b-1')
 
         self.assertTrue(shared_repo.has_revision('a-1'))
         self.assertTrue(shared_repo.has_revision('a-2'))
@@ -293,8 +293,8 @@ class TestBranch(tests.TestCaseWithTransport):
         self.example_branch('a')
         # existing dir with similar files but no .brz dir
         self.build_tree_contents([('b/',)])
-        self.build_tree_contents([('b/hello', 'bar')])  # different content
-        self.build_tree_contents([('b/goodbye', 'baz')])# same content
+        self.build_tree_contents([('b/hello', b'bar')])  # different content
+        self.build_tree_contents([('b/goodbye', b'baz')])# same content
         # fails without --use-existing-dir
         out, err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
@@ -595,7 +595,7 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
     def setUp(self):
         super(TestRemoteBranch, self).setUp()
         tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/file', 'file content\n')])
+        self.build_tree_contents([('branch/file', b'file content\n')])
         tree.add('file')
         tree.commit('file created')
 

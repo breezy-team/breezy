@@ -91,15 +91,15 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
         """Helper method for LogFormatter tests"""
         b = wt.branch
         b.nick = 'test'
-        self.build_tree_contents([('a', 'hello moto\n')])
-        self.wt_commit(wt, 'simple log message', rev_id='a1')
-        self.build_tree_contents([('b', 'goodbye\n')])
+        self.build_tree_contents([('a', b'hello moto\n')])
+        self.wt_commit(wt, 'simple log message', rev_id=b'a1')
+        self.build_tree_contents([('b', b'goodbye\n')])
         wt.add('b')
-        self.wt_commit(wt, 'multiline\nlog\nmessage\n', rev_id='a2')
+        self.wt_commit(wt, 'multiline\nlog\nmessage\n', rev_id=b'a2')
 
-        self.build_tree_contents([('c', 'just another manic monday\n')])
+        self.build_tree_contents([('c', b'just another manic monday\n')])
         wt.add('c')
-        self.wt_commit(wt, 'single line with trailing newline\n', rev_id='a3')
+        self.wt_commit(wt, 'single line with trailing newline\n', rev_id=b'a3')
         return b
 
     def _prepare_tree_with_merges(self, with_tags=False):
@@ -107,15 +107,15 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
+        self.wt_commit(wt, 'rev-1', rev_id=b'rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id=b'rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        self.wt_commit(wt, 'rev-2', rev_id=b'rev-2b')
         if with_tags:
             branch = wt.branch
             branch.tags.set_tag('v0.2', 'rev-2b')
-            self.wt_commit(wt, 'rev-3', rev_id='rev-3')
+            self.wt_commit(wt, 'rev-3', rev_id=b'rev-3')
             branch.tags.set_tag('v1.0rc1', 'rev-3')
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
@@ -292,7 +292,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         merger = trunk.controldir.sprout('merger').open_workingtree()
         self.build_tree_contents([
             ('adder/dir/',),
-            ('adder/dir/file', 'foo'),
+            ('adder/dir/file', b'foo'),
             ])
         adder.add(['dir', 'dir/file'])
         adder.commit('added dir')                           # 1.1.1
@@ -396,10 +396,10 @@ Use --include-merged or -n0 to see merged revisions.
 
     def test_short_log_with_merges_and_range(self):
         wt = self._prepare_tree_with_merges()
-        self.wt_commit(wt, 'rev-3a', rev_id='rev-3a')
+        self.wt_commit(wt, 'rev-3a', rev_id=b'rev-3a')
         wt.branch.set_last_revision_info(2, 'rev-2b')
         wt.set_parent_ids(['rev-2b', 'rev-3a'])
-        self.wt_commit(wt, 'rev-3b', rev_id='rev-3b')
+        self.wt_commit(wt, 'rev-3b', rev_id=b'rev-3b')
         self.assertFormatterResult("""\
     3 Joe Foo\t2005-11-22 [merge]
       rev-3b
@@ -442,11 +442,11 @@ Use --include-merged or -n0 to see merged revisions.
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
         wt.add(['f1', 'f2'])
-        self.wt_commit(wt, 'first post', rev_id='a')
+        self.wt_commit(wt, 'first post', rev_id=b'a')
         child_wt = wt.controldir.sprout('child').open_workingtree()
-        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id=b'b')
         wt.merge_from_branch(child_wt.branch)
-        self.wt_commit(wt, 'merge branch 1', rev_id='c')
+        self.wt_commit(wt, 'merge branch 1', rev_id=b'c')
         self.assertFormatterResult("""\
     2 Joe Foo\t2005-11-22 [merge]
       revision-id:c
@@ -581,7 +581,7 @@ message:
         self.wt_commit(wt, 'first post')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         os.unlink('child/f1')
-        self.build_tree_contents([('child/f2', 'hello\n')])
+        self.build_tree_contents([('child/f2', b'hello\n')])
         self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
@@ -756,11 +756,11 @@ message:
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
         wt.add(['f1', 'f2'])
-        self.wt_commit(wt, 'first post', rev_id='a')
+        self.wt_commit(wt, 'first post', rev_id=b'a')
         child_wt = wt.controldir.sprout('child').open_workingtree()
-        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id=b'b')
         wt.merge_from_branch(child_wt.branch)
-        self.wt_commit(wt, 'merge branch 1', rev_id='c')
+        self.wt_commit(wt, 'merge branch 1', rev_id=b'c')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2 [merge]
@@ -824,7 +824,7 @@ added:
         self.wt_commit(wt, 'first post')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         os.unlink('child/f1')
-        self.build_tree_contents([('child/f2', 'hello\n')])
+        self.build_tree_contents([('child/f2', b'hello\n')])
         self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
@@ -1056,7 +1056,7 @@ class TestShowChangedRevisions(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree_a')
         self.build_tree(['tree_a/foo'])
         tree.add('foo')
-        tree.commit('bar', rev_id='bar-id')
+        tree.commit('bar', rev_id=b'bar-id')
         s = self.make_utf8_encoded_stringio()
         log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
         self.assertContainsRe(s.getvalue(), 'bar')
@@ -1163,26 +1163,26 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('1a', rev_id='1a')
-        tree.commit('2a', rev_id='2a')
-        tree.commit('3a', rev_id='3a')
+        tree.commit('1a', rev_id=b'1a')
+        tree.commit('2a', rev_id=b'2a')
+        tree.commit('3a', rev_id=b'3a')
         return tree
 
     def setup_ab_tree(self):
         tree = self.setup_a_tree()
         tree.set_last_revision('1a')
         tree.branch.set_last_revision_info(1, '1a')
-        tree.commit('2b', rev_id='2b')
-        tree.commit('3b', rev_id='3b')
+        tree.commit('2b', rev_id=b'2b')
+        tree.commit('3b', rev_id=b'3b')
         return tree
 
     def setup_ac_tree(self):
         tree = self.setup_a_tree()
         tree.set_last_revision(revision.NULL_REVISION)
         tree.branch.set_last_revision_info(0, revision.NULL_REVISION)
-        tree.commit('1c', rev_id='1c')
-        tree.commit('2c', rev_id='2c')
-        tree.commit('3c', rev_id='3c')
+        tree.commit('1c', rev_id=b'1c')
+        tree.commit('2c', rev_id=b'2c')
+        tree.commit('3c', rev_id=b'3c')
         return tree
 
     def test_all_new(self):
@@ -1265,9 +1265,9 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
             'timezone': 0, # UTC
         }
-        tree.commit('commit 1a', rev_id='1a', **kwargs)
-        tree.commit('commit 2a', rev_id='2a', **kwargs)
-        tree.commit('commit 3a', rev_id='3a', **kwargs)
+        tree.commit('commit 1a', rev_id=b'1a', **kwargs)
+        tree.commit('commit 2a', rev_id=b'2a', **kwargs)
+        tree.commit('commit 3a', rev_id=b'3a', **kwargs)
         return tree
 
     def setup_ab_tree(self):
@@ -1279,8 +1279,8 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
             'timezone': 0, # UTC
         }
-        tree.commit('commit 2b', rev_id='2b', **kwargs)
-        tree.commit('commit 3b', rev_id='3b', **kwargs)
+        tree.commit('commit 2b', rev_id=b'2b', **kwargs)
+        tree.commit('commit 3b', rev_id=b'3b', **kwargs)
         return tree
 
     def test_one_revision(self):
@@ -1386,10 +1386,10 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['a', 'b'])
         tree.add('a')
-        self.wt_commit(tree, 'simple log message', rev_id='a1',
+        self.wt_commit(tree, 'simple log message', rev_id=b'a1',
                        revprops={'bugs': 'test://bug/id fixed'})
         tree.add('b')
-        self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id='a2',
+        self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id=b'a2',
                        authors=['Joe Bar <joe@bar.com>'],
                        revprops={'bugs': 'test://bug/id fixed\n'
                                  'test://bug/2 fixed'})
@@ -1440,7 +1440,7 @@ message:
     def test_wrong_bugs_property(self):
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['foo'])
-        self.wt_commit(tree, 'simple log message', rev_id='a1',
+        self.wt_commit(tree, 'simple log message', rev_id=b'a1',
                        revprops={'bugs': 'test://bug/id invalid_value'})
         self.assertFormatterResult("""\
     1 Joe Foo\t2005-11-22

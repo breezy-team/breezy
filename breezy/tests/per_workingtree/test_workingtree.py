@@ -252,7 +252,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
                          'hello.txt.~1~'])
-        self.build_tree_contents([('.bzrignore', '*.~*\n')])
+        self.build_tree_contents([('.bzrignore', b'*.~*\n')])
         tree.add('.bzrignore')
         self.assertEqual(list(tree.unknowns()),
                           ['hello.txt'])
@@ -541,13 +541,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertRaises(SettingFileIdUnsupported, wt.set_root_id,
                     'first_root_id')
             return
-        wt.set_root_id('first_root_id')
+        wt.set_root_id(b'first_root_id')
         self.assertEqual('first_root_id', wt.get_root_id())
         self.build_tree(['tree/file'])
         wt.add(['file'])
         wt.commit('first')
         co = wt.branch.create_checkout('checkout')
-        wt.set_root_id('second_root_id')
+        wt.set_root_id(b'second_root_id')
         wt.commit('second')
         self.assertEqual('second_root_id', wt.get_root_id())
         self.assertEqual(0, co.update())
@@ -583,16 +583,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_merge_revert(self):
         from breezy.merge import merge_inner
         this = self.make_branch_and_tree('b1')
-        self.build_tree_contents([('b1/a', 'a test\n'), ('b1/b', 'b test\n')])
+        self.build_tree_contents([('b1/a', b'a test\n'), ('b1/b', b'b test\n')])
         this.add(['a', 'b'])
         this.commit(message='')
         base = this.controldir.clone('b2').open_workingtree()
-        self.build_tree_contents([('b2/a', 'b test\n')])
+        self.build_tree_contents([('b2/a', b'b test\n')])
         other = this.controldir.clone('b3').open_workingtree()
-        self.build_tree_contents([('b3/a', 'c test\n'), ('b3/c', 'c test\n')])
+        self.build_tree_contents([('b3/a', b'c test\n'), ('b3/c', b'c test\n')])
         other.add('c')
 
-        self.build_tree_contents([('b1/b', 'q test\n'), ('b1/d', 'd test\n')])
+        self.build_tree_contents([('b1/b', b'q test\n'), ('b1/d', b'd test\n')])
         # Note: If we don't lock this before calling merge_inner, then we get a
         #       lock-contention failure. This probably indicates something
         #       weird going on inside merge_inner. Probably something about
@@ -661,10 +661,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_takes_revision_parameter(self):
         wt = self.make_branch_and_tree('wt')
-        self.build_tree_contents([('wt/a', 'old content')])
+        self.build_tree_contents([('wt/a', b'old content')])
         wt.add(['a'])
         rev1 = wt.commit('first master commit')
-        self.build_tree_contents([('wt/a', 'new content')])
+        self.build_tree_contents([('wt/a', b'new content')])
         rev2 = wt.commit('second master commit')
         # https://bugs.launchpad.net/bzr/+bug/45719/comments/20
         # when adding 'update -r' we should make sure all wt formats support
@@ -686,7 +686,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_merge_modified(self):
         # merge_modified stores a map from file id to hash
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/somefile', 'hello')])
+        self.build_tree_contents([('tree/somefile', b'hello')])
         tree.lock_write()
         try:
             tree.add(['somefile'])
@@ -804,7 +804,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo.pyc'])
         # ensure that foo.pyc is ignored
-        self.build_tree_contents([('.bzrignore', 'foo.pyc')])
+        self.build_tree_contents([('.bzrignore', b'foo.pyc')])
         tree.add('foo.pyc')
         anid = tree.path2id('foo.pyc')
         tree.lock_read()
@@ -883,12 +883,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         if tree.supports_setting_file_ids():
-            tree.add(['foo'], ['foo-id'])
-            self.assertEqual('foo-id', tree.path2id('foo'))
+            tree.add(['foo'], [b'foo-id'])
+            self.assertEqual(b'foo-id', tree.path2id('foo'))
             # the next assertion is for backwards compatability with
             # WorkingTree3, though its probably a bad idea, it makes things
             # work. Perhaps it should raise a deprecation warning?
-            self.assertEqual('foo-id', tree.path2id('foo/'))
+            self.assertEqual(b'foo-id', tree.path2id('foo/'))
         else:
             tree.add(['foo'])
             if tree.branch.repository._format.supports_versioned_directories:

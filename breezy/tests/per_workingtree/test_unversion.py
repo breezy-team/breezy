@@ -198,7 +198,7 @@ class TestUnversion(TestCaseWithWorkingTree):
                           ('xyz/m', m_id),
                          ], paths)
 
-        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        self.build_tree_contents([('A/a/n', b'new contents for n\n')])
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified

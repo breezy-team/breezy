@@ -78,7 +78,7 @@ class TestExport(TestCaseWithTransport):
 
     def make_tree_with_extra_bzr_files(self):
         tree = self.make_basic_tree()
-        self.build_tree_contents([('tree/.bzrrules', '')])
+        self.build_tree_contents([('tree/.bzrrules', b'')])
         self.build_tree(['tree/.bzr-adir/', 'tree/.bzr-adir/afile'])
         tree.add(['.bzrrules', '.bzr-adir/', '.bzr-adir/afile'])
 
@@ -244,7 +244,7 @@ class TestExport(TestCaseWithTransport):
         tree = self.make_branch_and_tree('dir')
         self.build_tree(['dir/a'])
         tree.add('a')
-        self.build_tree_contents([('dir/.bzrrules', '')])
+        self.build_tree_contents([('dir/.bzrrules', b'')])
         tree.add('.bzrrules')
         self.build_tree(['dir/.bzr-adir/', 'dir/.bzr-adir/afile'])
         tree.add(['.bzr-adir/', '.bzr-adir/afile'])
@@ -267,11 +267,11 @@ class TestExport(TestCaseWithTransport):
     def example_branch(self):
         """Create a branch a 'branch' containing hello and goodbye."""
         tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/hello', 'foo')])
+        self.build_tree_contents([('branch/hello', b'foo')])
         tree.add('hello')
         tree.commit('setup')
 
-        self.build_tree_contents([('branch/goodbye', 'baz')])
+        self.build_tree_contents([('branch/goodbye', b'baz')])
         tree.add('goodbye')
         tree.commit('setup')
         return tree
@@ -380,7 +380,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_dir_export_per_file_timestamps(self):
         tree = self.example_branch()
-        self.build_tree_contents([('branch/har', 'foo')])
+        self.build_tree_contents([('branch/har', b'foo')])
         tree.add('har')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         tree.commit('setup', timestamp=315532800)
@@ -409,7 +409,7 @@ class TestExport(TestCaseWithTransport):
         """Test --uncommitted option"""
         self.example_branch()
         os.chdir('branch')
-        self.build_tree_contents([('goodbye', 'uncommitted data')])
+        self.build_tree_contents([('goodbye', b'uncommitted data')])
         self.run_bzr(['export', '--uncommitted', 'latest'])
         self.check_file_contents('latest/goodbye', 'uncommitted data')
 
@@ -424,7 +424,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_zip_export_per_file_timestamps(self):
         tree = self.example_branch()
-        self.build_tree_contents([('branch/har', 'foo')])
+        self.build_tree_contents([('branch/har', b'foo')])
         tree.add('har')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         timestamp = 347151600
@@ -440,7 +440,7 @@ class TestSmartServerExport(TestCaseWithTransport):
     def test_simple_export(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

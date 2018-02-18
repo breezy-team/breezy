@@ -34,7 +34,7 @@ class TestGetRootID(TestCaseWithTree):
                 SettingFileIdUnsupported, tree.set_root_id,
                 'custom-tree-root-id')
             self.skipTest('tree format does not support setting tree id')
-        tree.set_root_id('custom-tree-root-id')
+        tree.set_root_id(b'custom-tree-root-id')
         return self._convert_tree(tree)
 
     def test_get_root_id_default(self):

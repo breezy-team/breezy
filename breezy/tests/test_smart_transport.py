@@ -1755,7 +1755,7 @@ class SmartServerCommandTests(tests.TestCaseWithTransport):
     def test_get_bundle(self):
         from breezy.bundle import serializer
         wt = self.make_branch_and_tree('.')
-        self.build_tree_contents([('hello', 'hello world')])
+        self.build_tree_contents([('hello', b'hello world')])
         wt.add('hello')
         rev_id = wt.commit('add hello')
 
