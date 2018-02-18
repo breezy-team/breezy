@@ -52,14 +52,16 @@ from .  import TestCaseWithWorkingTree
 from ...bzr.workingtree import (
     InventoryWorkingTree,
     )
-from ...workingtree import (
-    SettingFileIdUnsupported,
+from ...tree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
-    WorkingTree,
     )
 from ...conflicts import ConflictList, TextConflict, ContentsConflict
+from ...workingtree import (
+    SettingFileIdUnsupported,
+    WorkingTree,
+    )
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -420,9 +422,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertFalse(cloned_transport.has('deleted'))
         self.assertTrue(cloned_transport.has('added'))
         self.assertFalse(cloned_transport.has('notadded'))
-        self.assertIsNot(None, cloned.path2id('added'))
-        self.assertEqual(None, cloned.path2id('deleted'))
-        self.assertEqual(None, cloned.path2id('notadded'))
+        self.assertTrue(cloned.is_versioned('added'))
+        self.assertFalse(cloned.is_versioned('deleted'))
+        self.assertFalse(cloned.is_versioned('notadded'))
 
     def test_basis_tree_returns_last_revision(self):
         wt = self.make_branch_and_tree('.')
@@ -687,15 +689,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # merge_modified stores a map from file id to hash
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/somefile', b'hello')])
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add(['somefile'])
-            d = {tree.path2id('somefile'): osutils.sha_string('hello')}
+            d = {tree.path2id('somefile'): osutils.sha_string(b'hello')}
             tree.set_merge_modified(d)
             mm = tree.merge_modified()
             self.assertEqual(mm, d)
-        finally:
-            tree.unlock()
         mm = tree.merge_modified()
         self.assertEqual(mm, d)
 
@@ -971,7 +970,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                           'nonexistant')
         self.build_tree(['file'])
         tree.add('file')
-        file_id = tree.path2id('file')
         tree.commit('foo')
         tree.remove('file')
         self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,

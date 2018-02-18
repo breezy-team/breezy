@@ -42,8 +42,8 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ('tree/link@', b'target'),
             ])
         tree.smart_add(['tree/link'])
-        self.assertIsNot(None, tree.path2id('link'))
-        self.assertIs(None, tree.path2id('target'))
+        self.assertTrue(tree.is_versioned('link'))
+        self.assertFalse(tree.is_versioned('target'))
         self.assertEqual('symlink', tree.kind('link'))
 
     def test_smart_add_symlink_pointing_outside(self):
@@ -52,8 +52,8 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ('tree/link@', '../../../../target'),
             ])
         tree.smart_add(['tree/link'])
-        self.assertIsNot(None, tree.path2id('link'))
-        self.assertIs(None, tree.path2id('target'))
+        self.assertTrue(tree.is_versioned('link'))
+        self.assertFalse(tree.is_versioned('target'))
         self.assertEqual('symlink', tree.kind('link'))
 
     def test_add_file_under_symlink(self):
@@ -70,10 +70,10 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ([u'dir', u'dir/file'], {}))
         # should add the actual parent directory, not the apparent parent
         # (which is actually a symlink)
-        self.assertTrue(tree.path2id('dir/file'))
-        self.assertTrue(tree.path2id('dir'))
-        self.assertIs(None, tree.path2id('link'))
-        self.assertIs(None, tree.path2id('link/file'))
+        self.assertTrue(tree.is_versioned('dir/file'))
+        self.assertTrue(tree.is_versioned('dir'))
+        self.assertFalse(tree.is_versioned('link'))
+        self.assertFalse(tree.is_versioned('link/file'))
 
 
 class TestKindChanges(TestCaseWithWorkingTree):

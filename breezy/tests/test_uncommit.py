@@ -51,7 +51,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         # The file should not be removed
         self.assertPathExists('tree/two')
         # And it should still be listed as added
-        self.assertIsNot(None, tree.path2id('two'))
+        self.assertTrue(tree.is_versioned('two'))
 
     def test_uncommit_bound(self):
         tree, history = self.make_linear_tree()

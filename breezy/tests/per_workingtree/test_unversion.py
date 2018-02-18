@@ -61,7 +61,9 @@ class TestUnversion(TestCaseWithWorkingTree):
         c_id = tree.path2id('c')
         # within a lock unversion should take effect
         tree.lock_write()
+        self.assertTrue(tree.is_versioned('a'))
         tree.unversion(['a', 'b'])
+        self.assertFalse(tree.is_versioned('a'))
         self.assertFalse(tree.has_id(a_id))
         self.assertFalse(tree.has_id(b_id))
         self.assertTrue(tree.has_id(c_id))
@@ -111,8 +113,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         b_id = tree.path2id('a/b')
         c_id = tree.path2id('a/c')
         d_id = tree.path2id('d')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.unversion(['a/b', 'a'])
             self.assertFalse(tree.has_id(a_id))
             self.assertFalse(tree.has_id(b_id))
@@ -123,8 +124,6 @@ class TestUnversion(TestCaseWithWorkingTree):
             self.assertTrue(tree.has_filename('a/b'))
             self.assertTrue(tree.has_filename('a/c'))
             self.assertTrue(tree.has_filename('d'))
-        finally:
-            tree.unlock()
 
     def test_unversion_renamed(self):
         tree = self.make_branch_and_tree('a')

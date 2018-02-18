@@ -77,11 +77,13 @@ from ..sixish import (
     text_type,
     )
 from ..trace import mutter, note
-from ..tree import FileTimestampUnavailable
-from ..workingtree import (
+from ..tree import (
+    FileTimestampUnavailable,
     TreeDirectory,
     TreeFile,
     TreeLink,
+    )
+from ..workingtree import (
     WorkingTree,
     WorkingTreeFormat,
     format_registry,
@@ -943,7 +945,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     self.add_parent_tree_id(parent_id)
             other_tree.controldir.retire_bzrdir()
 
-    def extract(self, file_id, format=None):
+    def extract(self, sub_path, file_id=None, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -958,7 +960,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         with self.lock_tree_write():
             self.flush()
-            sub_path = self.id2path(file_id)
             branch_transport = mkdirs(sub_path)
             if format is None:
                 format = self.controldir.cloning_metadir()
@@ -985,6 +986,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # FIXME: Support nested trees
             my_inv = self.root_inventory
             child_inv = inventory.Inventory(root_id=None)
+            if file_id is None:
+                file_id = self.path2id(sub_path)
             new_root = my_inv[file_id]
             my_inv.remove_recursive_id(file_id)
             new_root.parent_id = None

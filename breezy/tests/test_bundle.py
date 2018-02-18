@@ -219,14 +219,14 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.path2id("grandparent/parent"), b"b")
         self.assertEqual(btree.path2id("grandparent/parent/file"), b"c")
 
-        self.assertTrue(btree.path2id("grandparent2") is None)
-        self.assertTrue(btree.path2id("grandparent2/parent") is None)
-        self.assertTrue(btree.path2id("grandparent2/parent/file") is None)
+        self.assertIs(btree.path2id("grandparent2"), None)
+        self.assertIs(btree.path2id("grandparent2/parent"), None)
+        self.assertIs(btree.path2id("grandparent2/parent/file"), None)
 
         btree.note_rename("grandparent", "grandparent2")
-        self.assertTrue(btree.old_path("grandparent") is None)
-        self.assertTrue(btree.old_path("grandparent/parent") is None)
-        self.assertTrue(btree.old_path("grandparent/parent/file") is None)
+        self.assertIs(btree.old_path("grandparent"), None)
+        self.assertIs(btree.old_path("grandparent/parent"), None)
+        self.assertIs(btree.old_path("grandparent/parent/file"), None)
 
         self.assertEqual(btree.id2path(b"a"), "grandparent2")
         self.assertEqual(btree.id2path(b"b"), "grandparent2/parent")
@@ -351,7 +351,7 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.get_file(btree.id2path(b"c")).read(), "Hello\n")
         btree.note_deletion("grandparent/parent/file")
         self.assertTrue(btree.id2path(b"c") is None)
-        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
+        self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):
         ids = sorted(tree.all_file_ids())

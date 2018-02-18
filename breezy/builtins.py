@@ -875,7 +875,7 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_with_parents(cls, wt, relpath):
-        if wt.path2id(relpath) is not None:
+        if wt.is_versioned(relpath):
             return
         cls.add_file_with_parents(wt, osutils.dirname(relpath))
         wt.add([relpath])
@@ -5688,7 +5688,7 @@ class cmd_split(Command):
         if sub_id is None:
             raise errors.NotVersionedError(subdir)
         try:
-            containing_tree.extract(sub_id)
+            containing_tree.extract(subdir, sub_id)
         except errors.RootNotRich:
             raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 

@@ -920,7 +920,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
         b'parent-id')], cooked_conflicts)
         tt.apply()
-        self.assertEqual(None, self.wt.path2id('parent'))
+        self.assertFalse(self.wt.is_versioned('parent'))
         self.assertEqual('parent-id', self.wt.path2id('parent.new'))
 
     def test_resolve_conflicts_wrong_new_parent_kind(self):
@@ -936,7 +936,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual({('non-directory parent', 'Created directory',
                          'new-3')}, raw_conflicts)
         tt.apply()
-        self.assertEqual(None, self.wt.path2id('parent'))
+        self.assertFalse(self.wt.is_versioned('parent'))
         self.assertEqual('parent-id', self.wt.path2id('parent.new'))
 
     def test_resolve_conflicts_wrong_parent_kind_unversioned(self):
@@ -950,8 +950,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.create_file('contents', parent_id)
         resolve_conflicts(tt)
         tt.apply()
-        self.assertIs(None, self.wt.path2id('parent'))
-        self.assertIs(None, self.wt.path2id('parent.new'))
+        self.assertFalse(self.wt.is_versioned('parent'))
+        self.assertFalse(self.wt.is_versioned('parent.new'))
 
     def test_resolve_conflicts_missing_parent(self):
         wt = self.make_branch_and_tree('.')
@@ -2896,7 +2896,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.unversion_file(preview.trans_id_file_id(b'deleted-id'))
         preview_tree = preview.get_preview_tree()
         self.assertEqual(b'unchanged-id', preview_tree.path2id('unchanged'))
-        self.assertIs(None, preview_tree.path2id('deleted'))
+        self.assertFalse(preview_tree.is_versioned('deleted'))
 
     def test_path2id_created(self):
         tree = self.make_branch_and_tree('tree')
@@ -2921,7 +2921,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.adjust_path('child', new_parent,
                             preview.trans_id_file_id(b'child-id'))
         preview_tree = preview.get_preview_tree()
-        self.assertIs(None, preview_tree.path2id('old_parent/child'))
+        self.assertFalse(preview_tree.is_versioned('old_parent/child'))
         self.assertEqual(b'child-id', preview_tree.path2id('new_parent/child'))
 
     def test_path2id_renamed_parent(self):
@@ -2934,7 +2934,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.adjust_path('new_name', preview.root,
                             preview.trans_id_file_id(b'parent-id'))
         preview_tree = preview.get_preview_tree()
-        self.assertIs(None, preview_tree.path2id('old_name/child'))
+        self.assertFalse(preview_tree.is_versioned('old_name/child'))
         self.assertEqual(b'child-id', preview_tree.path2id('new_name/child'))
 
     def assertMatchingIterEntries(self, tt, specific_file_ids=None):

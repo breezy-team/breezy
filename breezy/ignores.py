@@ -225,5 +225,5 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     finally:
         f.close()
 
-    if not tree.path2id(breezy.IGNORE_FILENAME):
+    if not tree.is_versioned(breezy.IGNORE_FILENAME):
         tree.add([breezy.IGNORE_FILENAME])

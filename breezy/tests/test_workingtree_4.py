@@ -303,7 +303,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         state.update_basis_by_delta = log_update_basis_by_delta
         basis = tree.basis_tree()
         self.assertEqual('a-id', basis.path2id('a'))
-        self.assertEqual(None, basis.path2id('b'))
+        self.assertFalse(basis.is_versioned('b'))
         def fail_set_parent_trees(trees, ghosts):
             raise AssertionError('dirstate.set_parent_trees() was called')
         state.set_parent_trees = fail_set_parent_trees
@@ -341,7 +341,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # Re-open with the new reference
         wt = wt.controldir.open_workingtree()
         wt.set_parent_trees([('C', b_c.repository.revision_tree('C'))])
-        self.assertEqual(None, wt.basis_tree().path2id('b'))
+        self.assertFalse(wt.basis_tree().is_versioned('b'))
 
     def test_new_dirstate_on_new_lock(self):
         # until we have detection for when a dirstate can be reused, we

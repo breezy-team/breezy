@@ -2300,7 +2300,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.set_parent_ids([b'D-id'])
         wt.branch.set_last_revision_info(3, b'D-id')
         wt.revert()
-        self.assertIs(None, wt.path2id('foo'))
+        self.assertFalse(wt.is_versioned('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
         self.assertEqual(0, conflicts)
         self.assertEqual(b'foo-id', wt.path2id('foo'))
