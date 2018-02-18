@@ -121,10 +121,6 @@ class GitTags(tag.BasicTags):
                 foreign_peeled = self.branch.lookup_foreign_revision_id(peeled)
             except NotCommitError:
                 continue
-            except KeyError:
-                # Let's try..
-                foreign_peeled = self.branch.mapping.revision_id_foreign_to_bzr(
-                    peeled)
             yield (tag_name, peeled, unpeeled, foreign_peeled)
 
     def _merge_to_remote_git(self, target_repo, new_refs, overwrite=False):
@@ -488,8 +484,12 @@ class GitBranch(ForeignBranch):
             overwrite, stop_revision)
 
     def lookup_foreign_revision_id(self, foreign_revid):
-        return self.repository.lookup_foreign_revision_id(foreign_revid,
-            self.mapping)
+        try:
+            return self.repository.lookup_foreign_revision_id(foreign_revid,
+                self.mapping)
+        except KeyError:
+            # Let's try..
+            return self.mapping.revision_id_foreign_to_bzr(foreign_revid)
 
     def lookup_bzr_revision_id(self, revid):
         return self.repository.lookup_bzr_revision_id(
