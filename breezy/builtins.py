@@ -30,6 +30,7 @@ import time
 
 import breezy
 from breezy import (
+    branch as _mod_branch,
     bugtracker,
     bundle,
     cache_utf8,
@@ -60,7 +61,7 @@ from breezy import (
 from breezy.bzr import (
     btree_index,
     )
-from breezy.branch import Branch, UnstackableBranchFormat
+from breezy.branch import Branch
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.smtp_connection import SMTPConnection
@@ -1601,7 +1602,7 @@ class cmd_branch(Command):
         try:
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
-        except (errors.NotStacked, UnstackableBranchFormat,
+        except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
