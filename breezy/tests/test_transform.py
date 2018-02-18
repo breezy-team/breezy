@@ -2825,7 +2825,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_get_file_mtime(self):
         preview = self.get_empty_preview()
         file_trans_id = preview.new_file('file', preview.root, 'contents',
-                                         'bfile-id')
+                                         b'file-id')
         limbo_path = preview._limbo_name(file_trans_id)
         preview_tree = preview.get_preview_tree()
         self.assertEqual(os.stat(limbo_path).st_mtime,
