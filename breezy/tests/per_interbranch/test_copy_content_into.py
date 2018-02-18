@@ -43,5 +43,5 @@ class TestCopyContentInto(TestCaseWithInterBranch):
         self.assertLength(1, StubMatchingInter._uses)
         use = StubMatchingInter._uses[0]
         self.assertEqual('copy_content_into', use[1])
-        self.assertEqual('54', use[3]['revision_id'])
+        self.assertEqual(b'54', use[3]['revision_id'])
         del StubMatchingInter._uses[:]

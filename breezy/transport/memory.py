@@ -22,6 +22,7 @@ so this is primarily useful for testing.
 
 from __future__ import absolute_import
 
+import contextlib
 import os
 import errno
 from stat import S_IFREG, S_IFDIR

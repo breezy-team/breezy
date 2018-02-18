@@ -850,7 +850,7 @@ class BzrDirMeta1(BzrDir):
         ret = []
         try:
             for name in f:
-                ret.append(name.rstrip("\n"))
+                ret.append(name.rstrip(b"\n"))
         finally:
             f.close()
         return ret

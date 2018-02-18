@@ -196,10 +196,10 @@ class BTreeTester(tests.TestCase):
 
     def make_tree_1(self):
         mtree = MockTree()
-        mtree.add_dir("a", "grandparent")
-        mtree.add_dir("b", "grandparent/parent")
-        mtree.add_file("c", "grandparent/parent/file", "Hello\n")
-        mtree.add_dir("d", "grandparent/alt_parent")
+        mtree.add_dir(b"a", "grandparent")
+        mtree.add_dir(b"b", "grandparent/parent")
+        mtree.add_file(b"c", "grandparent/parent/file", "Hello\n")
+        mtree.add_dir(b"d", "grandparent/alt_parent")
         return BundleTree(mtree, ''), mtree
 
     def test_renames(self):
@@ -843,12 +843,12 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        with open('b1/one', 'wb') as f: f.write('one\n')
+        with open('b1/one', 'wb') as f: f.write(b'one\n')
         self.tree1.add('one')
         self.tree1.commit('add file', rev_id=b'a@cset-0-1')
-        with open('b1/one', 'wb') as f: f.write('two\n')
+        with open('b1/one', 'wb') as f: f.write(b'two\n')
         self.tree1.commit('modify', rev_id=b'a@cset-0-2')
-        with open('b1/one', 'wb') as f: f.write('three\n')
+        with open('b1/one', 'wb') as f: f.write(b'three\n')
         self.tree1.commit('modify', rev_id=b'a@cset-0-3')
         bundle_file = BytesIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',

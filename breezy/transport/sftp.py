@@ -454,13 +454,10 @@ class SFTPTransport(ConnectedTransport):
 
     def get_bytes(self, relpath):
         # reimplement this here so that we can report how many bytes came back
-        f = self.get(relpath)
-        try:
+        with self.get(relpath) as f:
             bytes = f.read()
             self._report_activity(len(bytes), 'read')
             return bytes
-        finally:
-            f.close()
 
     def _readv(self, relpath, offsets):
         """See Transport.readv()"""

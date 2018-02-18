@@ -3700,11 +3700,8 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             if file:
-                f = open(file)
-                try:
+                with open(file) as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
-                finally:
-                    f.close()
             elif message is not None:
                 my_message = message
             else:

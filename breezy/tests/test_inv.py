@@ -144,7 +144,7 @@ def _create_repo_revisions(repo, basis, delta, invalid_delta):
             # We don't want to apply the delta to the basis, because we expect
             # the delta is invalid.
             result_inv = basis
-            result_inv.revision_id = 'result'
+            result_inv.revision_id = b'result'
             target_entries = None
         else:
             result_inv = basis.create_by_apply_delta(delta, 'result')
@@ -376,9 +376,9 @@ class TestDeltaApplication(TestCaseWithTransport):
             inv.root.revision = 'basis'
         return inv
 
-    def make_file_ie(self, file_id='file-id', name='name', parent_id=None):
+    def make_file_ie(self, file_id=b'file-id', name='name', parent_id=None):
         ie_file = inventory.InventoryFile(file_id, name, parent_id)
-        ie_file.revision = 'result'
+        ie_file.revision = b'result'
         ie_file.text_size = 0
         ie_file.text_sha1 = ''
         return ie_file
@@ -393,7 +393,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_None_file_id(self):
         inv = self.get_empty_inventory()
         dir1 = inventory.InventoryDirectory(None, 'dir1', inv.root.file_id)
-        dir1.revision = 'result'
+        dir1.revision = b'result'
         delta = [(None, u'dir1', None, dir1)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
@@ -401,7 +401,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_unicode_file_id(self):
         inv = self.get_empty_inventory()
         dir1 = inventory.InventoryDirectory(u'dirid', 'dir1', inv.root.file_id)
-        dir1.revision = 'result'
+        dir1.revision = b'result'
         delta = [(None, u'dir1', dir1.file_id, dir1)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
@@ -409,7 +409,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id', 'path1', inv.root.file_id)
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         file2 = file1.copy()
@@ -421,7 +421,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_repeated_new_path(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         file2 = file1.copy()
@@ -433,7 +433,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_repeated_old_path(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         # We can't *create* a source inventory with the same path, but
@@ -443,7 +443,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         # location. Alternatively, we could have a repeated fileid, but that
         # is separately checked for.
         file2 = inventory.InventoryFile('id2', 'path2', inv.root.file_id)
-        file2.revision = 'result'
+        file2.revision = b'result'
         file2.text_size = 0
         file2.text_sha1 = ""
         inv.add(file1)
@@ -455,7 +455,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_mismatched_id_entry_id(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         delta = [(None, u'path', 'id', file1)]
@@ -471,7 +471,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_mismatched_new_path_None_entry(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         delta = [(u"path", None, 'id1', file1)]
@@ -481,11 +481,11 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_parent_is_not_directory(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         file2 = inventory.InventoryFile('id2', 'path2', 'id1')
-        file2.revision = 'result'
+        file2.revision = b'result'
         file2.text_size = 0
         file2.text_sha1 = ""
         inv.add(file1)
@@ -496,7 +496,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_parent_is_missing(self):
         inv = self.get_empty_inventory()
         file2 = inventory.InventoryFile('id2', 'path2', 'missingparent')
-        file2.revision = 'result'
+        file2.revision = b'result'
         file2.text_size = 0
         file2.text_sha1 = ""
         delta = [(None, u'path/path2', 'id2', file2)]
@@ -506,11 +506,11 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_new_parent_path_has_wrong_id(self):
         inv = self.get_empty_inventory()
         parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
-        parent1.revision = 'result'
+        parent1.revision = b'result'
         parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
-        parent2.revision = 'result'
+        parent2.revision = b'result'
         file1 = inventory.InventoryFile('id', 'path', 'p-2')
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         inv.add(parent1)
@@ -524,11 +524,11 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_old_parent_path_is_wrong(self):
         inv = self.get_empty_inventory()
         parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
-        parent1.revision = 'result'
+        parent1.revision = b'result'
         parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
-        parent2.revision = 'result'
+        parent2.revision = b'result'
         file1 = inventory.InventoryFile('id', 'path', 'p-2')
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         inv.add(parent1)
@@ -543,15 +543,15 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_old_parent_path_is_for_other_id(self):
         inv = self.get_empty_inventory()
         parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
-        parent1.revision = 'result'
+        parent1.revision = b'result'
         parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
-        parent2.revision = 'result'
+        parent2.revision = b'result'
         file1 = inventory.InventoryFile('id', 'path', 'p-2')
-        file1.revision = 'result'
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ""
         file2 = inventory.InventoryFile('id2', 'path', 'p-1')
-        file2.revision = 'result'
+        file2.revision = b'result'
         file2.text_size = 0
         file2.text_sha1 = ""
         inv.add(parent1)
@@ -568,9 +568,9 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_add_existing_id_new_path(self):
         inv = self.get_empty_inventory()
         parent1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
-        parent1.revision = 'result'
+        parent1.revision = b'result'
         parent2 = inventory.InventoryDirectory('p-1', 'dir2', inv.root.file_id)
-        parent2.revision = 'result'
+        parent2.revision = b'result'
         inv.add(parent1)
         delta = [(None, u'dir2', 'p-1', parent2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
@@ -579,9 +579,9 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_add_new_id_existing_path(self):
         inv = self.get_empty_inventory()
         parent1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
-        parent1.revision = 'result'
+        parent1.revision = b'result'
         parent2 = inventory.InventoryDirectory('p-2', 'dir1', inv.root.file_id)
-        parent2.revision = 'result'
+        parent2.revision = b'result'
         inv.add(parent1)
         delta = [(None, u'dir1', 'p-2', parent2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
@@ -590,11 +590,11 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_remove_dir_leaving_dangling_child(self):
         inv = self.get_empty_inventory()
         dir1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
-        dir1.revision = 'result'
+        dir1.revision = b'result'
         dir2 = inventory.InventoryDirectory('p-2', 'child1', 'p-1')
-        dir2.revision = 'result'
+        dir2.revision = b'result'
         dir3 = inventory.InventoryDirectory('p-3', 'child2', 'p-1')
-        dir3.revision = 'result'
+        dir3.revision = b'result'
         inv.add(dir1)
         inv.add(dir2)
         inv.add(dir3)
@@ -605,79 +605,79 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_add_file(self):
         inv = self.get_empty_inventory()
-        file1 = inventory.InventoryFile('file-id', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1 = inventory.InventoryFile(b'file-id', 'path', inv.root.file_id)
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ''
-        delta = [(None, u'path', 'file-id', file1)]
+        delta = [(None, u'path', b'file-id', file1)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
-        self.assertEqual('file-id', res_inv['file-id'].file_id)
+        self.assertEqual(b'file-id', res_inv[b'file-id'].file_id)
 
     def test_remove_file(self):
         inv = self.get_empty_inventory()
-        file1 = inventory.InventoryFile('file-id', 'path', inv.root.file_id)
-        file1.revision = 'result'
+        file1 = inventory.InventoryFile(b'file-id', 'path', inv.root.file_id)
+        file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = ''
         inv.add(file1)
-        delta = [(u'path', None, 'file-id', None)]
+        delta = [(u'path', None, b'file-id', None)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual(None, res_inv.path2id('path'))
-        self.assertRaises(errors.NoSuchId, res_inv.id2path, 'file-id')
+        self.assertRaises(errors.NoSuchId, res_inv.id2path, b'file-id')
 
     def test_rename_file(self):
         inv = self.get_empty_inventory()
         file1 = self.make_file_ie(name='path', parent_id=inv.root.file_id)
         inv.add(file1)
         file2 = self.make_file_ie(name='path2', parent_id=inv.root.file_id)
-        delta = [(u'path', 'path2', 'file-id', file2)]
+        delta = [(u'path', 'path2', b'file-id', file2)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual(None, res_inv.path2id('path'))
-        self.assertEqual('file-id', res_inv.path2id('path2'))
+        self.assertEqual(b'file-id', res_inv.path2id('path2'))
 
     def test_replaced_at_new_path(self):
         inv = self.get_empty_inventory()
-        file1 = self.make_file_ie(file_id='id1', parent_id=inv.root.file_id)
+        file1 = self.make_file_ie(file_id=b'id1', parent_id=inv.root.file_id)
         inv.add(file1)
-        file2 = self.make_file_ie(file_id='id2', parent_id=inv.root.file_id)
-        delta = [(u'name', None, 'id1', None),
-                 (None, u'name', 'id2', file2)]
+        file2 = self.make_file_ie(file_id=b'id2', parent_id=inv.root.file_id)
+        delta = [(u'name', None, b'id1', None),
+                 (None, u'name', b'id2', file2)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
-        self.assertEqual('id2', res_inv.path2id('name'))
+        self.assertEqual(b'id2', res_inv.path2id('name'))
 
     def test_rename_dir(self):
         inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory('dir-id', 'dir1', inv.root.file_id)
-        dir1.revision = 'basis'
-        file1 = self.make_file_ie(parent_id='dir-id')
+        dir1 = inventory.InventoryDirectory(b'dir-id', 'dir1', inv.root.file_id)
+        dir1.revision = b'basis'
+        file1 = self.make_file_ie(parent_id=b'dir-id')
         inv.add(dir1)
         inv.add(file1)
-        dir2 = inventory.InventoryDirectory('dir-id', 'dir2', inv.root.file_id)
-        dir2.revision = 'result'
-        delta = [('dir1', 'dir2', 'dir-id', dir2)]
+        dir2 = inventory.InventoryDirectory(b'dir-id', 'dir2', inv.root.file_id)
+        dir2.revision = b'result'
+        delta = [('dir1', 'dir2', b'dir-id', dir2)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         # The file should be accessible under the new path
-        self.assertEqual('file-id', res_inv.path2id('dir2/name'))
+        self.assertEqual(b'file-id', res_inv.path2id('dir2/name'))
 
     def test_renamed_dir_with_renamed_child(self):
         inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory('dir-id', 'dir1', inv.root.file_id)
-        dir1.revision = 'basis'
-        file1 = self.make_file_ie('file-id-1', 'name1', parent_id='dir-id')
-        file2 = self.make_file_ie('file-id-2', 'name2', parent_id='dir-id')
+        dir1 = inventory.InventoryDirectory(b'dir-id', 'dir1', inv.root.file_id)
+        dir1.revision = b'basis'
+        file1 = self.make_file_ie(b'file-id-1', 'name1', parent_id=b'dir-id')
+        file2 = self.make_file_ie(b'file-id-2', 'name2', parent_id=b'dir-id')
         inv.add(dir1)
         inv.add(file1)
         inv.add(file2)
-        dir2 = inventory.InventoryDirectory('dir-id', 'dir2', inv.root.file_id)
-        dir2.revision = 'result'
-        file2b = self.make_file_ie('file-id-2', 'name2', inv.root.file_id)
-        delta = [('dir1', 'dir2', 'dir-id', dir2),
-                 ('dir1/name2', 'name2', 'file-id-2', file2b)]
+        dir2 = inventory.InventoryDirectory(b'dir-id', 'dir2', inv.root.file_id)
+        dir2.revision = b'result'
+        file2b = self.make_file_ie(b'file-id-2', 'name2', inv.root.file_id)
+        delta = [('dir1', 'dir2', b'dir-id', dir2),
+                 ('dir1/name2', 'name2', b'file-id-2', file2b)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         # The file should be accessible under the new path
-        self.assertEqual('file-id-1', res_inv.path2id('dir2/name1'))
+        self.assertEqual(b'file-id-1', res_inv.path2id('dir2/name1'))
         self.assertEqual(None, res_inv.path2id('dir2/name2'))
-        self.assertEqual('file-id-2', res_inv.path2id('name2'))
+        self.assertEqual(b'file-id-2', res_inv.path2id('name2'))
 
     def test_is_root(self):
         """Ensure our root-checking code is accurate."""
@@ -1218,62 +1218,62 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test_file_entry_to_bytes(self):
         inv = CHKInventory(None)
-        ie = inventory.InventoryFile('file-id', 'filename', 'parent-id')
+        ie = inventory.InventoryFile(b'file-id', 'filename', 'parent-id')
         ie.executable = True
-        ie.revision = 'file-rev-id'
+        ie.revision = b'file-rev-id'
         ie.text_sha1 = 'abcdefgh'
         ie.text_size = 100
         bytes = inv._entry_to_bytes(ie)
-        self.assertEqual('file: file-id\nparent-id\nfilename\n'
-                         'file-rev-id\nabcdefgh\n100\nY', bytes)
+        self.assertEqual(b'file: file-id\nparent-id\nfilename\n'
+                         b'file-rev-id\nabcdefgh\n100\nY', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, unicode)
-        self.assertEqual(('filename', 'file-id', 'file-rev-id'),
+        self.assertEqual(('filename', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_file2_entry_to_bytes(self):
         inv = CHKInventory(None)
         # \u30a9 == 'omega'
-        ie = inventory.InventoryFile('file-id', u'\u03a9name', 'parent-id')
+        ie = inventory.InventoryFile(b'file-id', u'\u03a9name', b'parent-id')
         ie.executable = False
-        ie.revision = 'file-rev-id'
+        ie.revision = b'file-rev-id'
         ie.text_sha1 = '123456'
         ie.text_size = 25
         bytes = inv._entry_to_bytes(ie)
-        self.assertEqual('file: file-id\nparent-id\n\xce\xa9name\n'
-                         'file-rev-id\n123456\n25\nN', bytes)
+        self.assertEqual(b'file: file-id\nparent-id\n\xce\xa9name\n'
+                         b'file-rev-id\n123456\n25\nN', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, unicode)
-        self.assertEqual(('\xce\xa9name', 'file-id', 'file-rev-id'),
+        self.assertEqual((b'\xce\xa9name', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_dir_entry_to_bytes(self):
         inv = CHKInventory(None)
-        ie = inventory.InventoryDirectory('dir-id', 'dirname', 'parent-id')
-        ie.revision = 'dir-rev-id'
+        ie = inventory.InventoryDirectory(b'dir-id', 'dirname', b'parent-id')
+        ie.revision = b'dir-rev-id'
         bytes = inv._entry_to_bytes(ie)
-        self.assertEqual('dir: dir-id\nparent-id\ndirname\ndir-rev-id', bytes)
+        self.assertEqual(b'dir: dir-id\nparent-id\ndirname\ndir-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, unicode)
-        self.assertEqual(('dirname', 'dir-id', 'dir-rev-id'),
+        self.assertEqual(('dirname', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_dir2_entry_to_bytes(self):
         inv = CHKInventory(None)
-        ie = inventory.InventoryDirectory('dir-id', u'dir\u03a9name',
+        ie = inventory.InventoryDirectory(b'dir-id', u'dir\u03a9name',
                                           None)
-        ie.revision = 'dir-rev-id'
+        ie.revision = b'dir-rev-id'
         bytes = inv._entry_to_bytes(ie)
-        self.assertEqual('dir: dir-id\n\ndir\xce\xa9name\n'
-                         'dir-rev-id', bytes)
+        self.assertEqual(b'dir: dir-id\n\ndir\xce\xa9name\n'
+                         b'dir-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, unicode)
         self.assertIs(ie2.parent_id, None)
-        self.assertEqual(('dir\xce\xa9name', 'dir-id', 'dir-rev-id'),
+        self.assertEqual(('dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_symlink_entry_to_bytes(self):
@@ -1311,7 +1311,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie = inventory.TreeReference('tree-root-id', u'tree\u03a9name',
                                      'parent-id')
         ie.revision = 'tree-rev-id'
-        ie.reference_revision = 'ref-rev-id'
+        ie.reference_revision = b'ref-rev-id'
         bytes = inv._entry_to_bytes(ie)
         self.assertEqual('tree: tree-root-id\nparent-id\ntree\xce\xa9name\n'
                          'tree-rev-id\nref-rev-id', bytes)

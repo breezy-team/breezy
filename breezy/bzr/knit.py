@@ -1044,7 +1044,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # Note: line_bytes is not modified to add a newline, that is tracked
         #       via the no_eol flag. 'lines' *is* modified, because that is the
         #       general values needed by the Content code.
-        if line_bytes and line_bytes[-1] != '\n':
+        if line_bytes and not line_bytes.endswith(b'\n'):
             options.append('no-eol')
             no_eol = True
             # Copy the existing list, or create a new one
@@ -1053,7 +1053,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             else:
                 lines = lines[:]
             # Replace the last line with one that ends in a final newline
-            lines[-1] = lines[-1] + '\n'
+            lines[-1] = lines[-1] + b'\n'
         if lines is None:
             lines = osutils.split_lines(line_bytes)
 
@@ -1090,7 +1090,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # _record_to_data.
                 dense_lines = [line_bytes]
                 if no_eol:
-                    dense_lines.append('\n')
+                    dense_lines.append(b'\n')
                 size, data = self._record_to_data(key, digest,
                     lines, dense_lines)
             else:
@@ -1946,26 +1946,25 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = gzip.GzipFile(mode='rb', fileobj=BytesIO(data))
-        try:
-            record_contents = df.readlines()
-        except Exception as e:
-            raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
-                (data, e.__class__.__name__, str(e)))
-        header = record_contents.pop(0)
-        rec = self._split_header(header)
-        last_line = record_contents.pop()
-        if len(record_contents) != int(rec[2]):
-            raise KnitCorrupt(self,
-                              'incorrect number of lines %s != %s'
-                              ' for version {%s} %s'
-                              % (len(record_contents), int(rec[2]),
-                                 rec[1], record_contents))
-        if last_line != 'end %s\n' % rec[1]:
-            raise KnitCorrupt(self,
-                              'unexpected version end line %r, wanted %r'
-                              % (last_line, rec[1]))
-        df.close()
+        with gzip.GzipFile(mode='rb', fileobj=BytesIO(data)) as df:
+            try:
+                record_contents = df.readlines()
+            except Exception as e:
+                raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
+                    (data, e.__class__.__name__, str(e)))
+            header = record_contents.pop(0)
+            rec = self._split_header(header)
+            last_line = record_contents.pop()
+            if len(record_contents) != int(rec[2]):
+                raise KnitCorrupt(self,
+                                  'incorrect number of lines %s != %s'
+                                  ' for version {%s} %s'
+                                  % (len(record_contents), int(rec[2]),
+                                     rec[1], record_contents))
+            if last_line != b'end %s\n' % rec[1]:
+                raise KnitCorrupt(self,
+                                  'unexpected version end line %r, wanted %r'
+                                  % (last_line, rec[1]))
         return rec, record_contents
 
     def _read_records_iter(self, records):
@@ -2044,14 +2043,14 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             this function spends less time resizing the final string.
         :return: (len, a BytesIO instance with the raw data ready to read.)
         """
-        chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
+        chunks = [b"version %s %d %s\n" % (key[-1], len(lines), digest)]
         chunks.extend(dense_lines or lines)
-        chunks.append("end %s\n" % key[-1])
+        chunks.append(b"end " + key[-1] + b"\n")
         for chunk in chunks:
-            if not isinstance(chunk, str):
+            if not isinstance(chunk, bytes):
                 raise AssertionError(
                     'data must be plain bytes was %s' % type(chunk))
-        if lines and lines[-1][-1] != '\n':
+        if lines and not lines[-1].endswith(b'\n'):
             raise ValueError('corrupt lines value %r' % lines)
         compressed_bytes = b''.join(tuned_gzip.chunks_to_gzip(chunks))
         return len(compressed_bytes), compressed_bytes
@@ -3215,7 +3214,7 @@ class _KnitKeyAccess(object):
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
-        if not isinstance(raw_data, str):
+        if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []

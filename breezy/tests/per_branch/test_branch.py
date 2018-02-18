@@ -423,7 +423,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
-        self.assertEqual('null:', checkout_b.last_revision())
+        self.assertEqual(b'null:', checkout_b.last_revision())
         rev1 = checkout_b.commit('rev1')
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)

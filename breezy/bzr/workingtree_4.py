@@ -1379,14 +1379,11 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         """See dirstate.SHA1Provider.stat_and_sha1()."""
         filters = self.tree._content_filter_stack(
             self.tree.relpath(osutils.safe_unicode(abspath)))
-        file_obj = file(abspath, 'rb', 65000)
-        try:
+        with file(abspath, 'rb', 65000) as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
                 file_obj = _mod_filters.filtered_input_file(file_obj, filters)
             sha1 = osutils.size_sha_file(file_obj)[1]
-        finally:
-            file_obj.close()
         return statvalue, sha1
 
 

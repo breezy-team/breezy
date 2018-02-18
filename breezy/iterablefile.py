@@ -132,6 +132,12 @@ class IterableFile(object):
 
     closed = property(lambda x: x._closed)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close()
+
     def flush(self):
         """No-op for standard compliance.
         >>> f = IterableFile([])

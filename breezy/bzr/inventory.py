@@ -676,7 +676,7 @@ class CommonInventory(object):
                 return
             from_dir = self.root
             yield '', self.root
-        elif isinstance(from_dir, (str, text_type)):
+        elif isinstance(from_dir, bytes):
             from_dir = self[from_dir]
 
         # unrolling the recursive called changed the time from

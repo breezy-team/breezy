@@ -470,7 +470,7 @@ class VersionedFile(object):
     def _check_lines_are_lines(self, lines):
         """Check that the lines really are full lines without inline EOL."""
         for line in lines:
-            if '\n' in line[:-1]:
+            if b'\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
     def get_format_signature(self):

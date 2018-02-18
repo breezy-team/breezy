@@ -261,13 +261,10 @@ class PythonVersionInfoTests(VersionInfoTestCase):
 
     def regen(self, wt, **kwargs):
         """Create a test module, import and return it"""
-        outf = open('test_version_information.py', 'wb')
-        try:
+        with open('test_version_information.py', 'wb') as outf:
             builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
                                                **kwargs)
             builder.generate(outf)
-        finally:
-            outf.close()
         import imp
         module_info = imp.find_module('test_version_information',
                                       [self.test_dir])

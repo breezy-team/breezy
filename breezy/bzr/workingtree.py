@@ -276,11 +276,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
         self._inventory_is_modified = False
-        f = self._transport.get('inventory')
-        try:
+        with self._transport.get('inventory') as f:
             result = self._deserialize(f)
-        finally:
-            f.close()
         self._set_inventory(result, dirty=False)
 
     def store_uncommitted(self):
@@ -570,11 +567,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file(breezy.IGNORE_FILENAME)
-            try:
+            with self.get_file(breezy.IGNORE_FILENAME) as f:
                 ignore_globs.update(ignores.parse_ignore_file(f))
-            finally:
-                f.close()
         self._ignoreset = ignore_globs
         return ignore_globs
 
@@ -619,11 +613,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             if self._inventory_is_modified:
                 raise errors.InventoryModified(self)
-            f = self._transport.get('inventory')
-            try:
+            with self._transport.get('inventory') as f:
                 result = self._deserialize(f)
-            finally:
-                f.close()
             self._set_inventory(result, dirty=False)
             return result
 

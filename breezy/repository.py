@@ -1176,7 +1176,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # weave repositories refuse to store revisionids that are non-ascii.
         if revision_id is not None:
             # weaves require ascii revision ids.
-            if isinstance(revision_id, unicode):
+            if isinstance(revision_id, text_type):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
