@@ -818,9 +818,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         if from_dir is None:
             from_dir = ""
         dir_ids = {}
-        fk_entries = {'directory': workingtree.TreeDirectory,
-                      'file': workingtree.TreeFile,
-                      'symlink': workingtree.TreeLink}
+        fk_entries = {'directory': tree.TreeDirectory,
+                      'file': tree.TreeFile,
+                      'symlink': tree.TreeLink}
         with self.lock_read():
             root_ie = self._get_dir_ie(u"", None)
             if include_root and not from_dir:
