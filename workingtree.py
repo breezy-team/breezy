@@ -833,14 +833,16 @@ class GitWorkingTree(workingtree.WorkingTree):
                 path = path.decode("utf-8")
                 parent, name = posixpath.split(path)
                 for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
-                    yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
+                    if from_dir and (not osutils.is_inside(from_dir, dir_path) or from_dir == dir_path):
+                        continue
+                    yield posixpath.relpath(dir_path, from_dir or ''), "V", dir_ie.kind, dir_ie.file_id, dir_ie
                 if value is not None:
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                    yield path, "V", ie.kind, ie.file_id, ie
+                    yield posixpath.relpath(path, from_dir or ''), "V", ie.kind, ie.file_id, ie
                 else:
                     kind = osutils.file_kind(self.abspath(path))
                     ie = fk_entries[kind]()
-                    yield path, ("I" if self.is_ignored(path) else "?"), kind, None, ie
+                    yield posixpath.relpath(path, from_dir or ''), ("I" if self.is_ignored(path) else "?"), kind, None, ie
 
     def all_file_ids(self):
         with self.lock_read():
