@@ -289,7 +289,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.get_file_revision(u''))
         if tree.branch.repository.supports_rich_root():
-            self.assertEqual(rev1,tree2.get_file_revision(u''))
+            self.assertEqual(rev1, tree2.get_file_revision(u''))
         else:
             self.assertEqual(rev2, tree2.get_file_revision(u''))
 

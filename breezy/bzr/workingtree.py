@@ -841,7 +841,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         parent_tree.get_file_revision(parent_path, file_id))
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
-            graph = _mod_graph.Graph(self.branch.repository.texts)
+            graph = self.branch.repository.get_file_graph()
             heads = graph.heads(maybe_file_parent_keys)
             file_parent_keys = []
             for key in maybe_file_parent_keys:
@@ -851,7 +851,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # Now we have the parents of this content
             annotator = self.branch.repository.texts.get_annotator()
             text = self.get_file_text(path, file_id)
-            this_key =(file_id, default_revision)
+            this_key = (file_id, default_revision)
             annotator.add_special_text(this_key, file_parent_keys, text)
             annotations = [(key[-1], line)
                            for key, line in annotator.annotate_flat(this_key)]

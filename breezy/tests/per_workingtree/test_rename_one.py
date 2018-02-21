@@ -225,8 +225,13 @@ class TestRenameOne(TestCaseWithWorkingTree):
         root_id = tree.get_root_id()
         os.rename('a', 'b/foo')
 
-        self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
-                              tree)
+        if tree.has_versioned_directories():
+            self.assertTreeLayout([('', root_id), ('a', a_id), ('b/', b_id)],
+                                  tree)
+        else:
+            self.assertTreeLayout([('', root_id), ('a', a_id)],
+                                  tree)
+
         # Passing after=True should work as well
         tree.rename_one('a', 'b/foo', after=True)
         self.assertTreeLayout([('', root_id), ('b/', b_id),
@@ -392,11 +397,11 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(['a', 'a/b', 'c'])
         a_id = tree.path2id('a')
         b_id = tree.path2id('a/b')
-        c_id = tree.path2id('c')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'c/foo')
+        c_id = tree.path2id('c')
         self.assertTreeLayout([('', root_id), ('a/', a_id), ('c/', c_id),
                                ('c/foo', b_id)], tree)
         self.assertTreeLayout([('', root_id), ('a/', a_id), ('c/', c_id),
@@ -434,10 +439,13 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7/"])
         tree.add(["a"])
-        e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.rename_one, "a", u"\xA7/a")
-        self.assertIsInstance(e.extra, errors.NotVersionedError)
-        self.assertEqual(e.extra.path, u"\xA7")
+        if tree.has_versioned_directories():
+            e = self.assertRaises(errors.BzrMoveFailedError,
+                tree.rename_one, "a", u"\xA7/a")
+            self.assertIsInstance(e.extra, errors.NotVersionedError)
+            self.assertEqual(e.extra.path, u"\xA7")
+        else:
+            tree.rename_one("a", u"\xA7/a")
 
     def test_rename_over_already_versioned_non_ascii(self):
         """Check error renaming over an already versioned non-ascii file"""
