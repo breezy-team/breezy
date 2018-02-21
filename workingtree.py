@@ -90,6 +90,22 @@ from .mapping import (
 IGNORE_FILENAME = ".gitignore"
 
 
+def ensure_normalized_path(path):
+    """Check whether path is normalized.
+
+    :raises InvalidNormalization: When path is not normalized, and cannot be
+        accessed on this platform by the normalized path.
+    :return: The NFC normalised version of path.
+    """
+    norm_path, can_access = osutils.normalized_filename(path)
+    if norm_path != path:
+        if can_access:
+            return norm_path
+        else:
+            raise errors.InvalidNormalization(path)
+    return path
+
+
 class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
@@ -290,6 +306,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             self.store.add_object(blob)
         # Add an entry to the index or update the existing entry
         flags = 0 # FIXME
+        ensure_normalized_path(path)
         encoded_path = path.encode("utf-8")
         self.index[encoded_path] = index_entry_from_stat(
             stat_val, blob.id, flags)
@@ -440,6 +457,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         with self.lock_tree_write():
             for filepath in osutils.canonical_relpaths(self.basedir, file_list):
+                filepath = osutils.normalized_filename(filepath)[0]
                 abspath = self.abspath(filepath)
                 kind = osutils.file_kind(abspath)
                 if kind in ("file", "symlink"):
@@ -511,6 +529,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def rename_one(self, from_rel, to_rel, after=False):
         from_path = from_rel.encode("utf-8")
+        ensure_normalized_path(to_rel)
         to_path = to_rel.encode("utf-8")
         with self.lock_tree_write():
             if not after:
@@ -733,7 +752,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 return osutils.sha_file_by_name(abspath)
             except OSError, (num, msg):
                 if num in (errno.EISDIR, errno.ENOENT):
-                    return None
+                    raise NoSuchFile(path)
                 raise
 
     def revision_tree(self, revid):
@@ -970,14 +989,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             # FIXME:
             return _mod_conflicts.ConflictList()
 
-    def get_canonical_inventory_path(self, path):
-        with self.lock_read():
-            for p in self.index:
-                if p.lower() == path.lower():
-                    return p
-            else:
-                return path
-
     def walkdirs(self, prefix=""):
         if prefix != "":
             prefix += "/"
@@ -1126,6 +1137,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     supports_store_uncommitted = False
 
     supports_leftmost_parent_id_as_ghost = False
+
+    requires_normalized_unicode_filenames = True
 
     @property
     def _matchingcontroldir(self):
