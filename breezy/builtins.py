@@ -4197,7 +4197,10 @@ class cmd_selftest(Command):
         # too heavily. The call should be as early as possible, as
         # error reporting for past duplicate imports won't have useful
         # backtraces.
-        lazy_import.disallow_proxying()
+        if sys.version_info[0] < 3:
+            # TODO(pad.lv/1696545): Allow proxying on Python 3, since
+            # disallowing it currently leads to failures in many places.
+            lazy_import.disallow_proxying()
 
         from . import tests
 
