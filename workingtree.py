@@ -556,21 +556,30 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def path2id(self, path):
         with self.lock_read():
-            encoded_path = path.rstrip('/').encode("utf-8")
-            if self._is_versioned(encoded_path):
-                return self._fileid_map.lookup_file_id(encoded_path)
+            path = path.rstrip('/')
+            if self.is_versioned(path.rstrip('/')):
+                return self._fileid_map.lookup_file_id(path.encode("utf-8"))
             return None
 
-    def _iter_files_recursive(self, from_dir=None):
+    def _iter_files_recursive(self, from_dir=None, include_dirs=False):
         if from_dir is None:
             from_dir = ""
         for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir)):
             dir_relpath = dirpath[len(self.basedir):].strip("/")
             if self.controldir.is_control_filename(dir_relpath):
                 continue
-            for filename in filenames:
-                if not self.mapping.is_special_file(filename):
-                    yield os.path.join(dir_relpath, filename)
+            for name in list(dirnames):
+                if self.controldir.is_control_filename(name):
+                    dirnames.remove(name)
+                    continue
+                relpath = os.path.join(dir_relpath, name)
+                if include_dirs:
+                    yield relpath
+                if not self._has_dir(relpath):
+                    dirnames.remove(name)
+            for name in filenames:
+                if not self.mapping.is_special_file(name):
+                    yield os.path.join(dir_relpath, name)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -632,8 +641,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                 path = self._fileid_map.lookup_path(file_id)
             except ValueError:
                 raise errors.NoSuchId(self, file_id)
-            if self._is_versioned(path):
-                return path.decode("utf-8")
+            path = path.decode('utf-8')
+            if self.is_versioned(path):
+                return path
             raise errors.NoSuchId(self, file_id)
 
     def get_file_mtime(self, path, file_id=None):
@@ -729,12 +739,13 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
-    def _is_versioned(self, path):
-        assert self._lock_mode is not None
-        return (path in self.index or self._has_dir(path))
+    def is_versioned(self, path):
+        with self.lock_read():
+            path = path.rstrip('/').encode('utf-8')
+            return (path in self.index or self._has_dir(path))
 
     def filter_unversioned_files(self, files):
-        return set([p for p in files if not self._is_versioned(p.encode("utf-8"))])
+        return set([p for p in files if not self.is_versioned(p)])
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
@@ -816,7 +827,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 yield "", "V", root_ie.kind, root_ie.file_id, root_ie
             dir_ids[u""] = root_ie.file_id
             if recursive:
-                path_iterator = self._iter_files_recursive(from_dir)
+                path_iterator = sorted(self._iter_files_recursive(from_dir, include_dirs=True))
             else:
                 if from_dir is None:
                     start = self.basedir
@@ -831,18 +842,32 @@ class GitWorkingTree(workingtree.WorkingTree):
                 except KeyError:
                     value = None
                 path = path.decode("utf-8")
+                kind = osutils.file_kind(self.abspath(path))
                 parent, name = posixpath.split(path)
                 for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
-                    if from_dir and (not osutils.is_inside(from_dir, dir_path) or from_dir == dir_path):
-                        continue
-                    yield posixpath.relpath(dir_path, from_dir or ''), "V", dir_ie.kind, dir_ie.file_id, dir_ie
+                    pass
+                if kind == 'directory':
+                    if path != from_dir:
+                        if self._has_dir(path):
+                            ie = self._get_dir_ie(path, self.path2id(path))
+                            status = "V"
+                            file_id = ie.file_id
+                        elif self.is_ignored(path):
+                            status = "I"
+                            ie = fk_entries[kind]()
+                            file_id = None
+                        else:
+                            status = "?"
+                            ie = fk_entries[kind]()
+                            file_id = None
+                        yield posixpath.relpath(path, from_dir), status, kind, file_id, ie
+                    continue
                 if value is not None:
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                    yield posixpath.relpath(path, from_dir or ''), "V", ie.kind, ie.file_id, ie
+                    yield posixpath.relpath(path, from_dir), "V", ie.kind, ie.file_id, ie
                 else:
-                    kind = osutils.file_kind(self.abspath(path))
                     ie = fk_entries[kind]()
-                    yield posixpath.relpath(path, from_dir or ''), ("I" if self.is_ignored(path) else "?"), kind, None, ie
+                    yield posixpath.relpath(path, from_dir), ("I" if self.is_ignored(path) else "?"), kind, None, ie
 
     def all_file_ids(self):
         with self.lock_read():
