@@ -49,6 +49,7 @@ from dulwich.repo import Repo
 
 from .mapping import (
     entry_mode,
+    object_mode,
     fix_person_identifier,
     )
 
@@ -98,7 +99,6 @@ class GitCommitBuilder(CommitBuilder):
             entry = entry_kls(file_id, name[1], parent[1])
             if kind[1] == "file":
                 entry.executable = executable[1]
-                mode = stat.S_IFREG
                 blob = Blob()
                 blob.data = workingtree.get_file_text(path[1], file_id)
                 entry.text_size = len(blob.data)
@@ -106,7 +106,6 @@ class GitCommitBuilder(CommitBuilder):
                 self.store.add_object(blob)
                 sha = blob.id
             elif kind[1] == "symlink":
-                mode = stat.S_IFLNK
                 symlink_target = workingtree.get_symlink_target(path[1], file_id)
                 blob = Blob()
                 blob.data = symlink_target.encode("utf-8")
@@ -114,14 +113,12 @@ class GitCommitBuilder(CommitBuilder):
                 sha = blob.id
                 entry.symlink_target = symlink_target
             elif kind[1] == "tree-reference":
-                mode = S_IFGITLINK
                 sha = treeref_sha1(path[1], file_id)
                 reference_revision = workingtree.get_reference_revision(path[1], file_id)
                 entry.reference_revision = reference_revision
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
-            if executable[1]:
-                mode |= 0111
+            mode = object_mode(kind[1], executable[1])
             self._inv_delta.append((path[0], path[1], file_id, entry))
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
@@ -160,7 +157,7 @@ class GitCommitBuilder(CommitBuilder):
                     self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
                 else:
                     (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), update_index=True)
-                    self._blobs[path.encode("utf-8")] = (sha, mode)
+                    self._blobs[path.encode("utf-8")] = (mode, sha)
         if not self._lossy and self._mapping.BZR_FILE_IDS_FILE is not None:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
