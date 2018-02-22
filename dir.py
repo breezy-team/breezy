@@ -372,11 +372,11 @@ class LocalGitDir(GitDir):
             return refcontents[len(SYMREF):].rstrip("\n")
         return None
 
-    def set_branch_reference(self, target, name=None):
-        if self.control_transport.base != target.controldir.control_transport.base:
-            raise bzr_errors.IncompatibleFormat(target._format, self._format)
+    def set_branch_reference(self, target_branch, name=None):
+        if self.control_transport.base != target_branch.controldir.control_transport.base:
+            raise bzr_errors.IncompatibleFormat(target_branch._format, self._format)
         ref = self._get_selected_ref(name)
-        self._git.refs.set_symbolic_ref(ref, target.ref)
+        self._git.refs.set_symbolic_ref(ref, target_branch.ref)
 
     def get_branch_reference(self, name=None):
         ref = self._get_selected_ref(name)
