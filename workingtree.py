@@ -447,6 +447,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             self._index_add_entry(path, kind)
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
+        if not file_list:
+            file_list = [u'.']
         added = []
         ignored = {}
         user_dirs = []
