@@ -352,7 +352,10 @@ class GitBranch(ForeignBranch):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        return controldir.format_registry.make_controldir("default")
+        if lightweight:
+            return controldir.format_registry.make_controldir("git")
+        else:
+            return controldir.format_registry.make_controldir("default")
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""

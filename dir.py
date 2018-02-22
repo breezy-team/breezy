@@ -373,10 +373,16 @@ class LocalGitDir(GitDir):
         return None
 
     def set_branch_reference(self, target_branch, name=None):
-        if self.control_transport.base != target_branch.controldir.control_transport.base:
-            raise bzr_errors.IncompatibleFormat(target_branch._format, self._format)
         ref = self._get_selected_ref(name)
-        self._git.refs.set_symbolic_ref(ref, target_branch.ref)
+        if self.control_transport.base == target_branch.controldir.control_transport.base:
+            self._git.refs.set_symbolic_ref(ref, target_branch.ref)
+        else:
+            try:
+                target_path = target_branch.controldir.control_transport.local_abspath('.')
+            except bzr_errors.NotLocalUrl:
+                raise bzr_errors.IncompatibleFormat(target_branch._format, self._format)
+            self.control_transport.put_bytes('commondir', target_path.encode('utf-8'))
+            self._git.refs.set_symbolic_ref(ref, target_branch.ref)
 
     def get_branch_reference(self, name=None):
         ref = self._get_selected_ref(name)
