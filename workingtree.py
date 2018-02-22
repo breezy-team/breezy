@@ -344,6 +344,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     del self.index[p]
         else:
             count = 1
+        self._versioned_dirs = None
         return count
 
     def unversion(self, paths, file_ids=None):
@@ -355,6 +356,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 except KeyError:
                     if not self._has_dir(path):
                         raise errors.NoSuchFile(path)
+            self._versioned_dirs = None
             self.flush()
 
     def update_basis_by_delta(self, revid, delta):
@@ -565,6 +567,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             if kind != 'directory':
                 self.index[to_path] = self.index[from_path]
                 del self.index[from_path]
+            self._versioned_dirs = None
             self.flush()
 
     def get_root_id(self):
@@ -754,14 +757,14 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
         with self.lock_read():
-            abspath = self.abspath(path).encode(osutils._fs_enc)
+            if not self.is_versioned(path):
+                raise errors.NoSuchFile(path)
+            abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
             except OSError, (num, msg):
                 if num in (errno.EISDIR, errno.ENOENT):
-                    if self.is_versioned(path):
-                        return None
-                    raise errors.NoSuchFile(path)
+                    return None
                 raise
 
     def revision_tree(self, revid):
@@ -1076,6 +1079,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         for (old_path, new_path, file_id, ie) in changes:
             if old_path is not None:
                 del self.index[old_path.encode('utf-8')]
+                self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
 
