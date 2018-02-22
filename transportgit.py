@@ -49,6 +49,7 @@ from dulwich.repo import (
     InfoRefsContainer,
     RefsContainer,
     BASE_DIRECTORIES,
+    COMMONDIR,
     INDEX_FILENAME,
     OBJECTDIR,
     REFSDIR,
@@ -310,18 +311,29 @@ class TransportRepo(BaseRepo):
             self._controltransport = self.transport
         else:
             self._controltransport = self.transport.clone('.git')
+        commondir = self.get_named_file(COMMONDIR)
+        if commondir is not None:
+            with commondir:
+                commondir = os.path.join(
+                    self.controldir(),
+                    commondir.read().rstrip(b"\r\n").decode(
+                        sys.getfilesystemencoding()))
+                self._commontransport = \
+                    _mod_transport.get_transport_from_path(commondir)
+        else:
+            self._commontransport = self._controltransport
         object_store = TransportObjectStore(
-            self._controltransport.clone(OBJECTDIR))
+            self._commontransport.clone(OBJECTDIR))
         if refs_text is not None:
             refs_container = InfoRefsContainer(StringIO(refs_text))
             try:
-                head = TransportRefsContainer(self._controltransport).read_loose_ref("HEAD")
+                head = TransportRefsContainer(self._commontransport).read_loose_ref("HEAD")
             except KeyError:
                 pass
             else:
                 refs_container._refs["HEAD"] = head
         else:
-            refs_container = TransportRefsContainer(self._controltransport)
+            refs_container = TransportRefsContainer(self._commontransport)
         super(TransportRepo, self).__init__(object_store,
                 refs_container)
 
