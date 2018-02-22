@@ -46,6 +46,7 @@ from dulwich.pack import (
     )
 from dulwich.repo import (
     BaseRepo,
+    InfoRefsContainer,
     RefsContainer,
     BASE_DIRECTORIES,
     INDEX_FILENAME,
@@ -312,7 +313,6 @@ class TransportRepo(BaseRepo):
         object_store = TransportObjectStore(
             self._controltransport.clone(OBJECTDIR))
         if refs_text is not None:
-            from dulwich.repo import InfoRefsContainer # dulwich >= 0.8.2
             refs_container = InfoRefsContainer(StringIO(refs_text))
             try:
                 head = TransportRefsContainer(self._controltransport).read_loose_ref("HEAD")
