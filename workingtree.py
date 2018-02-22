@@ -308,6 +308,10 @@ class GitWorkingTree(workingtree.WorkingTree):
         flags = 0 # FIXME
         ensure_normalized_path(path)
         encoded_path = path.encode("utf-8")
+        if b'\r' in encoded_path or b'\n' in encoded_path:
+            # TODO(jelmer): Why do we need to do this?
+            trace.mutter('ignoring path with invalid newline in it: %r', path)
+            return
         self.index[encoded_path] = index_entry_from_stat(
             stat_val, blob.id, flags)
         if self._versioned_dirs is not None:
