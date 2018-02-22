@@ -485,6 +485,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 else:
                     subtree = False
                 if subtree:
+                    trace.warning('skipping nested tree %r', abs_user_dir)
                     continue
 
                 for name in os.listdir(abs_user_dir):
@@ -752,7 +753,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                 return osutils.sha_file_by_name(abspath)
             except OSError, (num, msg):
                 if num in (errno.EISDIR, errno.ENOENT):
-                    raise NoSuchFile(path)
+                    if self.is_versioned(path):
+                        return None
+                    raise errors.NoSuchFile(path)
                 raise
 
     def revision_tree(self, revid):
