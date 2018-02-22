@@ -510,39 +510,22 @@ class LocalGitBranch(GitBranch):
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
+        t = transport.get_transport(to_location)
+        t.ensure_base()
+        format = self._get_checkout_format(lightweight=lightweight)
+        checkout = format.initialize_on_transport(t)
         if lightweight:
-            t = transport.get_transport(to_location)
-            t.ensure_base()
-            format = self._get_checkout_format(lightweight=True)
-            checkout = format.initialize_on_transport(t)
-            from breezy.bzr.branch import BranchReferenceFormat
-            from_branch = BranchReferenceFormat().initialize(
-                    checkout, target_branch=self)
-            tree = checkout.create_workingtree(revision_id,
-                from_branch=from_branch, hardlink=hardlink)
-            return tree
+            from_branch = checkout.set_branch_reference(target_branch=self)
         else:
-            return self._create_heavyweight_checkout(to_location, revision_id,
-                hardlink)
+            policy = checkout.determine_repository_policy()
+            repo = policy.acquire_repository()[0]
 
-    def _create_heavyweight_checkout(self, to_location, revision_id=None,
-                                     hardlink=False):
-        """Create a new heavyweight checkout of this branch.
-
-        :param to_location: URL of location to create the new checkout in.
-        :param revision_id: Revision that should be the tip of the checkout.
-        :param hardlink: Whether to hardlink
-        :return: WorkingTree object of checkout.
-        """
-        checkout_branch = controldir.ControlDir.create_branch_convenience(
-            to_location, force_new_tree=False,
-            format=self._get_checkout_format(lightweight=False))
-        checkout = checkout_branch.controldir
-        checkout_branch.bind(self)
-        # pull up to the specified revision_id to set the initial
-        # branch tip correctly, and seed it with history.
-        checkout_branch.pull(self, stop_revision=revision_id)
-        return checkout.create_workingtree(revision_id, hardlink=hardlink)
+            checkout_branch = checkout.create_branch()
+            checkout_branch.bind(self)
+            checkout_branch.pull(self, stop_revision=revision_id)
+            from_branch = None
+        return checkout.create_workingtree(revision_id,
+                from_branch=from_branch, hardlink=hardlink)
 
     def fetch(self, from_branch, last_revision=None, limit=None):
         return branch.InterBranch.get(from_branch, self).fetch(
