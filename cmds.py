@@ -359,8 +359,7 @@ class cmd_builddeb(Command):
                 "There are conflicts in the working tree. "
                 "You must resolve these before building.")
 
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             config = debuild_config(tree, working_tree)
             if reuse:
                 note(gettext("Reusing existing build dir"))
@@ -474,8 +473,6 @@ class cmd_builddeb(Command):
                     if not os.path.exists(target_dir):
                         os.makedirs(target_dir)
                     dget_changes(changes_path, target_dir)
-        finally:
-            tree.unlock()
 
 
 class cmd_get_orig_source(Command):
@@ -697,8 +694,7 @@ class cmd_merge_upstream(Command):
             )
 
         tree, _ = WorkingTree.open_containing(directory)
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # Check for uncommitted changes.
             if tree.changes_from(tree.basis_tree()).has_changed():
                 raise BzrCommandError("There are uncommitted changes in the "
@@ -843,8 +839,6 @@ class cmd_merge_upstream(Command):
             self._add_changelog_entry(tree, package, version,
                 distribution_name, changelog)
             run_hook(tree, 'merge-upstream', config)
-        finally:
-            tree.unlock()
         if not need_upstream_tarball:
             note(gettext("An entry for the new upstream version has been "
                  "added to the changelog."))
@@ -935,8 +929,7 @@ class cmd_import_dsc(Command):
         except NotBranchError:
             raise BzrCommandError(gettext(
                 "There is no tree to import the packages in to"))
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             if tree.changes_from(tree.basis_tree()).has_changed():
                 raise BzrCommandError(gettext("There are uncommitted "
                         "changes in the working tree. You must commit "
@@ -991,8 +984,6 @@ class cmd_import_dsc(Command):
                 self.import_many(db, files_list, orig_target)
             finally:
                 shutil.rmtree(tempdir)
-        finally:
-            tree.unlock()
 
 
 class cmd_import_upstream(Command):
@@ -1264,8 +1255,7 @@ class cmd_mark_uploaded(Command):
             find_changelog,
             )
         t = WorkingTree.open_containing('.')[0]
-        t.lock_write()
-        try:
+        with t.lock_write():
             if t.changes_from(t.basis_tree()).has_changed():
               raise BzrCommandError(gettext("There are uncommitted "
                       "changes in the working tree. You must commit "
@@ -1290,8 +1280,6 @@ class cmd_mark_uploaded(Command):
                         "this new version."))
             tag_name = db.tag_version(changelog.version)
             self.outf.write(gettext("Tag '%s' created.\n") % tag_name)
-        finally:
-            t.unlock()
 
 
 class cmd_dh_make(Command):
@@ -1332,11 +1320,8 @@ class cmd_dh_make(Command):
         tree = dh_make.import_upstream(tarball, package_name,
             version.encode("utf-8"))
         if not bzr_only:
-            tree.lock_write()
-            try:
+            with tree.lock_write():
                 dh_make.run_dh_make(tree, package_name, version)
-            finally:
-                tree.unlock()
         note(gettext('Package prepared in %s'),
             urlutils.unescape_for_display(tree.basedir, self.outf.encoding))
 

@@ -120,7 +120,7 @@ def debian_changelog_commit_message(commit, start_message):
     cl_path = "debian/changelog"
     if not commit.work_tree.has_filename(cl_path):
         return start_message
-    if commit.work_tree.path2id(cl_path) is None:
+    if not commit.work_tree.is_versioned(cl_path):
         return start_message
     if cl_path in commit.exclude:
         return start_message
@@ -211,7 +211,7 @@ def debian_tag_name(branch, revid):
 def start_commit_check_quilt(tree):
     """start_commit hook which checks the state of quilt patches.
     """
-    if tree.path2id("debian/patches") is None:
+    if not tree.is_versioned("debian/patches"):
         # No patches to worry about
         return
     from . import util
@@ -233,9 +233,9 @@ def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
 
-    if (merger.other_tree.path2id("debian/patches/series") is None and
-        merger.this_tree.path2id("debian/patches/series") is None and
-        merger.working_tree.path2id("debian/patches/series") is None):
+    if (not merger.other_tree.is_versioned("debian/patches/series") and
+        not merger.this_tree.is_versioned("debian/patches/series") and
+        not merger.working_tree.is_versioned("debian/patches/series")):
         return
 
     from ... import trace
@@ -251,9 +251,9 @@ def pre_merge_quilt(merger):
         trace.mutter("skipping smart quilt merge, not enabled.")
         return
 
-    if (merger.other_tree.path2id(".pc/applied-patches") is None and
-        merger.this_tree.path2id(".pc/applied-patches") is None and
-        merger.working_tree.path2id(".pc/applied-patches") is None):
+    if (not merger.other_tree.is_versioned(".pc/applied-patches") and
+        not merger.this_tree.is_versioned(".pc/applied-patches") and
+        not merger.working_tree.is_versioned(".pc/applied-patches")):
         return
 
     from .errors import QuiltUnapplyError
@@ -329,8 +329,8 @@ def pre_merge_fix_ancestry(merger):
         return
     if getattr(merger, "other_branch", None) is None:
         return
-    if (not merger.this_tree.path2id("debian/changelog") or
-        not merger.other_tree.path2id("debian/changelog")):
+    if (not merger.this_tree.is_versioned("debian/changelog") or
+        not merger.other_tree.is_versioned("debian/changelog")):
         return
     this_config = debuild_config(merger.this_tree, merger.this_tree)
     other_config = debuild_config(merger.other_tree, merger.other_tree)

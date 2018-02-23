@@ -219,8 +219,7 @@ class PristineTarSource(UpstreamSource):
         else:
             base_revid = parent_ids[0]
         basis_tree = tree.branch.repository.revision_tree(base_revid)
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder(
                     parents=parent_ids, revprops=revprops, timestamp=timestamp,
                     timezone=timezone)
@@ -236,8 +235,6 @@ class PristineTarSource(UpstreamSource):
             tag_name, _ = self.tag_version(
                     version, revid=revid, component=component)
             tree.update_basis_by_delta(revid, builder.get_basis_delta())
-        finally:
-            tree.unlock()
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)
@@ -273,13 +270,10 @@ class PristineTarSource(UpstreamSource):
                 for component in components]
 
     def _has_revision(self, revid, md5=None):
-        self.branch.lock_read()
-        try:
+        with self.branch.lock_read():
             graph = self.branch.repository.get_graph()
             if not graph.is_ancestor(revid, self.branch.last_revision()):
                 return False
-        finally:
-            self.branch.unlock()
         if md5 is None:
             return True
         rev = self.branch.repository.get_revision(revid)
@@ -402,13 +396,10 @@ class PristineTarSource(UpstreamSource):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
-            tree.lock_read()
-            try:
+            with tree.lock_read():
                 for (dp, ie) in tree.iter_entries_by_dir():
                     ie._read_tree_state(dp, tree)
                 export(tree, dest, format='dir', subdir=subdir)
-            finally:
-                tree.unlock()
             try:
                 return make_pristine_tar_delta(dest, tarball_path)
             except PristineTarDeltaTooLarge:

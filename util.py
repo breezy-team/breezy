@@ -166,8 +166,7 @@ def find_changelog(t, merge, max_blocks=1):
         merge was given, False otherwise.
     """
     top_level = False
-    t.lock_read()
-    try:
+    with t.lock_read():
         changelog_file = 'debian/changelog'
         if not t.has_filename(changelog_file):
             checked_files = ['debian/changelog']
@@ -188,17 +187,15 @@ def find_changelog(t, merge, max_blocks=1):
             # If it is a "top_level" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
-            if (t.path2id('debian') and
+            if (t.is_versioned('debian') and
                 t.kind('debian') == 'symlink' and
                 t.get_symlink_target('debian') == '.'):
                 changelog_file = 'changelog'
                 top_level = True
         mutter("Using '%s' to get package information", changelog_file)
-        if t.path2id(changelog_file) is None:
+        if not t.is_versioned(changelog_file):
             raise AddChangelogError(changelog_file)
         contents = t.get_file_text(changelog_file)
-    finally:
-       t.unlock()
     changelog = Changelog()
     try:
         changelog.parse_changelog(contents, max_blocks=max_blocks, allow_empty_author=True)
@@ -560,14 +557,14 @@ def debuild_config(tree, working_tree):
     config_files = []
     user_config = None
     if (working_tree and tree.has_filename(new_local_conf)):
-        if tree.path2id(new_local_conf) is None:
+        if not tree.is_versioned(new_local_conf):
             config_files.append((tree.get_file(new_local_conf), True,
                         "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
                     new_local_conf)
     if (working_tree and tree.has_filename(local_conf)):
-        if tree.path2id(local_conf) is None:
+        if not tree.is_versioned(local_conf):
             config_files.append((tree.get_file(local_conf), True,
                         "local.conf"))
         else:
@@ -575,10 +572,10 @@ def debuild_config(tree, working_tree):
                     local_conf)
     config_files.append((global_conf(), True))
     user_config = global_conf()
-    if tree.path2id(new_conf):
+    if tree.is_versioned(new_conf):
         config_files.append((tree.get_file(new_conf), False,
                     "bzr-builddeb.conf"))
-    if tree.path2id(default_conf):
+    if tree.is_versioned(default_conf):
         config_files.append((tree.get_file(default_conf), False,
                     "default.conf"))
     config = DebBuildConfig(config_files, tree=tree)

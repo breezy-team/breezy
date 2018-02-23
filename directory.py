@@ -121,11 +121,8 @@ class VcsDirectory(object):
 def upstream_branch_alias(b):
     from ...directory_service import directories
     from .util import debuild_config
-    b.lock_read()
-    try:
+    with b.lock_read():
         tree = b.basis_tree()
         config = debuild_config(tree, False)
         return directories.dereference(config.upstream_branch)
-    finally:
-        b.unlock()
 

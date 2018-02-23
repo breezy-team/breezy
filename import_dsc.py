@@ -97,11 +97,8 @@ class DscCache(object):
         else:
             # Obtain the dsc file, following any redirects as needed.
             filename, transport = open_transport(name)
-            f1 = open_file_via_transport(filename, transport)
-            try:
+            with open_file_via_transport(filename, transport) as f1:
                 dsc1 = deb822.Dsc(f1)
-            finally:
-                f1.close()
             self.cache[name] = dsc1
             self.transport_cache[name] = transport
 
@@ -297,13 +294,10 @@ class DistributionBranch(object):
         if not branch.tags.has_tag(tag_name):
             return False
         revid = branch.tags.lookup_tag(tag_name)
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             graph = branch.repository.get_graph()
             if not graph.is_ancestor(revid, branch.last_revision()):
                 return False
-        finally:
-            branch.unlock()
         if md5 is None:
             return True
         rev = branch.repository.get_revision(revid)
@@ -443,25 +437,21 @@ class DistributionBranch(object):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name
 
-
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
         for path in ('debian/bzr-builddeb.conf', '.bzr-builddeb/default.conf',):
-            c_fileid = tree.path2id(path)
-            if c_fileid is not None:
+            fileid = tree.path2id(path)
+            if fileid is not None:
                 break
         else:
             return None, None, None
-        tree.lock_read()
-        try:
-            config = ConfigObj(tree.get_file(path, c_fileid))
+        with tree.lock_read():
+            config = ConfigObj(tree.get_file(path))
             try:
                 config['BUILDDEB']
             except KeyError:
                 config['BUILDDEB'] = {}
-        finally:
-            tree.unlock()
-        return c_fileid, path, config
+        return fileid, path, config
 
     def _is_tree_native(self, config):
         if config is not None:
@@ -482,8 +472,8 @@ class DistributionBranch(object):
         """
         revid = self.revid_of_version(version)
         rev_tree = self.branch.repository.revision_tree(revid)
-        (config_fileid, config_path,
-         current_config) = self._default_config_for_tree(rev_tree)
+        (config_fileid, config_path, current_config) = self._default_config_for_tree(
+                rev_tree)
         if self._is_tree_native(current_config):
             return True
         rev = self.branch.repository.get_revision(revid)
@@ -498,14 +488,11 @@ class DistributionBranch(object):
             return False
 
         # Check that they haven't diverged
-        branch.branch.lock_read()
-        try:
+        with branch.branch.lock_read():
             graph = branch.branch.repository.get_graph(
                     self.branch.repository)
             return graph.is_ancestor(self.branch.last_revision(),
                     branch.revid_of_version(version))
-        finally:
-            branch.branch.unlock()
 
 
     def branch_to_pull_version_from(self, version, md5):
@@ -530,8 +517,7 @@ class DistributionBranch(object):
         assert md5 is not None, \
             ("It's not a good idea to use branch_to_pull_version_from with "
              "md5 == None, as you may pull the wrong revision.")
-        self.branch.lock_read()
-        try:
+        with self.branch.lock_read():
             for branch in reversed(self.get_lesser_branches()):
                 if self.can_pull_from_branch(branch, version, md5):
                     return branch
@@ -539,8 +525,6 @@ class DistributionBranch(object):
                 if self.can_pull_from_branch(branch, version, md5):
                     return branch
             return None
-        finally:
-            self.branch.unlock()
 
     def can_pull_upstream_from_branch(self, branch, package, version,
             upstream_tarballs=None):
@@ -556,12 +540,10 @@ class DistributionBranch(object):
             return False
 
         up_branch = self.pristine_upstream_branch
-        up_branch.lock_read()
-        try:
+        with up_branch.lock_read():
             # Check that they haven't diverged
             other_up_branch = branch.pristine_upstream_branch
-            other_up_branch.lock_read()
-            try:
+            with other_up_branch.lock_read():
                 graph = other_up_branch.repository.get_graph(
                         up_branch.repository)
                 pristine_upstream_revids = branch.pristine_upstream_source.version_as_revisions(
@@ -571,10 +553,6 @@ class DistributionBranch(object):
                             pristine_upstream_revid):
                         return False
                 return True
-            finally:
-                other_up_branch.unlock()
-        finally:
-            up_branch.unlock()
 
     def branch_to_pull_upstream_from(self, package, version, upstream_tarballs):
         """Checks whether this upstream is a pull from a lesser branch.
@@ -714,7 +692,7 @@ class DistributionBranch(object):
         self.tag_version(version, revid=pull_revision)
         if not native and not self.pristine_upstream_source.has_version(package, version.upstream_version):
             if pull_branch.pristine_upstream_source.has_version(package, version.upstream_version):
-                self.pull_upstream_from_branch(pull_branch, 
+                self.pull_upstream_from_branch(pull_branch,
                     package, version.upstream_version)
             else:
                 assert False, ("Can't find the needed upstream part "
@@ -724,7 +702,8 @@ class DistributionBranch(object):
             # in case the package wasn't native before then we pull
             # the upstream. These checks may be a bit restrictive.
             self.pristine_upstream_tree.pull(pull_branch.pristine_upstream_branch)
-            pull_branch.pristine_upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
+            pull_branch.pristine_upstream_branch.tags.merge_to(
+                    self.pristine_upstream_branch.tags)
         elif native:
             mutter("Not checking for upstream as it is a native package")
         else:
@@ -833,12 +812,12 @@ class DistributionBranch(object):
                 if revid is None:
                     # FIXME: This is wrong for component tarballs
                     revid = upstream_branch.last_revision()
-                self.pristine_upstream_branch.fetch(upstream_branch,
-                        last_revision=revid)
+                self.pristine_upstream_branch.fetch(
+                        upstream_branch, last_revision=revid)
                 upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
                 parents.append(revid)
                 target_tree = self.pristine_upstream_branch.repository.revision_tree(
-                            revid)
+                        revid)
             if file_ids_from is not None:
                 upstream_trees = file_ids_from + upstream_trees
             if self.tree:
@@ -1295,11 +1274,8 @@ class DistributionBranch(object):
             root_id = self.tree.path2id('')
         else:
             tip = self.branch.basis_tree()
-            tip.lock_read()
-            try:
+            with tip.lock_read():
                 root_id = tip.path2id('')
-            finally:
-                tip.unlock()
         if root_id:
             self.pristine_upstream_tree.set_root_id(root_id)
 

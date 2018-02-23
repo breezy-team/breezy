@@ -104,12 +104,10 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
     t_upstream_reverted = False
     target = tree.branch
 
-    source.lock_read()
-    try:
+    with source.lock_read():
         if source_revid is None:
             source_revid = source.last_revision()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # "Unpack" the upstream versions and revision ids for the merge
             # source and target branch respectively.
             (us_ver, us_revid) = _upstream_version_data(source, source_revid)
@@ -138,8 +136,7 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                 # Merge upstream branch tips to obtain a shared upstream parent.
                 # This will add revision K (see graph above) to a temporary merge
                 # target upstream tree.
-                tmp_target_utree.lock_write()
-                try:
+                with tmp_target_utree.lock_write():
                     if us_ver > ut_ver:
                         # The source upstream tree is more recent and the
                         # temporary target tree needs to be reshaped to match it.
@@ -168,13 +165,7 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     else:
                         tree.commit('Merging shared upstream rev into target branch.')
 
-                finally:
-                    tmp_target_utree.unlock()
             finally:
                 shutil.rmtree(tempdir)
-        finally:
-            tree.unlock()
-    finally:
-        source.unlock()
 
     return (upstreams_diverged, t_upstream_reverted)

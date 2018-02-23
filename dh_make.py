@@ -98,7 +98,7 @@ def run_dh_make(tree, package_name, version):
     if not tree.has_filename("debian"):
         tree.mkdir("debian")
     # FIXME: give a nice error on 'debian is not a directory'
-    if tree.path2id("debian") is None:
+    if not tree.is_versioned("debian"):
         tree.add("debian")
     command = ["dh_make", "--addmissing", "--packagename",
                 "%s_%s" % (package_name, version)]

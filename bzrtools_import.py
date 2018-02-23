@@ -140,7 +140,7 @@ def common_directory(names):
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
-    if isdir(path) and tree.path2id(relative_path) is not None:
+    if isdir(path) and tree.is_versioned(relative_path):
         tt.cancel_deletion(trans_id)
     else:
         tt.create_directory(trans_id)
@@ -333,16 +333,13 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
             if tt.tree_file_id(trans_id) is None:
                 found = False
                 for other_tree in file_ids_from:
-                    other_tree.lock_read()
-                    try:
+                    with other_tree.lock_read():
                         if other_tree.has_filename(relative_path):
                             file_id = other_tree.path2id(relative_path)
                             if file_id is not None:
                                 tt.version_file(file_id, trans_id)
                                 found = True
                                 break
-                    finally:
-                        other_tree.unlock()
                 if not found:
                     # Should this really use the trans_id as the
                     # file_id?
@@ -371,8 +368,7 @@ def do_import(source, tree_directory=None):
             tree = branch.controldir.open_workingtree()
     else:
         tree = WorkingTree.open_containing('.')[0]
-    tree.lock_write()
-    try:
+    with tree.lock_write():
         if tree.changes_from(tree.basis_tree()).has_changed():
             raise BzrCommandError("Working tree has uncommitted changes.")
 
@@ -397,5 +393,3 @@ def do_import(source, tree_directory=None):
             import_dir(tree, s)
         else:
             raise BzrCommandError('Unhandled import source')
-    finally:
-        tree.unlock()
