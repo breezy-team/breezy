@@ -57,7 +57,7 @@ class TestPlanFileMerge(TestCaseWithTree):
         self.build_tree_contents([('wta/file', 'b\nc\nd\ne\n')])
         tree_a = self.workingtree_to_test_tree(work_a)
         if getattr(tree_a, 'plan_file_merge', None) is None:
-            raise TestNotApplicable('Tree does not support plan_file_merge')
+            raise tests.TestNotApplicable('Tree does not support plan_file_merge')
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
         self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
