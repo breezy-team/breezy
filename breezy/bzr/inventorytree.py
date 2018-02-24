@@ -298,6 +298,23 @@ class InventoryTree(Tree):
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
 
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        if getattr(self, '_repository', None) is None:
+            last_revision = tree_revision
+            parent_keys = [(file_id, t.get_file_revision(path, file_id)) for t in
+                self._iter_parent_trees()]
+            vf.add_lines((file_id, last_revision), parent_keys,
+                         self.get_file_lines(path, file_id))
+            repo = self.branch.repository
+            base_vf = repo.texts
+        else:
+            last_revision = self.get_file_revision(path, file_id)
+            base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
+
 
 class MutableInventoryTree(MutableTree, InventoryTree):
 

@@ -476,26 +476,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def plan_file_merge(self, file_id, other, base=None):
-        """Generate a merge plan based on annotations.
-
-        If the file contains uncommitted changes in this tree, they will be
-        attributed to the 'current:' pseudo-revision.  If the file contains
-        uncommitted changes in the other tree, they will be assigned to the
-        'other:' pseudo-revision.
-        """
-        raise NotImplementedError(self.plan_file_merge)
-
-    def plan_file_lca_merge(self, file_id, other, base=None):
-        """Generate a merge plan based lca-newness.
-
-        If the file contains uncommitted changes in this tree, they will be
-        attributed to the 'current:' pseudo-revision.  If the file contains
-        uncommitted changes in the other tree, they will be assigned to the
-        'other:' pseudo-revision.
-        """
-        raise NotImplementedError(self.plan_file_merge)
-
     def _iter_parent_trees(self):
         """Iterate through parent trees, defaulting to Tree.revision_tree."""
         for revision_id in self.get_parent_ids():
@@ -503,23 +483,6 @@ class Tree(object):
                 yield self.revision_tree(revision_id)
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
-
-    def _get_file_revision(self, path, file_id, vf, tree_revision):
-        """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        if getattr(self, '_repository', None) is None:
-            last_revision = tree_revision
-            parent_keys = [(file_id, t.get_file_revision(path, file_id)) for t in
-                self._iter_parent_trees()]
-            vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file_lines(path, file_id))
-            repo = self.branch.repository
-            base_vf = repo.texts
-        else:
-            last_revision = self.get_file_revision(path, file_id)
-            base_vf = self._repository.texts
-        if base_vf not in vf.fallback_versionedfiles:
-            vf.fallback_versionedfiles.append(base_vf)
-        return last_revision
 
     def _check_retrieved(self, ie, f):
         if not __debug__:
