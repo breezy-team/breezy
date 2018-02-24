@@ -165,7 +165,7 @@ class GitDir(ControlDir):
 
         if revision_id is not None:
             determine_wants = interrepo.get_determine_wants_revids(
-                [revision_id], include_tags=False)
+                [revision_id], include_tags=True)
         else:
             determine_wants = interrepo.determine_wants_all
         interrepo.fetch_objects(determine_wants=determine_wants,
