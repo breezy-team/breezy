@@ -195,7 +195,11 @@ class GitDir(ControlDir):
             format = BareLocalGitControlDirFormat()
         else:
             format = LocalGitControlDirFormat()
-        (target_repo, target_controldir, stacking, repo_policy) = format.initialize_on_transport_ex(transport, use_existing_dir=use_existing_dir, create_prefix=create_prefix, force_new_repo=force_new_repo)
+        (target_repo, target_controldir, stacking,
+                repo_policy) = format.initialize_on_transport_ex(
+                        transport, use_existing_dir=use_existing_dir,
+                        create_prefix=create_prefix,
+                        force_new_repo=force_new_repo)
         target_git_repo = target_repo._git
         source_repo = self.open_repository()
         source_git_repo = source_repo._git
@@ -206,6 +210,10 @@ class GitDir(ControlDir):
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
             mapping=default_mapping)
+        if revision_id is not None:
+            ref_chain, unused_sha = self._git.refs.follow(self._get_selected_ref(None))
+            foreign_revid = source_repo.lookup_bzr_revision_id(revision_id)[0]
+            refs[ref_chain[-1]] = foreign_revid
         for name, val in refs.iteritems():
             target_git_repo.refs[name] = val
         return self.__class__(transport, target_git_repo, format)
