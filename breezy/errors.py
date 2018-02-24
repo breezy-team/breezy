@@ -245,15 +245,6 @@ class NoSuchId(BzrError):
         self.tree = tree
 
 
-class NoSuchIdInRepository(NoSuchId):
-
-    _fmt = ('The file id "%(file_id)s" is not present in the repository'
-            ' %(repository)r')
-
-    def __init__(self, repository, file_id):
-        BzrError.__init__(self, repository=repository, file_id=file_id)
-
-
 class NotStacked(BranchError):
 
     _fmt = "The branch '%(branch)s' is not stacked."
