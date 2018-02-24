@@ -105,9 +105,7 @@ class VersionedFileCheck(Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        self.repository.lock_read()
-        self.progress = ui.ui_factory.nested_progress_bar()
-        try:
+        with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
             self.progress.update(gettext('check'), 0, 4)
             if self.check_repo:
                 self.progress.update(gettext('checking revisions'), 0)
@@ -160,9 +158,6 @@ class VersionedFileCheck(Check):
                         item._check(refs)
                     if isinstance(item, Branch):
                         self.other_results.append(item.check(refs))
-        finally:
-            self.progress.finished()
-            self.repository.unlock()
 
     def _check_revisions(self, revisions_iterator):
         """Check revision objects by decorating a generator.
@@ -307,11 +302,8 @@ class VersionedFileCheck(Check):
         """Check all the weaves we can get our hands on.
         """
         weave_ids = []
-        storebar = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as storebar:
             self._check_weaves(storebar)
-        finally:
-            storebar.finished()
 
     def _check_weaves(self, storebar):
         storebar.update('text-index', 0, 2)

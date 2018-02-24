@@ -732,20 +732,19 @@ class _ByteStreamDecoder(object):
                 yield record
 
         self.seed_state()
-        pb = ui.ui_factory.nested_progress_bar()
-        rc = self._record_counter
-        try:
-            # Make and consume sub generators, one per substream type:
-            while self.first_bytes is not None:
-                substream = NetworkRecordStream(self.iter_substream_bytes())
-                # after substream is fully consumed, self.current_type is set
-                # to the next type, and self.first_bytes is set to the matching
-                # bytes.
-                yield self.current_type, wrap_and_count(pb, rc, substream)
-        finally:
-            if rc:
-                pb.update('Done', rc.max, rc.max)
-            pb.finished()
+        with ui.ui_factory.nested_progress_bar() as pb:
+            rc = self._record_counter
+            try:
+                # Make and consume sub generators, one per substream type:
+                while self.first_bytes is not None:
+                    substream = NetworkRecordStream(self.iter_substream_bytes())
+                    # after substream is fully consumed, self.current_type is set
+                    # to the next type, and self.first_bytes is set to the matching
+                    # bytes.
+                    yield self.current_type, wrap_and_count(pb, rc, substream)
+            finally:
+                if rc:
+                    pb.update('Done', rc.max, rc.max)
 
     def seed_state(self):
         """Prepare the _ByteStreamDecoder to decode from the pack stream."""

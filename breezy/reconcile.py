@@ -76,11 +76,8 @@ class Reconciler(object):
           branch history was correct, True if the branch history needed to be
           re-normalized.
         """
-        self.pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as self.pb:
             self._reconcile()
-        finally:
-            self.pb.finished()
 
     def _reconcile(self):
         """Helper function for performing reconciliation."""
