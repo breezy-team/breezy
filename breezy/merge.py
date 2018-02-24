@@ -1754,11 +1754,8 @@ class Diff3Merger(Merge3Merger):
             status = breezy.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
                 raise errors.BzrError("Unhandled diff3 exit code")
-            f = open(new_file, 'rb')
-            try:
+            with open(new_file, 'rb') as f:
                 self.tt.create_file(f, trans_id)
-            finally:
-                f.close()
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
