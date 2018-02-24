@@ -39,6 +39,11 @@ from ...controldir import (
     RepositoryAcquisitionPolicy,
     )
 
+from .transportgit import (
+    OBJECTDIR,
+    TransportObjectStore,
+    )
+
 
 class GitDirConfig(object):
 
@@ -382,6 +387,10 @@ class LocalGitDir(GitDir):
             except bzr_errors.NotLocalUrl:
                 raise bzr_errors.IncompatibleFormat(target_branch._format, self._format)
             self.control_transport.put_bytes('commondir', target_path.encode('utf-8'))
+            # TODO(jelmer): Urgh, avoid mucking about with internals.
+            self._git._commontransport = target_branch.repository._git._commontransport.clone()
+            self._git.object_store = TransportObjectStore(self._git._commontransport.clone(OBJECTDIR))
+            self._git.refs.transport = self._git._commontransport
             self._git.refs.set_symbolic_ref(ref, target_branch.ref)
 
     def get_branch_reference(self, name=None):
