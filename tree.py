@@ -19,7 +19,10 @@
 
 from __future__ import absolute_import
 
-from dulwich.object_store import tree_lookup_path
+from dulwich.object_store import (
+    tree_lookup_path,
+    OverlayObjectStore,
+    )
 import stat
 import posixpath
 
@@ -471,7 +474,10 @@ class InterGitRevisionTrees(InterGitTrees):
 
     def _iter_git_changes(self, want_unchanged=False):
         if self.source._repository._git.object_store != self.target._repository._git.object_store:
-            raise AssertionError
+            store = OverlayObjectStore([self.source._repository._git.object_store,
+                                        self.target._repository._git.object_store])
+        else:
+            store = self.source._repository._git.object_store
         return self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged,
             include_trees=True)
