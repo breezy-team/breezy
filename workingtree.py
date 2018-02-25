@@ -454,6 +454,13 @@ class GitWorkingTree(workingtree.WorkingTree):
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         if not file_list:
             file_list = [u'.']
+
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        # only expanding if symlinks are supported avoids windows path bugs
+        if osutils.has_symlinks():
+            file_list = list(map(osutils.normalizepath, file_list))
+
         added = []
         ignored = {}
         user_dirs = []
