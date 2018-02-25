@@ -208,7 +208,10 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.set_parent_ids([p for p, t in parents_list])
 
     def _set_merges_from_parent_ids(self, parent_ids):
-        merges = parent_ids[1:]
+        try:
+            merges = [self.branch.lookup_bzr_revision_id(revid)[0] for revid in parent_ids[1:]]
+        except errors.NoSuchRevision as e:
+            raise errors.GhostRevisionUnusableHere(e.revision)
         self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
             mode=self.controldir._get_file_mode())
 
@@ -257,7 +260,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             for l in osutils.split_lines(merges_bytes):
                 revision_id = l.rstrip('\n')
-                parents.append(revision_id)
+                parents.append(self.branch.lookup_foreign_revision_id(revision_id))
         return parents
 
     def iter_children(self, file_id):
@@ -451,6 +454,13 @@ class GitWorkingTree(workingtree.WorkingTree):
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         if not file_list:
             file_list = [u'.']
+
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        # only expanding if symlinks are supported avoids windows path bugs
+        if osutils.has_symlinks():
+            file_list = list(map(osutils.normalizepath, file_list))
+
         added = []
         ignored = {}
         user_dirs = []
@@ -1150,6 +1160,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     supports_store_uncommitted = False
 
     supports_leftmost_parent_id_as_ghost = False
+
+    supports_righthand_parent_id_as_ghost = False
 
     requires_normalized_unicode_filenames = True
 
