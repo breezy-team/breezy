@@ -359,19 +359,23 @@ class TestMove(TestCaseWithWorkingTree):
     def test_move_directory(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c/', 'a/c/d', 'e/'])
-        tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'],
-                 ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
+        tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('a/c/d')
+        e_id = tree.path2id('e')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('a', 'e/a')],
             tree.move(['a'], 'e'))
-        self.assertTreeLayout([('', root_id), ('e/', 'e-id'), ('e/a/', 'a-id'),
-                               ('e/a/b', 'b-id'), ('e/a/c/', 'c-id'),
-                               ('e/a/c/d', 'd-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('e/', 'e-id'),
-                               ('a/b', 'b-id'), ('a/c/', 'c-id'),
-                               ('a/c/d', 'd-id')], tree.basis_tree())
+        self.assertTreeLayout([('', root_id), ('e/', e_id), ('e/a/', a_id),
+                               ('e/a/b', b_id), ('e/a/c/', c_id),
+                               ('e/a/c/d', d_id)], tree)
+        self.assertTreeLayout([('', root_id), ('a/', a_id), ('e/', e_id),
+                               ('a/b', b_id), ('a/c/', c_id),
+                               ('a/c/d', d_id)], tree.basis_tree())
         tree._validate()
 
     def test_move_directory_into_parent(self):
@@ -380,50 +384,57 @@ class TestMove(TestCaseWithWorkingTree):
                 "test requires versioned directories")
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c/', 'c/b/', 'c/b/d/'])
-        tree.add(['c', 'c/b', 'c/b/d'],
-                 ['c-id', 'b-id', 'd-id'])
+        tree.add(['c', 'c/b', 'c/b/d'])
+        c_id = tree.path2id('c')
+        b_id = tree.path2id('c/b')
+        d_id = tree.path2id('c/b/d')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('c/b', 'b')],
                          tree.move(['c/b'], ''))
         self.assertTreeLayout([('', root_id),
-                               ('b/', 'b-id'),
-                               ('c/', 'c-id'),
-                               ('b/d/', 'd-id'),
+                               ('b/', b_id),
+                               ('c/', c_id),
+                               ('b/d/', d_id),
                               ], tree)
         tree._validate()
 
     def test_move_directory_with_children_in_subdir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c/', 'd/'])
-        tree.add(['a', 'a/b', 'a/c', 'd'],
-                 ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree.add(['a', 'a/b', 'a/c', 'd'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('d')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'a/c/b')
         self.assertTreeLayout([('', root_id),
-                               ('a/', 'a-id'),
-                               ('d/', 'd-id'),
-                               ('a/c/', 'c-id'),
-                               ('a/c/b', 'b-id'),
+                               ('a/', a_id),
+                               ('d/', d_id),
+                               ('a/c/', c_id),
+                               ('a/c/b', b_id),
                               ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),
-                               ('d/', 'd-id'),
-                               ('d/a/', 'a-id'),
-                               ('d/a/c/', 'c-id'),
-                               ('d/a/c/b', 'b-id'),
+                               ('d/', d_id),
+                               ('d/a/', a_id),
+                               ('d/a/c/', c_id),
+                               ('d/a/c/b', b_id),
                               ], tree)
         tree._validate()
 
     def test_move_directory_with_deleted_children(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d', 'b/'])
-        tree.add(['a', 'b', 'a/b', 'a/c', 'a/d'],
-                 ['a-id', 'b-id', 'ab-id', 'ac-id', 'ad-id'])
+        tree.add(['a', 'b', 'a/b', 'a/c', 'a/d'])
+        a_id = tree.path2id('a')
+        ac_id = tree.path2id('a/c')
+        b_id = tree.path2id('b')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
@@ -432,9 +443,9 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('a', 'b/a')],
                          tree.move(['a'], 'b'))
         self.assertTreeLayout([('', root_id),
-                               ('b/', 'b-id'),
-                               ('b/a/', 'a-id'),
-                               ('b/a/c', 'ac-id'),
+                               ('b/', b_id),
+                               ('b/a/', a_id),
+                               ('b/a/c', ac_id),
                               ], tree)
         tree._validate()
 
@@ -466,70 +477,81 @@ class TestMove(TestCaseWithWorkingTree):
     def test_move_directory_with_moved_children(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c', 'd', 'e/'])
-        tree.add(['a', 'a/b', 'a/c', 'd', 'e'],
-                 ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
+        tree.add(['a', 'a/b', 'a/c', 'd', 'e'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('d')
+        e_id = tree.path2id('e')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         self.assertEqual([('a/b', 'b')],
                          tree.move(['a/b'], ''))
         self.assertTreeLayout([('', root_id),
-                               ('a/', 'a-id'),
-                               ('b', 'b-id'),
-                               ('d', 'd-id'),
-                               ('e/', 'e-id'),
-                               ('a/c', 'c-id'),
+                               ('a/', a_id),
+                               ('b', b_id),
+                               ('d', d_id),
+                               ('e/', e_id),
+                               ('a/c', c_id),
                               ], tree)
         self.assertEqual([('d', 'a/d')],
                          tree.move(['d'], 'a'))
         self.assertTreeLayout([('', root_id),
-                               ('a/', 'a-id'),
-                               ('b', 'b-id'),
-                               ('e/', 'e-id'),
-                               ('a/c', 'c-id'),
-                               ('a/d', 'd-id'),
+                               ('a/', a_id),
+                               ('b', b_id),
+                               ('e/', e_id),
+                               ('a/c', c_id),
+                               ('a/d', d_id),
                               ], tree)
         self.assertEqual([('a', 'e/a')],
                          tree.move(['a'], 'e'))
         self.assertTreeLayout([('', root_id),
-                               ('b', 'b-id'),
-                               ('e/', 'e-id'),
-                               ('e/a/', 'a-id'),
-                               ('e/a/c', 'c-id'),
-                               ('e/a/d', 'd-id'),
+                               ('b', b_id),
+                               ('e/', e_id),
+                               ('e/a/', a_id),
+                               ('e/a/c', c_id),
+                               ('e/a/d', d_id),
                               ], tree)
         tree._validate()
 
     def test_move_directory_with_renamed_child(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c', 'd/'])
-        tree.add(['a', 'a/b', 'a/c', 'd'],
-                 ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree.add(['a', 'a/b', 'a/c', 'd'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('d')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'a/d')
         self.assertTreeLayout([('', root_id),
-                               ('a/', 'a-id'),
-                               ('d/', 'd-id'),
-                               ('a/c', 'c-id'),
-                               ('a/d', 'b-id'),
+                               ('a/', a_id),
+                               ('d/', d_id),
+                               ('a/c', c_id),
+                               ('a/d', b_id),
                               ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),
-                               ('d/', 'd-id'),
-                               ('d/a/', 'a-id'),
-                               ('d/a/c', 'c-id'),
-                               ('d/a/d', 'b-id'),
+                               ('d/', d_id),
+                               ('d/a/', a_id),
+                               ('d/a/c', c_id),
+                               ('d/a/d', b_id),
                               ], tree)
         tree._validate()
 
     def test_move_directory_with_swapped_children(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d', 'e/'])
-        tree.add(['a', 'a/b', 'a/c', 'a/d', 'e'],
-                 ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
+        tree.add(['a', 'a/b', 'a/c', 'a/d', 'e'])
+        a_id = tree.path2id('a')
+        b_id = tree.path2id('a/b')
+        c_id = tree.path2id('a/c')
+        d_id = tree.path2id('a/d')
+        e_id = tree.path2id('e')
         tree.commit('initial')
         root_id = tree.get_root_id()
 
@@ -537,20 +559,20 @@ class TestMove(TestCaseWithWorkingTree):
         tree.rename_one('a/d', 'a/b')
         tree.rename_one('a/bb', 'a/d')
         self.assertTreeLayout([('', root_id),
-                               ('a/', 'a-id'),
-                               ('e/', 'e-id'),
-                               ('a/b', 'd-id'),
-                               ('a/c', 'c-id'),
-                               ('a/d', 'b-id'),
+                               ('a/', a_id),
+                               ('e/', e_id),
+                               ('a/b', d_id),
+                               ('a/c', c_id),
+                               ('a/d', b_id),
                               ], tree)
         self.assertEqual([('a', 'e/a')],
                          tree.move(['a'], 'e'))
         self.assertTreeLayout([('', root_id),
-                               ('e/', 'e-id'),
-                               ('e/a/', 'a-id'),
-                               ('e/a/b', 'd-id'),
-                               ('e/a/c', 'c-id'),
-                               ('e/a/d', 'b-id'),
+                               ('e/', e_id),
+                               ('e/a/', a_id),
+                               ('e/a/b', d_id),
+                               ('e/a/c', c_id),
+                               ('e/a/d', b_id),
                               ], tree)
         tree._validate()
 

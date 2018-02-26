@@ -157,6 +157,9 @@ class TestAdd(TestCaseWithWorkingTree):
 
     def test_add_invalid(self):
         tree = self.make_branch_and_tree('.')
+        if not tree._format.supports_versioned_directories:
+            raise tests.TestNotApplicable(
+                'format does not support versioned directories')
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
         root_id = tree.get_root_id()
 
@@ -166,24 +169,27 @@ class TestAdd(TestCaseWithWorkingTree):
 
     def test_add_after_remove(self):
         tree = self.make_branch_and_tree('.')
+        if not tree._format.supports_versioned_directories:
+            raise tests.TestNotApplicable(
+                'format does not support versioned directories')
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
         root_id = tree.get_root_id()
         tree.add(['dir'])
         tree.commit('dir')
         tree.unversion(['dir'])
         self.assertRaises(errors.NotVersionedError,
-                          tree.add, ['dir/subdir'])
+                          tree.add, ['dir/subdir/foo'])
 
     def test_add_root(self):
         # adding the root should be a no-op, or at least not
         # do anything whacky.
         tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        tree.add('')
-        self.assertEqual([''], list(tree.all_versioned_paths()))
-        # the root should have been changed to be a new unique root.
-        self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
-        tree.unlock()
+        with tree.lock_write():
+            tree.add('')
+            self.assertEqual([''], list(tree.all_versioned_paths()))
+            # the root should have been changed to be a new unique root.
+            if tree._format.supports_setting_file_ids:
+                self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
 
     def test_add_previously_added(self):
         # adding a path that was previously added should work

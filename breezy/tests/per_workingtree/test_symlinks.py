@@ -65,9 +65,15 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ('tree/dir/',),
             ('tree/dir/file', 'content'),
             ])
-        self.assertEqual(
-            tree.smart_add(['tree/link/file']),
-            ([u'dir', u'dir/file'], {}))
+        if tree.has_versioned_directories():
+            self.assertEqual(
+                tree.smart_add(['tree/link/file']),
+                ([u'dir', u'dir/file'], {}))
+        else:
+            self.assertEqual(
+                tree.smart_add(['tree/link/file']),
+                ([u'dir/file'], {}))
+
         # should add the actual parent directory, not the apparent parent
         # (which is actually a symlink)
         self.assertTrue(tree.is_versioned('dir/file'))
@@ -102,11 +108,8 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([], list(tree.iter_changes(tree.basis_tree())))
-        if tree._format.supports_versioned_directories:
-            self.assertEqual(
-                ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
-        else:
-            self.assertEqual([], list(tree.list_files()))
+        self.assertEqual(
+            ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:

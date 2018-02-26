@@ -269,7 +269,7 @@ class TestPush(TestCaseWithInterBranch):
         self.assertFalse(local.is_locked())
         local.push(remote)
         hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
+        self.assertIn('Repository.insert_stream_1.19', hpss_call_names)
         insert_stream_idx = hpss_call_names.index(
             'Repository.insert_stream_1.19')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
