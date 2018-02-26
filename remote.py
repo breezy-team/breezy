@@ -110,7 +110,7 @@ def split_git_url(url):
 
 class RemoteGitError(BzrError):
 
-    _fmt = "Remote server error: %(message)s"
+    _fmt = "Remote server error: %(msg)s"
 
 
 def parse_git_error(url, message):
