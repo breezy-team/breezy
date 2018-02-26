@@ -437,6 +437,7 @@ class GitBranch(ForeignBranch):
     def set_parent(self, location):
         # FIXME: Set "origin" url in .git/config ?
         cs = self.repository._git.get_config()
+        location = urlutils.relative_url(self.base, location)
         cs.set((b"remote", b"origin"), b"url", location)
         f = StringIO()
         cs.write_to_file(f)
