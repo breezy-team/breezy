@@ -7,7 +7,7 @@ PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
 RST2HTML ?= rst2html
-TESTS ?= ^breezy.plugins.git. Git
+TESTS ?= ^breezy.plugins.git. Git breezy.tests.test_info.TestInfo.test_describe_tree_format breezy.tests.test_errors.TestErrors.test_no_arg_named_message breezy.tests.test_info.TestInfo.test_describe_checkout_format
 SUBUNIT_FILTER ?= subunit-filter --fixup-expected-failures=xfail --success --xfail
 SUBUNIT_FORMATTER = subunit2pyunit
 

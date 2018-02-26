@@ -4,7 +4,6 @@ breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_delta(GitBran
 breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_fails(GitBranchFormat)
 breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_passes(GitBranchFormat)
 breezy.tests.per_branch.test_create_checkout.TestCreateCheckout.test_checkout_format_lightweight(GitBranchFormat)
-breezy.tests.per_branch.test_http.InaccessibleParentTests.test_get_parent_invalid(GitBranchFormat)
 breezy.tests.per_branch.test_pull.TestPull.test_pull_merges_and_fetches_tags(GitBranchFormat)
 breezy.tests.per_branch.test_pull.TestPull.test_pull_overwrite(GitBranchFormat)
 breezy.tests.per_branch.test_pull.TestPull.test_pull_stop_revision_merges_and_fetches_tags(GitBranchFormat)
@@ -266,3 +265,6 @@ breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_clear_
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_clear_conflicts(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_missing(GitWorkingTreeFormat)
+breezy.tests.test_info.TestInfo.test_describe_checkout_format
+breezy.tests.test_info.TestInfo.test_describe_tree_format
+breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdir_from_dir(GitWorkingTreeFormat)

@@ -264,6 +264,11 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         from .repository import GitRepositoryFormat
         return GitRepositoryFormat()
 
+    @property
+    def workingtree_format(self):
+        from .workingtree import GitWorkingTreeFormat
+        return GitWorkingTreeFormat()
+
     def get_branch_format(self):
         from .branch import GitBranchFormat
         return GitBranchFormat()
