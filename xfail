@@ -272,3 +272,5 @@ breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_clear_
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_clear_conflicts(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_missing(GitWorkingTreeFormat)
+breezy.tests.test_info.TestInfo.test_describe_checkout_format
+breezy.tests.test_info.TestInfo.test_describe_tree_format
