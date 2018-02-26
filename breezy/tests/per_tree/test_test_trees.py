@@ -212,7 +212,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
     def test_tree_with_utf8(self):
         tree = self.make_branch_and_tree('.')
-        if not tree._format.supports_setting_file_ids:
+        if not tree.supports_setting_file_ids():
             raise TestNotApplicable(
                 'format does not support custom file ids')
         tree = self.get_tree_with_utf8(tree)
