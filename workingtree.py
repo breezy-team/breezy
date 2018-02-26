@@ -1024,15 +1024,23 @@ class GitWorkingTree(workingtree.WorkingTree):
             dirname = dirname.decode("utf-8")
             dir_file_id = self.path2id(dirname)
             assert isinstance(value, tuple) and len(value) == 10
-            (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-            stat_result = os.stat_result((mode, ino,
-                    dev, 1, uid, gid, size,
-                    int(mtime), int(mtime), int(ctime)))
+            try:
+                actual_stat = os.lstat(self.abspath(path.decode('utf-8')))
+            except OSError as e:
+                if e.errno == errno.ENOENT:
+                    mode = None
+                    curkind = 'unknown'
+                    actual_stat = None
+                else:
+                    raise
+            else:
+                mode = actual_stat.st_mode
+                curkind = mode_kind(actual_stat.st_mode)
             per_dir[(dirname, dir_file_id)].append(
                 (path.decode("utf-8"), child_name.decode("utf-8"),
-                mode_kind(mode), stat_result,
+                curkind, actual_stat,
                 self.path2id(path.decode("utf-8")),
-                mode_kind(mode)))
+                mode_kind(value.mode)))
         return per_dir.iteritems()
 
     def _lookup_entry(self, path, update_index=False):
