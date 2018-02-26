@@ -115,10 +115,12 @@ class TestWalkdirs(TestCaseWithWorkingTree):
             (dirblocks[1].as_dir_tuple(),
              [dirblocks[2].as_tuple()]
             ),
+            ]
+        if tree.has_versioned_directories():
+            expected_dirblocks.append(
             (dirblocks[3].as_dir_tuple(),
              []
-            ),
-            ]
+            ))
         if prefix:
             expected_dirblocks = [e for e in expected_dirblocks
                 if len(e) > 0 and len(e[0]) > 0 and e[0][0] == prefix]
@@ -158,7 +160,6 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdir_from_empty_dir(self):
         """Doing a walkdir when the requested prefix is empty dir."""
-        # TODO(jelmer): Support self.workingtree_format.supports_versioned_directories
         self._test_walkdir(self.added, 'added empty dir')
 
     def test_walkdir_from_missing_dir(self):
