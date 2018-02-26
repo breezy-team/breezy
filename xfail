@@ -251,7 +251,6 @@ breezy.tests.per_workingtree.test_unversion.TestUnversion.test_unversion_renamed
 breezy.tests.per_workingtree.test_unversion.TestUnversion.test_unversion_subtree_and_children(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_unversion.TestUnversion.test_unversion_subtree(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdir_from_empty_dir(GitWorkingTreeFormat)
-breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdir_from_missing_dir(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdir_from_unknown_dir(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdir_missings(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdirs_type_changes(GitWorkingTreeFormat)
@@ -273,4 +272,3 @@ breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert(GitWor
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_revert_missing(GitWorkingTreeFormat)
 breezy.tests.test_info.TestInfo.test_describe_checkout_format
 breezy.tests.test_info.TestInfo.test_describe_tree_format
-breezy.tests.per_workingtree.test_walkdirs.TestWalkdirs.test_walkdir_from_dir(GitWorkingTreeFormat)
