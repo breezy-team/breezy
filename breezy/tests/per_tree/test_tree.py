@@ -120,6 +120,12 @@ class TestReference(TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         self.assertTrue(tree.is_versioned(''))
         self.assertFalse(tree.is_versioned('blah'))
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        self.assertFalse(tree.is_versioned('dir'))
+        self.assertFalse(tree.is_versioned('dir/'))
+        tree.add(['dir', 'dir/file'])
+        self.assertTrue(tree.is_versioned('dir'))
+        self.assertTrue(tree.is_versioned('dir/'))
 
 
 class TestFileIds(TestCaseWithTree):

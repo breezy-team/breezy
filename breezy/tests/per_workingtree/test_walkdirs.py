@@ -158,6 +158,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdir_from_empty_dir(self):
         """Doing a walkdir when the requested prefix is empty dir."""
+        # TODO(jelmer): Support self.workingtree_format.supports_versioned_directories
         self._test_walkdir(self.added, 'added empty dir')
 
     def test_walkdir_from_missing_dir(self):
@@ -242,21 +243,33 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self.build_tree(changed_paths)
         dir1_stat = os.lstat('dir1')
         file1_stat = os.lstat('file1')
-        expected_dirblocks = [
-             (('', tree.path2id('')),
-              [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
-               ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
-              ]
-             ),
-             (('dir1', tree.path2id('dir1')),
-              [
-              ]
-             ),
-             (('file1', None),
-              [
-              ]
-             ),
-            ]
+        if tree.has_versioned_directories():
+            expected_dirblocks = [
+                 (('', tree.path2id('')),
+                  [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
+                   ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
+                  ]
+                 ),
+                 (('dir1', tree.path2id('dir1')),
+                  [
+                  ]
+                 ),
+                 (('file1', None),
+                  [
+                  ]
+                 ),
+                ]
+        else:
+            expected_dirblocks = [
+                 (('', tree.path2id('')),
+                  [('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
+                  ]
+                 ),
+                 (('file1', None),
+                  [
+                  ]
+                 ),
+                ]
         tree.lock_read()
         result = list(tree.walkdirs())
         tree.unlock()
