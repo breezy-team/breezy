@@ -61,7 +61,7 @@ class TestFlush(TestCaseWithWorkingTree):
             tree.flush()
             # and check it was written using another reference tree
             reference_tree = tree.controldir.open_workingtree()
-            self.assertEqual('new-root', reference_tree.get_root_id())
+            self.assertIsNot(None, reference_tree.get_root_id())
         finally:
             tree.unlock()
 
