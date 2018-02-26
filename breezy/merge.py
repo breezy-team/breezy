@@ -1080,7 +1080,10 @@ class Merge3Merger(object):
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
-        self.working_tree.set_merge_modified(modified_hashes)
+        try:
+            self.working_tree.set_merge_modified(modified_hashes)
+        except errors.UnsupportedOperation:
+            pass  # Well, whatever.
 
     @staticmethod
     def parent(entry, file_id):
