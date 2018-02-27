@@ -146,7 +146,7 @@ class RenameMap(object):
             while True:
                 child = path
                 path = osutils.dirname(path)
-                if self.tree.path2id(path) is not None:
+                if self.tree.is_versioned(path):
                     break
                 required_parents.setdefault(path, []).append(child)
         require_ids = {}

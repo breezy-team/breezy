@@ -2865,7 +2865,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
-            self.assertIsNot(tree.path2id(path), None,
+            self.assertTrue(tree.is_versioned(path),
                 path+' not in working tree.')
 
     def assertNotInWorkingTree(self, path, root_path='.', tree=None):
@@ -2876,7 +2876,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertNotInWorkingTree(p, tree=tree)
         else:
-            self.assertIs(tree.path2id(path), None, path+' in working tree.')
+            self.assertFalse(tree.is_versioned(path), path+' in working tree.')
 
 
 class TestCaseWithTransport(TestCaseInTempDir):

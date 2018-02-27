@@ -355,6 +355,38 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.smart_add)
 
+    def rename_one(self, from_rel, to_rel, after=False):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+
+        rename_one has several 'modes' to work. First, it can rename a physical
+        file and change the file_id. That is the normal mode. Second, it can
+        only change the file_id without touching any physical file.
+
+        rename_one uses the second mode if 'after == True' and 'to_rel' is
+        either not versioned or newly added, and present in the working tree.
+
+        rename_one uses the second mode if 'after == False' and 'from_rel' is
+        versioned but no longer in the working tree, and 'to_rel' is not
+        versioned but present in the working tree.
+
+        rename_one uses the first mode if 'after == False' and 'from_rel' is
+        versioned and present in the working tree, and 'to_rel' is not
+        versioned and not present in the working tree.
+
+        Everything else results in an error.
+        """
+        raise NotImplementedError(self.rename_one)
+
+    def copy_one(self, from_rel, to_rel):
+        """Copy one file or directory.
+
+        This can change the directory or the filename or both.
+
+        """
+        raise NotImplementedError(self.copy_one)
+
 
 class MutableTreeHooks(hooks.Hooks):
     """A dictionary mapping a hook name to a list of callables for mutabletree

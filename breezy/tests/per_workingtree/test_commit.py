@@ -235,6 +235,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.add(['a'], None, ['file'])
         a_id = wt.path2id('a')
+        self.assertEqual('a', wt.id2path(a_id))
         def fail_message(obj):
             raise errors.BzrCommandError("empty commit message")
         self.assertRaises(errors.BzrCommandError, wt.commit,

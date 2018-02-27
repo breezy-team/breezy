@@ -116,6 +116,17 @@ class TestReference(TestCaseWithTree):
         if root_id is not None:
             self.assertIsInstance(root_id, str)
 
+    def test_is_versioned(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertTrue(tree.is_versioned(''))
+        self.assertFalse(tree.is_versioned('blah'))
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        self.assertFalse(tree.is_versioned('dir'))
+        self.assertFalse(tree.is_versioned('dir/'))
+        tree.add(['dir', 'dir/file'])
+        self.assertTrue(tree.is_versioned('dir'))
+        self.assertTrue(tree.is_versioned('dir/'))
+
 
 class TestFileIds(TestCaseWithTree):
 
@@ -124,13 +135,10 @@ class TestFileIds(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
         a_id = tree.path2id('a')
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertEqual(u'a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
             self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
-        finally:
-            tree.unlock()
 
     def test_all_file_ids(self):
         work_tree = self.make_branch_and_tree('wt')

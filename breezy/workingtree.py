@@ -32,6 +32,7 @@ from __future__ import absolute_import
 import errno
 import os
 import re
+import shutil
 import sys
 
 import breezy
@@ -78,61 +79,6 @@ class SettingFileIdUnsupported(errors.BzrError):
 class ShelvingUnsupported(errors.BzrError):
 
     _fmt = "This format does not support shelving changes."
-
-
-class TreeEntry(object):
-    """An entry that implements the minimum interface used by commands.
-
-    This needs further inspection, it may be better to have
-    InventoryEntries without ids - though that seems wrong. For now,
-    this is a parallel hierarchy to InventoryEntry, and needs to become
-    one of several things: decorates to that hierarchy, children of, or
-    parents of it.
-    Another note is that these objects are currently only used when there is
-    no InventoryEntry available - i.e. for unversioned objects.
-    Perhaps they should be UnversionedEntry et al. ? - RBC 20051003
-    """
-
-    def __eq__(self, other):
-        # yes, this us ugly, TODO: best practice __eq__ style.
-        return (isinstance(other, TreeEntry)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "???"
-
-
-class TreeDirectory(TreeEntry):
-    """See TreeEntry. This is a directory in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeDirectory)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "/"
-
-
-class TreeFile(TreeEntry):
-    """See TreeEntry. This is a regular file in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeFile)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
-class TreeLink(TreeEntry):
-    """See TreeEntry. This is a symlink in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeLink)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
 
 
 class WorkingTree(mutabletree.MutableTree,
@@ -813,7 +759,7 @@ class WorkingTree(mutabletree.MutableTree,
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-    def extract(self, file_id, format=None):
+    def extract(self, path, file_id=None, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -878,29 +824,17 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.move)
 
-    def rename_one(self, from_rel, to_rel, after=False):
-        """Rename one file.
+    def copy_one(self, from_rel, to_rel):
+        """Copy a file in the tree to a new location.
 
-        This can change the directory or the filename or both.
+        This default implementation just copies the file, then
+        adds the target.
 
-        rename_one has several 'modes' to work. First, it can rename a physical
-        file and change the file_id. That is the normal mode. Second, it can
-        only change the file_id without touching any physical file.
-
-        rename_one uses the second mode if 'after == True' and 'to_rel' is
-        either not versioned or newly added, and present in the working tree.
-
-        rename_one uses the second mode if 'after == False' and 'from_rel' is
-        versioned but no longer in the working tree, and 'to_rel' is not
-        versioned but present in the working tree.
-
-        rename_one uses the first mode if 'after == False' and 'from_rel' is
-        versioned and present in the working tree, and 'to_rel' is not
-        versioned and not present in the working tree.
-
-        Everything else results in an error.
+        :param from_rel: From location (relative to tree root)
+        :param to_rel: Target location (relative to tree root)
         """
-        raise NotImplementedError(self.rename_one)
+        shutil.copyfile(self.abspath(from_rel), self.abspath(to_rel))
+        self.add(to_rel)
 
     def unknowns(self):
         """Return all unknown files.
