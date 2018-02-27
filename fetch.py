@@ -700,8 +700,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     def fetch_objects(self, determine_wants, mapping, limit=None):
         """See `InterGitNonGitRepository`."""
         store = BazaarObjectStore(self.target, mapping)
-        store.lock_write()
-        try:
+        with store.lock_write():
             heads = self.get_target_heads()
             graph_walker = ObjectStoreGraphWalker(
                 [store._lookup_revision_sha1(head) for head in heads],
@@ -721,8 +720,6 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
             finally:
                 pb.finished()
-        finally:
-            store.unlock()
 
     @staticmethod
     def is_compatible(source, target):
@@ -750,14 +747,11 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = BazaarObjectStore(self.target, mapping)
         try:
-            target_git_object_retriever.lock_write()
-            try:
+            with target_git_object_retriever.lock_write():
                 (pack_hint, last_rev) = import_git_objects(self.target,
                     mapping, self.source._git.object_store,
                     target_git_object_retriever, wants, pb, limit)
                 return (pack_hint, last_rev, remote_refs)
-            finally:
-                target_git_object_retriever.unlock()
         finally:
             pb.finished()
 

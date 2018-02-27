@@ -386,8 +386,7 @@ def update_git_cache(repository, revid):
 
     from .object_store import BazaarObjectStore
     store = BazaarObjectStore(repository)
-    store.lock_write()
-    try:
+    with store.lock_write():
         try:
             parent_revisions = set(repository.get_parent_map([revid])[revid])
         except KeyError:
@@ -397,8 +396,6 @@ def update_git_cache(repository, revid):
         if not missing_revisions:
             # Only update if the cache was up to date previously
             store._update_sha_map_revision(revid)
-    finally:
-        store.unlock()
 
 
 def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,

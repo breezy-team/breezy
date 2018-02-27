@@ -186,8 +186,7 @@ class cmd_git_object(Command):
         controldir, _ = ControlDir.open_containing(directory)
         repo = controldir.find_repository()
         object_store = get_object_store(repo)
-        object_store.lock_read()
-        try:
+        with object_store.lock_read():
             if sha1 is not None:
                 try:
                     obj = object_store[str(sha1)]
@@ -201,8 +200,6 @@ class cmd_git_object(Command):
             else:
                 for sha1 in object_store:
                     self.outf.write("%s\n" % sha1)
-        finally:
-            object_store.unlock()
 
 
 class cmd_git_refs(Command):
@@ -228,13 +225,10 @@ class cmd_git_refs(Command):
         controldir, _ = ControlDir.open_containing(location)
         repo = controldir.find_repository()
         object_store = get_object_store(repo)
-        object_store.lock_read()
-        try:
+        with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
             for k, v in refs.as_dict().iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
-        finally:
-            object_store.unlock()
 
 
 class cmd_git_apply(Command):
@@ -286,16 +280,10 @@ class cmd_git_apply(Command):
         tree, _ = WorkingTree.open_containing(".")
         if tree.basis_tree().changes_from(tree).has_changed() and not force:
             raise UncommittedChanges(tree)
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             for patch in patches_list:
-                f = open(patch, 'r')
-                try:
+                with open(patch, 'r') as f:
                     self._apply_patch(tree, f, signoff=signoff)
-                finally:
-                    f.close()
-        finally:
-            tree.unlock()
 
 
 class cmd_git_push_pristine_tar_deltas(Command):
@@ -322,30 +310,29 @@ class cmd_git_push_pristine_tar_deltas(Command):
         source = Branch.open_containing(directory)[0]
         target_bzr = Repository.open(target)
         target = getattr(target_bzr, '_git', None)
-        git_store = get_object_store(source.repository)
-        self.add_cleanup(git_store.unlock)
-        git_store.lock_read()
         if target is None:
             raise BzrCommandError("Target not a git repository")
-        tag_dict = source.tags.get_tag_dict()
-        for name, revid in tag_dict.iteritems():
-            try:
-                rev = source.repository.get_revision(revid)
-            except NoSuchRevision:
-                continue
-            try:
-                delta, kind = revision_pristine_tar_data(rev)
-            except KeyError:
-                continue
-            gitid = git_store._lookup_revision_sha1(revid)
-            if not (name.startswith('upstream/') or name.startswith('upstream-')):
-                warning("Unexpected pristine tar revision tagged %s. Ignoring.",
-                     name)
-                continue
-            upstream_version = name[len("upstream/"):]
-            filename = '%s_%s.orig.tar.%s' % (package, upstream_version, kind)
-            if not gitid in target:
-                warning("base git id %s for %s missing in target repository",
-                        gitid, filename)
-            store_git_pristine_tar_data(target, filename.encode('utf-8'),
-                delta, gitid)
+        git_store = get_object_store(source.repository)
+        with git_store.lock_read():
+            tag_dict = source.tags.get_tag_dict()
+            for name, revid in tag_dict.iteritems():
+                try:
+                    rev = source.repository.get_revision(revid)
+                except NoSuchRevision:
+                    continue
+                try:
+                    delta, kind = revision_pristine_tar_data(rev)
+                except KeyError:
+                    continue
+                gitid = git_store._lookup_revision_sha1(revid)
+                if not (name.startswith('upstream/') or name.startswith('upstream-')):
+                    warning("Unexpected pristine tar revision tagged %s. Ignoring.",
+                         name)
+                    continue
+                upstream_version = name[len("upstream/"):]
+                filename = '%s_%s.orig.tar.%s' % (package, upstream_version, kind)
+                if not gitid in target:
+                    warning("base git id %s for %s missing in target repository",
+                            gitid, filename)
+                store_git_pristine_tar_data(target, filename.encode('utf-8'),
+                    delta, gitid)

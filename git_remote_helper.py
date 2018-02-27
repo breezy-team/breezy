@@ -114,15 +114,12 @@ class RemoteHelper(object):
         except NoRepositoryPresent:
             repo = self.remote_dir.create_repository()
         object_store = get_object_store(repo)
-        object_store.lock_read()
-        try:
+        with object_store.lock_read():
             refs = get_refs_container(self.remote_dir, object_store)
             for ref, git_sha1 in refs.as_dict().iteritems():
                 ref = ref.replace("~", "_")
                 outf.write("%s %s\n" % (git_sha1, ref))
             outf.write("\n")
-        finally:
-            object_store.unlock()
 
     def cmd_option(self, outf, argv):
         outf.write("unsupported\n")

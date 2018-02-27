@@ -766,8 +766,7 @@ class BazaarObjectStore(BaseObjectStore):
             pd.create_index_v2(path[:-5]+".idx", self.object_store.get_raw)
 
             p = Pack(path[:-5])
-            self.repository.lock_write()
-            try:
+            with self.repository.lock_write():
                 self.repository.start_write_group()
                 try:
                     import_git_objects(self.repository, self.mapping,
@@ -778,8 +777,6 @@ class BazaarObjectStore(BaseObjectStore):
                     raise
                 else:
                     self.repository.commit_write_group()
-            finally:
-                self.repository.unlock()
         return f, commit
 
     # The pack isn't kept around anyway, so no point

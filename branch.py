@@ -596,8 +596,7 @@ class LocalGitBranch(GitBranch):
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     assert isinstance(revid, str), "was %r" % revid
     # Try in source branch first, it'll be faster
-    local_branch.lock_read()
-    try:
+    with local_branch.lock_read():
         try:
             return local_branch.revision_id_to_revno(revid)
         except errors.NoSuchRevision:
@@ -607,13 +606,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
                     [(revision.NULL_REVISION, 0)])
             except errors.GhostRevisionsHaveNoRevno:
                 # FIXME: Check using graph.find_distance_to_null() ?
-                remote_branch.lock_read()
-                try:
+                with remote_branch.lock_read():
                     return remote_branch.revision_id_to_revno(revid)
-                finally:
-                    remote_branch.unlock()
-    finally:
-        local_branch.unlock()
 
 
 class GitBranchPullResult(branch.PullResult):
@@ -1078,32 +1072,25 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        self.source.lock_read()
-        try:
-            self.target.lock_write()
+        with self.source.lock_read(), self.target.lock_write():
+            new_refs, main_ref, stop_revinfo = self._get_new_refs(
+                stop_revision)
+            def update_refs(old_refs):
+                return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
-                new_refs, main_ref, stop_revinfo = self._get_new_refs(
-                    stop_revision)
-                def update_refs(old_refs):
-                    return self._update_refs(result, old_refs, new_refs, overwrite)
-                try:
-                    result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                        update_refs, lossy=False)
-                except NoPushSupport:
-                    raise errors.NoRoundtrippingSupport(self.source, self.target)
-                (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
-                if result.old_revid is None:
-                    result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
-                result.new_revid = new_refs[main_ref][1]
-                result.local_branch = None
-                result.master_branch = self.target
-                if run_hooks:
-                    for hook in branch.Branch.hooks['post_pull']:
-                        hook(result)
-            finally:
-                self.target.unlock()
-        finally:
-            self.source.unlock()
+                result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
+                    update_refs, lossy=False)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+            if result.old_revid is None:
+                result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
+            result.new_revid = new_refs[main_ref][1]
+            result.local_branch = None
+            result.master_branch = self.target
+            if run_hooks:
+                for hook in branch.Branch.hooks['post_pull']:
+                    hook(result)
         return result
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
@@ -1113,8 +1100,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         result.local_branch = None
         result.master_branch = result.target_branch
-        self.source.lock_read()
-        try:
+        with self.source.lock_read():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
@@ -1130,8 +1116,6 @@ class InterToGitBranch(branch.GenericInterBranch):
             (result.new_original_revno, result.new_original_revid) = stop_revinfo
             for hook in branch.Branch.hooks['post_push']:
                 hook(result)
-        finally:
-            self.source.unlock()
         return result
 
 
