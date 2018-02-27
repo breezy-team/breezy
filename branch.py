@@ -298,11 +298,7 @@ class GitBranchFormat(branch.BranchFormat):
 
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
-        from .dir import LocalGitDir
-        if not isinstance(a_controldir, LocalGitDir):
-            raise errors.IncompatibleFormat(self, a_controldir._format)
-        return a_controldir.create_branch(repository=repository, name=name,
-            append_revisions_only=append_revisions_only)
+        raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
         return controldir.get_branch_reference(name)
@@ -320,6 +316,14 @@ class LocalGitBranchFormat(GitBranchFormat):
     def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
+
+    def initialize(self, a_controldir, name=None, repository=None,
+                   append_revisions_only=None):
+        from .dir import LocalGitDir
+        if not isinstance(a_controldir, LocalGitDir):
+            raise errors.IncompatibleFormat(self, a_controldir._format)
+        return a_controldir.create_branch(repository=repository, name=name,
+            append_revisions_only=append_revisions_only)
 
 
 class GitBranch(ForeignBranch):

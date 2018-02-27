@@ -256,6 +256,10 @@ class RemoteGitBranchFormat(GitBranchFormat):
     def _matchingcontroldir(self):
         return RemoteGitControlDirFormat()
 
+    def initialize(self, a_controldir, name=None, repository=None,
+                   append_revisions_only=None):
+        raise UninitializableFormat(self)
+
 
 class RemoteGitDir(GitDir):
 
