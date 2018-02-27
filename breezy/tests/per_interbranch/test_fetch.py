@@ -16,7 +16,7 @@
 
 """Tests for InterBranch.fetch."""
 
-from breezy.branch import FetchLimitUnsupported
+from breezy.errors import FetchLimitUnsupported
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import (

@@ -68,14 +68,6 @@ class UnstackableBranchFormat(errors.BzrError):
         self.url = url
 
 
-class FetchLimitUnsupported(errors.UnsupportedOperation):
-
-    fmt = ("InterBranch %(interbranch)r does not support fetching limits.")
-
-    def __init__(self, interbranch):
-        errors.BzrError(.__init__(self, interbranch=interbranch)
-
-
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
