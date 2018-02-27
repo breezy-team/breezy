@@ -267,8 +267,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return GitWorkingTreeFormat()
 
     def get_branch_format(self):
-        from .branch import GitBranchFormat
-        return GitBranchFormat()
+        from .branch import LocalGitBranchFormat
+        return LocalGitBranchFormat()
 
     def open(self, transport, _found=None):
         """Open this directory.
@@ -398,14 +398,14 @@ class LocalGitDir(GitDir):
 
     def find_branch_format(self, name=None):
         from .branch import (
-            GitBranchFormat,
             GitSymrefBranchFormat,
+            LocalGitBranchFormat,
             )
         ref = self._get_selected_ref(name)
         if self._get_symref(ref) is not None:
             return GitSymrefBranchFormat()
         else:
-            return GitBranchFormat()
+            return LocalGitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):
         if branch_format is None:

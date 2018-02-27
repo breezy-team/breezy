@@ -165,14 +165,14 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
         self.assertFalse(self.git_branch.get_physical_lock_status())
 
 
-class TestGitBranchFormat(tests.TestCase):
+class TestLocalGitBranchFormat(tests.TestCase):
 
     def setUp(self):
-        super(TestGitBranchFormat, self).setUp()
-        self.format = branch.GitBranchFormat()
+        super(TestLocalGitBranchFormat, self).setUp()
+        self.format = branch.LocalGitBranchFormat()
 
     def test_get_format_description(self):
-        self.assertEquals("Git Branch", self.format.get_format_description())
+        self.assertEquals("Local Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
         self.assertEquals("git", self.format.network_name())

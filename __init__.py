@@ -297,15 +297,21 @@ from ...branch import (
     network_format_registry as branch_network_format_registry,
     )
 branch_network_format_registry.register_lazy('git',
-    __name__ + '.branch', 'GitBranchFormat')
+    __name__ + '.branch', 'LocalGitBranchFormat')
+
 
 from ...branch import (
     format_registry as branch_format_registry,
     )
 branch_format_registry.register_extra_lazy(
     __name__ + '.branch',
-    'GitBranchFormat',
+    'LocalGitBranchFormat',
     )
+branch_format_registry.register_extra_lazy(
+    __name__ + '.remote',
+    'RemoteGitBranchFormat',
+    )
+
 
 from ...workingtree import (
     format_registry as workingtree_format_registry,
