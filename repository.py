@@ -253,10 +253,11 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
+        builder = GitCommitBuilder(self, parents, config,
+                timestamp, timezone, committer, revprops, revision_id,
+                lossy)
         self.start_write_group()
-        return GitCommitBuilder(self, parents, config,
-            timestamp, timezone, committer, revprops, revision_id,
-            lossy)
+        return builder
 
     def get_file_graph(self):
         return _mod_graph.Graph(GitFileParentProvider(
