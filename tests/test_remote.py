@@ -26,6 +26,7 @@ from ....tests import TestCase
 from ..remote import (
     split_git_url,
     parse_git_error,
+    RemoteGitBranchFormat,
     )
 
 class SplitUrlTests(TestCase):
@@ -64,3 +65,19 @@ class ParseGitErrorTests(TestCase):
     def test_notbrancherror(self):
         e = parse_git_error("url", "\n Could not find Repository foo/bar")
         self.assertIsInstance(e, NotBranchError)
+
+
+class TestRemoteGitBranchFormat(TestCase):
+
+    def setUp(self):
+        super(TestRemoteGitBranchFormat, self).setUp()
+        self.format = RemoteGitBranchFormat()
+
+    def test_get_format_description(self):
+        self.assertEquals("Remote Git Branch", self.format.get_format_description())
+
+    def test_get_network_name(self):
+        self.assertEquals("git", self.format.network_name())
+
+    def test_supports_tags(self):
+        self.assertTrue(self.format.supports_tags())

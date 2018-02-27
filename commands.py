@@ -87,7 +87,7 @@ class cmd_git_import(Command):
             )
         from ...transport import get_transport
         from .branch import (
-            GitBranch,
+            LocalGitBranch,
             )
         from .refs import (
             ref_to_branch_name,
@@ -137,7 +137,7 @@ class cmd_git_import(Command):
                 else:
                     head_branch = self._get_nested_branch(dest_transport, dest_format, branch_name)
                 revid = mapping.revision_id_foreign_to_bzr(sha)
-                source_branch = GitBranch(source_repo.controldir, source_repo,
+                source_branch = LocalGitBranch(source_repo.controldir, source_repo,
                     sha)
                 source_branch.head = sha
                 if head_branch.last_revision() != revid:

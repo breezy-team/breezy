@@ -266,9 +266,6 @@ class DictTagDict(tag.BasicTags):
 
 class GitBranchFormat(branch.BranchFormat):
 
-    def get_format_description(self):
-        return 'Git Branch'
-
     def network_name(self):
         return "git"
 
@@ -283,11 +280,6 @@ class GitBranchFormat(branch.BranchFormat):
 
     def tags_are_versioned(self):
         return False
-
-    @property
-    def _matchingcontroldir(self):
-        from .dir import LocalGitControlDirFormat
-        return LocalGitControlDirFormat()
 
     def get_foreign_tests_branch_factory(self):
         from .tests.test_branch import ForeignTestsBranchFactory
@@ -319,6 +311,17 @@ class GitBranchFormat(branch.BranchFormat):
         return controldir.set_branch_reference(target, name)
 
 
+class LocalGitBranchFormat(GitBranchFormat):
+
+    def get_format_description(self):
+        return 'Local Git Branch'
+
+    @property
+    def _matchingcontroldir(self):
+        from .dir import LocalGitControlDirFormat
+        return LocalGitControlDirFormat()
+
+
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
@@ -326,9 +329,9 @@ class GitBranch(ForeignBranch):
     def control_transport(self):
         return self.controldir.control_transport
 
-    def __init__(self, controldir, repository, ref):
+    def __init__(self, controldir, repository, ref, format):
         self.repository = repository
-        self._format = GitBranchFormat()
+        self._format = format
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
@@ -504,7 +507,8 @@ class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
     def __init__(self, controldir, repository, ref):
-        super(LocalGitBranch, self).__init__(controldir, repository, ref)
+        super(LocalGitBranch, self).__init__(controldir, repository, ref,
+                LocalGitBranchFormat())
         refs = controldir.get_refs_container()
         if not (ref in refs or "HEAD" in refs):
             raise errors.NotBranchError(self.base)
@@ -684,8 +688,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
         except AttributeError:
             default_format = branch.BranchFormat._default_format
         return [
-            (GitBranchFormat(), GitBranchFormat()),
-            (GitBranchFormat(), default_format)]
+            (LocalGitBranchFormat(), RemoteGitBranchFormat()),
+            (RemoteGitBranchFormat(), LocalGitBranchFormat()),
+            (RemoteGitBranchFormat(), default_format),
+            (LocalGitBranchFormat(), default_format)]
 
     @classmethod
     def _get_interrepo(self, source, target):
@@ -972,7 +978,9 @@ class InterToGitBranch(branch.GenericInterBranch):
             default_format = branch.format_registry.get_default()
         except AttributeError:
             default_format = branch.BranchFormat._default_format
-        return [(default_format, GitBranchFormat())]
+        return [
+            (default_format, LocalGitBranchFormat()),
+            (default_format, RemoteGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
