@@ -864,8 +864,8 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
-        # FIXME
-        return []
+        return [
+            (LocalGitBranchFormat(), RemoteGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
@@ -898,8 +898,9 @@ class InterGitLocalGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
-        # FIXME
-        return []
+        return [
+            (RemoteGitBranchFormat(), LocalGitBranchFormat()),
+            (LocalGitBranchFormat(), LocalGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
