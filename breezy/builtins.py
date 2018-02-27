@@ -30,6 +30,7 @@ import time
 
 import breezy
 from breezy import (
+    branch as _mod_branch,
     bugtracker,
     bundle,
     cache_utf8,
@@ -60,7 +61,7 @@ from breezy import (
 from breezy.bzr import (
     btree_index,
     )
-from breezy.branch import Branch, UnstackableBranchFormat
+from breezy.branch import Branch
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.smtp_connection import SMTPConnection
@@ -875,7 +876,7 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_with_parents(cls, wt, relpath):
-        if wt.path2id(relpath) is not None:
+        if wt.is_versioned(relpath):
             return
         cls.add_file_with_parents(wt, osutils.dirname(relpath))
         wt.add([relpath])
@@ -1052,9 +1053,7 @@ class cmd_cp(Command):
                             gettext('Could not copy to %s: %s is not a directory.')
                             % (dst_parent, dst_parent))
 
-            # TODO(jelmer): Ask the tree to make the copy
-            shutil.copyfile(tree.abspath(src), tree.abspath(dst))
-            tree.add(dst)
+            tree.copy_one(src, dst)
 
 
 class cmd_mv(Command):
@@ -1603,7 +1602,7 @@ class cmd_branch(Command):
         try:
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
-        except (errors.NotStacked, UnstackableBranchFormat,
+        except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
@@ -4198,7 +4197,10 @@ class cmd_selftest(Command):
         # too heavily. The call should be as early as possible, as
         # error reporting for past duplicate imports won't have useful
         # backtraces.
-        lazy_import.disallow_proxying()
+        if sys.version_info[0] < 3:
+            # TODO(pad.lv/1696545): Allow proxying on Python 3, since
+            # disallowing it currently leads to failures in many places.
+            lazy_import.disallow_proxying()
 
         from . import tests
 
@@ -5687,7 +5689,7 @@ class cmd_split(Command):
         if sub_id is None:
             raise errors.NotVersionedError(subdir)
         try:
-            containing_tree.extract(sub_id)
+            containing_tree.extract(subdir, sub_id)
         except errors.RootNotRich:
             raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 

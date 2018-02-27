@@ -31,7 +31,7 @@ from ..bzr import (
 from ..lock import write_locked
 from ..lockdir import LockDir
 from . import TestCase, TestCaseWithTransport, TestSkipped
-from ..workingtree import (
+from ..tree import (
     TreeEntry,
     TreeDirectory,
     TreeFile,

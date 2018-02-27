@@ -92,7 +92,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         self.build_tree(['tree/d/', 'tree/d/a'])
         tree.add(['d', 'd/a'])
         a_id = tree.path2id('d/a')
-        tree.commit('1', rev_id='rev-1')
+        rev_1 = tree.commit('1')
 
         tree.rename_one('d', 'e')
 
@@ -111,9 +111,6 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         one_id = tree.path2id('one')
 
         os.remove('tree/one')
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'one')
-        finally:
-            tree.unlock()
 

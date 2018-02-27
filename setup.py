@@ -60,7 +60,10 @@ META_INFO = {
     'install_requires': [
         'six>=1.9.0',
         ],
-    }
+    'extras_require': {
+        'fastimport': ['fastimport'],
+        },
+}
 
 # The list of packages is automatically generated later. Add other things
 # that are part of BZRLIB here.
