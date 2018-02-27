@@ -691,6 +691,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             default_format = branch.format_registry.get_default()
         except AttributeError:
             default_format = branch.BranchFormat._default_format
+        from .remote import RemoteGitBranchFormat
         return [
             (LocalGitBranchFormat(), RemoteGitBranchFormat()),
             (RemoteGitBranchFormat(), LocalGitBranchFormat()),
@@ -864,6 +865,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        from .remote import RemoteGitBranchFormat
         return [
             (LocalGitBranchFormat(), RemoteGitBranchFormat())]
 
@@ -898,6 +900,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        from .remote import RemoteGitBranchFormat
         return [
             (RemoteGitBranchFormat(), LocalGitBranchFormat()),
             (LocalGitBranchFormat(), LocalGitBranchFormat())]
@@ -983,6 +986,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             default_format = branch.format_registry.get_default()
         except AttributeError:
             default_format = branch.BranchFormat._default_format
+        from .remote import RemoteGitBranchFormat
         return [
             (default_format, LocalGitBranchFormat()),
             (default_format, RemoteGitBranchFormat())]
