@@ -693,8 +693,6 @@ class InterFromGitBranch(branch.GenericInterBranch):
             default_format = branch.BranchFormat._default_format
         from .remote import RemoteGitBranchFormat
         return [
-            (LocalGitBranchFormat(), RemoteGitBranchFormat()),
-            (RemoteGitBranchFormat(), LocalGitBranchFormat()),
             (RemoteGitBranchFormat(), default_format),
             (LocalGitBranchFormat(), default_format)]
 
