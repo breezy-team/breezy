@@ -517,10 +517,10 @@ class LocalGitDir(GitDir):
                       append_revisions_only=None, ref=None):
         refname = self._get_selected_ref(name, ref)
         from dulwich.protocol import ZERO_SHA
-        if refname in self._git.refs:
+        if refname != b'HEAD' and refname in self._git.refs:
             raise bzr_errors.AlreadyBranchError(self.user_url)
         self._git.refs[refname] = ZERO_SHA
-        branch = self.open_branch(name)
+        branch = self.open_branch(name, ref=ref)
         if append_revisions_only:
             branch.set_append_revisions_only(append_revisions_only)
         return branch
@@ -541,8 +541,10 @@ class LocalGitDir(GitDir):
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
         from dulwich.index import build_index_from_tree
         from dulwich.objects import ZERO_SHA
+        if from_branch is None:
+            from_branch = self.open_branch()
         if revision_id is None:
-            revision_id = self.open_branch().last_revision()
+            revision_id = from_branch.last_revision()
         repo = self.open_repository()
         store = repo._git.object_store
         (commit_id, mapping) = repo.lookup_bzr_revision_id(revision_id)
