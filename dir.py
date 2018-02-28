@@ -442,6 +442,10 @@ class LocalGitDir(GitDir):
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
+        if refname == b'HEAD':
+            # HEAD can't be removed
+            raise bzr_errors.UnsupportedOperation(
+                self.destroy_branch, self)
         try:
             del self._git.refs[refname]
         except KeyError:
