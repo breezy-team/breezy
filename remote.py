@@ -339,6 +339,9 @@ class RemoteGitDir(GitDir):
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
 
+    def has_workingtree(self):
+        return False
+
     def get_peeled(self, name):
         return self.get_refs_container().get_peeled(name)
 
