@@ -89,10 +89,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         files = list(tree.list_files())
         tree.unlock()
-        self.assertEqual(files[0], ('dir', '?', 'directory', None, TreeDirectory()))
-        self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
+        self.assertEqual(files.pop(0), ('dir', '?', 'directory', None, TreeDirectory()))
+        self.assertEqual(files.pop(0), ('file', '?', 'file', None, TreeFile()))
         if has_symlinks():
-            self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
+            self.assertEqual(files.pop(0), ('symlink', '?', 'symlink', None, TreeLink()))
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
@@ -110,22 +110,36 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             ('zz_dir', 'directory'),
             ], files)
 
-        tree.add(['dir', 'zz_dir'])
-        tree.lock_read()
-        files = [(path, kind) for (path, v, kind, file_id, entry)
-                               in tree.list_files()]
-        tree.unlock()
-        self.assertEqual([
-            ('a', 'file'),
-            ('dir', 'directory'),
-            ('dir/b', 'file'),
-            ('dir/file', 'file'),
-            ('dir/subdir', 'directory'),
-            ('dir/subfile', 'file'),
-            ('file', 'file'),
-            ('zz_dir', 'directory'),
-            ('zz_dir/subfile', 'file'),
-            ], files)
+        with tree.lock_write():
+            if tree.has_versioned_directories():
+                tree.add(['dir', 'zz_dir'])
+                files = [(path, kind) for (path, v, kind, file_id, entry)
+                                       in tree.list_files()]
+                self.assertEqual([
+                    ('a', 'file'),
+                    ('dir', 'directory'),
+                    ('dir/b', 'file'),
+                    ('dir/file', 'file'),
+                    ('dir/subdir', 'directory'),
+                    ('dir/subfile', 'file'),
+                    ('file', 'file'),
+                    ('zz_dir', 'directory'),
+                    ('zz_dir/subfile', 'file'),
+                    ], files)
+            else:
+                tree.add(['dir/b'])
+                files = [(path, kind) for (path, v, kind, file_id, entry)
+                                       in tree.list_files()]
+                self.assertEqual([
+                    ('a', 'file'),
+                    ('dir', 'directory'),
+                    ('dir/b', 'file'),
+                    ('dir/file', 'file'),
+                    ('dir/subdir', 'directory'),
+                    ('dir/subfile', 'file'),
+                    ('file', 'file'),
+                    ('zz_dir', 'directory'),
+                    ], files)
 
     def test_list_files_kind_change(self):
         tree = self.make_branch_and_tree('tree')
@@ -137,9 +151,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         result = list(tree.list_files())
         self.assertEqual(1, len(result))
-        self.assertEqual(
-                ('filename', 'V', 'directory', tree.path2id('filename')),
-                result[0][:4])
+        if tree.has_versioned_directories():
+            self.assertEqual(
+                    ('filename', 'V', 'directory', tree.path2id('filename')),
+                    result[0][:4])
+        else:
+            self.assertEqual(
+                    ('filename', '?', 'directory', None),
+                    result[0][:4])
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config

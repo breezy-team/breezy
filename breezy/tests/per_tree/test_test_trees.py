@@ -18,6 +18,7 @@
 
 from breezy.tests import per_tree
 from breezy.tests import (
+    TestNotApplicable,
     features,
     )
 
@@ -211,6 +212,9 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
     def test_tree_with_utf8(self):
         tree = self.make_branch_and_tree('.')
+        if not tree.supports_setting_file_ids():
+            raise TestNotApplicable(
+                'format does not support custom file ids')
         tree = self.get_tree_with_utf8(tree)
 
         revision_id = u'r\xe9v-1'.encode('utf8')

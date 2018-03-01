@@ -94,7 +94,7 @@ class AbstractPerFileMerger(object):
     """PerFileMerger objects are used by plugins extending merge for breezy.
 
     See ``breezy.plugins.news_merge.news_merge`` for an example concrete class.
-    
+
     :ivar merger: The Merge3Merger performing the merge.
     """
 
@@ -104,7 +104,7 @@ class AbstractPerFileMerger(object):
 
     def merge_contents(self, merge_params):
         """Attempt to merge the contents of a single file.
-        
+
         :param merge_params: A breezy.merge.MergeFileHookParams
         :return: A tuple of (status, chunks), where status is one of
             'not_applicable', 'success', 'conflicted', or 'delete'.  If status
@@ -174,13 +174,13 @@ class ConfigurableFileMerger(PerFileMerger):
     classes should implement ``merge_text``.
 
     See ``breezy.plugins.news_merge.news_merge`` for an example concrete class.
-    
+
     :ivar affected_files: The configured file paths to merge.
 
     :cvar name_prefix: The prefix to use when looking up configuration
         details. <name_prefix>_merge_files describes the files targeted by the
         hook for example.
-        
+
     :cvar default_files: The default file paths to merge when no configuration
         is present.
     """
@@ -718,6 +718,7 @@ class Merge3Merger(object):
     supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
     supports_lca_trees = True
+    requires_file_merge_plan = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
@@ -1402,7 +1403,7 @@ class Merge3Merger(object):
     def merge_contents(self, merge_hook_params):
         """Fallback merge logic after user installed hooks."""
         # This function is used in merge hooks as the fallback instance.
-        # Perhaps making this function and the functions it calls be a 
+        # Perhaps making this function and the functions it calls be a
         # a separate class would be better.
         if merge_hook_params.winner == 'other':
             # OTHER is a straight winner, so replace this contents with other
@@ -1476,7 +1477,6 @@ class Merge3Merger(object):
                                               this_lines, base_lines,
                                               other_lines)
             file_group.append(trans_id)
-
 
     def _get_filter_tree_path(self, file_id):
         if self.this_tree.supports_content_filtering():
@@ -1661,6 +1661,7 @@ class WeaveMerger(Merge3Merger):
     supports_show_base = False
     supports_reverse_cherrypick = False
     history_based = True
+    requires_file_merge_plan = True
 
     def _generate_merge_plan(self, file_id, base):
         return self.this_tree.plan_file_merge(file_id, self.other_tree,
@@ -1715,6 +1716,8 @@ class WeaveMerger(Merge3Merger):
 
 class LCAMerger(WeaveMerger):
 
+    requires_file_merge_plan = True
+
     def _generate_merge_plan(self, file_id, base):
         return self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
                                                   base=base)
@@ -1722,15 +1725,14 @@ class LCAMerger(WeaveMerger):
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""
 
+    requires_file_merge_plan = False
+
     def dump_file(self, temp_dir, name, tree, file_id):
         out_path = osutils.pathjoin(temp_dir, name)
-        out_file = open(out_path, "wb")
-        try:
+        with open(out_path, "wb") as out_file:
             in_file = tree.get_file(tree.id2path(file_id), file_id)
             for line in in_file:
                 out_file.write(line)
-        finally:
-            out_file.close()
         return out_path
 
     def text_merge(self, file_id, trans_id):
@@ -1748,11 +1750,8 @@ class Diff3Merger(Merge3Merger):
             status = breezy.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
                 raise errors.BzrError("Unhandled diff3 exit code")
-            f = open(new_file, 'rb')
-            try:
+            with open(new_file, 'rb') as f:
                 self.tt.create_file(f, trans_id)
-            finally:
-                f.close()
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
@@ -1831,7 +1830,7 @@ class MergeIntoMerger(Merger):
 
 class _MergeTypeParameterizer(object):
     """Wrap a merge-type class to provide extra parameters.
-    
+
     This is hack used by MergeIntoMerger to pass some extra parameters to its
     merge_type.  Merger.do_merge() sets up its own set of parameters to pass to
     the 'merge_type' member.  It is difficult override do_merge without

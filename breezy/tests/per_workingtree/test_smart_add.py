@@ -185,8 +185,12 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
         added, ignored = wt.smart_add(u'.')
-        self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
-                          added)
+        if wt.has_versioned_directories():
+            self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
+                              added)
+        else:
+            self.assertSubset(('inertiatic/esp', 'inertiatic/CVS'),
+                              added)
         self.assertSubset(('*.py[co]',), ignored)
         self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[co]'])
 

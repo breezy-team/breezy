@@ -115,10 +115,12 @@ class TestWalkdirs(TestCaseWithWorkingTree):
             (dirblocks[1].as_dir_tuple(),
              [dirblocks[2].as_tuple()]
             ),
+            ]
+        if tree.has_versioned_directories():
+            expected_dirblocks.append(
             (dirblocks[3].as_dir_tuple(),
              []
-            ),
-            ]
+            ))
         if prefix:
             expected_dirblocks = [e for e in expected_dirblocks
                 if len(e) > 0 and len(e[0]) > 0 and e[0][0] == prefix]
@@ -242,21 +244,33 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self.build_tree(changed_paths)
         dir1_stat = os.lstat('dir1')
         file1_stat = os.lstat('file1')
-        expected_dirblocks = [
-             (('', tree.path2id('')),
-              [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
-               ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
-              ]
-             ),
-             (('dir1', tree.path2id('dir1')),
-              [
-              ]
-             ),
-             (('file1', None),
-              [
-              ]
-             ),
-            ]
+        if tree.has_versioned_directories():
+            expected_dirblocks = [
+                 (('', tree.path2id('')),
+                  [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
+                   ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
+                  ]
+                 ),
+                 (('dir1', tree.path2id('dir1')),
+                  [
+                  ]
+                 ),
+                 (('file1', None),
+                  [
+                  ]
+                 ),
+                ]
+        else:
+            expected_dirblocks = [
+                 (('', tree.path2id('')),
+                  [('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
+                  ]
+                 ),
+                 (('file1', None),
+                  [
+                  ]
+                 ),
+                ]
         tree.lock_read()
         result = list(tree.walkdirs())
         tree.unlock()
