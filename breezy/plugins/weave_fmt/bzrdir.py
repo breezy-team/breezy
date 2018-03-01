@@ -242,7 +242,6 @@ class ConvertBzrDir4To5(Converter):
         if pb is not None:
             warnings.warn(gettext("pb parameter to convert() is deprecated"))
         with ui.ui_factory.nested_progress_bar() as self.pb:
-        try:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
                 self.controldir.get_workingtree_transport(None).delete('stat-cache')

@@ -76,15 +76,18 @@ class Reconciler(object):
           branch history was correct, True if the branch history needed to be
           re-normalized.
         """
-        with ui.ui_factory.nested_progress_bar() as pb:
-            self._reconcile(pb)
+        operation = cleanup.OperationWithCleanups(self._reconcile)
+        self.add_cleanup = operation.add_cleanup
+        operation.run_simple()
 
-    def _reconcile(self, pb):
+    def _reconcile(self):
         """Helper function for performing reconciliation."""
-        self._reconcile_branch(pb)
-        self._reconcile_repository(pb)
+        self.pb = ui.ui_factory.nested_progress_bar()
+        self.add_cleanup(self.pb.finished)
+        self._reconcile_branch()
+        self._reconcile_repository()
 
-    def _reconcile_branch(self, pb):
+    def _reconcile_branch(self):
         try:
             self.branch = self.controldir.open_branch()
         except errors.NotBranchError:
@@ -95,11 +98,11 @@ class Reconciler(object):
         branch_reconciler = self.branch.reconcile(thorough=True)
         self.fixed_branch_history = branch_reconciler.fixed_history
 
-    def _reconcile_repository(self, pb):
+    def _reconcile_repository(self):
         self.repo = self.controldir.find_repository()
         ui.ui_factory.note(gettext('Reconciling repository %s') %
             self.repo.user_url)
-        pb.update(gettext("Reconciling repository"), 0, 1)
+        self.pb.update(gettext("Reconciling repository"), 0, 1)
         if self.canonicalize_chks:
             try:
                 self.repo.reconcile_canonicalize_chks
