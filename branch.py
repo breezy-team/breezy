@@ -929,7 +929,8 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(stop_revision, result.old_revid,
+        self.target.generate_revision_history(stop_revision,
+                (result.old_revid if not overwrite else None),
                 other_branch=self.source)
         tags_ret = self.source.tags.merge_to(self.target.tags,
             source_refs=refs, overwrite=overwrite)
