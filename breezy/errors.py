@@ -1867,6 +1867,14 @@ class UnsupportedOperation(BzrError):
         self.tname = type(method_self).__name__
 
 
+class FetchLimitUnsupported(UnsupportedOperation):
+
+    fmt = ("InterBranch %(interbranch)r does not support fetching limits.")
+
+    def __init__(self, interbranch):
+        BzrError.__init__(self, interbranch=interbranch)
+
+
 class NonAsciiRevisionId(UnsupportedOperation):
     """Raised when a commit is attempting to set a non-ascii revision id
        but cant.

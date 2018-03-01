@@ -16,7 +16,9 @@
 
 """Tests for InterBranch.fetch."""
 
+from breezy.errors import FetchLimitUnsupported
 from breezy.revision import NULL_REVISION
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import (
     TestCaseWithInterBranch,
     )
@@ -55,7 +57,10 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         builder.finish_series()
         b1 = builder.get_branch()
         b2 = self.make_to_branch('b2')
-        b2.fetch(b1, limit=1)
+        try:
+            b2.fetch(b1, limit=1)
+        except FetchLimitUnsupported:
+            raise TestNotApplicable('interbranch does not support fetch limits')
 
         # fetch does not update the last revision
         self.assertEqual(NULL_REVISION, b2.last_revision())
@@ -72,7 +77,10 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_to_branch('b2')
-        b2.fetch(b1, limit=1)
+        try:
+            b2.fetch(b1, limit=1)
+        except FetchLimitUnsupported:
+            raise TestNotApplicable('interbranch does not support fetch limits')
 
         self.assertEqual(
             {rev1},
