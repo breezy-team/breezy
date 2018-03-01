@@ -800,8 +800,7 @@ class InterWeaveRepo(InterSameDataRepository):
                 pass
             # FIXME do not peek!
             if self.source._transport.listable():
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
+                with ui.ui_factory.nested_progress_bar() as pb:
                     self.target.texts.insert_record_stream(
                         self.source.texts.get_record_stream(
                             self.source.texts.keys(), 'topological', False))
@@ -817,8 +816,6 @@ class InterWeaveRepo(InterSameDataRepository):
                         self.source.revisions.get_record_stream(
                             self.source.revisions.keys(),
                             'topological', True))
-                finally:
-                    pb.finished()
             else:
                 self.target.fetch(self.source, revision_id=revision_id)
 

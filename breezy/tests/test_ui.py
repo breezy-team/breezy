@@ -61,8 +61,7 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_factory_ascii_password(self):
         ui = ui_testing.TestUIFactory('secret\n')
-        pb = ui.nested_progress_bar()
-        try:
+        with ui.nested_progress_bar() as pb:
             self.assertEqual('secret',
                              self.apply_redirected(ui.stdin, ui.stdout,
                                                    ui.stderr,
@@ -72,8 +71,6 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEqual('', ui.stdout.readline())
             # stdin should be empty
             self.assertEqual('', ui.stdin.readline())
-        finally:
-            pb.finished()
 
     def test_text_factory_unicode_password(self):
         """Test a unicode password."""
@@ -212,14 +209,11 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_tick_after_update(self):
         ui_factory = ui_testing.TextUIFactory()
-        pb = ui_factory.nested_progress_bar()
-        try:
+        with ui_factory.nested_progress_bar() as pb:
             pb.update('task', 0, 3)
             # Reset the clock, so that it actually tries to repaint itself
             ui_factory._progress_view._last_repaint = time.time() - 1.0
             pb.tick()
-        finally:
-            pb.finished()
 
     def test_text_ui_getusername(self):
         ui = ui_testing.TextUIFactory('someuser\n\n')
@@ -373,10 +367,9 @@ class TestUIFactoryTests(tests.TestCase):
         # there's no output; we just want to make sure this doesn't crash -
         # see https://bugs.launchpad.net/bzr/+bug/408201
         ui = ui_testing.TestUIFactory()
-        pb = ui.nested_progress_bar()
-        pb.update('hello')
-        pb.tick()
-        pb.finished()
+        with ui.nested_progress_bar() as pb:
+            pb.update('hello')
+            pb.tick()
 
 
 class CannedInputUIFactoryTests(tests.TestCase):

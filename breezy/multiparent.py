@@ -403,8 +403,7 @@ class BaseVersionedFile(object):
             raise ValueError()
         revisions = set(vf.versions())
         total = len(revisions)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             while len(revisions) > 0:
                 added = set()
                 for revision in revisions:
@@ -430,8 +429,6 @@ class BaseVersionedFile(object):
                     pb.update(gettext('Importing revisions'),
                               (total - len(revisions)) + len(added), total)
                 revisions = [r for r in revisions if r not in added]
-        finally:
-            pb.finished()
 
     def select_snapshots(self, vf):
         """Determine which versions to add as snapshots"""
