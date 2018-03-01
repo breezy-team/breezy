@@ -32,7 +32,7 @@ def install_bundle(repository, bundle_reader):
     custom_install = getattr(bundle_reader, 'install', None)
     if custom_install is not None:
         return custom_install(repository)
-    with ui.ui_factory.nested_progress_bar() as pb, repository.lock_write():
+    with repository.lock_write(), ui.ui_factory.nested_progress_bar() as pb:
         real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
             pb.update(gettext("Install revisions"), i, len(real_revisions))
