@@ -223,13 +223,16 @@ class TestPush(per_branch.TestCaseWithBranch):
         # See https://bugs.launchpad.net/bzr/+bug/465517
         t = self.get_transport('target')
         t.ensure_base()
-        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
         try:
             bzrdir.open_branch()
         except errors.NotBranchError:
             pass
         else:
-            raise tests.TestNotApplicable('older formats can\'t have a repo'
+            raise tests.TestNotApplicable('some formats can\'t have a repo'
                                           ' without a branch')
         try:
             source = self.make_branch_builder('source',
