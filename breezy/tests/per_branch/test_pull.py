@@ -121,8 +121,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
-        rev2a = tree_a.commit('message 2')
-        rev2b = tree_b.commit('message 2')
+        rev2a = tree_a.commit('message 2a')
+        rev2b = tree_b.commit('message 2b')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
         self.assertRaises(errors.DivergedBranches,
                           tree_a.branch.pull, tree_b.branch,
