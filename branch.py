@@ -934,17 +934,20 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result
 
     def update_refs(self, stop_revision=None):
-        interrepo = _mod_repository.InterRepository.get(self.source.repository,
-            self.target.repository)
+        interrepo = _mod_repository.InterRepository.get(
+                self.source.repository, self.target.repository)
+        c = self.source.get_config_stack()
+        fetch_tags = c.get('branch.fetch_tags')
+
         if stop_revision is None:
-            refs = interrepo.fetch(branches=["HEAD"])
+            refs = interrepo.fetch(branches=["HEAD"], include_tags=fetch_tags)
             stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
         else:
-            refs = interrepo.fetch(revision_id=stop_revision)
+            refs = interrepo.fetch(revision_id=stop_revision, include_tags=fetch_tags)
         return refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,
-        possible_transports=None, run_hooks=True,local=False):
+             possible_transports=None, run_hooks=True, local=False):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
@@ -971,7 +974,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 class InterToGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls into a Git branch."""
+    """InterBranch implementation that pulls from a non-bzr into a Git branch."""
 
     def __init__(self, source, target):
         super(InterToGitBranch, self).__init__(source, target)
