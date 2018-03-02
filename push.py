@@ -135,6 +135,8 @@ class InterToGitRepository(InterRepository):
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
+        if limit is not None:
+            raise errors.FetchLimitUnsupported(self)
         git_shas = []
         todo = []
         if revision_ids:

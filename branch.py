@@ -409,14 +409,7 @@ class GitBranch(ForeignBranch):
                 # our previous tip is not merged into stop_revision
                 raise errors.DivergedBranches(self, other_branch)
 
-        if revid == NULL_REVISION:
-            newhead = ZERO_SHA
-        else:
-            # FIXME: Check that old_revid is in the ancestry of revid
-            newhead, self.mapping = self.repository.lookup_bzr_revision_id(revid)
-            if self.mapping is None:
-                raise AssertionError
-        self._set_head(newhead)
+        self.set_last_revision(revid)
 
     def lock_write(self, token=None):
         if token is not None:

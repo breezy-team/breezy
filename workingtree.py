@@ -201,8 +201,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         return {}
 
     def set_merge_modified(self, modified_hashes):
-        # TODO(jelmer)
-        pass
+        raise errors.UnsupportedOperation(self.set_merge_modified, self)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         self.set_parent_ids([p for p, t in parents_list])

@@ -554,6 +554,8 @@ class InterFromGitRepository(InterRepository):
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
+        if limit is not None:
+            raise errors.FetchLimitUnsupported(self)
         git_shas = []
         todo = []
         if revision_ids:
@@ -795,6 +797,8 @@ class InterGitGitRepository(InterFromGitRepository):
         return None, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, mapping=None, limit=None):
+        if limit is not None:
+            raise errors.FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
@@ -863,7 +867,7 @@ class InterGitGitRepository(InterFromGitRepository):
         else:
             determine_wants = self.get_determine_wants_revids(args, include_tags=include_tags)
         wants_recorder = DetermineWantsRecorder(determine_wants)
-        self.fetch_objects(wants_recorder, mapping)
+        self.fetch_objects(wants_recorder, mapping, limit=limit)
         return wants_recorder.remote_refs
 
     @staticmethod
