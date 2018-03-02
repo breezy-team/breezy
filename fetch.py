@@ -635,7 +635,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
         raise NotImplementedError(self.fetch_objects)
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None):
+              mapping=None, fetch_spec=None, include_tags=False):
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -652,7 +652,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
         if interesting_heads is not None:
             determine_wants = self.get_determine_wants_revids(
-                interesting_heads, include_tags=False)
+                interesting_heads, include_tags=include_tags)
         else:
             determine_wants = self.determine_wants_all
 
@@ -838,12 +838,12 @@ class InterGitGitRepository(InterFromGitRepository):
         return set([sha for sha in shas if sha in self.target._git.object_store])
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, branches=None, limit=None):
+              mapping=None, fetch_spec=None, branches=None, limit=None, include_tags=False):
         if mapping is None:
             mapping = self.source.get_mapping()
         r = self.target._git
         if revision_id is not None:
-            args = [self.source.lookup_bzr_revision_id(revision_id)[0]]
+            args = [revision_id]
         elif fetch_spec is not None:
             recipe = fetch_spec.get_recipe()
             if recipe[0] in ("search", "proxy-search"):
@@ -851,13 +851,21 @@ class InterGitGitRepository(InterFromGitRepository):
             else:
                 raise AssertionError(
                     "Unsupported search result type %s" % recipe[0])
-            args = [self.source.lookup_bzr_revision_id(revid)[0] for revid in heads]
+            args = heads
         if branches is not None:
-            determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store and x[y] != ZERO_SHA]
+            def determine_wants(refs):
+                ret = []
+                for name, value in refs.as_dict().iteritems():
+                    if value == ZERO_SHA:
+                        continue
+
+                    if name in branches or (include_tags and is_tag(name)):
+                        ret.append(value)
+                return ret
         elif fetch_spec is None and revision_id is None:
             determine_wants = self.determine_wants_all
         else:
-            determine_wants = lambda x: [y for y in args if not y in r.object_store and y != ZERO_SHA]
+            determine_wants = self.get_determine_wants_revids(args, include_tags=include_tags)
         wants_recorder = DetermineWantsRecorder(determine_wants)
         self.fetch_objects(wants_recorder, mapping, limit=limit)
         return wants_recorder.remote_refs

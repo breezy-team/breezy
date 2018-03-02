@@ -131,11 +131,8 @@ class GitMergeDirective(BaseMergeDirective):
     def _generate_commit(cls, repository, revision_id, num, total):
         s = StringIO()
         store = get_object_store(repository)
-        store.lock_read()
-        try:
+        with store.lock_read():
             commit = store[store._lookup_revision_sha1(revision_id)]
-        finally:
-            store.unlock()
         from dulwich.patch import write_commit_patch, get_summary
         try:
             lhs_parent = repository.get_revision(revision_id).parent_ids[0]
@@ -158,8 +155,7 @@ class GitMergeDirective(BaseMergeDirective):
                      public_branch=None, message=None):
         patches = []
         submit_branch = _mod_branch.Branch.open(target_branch)
-        submit_branch.lock_read()
-        try:
+        with submit_branch.lock_read():
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
             graph = repository.get_graph()
@@ -168,8 +164,6 @@ class GitMergeDirective(BaseMergeDirective):
             for i, revid in enumerate(graph.iter_topo_order(todo)):
                 patches.append(cls._generate_commit(repository, revid, i+1,
                     total))
-        finally:
-            submit_branch.unlock()
         return cls(revision_id, None, time, timezone,
             target_branch=target_branch, source_branch=public_branch,
             message=message, patches=patches)

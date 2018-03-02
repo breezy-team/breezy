@@ -297,15 +297,21 @@ from ...branch import (
     network_format_registry as branch_network_format_registry,
     )
 branch_network_format_registry.register_lazy('git',
-    __name__ + '.branch', 'GitBranchFormat')
+    __name__ + '.branch', 'LocalGitBranchFormat')
+
 
 from ...branch import (
     format_registry as branch_format_registry,
     )
 branch_format_registry.register_extra_lazy(
     __name__ + '.branch',
-    'GitBranchFormat',
+    'LocalGitBranchFormat',
     )
+branch_format_registry.register_extra_lazy(
+    __name__ + '.remote',
+    'RemoteGitBranchFormat',
+    )
+
 
 from ...workingtree import (
     format_registry as workingtree_format_registry,
@@ -386,8 +392,7 @@ def update_git_cache(repository, revid):
 
     from .object_store import BazaarObjectStore
     store = BazaarObjectStore(repository)
-    store.lock_write()
-    try:
+    with store.lock_write():
         try:
             parent_revisions = set(repository.get_parent_map([revid])[revid])
         except KeyError:
@@ -397,8 +402,6 @@ def update_git_cache(repository, revid):
         if not missing_revisions:
             # Only update if the cache was up to date previously
             store._update_sha_map_revision(revid)
-    finally:
-        store.unlock()
 
 
 def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,

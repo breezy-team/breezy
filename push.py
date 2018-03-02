@@ -143,8 +143,7 @@ class InterToGitRepository(InterRepository):
             todo.extend(revision_ids)
         if if_present_ids:
             todo.extend(revision_ids)
-        self.source_store.lock_read()
-        try:
+        with self.source_store.lock_read():
             for revid in revision_ids:
                 if revid == NULL_REVISION:
                     continue
@@ -157,8 +156,6 @@ class InterToGitRepository(InterRepository):
                 for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
                     if kind == "commit":
                         missing_revids.add(type_data[0])
-        finally:
-            self.source_store.unlock()
         return self.source.revision_ids_to_search_result(missing_revids)
 
 
@@ -256,8 +253,7 @@ class InterToLocalGitRepository(InterToGitRepository):
     def fetch_refs(self, update_refs, lossy):
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport(self.source, self.target, self.mapping)
-        self.source_store.lock_read()
-        try:
+        with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_objects(
@@ -270,15 +266,12 @@ class InterToLocalGitRepository(InterToGitRepository):
                         gitid = self.source_store._lookup_revision_sha1(revid)
                 assert len(gitid) == 40 or gitid.startswith('ref: ')
                 self.target_refs[name] = gitid
-        finally:
-            self.source_store.unlock()
         return revidmap, old_refs, new_refs
 
     def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport(self.source, self.target, self.mapping)
-        self.source_store.lock_read()
-        try:
+        with self.source_store.lock_read():
             todo = list(self.missing_revisions(revs))[:limit]
             revidmap = {}
             pb = ui.ui_factory.nested_progress_bar()
@@ -301,8 +294,6 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return revidmap
             finally:
                 pb.finished()
-        finally:
-            self.source_store.unlock()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
@@ -348,12 +339,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 else:
                     ret[name] = gitid
             return ret
-        self.source_store.lock_read()
-        try:
+        with self.source_store.lock_read():
             new_refs = self.target.send_pack(determine_wants,
                     self.source_store.generate_lossy_pack_contents)
-        finally:
-            self.source_store.unlock()
         # FIXME: revidmap?
         return revidmap, self.old_refs, self.new_refs
 
