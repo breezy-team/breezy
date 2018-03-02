@@ -44,6 +44,7 @@ lazy_check_versions()
 
 from .branch import (
     GitBranch,
+    GitBranchFormat,
     GitTags,
     )
 from .dir import (
@@ -246,6 +247,20 @@ class SSHGitSmartTransport(GitSmartTransport):
         return client
 
 
+class RemoteGitBranchFormat(GitBranchFormat):
+
+    def get_format_description(self):
+        return 'Remote Git Branch'
+
+    @property
+    def _matchingcontroldir(self):
+        return RemoteGitControlDirFormat()
+
+    def initialize(self, a_controldir, name=None, repository=None,
+                   append_revisions_only=None):
+        raise UninitializableFormat(self)
+
+
 class RemoteGitDir(GitDir):
 
     def __init__(self, transport, format, get_client, client_path):
@@ -394,6 +409,9 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
     def _known_formats(self):
         return set([RemoteGitControlDirFormat()])
 
+    def get_branch_format(self):
+        return RemoteGitBranchFormat()
+
     def is_initializable(self):
         return False
 
@@ -505,7 +523,8 @@ class RemoteGitBranch(GitBranch):
 
     def __init__(self, controldir, repository, name):
         self._sha = None
-        super(RemoteGitBranch, self).__init__(controldir, repository, name)
+        super(RemoteGitBranch, self).__init__(controldir, repository, name,
+                RemoteGitBranchFormat())
 
     def last_revision_info(self):
         raise GitSmartRemoteNotSupported(self.last_revision_info, self)

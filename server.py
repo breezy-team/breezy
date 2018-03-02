@@ -73,11 +73,8 @@ class BzrBackendRepo(BackendRepo):
         self.refs = get_refs_container(self.repo_dir, self.object_store)
 
     def get_refs(self):
-        self.object_store.lock_read()
-        try:
+        with self.object_store.lock_read():
             return self.refs.as_dict()
-        finally:
-            self.object_store.unlock()
 
     def get_peeled(self, name):
         cached = self.refs.get_peeled(name)
@@ -88,16 +85,13 @@ class BzrBackendRepo(BackendRepo):
     def fetch_objects(self, determine_wants, graph_walker, progress,
         get_tagged=None):
         """Yield git objects to send to client """
-        self.object_store.lock_read()
-        try:
+        with self.object_store.lock_read():
             wants = determine_wants(self.get_refs())
             have = self.object_store.find_common_revisions(graph_walker)
             if wants is None:
                 return
             return self.object_store.generate_pack_contents(have, wants, progress,
                 get_tagged, lossy=(not self.mapping.roundtripping))
-        finally:
-            self.object_store.unlock()
 
 
 class BzrTCPGitServer(TCPGitServer):

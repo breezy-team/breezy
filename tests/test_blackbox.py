@@ -106,7 +106,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(error, '')
         self.assertTrue("Standalone tree (format: git)" in output)
         self.assertTrue("control: Local Git Repository" in output)
-        self.assertTrue("branch: Git Branch" in output)
+        self.assertTrue("branch: Local Git Branch" in output)
         self.assertTrue("repository: Git Repository" in output)
 
     def test_push_roundtripping(self):

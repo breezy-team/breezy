@@ -172,11 +172,8 @@ class BazaarRefsContainer(RefsContainer):
             target_branch = self.repo.create_branch(branch_name)
 
         rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
-        target_branch.lock_write()
-        try:
+        with target_branch.lock_write():
             target_branch.generate_revision_history(rev_id)
-        finally:
-            target_branch.unlock()
 
 
 def get_refs_container(controldir, object_store):

@@ -38,11 +38,8 @@ from ..git_remote_helper import (
 
 def map_to_git_sha1(dir, bzr_revid):
     object_store = get_object_store(dir.open_repository())
-    object_store.lock_read()
-    try:
+    with object_store.lock_read():
         return object_store._lookup_revision_sha1(bzr_revid)
-    finally:
-        object_store.unlock()
 
 
 class OpenLocalDirTests(TestCaseWithTransport):
