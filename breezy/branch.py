@@ -833,8 +833,7 @@ class Branch(controldir.ControlComponent):
 
         Don't call this directly, use set_stacked_on_url(None).
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
@@ -908,8 +907,6 @@ class Branch(controldir.ControlComponent):
                     old_repository, required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
-        finally:
-            pb.finished()
 
     def _set_tags_bytes(self, bytes):
         """Mirror method for _get_tags_bytes.

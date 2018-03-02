@@ -1607,11 +1607,8 @@ class TestControlDir(TestCaseWithControlDir):
             # if its default updatable there must be an updater
             # (we force the latest known format as downgrades may not be
             # available
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 dir._format.get_converter(format=dir._format).convert(dir, pb)
-            finally:
-                pb.finished()
             # and it should pass 'check' now.
             check.check_dwim(self.get_url('.'), False, True, True)
 

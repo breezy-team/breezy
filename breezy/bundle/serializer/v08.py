@@ -117,11 +117,8 @@ class BundleSerializerV08(BundleSerializer):
         self.check_compatible()
         with source.lock_read():
             self._write_main_header()
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 self._write_revisions(pb)
-            finally:
-                pb.finished()
 
     def write_bundle(self, repository, target, base, fileobj):
         return self._write_bundle(repository, target, base, fileobj)

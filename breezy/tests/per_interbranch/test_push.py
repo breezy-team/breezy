@@ -212,7 +212,11 @@ class TestPush(TestCaseWithInterBranch):
         #   - rev-2, no changes
         #   - rev-3, modifies the file.
         repo = self.make_repository('repo', shared=True, format='1.6')
-        builder = self.make_from_branch_builder('repo/local')
+        try:
+            builder = self.make_from_branch_builder('repo/local')
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'BranchBuilder can not initialize some formats')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),

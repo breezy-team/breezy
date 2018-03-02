@@ -245,15 +245,6 @@ class NoSuchId(BzrError):
         self.tree = tree
 
 
-class NoSuchIdInRepository(NoSuchId):
-
-    _fmt = ('The file id "%(file_id)s" is not present in the repository'
-            ' %(repository)r')
-
-    def __init__(self, repository, file_id):
-        BzrError.__init__(self, repository=repository, file_id=file_id)
-
-
 class NotStacked(BranchError):
 
     _fmt = "The branch '%(branch)s' is not stacked."
@@ -1865,6 +1856,14 @@ class UnsupportedOperation(BzrError):
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
+
+
+class FetchLimitUnsupported(UnsupportedOperation):
+
+    fmt = ("InterBranch %(interbranch)r does not support fetching limits.")
+
+    def __init__(self, interbranch):
+        BzrError.__init__(self, interbranch=interbranch)
 
 
 class NonAsciiRevisionId(UnsupportedOperation):

@@ -241,15 +241,12 @@ class ConvertBzrDir4To5(Converter):
         self.controldir = to_convert
         if pb is not None:
             warnings.warn(gettext("pb parameter to convert() is deprecated"))
-        self.pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
                 self.controldir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
             return ControlDir.open(self.controldir.user_url)
-        finally:
-            self.pb.finished()
 
     def _convert_to_weaves(self):
         ui.ui_factory.note(gettext(
@@ -508,13 +505,10 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
             return ControlDir.open(self.controldir.user_url)
-        finally:
-            pb.finished()
 
     def _convert_to_prefixed(self):
         from .store import TransportStore

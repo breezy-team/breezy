@@ -828,8 +828,7 @@ class Merge3Merger(object):
         # One hook for each registered one plus our default merger
         hooks = [factory(self) for factory in factories] + [self]
         self.active_hooks = [hook for hook in hooks if hook is not None]
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
                 # Try merging each entry
@@ -842,8 +841,6 @@ class Merge3Merger(object):
                     file_status = 'unmodified'
                 self._merge_executable(file_id,
                     executable3, file_status, resolver=resolver)
-        finally:
-            child_pb.finished()
         self.tt.fixup_new_roots()
         self._finish_computing_transform()
 
@@ -852,12 +849,9 @@ class Merge3Merger(object):
 
         This is the second half of _compute_transform.
         """
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
                 lambda t, c: transform.conflict_pass(t, c, self.other_tree))
-        finally:
-            child_pb.finished()
         if self.change_reporter is not None:
             from breezy import delta
             delta.report_changes(
@@ -1877,8 +1871,7 @@ class MergeIntoMergeType(Merge3Merger):
         super(MergeIntoMergeType, self).__init__(*args, **kwargs)
 
     def _compute_transform(self):
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             entries = self._entries_to_incorporate()
             entries = list(entries)
             for num, (entry, parent_id, path) in enumerate(entries):
@@ -1886,8 +1879,6 @@ class MergeIntoMergeType(Merge3Merger):
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
                 trans_id = transform.new_by_entry(path, self.tt, entry,
                     parent_trans_id, self.other_tree)
-        finally:
-            child_pb.finished()
         self._finish_computing_transform()
 
     def _entries_to_incorporate(self):
