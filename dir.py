@@ -543,8 +543,10 @@ class LocalGitDir(GitDir):
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
         from dulwich.index import build_index_from_tree
         from dulwich.objects import ZERO_SHA
+        if from_branch is None:
+            from_branch = self.open_branch()
         if revision_id is None:
-            revision_id = self.open_branch().last_revision()
+            revision_id = from_branch.last_revision()
         repo = self.find_repository()
         store = repo._git.object_store
         (commit_id, mapping) = repo.lookup_bzr_revision_id(revision_id)
@@ -553,7 +555,9 @@ class LocalGitDir(GitDir):
             self.transport.local_abspath("index"),
             store,
             None if commit_id == ZERO_SHA else store[commit_id].tree)
-        wt = self.open_workingtree()
+        from .workingtree import GitWorkingTree
+        index = repo._git.open_index()
+        wt = GitWorkingTree(self, repo, from_branch, index)
         wt.set_last_revision(revision_id)
         return wt
 
