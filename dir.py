@@ -177,15 +177,12 @@ class GitDir(ControlDir):
             and (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
-            wt.lock_write()
-            try:
+            with wt.lock_write():
                 if wt.path2id('') is None:
                     try:
                         wt.set_root_id(self.open_workingtree.get_root_id())
                     except bzr_errors.NoWorkingTree:
                         pass
-            finally:
-                wt.unlock()
         return result
 
     def clone_on_transport(self, transport, revision_id=None,
@@ -275,8 +272,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return GitWorkingTreeFormat()
 
     def get_branch_format(self):
-        from .branch import GitBranchFormat
-        return GitBranchFormat()
+        from .branch import LocalGitBranchFormat
+        return LocalGitBranchFormat()
 
     def open(self, transport, _found=None):
         """Open this directory.
@@ -416,14 +413,14 @@ class LocalGitDir(GitDir):
 
     def find_branch_format(self, name=None):
         from .branch import (
-            GitBranchFormat,
             GitSymrefBranchFormat,
+            LocalGitBranchFormat,
             )
         ref = self._get_selected_ref(name)
         if self._get_symref(ref) is not None:
             return GitSymrefBranchFormat()
         else:
-            return GitBranchFormat()
+            return LocalGitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):
         if branch_format is None:

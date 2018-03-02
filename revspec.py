@@ -90,8 +90,7 @@ class RevisionSpec_git(RevisionSpec):
             )
         parse_revid = getattr(branch.repository, "lookup_bzr_revision_id",
                               mapping_registry.parse_revision_id)
-        branch.repository.lock_read()
-        try:
+        with branch.repository.lock_read():
             graph = branch.repository.get_graph()
             for revid, _ in graph.iter_ancestry([branch.last_revision()]):
                 if revid == NULL_REVISION:
@@ -105,8 +104,6 @@ class RevisionSpec_git(RevisionSpec):
                 if foreign_revid.startswith(sha1):
                     return RevisionInfo.from_revision_id(branch, revid)
             raise InvalidRevisionSpec(self.user_spec, branch)
-        finally:
-            branch.repository.unlock()
 
     def _match_on(self, branch, revs):
         loc = self.spec.find(':')

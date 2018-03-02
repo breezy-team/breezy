@@ -490,8 +490,8 @@ class ForeignGit(ForeignVcs):
 
     @property
     def branch_format(self):
-        from .branch import GitBranchFormat
-        return GitBranchFormat()
+        from .branch import LocalGitBranchFormat
+        return LocalGitBranchFormat()
 
     @property
     def repository_format(self):

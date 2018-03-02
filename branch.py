@@ -266,9 +266,6 @@ class DictTagDict(tag.BasicTags):
 
 class GitBranchFormat(branch.BranchFormat):
 
-    def get_format_description(self):
-        return 'Git Branch'
-
     def network_name(self):
         return "git"
 
@@ -283,11 +280,6 @@ class GitBranchFormat(branch.BranchFormat):
 
     def tags_are_versioned(self):
         return False
-
-    @property
-    def _matchingcontroldir(self):
-        from .dir import LocalGitControlDirFormat
-        return LocalGitControlDirFormat()
 
     def get_foreign_tests_branch_factory(self):
         from .tests.test_branch import ForeignTestsBranchFactory
@@ -306,17 +298,32 @@ class GitBranchFormat(branch.BranchFormat):
 
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
-        from .dir import LocalGitDir
-        if not isinstance(a_controldir, LocalGitDir):
-            raise errors.IncompatibleFormat(self, a_controldir._format)
-        return a_controldir.create_branch(repository=repository, name=name,
-            append_revisions_only=append_revisions_only)
+        raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
         return controldir.get_branch_reference(name)
 
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
+
+
+class LocalGitBranchFormat(GitBranchFormat):
+
+    def get_format_description(self):
+        return 'Local Git Branch'
+
+    @property
+    def _matchingcontroldir(self):
+        from .dir import LocalGitControlDirFormat
+        return LocalGitControlDirFormat()
+
+    def initialize(self, a_controldir, name=None, repository=None,
+                   append_revisions_only=None):
+        from .dir import LocalGitDir
+        if not isinstance(a_controldir, LocalGitDir):
+            raise errors.IncompatibleFormat(self, a_controldir._format)
+        return a_controldir.create_branch(repository=repository, name=name,
+            append_revisions_only=append_revisions_only)
 
 
 class GitBranch(ForeignBranch):
@@ -326,9 +333,9 @@ class GitBranch(ForeignBranch):
     def control_transport(self):
         return self.controldir.control_transport
 
-    def __init__(self, controldir, repository, ref):
+    def __init__(self, controldir, repository, ref, format):
         self.repository = repository
-        self._format = GitBranchFormat()
+        self._format = format
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
@@ -395,7 +402,13 @@ class GitBranch(ForeignBranch):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
             self.name)
 
-    def generate_revision_history(self, revid, old_revid=None):
+    def generate_revision_history(self, revid, last_rev=None, other_branch=None):
+        if last_rev is not None:
+            graph = self.repository.get_graph()
+            if not graph.is_ancestor(last_rev, revid):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+
         if revid == NULL_REVISION:
             newhead = ZERO_SHA
         else:
@@ -440,6 +453,7 @@ class GitBranch(ForeignBranch):
     def set_parent(self, location):
         # FIXME: Set "origin" url in .git/config ?
         cs = self.repository._git.get_config()
+        location = urlutils.relative_url(self.base, location)
         cs.set((b"remote", b"origin"), b"url", location)
         f = StringIO()
         cs.write_to_file(f)
@@ -506,7 +520,8 @@ class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
     def __init__(self, controldir, repository, ref):
-        super(LocalGitBranch, self).__init__(controldir, repository, ref)
+        super(LocalGitBranch, self).__init__(controldir, repository, ref,
+                LocalGitBranchFormat())
         refs = controldir.get_refs_container()
         if not (ref in refs or "HEAD" in refs):
             raise errors.NotBranchError(self.base)
@@ -598,8 +613,7 @@ class LocalGitBranch(GitBranch):
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     assert isinstance(revid, str), "was %r" % revid
     # Try in source branch first, it'll be faster
-    local_branch.lock_read()
-    try:
+    with local_branch.lock_read():
         try:
             return local_branch.revision_id_to_revno(revid)
         except errors.NoSuchRevision:
@@ -609,13 +623,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
                     [(revision.NULL_REVISION, 0)])
             except errors.GhostRevisionsHaveNoRevno:
                 # FIXME: Check using graph.find_distance_to_null() ?
-                remote_branch.lock_read()
-                try:
+                with remote_branch.lock_read():
                     return remote_branch.revision_id_to_revno(revid)
-                finally:
-                    remote_branch.unlock()
-    finally:
-        local_branch.unlock()
 
 
 class GitBranchPullResult(branch.PullResult):
@@ -691,9 +700,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
             default_format = branch.format_registry.get_default()
         except AttributeError:
             default_format = branch.BranchFormat._default_format
+        from .remote import RemoteGitBranchFormat
         return [
-            (GitBranchFormat(), GitBranchFormat()),
-            (GitBranchFormat(), default_format)]
+            (RemoteGitBranchFormat(), default_format),
+            (LocalGitBranchFormat(), default_format)]
 
     @classmethod
     def _get_interrepo(self, source, target):
@@ -748,7 +758,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         else:
             prev_last_revid = self.target.last_revision()
         self.target.generate_revision_history(self._last_revid,
-            prev_last_revid, self.source)
+            last_rev=prev_last_revid, other_branch=self.source)
         return head, refs
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
@@ -862,8 +872,9 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
-        # FIXME
-        return []
+        from .remote import RemoteGitBranchFormat
+        return [
+            (LocalGitBranchFormat(), RemoteGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
@@ -896,8 +907,10 @@ class InterGitLocalGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
-        # FIXME
-        return []
+        from .remote import RemoteGitBranchFormat
+        return [
+            (RemoteGitBranchFormat(), LocalGitBranchFormat()),
+            (LocalGitBranchFormat(), LocalGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
@@ -919,7 +932,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(stop_revision, result.old_revid)
+        self.target.generate_revision_history(stop_revision,
+                (result.old_revid if not overwrite else None),
+                other_branch=self.source)
         tags_ret = self.source.tags.merge_to(self.target.tags,
             source_refs=refs, overwrite=overwrite)
         if isinstance(tags_ret, tuple):
@@ -930,17 +945,20 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result
 
     def update_refs(self, stop_revision=None):
-        interrepo = _mod_repository.InterRepository.get(self.source.repository,
-            self.target.repository)
+        interrepo = _mod_repository.InterRepository.get(
+                self.source.repository, self.target.repository)
+        c = self.source.get_config_stack()
+        fetch_tags = c.get('branch.fetch_tags')
+
         if stop_revision is None:
-            refs = interrepo.fetch(branches=["HEAD"])
+            refs = interrepo.fetch(branches=["HEAD"], include_tags=fetch_tags)
             stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
         else:
-            refs = interrepo.fetch(revision_id=stop_revision)
+            refs = interrepo.fetch(revision_id=stop_revision, include_tags=fetch_tags)
         return refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,
-        possible_transports=None, run_hooks=True,local=False):
+             possible_transports=None, run_hooks=True, local=False):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
@@ -950,7 +968,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         with self.target.lock_write(), self.source.lock_read():
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
-            self.target.generate_revision_history(stop_revision, result.old_revid)
+            self.target.generate_revision_history(stop_revision,
+                    (result.old_revid if not overwrite else None),
+                    other_branch=self.source)
             tags_ret = self.source.tags.merge_to(self.target.tags,
                 overwrite=overwrite, source_refs=refs)
             if isinstance(tags_ret, tuple):
@@ -967,7 +987,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 class InterToGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls into a Git branch."""
+    """InterBranch implementation that pulls from a non-bzr into a Git branch."""
 
     def __init__(self, source, target):
         super(InterToGitBranch, self).__init__(source, target)
@@ -980,7 +1000,10 @@ class InterToGitBranch(branch.GenericInterBranch):
             default_format = branch.format_registry.get_default()
         except AttributeError:
             default_format = branch.BranchFormat._default_format
-        return [(default_format, GitBranchFormat())]
+        from .remote import RemoteGitBranchFormat
+        return [
+            (default_format, LocalGitBranchFormat()),
+            (default_format, RemoteGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
@@ -1080,32 +1103,25 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        self.source.lock_read()
-        try:
-            self.target.lock_write()
+        with self.source.lock_read(), self.target.lock_write():
+            new_refs, main_ref, stop_revinfo = self._get_new_refs(
+                stop_revision)
+            def update_refs(old_refs):
+                return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
-                new_refs, main_ref, stop_revinfo = self._get_new_refs(
-                    stop_revision)
-                def update_refs(old_refs):
-                    return self._update_refs(result, old_refs, new_refs, overwrite)
-                try:
-                    result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                        update_refs, lossy=False)
-                except NoPushSupport:
-                    raise errors.NoRoundtrippingSupport(self.source, self.target)
-                (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
-                if result.old_revid is None:
-                    result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
-                result.new_revid = new_refs[main_ref][1]
-                result.local_branch = None
-                result.master_branch = self.target
-                if run_hooks:
-                    for hook in branch.Branch.hooks['post_pull']:
-                        hook(result)
-            finally:
-                self.target.unlock()
-        finally:
-            self.source.unlock()
+                result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
+                    update_refs, lossy=False)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+            if result.old_revid is None:
+                result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
+            result.new_revid = new_refs[main_ref][1]
+            result.local_branch = None
+            result.master_branch = self.target
+            if run_hooks:
+                for hook in branch.Branch.hooks['post_pull']:
+                    hook(result)
         return result
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
@@ -1115,8 +1131,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         result.local_branch = None
         result.master_branch = result.target_branch
-        self.source.lock_read()
-        try:
+        with self.source.lock_read():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
@@ -1132,8 +1147,6 @@ class InterToGitBranch(branch.GenericInterBranch):
             (result.new_original_revno, result.new_original_revid) = stop_revinfo
             for hook in branch.Branch.hooks['post_push']:
                 hook(result)
-        finally:
-            self.source.unlock()
         return result
 
 
