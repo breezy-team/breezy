@@ -399,7 +399,13 @@ class GitBranch(ForeignBranch):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
             self.name)
 
-    def generate_revision_history(self, revid, old_revid=None):
+    def generate_revision_history(self, revid, last_rev=None, other_branch=None):
+        if last_rev is not None:
+            graph = self.repository.get_graph()
+            if not graph.is_ancestor(last_rev, revid):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+
         if revid == NULL_REVISION:
             newhead = ZERO_SHA
         else:
@@ -749,7 +755,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         else:
             prev_last_revid = self.target.last_revision()
         self.target.generate_revision_history(self._last_revid,
-            prev_last_revid, self.source)
+            last_rev=prev_last_revid, other_branch=self.source)
         return head, refs
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
@@ -923,7 +929,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(stop_revision, result.old_revid)
+        self.target.generate_revision_history(stop_revision,
+                (result.old_revid if not overwrite else None),
+                other_branch=self.source)
         tags_ret = self.source.tags.merge_to(self.target.tags,
             source_refs=refs, overwrite=overwrite)
         if isinstance(tags_ret, tuple):
@@ -934,17 +942,20 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result
 
     def update_refs(self, stop_revision=None):
-        interrepo = _mod_repository.InterRepository.get(self.source.repository,
-            self.target.repository)
+        interrepo = _mod_repository.InterRepository.get(
+                self.source.repository, self.target.repository)
+        c = self.source.get_config_stack()
+        fetch_tags = c.get('branch.fetch_tags')
+
         if stop_revision is None:
-            refs = interrepo.fetch(branches=["HEAD"])
+            refs = interrepo.fetch(branches=["HEAD"], include_tags=fetch_tags)
             stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
         else:
-            refs = interrepo.fetch(revision_id=stop_revision)
+            refs = interrepo.fetch(revision_id=stop_revision, include_tags=fetch_tags)
         return refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,
-        possible_transports=None, run_hooks=True,local=False):
+             possible_transports=None, run_hooks=True, local=False):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
@@ -954,7 +965,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         with self.target.lock_write(), self.source.lock_read():
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
-            self.target.generate_revision_history(stop_revision, result.old_revid)
+            self.target.generate_revision_history(stop_revision,
+                    (result.old_revid if not overwrite else None),
+                    other_branch=self.source)
             tags_ret = self.source.tags.merge_to(self.target.tags,
                 overwrite=overwrite, source_refs=refs)
             if isinstance(tags_ret, tuple):
@@ -971,7 +984,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 class InterToGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls into a Git branch."""
+    """InterBranch implementation that pulls from a non-bzr into a Git branch."""
 
     def __init__(self, source, target):
         super(InterToGitBranch, self).__init__(source, target)
