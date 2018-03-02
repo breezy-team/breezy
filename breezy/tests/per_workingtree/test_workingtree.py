@@ -711,11 +711,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             tree.add(['somefile'])
             d = {tree.path2id('somefile'): osutils.sha_string('hello')}
-            tree.set_merge_modified(d)
+            try:
+                tree.set_merge_modified(d)
+            except errors.UnsupportedOperation:
+                mm = tree.merge_modified()
+                self.assertEqual(mm, {})
+                supports_merge_modified = False
+            else:
+                mm = tree.merge_modified()
+                self.assertEqual(mm, d)
+                supports_merge_modified = True
+        if supports_merge_modified:
             mm = tree.merge_modified()
             self.assertEqual(mm, d)
-        mm = tree.merge_modified()
-        self.assertEqual(mm, d)
+        else:
+            mm = tree.merge_modified()
+            self.assertEqual(mm, {})
 
     def test_conflicts(self):
         from breezy.tests.test_conflicts import example_conflicts
