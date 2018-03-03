@@ -44,11 +44,6 @@ def map_to_git_sha1(dir, bzr_revid):
 
 class OpenLocalDirTests(TestCaseWithTransport):
 
-    def test_from_env(self):
-        self.make_branch_and_tree('bla', format='git')
-        self.overrideEnv('GIT_DIR', os.path.join(self.test_dir, 'bla'))
-        open_local_dir()
-
     def test_from_env_dir(self):
         self.make_branch_and_tree('bla', format='git')
         self.overrideEnv('GIT_DIR', os.path.join(self.test_dir, 'bla', '.git'))

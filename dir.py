@@ -277,6 +277,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         from .transportgit import TransportRepo
         gitrepo = TransportRepo(transport, self.bare,
                 refs_text=getattr(self, "_refs_text", None))
+        if not gitrepo._controltransport.has('HEAD'):
+            raise bzr_errors.NotBranchError(path=transport.base)
         return LocalGitDir(transport, gitrepo, self)
 
     def get_format_description(self):
