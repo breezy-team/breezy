@@ -392,8 +392,17 @@ class LocalGitDir(GitDir):
         ref = self._get_selected_ref(name)
         target_ref = self._get_symref(ref)
         if target_ref is not None:
-            return urlutils.join_segment_parameters(
-                self.user_url.rstrip("/"), {"ref": urllib.quote(target_ref, '')})
+            from .refs import ref_to_branch_name
+            try:
+                branch_name = ref_to_branch_name(target_ref)
+            except ValueError:
+                params = {'ref': urllib.quote(target_ref, '')}
+            else:
+                if branch_name != b'':
+                    params = {'branch': urllib.quote(branch_name.encode('utf-8'), '')}
+                else:
+                    params = {}
+            return urlutils.join_segment_parameters(self.user_url.rstrip("/"), params)
         return None
 
     def find_branch_format(self, name=None):
