@@ -211,8 +211,14 @@ class GitWorkingTree(workingtree.WorkingTree):
             merges = [self.branch.lookup_bzr_revision_id(revid)[0] for revid in parent_ids[1:]]
         except errors.NoSuchRevision as e:
             raise errors.GhostRevisionUnusableHere(e.revision)
-        self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
-            mode=self.controldir._get_file_mode())
+        if merges:
+            self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
+                mode=self.controldir._get_file_mode())
+        else:
+            try:
+                self.control_transport.delete('MERGE_HEAD')
+            except errors.NoSuchFile:
+                pass
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
