@@ -206,9 +206,9 @@ class GitWorkingTree(workingtree.WorkingTree):
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         self.set_parent_ids([p for p, t in parents_list])
 
-    def _set_merges_from_parent_ids(self, parent_ids):
+    def _set_merges_from_parent_ids(self, rhs_parent_ids):
         try:
-            merges = [self.branch.lookup_bzr_revision_id(revid)[0] for revid in parent_ids[1:]]
+            merges = [self.branch.lookup_bzr_revision_id(revid)[0] for revid in rhs_parent_ids]
         except errors.NoSuchRevision as e:
             raise errors.GhostRevisionUnusableHere(e.revision)
         self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
@@ -239,7 +239,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             else:
                 self.set_last_revision(_mod_revision.NULL_REVISION)
 
-            self._set_merges_from_parent_ids(revision_ids)
+            self._set_merges_from_parent_ids(revision_ids[1:])
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -1099,6 +1099,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
+        self._set_merges_from_parent_ids([])
 
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
