@@ -86,7 +86,10 @@ class FetchTests(TestCaseWithTransport):
         self.assertEquals(out, "\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
-        self.assertEquals({'HEAD': '0000000000000000000000000000000000000000'}, r.get_refs())
+        self.assertEquals({
+            'HEAD': '0000000000000000000000000000000000000000',
+            'refs/heads/master': '0000000000000000000000000000000000000000',
+            }, r.get_refs())
 
 
 class RemoteHelperTests(TestCaseWithTransport):

@@ -285,7 +285,6 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def initialize_on_transport(self, transport):
         from .transportgit import TransportRepo
         repo = TransportRepo.init(transport, bare=self.bare)
-        del repo.refs["HEAD"]
         return self.open(transport)
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
@@ -429,15 +428,15 @@ class LocalGitDir(GitDir):
         raise bzr_errors.IncompatibleFormat(format, self._format)
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
-            ref=None, possible_transports=None):
+            ref=None, possible_transports=None, nascent_ok=False):
         """'create' a branch for this dir."""
         repo = self.find_repository()
         from .branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
-        ref_chain, sha = self._git.refs.follow(ref)
-        if sha is None:
+        if not nascent_ok and ref not in self._git.refs:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     controldir=self)
+        ref_chain, unused_sha = self._git.refs.follow(ref)
         return LocalGitBranch(self, repo, ref_chain[-1])
 
     def destroy_branch(self, name=None):
@@ -507,12 +506,8 @@ class LocalGitDir(GitDir):
                 pass
             else:
                 from .workingtree import GitWorkingTree
-                try:
-                    branch = self.open_branch()
-                except bzr_errors.NotBranchError:
-                    pass
-                else:
-                    return GitWorkingTree(self, repo, branch, index)
+                branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
+                return GitWorkingTree(self, repo, branch, index)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
@@ -525,11 +520,15 @@ class LocalGitDir(GitDir):
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None, ref=None):
         refname = self._get_selected_ref(name, ref)
-        from dulwich.protocol import ZERO_SHA
         if refname != b'HEAD' and refname in self._git.refs:
             raise bzr_errors.AlreadyBranchError(self.user_url)
-        self._git.refs[refname] = ZERO_SHA
-        branch = self.open_branch(name, ref=ref)
+        repo = self.open_repository()
+        from .branch import LocalGitBranch
+        ref_chain, sha = self._git.refs.follow(refname)
+        from dulwich.objects import ZERO_SHA
+        if refname in self._git.refs:
+            self._git.refs[ref_chain[-1]] = ZERO_SHA
+        branch = LocalGitBranch(self, repo, ref_chain[-1])
         if append_revisions_only:
             branch.set_append_revisions_only(append_revisions_only)
         return branch
@@ -551,7 +550,7 @@ class LocalGitDir(GitDir):
         from dulwich.index import build_index_from_tree
         from dulwich.objects import ZERO_SHA
         if from_branch is None:
-            from_branch = self.open_branch()
+            from_branch = self.open_branch(nascent_ok=True)
         if revision_id is None:
             revision_id = from_branch.last_revision()
         repo = self.find_repository()
