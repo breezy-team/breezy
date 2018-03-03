@@ -112,14 +112,14 @@ class GitDir(ControlDir):
     def checkout_metadir(self, stacked=False):
         return format_registry.make_controldir("git")
 
-    def _get_default_ref(self):
-        return "HEAD"
-
     def _get_selected_ref(self, branch, ref=None):
         if ref is not None and branch is not None:
             raise bzr_errors.BzrError("can't specify both ref and branch")
         if ref is not None:
             return ref
+        if branch is not None:
+            from .refs import branch_name_to_ref
+            return branch_name_to_ref(branch)
         segment_parameters = getattr(
             self.user_transport, "get_segment_parameters", lambda: {})()
         ref = segment_parameters.get("ref")
@@ -127,10 +127,10 @@ class GitDir(ControlDir):
             return urlutils.unescape(ref)
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
-        if branch is not None:
-            from .refs import branch_name_to_ref
-            return branch_name_to_ref(branch)
-        return self._get_default_ref()
+            if branch is not None:
+                from .refs import branch_name_to_ref
+                return branch_name_to_ref(branch)
+        return b"HEAD"
 
     def get_config(self):
         return GitDirConfig()
@@ -407,8 +407,17 @@ class LocalGitDir(GitDir):
         ref = self._get_selected_ref(name)
         target_ref = self._get_symref(ref)
         if target_ref is not None:
-            return urlutils.join_segment_parameters(
-                self.user_url.rstrip("/"), {"ref": urllib.quote(target_ref, '')})
+            from .refs import ref_to_branch_name
+            try:
+                branch_name = ref_to_branch_name(target_ref)
+            except ValueError:
+                params = {'ref': urllib.quote(target_ref, '')}
+            else:
+                if branch_name != b'':
+                    params = {'branch': urllib.quote(branch_name.encode('utf-8'), '')}
+                else:
+                    params = {}
+            return urlutils.join_segment_parameters(self.user_url.rstrip("/"), params)
         return None
 
     def find_branch_format(self, name=None):
