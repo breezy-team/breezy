@@ -198,7 +198,7 @@ class GitDir(ControlDir):
                         create_prefix=create_prefix,
                         force_new_repo=force_new_repo)
         target_git_repo = target_repo._git
-        source_repo = self.open_repository()
+        source_repo = self.find_repository()
         source_git_repo = source_repo._git
         interrepo = InterRepository.get(source_repo, target_repo)
         if revision_id is not None:
@@ -222,7 +222,7 @@ class GitDir(ControlDir):
         new branches as well as to hook existing branches up to their
         repository.
         """
-        return self.open_repository()
+        return self._gitrepository_class(self)
 
     def get_refs_container(self):
         """Retrieve the refs container.
@@ -244,7 +244,7 @@ class GitDir(ControlDir):
         :param stack_on_pwd: If stack_on is relative, the location it is
             relative to.
         """
-        return UseExistingRepository(self.open_repository())
+        return UseExistingRepository(self.find_repository())
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):
@@ -309,10 +309,10 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                 raise
             transport.create_prefix()
         controldir = self.initialize_on_transport(transport)
-        repository = controldir.open_repository()
+        repository = controldir.find_repository()
         repository.lock_write()
         return (repository, controldir, False,
-                UseExistingRepository(controldir.open_repository()))
+                UseExistingRepository(controldir.find_repository()))
 
     def is_supported(self):
         return True
@@ -431,7 +431,7 @@ class LocalGitDir(GitDir):
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
             ref=None, possible_transports=None):
         """'create' a branch for this dir."""
-        repo = self.open_repository()
+        repo = self.find_repository()
         from .branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
         ref_chain, sha = self._git.refs.follow(ref)
@@ -486,12 +486,14 @@ class LocalGitDir(GitDir):
 
     def open_repository(self):
         """'open' a repository for this dir."""
+        if self.control_transport.has('commondir'):
+            raise bzr_errors.NoRepositoryPresent(self)
         return self._gitrepository_class(self)
 
     def open_workingtree(self, recommend_upgrade=True, unsupported=False):
         if not self._git.bare:
             from dulwich.errors import NoIndexPresent
-            repo = self.open_repository()
+            repo = self.find_repository()
             try:
                 index = repo._git.open_index()
             except NoIndexPresent:
@@ -511,7 +513,7 @@ class LocalGitDir(GitDir):
         from .repository import GitRepositoryFormat
         if shared:
             raise bzr_errors.IncompatibleFormat(GitRepositoryFormat(), self._format)
-        return self.open_repository()
+        return self.find_repository()
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None, ref=None):
@@ -541,9 +543,11 @@ class LocalGitDir(GitDir):
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
         from dulwich.index import build_index_from_tree
         from dulwich.objects import ZERO_SHA
+        if from_branch is None:
+            from_branch = self.open_branch()
         if revision_id is None:
-            revision_id = self.open_branch().last_revision()
-        repo = self.open_repository()
+            revision_id = from_branch.last_revision()
+        repo = self.find_repository()
         store = repo._git.object_store
         (commit_id, mapping) = repo.lookup_bzr_revision_id(revision_id)
         build_index_from_tree(
@@ -551,7 +555,9 @@ class LocalGitDir(GitDir):
             self.transport.local_abspath("index"),
             store,
             None if commit_id == ZERO_SHA else store[commit_id].tree)
-        wt = self.open_workingtree()
+        from .workingtree import GitWorkingTree
+        index = repo._git.open_index()
+        wt = GitWorkingTree(self, repo, from_branch, index)
         wt.set_last_revision(revision_id)
         return wt
 

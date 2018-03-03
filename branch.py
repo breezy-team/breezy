@@ -512,9 +512,6 @@ class LocalGitBranch(GitBranch):
     def __init__(self, controldir, repository, ref):
         super(LocalGitBranch, self).__init__(controldir, repository, ref,
                 LocalGitBranchFormat())
-        refs = controldir.get_refs_container()
-        if not (ref in refs or "HEAD" in refs):
-            raise errors.NotBranchError(self.base)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
