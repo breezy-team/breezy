@@ -74,8 +74,11 @@ from ...errors import (
 class TransportRefsContainer(RefsContainer):
     """Refs container that reads refs from a transport."""
 
-    def __init__(self, transport):
+    def __init__(self, transport, worktree_transport=None):
         self.transport = transport
+        if worktree_transport is None:
+            worktree_transport = transport
+        self.worktree_transport = worktree_transport
         self._packed_refs = None
         self._peeled_refs = None
 
@@ -106,7 +109,7 @@ class TransportRefsContainer(RefsContainer):
     def allkeys(self):
         keys = set()
         try:
-            self.transport.get_bytes("HEAD")
+            self.worktree_transport.get_bytes("HEAD")
         except NoSuchFile:
             pass
         else:
@@ -185,8 +188,12 @@ class TransportRefsContainer(RefsContainer):
             exist.
         :raises IOError: if any other error occurs
         """
+        if name == b'HEAD':
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
         try:
-            f = self.transport.get(name)
+            f = transport.get(name)
         except NoSuchFile:
             return None
         f = StringIO(f.read())
@@ -229,8 +236,12 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         self._check_refname(other)
-        self._ensure_dir_exists(name)
-        self.transport.put_bytes(name, SYMREF + other + '\n')
+        if name != b'HEAD':
+            transport = self.transport
+            self._ensure_dir_exists(name)
+        else:
+            transport = self.worktree_transport
+        transport.put_bytes(name, SYMREF + other + '\n')
 
     def set_if_equals(self, name, old_ref, new_ref):
         """Set a refname to new_ref only if it currently equals old_ref.
@@ -249,8 +260,12 @@ class TransportRefsContainer(RefsContainer):
             realname = realnames[-1]
         except (KeyError, IndexError):
             realname = name
-        self._ensure_dir_exists(realname)
-        self.transport.put_bytes(realname, new_ref+"\n")
+        if realname == b'HEAD':
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
+            self._ensure_dir_exists(realname)
+        transport.put_bytes(realname, new_ref+"\n")
         return True
 
     def add_if_new(self, name, ref):
@@ -271,8 +286,12 @@ class TransportRefsContainer(RefsContainer):
         except (KeyError, IndexError):
             realname = name
         self._check_refname(realname)
-        self._ensure_dir_exists(realname)
-        self.transport.put_bytes(realname, ref+"\n")
+        if realname == b'HEAD':
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
+            self._ensure_dir_exists(realname)
+        transport.put_bytes(realname, ref+"\n")
         return True
 
     def remove_if_equals(self, name, old_ref):
@@ -288,8 +307,12 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         # may only be packed
+        if name == b'HEAD':
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
         try:
-            self.transport.delete(name)
+            transport.delete(name)
         except NoSuchFile:
             pass
         self._remove_packed_ref(name)
@@ -333,7 +356,8 @@ class TransportRepo(BaseRepo):
             else:
                 refs_container._refs["HEAD"] = head
         else:
-            refs_container = TransportRefsContainer(self._commontransport)
+            refs_container = TransportRefsContainer(
+                    self._commontransport, self._controltransport)
         super(TransportRepo, self).__init__(object_store,
                 refs_container)
 
