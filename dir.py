@@ -107,9 +107,6 @@ class GitDir(ControlDir):
     def checkout_metadir(self, stacked=False):
         return format_registry.make_controldir("git")
 
-    def _get_default_ref(self):
-        return "HEAD"
-
     def _get_selected_ref(self, branch, ref=None):
         if ref is not None and branch is not None:
             raise bzr_errors.BzrError("can't specify both ref and branch")
@@ -125,7 +122,7 @@ class GitDir(ControlDir):
         if branch is not None:
             from .refs import branch_name_to_ref
             return branch_name_to_ref(branch)
-        return self._get_default_ref()
+        return b"HEAD"
 
     def get_config(self):
         return GitDirConfig()
