@@ -112,6 +112,9 @@ class GitDir(ControlDir):
             raise bzr_errors.BzrError("can't specify both ref and branch")
         if ref is not None:
             return ref
+        if branch is not None:
+            from .refs import branch_name_to_ref
+            return branch_name_to_ref(branch)
         segment_parameters = getattr(
             self.user_transport, "get_segment_parameters", lambda: {})()
         ref = segment_parameters.get("ref")
@@ -119,9 +122,9 @@ class GitDir(ControlDir):
             return urlutils.unescape(ref)
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
-        if branch is not None:
-            from .refs import branch_name_to_ref
-            return branch_name_to_ref(branch)
+            if branch is not None:
+                from .refs import branch_name_to_ref
+                return branch_name_to_ref(branch)
         return b"HEAD"
 
     def get_config(self):
