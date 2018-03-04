@@ -393,12 +393,11 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             assert oldmode is not None
             oldexe = mode_is_executable(oldmode)
             oldkind = mode_kind(oldmode)
-            try:
-                (oldparentpath, oldname) = oldpath.rsplit("/", 1)
-            except ValueError:
+            if oldpath == u'':
                 oldparent = None
-                oldname = oldpath
+                oldname = ''
             else:
+                (oldparentpath, oldname) = osutils.split(oldpath)
                 oldparent = mapping.generate_file_id(oldparentpath)
             fileid = mapping.generate_file_id(oldpath)
         if newpath is None:
@@ -414,12 +413,11 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             else:
                 newexe = False
                 newkind = None
-            try:
-                newparentpath, newname = newpath.rsplit("/", 1)
-            except ValueError:
+            if newpath == u'':
                 newparent = None
-                newname = newpath
+                newname = u''
             else:
+                newparentpath, newname = osutils.split(newpath)
                 newparent = mapping.generate_file_id(newparentpath)
         yield (fileid, (oldpath, newpath), (oldsha != newsha),
              (oldpath is not None, newpath is not None),
