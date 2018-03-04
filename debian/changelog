@@ -1,4 +1,4 @@
-breezy-debian (2.8.11) UNRELEASED; urgency=medium
+breezy-debian (2.8.11) unstable; urgency=medium
 
   * Add compatibility for newer versions of Breezy.
 
