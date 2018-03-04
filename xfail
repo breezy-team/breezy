@@ -1,5 +1,3 @@
-breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_info
-breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_info_verbose
 breezy.tests.per_branch.test_branch.ChrootedTests.test_open_containing(LocalGitBranchFormat)
 breezy.tests.per_branch.test_branch.TestBranch.test_create_checkout(LocalGitBranchFormat)
 breezy.tests.per_branch.test_commit.TestCommitHook.test_pre_commit_delta(LocalGitBranchFormat)
