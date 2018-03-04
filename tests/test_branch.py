@@ -73,24 +73,21 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
     def test_open_existing(self):
         r = GitRepo.init('.')
-        del r.refs["HEAD"]
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
         r = GitRepo.init('.')
-        del r.refs["HEAD"]
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEquals(
-            "<LocalGitBranch('%s/', u'')>" % (
+            "<LocalGitBranch('%s/', u'master')>" % (
                 urlutils.local_path_to_url(self.test_dir),),
             repr(thebranch))
 
     def test_last_revision_is_null(self):
         r = GitRepo.init('.')
-        del r.refs["HEAD"]
         thedir = ControlDir.open('.')
         thebranch = thedir.create_branch()
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
@@ -150,7 +147,6 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         r = dulwich.repo.Repo.create(self.test_dir)
-        del r.refs["HEAD"]
         d = ControlDir.open(self.test_dir)
         self.git_branch = d.create_branch()
 

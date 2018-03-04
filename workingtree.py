@@ -753,13 +753,13 @@ class GitWorkingTree(workingtree.WorkingTree):
         try:
             head = self.repository._git.head()
         except KeyError, name:
-            raise errors.NotBranchError("branch %s at %s" % (name,
-                self.repository.base))
-        if head == ZERO_SHA:
             self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
-            self._basis_fileid_map = self.mapping.get_fileid_map(
-                self.store.__getitem__, self.store[head].tree)
+            if head == ZERO_SHA:
+                self._basis_fileid_map = GitFileIdMap({}, self.mapping)
+            else:
+                self._basis_fileid_map = self.mapping.get_fileid_map(
+                    self.store.__getitem__, self.store[head].tree)
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
         with self.lock_read():
