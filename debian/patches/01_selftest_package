@@ -3,13 +3,11 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not upstream, Debian-specific
 
 === modified file 'breezy/builtins.py'
-Index: unstable/breezy/builtins.py
-===================================================================
---- unstable.orig/breezy/builtins.py
-+++ unstable/breezy/builtins.py
-@@ -4139,7 +4139,11 @@ class cmd_selftest(Command):
-         # backtraces.
-         lazy_import.disallow_proxying()
+--- old/breezy/builtins.py	2018-03-04 20:00:30 +0000
++++ new/breezy/builtins.py	2018-03-04 20:00:59 +0000
+@@ -4202,7 +4202,11 @@
+             # disallowing it currently leads to failures in many places.
+             lazy_import.disallow_proxying()
  
 -        from . import tests
 +        try:
@@ -20,3 +18,4 @@ Index: unstable/breezy/builtins.py
  
          if testspecs_list is not None:
              pattern = '|'.join(testspecs_list)
+
