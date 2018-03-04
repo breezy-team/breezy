@@ -980,7 +980,10 @@ class GitWorkingTree(workingtree.WorkingTree):
                 specific_paths = []
                 for file_id in specific_file_ids:
                     assert file_id is not None, "file id %r" % file_id
-                    specific_paths.append(self.id2path(file_id))
+                    try:
+                        specific_paths.append(self.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
                 if specific_paths in ([u""], []):
                     specific_paths = None
                 else:
