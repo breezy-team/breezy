@@ -3477,6 +3477,7 @@ class cmd_cat(Command):
                 raise errors.BzrCommandError(gettext(
                     "{0!r} is not present in revision {1}").format(
                         filename, rev_tree.get_revision_id()))
+        relpath = rev_tree.id2path(actual_file_id)
         if filtered:
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
