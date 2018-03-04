@@ -152,7 +152,10 @@ class GitDir(ControlDir):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         # Create/update the result branch
-        result = cloning_format.initialize_on_transport(target_transport)
+        try:
+            result = ControlDir.open_from_transport(target_transport)
+        except bzr_errors.NotBranchError:
+            result = cloning_format.initialize_on_transport(target_transport)
         source_branch = self.open_branch()
         source_repository = self.find_repository()
         try:
@@ -508,17 +511,10 @@ class LocalGitDir(GitDir):
         raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)
 
     def destroy_workingtree(self):
-        wt = self.open_workingtree(recommend_upgrade=False)
-        repository = wt.branch.repository
-        empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        # We ignore the conflicts returned by wt.revert since we're about to
-        # delete the wt metadata anyway, all that should be left here are
-        # detritus. But see bug #634470 about subtree .bzr dirs.
-        conflicts = wt.revert(old_tree=empty)
-        self.destroy_workingtree_metadata()
+        raise bzr_errors.UnsupportedOperation(self.destroy_workingtree, self)
 
     def destroy_workingtree_metadata(self):
-        self.transport.delete('index')
+        raise bzr_errors.UnsupportedOperation(self.destroy_workingtree_metadata, self)
 
     def needs_format_conversion(self, format=None):
         return not isinstance(self._format, format.__class__)
