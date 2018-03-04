@@ -107,6 +107,7 @@ class GitDir(ControlDir):
         return False
 
     def break_lock(self):
+        # There are no global locks, so nothing to break.
         raise NotImplementedError(self.break_lock)
 
     def cloning_metadir(self, stacked=False):
