@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: debhelper (>= 9), python-all (>= 2.6.6-3), xz-utils
-Build-Depends-Indep: brz, python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts (>= 2.10.59), python-subunit, python-breezy.tests (>= 3.0.0~bzr6819), python-lzma, libalgorithm-merge-perl, python-distro-info, quilt
+Build-Depends-Indep: brz, python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts (>= 2.10.59), python-subunit, python-breezy.tests (>= 3.0.0~bzr6876), python-lzma, libalgorithm-merge-perl, python-distro-info, quilt
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/brz-debian/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/brz-debian/unstable
 X-Python-Version: >= 2.4
@@ -13,7 +13,7 @@ XS-Testsuite: autopkgtest
 
 Package: brz-debian
 Architecture: all
-Depends: brz (>= 3.0.0~bzr6819), python-breezy (>= 3.0.0~bzr6819), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}
+Depends: brz (>= 3.0.0~bzr6876), python-breezy (>= 3.0.0~bzr6876), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}
 Recommends: python-launchpadlib, libalgorithm-merge-perl, python-distro-info
 Suggests: python-lzma
 Provides: brz-buildpackage

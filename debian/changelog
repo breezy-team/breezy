@@ -1,3 +1,9 @@
+breezy-debian (2.8.11) UNRELEASED; urgency=medium
+
+  * Add compatibility for newer versions of Breezy.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 04 Mar 2018 21:25:48 +0000
+
 breezy-debian (2.8.10) unstable; urgency=medium
 
   * debian/copyright: Fix package name.
