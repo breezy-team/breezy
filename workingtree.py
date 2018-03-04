@@ -280,7 +280,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 continue
             yield self.path2id(path)
 
-    def _index_add_entry(self, path, kind):
+    def _index_add_entry(self, path, kind, flags=0):
         assert self._lock_mode is not None
         assert isinstance(path, basestring)
         if kind == "directory":
@@ -313,7 +313,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         if not blob.id in self.store:
             self.store.add_object(blob)
         # Add an entry to the index or update the existing entry
-        flags = 0 # FIXME
         ensure_normalized_path(path)
         encoded_path = path.encode("utf-8")
         if b'\r' in encoded_path or b'\n' in encoded_path:
@@ -369,7 +368,14 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def update_basis_by_delta(self, revid, delta):
         # TODO(jelmer): This shouldn't be called, it's inventory specific.
-        pass
+        for (old_path, new_path, file_id, ie) in delta:
+            if old_path is not None and old_path.encode('utf-8') in self.index:
+                del self.index[old_path.encode('utf-8')]
+                self._versioned_dirs = None
+            if new_path is not None and ie.kind != 'directory':
+                self._index_add_entry(new_path, ie.kind)
+        self.flush()
+        self._set_merges_from_parent_ids([])
 
     def check_state(self):
         """Check that the working state is/isn't valid."""
@@ -1109,7 +1115,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
-        self._set_merges_from_parent_ids([])
+        self.flush()
 
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
