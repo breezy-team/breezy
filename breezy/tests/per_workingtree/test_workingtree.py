@@ -1233,9 +1233,6 @@ class TestControlComponent(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('wt')
         self.assertIsInstance(wt.user_url, str)
         self.assertEqual(wt.user_url, wt.user_transport.base)
-        # for all current bzrdir implementations the user dir must be 
-        # above the control dir but we might need to relax that?
-        self.assertEqual(wt.control_url.find(wt.user_url), 0)
         self.assertEqual(wt.control_url, wt.control_transport.base)
 
 

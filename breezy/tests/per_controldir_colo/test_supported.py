@@ -154,5 +154,5 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable(
                 'Control dir does not support creating branch references.')
-        self.assertEqual(referenced.base,
-            repo.controldir.get_branch_reference('foo'))
+        self.assertEqual(referenced.user_url,
+                         repo.controldir.get_branch_reference('foo'))

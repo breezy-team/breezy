@@ -162,7 +162,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         rev1 = wt_a.commit('commit one')
 
         branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
-        self.assertEqual(wt_a.branch.base, branch_b.get_parent())
+        self.assertEqual(wt_a.branch.user_url, branch_b.get_parent())
         return branch_b
 
     def test_clone_branch_nickname(self):
@@ -649,7 +649,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             pass
         else:
             ref = this_branch._format.get_reference(this_branch.controldir)
-            self.assertEqual(ref, other_branch.base)
+            self.assertEqual(ref, other_branch.user_url)
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -1022,9 +1022,6 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)
         self.assertEqual(br.user_url, br.user_transport.base)
-        # for all current bzrdir implementations the user dir must be 
-        # above the control dir but we might need to relax that?
-        self.assertEqual(br.control_url.find(br.user_url), 0)
         self.assertEqual(br.control_url, br.control_transport.base)
 
 
