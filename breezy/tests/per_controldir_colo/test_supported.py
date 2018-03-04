@@ -85,8 +85,8 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
             raise tests.TestNotApplicable(
                 'Control dir does not support creating new branches.')
         made_control.create_repository()
-        made_branch = made_control.create_branch(name="colo")
-        other_branch = made_control.create_branch(name="othercolo")
+        made_branch = self.create_branch(made_control, name="colo")
+        other_branch = self.create_branch(made_control, name="othercolo")
         self.assertIsInstance(made_branch, Branch)
         self.assertEqual(made_control, made_branch.controldir)
         self.assertNotEqual(made_branch.user_url, other_branch.user_url)
