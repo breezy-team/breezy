@@ -450,9 +450,7 @@ class TestControlDir(TestCaseWithControlDir):
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
                 "support branch references")
-        self.assertEqual(
-            referenced_branch.controldir.root_transport.abspath('') + '/',
-            dir.get_branch_reference())
+        self.assertEqual(referenced_branch.user_url, dir.get_branch_reference())
 
     def test_set_branch_reference_on_existing_reference(self):
         """set_branch_reference creates a branch reference"""
@@ -467,7 +465,7 @@ class TestControlDir(TestCaseWithControlDir):
                 "support branch references")
         reference = dir.set_branch_reference(referenced_branch2)
         self.assertEqual(
-            referenced_branch2.controldir.root_transport.abspath('') + '/',
+            referenced_branch2.user_url,
             dir.get_branch_reference())
 
     def test_set_branch_reference_on_existing_branch(self):
@@ -481,7 +479,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("control directory does not "
                 "support branch references")
         self.assertEqual(
-            referenced_branch.controldir.root_transport.abspath('') + '/',
+            referenced_branch.user_url,
             dir.get_branch_reference())
 
     def test_get_branch_reference_on_reference(self):
@@ -494,7 +492,7 @@ class TestControlDir(TestCaseWithControlDir):
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
                 "support branch references")
-        self.assertEqual(referenced_branch.controldir.root_transport.abspath('') + '/',
+        self.assertEqual(referenced_branch.user_url,
             dir.get_branch_reference())
 
     def test_get_branch_reference_on_non_reference(self):

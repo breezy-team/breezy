@@ -1245,7 +1245,7 @@ class Branch(controldir.ControlComponent):
             self.copy_content_into(result, revision_id=revision_id)
             master_url = self.get_bound_location()
             if master_url is None:
-                result.set_parent(self.controldir.root_transport.base)
+                result.set_parent(self.user_url)
             else:
                 result.set_parent(master_url)
         return result

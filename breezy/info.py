@@ -469,8 +469,8 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
-            if (tree is not None and tree.user_url !=
-                branch.user_url):
+            if (tree is not None and tree.controldir.control_url !=
+                branch.controldir.control_url):
                 independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:
