@@ -1667,16 +1667,19 @@ class TestBreakLock(TestCaseWithControlDir):
                     "format does not support branch references")
         unused_repo = thisdir.create_repository()
         master.lock_write()
-        unused_repo.lock_write()
-        try:
+        with unused_repo.lock_write():
             # two yes's : branch and repository. If the repo in this
             # dir is inappropriately accessed, 3 will be needed, and
             # we'll see that because the stream will be fully consumed
             breezy.ui.ui_factory = CannedInputUIFactory([True, True, True])
             # determine if the repository will have been locked;
             this_repo_locked = \
-                thisdir.open_repository().get_physical_lock_status()
-            master.controldir.break_lock()
+                thisdir.find_repository().get_physical_lock_status()
+            try:
+                master.controldir.break_lock()
+            except NotImplementedError:
+                # bzrdir does not support break_lock
+                raise TestNotApplicable("format does not support breaking locks")
             if this_repo_locked:
                 # only two ys should have been read
                 self.assertEqual([True], breezy.ui.ui_factory.responses)
@@ -1693,8 +1696,6 @@ class TestBreakLock(TestCaseWithControlDir):
                 # lock should not have touched it.
                 repo = thisdir.open_repository()
                 self.assertRaises(errors.LockContention, repo.lock_write)
-        finally:
-            unused_repo.unlock()
         self.assertRaises(errors.LockBroken, master.unlock)
 
     def test_break_lock_tree(self):
