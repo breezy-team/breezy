@@ -206,13 +206,19 @@ class GitWorkingTree(workingtree.WorkingTree):
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         self.set_parent_ids([p for p, t in parents_list])
 
-    def _set_merges_from_parent_ids(self, parent_ids):
+    def _set_merges_from_parent_ids(self, rhs_parent_ids):
         try:
-            merges = [self.branch.lookup_bzr_revision_id(revid)[0] for revid in parent_ids[1:]]
+            merges = [self.branch.lookup_bzr_revision_id(revid)[0] for revid in rhs_parent_ids]
         except errors.NoSuchRevision as e:
             raise errors.GhostRevisionUnusableHere(e.revision)
-        self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
-            mode=self.controldir._get_file_mode())
+        if merges:
+            self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
+                mode=self.controldir._get_file_mode())
+        else:
+            try:
+                self.control_transport.delete('MERGE_HEAD')
+            except errors.NoSuchFile:
+                pass
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
@@ -239,7 +245,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             else:
                 self.set_last_revision(_mod_revision.NULL_REVISION)
 
-            self._set_merges_from_parent_ids(revision_ids)
+            self._set_merges_from_parent_ids(revision_ids[1:])
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -747,13 +753,13 @@ class GitWorkingTree(workingtree.WorkingTree):
         try:
             head = self.repository._git.head()
         except KeyError, name:
-            raise errors.NotBranchError("branch %s at %s" % (name,
-                self.repository.base))
-        if head == ZERO_SHA:
             self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
-            self._basis_fileid_map = self.mapping.get_fileid_map(
-                self.store.__getitem__, self.store[head].tree)
+            if head == ZERO_SHA:
+                self._basis_fileid_map = GitFileIdMap({}, self.mapping)
+            else:
+                self._basis_fileid_map = self.mapping.get_fileid_map(
+                    self.store.__getitem__, self.store[head].tree)
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
         with self.lock_read():
@@ -974,7 +980,10 @@ class GitWorkingTree(workingtree.WorkingTree):
                 specific_paths = []
                 for file_id in specific_file_ids:
                     assert file_id is not None, "file id %r" % file_id
-                    specific_paths.append(self.id2path(file_id))
+                    try:
+                        specific_paths.append(self.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
                 if specific_paths in ([u""], []):
                     specific_paths = None
                 else:
@@ -1099,6 +1108,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
+        self._set_merges_from_parent_ids([])
 
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -1187,9 +1197,11 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
             raise errors.IncompatibleFormat(self, a_controldir)
         index = Index(a_controldir.root_transport.local_abspath(".git/index"))
         index.write()
+        branch = a_controldir.open_branch()
+        if revision_id is not None:
+            branch.set_last_revision(revision_id)
         wt = GitWorkingTree(
-                a_controldir, a_controldir.open_repository(),
-            a_controldir.open_branch(), index)
+                a_controldir, a_controldir.open_repository(), branch, index)
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt

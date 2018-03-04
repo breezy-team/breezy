@@ -237,7 +237,11 @@ class InterToLocalGitRepository(InterToGitRepository):
         bzr_refs = {}
         refs = {}
         for k in self.target._git.refs.allkeys():
-            v = self.target._git.refs[k]
+            try:
+                v = self.target._git.refs[k]
+            except KeyError:
+                # broken symref?
+                continue
             try:
                 for (kind, type_data) in self.source_store.lookup_git_sha(v):
                     if kind == "commit" and self.source.has_revision(type_data[0]):
