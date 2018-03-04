@@ -137,8 +137,10 @@ class TestInfo(tests.TestCaseWithTransport):
             repo, None, None))
 
     def test_describe_tree_format(self):
-        for key in controldir.format_registry.keys():
+        for key, format in controldir.format_registry.iteritems():
             if key in controldir.format_registry.aliases():
+                continue
+            if not format().supports_workingtrees:
                 continue
             self.assertTreeDescription(key)
 

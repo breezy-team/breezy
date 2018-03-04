@@ -711,11 +711,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             tree.add(['somefile'])
             d = {tree.path2id('somefile'): osutils.sha_string('hello')}
-            tree.set_merge_modified(d)
+            try:
+                tree.set_merge_modified(d)
+            except errors.UnsupportedOperation:
+                mm = tree.merge_modified()
+                self.assertEqual(mm, {})
+                supports_merge_modified = False
+            else:
+                mm = tree.merge_modified()
+                self.assertEqual(mm, d)
+                supports_merge_modified = True
+        if supports_merge_modified:
             mm = tree.merge_modified()
             self.assertEqual(mm, d)
-        mm = tree.merge_modified()
-        self.assertEqual(mm, d)
+        else:
+            mm = tree.merge_modified()
+            self.assertEqual(mm, {})
 
     def test_conflicts(self):
         from breezy.tests.test_conflicts import example_conflicts
@@ -1222,9 +1233,6 @@ class TestControlComponent(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('wt')
         self.assertIsInstance(wt.user_url, str)
         self.assertEqual(wt.user_url, wt.user_transport.base)
-        # for all current bzrdir implementations the user dir must be 
-        # above the control dir but we might need to relax that?
-        self.assertEqual(wt.control_url.find(wt.user_url), 0)
         self.assertEqual(wt.control_url, wt.control_transport.base)
 
 

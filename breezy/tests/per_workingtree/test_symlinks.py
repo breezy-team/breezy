@@ -65,9 +65,15 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ('tree/dir/',),
             ('tree/dir/file', 'content'),
             ])
-        self.assertEqual(
-            tree.smart_add(['tree/link/file']),
-            ([u'dir', u'dir/file'], {}))
+        if tree.has_versioned_directories():
+            self.assertEqual(
+                tree.smart_add(['tree/link/file']),
+                ([u'dir', u'dir/file'], {}))
+        else:
+            self.assertEqual(
+                tree.smart_add(['tree/link/file']),
+                ([u'dir/file'], {}))
+
         # should add the actual parent directory, not the apparent parent
         # (which is actually a symlink)
         self.assertTrue(tree.is_versioned('dir/file'))

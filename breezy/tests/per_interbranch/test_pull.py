@@ -21,6 +21,7 @@ from breezy.controldir import ControlDir
 from breezy import errors
 from breezy.memorytree import MemoryTree
 from breezy.revision import NULL_REVISION
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import TestCaseWithInterBranch
 
 
@@ -77,7 +78,11 @@ class TestPull(TestCaseWithInterBranch):
         other = self.sprout_to(master_tree.branch.controldir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
-        master_tree.branch.controldir.destroy_branch()
+        try:
+            master_tree.branch.controldir.destroy_branch()
+        except errors.UnsupportedOperation:
+            raise TestNotApplicable(
+                'control format does not support destroying default branch')
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                           checkout.branch.pull, other)
@@ -103,8 +108,8 @@ class TestPull(TestCaseWithInterBranch):
         tree_a = self.make_from_branch_and_tree('tree_a')
         tree_a.commit('message 1')
         tree_b = self.sprout_to(tree_a.controldir, 'tree_b').open_workingtree()
-        rev2a = tree_a.commit('message 2')
-        rev2b = tree_b.commit('message 2')
+        rev2a = tree_a.commit('message 2a')
+        rev2b = tree_b.commit('message 2b')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
         self.assertRaises(errors.DivergedBranches,
                           tree_a.branch.pull, tree_b.branch,
