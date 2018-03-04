@@ -368,7 +368,12 @@ class WorkingTree(mutabletree.MutableTree,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         abspath = self.abspath(path)
-        file_obj = file(abspath, 'rb')
+        try:
+            file_obj = file(abspath, 'rb')
+        except (OSError, IOError) as e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)

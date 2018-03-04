@@ -433,16 +433,14 @@ class Tree(object):
         this implementation, it is a tuple containing a single bytestring with
         the complete text of the file.
 
-        :param desired_files: a list of (file_id, identifier) pairs
+        :param desired_files: a list of (path, identifier) pairs
         """
-        for file_id, identifier in desired_files:
+        for path, identifier in desired_files:
             # We wrap the string in a tuple so that we can return an iterable
             # of bytestrings.  (Technically, a bytestring is also an iterable
             # of bytestrings, but iterating through each character is not
             # performant.)
-            # TODO(jelmer): Pass paths into iter_files_bytes
-            path = self.id2path(file_id)
-            cur_file = (self.get_file_text(path, file_id),)
+            cur_file = (self.get_file_text(path),)
             yield identifier, cur_file
 
     def get_symlink_target(self, path, file_id=None):

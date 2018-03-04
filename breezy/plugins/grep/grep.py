@@ -408,8 +408,8 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     from_dir = osutils.pathjoin(relpath, path)
     if opts.from_root:
         # start searching recursively from root
-        from_dir=None
-        recursive=True
+        from_dir = None
+        recursive = True
 
     to_grep = []
     to_grep_append = to_grep.append
@@ -435,7 +435,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                     #                but it's what the old code seemed to do
                     outputter.write_cached_lines(cache_id, revno)
                 else:
-                    to_grep_append((fid, (fp, fid)))
+                    to_grep_append((osutils.pathjoin(from_dir if from_dir else '', fp), (fp, fid)))
             else:
                 # we are grepping working tree.
                 if from_dir is None:
@@ -454,7 +454,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     if revno != None: # grep versioned files
         for (path, fid), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            _file_grep(chunks[0], path, opts, revno, path_prefix,
+            _file_grep(chunks, path, opts, revno, path_prefix,
                 tree.get_file_revision(path, fid))
 
 

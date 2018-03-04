@@ -2638,8 +2638,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(tree_path, file_id)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    trans_data = (trans_id, tree_path, entry.text_sha1)
-                    deferred_contents.append((file_id, trans_data))
+                    trans_data = (trans_id, file_id, tree_path, entry.text_sha1)
+                    deferred_contents.append((tree_path, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(
                             tree_path, tt, entry, parent_id, tree)
@@ -2679,19 +2679,19 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
-        unchanged = [(f, p[1]) for (f, p, c, v, d, n, k, e)
+        unchanged = [(p[0], p[1]) for (f, p, c, v, d, n, k, e)
                      in iter if not (c or e[0] != e[1])]
         if accelerator_tree.supports_content_filtering():
-            unchanged = [(f, p) for (f, p) in unchanged
-                         if not next(accelerator_tree.iter_search_rules([p]))]
+            unchanged = [(tp, ap) for (tp, ap) in unchanged
+                         if not next(accelerator_tree.iter_search_rules([ap]))]
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
-        for file_id, (trans_id, tree_path, text_sha1) in desired_files:
-            accelerator_path = unchanged.get(file_id)
+        for unused_tree_path, (trans_id, file_id, tree_path, text_sha1) in desired_files:
+            accelerator_path = unchanged.get(tree_path)
             if accelerator_path is None:
-                new_desired_files.append((file_id,
-                    (trans_id, tree_path, text_sha1)))
+                new_desired_files.append((tree_path,
+                    (trans_id, file_id, tree_path, text_sha1)))
                 continue
             pb.update(gettext('Adding file contents'), count + offset, total)
             if hardlink:
@@ -2713,7 +2713,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                         pass
             count += 1
         offset += count
-    for count, ((trans_id, tree_path, text_sha1), contents) in enumerate(
+    for count, ((trans_id, file_id, tree_path, text_sha1), contents) in enumerate(
             tree.iter_files_bytes(new_desired_files)):
         if wt.supports_content_filtering():
             filters = wt._content_filter_stack(tree_path)
@@ -2959,7 +2959,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     tt.create_symlink(target_tree.get_symlink_target(
                             target_path, file_id), trans_id)
                 elif target_kind == 'file':
-                    deferred_files.append((file_id, (trans_id, mode_id)))
+                    deferred_files.append((target_path, (trans_id, mode_id, file_id)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
@@ -2997,9 +2997,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
             if wt_executable != target_executable and target_kind == "file":
                 tt.set_executability(target_executable, trans_id)
         if working_tree.supports_content_filtering():
-            for index, ((trans_id, mode_id), bytes) in enumerate(
+            for (trans_id, mode_id, file_id), bytes in (
                 target_tree.iter_files_bytes(deferred_files)):
-                file_id = deferred_files[index][0]
                 # We're reverting a tree to the target tree so using the
                 # target tree to find the file path seems the best choice
                 # here IMO - Ian C 27/Oct/2009
@@ -3009,7 +3008,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     ContentFilterContext(filter_tree_path, working_tree))
                 tt.create_file(bytes, trans_id, mode_id)
         else:
-            for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
+            for (trans_id, mode_id, file_id), bytes in target_tree.iter_files_bytes(
                 deferred_files):
                 tt.create_file(bytes, trans_id, mode_id)
         tt.fixup_new_roots()
