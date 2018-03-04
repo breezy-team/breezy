@@ -237,7 +237,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
-        [(file_id, (path, file_id)) for (path, file_id) in new_blobs]):
+        [(path, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
         yield path, obj, (file_id, tree.get_file_revision(path, file_id))
