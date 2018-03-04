@@ -1721,8 +1721,7 @@ class TreeTransform(DiskTreeTransform):
             hook(self._tree, self)
         if not no_conflicts:
             self._check_malformed()
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             if precomputed_delta is None:
                 child_pb.update(gettext('Apply phase'), 0, 2)
                 inventory_delta = self._generate_inventory_delta()
@@ -1744,8 +1743,6 @@ class TreeTransform(DiskTreeTransform):
                 raise
             else:
                 mover.apply_deletions()
-        finally:
-            child_pb.finished()
         if self.final_file_id(self.root) is None:
             inventory_delta = [e for e in inventory_delta if e[0] != '']
         self._tree.apply_inventory_delta(inventory_delta)
@@ -1757,10 +1754,9 @@ class TreeTransform(DiskTreeTransform):
     def _generate_inventory_delta(self):
         """Generate an inventory delta for the current transform."""
         inventory_delta = []
-        child_pb = ui.ui_factory.nested_progress_bar()
         new_paths = self._inventory_altered()
         total_entries = len(new_paths) + len(self._removed_id)
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, trans_id in enumerate(self._removed_id):
                 if (num % 10) == 0:
                     child_pb.update(gettext('removing file'), num, total_entries)
@@ -1811,8 +1807,6 @@ class TreeTransform(DiskTreeTransform):
                     new_entry.executable = new_executability
                 inventory_delta.append(
                     (old_path, path, new_entry.file_id, new_entry))
-        finally:
-            child_pb.finished()
         return inventory_delta
 
     def _apply_removals(self, mover):
@@ -1825,8 +1819,7 @@ class TreeTransform(DiskTreeTransform):
         If inventory_delta is None, no inventory delta generation is performed.
         """
         tree_paths = sorted(viewitems(self._tree_path_ids), reverse=True)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (path, trans_id) in enumerate(tree_paths):
                 # do not attempt to move root into a subdirectory of itself.
                 if path == '':
@@ -1845,8 +1838,6 @@ class TreeTransform(DiskTreeTransform):
                             raise
                     else:
                         self.rename_count += 1
-        finally:
-            child_pb.finished()
 
     def _apply_insertions(self, mover):
         """Perform tree operations that insert directory/inventory names.
@@ -1862,8 +1853,7 @@ class TreeTransform(DiskTreeTransform):
         modified_paths = []
         new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                  new_paths)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
                     child_pb.update(gettext('adding file'), num, len(new_paths))
@@ -1890,8 +1880,6 @@ class TreeTransform(DiskTreeTransform):
                     o_sha1, o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
-        finally:
-            child_pb.finished()
         for path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
@@ -2598,8 +2586,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         pp.next_phase()
         file_trans_id[wt.get_root_id()] = \
             tt.trans_id_tree_file_id(wt.get_root_id())
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             deferred_contents = []
             num = 0
             total = len(tree.all_versioned_paths())
@@ -2663,8 +2650,6 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             offset = num + 1 - len(deferred_contents)
             _create_files(tt, tree, deferred_contents, pb, offset,
                           accelerator_tree, hardlink)
-        finally:
-            pb.finished()
         pp.next_phase()
         divert_trans = set(file_trans_id[f] for f in divert)
         resolver = lambda t, c: resolve_checkout(t, c, divert_trans)
@@ -2874,7 +2859,10 @@ def revert(working_tree, target_tree, filenames, backups=False,
             trace.warning(unicode(conflict))
         pp.next_phase()
         tt.apply()
-        working_tree.set_merge_modified(merge_modified)
+        try:
+            working_tree.set_merge_modified(merge_modified)
+        except errors.UnsupportedOperation:
+            pass  # well, whatever.
     finally:
         target_tree.unlock()
         tt.finalize()
@@ -2885,21 +2873,15 @@ def revert(working_tree, target_tree, filenames, backups=False,
 def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                               backups, pp, basis_tree=None,
                               merge_modified=None):
-    child_pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as child_pb:
         if merge_modified is None:
             merge_modified = working_tree.merge_modified()
         merge_modified = _alter_files(working_tree, target_tree, tt,
                                       child_pb, filenames, backups,
                                       merge_modified, basis_tree)
-    finally:
-        child_pb.finished()
-    child_pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as child_pb:
         raw_conflicts = resolve_conflicts(tt, child_pb,
             lambda t, c: conflict_pass(t, c, target_tree))
-    finally:
-        child_pb.finished()
     conflicts = cook_conflicts(raw_conflicts, tt)
     return conflicts, merge_modified
 
@@ -3042,8 +3024,7 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
     if pass_func is None:
         pass_func = conflict_pass
     new_conflicts = set()
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         for n in range(10):
             pb.update(gettext('Resolution pass'), n+1, 10)
             conflicts = tt.find_conflicts()
@@ -3051,8 +3032,6 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
                 return new_conflicts
             new_conflicts.update(pass_func(tt, conflicts))
         raise MalformedTransform(conflicts=conflicts)
-    finally:
-        pb.finished()
 
 
 def conflict_pass(tt, conflicts, path_tree=None):

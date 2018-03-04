@@ -65,8 +65,7 @@ class RenameMap(object):
         :param file_ids: A list of file_ids to perform the updates for.
         """
         desired_files = [(f, f) for f in file_ids]
-        task = ui_factory.nested_progress_bar()
-        try:
+        with ui_factory.nested_progress_bar() as task:
             for num, (file_id, contents) in enumerate(
                 tree.iter_files_bytes(desired_files)):
                 task.update(gettext('Calculating hashes'), num, len(file_ids))
@@ -74,8 +73,6 @@ class RenameMap(object):
                 s.writelines(contents)
                 s.seek(0)
                 self.add_edge_hashes(s.readlines(), file_id)
-        finally:
-            task.finished()
 
     def hitcounts(self, lines):
         """Count the number of hash hits for each tag, for the given lines.
@@ -104,14 +101,11 @@ class RenameMap(object):
         :return: A list of tuples of count, path, file_id.
         """
         all_hits = []
-        task = ui_factory.nested_progress_bar()
-        try:
+        with ui_factory.nested_progress_bar() as task:
             for num, path in enumerate(paths):
                 task.update(gettext('Determining hash hits'), num, len(paths))
                 hits = self.hitcounts(self.tree.get_file_lines(path))
                 all_hits.extend((v, path, k) for k, v in viewitems(hits))
-        finally:
-            task.finished()
         return all_hits
 
     def file_match(self, paths):
@@ -178,10 +172,9 @@ class RenameMap(object):
         missing_files = set()
         missing_parents = {}
         candidate_files = set()
-        task = ui_factory.nested_progress_bar()
-        iterator = self.tree.iter_changes(basis, want_unversioned=True,
-                                          pb=task)
-        try:
+        with ui_factory.nested_progress_bar() as task:
+            iterator = self.tree.iter_changes(basis, want_unversioned=True,
+                                              pb=task)
             for (file_id, paths, changed_content, versioned, parent, name,
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
@@ -202,8 +195,6 @@ class RenameMap(object):
                             for child in children:
                                 if child[2] == 'file':
                                     candidate_files.add(child[0])
-        finally:
-            task.finished()
         return missing_files, missing_parents, candidate_files
 
     @classmethod
@@ -216,8 +207,7 @@ class RenameMap(object):
         :param tree: A write-locked working tree.
         """
         required_parents = {}
-        task = ui_factory.nested_progress_bar()
-        try:
+        with ui_factory.nested_progress_bar() as task:
             pp = progress.ProgressPhase('Guessing renames', 4, task)
             basis = tree.basis_tree()
             basis.lock_read()
@@ -246,8 +236,6 @@ class RenameMap(object):
             if not dry_run:
                 tree.add(required_parents)
                 tree.apply_inventory_delta(delta)
-        finally:
-            task.finished()
 
     def _make_inventory_delta(self, matches):
         delta = []

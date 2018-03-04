@@ -4381,7 +4381,7 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.  If --force is given, then the changes from the source 
+    --force is given.  If --force is given, then the changes from the source
     will be merged with the current working tree, including any uncommitted
     changes in the tree.  The --force option can also be used to create a
     merge revision which has more than two parents.
@@ -4609,6 +4609,15 @@ class cmd_merge(Command):
         if merger.reprocess and merger.show_base:
             raise errors.BzrCommandError(gettext("Cannot do conflict reduction and"
                                          " show base."))
+
+        if (merger.merge_type.requires_file_merge_plan and
+            (not getattr(merger.this_tree, 'plan_file_merge', None) or
+             not getattr(merger.other_tree, 'plan_file_merge', None) or
+             (merger.base_tree is not None and
+                 not getattr(merger.base_tree, 'plan_file_merge', None)))):
+            raise errors.BzrCommandError(
+                 gettext('Plan file merge unsupported: '
+                         'Merge type incompatible with tree formats.'))
 
     def _get_merger_from_branch(self, tree, location, revision, remember,
                                 possible_transports, pb):

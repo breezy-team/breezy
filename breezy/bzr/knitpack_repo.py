@@ -620,12 +620,9 @@ class KnitPacker(Packer):
 
         :param output_lines: Output full texts of copied items.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             return self._do_copy_nodes(nodes, index_map, writer,
                 write_index, pb, output_lines=output_lines)
-        finally:
-            pb.finished()
 
     def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb,
         output_lines=None):
@@ -685,13 +682,10 @@ class KnitPacker(Packer):
         :param output_lines: Return lines present in the copied data as
             an iterator of line,version_id.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for result in self._do_copy_nodes_graph(index_map, writer,
                 write_index, output_lines, pb, readv_group_iter, total_items):
                 yield result
-        finally:
-            pb.finished()
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
         output_lines, pb, readv_group_iter, total_items):

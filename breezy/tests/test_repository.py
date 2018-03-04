@@ -473,11 +473,8 @@ class TestRepositoryConverter(TestCaseWithTransport):
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = TestRepositoryFormat1().initialize(repo_dir)
         converter = repository.CopyConverter(target_format)
-        pb = breezy.ui.ui_factory.nested_progress_bar()
-        try:
+        with breezy.ui.ui_factory.nested_progress_bar() as pb:
             converter.convert(repo, pb)
-        finally:
-            pb.finished()
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
 

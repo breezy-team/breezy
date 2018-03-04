@@ -97,9 +97,8 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pb = ui.ui_factory.nested_progress_bar()
-        pb.show_pct = pb.show_count = False
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
+            pb.show_pct = pb.show_count = False
             pb.update(gettext("Finding revisions"), 0, 2)
             search_result = self._revids_to_fetch()
             mutter('fetching: %s', search_result)
@@ -107,8 +106,6 @@ class RepoFetcher(object):
                 return
             pb.update(gettext("Fetching revisions"), 1, 2)
             self._fetch_everything_for_search(search_result)
-        finally:
-            pb.finished()
 
     def _fetch_everything_for_search(self, search):
         """Fetch all data for the given set of revisions."""
@@ -125,8 +122,7 @@ class RepoFetcher(object):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             pb.update("Get stream source")
             source = self.from_repository._get_source(
                 self.to_repository._format)
@@ -151,8 +147,6 @@ class RepoFetcher(object):
                         resume_tokens,))
             pb.update("Finishing stream")
             self.sink.finished()
-        finally:
-            pb.finished()
 
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to

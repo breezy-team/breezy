@@ -39,14 +39,11 @@ print('Found %d nodes, loaded in %.3fs' % (len(parent_map), end - begin))
 
 def all_heads_comp(g, combinations):
     h = []
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         for idx, combo in enumerate(combinations):
             if idx & 0x1f == 0:
                 pb.update('proc', idx, len(combinations))
             h.append(g.heads(combo))
-    finally:
-        pb.finished()
     return h
 
 combinations = []

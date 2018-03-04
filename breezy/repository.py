@@ -1579,33 +1579,32 @@ class CopyConverter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        self.count = 0
-        self.total = 4
-        # this is only useful with metadir layouts - separated repo content.
-        # trigger an assertion if not such
-        repo._format.get_format_string()
-        self.repo_dir = repo.controldir
-        pb.update(gettext('Moving repository to repository.backup'))
-        self.repo_dir.transport.move('repository', 'repository.backup')
-        backup_transport =  self.repo_dir.transport.clone('repository.backup')
-        repo._format.check_conversion_target(self.target_format)
-        self.source_repo = repo._format.open(self.repo_dir,
-            _found=True,
-            _override_transport=backup_transport)
-        pb.update(gettext('Creating new repository'))
-        converted = self.target_format.initialize(self.repo_dir,
-                                                  self.source_repo.is_shared())
-        converted.lock_write()
-        try:
-            pb.update(gettext('Copying content'))
-            self.source_repo.copy_content_into(converted)
-        finally:
-            converted.unlock()
-        pb.update(gettext('Deleting old repository content'))
-        self.repo_dir.transport.delete_tree('repository.backup')
-        ui.ui_factory.note(gettext('repository converted'))
-        pb.finished()
+        with ui.ui_factory.nested_progress_bar() as pb:
+            self.count = 0
+            self.total = 4
+            # this is only useful with metadir layouts - separated repo content.
+            # trigger an assertion if not such
+            repo._format.get_format_string()
+            self.repo_dir = repo.controldir
+            pb.update(gettext('Moving repository to repository.backup'))
+            self.repo_dir.transport.move('repository', 'repository.backup')
+            backup_transport =  self.repo_dir.transport.clone('repository.backup')
+            repo._format.check_conversion_target(self.target_format)
+            self.source_repo = repo._format.open(self.repo_dir,
+                _found=True,
+                _override_transport=backup_transport)
+            pb.update(gettext('Creating new repository'))
+            converted = self.target_format.initialize(self.repo_dir,
+                                                      self.source_repo.is_shared())
+            converted.lock_write()
+            try:
+                pb.update(gettext('Copying content'))
+                self.source_repo.copy_content_into(converted)
+            finally:
+                converted.unlock()
+            pb.update(gettext('Deleting old repository content'))
+            self.repo_dir.transport.delete_tree('repository.backup')
+            ui.ui_factory.note(gettext('repository converted'))
 
 
 def _strip_NULL_ghosts(revision_graph):

@@ -261,12 +261,9 @@ class Annotator(object):
                         each key is a possible source for the given line.
             lines the text of "key" as a list of lines
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
                 self._annotate_one(text_key, text, num_lines)
-        finally:
-            pb.finished()
         try:
             annotations = self._annotations_cache[key]
         except KeyError:

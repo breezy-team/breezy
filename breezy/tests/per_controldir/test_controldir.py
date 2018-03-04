@@ -450,9 +450,7 @@ class TestControlDir(TestCaseWithControlDir):
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
                 "support branch references")
-        self.assertEqual(
-            referenced_branch.controldir.root_transport.abspath('') + '/',
-            dir.get_branch_reference())
+        self.assertEqual(referenced_branch.user_url, dir.get_branch_reference())
 
     def test_set_branch_reference_on_existing_reference(self):
         """set_branch_reference creates a branch reference"""
@@ -467,7 +465,7 @@ class TestControlDir(TestCaseWithControlDir):
                 "support branch references")
         reference = dir.set_branch_reference(referenced_branch2)
         self.assertEqual(
-            referenced_branch2.controldir.root_transport.abspath('') + '/',
+            referenced_branch2.user_url,
             dir.get_branch_reference())
 
     def test_set_branch_reference_on_existing_branch(self):
@@ -481,7 +479,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("control directory does not "
                 "support branch references")
         self.assertEqual(
-            referenced_branch.controldir.root_transport.abspath('') + '/',
+            referenced_branch.user_url,
             dir.get_branch_reference())
 
     def test_get_branch_reference_on_reference(self):
@@ -494,7 +492,7 @@ class TestControlDir(TestCaseWithControlDir):
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
                 "support branch references")
-        self.assertEqual(referenced_branch.controldir.root_transport.abspath('') + '/',
+        self.assertEqual(referenced_branch.user_url,
             dir.get_branch_reference())
 
     def test_get_branch_reference_on_non_reference(self):
@@ -1607,11 +1605,8 @@ class TestControlDir(TestCaseWithControlDir):
             # if its default updatable there must be an updater
             # (we force the latest known format as downgrades may not be
             # available
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 dir._format.get_converter(format=dir._format).convert(dir, pb)
-            finally:
-                pb.finished()
             # and it should pass 'check' now.
             check.check_dwim(self.get_url('.'), False, True, True)
 
@@ -1670,16 +1665,19 @@ class TestBreakLock(TestCaseWithControlDir):
                     "format does not support branch references")
         unused_repo = thisdir.create_repository()
         master.lock_write()
-        unused_repo.lock_write()
-        try:
+        with unused_repo.lock_write():
             # two yes's : branch and repository. If the repo in this
             # dir is inappropriately accessed, 3 will be needed, and
             # we'll see that because the stream will be fully consumed
             breezy.ui.ui_factory = CannedInputUIFactory([True, True, True])
             # determine if the repository will have been locked;
             this_repo_locked = \
-                thisdir.open_repository().get_physical_lock_status()
-            master.controldir.break_lock()
+                thisdir.find_repository().get_physical_lock_status()
+            try:
+                master.controldir.break_lock()
+            except NotImplementedError:
+                # bzrdir does not support break_lock
+                raise TestNotApplicable("format does not support breaking locks")
             if this_repo_locked:
                 # only two ys should have been read
                 self.assertEqual([True], breezy.ui.ui_factory.responses)
@@ -1696,8 +1694,6 @@ class TestBreakLock(TestCaseWithControlDir):
                 # lock should not have touched it.
                 repo = thisdir.open_repository()
                 self.assertRaises(errors.LockContention, repo.lock_write)
-        finally:
-            unused_repo.unlock()
         self.assertRaises(errors.LockBroken, master.unlock)
 
     def test_break_lock_tree(self):

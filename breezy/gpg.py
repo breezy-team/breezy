@@ -99,8 +99,7 @@ def bulk_verify_signatures(repository, revids, strategy,
     result = []
     all_verifiable = True
     total = len(revids)
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         for i, (rev_id, verification_result, uid) in enumerate(
                 repository.verify_revision_signatures(
                     revids, strategy)):
@@ -111,8 +110,6 @@ def bulk_verify_signatures(repository, revids, strategy,
                 all_verifiable = False
             if process_events_callback is not None:
                 process_events_callback()
-    finally:
-        pb.finished()
     return (count, result, all_verifiable)
 
 
