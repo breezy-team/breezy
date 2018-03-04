@@ -1194,9 +1194,11 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
             raise errors.IncompatibleFormat(self, a_controldir)
         index = Index(a_controldir.root_transport.local_abspath(".git/index"))
         index.write()
+        branch = a_controldir.open_branch()
+        if revision_id is not None:
+            branch.set_last_revision(revision_id)
         wt = GitWorkingTree(
-                a_controldir, a_controldir.open_repository(),
-            a_controldir.open_branch(nascent_ok=True), index)
+                a_controldir, a_controldir.open_repository(), branch, index)
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt
