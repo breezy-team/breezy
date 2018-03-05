@@ -273,6 +273,10 @@ class RemoteGitDir(GitDir):
         self.base = self.root_transport.base
         self._refs = None
 
+    @property
+    def _gitrepository_class(self):
+        return RemoteGitRepository
+
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
             def progress(text):
