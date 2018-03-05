@@ -450,14 +450,10 @@ class LocalGitDir(GitDir):
 
     def find_branch_format(self, name=None):
         from .branch import (
-            GitSymrefBranchFormat,
             LocalGitBranchFormat,
             )
         ref = self._get_selected_ref(name)
-        if self._get_symref(ref) is not None:
-            return GitSymrefBranchFormat()
-        else:
-            return LocalGitBranchFormat()
+        return LocalGitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):
         if branch_format is None:
