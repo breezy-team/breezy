@@ -56,7 +56,7 @@ class TestExecutable(TestCaseWithWorkingTree):
                 the inventory is empty, just that the tree doesn't have them
         """
         tree.lock_read()
-        if not ignore_inv:
+        if not ignore_inv and getattr(tree, 'root_inventory', None):
             self.assertEqual(
                 [('', tree.root_inventory.root)],
                 list(tree.root_inventory.iter_entries()))
@@ -68,13 +68,13 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def commit_and_branch(self):
         """Commit the current tree, and create a second tree"""
-        self.wt.commit('adding a,b', rev_id='r1')
+        r1 = self.wt.commit('adding a,b')
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
-        dir2 = self.wt.branch.controldir.sprout('b2', revision_id='r1')
+        dir2 = self.wt.branch.controldir.sprout('b2', revision_id=r1)
         wt2 = dir2.open_workingtree()
-        self.assertEqual(['r1'], wt2.get_parent_ids())
-        self.assertEqual('r1', wt2.branch.last_revision())
+        self.assertEqual([r1], wt2.get_parent_ids())
+        self.assertEqual(r1, wt2.branch.last_revision())
         return wt2
 
     def test_01_is_executable(self):
@@ -88,14 +88,14 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def test_03_after_commit(self):
         """Commit the change, and check the history"""
-        self.wt.commit('adding a,b', rev_id='r1')
+        r1 = self.wt.commit('adding a,b')
 
-        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        rev_tree = self.wt.branch.repository.revision_tree(r1)
         self.check_exist(rev_tree)
 
     def test_04_after_removed(self):
         """Make sure reverting removed files brings them back correctly"""
-        self.wt.commit('adding a,b', rev_id='r1')
+        r1 = self.wt.commit('adding a,b')
 
         # Make sure the entries are gone
         os.remove('b1/a')
@@ -105,24 +105,24 @@ class TestExecutable(TestCaseWithWorkingTree):
         # Make sure that revert is able to bring them back,
         # and sets 'a' back to being executable
 
-        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        rev_tree = self.wt.branch.repository.revision_tree(r1)
 
         self.wt.revert(['a', 'b'], rev_tree, backups=False)
         self.check_exist(self.wt)
 
     def test_05_removed_and_committed(self):
         """Check that reverting to an earlier commit restores them"""
-        self.wt.commit('adding a,b', rev_id='r1')
+        r1 = self.wt.commit('adding a,b')
 
         # Now remove them again, and make sure that after a
         # commit, they are still marked correctly
         os.remove('b1/a')
         os.remove('b1/b')
-        self.wt.commit('removed', rev_id='r2')
+        r2 = self.wt.commit('removed')
 
         self.check_empty(self.wt)
 
-        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        rev_tree = self.wt.branch.repository.revision_tree(r1)
         # Now revert back to the previous commit
         self.wt.revert(old_tree=rev_tree, backups=False)
 
@@ -141,28 +141,28 @@ class TestExecutable(TestCaseWithWorkingTree):
 
         os.remove('b1/a')
         os.remove('b1/b')
-        self.wt.commit('removed', rev_id='r2')
+        r2 = self.wt.commit('removed')
 
         # now wt2 can pull and the files should be removed
 
         # Make sure pull will delete the files
         wt2.pull(self.wt.branch)
-        self.assertEqual(['r2'], wt2.get_parent_ids())
-        self.assertEqual('r2', wt2.branch.last_revision())
+        self.assertEqual([r2], wt2.get_parent_ids())
+        self.assertEqual(r2, wt2.branch.last_revision())
         self.check_empty(wt2)
 
         # Now restore the files on the first branch and commit
         # so that the second branch can pull the changes
         # and make sure that the executable bit has been copied
-        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        rev_tree = self.wt.branch.repository.revision_tree(r1)
         self.wt.revert(old_tree=rev_tree, backups=False)
-        self.wt.commit('resurrected', rev_id='r3')
+        r3 = self.wt.commit('resurrected')
 
         self.check_exist(self.wt)
 
         wt2.pull(self.wt.branch)
-        self.assertEqual(['r3'], wt2.get_parent_ids())
-        self.assertEqual('r3', wt2.branch.last_revision())
+        self.assertEqual([r3], wt2.get_parent_ids())
+        self.assertEqual(r3, wt2.branch.last_revision())
         self.check_exist(wt2)
 
     def test_08_no_op_revert(self):
@@ -170,8 +170,8 @@ class TestExecutable(TestCaseWithWorkingTree):
 
         The bits shouldn't swap.
         """
-        self.wt.commit('adding a,b', rev_id='r1')
-        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        r1 = self.wt.commit('adding a,b')
+        rev_tree = self.wt.branch.repository.revision_tree(r1)
         self.wt.revert(old_tree=rev_tree, backups=False)
         self.check_exist(self.wt)
 

@@ -33,6 +33,10 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
         # Make sure the basis file is created by a commit
         t = self.make_branch_and_tree('.')
+        if getattr(t, 'root_inventory', None) is None:
+            raise TestNotApplicable("not applicable to %r"
+                % (self.workingtree_format,))
+
         b = t.branch
         with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
@@ -68,6 +72,11 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')
+        if getattr(t, 'root_inventory', None) is None:
+            raise TestNotApplicable("not applicable to %r"
+                % (self.workingtree_format,))
+
+
         b = t.branch
         with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
