@@ -852,13 +852,12 @@ class GitWorkingTree(workingtree.WorkingTree):
     def is_executable(self, path, file_id=None):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
             mode = os.lstat(self.abspath(path)).st_mode
-            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         else:
-            basis_tree = self.basis_tree()
-            if file_id in basis_tree:
-                return basis_tree.is_executable(path, file_id)
-            # Default to not executable
-            return False
+            try:
+                mode = self.index[path.encode('utf-8')].mode
+            except KeyError:
+                mode = 0
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
@@ -1011,7 +1010,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 (parent, name) = posixpath.split(path)
                 try:
                     file_ie = self._get_file_ie(name, path, value, None)
-                except IOError:
+                except errors.NoSuchFile:
                     continue
                 if yield_parents or specific_file_ids is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
