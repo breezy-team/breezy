@@ -36,6 +36,7 @@ from dulwich.index import (
     commit_tree,
     index_entry_from_stat,
     iter_fresh_blobs,
+    blob_from_path_and_stat,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -1290,8 +1291,8 @@ def untracked_changes(tree):
         except UnicodeDecodeError:
             raise errors.BadFilenameEncoding(
                 e, osutils._fs_enc)
-        yield (np, st.st_mode,
-               blob_from_path_and_stat(ap, st).id)
+        yield ((None, np), (None, st.st_mode),
+               (None, blob_from_path_and_stat(ap.encode('utf-8'), st).id))
 
 
 def changes_between_git_tree_and_index(store, from_tree_sha, target,
