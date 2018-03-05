@@ -116,8 +116,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
              [dirblocks[2].as_tuple()]
             ),
             ]
-        if tree.has_versioned_directories():
-            expected_dirblocks.append(
+        expected_dirblocks.append(
             (dirblocks[3].as_dir_tuple(),
              []
             ))
