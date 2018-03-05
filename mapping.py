@@ -667,3 +667,12 @@ class GitFileIdMap(object):
 
     def copy(self):
         return self.__class__(dict(self.file_ids), self.mapping)
+
+
+def needs_roundtripping(repo, revid):
+    try:
+        mapping_registry.parse_revision_id(revid)
+    except errors.InvalidRevisionId:
+        return True
+    else:
+        return False
