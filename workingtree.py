@@ -839,6 +839,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        return self.basis_tree().is_executable(path)
+
     def stored_kind(self, path, file_id=None):
         with self.lock_read():
             try:
@@ -855,7 +858,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         else:
             basis_tree = self.basis_tree()
-            if file_id in basis_tree:
+            if basis_tree.has_filename(path):
                 return basis_tree.is_executable(path, file_id)
             # Default to not executable
             return False
