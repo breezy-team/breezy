@@ -1652,7 +1652,7 @@ class cmd_branches(Command):
                 if name == "":
                     continue
                 active = (active_branch is not None and
-                          active_branch.base == branch.base)
+                          active_branch.user_url == branch.user_url)
                 names[name] = active
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
