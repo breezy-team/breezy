@@ -470,6 +470,11 @@ class TransportObjectStore(PackBasedObjectStore):
         self.pack_transport = self.transport.clone(PACKDIR)
         self._alternates = None
 
+    def __eq__(self, other):
+        if not isinstance(other, TransportObjectStore):
+            return False
+        return self.transport == other.transport
+
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
