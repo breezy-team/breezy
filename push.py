@@ -276,7 +276,7 @@ class InterToLocalGitRepository(InterToGitRepository):
     def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
             for git_sha, bzr_revid in revs:
-                if needs_roundtripping(self.source, bzr_revid):
+                if bzr_revid is not None and needs_roundtripping(self.source, bzr_revid):
                     raise NoPushSupport(self.source, self.target, self.mapping,
                                         bzr_revid)
         with self.source_store.lock_read():
@@ -319,7 +319,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         if not self.mapping.roundtripping:
             for (git_sha, bzr_revid) in stop_revisions:
-                if needs_roundtripping(self.source, bzr_revid):
+                if bzr_revid is not None and needs_roundtripping(self.source, bzr_revid):
                     raise NoPushSupport(self.source, self.target, self.mapping, bzr_revid)
         self.fetch_objects(stop_revisions, lossy=False)
 
