@@ -317,11 +317,10 @@ class InterToLocalGitRepository(InterToGitRepository):
                 raise AssertionError("Unsupported search result type %s" % recipe[0])
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
-        if not self.mapping.roundtripping:
-            for (git_sha, bzr_revid) in stop_revisions:
-                if bzr_revid is not None and needs_roundtripping(self.source, bzr_revid):
-                    raise NoPushSupport(self.source, self.target, self.mapping, bzr_revid)
-        self.fetch_objects(stop_revisions, lossy=False)
+        try:
+            self.fetch_objects(stop_revisions, lossy=False)
+        except NoPushSupport:
+            raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     @staticmethod
     def is_compatible(source, target):
