@@ -240,10 +240,15 @@ class BzrGitMapping(foreign.VcsMapping):
         """Export a file id map to a fileid map.
 
         :param fileid_map: File id map, mapping paths to file ids
-        :return: A Git blob object
+        :return: A Git blob object (or None if there are no entries)
         """
         from dulwich.objects import Blob
         b = Blob()
+        for path, file_id in fileid_map.items():
+            if self.generate_file_id(path) != file_id:
+                del fileid_map[path]
+        if not fileid_map:
+            return None
         b.set_raw_chunks(serialize_fileid_map(fileid_map))
         return b
 
