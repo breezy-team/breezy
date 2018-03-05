@@ -197,14 +197,18 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         link2_stat = os.lstat('link2')
         expected_dirblocks = [
              (('', tree.path2id('')),
-              [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
-               ('dir2', 'dir2', 'symlink', dir2_stat, tree.path2id('dir2'), 'directory'),
+              [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'),
+                  'directory' if tree.has_versioned_directories() else None),
+               ('dir2', 'dir2', 'symlink', dir2_stat, tree.path2id('dir2'),
+                   'directory' if tree.has_versioned_directories() else None),
                ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
                ('file2', 'file2', 'symlink', file2_stat, tree.path2id('file2'), 'file'),
                ('link1', 'link1', 'file', link1_stat, tree.path2id('link1'), 'symlink'),
                ('link2', 'link2', 'directory', link2_stat, tree.path2id('link2'), 'symlink'),
               ]
-             ),
+             )]
+        if tree.has_versioned_directories():
+            expected_dirblocks.extend([
              (('dir1', tree.path2id('dir1')),
               [
               ]
@@ -212,7 +216,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
              (('dir2', tree.path2id('dir2')),
               [
               ]
-             ),
+             )])
+        expected_dirblocks.extend([
              (('file1', None),
               [
               ]
@@ -221,10 +226,9 @@ class TestWalkdirs(TestCaseWithWorkingTree):
               [
               ]
              ),
-            ]
-        tree.lock_read()
-        result = list(tree.walkdirs())
-        tree.unlock()
+            ])
+        with tree.lock_read():
+            result = list(tree.walkdirs())
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
@@ -262,7 +266,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         else:
             expected_dirblocks = [
                  (('', tree.path2id('')),
-                  [('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
+                  [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), None),
+                   ('file1', 'file1', 'directory', file1_stat, tree.path2id('file1'), 'file'),
                   ]
                  ),
                  (('file1', None),
@@ -270,9 +275,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
                   ]
                  ),
                 ]
-        tree.lock_read()
-        result = list(tree.walkdirs())
-        tree.unlock()
+        with tree.lock_read():
+            result = list(tree.walkdirs())
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
