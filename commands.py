@@ -22,6 +22,7 @@
 
 from __future__ import absolute_import
 
+import breezy.bzr.bzrdir
 from ...commands import (
     Command,
     display_command,
@@ -95,6 +96,7 @@ class cmd_git_import(Command):
         from .repository import GitRepository
 
         dest_format = controldir.ControlDirFormat.get_default_format()
+        assert dest_format is not None
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))
@@ -139,7 +141,6 @@ class cmd_git_import(Command):
                 revid = mapping.revision_id_foreign_to_bzr(sha)
                 source_branch = LocalGitBranch(source_repo.controldir, source_repo,
                     sha)
-                source_branch.head = sha
                 if head_branch.last_revision() != revid:
                     head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
