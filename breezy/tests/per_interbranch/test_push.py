@@ -267,6 +267,9 @@ class TestPush(TestCaseWithInterBranch):
         remote_bzrdir = local.controldir.sprout(
             self.get_url('remote'), revision_id=third)
         remote = remote_bzrdir.open_branch()
+        if not remote.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                'remote is not a VersionedFile repository')
         # Push fourth revision
         self.reset_smart_call_log()
         self.disableOptimisticGetParentMap()
