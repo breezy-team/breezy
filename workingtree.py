@@ -44,7 +44,6 @@ from dulwich.object_store import (
 from dulwich.objects import (
     Blob,
     S_IFGITLINK,
-    ZERO_SHA,
     )
 from dulwich.repo import Repo
 import os
@@ -666,9 +665,10 @@ class GitWorkingTree(workingtree.WorkingTree):
         except KeyError:
             # Assume no if basis is not accessible
             return False
-        if head == ZERO_SHA:
+        try:
+            root_tree = self.store[head].tree
+        except KeyError:
             return False
-        root_tree = self.store[head].tree
         try:
             tree_lookup_path(self.store.__getitem__, root_tree, path)
         except KeyError:
@@ -759,14 +759,11 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _reset_data(self):
         try:
             head = self.repository._git.head()
-        except KeyError, name:
+        except KeyError:
             self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
-            if head == ZERO_SHA:
-                self._basis_fileid_map = GitFileIdMap({}, self.mapping)
-            else:
-                self._basis_fileid_map = self.mapping.get_fileid_map(
-                    self.store.__getitem__, self.store[head].tree)
+            self._basis_fileid_map = self.mapping.get_fileid_map(
+                self.store.__getitem__, self.store[head].tree)
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
         with self.lock_read():

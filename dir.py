@@ -569,12 +569,10 @@ class LocalGitDir(GitDir):
         if refname != b'HEAD' and refname in self._git.refs:
             raise bzr_errors.AlreadyBranchError(self.user_url)
         repo = self.open_repository()
-        from dulwich.objects import ZERO_SHA
         if refname in self._git.refs:
             ref_chain, unused_sha = self._git.refs.follow(self._get_selected_ref(None))
             if ref_chain[0] == b'HEAD':
                 refname = ref_chain[1]
-            self._git.refs[refname] = ZERO_SHA
         from .branch import LocalGitBranch
         branch = LocalGitBranch(self, repo, refname)
         if append_revisions_only:
@@ -596,7 +594,6 @@ class LocalGitDir(GitDir):
         if self._git.bare:
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
         from dulwich.index import build_index_from_tree
-        from dulwich.objects import ZERO_SHA
         if from_branch is None:
             from_branch = self.open_branch(nascent_ok=True)
         if revision_id is None:
@@ -608,7 +605,7 @@ class LocalGitDir(GitDir):
             self.root_transport.local_abspath('.'),
             self.transport.local_abspath("index"),
             store,
-            None if commit_id == ZERO_SHA else store[commit_id].tree)
+            None if revision_id == _mod_revision.NULL_REVISION else store[commit_id].tree)
         from .workingtree import GitWorkingTree
         index = self._git.open_index()
         wt = GitWorkingTree(self, repo, from_branch, index)

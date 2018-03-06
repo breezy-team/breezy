@@ -558,7 +558,7 @@ class LocalGitBranch(GitBranch):
 
     def _get_head(self):
         try:
-            return self.repository._git.refs[self.ref or "HEAD"]
+            return self.repository._git.refs[self.ref]
         except KeyError:
             return None
 
@@ -577,7 +577,7 @@ class LocalGitBranch(GitBranch):
         if not revid or not isinstance(revid, basestring):
             raise errors.InvalidRevisionId(revision_id=revid, branch=self)
         if revid == NULL_REVISION:
-            newhead = ZERO_SHA
+            newhead = None
         else:
             (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
             if self.mapping is None:
@@ -585,8 +585,12 @@ class LocalGitBranch(GitBranch):
         self._set_head(newhead)
 
     def _set_head(self, value):
+        assert value != ZERO_SHA
         self._head = value
-        self.repository._git.refs[self.ref or "HEAD"] = self._head
+        if value is None:
+            del self.repository._git.refs[self.ref]
+        else:
+            self.repository._git.refs[self.ref] = self._head
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)
