@@ -3439,6 +3439,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def _clear_cached_state(self):
         super(RemoteBranch, self)._clear_cached_state()
+        self._tags_bytes = None
         if self._real_branch is not None:
             self._real_branch._clear_cached_state()
 
