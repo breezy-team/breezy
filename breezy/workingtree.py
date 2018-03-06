@@ -1421,6 +1421,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_righthand_parent_id_as_ghost = True
 
+    ignore_filename = None
+    """Name of file with ignore patterns, if any. """
+
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.

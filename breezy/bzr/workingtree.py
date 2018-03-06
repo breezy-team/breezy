@@ -569,8 +569,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         ignore_globs = set()
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
-        if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file(breezy.IGNORE_FILENAME)
+        if self.has_filename(self._format.ignore_filename):
+            f = self.get_file(self._format.ignore_filename)
             try:
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
@@ -1715,45 +1715,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
-    def __init__(self):
-        WorkingTreeFormat.__init__(self)
-        bzrdir.BzrFormat.__init__(self)
-
-    @classmethod
-    def find_format_string(klass, controldir):
-        """Return format name for the working tree object in controldir."""
-        try:
-            transport = controldir.get_workingtree_transport(None)
-            return transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
-
-    @classmethod
-    def find_format(klass, controldir):
-        """Return the format for the working tree object in controldir."""
-        format_string = klass.find_format_string(controldir)
-        return klass._find_format(format_registry, 'working tree',
-                format_string)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        WorkingTreeFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
-        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-
-    def get_controldir_for_branch(self):
-        """Get the control directory format for creating branches.
-
-        This is to support testing of working tree formats that can not exist
-        in the same control directory as a branch.
-        """
-        return self._matchingcontroldir
-
-
-class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
-    """Base class for working trees that live in bzr meta directories."""
+    ignore_filename = '.bzrignore'
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)
