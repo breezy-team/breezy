@@ -43,7 +43,12 @@ class TestPull(TestCaseWithInterBranch):
                 'lossless push between %r and %r not supported' %
                 (self.branch_format_from, self.branch_format_to))
         mine.commit('my change', allow_pointless=True)
-        parent.merge_from_branch(mine.branch)
+        try:
+            parent.merge_from_branch(mine.branch)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         p2 = parent.commit('merge my change')
         mine.pull(parent.branch)
         self.assertEqual(p2, mine.branch.last_revision())
@@ -65,7 +70,12 @@ class TestPull(TestCaseWithInterBranch):
         other = self.sprout_to(parent.controldir, 'other').open_workingtree()
         other.merge_from_branch(mine.branch)
         other.commit('merge my change')
-        parent.merge_from_branch(other.branch)
+        try:
+            parent.merge_from_branch(other.branch)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         p2 = parent.commit('merge other')
         mine.pull(parent.branch)
         self.assertEqual(p2, mine.branch.last_revision())
@@ -75,7 +85,12 @@ class TestPull(TestCaseWithInterBranch):
         master_tree = self.make_from_branch_and_tree('master')
         master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.controldir, 'other').open_workingtree()
+        try:
+            other = self.sprout_to(master_tree.branch.controldir, 'other').open_workingtree()
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
@@ -107,7 +122,12 @@ class TestPull(TestCaseWithInterBranch):
                 'lossless push between %r and %r not supported' %
                 (self.branch_format_from, self.branch_format_to))
         m1 = mine.commit('my change')
-        result = parent.branch.pull(mine.branch)
+        try:
+            result = parent.branch.pull(mine.branch)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         self.assertIsNot(None, result)
         self.assertIs(mine.branch, result.source_branch)
         self.assertIs(parent.branch, result.target_branch)
