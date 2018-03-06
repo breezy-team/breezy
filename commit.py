@@ -33,7 +33,9 @@ from ... import (
     revision as _mod_revision,
     )
 from ...errors import (
+    BzrError,
     RootMissing,
+    UnsupportedOperation,
     )
 from ...repository import (
     CommitBuilder,
@@ -52,6 +54,15 @@ from .mapping import (
     object_mode,
     fix_person_identifier,
     )
+
+
+class SettingCustomFileIdsUnsupported(UnsupportedOperation):
+
+    _fmt = "Unable to store addition of file with custom file ids: %(file_ids)r"
+
+    def __init__(self, file_ids):
+        BzrError.__init__(self)
+        self.file_ids = file_ids
 
 
 class GitCommitBuilder(CommitBuilder):
@@ -130,7 +141,10 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             _, st = workingtree.get_file_with_stat(path[1], file_id)
             yield file_id, path[1], (file_sha1, st)
-            self._override_fileids[encoded_new_path] = file_id
+            if self._mapping.generate_file_id(encoded_new_path) != file_id:
+                self._override_fileids[encoded_new_path] = file_id
+            else:
+                self._override_fileids[encoded_new_path] = None
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
@@ -158,7 +172,7 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), update_index=True)
                     self._blobs[path.encode("utf-8")] = (mode, sha)
-        if not self._lossy and self._mapping.BZR_FILE_IDS_FILE is not None:
+        if not self._lossy:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
             except AttributeError:
@@ -166,16 +180,19 @@ class GitCommitBuilder(CommitBuilder):
             for path, file_id in self._override_fileids.iteritems():
                 assert type(path) == str
                 if file_id is None:
-                    del fileid_map[path]
+                    if path in fileid_map:
+                        del fileid_map[path]
                 else:
                     assert type(file_id) == str
                     fileid_map[path] = file_id
             if fileid_map:
                 fileid_blob = self._mapping.export_fileid_map(fileid_map)
-                self.store.add_object(fileid_blob)
             else:
                 fileid_blob = None
             if fileid_blob is not None:
+                if self._mapping.BZR_FILE_IDS_FILE is None:
+                    raise SettingCustomFileIdsUnsupported(fileid_map)
+                self.store.add_object(fileid_blob)
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (stat.S_IFREG | 0644, fileid_blob.id)
             else:
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None
