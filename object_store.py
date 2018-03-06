@@ -216,7 +216,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     except KeyError:
                         # no-change merge ?
                         blob = Blob()
-                        blob.data = tree.get_file_text(file_id)
+                        blob.data = tree.get_file_text(path[1], file_id)
                         shamap[file_id] = blob.id
             if not file_id in shamap:
                 new_blobs.append((path[1], file_id))
@@ -497,14 +497,15 @@ class BazaarObjectStore(BaseObjectStore):
         """
         stream = self.repository.iter_files_bytes(
             ((key[0], key[1], key) for key in keys))
-        for (fileid, revision, expected_sha), chunks in stream:
+        for (file_id, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = chunks
             if blob.id != expected_sha and blob.data == "":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)
-                if tree.kind(fileid) == 'symlink':
-                    blob = symlink_to_blob(tree.get_symlink_target(fileid))
+                path = tree.id2path(file_id)
+                if tree.kind(path, file_id) == 'symlink':
+                    blob = symlink_to_blob(tree.get_symlink_target(path, file_id))
             _check_expected_sha(expected_sha, blob)
             yield blob
 
