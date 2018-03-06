@@ -1094,7 +1094,10 @@ class InterToGitBranch(branch.GenericInterBranch):
             for k, v in self.source.tags.get_tag_dict().iteritems():
                 ret.append((None, v))
         ret.append((None, stop_revision))
-        self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit)
+        try:
+            self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit)
+        except NoPushSupport:
+            raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True):

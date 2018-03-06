@@ -173,6 +173,9 @@ class GitCommitBuilder(CommitBuilder):
             if fileid_map:
                 fileid_blob = self._mapping.export_fileid_map(fileid_map)
                 self.store.add_object(fileid_blob)
+            else:
+                fileid_blob = None
+            if fileid_blob is not None:
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (stat.S_IFREG | 0644, fileid_blob.id)
             else:
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None

@@ -58,7 +58,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def test_pointless_fetch_refs_old_mapping(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingv1())
-        self.assertRaises(NoPushSupport, interrepo.fetch_refs, lambda x: {}, lossy=False)
+        interrepo.fetch_refs(lambda x: {}, lossy=False)
 
     def test_pointless_fetch_refs(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())

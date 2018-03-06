@@ -240,10 +240,15 @@ class BzrGitMapping(foreign.VcsMapping):
         """Export a file id map to a fileid map.
 
         :param fileid_map: File id map, mapping paths to file ids
-        :return: A Git blob object
+        :return: A Git blob object (or None if there are no entries)
         """
         from dulwich.objects import Blob
         b = Blob()
+        for path, file_id in fileid_map.items():
+            if self.generate_file_id(path) != file_id:
+                del fileid_map[path]
+        if not fileid_map:
+            return None
         b.set_raw_chunks(serialize_fileid_map(fileid_map))
         return b
 
@@ -282,7 +287,10 @@ class BzrGitMapping(foreign.VcsMapping):
             encoding = rev.properties['git-explicit-encoding']
         except KeyError:
             encoding = rev.properties.get('git-implicit-encoding', 'utf-8')
-        commit.encoding = rev.properties.get('git-explicit-encoding')
+        try:
+            commit.encoding = rev.properties['git-explicit-encoding'].encode('ascii')
+        except KeyError:
+            pass
         commit.committer = fix_person_identifier(rev.committer.encode(
             encoding))
         commit.author = fix_person_identifier(
@@ -299,6 +307,8 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = int(rev.properties['author-timezone'])
         else:
             commit.author_timezone = commit.commit_timezone
+        if 'git-gpg-signature' in rev.properties:
+            commit.gpgsig = rev.properties['git-gpg-signature'].encode('ascii')
         commit.message = self._encode_commit_message(rev, rev.message,
             encoding)
         assert type(commit.message) == str
@@ -310,11 +320,12 @@ class BzrGitMapping(foreign.VcsMapping):
             mapping_properties = set(
                 ['author', 'author-timezone', 'author-timezone-neg-utc',
                  'commit-timezone-neg-utc', 'git-implicit-encoding',
-                 'git-explicit-encoding', 'author-timestamp', 'file-modes'])
+                 'git-gpg-signature', 'git-explicit-encoding',
+                 'author-timestamp', 'file-modes'])
             for k, v in rev.properties.iteritems():
                 if not k in mapping_properties:
                     metadata.properties[k] = v
-        if not lossy:
+        if not lossy and metadata:
             if self.roundtripping:
                 commit.message = inject_bzr_metadata(commit.message, metadata,
                                                      encoding)
@@ -371,6 +382,8 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['author-timezone-neg-utc'] = ""
         if commit._commit_timezone_neg_utc:
             rev.properties['commit-timezone-neg-utc'] = ""
+        if commit.gpgsig:
+            rev.properties['git-gpg-signature'] = commit.gpgsig.decode('ascii')
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
@@ -662,3 +675,12 @@ class GitFileIdMap(object):
 
     def copy(self):
         return self.__class__(dict(self.file_ids), self.mapping)
+
+
+def needs_roundtripping(repo, revid):
+    try:
+        mapping_registry.parse_revision_id(revid)
+    except errors.InvalidRevisionId:
+        return True
+    else:
+        return False

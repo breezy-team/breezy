@@ -35,6 +35,9 @@ from ...revision import (
 from .errors import (
     NoPushSupport,
     )
+from .mapping import (
+    needs_roundtripping,
+    )
 from .object_store import (
     get_object_store,
     )
@@ -255,8 +258,6 @@ class InterToLocalGitRepository(InterToGitRepository):
         return bzr_refs
 
     def fetch_refs(self, update_refs, lossy):
-        if not lossy and not self.mapping.roundtripping:
-            raise NoPushSupport(self.source, self.target, self.mapping)
         with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
@@ -274,7 +275,10 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
-            raise NoPushSupport(self.source, self.target, self.mapping)
+            for git_sha, bzr_revid in revs:
+                if bzr_revid is not None and needs_roundtripping(self.source, bzr_revid):
+                    raise NoPushSupport(self.source, self.target, self.mapping,
+                                        bzr_revid)
         with self.source_store.lock_read():
             todo = list(self.missing_revisions(revs))[:limit]
             revidmap = {}
@@ -301,8 +305,6 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
-        if not self.mapping.roundtripping:
-            raise NoPushSupport(self.source, self.target, self.mapping)
         if mapped_refs is not None:
             stop_revisions = mapped_refs
         elif revision_id is not None:
@@ -315,7 +317,10 @@ class InterToLocalGitRepository(InterToGitRepository):
                 raise AssertionError("Unsupported search result type %s" % recipe[0])
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
-        self.fetch_objects(stop_revisions, lossy=False)
+        try:
+            self.fetch_objects(stop_revisions, lossy=False)
+        except NoPushSupport:
+            raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     @staticmethod
     def is_compatible(source, target):

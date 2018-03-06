@@ -36,6 +36,7 @@ from dulwich.index import (
     commit_tree,
     index_entry_from_stat,
     iter_fresh_blobs,
+    blob_from_path_and_stat,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -839,6 +840,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        return self.basis_tree().is_executable(path)
+
     def stored_kind(self, path, file_id=None):
         with self.lock_read():
             try:
@@ -852,13 +856,12 @@ class GitWorkingTree(workingtree.WorkingTree):
     def is_executable(self, path, file_id=None):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
             mode = os.lstat(self.abspath(path)).st_mode
-            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         else:
-            basis_tree = self.basis_tree()
-            if file_id in basis_tree:
-                return basis_tree.is_executable(path, file_id)
-            # Default to not executable
-            return False
+            try:
+                mode = self.index[path.encode('utf-8')].mode
+            except KeyError:
+                mode = 0
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
@@ -1011,7 +1014,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 (parent, name) = posixpath.split(path)
                 try:
                     file_ie = self._get_file_ie(name, path, value, None)
-                except IOError:
+                except errors.NoSuchFile:
                     continue
                 if yield_parents or specific_file_ids is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
@@ -1399,8 +1402,8 @@ def untracked_changes(tree):
         except UnicodeDecodeError:
             raise errors.BadFilenameEncoding(
                 e, osutils._fs_enc)
-        yield (np, st.st_mode,
-               blob_from_path_and_stat(ap, st).id)
+        yield ((None, np), (None, st.st_mode),
+               (None, blob_from_path_and_stat(ap.encode('utf-8'), st).id))
 
 
 def changes_between_git_tree_and_index(store, from_tree_sha, target,
