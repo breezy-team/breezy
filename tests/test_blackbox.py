@@ -53,6 +53,11 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['nick'])
         self.assertEquals("master\n", output)
 
+    def test_branches(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['branches'])
+        self.assertEquals("* master\n", output)
+
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
