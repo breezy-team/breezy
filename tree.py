@@ -85,9 +85,15 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def id2path(self, file_id):
         try:
-            return self._fileid_map.lookup_path(file_id)
+            path = self._fileid_map.lookup_path(file_id)
         except ValueError:
             raise errors.NoSuchId(self, file_id)
+        if self.has_filename(path):
+            return path
+        raise errors.NoSuchId(self, file_id)
+
+    def is_versioned(self, path):
+        return self.has_filename(path)
 
     def path2id(self, path):
         if self.mapping.is_special_file(path):
