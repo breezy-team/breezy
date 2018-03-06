@@ -75,7 +75,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         wt2 = dir2.open_workingtree()
         self.assertEqual([r1], wt2.get_parent_ids())
         self.assertEqual(r1, wt2.branch.last_revision())
-        return wt2
+        return wt2, r1
 
     def test_01_is_executable(self):
         """Make sure that the tree was created and has the executable bit set"""
@@ -131,13 +131,13 @@ class TestExecutable(TestCaseWithWorkingTree):
     def test_06_branch(self):
         """branch b1=>b2 should preserve the executable bits"""
         # TODO: Maybe this should be a blackbox test
-        wt2 = self.commit_and_branch()
+        wt2, r1 = self.commit_and_branch()
 
         self.check_exist(wt2)
 
     def test_07_pull(self):
         """Test that pull will handle bits correctly"""
-        wt2 = self.commit_and_branch()
+        wt2, r1 = self.commit_and_branch()
 
         os.remove('b1/a')
         os.remove('b1/b')
