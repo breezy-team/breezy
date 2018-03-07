@@ -223,7 +223,7 @@ class TestPush(TestCaseWithInterBranch):
             ('add', ('filename', 'f-id', 'file', 'content\n'))])
         revid2 = builder.build_snapshot([revid1], [])
         revid3 = builder.build_snapshot([revid2],
-            [('modify', ('f-id', 'new-content\n'))])
+            [('modify', ('filename', 'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.

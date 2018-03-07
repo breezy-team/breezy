@@ -100,10 +100,10 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
             ('add', ('file', 'file-id', 'file', 'contents\n'))],
             revision_id='A-id')
         builder.build_snapshot(['A-id'], [
-            ('modify', ('file-id', 'new-content\n'))],
+            ('modify', ('file', 'new-content\n'))],
             revision_id='B-id')
         builder.build_snapshot(['B-id'], [
-            ('modify', ('file-id', 'yet more content\n'))],
+            ('modify', ('file', 'yet more content\n'))],
             revision_id='C-id')
         builder.finish_series()
         source_b = builder.get_branch()

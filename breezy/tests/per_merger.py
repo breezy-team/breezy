@@ -131,11 +131,11 @@ class TestMergeImplementation(TestCaseWithTransport):
             ], revision_id='BASE-id')
         # Delete 'b\n'
         builder.build_snapshot(['BASE-id'],
-            [('modify', ('foo-id', 'a\nc\nd\ne\n'))],
+            [('modify', ('foo', 'a\nc\nd\ne\n'))],
             revision_id='OTHER-id')
         # Modify 'b\n', add 'X\n'
         builder.build_snapshot(['BASE-id'],
-            [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))],
+            [('modify', ('foo', 'a\nb2\nc\nd\nX\ne\n'))],
             revision_id='THIS-id')
         builder.finish_series()
         branch = builder.get_branch()

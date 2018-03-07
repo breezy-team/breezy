@@ -581,7 +581,7 @@ class TestPush(tests.TestCaseWithTransport):
             revision_id='rev-1')
         builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
         builder.build_snapshot(['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))],
+            [('modify', ('filename', 'new-content\n'))],
             revision_id='rev-3')
         builder.finish_series()
         branch = builder.get_branch()

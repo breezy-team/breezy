@@ -324,7 +324,7 @@ class TestPackRepository(TestCaseWithTransport):
             ('add', ('file', 'file-id', 'file', 'B content\n'))],
             revision_id='B-id')
         builder.build_snapshot(None, [
-            ('modify', ('file-id', 'C content\n'))],
+            ('modify', ('file', 'C content\n'))],
             revision_id='C-id')
         builder.finish_series()
         b = builder.get_branch()

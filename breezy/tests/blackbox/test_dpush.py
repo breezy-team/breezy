@@ -130,7 +130,7 @@ class TestDpush(tests.TestCaseWithTransport):
         dc_tree.commit('msg1')
 
         builder.build_snapshot(None,
-          [('modify', ('fooid', 'blie'))], revision_id='revid2')
+          [('modify', ('foo', 'blie'))], revision_id='revid2')
 
         output, error = self.run_bzr("dpush -d dc d", retcode=3)
         self.assertEqual(output, "")

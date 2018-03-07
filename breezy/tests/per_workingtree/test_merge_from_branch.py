@@ -136,7 +136,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         rev5 = bld_inner.build_snapshot(
             [rev4], [('rename', ('file4', 'dir/file4'))])
         rev3 = bld_inner.build_snapshot(
-            [rev1], [('modify', ('file3-id', 'new file3 contents\n')),])
+            [rev1], [('modify', ('file3', 'new file3 contents\n')),])
         rev2 = bld_inner.build_snapshot(
             [rev1],
             [('add', ('dir/file2', 'file2-id', 'file', 'file2 content\n')),

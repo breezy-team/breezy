@@ -156,10 +156,10 @@ class TestInterRepository(TestCaseWithInterRepository):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='first')
         builder.build_snapshot(['first'], [
-            ('modify', ('file-id', 'second content\n'))],
+            ('modify', ('file', 'second content\n'))],
             revision_id='second')
         builder.build_snapshot(['second'], [
-            ('modify', ('file-id', 'third content\n'))],
+            ('modify', ('file', 'third content\n'))],
             revision_id='third')
         builder.finish_series()
         branch = builder.get_branch()
@@ -210,13 +210,13 @@ class TestInterRepository(TestCaseWithInterRepository):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='base')
         builder.build_snapshot(['base'], [
-            ('modify', ('file-id', 'left content\n'))],
+            ('modify', ('file', 'left content\n'))],
             revision_id='left')
         builder.build_snapshot(['base'], [
-            ('modify', ('file-id', 'right content\n'))],
+            ('modify', ('file', 'right content\n'))],
             revision_id='right')
         builder.build_snapshot(['left', 'right'], [
-            ('modify', ('file-id', 'left and right content\n'))],
+            ('modify', ('file', 'left and right content\n'))],
             revision_id='merge')
         builder.finish_series()
         branch = builder.get_branch()
@@ -284,10 +284,10 @@ class TestInterRepository(TestCaseWithInterRepository):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='base')
         builder.build_snapshot(['base'], [
-            ('modify', ('file-id', 'second content\n'))],
+            ('modify', ('file', 'second content\n'))],
             revision_id='second')
         builder.build_snapshot(['second', 'ghost'], [
-            ('modify', ('file-id', 'third content\n'))],
+            ('modify', ('file', 'third content\n'))],
             revision_id='third')
         builder.finish_series()
         branch = builder.get_branch()
@@ -348,13 +348,13 @@ class TestInterRepository(TestCaseWithInterRepository):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='base')
         builder.build_snapshot(['base'], [
-            ('modify', ('file-id', 'left content\n'))],
+            ('modify', ('file', 'left content\n'))],
             revision_id='left')
         builder.build_snapshot(['base'], [
-            ('modify', ('file-id', 'right content\n'))],
+            ('modify', ('file', 'right content\n'))],
             revision_id='right')
         builder.build_snapshot(['left', 'right'], [
-            ('modify', ('file-id', 'left and right content\n'))],
+            ('modify', ('file', 'left and right content\n'))],
             revision_id='merge')
         builder.finish_series()
         branch = builder.get_branch()

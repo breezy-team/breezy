@@ -557,7 +557,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='1')
         builder.build_snapshot(['1'], [
-            ('modify', ('file-id', 'content-2\n'))],
+            ('modify', ('file', 'content-2\n'))],
             revision_id='2')
         builder.finish_series()
         source = builder.get_branch()
@@ -581,7 +581,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='1')
         builder.build_snapshot(['1'], [
-            ('modify', ('file-id', 'content-2\n'))],
+            ('modify', ('file', 'content-2\n'))],
             revision_id='2')
         builder.finish_series()
         source = builder.get_branch()
@@ -605,7 +605,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             ('add', ('file', 'file-id', 'file', 'content\n'))],
             revision_id='1')
         builder.build_snapshot(['1'], [
-            ('modify', ('file-id', 'content-2\n'))],
+            ('modify', ('file', 'content-2\n'))],
             revision_id='2')
         builder.finish_series()
         source = builder.get_branch()
@@ -705,9 +705,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # Now change a few of them, so we get a few new pages for the second
         # revision
         source_builder.build_snapshot(['rev-1'], [
-            ('modify', ('aa-id', 'new content for aa-id\n')),
-            ('modify', ('cc-id', 'new content for cc-id\n')),
-            ('modify', ('zz-id', 'new content for zz-id\n')),
+            ('modify', ('aa', 'new content for aa-id\n')),
+            ('modify', ('cc', 'new content for cc-id\n')),
+            ('modify', ('zz', 'new content for zz-id\n')),
             ], revision_id='rev-2')
         source_builder.finish_series()
         source_branch = source_builder.get_branch()
@@ -1477,13 +1477,13 @@ class TestPacker(TestCaseWithTransport):
             ('add', ('f', 'f-id', 'file', 'content\n'))],
             revision_id='A')
         builder.build_snapshot(['A'],
-            [('modify', ('f-id', 'new-content\n'))],
+            [('modify', ('f', 'new-content\n'))],
             revision_id='B')
         builder.build_snapshot(['B'],
-            [('modify', ('f-id', 'third-content\n'))],
+            [('modify', ('f', 'third-content\n'))],
             revision_id='C')
         builder.build_snapshot(['C'],
-            [('modify', ('f-id', 'fourth-content\n'))],
+            [('modify', ('f', 'fourth-content\n'))],
             revision_id='D')
         b = builder.get_branch()
         b.lock_read()
@@ -1537,7 +1537,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
             ('add', ('dir', 'dir-id', 'directory', None))],
             revision_id='B')
         builder.build_snapshot(['B'], [
-            ('modify', ('file-id', 'new content\n'))],
+            ('modify', ('file', 'new content\n'))],
             revision_id='C')
         builder.finish_series()
         return builder.get_branch()

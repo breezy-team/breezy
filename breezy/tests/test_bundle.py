@@ -1517,7 +1517,7 @@ class V4_2aBundleTester(V4BundleTester):
             ('add', ('file', 'file-id', 'file', 'original content\n')),
             ], revision_id='a@cset-0-1')
         builder.build_snapshot(['a@cset-0-1'], [
-            ('modify', ('file-id', 'new-content\n')),
+            ('modify', ('file', 'new-content\n')),
             ], revision_id='a@cset-0-2a')
         builder.build_snapshot(['a@cset-0-1'], [
             ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),

@@ -118,7 +118,7 @@ IMPROVEMENTS
              ('add', ('NEWS', 'foo-id', 'file', orig_content)),
              ], revision_id='BASE-id')
         builder.build_snapshot(None,
-            [('modify', ('foo-id', mod_content)),
+            [('modify', ('NEWS', mod_content)),
              ],
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()
@@ -155,7 +155,7 @@ IMPROVEMENTS
              ('add', ('NEWS', 'foo-id', 'file', orig_content)),
              ], revision_id='BASE-id')
         builder.build_snapshot(None,
-            [('modify', ('foo-id', mod_content)),
+            [('modify', ('NEWS', mod_content)),
              ],
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()

@@ -68,11 +68,11 @@ class TestMerge(tests.TestCaseWithTransport):
              ('add', ('fname', 'f-id', 'file', 'a\nb\nc\n'))],
             revision_id='rev1')
         builder.build_snapshot(['rev1'],
-            [('modify', ('f-id', 'a\nB\nD\n'))],
+            [('modify', ('fname', 'a\nB\nD\n'))],
             revision_id='rev2other')
         other = builder.get_branch().controldir.sprout('other').open_branch()
         builder.build_snapshot(['rev1'],
-            [('modify', ('f-id', 'a\nB\nC\n'))], revision_id='rev2this')
+            [('modify', ('fname', 'a\nB\nC\n'))], revision_id='rev2this')
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         return tree, other
 

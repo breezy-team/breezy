@@ -40,11 +40,11 @@ class TestFetchBase(TestCaseWithRepository):
             ], revision_id='A-id')
         content.append('and some more lines for B\n')
         builder.build_snapshot(['A-id'], [
-            ('modify', ('a-id', ''.join(content)))],
+            ('modify', ('a', ''.join(content)))],
             revision_id='B-id')
         content.append('and yet even more content for C\n')
         builder.build_snapshot(['B-id'], [
-            ('modify', ('a-id', ''.join(content)))],
+            ('modify', ('a', ''.join(content)))],
             revision_id='C-id')
         builder.finish_series()
         source_b = builder.get_branch()

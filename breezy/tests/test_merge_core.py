@@ -535,7 +535,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
             ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))],
             revision_id='D-id')
         builder.build_snapshot(['C-id', 'B-id'], [
-            ('modify', ('foo-id', 'orig\ncontents\nand E\n'))],
+            ('modify', ('foo', 'orig\ncontents\nand E\n'))],
             revision_id='E-id')
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)

@@ -103,15 +103,15 @@ def make_adduser_branch(test, relpath):
             ], revision_id='base')
     # The 'other' branch
     builder.build_snapshot(['base'],
-                           [('modify', ('pot-id',
+                           [('modify', ('po/adduser.pot',
                                         _Adduser['other_pot'])),
-                            ('modify', ('po-id',
+                            ('modify', ('po/fr.po',
                                         _Adduser['other_po'])),
                             ], revision_id='other')
     # The 'this' branch
     builder.build_snapshot(['base'],
-                           [('modify', ('pot-id', _Adduser['this_pot'])),
-                            ('modify', ('po-id', _Adduser['this_po'])),
+                           [('modify', ('po/adduser.pot', _Adduser['this_pot'])),
+                            ('modify', ('po/fr.po', _Adduser['this_po'])),
                             ], revision_id='this')
     # builder.get_branch() tip is now 'this'
     builder.finish_series()

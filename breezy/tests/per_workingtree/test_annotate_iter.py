@@ -56,10 +56,10 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\ncontent in 2\n')),
+            ('modify', ('file', 'initial content\ncontent in 2\n')),
             ])
         revid3 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', 'initial content\ncontent in 3\n')),
             ])
         builder.finish_series()
         b = builder.get_branch()
@@ -135,7 +135,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         revid2 = builder.build_snapshot([revid1], [
             ])
         revid3 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', 'initial content\ncontent in 3\n')),
             ])
         builder.finish_series()
         b = builder.get_branch()
@@ -158,13 +158,13 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
             ('add', ('file', 'file-id', 'file', 'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\nnew content\n')),
+            ('modify', ('file', 'initial content\nnew content\n')),
             ])
         revid3 = builder.build_snapshot([revid2], [
-            ('modify', ('file-id', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', 'initial content\ncontent in 3\n')),
             ])
         revid4 = builder.build_snapshot([revid3], [
-            ('modify', ('file-id', 'initial content\nnew content\n')),
+            ('modify', ('file', 'initial content\nnew content\n')),
             ])
         # In this case, the content locally is the same as content in basis
         # tree, but the merge revision states that *it* should win
