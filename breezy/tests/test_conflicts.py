@@ -467,7 +467,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file_in_dir',
                    check='file_in_dir_has_more_content')),
              ('file_deleted_in_dir',
-              dict(actions='delete_file',
+              dict(actions='delete_file_in_dir',
                    check='file_in_dir_doesnt_exist')),),
             ])
 
@@ -475,10 +475,10 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
 
     def do_modify_file(self):
-        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+        return [('modify', ('file', 'trunk content\nmore content\n'))]
 
     def do_modify_and_rename_file(self):
-        return [('modify', ('file-id', 'trunk content\nmore content\n')),
+        return [('modify', ('file', 'trunk content\nmore content\n')),
                 ('rename', ('file', 'new-file'))]
 
     def check_file_has_more_content(self):
@@ -490,6 +490,9 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     def do_delete_file(self):
         return [('unversion', 'file')]
 
+    def do_delete_file_in_dir(self):
+        return [('unversion', 'dir/file')]
+
     def check_file_doesnt_exist(self):
         self.assertPathDoesNotExist('branch/file')
 
@@ -498,7 +501,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
                 ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
 
     def do_modify_file_in_dir(self):
-        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+        return [('modify', ('dir/file', 'trunk content\nmore content\n'))]
 
     def check_file_in_dir_has_more_content(self):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
@@ -712,11 +715,11 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
         self.assertFileEqual('file b content\n', 'branch/file')
 
     def do_replace_file_a_by_b(self):
-        return [('unversion', 'file-a-id'),
+        return [('unversion', 'file'),
                 ('add', ('file', 'file-b-id', 'file', 'file b content\n'))]
 
     def do_modify_file_a(self):
-        return [('modify', ('file-a-id', 'new content\n'))]
+        return [('modify', ('file', 'new content\n'))]
 
     def check_file_new_content(self):
         self.assertFileEqual('new content\n', 'branch/file')
