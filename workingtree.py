@@ -1153,6 +1153,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         if prefix != "":
             prefix += "/"
         per_dir = defaultdict(list)
+        if prefix == "":
+            per_dir[('', self.get_root_id())] = []
         for path, value in self.index.iteritems():
             if self.mapping.is_special_file(path):
                 continue
