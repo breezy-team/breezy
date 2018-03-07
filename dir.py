@@ -209,6 +209,7 @@ class GitDir(ControlDir):
                         transport, use_existing_dir=use_existing_dir,
                         create_prefix=create_prefix,
                         force_new_repo=force_new_repo)
+        target_repo = target_controldir.find_repository()
         target_git_repo = target_repo._git
         source_repo = self.find_repository()
         source_git_repo = source_repo._git
@@ -331,10 +332,15 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                 raise
             transport.create_prefix()
         controldir = self.initialize_on_transport(transport)
-        repository = controldir.find_repository()
-        repository.lock_write()
-        return (repository, controldir, False,
-                UseExistingRepository(controldir.find_repository()))
+        if repo_format_name:
+            result_repo = controldir.find_repository()
+            repository_policy = UseExistingRepository(result_repo)
+            result_repo.lock_write()
+        else:
+            result_repo = None
+            repository_policy = None
+        return (result_repo, controldir, False,
+                repository_policy)
 
     def is_supported(self):
         return True
