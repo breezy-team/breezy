@@ -206,16 +206,22 @@ class GitTags(tag.BasicTags):
                 master = None
             else:
                 master = to_tags.branch.get_master_branch()
-            updates, conflicts = self._merge_to_non_git(to_tags, source_refs,
-                                              overwrite=overwrite)
             if master is not None:
-                extra_updates, extra_conflicts = self.merge_to(
-                    master.tags, overwrite=overwrite,
-                                           source_refs=source_refs,
-                                           ignore_master=ignore_master)
-                updates.update(extra_updates)
-                conflicts += extra_conflicts
-            return updates, conflicts
+                master.lock_write()
+            try:
+                updates, conflicts = self._merge_to_non_git(to_tags, source_refs,
+                                                  overwrite=overwrite)
+                if master is not None:
+                    extra_updates, extra_conflicts = self.merge_to(
+                        master.tags, overwrite=overwrite,
+                                               source_refs=source_refs,
+                                               ignore_master=ignore_master)
+                    updates.update(extra_updates)
+                    conflicts += extra_conflicts
+                return updates, conflicts
+            finally:
+                if master is not None:
+                    master.unlock()
 
     def get_tag_dict(self):
         ret = {}
@@ -841,19 +847,20 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 master_branch.unlock()
         return result
 
-    def _basic_push(self, overwrite=False, stop_revision=None):
+    def _basic_push(self, overwrite, stop_revision):
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
         result = branch.BranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
         result.new_git_head, remote_refs = self._update_revisions(
-            stop_revision, overwrite=overwrite)
+            stop_revision, overwrite=("history" in overwrite))
         tags_ret = self.source.tags.merge_to(self.target.tags,
-            overwrite)
-        if isinstance(tags_ret, tuple):
-            (result.tag_updates, result.tag_conflicts) = tags_ret
-        else:
-            result.tag_conflicts = tags_ret
+            "tags" in overwrite, ignore_master=True)
+        (result.tag_updates, result.tag_conflicts) = tags_ret
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -880,13 +887,14 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
         return (isinstance(source, LocalGitBranch) and
                 isinstance(target, RemoteGitBranch))
 
-    def _basic_push(self, overwrite=False, stop_revision=None):
+    def _basic_push(self, overwrite, stop_revision):
+        # TODO(jelmer): Support overwrite
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         if stop_revision is None:
             stop_revision = self.source.last_revision()
-        # FIXME: Check for diverged branches
+        # TODO(jelmer): Check for diverged branches
         def get_changed_refs(old_refs):
             old_ref = old_refs.get(self.target.ref, ZERO_SHA)
             result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
@@ -1132,7 +1140,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         result.local_branch = None
         result.master_branch = result.target_branch
-        with self.source.lock_read():
+        with self.source.lock_read(), self.target.lock_write():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
