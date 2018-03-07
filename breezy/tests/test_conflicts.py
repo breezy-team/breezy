@@ -385,10 +385,10 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
             (dict(_base_actions='create_file_in_dir',
                   _path='dir/file', _file_id='file-id'),
              ('filed_modified_A_in_dir',
-              dict(actions='modify_file_A',
+              dict(actions='modify_file_A_in_dir',
                    check='file_in_dir_has_content_A')),
              ('file_modified_B',
-              dict(actions='modify_file_B',
+              dict(actions='modify_file_B_in_dir',
                    check='file_in_dir_has_content_B')),),
             ])
 
@@ -396,10 +396,16 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
         return [('add', (path, 'file-id', 'file', 'trunk content\n'))]
 
     def do_modify_file_A(self):
-        return [('modify', ('file-id', 'trunk content\nfeature A\n'))]
+        return [('modify', ('file', 'trunk content\nfeature A\n'))]
 
     def do_modify_file_B(self):
-        return [('modify', ('file-id', 'trunk content\nfeature B\n'))]
+        return [('modify', ('file', 'trunk content\nfeature B\n'))]
+
+    def do_modify_file_A_in_dir(self):
+        return [('modify', ('dir/file', 'trunk content\nfeature A\n'))]
+
+    def do_modify_file_B_in_dir(self):
+        return [('modify', ('dir/file', 'trunk content\nfeature B\n'))]
 
     def check_file_has_content_A(self, path='file'):
         self.assertFileEqual('trunk content\nfeature A\n',
