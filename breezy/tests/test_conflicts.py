@@ -488,7 +488,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
-        return [('unversion', 'file-id')]
+        return [('unversion', 'file')]
 
     def check_file_doesnt_exist(self):
         self.assertPathDoesNotExist('branch/file')
@@ -543,7 +543,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
               dict(actions='rename_file_in_dir', check='file_in_dir_renamed',
                    path='dir/new-file', file_id='file-id')),
              ('file_deleted',
-              dict(actions='delete_file', check='file_in_dir_doesnt_exist',
+              dict(actions='delete_file_in_dir', check='file_in_dir_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
                    path='<deleted>', file_id='file-id')),),
@@ -610,13 +610,16 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         self.assertPathExists('branch/new-dir2')
 
     def do_delete_file(self):
-        return [('unversion', 'file-id')]
+        return [('unversion', 'file')]
+
+    def do_delete_file_in_dir(self):
+        return [('unversion', 'dir/file')]
 
     def check_file_doesnt_exist(self):
         self.assertPathDoesNotExist('branch/file')
 
     def do_delete_dir(self):
-        return [('unversion', 'dir-id')]
+        return [('unversion', 'dir')]
 
     def check_dir_doesnt_exist(self):
         self.assertPathDoesNotExist('branch/dir')
