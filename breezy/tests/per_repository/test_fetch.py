@@ -192,7 +192,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             (),
             [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('tip', None, [('unversion', ROOT_ID),
+             ('tip', None, [('unversion', ''),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -205,8 +205,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
             [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
                              ('add', ('child', 'my-root', 'directory', ''))]),
              ('base', None, []),
-             ('tip', None, [('unversion', 'my-root'),
-                            ('unversion', ROOT_ID),
+             ('tip', None, [('unversion', 'child'),
+                            ('unversion', ''),
                             ('flush', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
@@ -217,9 +217,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             (('my-root', 'right'),),
             [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('right', None, [('unversion', ROOT_ID),
+             ('right', None, [('unversion', ''),
                               ('add', ('', 'my-root', 'directory', ''))]),
-             ('tip', ['base', 'right'], [('unversion', ROOT_ID),
+             ('tip', ['base', 'right'], [('unversion', ''),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -234,12 +234,12 @@ class TestFetchSameRepository(TestCaseWithRepository):
                              ('add', ('child', 'my-root', 'directory', ''))]),
              ('base', None, []),
             # 'my-root' at root
-             ('right', None, [('unversion', 'my-root'),
-                              ('unversion', ROOT_ID),
+             ('right', None, [('unversion', 'child'),
+                              ('unversion', ''),
                               ('flush', None),
                               ('add', ('', 'my-root', 'directory', ''))]),
-             ('tip', ['base', 'right'], [('unversion', 'my-root'),
-                            ('unversion', ROOT_ID),
+             ('tip', ['base', 'right'], [('unversion', ''),
+                            ('unversion', 'child'),
                             ('flush', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
