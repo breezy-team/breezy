@@ -417,7 +417,7 @@ class BazaarObjectStore(BaseObjectStore):
         # FIXME: This can probably be a lot more efficient,
         # not all files necessarily have to be processed.
         file_ids = {}
-        for (path, ie) in tree.inventory.iter_entries():
+        for (path, ie) in tree.iter_entries_by_dir():
             if self.mapping.generate_file_id(path) != ie.file_id:
                 file_ids[path] = ie.file_id
         return self.mapping.export_fileid_map(file_ids)

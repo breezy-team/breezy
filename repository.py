@@ -156,6 +156,7 @@ class GitRepository(ForeignRepository):
         else:
             self._lock_mode = 'w'
             self._lock_count = 1
+            self._transaction = transactions.WriteTransaction()
         return repository.RepositoryWriteLockResult(self.unlock, None)
 
     def break_lock(self):
@@ -174,6 +175,7 @@ class GitRepository(ForeignRepository):
         else:
             self._lock_mode = 'r'
             self._lock_count = 1
+            self._transaction = transactions.ReadOnlyTransaction()
         return lock.LogicalLockResult(self.unlock)
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
@@ -190,6 +192,9 @@ class GitRepository(ForeignRepository):
         self._lock_count -= 1
         if self._lock_count == 0:
             self._lock_mode = None
+            transaction = self._transaction
+            self._transaction = None
+            transaction.finish()
 
     def is_write_locked(self):
         return (self._lock_mode == 'w')
@@ -199,10 +204,10 @@ class GitRepository(ForeignRepository):
 
     def get_transaction(self):
         """See Repository.get_transaction()."""
-        if self._write_group is None:
+        if self._transaction is None:
             return transactions.PassThroughTransaction()
         else:
-            return self._write_group
+            return self._transaction
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
@@ -236,6 +241,7 @@ class LocalGitRepository(GitRepository):
         GitRepository.__init__(self, gitdir)
         self._git = gitdir._git
         self._file_change_scanner = GitFileLastChangeScanner(self)
+        self._transaction = None
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
