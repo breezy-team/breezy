@@ -738,15 +738,13 @@ class InterFromGitBranch(branch.GenericInterBranch):
             c = self.source.get_config_stack()
             fetch_tags = c.get('branch.fetch_tags')
         def determine_wants(heads):
-            if self.source.ref is not None and not self.source.ref in heads:
-                raise NoSuchRef(self.source.ref, self.source.user_url, heads.keys())
-
             if stop_revision is None:
-                if self.source.ref is not None:
+                try:
                     head = heads[self.source.ref]
+                except KeyError:
+                    self._last_revid = revision.NULL_REVISION
                 else:
-                    head = heads["HEAD"]
-                self._last_revid = self.source.lookup_foreign_revision_id(head)
+                    self._last_revid = self.source.lookup_foreign_revision_id(head)
             else:
                 self._last_revid = stop_revision
             real = interrepo.get_determine_wants_revids(
