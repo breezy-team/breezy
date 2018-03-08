@@ -311,6 +311,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_commit_dir_unchanged(self):
         # committing without changing a dir does not change the last modified.
         tree = self.make_branch_and_tree('.')
+        if not tree.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self.build_tree(['dir/'])
         self._add_commit_check_unchanged(tree, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
@@ -319,21 +322,17 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # committing without changing a dir does not change the last modified
         # of the dir even the dirs contents are changed.
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/'])
-        tree.add(['dir'])
+        self.build_tree(['dir/', 'dir/orig'])
+        tree.add(['dir', 'dir/orig'])
         dir_id = tree.path2id('dir')
         rev1 = tree.commit('')
         self.build_tree(['dir/content'])
         tree.add(['dir/content'])
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        if self.repository_format.supports_versioned_directories:
-            # In VCSes that don't support empty directories, 'dir' doesn't
-            # exist in rev1.
-            self.assertEqual(rev1, tree1.get_file_revision('dir'))
+        self.assertEqual(rev1, tree1.get_file_revision('dir'))
         self.assertEqual(rev1, tree2.get_file_revision('dir'))
-        expected_graph = {}
-        expected_graph[(dir_id, rev1)] = ()
+        expected_graph = {(dir_id, rev1): ()}
         self.assertFileGraph(expected_graph, tree, (dir_id, rev1))
 
     def test_last_modified_revision_after_commit_file_unchanged(self):
@@ -619,6 +618,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_merge_dir_changes(self):
         # merge a dir changes the last modified.
         tree1 = self.make_branch_and_tree('t1')
+        if not tree1.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge(tree1, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
@@ -694,6 +696,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_converged_merge_dir_unchanged(self):
         # merge a dir that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
+        if not tree1.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge_converged(tree1, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
