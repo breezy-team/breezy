@@ -1259,21 +1259,20 @@ class TestControlDir(TestCaseWithControlDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_control.create_repository()
         made_branch = made_control.create_branch()
-        old_branches = made_control.list_branches()
-        self.assertTrue(len(old_branches) >= 1)
-        self.assertIn(made_branch.base, [b.base for b in old_branches])
+        branches = made_control.list_branches()
+        self.assertEqual(1, len(branches))
+        self.assertEqual(made_branch.base, branches[0].base)
         try:
             made_control.destroy_branch()
         except errors.UnsupportedOperation:
             pass  # Not all bzrdirs support destroying directories
         else:
-            new_branches = made_control.list_branches()
-            self.assertEquals(len(old_branches) - 1, len(new_branches))
+            self.assertEqual([], made_control.list_branches())
 
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
         repo.controldir.create_branch()
-        self.assertIn("", list(repo.controldir.get_branches()))
+        self.assertEqual([""], list(repo.controldir.get_branches()))
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
