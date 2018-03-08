@@ -962,7 +962,12 @@ class InterGitLocalGitBranch(InterGitBranch):
 
         if stop_revision is None:
             refs = interrepo.fetch(branches=["HEAD"], include_tags=fetch_tags)
-            stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
+            try:
+                head = refs["HEAD"]
+            except KeyError:
+                stop_revision = revision.NULL_REVISION
+            else:
+                stop_revision = self.target.lookup_foreign_revision_id(head)
         else:
             refs = interrepo.fetch(revision_id=stop_revision, include_tags=fetch_tags)
         return refs, stop_revision
