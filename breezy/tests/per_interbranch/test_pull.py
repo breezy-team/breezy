@@ -93,7 +93,12 @@ class TestPull(TestCaseWithInterBranch):
                 (self.branch_format_from, self.branch_format_to))
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
-        checkout.branch.pull(other.branch)
+        try:
+            checkout.branch.pull(other.branch)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         self.assertEqual(rev2, checkout.branch.last_revision())
         self.assertEqual(rev2, master_tree.branch.last_revision())
 
@@ -151,7 +156,12 @@ class TestPull(TestCaseWithInterBranch):
 
         rev2a = tree_a.commit('message 2a')
         rev2b = tree_b.commit('message 2b')
-        self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+        try:
+            self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         self.assertRaises(errors.DivergedBranches,
                           tree_a.branch.pull, tree_b.branch,
                           overwrite=False, stop_revision=rev2b)
