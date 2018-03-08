@@ -473,7 +473,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         """Perform a miniature commit looking for record entry results.
 
         This version uses the record_iter_changes interface.
-        
+
         :param tree: The tree to commit.
         :param name: The path in the basis tree of the tree being committed.
         :param new_name: The path in the tree being committed.
@@ -484,41 +484,44 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         :param expect_fs_hash: If true, looks for a fs hash output from
             record_iter_changes.
         """
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # mini manual commit here so we can check the return of
             # record_iter_changes
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
-            parent_tree = tree.basis_tree()
-            parent_tree.lock_read()
-            self.addCleanup(parent_tree.unlock)
-            parent_trees = [parent_tree]
-            for parent_id in parent_ids[1:]:
-                parent_trees.append(tree.branch.repository.revision_tree(
-                    parent_id))
-            changes = list(tree.iter_changes(parent_tree))
-            result = list(builder.record_iter_changes(tree, parent_ids[0],
-                changes))
-            file_id = tree.path2id(new_name)
-            self.assertIsNot(None, file_id)
-            if expect_fs_hash:
-                tree_file_stat = tree.get_file_with_stat(new_name)
-                tree_file_stat[0].close()
-                self.assertLength(1, result)
-                result = result[0]
-                self.assertEqual(result[:2], (file_id, new_name))
-                self.assertEqual(result[2][0], tree.get_file_sha1(new_name))
-                self.assertEqualStat(result[2][1], tree_file_stat[1])
-            else:
-                self.assertEqual([], result)
-            builder.finish_inventory()
-            if tree.branch.repository._format.supports_full_versioned_files:
-                inv_key = (builder._new_revision_id,)
-                inv_sha1 = tree.branch.repository.inventories.get_sha1s(
-                                [inv_key])[inv_key]
-                self.assertEqual(inv_sha1, builder.inv_sha1)
-            rev2 = builder.commit('')
+            try:
+                parent_tree = tree.basis_tree()
+                parent_tree.lock_read()
+                self.addCleanup(parent_tree.unlock)
+                parent_trees = [parent_tree]
+                for parent_id in parent_ids[1:]:
+                    parent_trees.append(tree.branch.repository.revision_tree(
+                        parent_id))
+                changes = list(tree.iter_changes(parent_tree))
+                result = list(builder.record_iter_changes(tree, parent_ids[0],
+                    changes))
+                file_id = tree.path2id(new_name)
+                self.assertIsNot(None, file_id)
+                if expect_fs_hash:
+                    tree_file_stat = tree.get_file_with_stat(new_name)
+                    tree_file_stat[0].close()
+                    self.assertLength(1, result)
+                    result = result[0]
+                    self.assertEqual(result[:2], (file_id, new_name))
+                    self.assertEqual(result[2][0], tree.get_file_sha1(new_name))
+                    self.assertEqualStat(result[2][1], tree_file_stat[1])
+                else:
+                    self.assertEqual([], result)
+                builder.finish_inventory()
+                if tree.branch.repository._format.supports_full_versioned_files:
+                    inv_key = (builder._new_revision_id,)
+                    inv_sha1 = tree.branch.repository.inventories.get_sha1s(
+                                    [inv_key])[inv_key]
+                    self.assertEqual(inv_sha1, builder.inv_sha1)
+                rev2 = builder.commit('')
+            except:
+                builder.abort()
+                raise
             delta = builder.get_basis_delta()
             delta_dict = dict((change[2], change) for change in delta)
             version_recorded = (file_id in delta_dict and
@@ -529,8 +532,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             else:
                 self.assertFalse(version_recorded)
 
-            new_inventory = builder.revision_tree().root_inventory
-            new_entry = new_inventory[file_id]
+            revtree = builder.revision_tree()
+            new_entry = revtree.iter_entries_by_dir(specific_file_ids=[file_id]).next()[1]
+
             if delta_against_basis:
                 expected_delta = (name, new_name, file_id, new_entry)
                 self.assertEqual(expected_delta, delta_dict[file_id])
@@ -538,12 +542,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 expected_delta = None
                 self.assertFalse(version_recorded)
             tree.set_parent_ids([rev2])
-        except:
-            builder.abort()
-            tree.unlock()
-            raise
-        else:
-            tree.unlock()
         return rev2
 
     def assertFileGraph(self, expected_graph, tree, tip):
