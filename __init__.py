@@ -54,6 +54,7 @@ else:
     gettext = translation.gettext
 
 from ... import (
+    __version__ as breezy_version,
     errors as bzr_errors,
     trace,
     )
@@ -163,8 +164,12 @@ class RemoteGitProber(Prober):
         base_url, _ = urlutils.split_segment_parameters(transport.external_url())
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
         from ...transport.http._urllib import HttpTransport_urllib, Request
+        headers = {"Content-Type": "application/x-git-upload-pack-request"}
+        if "github.com" in url:
+            # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
+            headers["User-agent"] = "git/Breezy/%s" % breezy_version
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
-                      headers={"Content-Type": "application/x-git-upload-pack-request"})
+                      headers=headers)
         req.follow_redirections = True
         resp = transport._perform(req)
         if resp.code in (404, 405):
