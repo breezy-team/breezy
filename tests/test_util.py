@@ -79,7 +79,10 @@ from .... import errors as bzr_errors
 from ....tests import (
     TestCase,
     )
-from ....tests.features import SymlinkFeature
+from ....tests.features import (
+    SymlinkFeature,
+    ModuleAvailableFeature,
+    )
 
 
 class RecursiveCopyTests(TestCaseInTempDir):
@@ -284,7 +287,12 @@ class TarballNameTests(TestCase):
                     format='xz'), "package_0.1.orig-la.tar.xz")
 
 
+DistroInfoFeature = ModuleAvailableFeature('distro_info')
+
+
 class SuiteToDistributionTests(TestCase):
+
+    _test_needs_features = [DistroInfoFeature]
 
     def _do_lookup(self, target):
         return suite_to_distribution(target)
@@ -318,6 +326,8 @@ class SuiteToDistributionTests(TestCase):
 
 
 class LookupDistributionTests(SuiteToDistributionTests):
+
+    _test_needs_features = [DistroInfoFeature]
 
     def _do_lookup(self, target):
         return lookup_distribution(target)
@@ -739,6 +749,7 @@ class FindPreviousUploadTests(TestCase):
         self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
         cl = self.make_changelog([("0.1-1", "lucid"),
                 ("0.1-1.1", "unstable"), ("0.1-2", "maverick")])
+        self.requireFeature(DistroInfoFeature)
         self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
 
     def test_find_previous_upload_ubuntu_pocket(self):
