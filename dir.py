@@ -220,13 +220,12 @@ class GitDir(ControlDir):
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
             mapping=default_mapping)
-        if revision_id is not None:
-            ref_chain, unused_sha = self._git.refs.follow(self._get_selected_ref(None))
-            foreign_revid = source_repo.lookup_bzr_revision_id(revision_id)[0]
-            refs[ref_chain[-1]] = foreign_revid
         for name, val in refs.iteritems():
             target_git_repo.refs[name] = val
-        return self.__class__(transport, target_git_repo, format)
+        result_dir = self.__class__(transport, target_git_repo, format)
+        if revision_id is not None:
+            result_dir.open_branch().set_last_revision(revision_id)
+        return result_dir
 
     def _find_commondir(self):
         try:
