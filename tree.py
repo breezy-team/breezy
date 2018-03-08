@@ -492,7 +492,7 @@ class InterGitRevisionTrees(InterGitTrees):
             store = self.source._repository._git.object_store
         return self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged,
-            include_trees=True)
+            include_trees=True, change_type_same=True)
 
 
 tree.InterTree.register_optimiser(InterGitRevisionTrees)
