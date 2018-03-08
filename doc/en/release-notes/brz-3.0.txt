@@ -260,6 +260,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for brz developers.
 
+* Allow overriding of default HTTP headers by caller.
+  (Jelmer Vernooĳ, #1753734)
+
 Testing
 *******
 
