@@ -233,7 +233,8 @@ class GitCommitBuilder(CommitBuilder):
         return self._new_revision_id
 
     def abort(self):
-        self.repository.abort_write_group()
+        if self.repository.is_in_write_group():
+            self.repository.abort_write_group()
 
     def revision_tree(self):
         return self.repository.revision_tree(self._new_revision_id)
