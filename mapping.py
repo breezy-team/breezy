@@ -244,11 +244,6 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         from dulwich.objects import Blob
         b = Blob()
-        for path, file_id in fileid_map.items():
-            if self.generate_file_id(path) != file_id:
-                del fileid_map[path]
-        if not fileid_map:
-            return None
         b.set_raw_chunks(serialize_fileid_map(fileid_map))
         return b
 
