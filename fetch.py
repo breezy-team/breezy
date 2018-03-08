@@ -624,7 +624,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             wants.add(git_sha)
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
-    def fetch_objects(self, determine_wants, mapping, limit=None):
+    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """Fetch objects from a remote server.
 
         :param determine_wants: determine_wants callback
@@ -699,7 +699,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         map(all_parents.update, parent_map.itervalues())
         return set(all_revs) - all_parents
 
-    def fetch_objects(self, determine_wants, mapping, limit=None):
+    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
         store = BazaarObjectStore(self.target, mapping)
         store.lock_write()
@@ -714,7 +714,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             try:
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
-                    progress=lambda text: report_git_progress(pb, text))
+                    progress=lambda text: report_git_progress(pb, text),)
                 trace.mutter("Importing %d new revisions",
                              len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target,
@@ -744,7 +744,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
     repository."""
 
-    def fetch_objects(self, determine_wants, mapping, limit=None):
+    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
         remote_refs = self.source.controldir.get_refs_container()
         wants = determine_wants(remote_refs)
@@ -790,13 +790,15 @@ class InterGitGitRepository(InterFromGitRepository):
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
             return [sha1 for (sha1, bzr_revid) in new_refs.itervalues()]
-        self.fetch_objects(determine_wants)
+        self.fetch_objects(determine_wants, lossy=lossy)
         for k, (git_sha, bzr_revid) in ref_changes.iteritems():
             self.target._git.refs[k] = git_sha
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
             raise errors.FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()
