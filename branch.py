@@ -564,7 +564,7 @@ class LocalGitBranch(GitBranch):
 
     def _get_head(self):
         try:
-            return self.repository._git.refs[self.ref or "HEAD"]
+            return self.repository._git.refs[self.ref]
         except KeyError:
             return None
 
@@ -583,7 +583,7 @@ class LocalGitBranch(GitBranch):
         if not revid or not isinstance(revid, basestring):
             raise errors.InvalidRevisionId(revision_id=revid, branch=self)
         if revid == NULL_REVISION:
-            newhead = ZERO_SHA
+            newhead = None
         else:
             (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
             if self.mapping is None:
@@ -591,8 +591,12 @@ class LocalGitBranch(GitBranch):
         self._set_head(newhead)
 
     def _set_head(self, value):
+        assert value != ZERO_SHA
         self._head = value
-        self.repository._git.refs[self.ref or "HEAD"] = self._head
+        if value is None:
+            del self.repository._git.refs[self.ref]
+        else:
+            self.repository._git.refs[self.ref] = self._head
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)
@@ -734,15 +738,13 @@ class InterFromGitBranch(branch.GenericInterBranch):
             c = self.source.get_config_stack()
             fetch_tags = c.get('branch.fetch_tags')
         def determine_wants(heads):
-            if self.source.ref is not None and not self.source.ref in heads:
-                raise NoSuchRef(self.source.ref, self.source.user_url, heads.keys())
-
             if stop_revision is None:
-                if self.source.ref is not None:
+                try:
                     head = heads[self.source.ref]
+                except KeyError:
+                    self._last_revid = revision.NULL_REVISION
                 else:
-                    head = heads["HEAD"]
-                self._last_revid = self.source.lookup_foreign_revision_id(head)
+                    self._last_revid = self.source.lookup_foreign_revision_id(head)
             else:
                 self._last_revid = stop_revision
             real = interrepo.get_determine_wants_revids(
@@ -958,7 +960,12 @@ class InterGitLocalGitBranch(InterGitBranch):
 
         if stop_revision is None:
             refs = interrepo.fetch(branches=["HEAD"], include_tags=fetch_tags)
-            stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
+            try:
+                head = refs["HEAD"]
+            except KeyError:
+                stop_revision = revision.NULL_REVISION
+            else:
+                stop_revision = self.target.lookup_foreign_revision_id(head)
         else:
             refs = interrepo.fetch(revision_id=stop_revision, include_tags=fetch_tags)
         return refs, stop_revision
