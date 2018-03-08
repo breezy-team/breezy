@@ -71,8 +71,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_revision(self, path, file_id=None):
         change_scanner = self._repository._file_change_scanner
-        (path, commit_id) = change_scanner.find_last_change_revision(path,
-            self.commit_id)
+        (path, commit_id) = change_scanner.find_last_change_revision(
+            path.encode('utf-8'), self.commit_id)
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
 
     def get_file_mtime(self, path, file_id=None):
@@ -88,6 +88,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             path = self._fileid_map.lookup_path(file_id)
         except ValueError:
             raise errors.NoSuchId(self, file_id)
+        path = path.decode('utf-8')
         if self.has_filename(path):
             return path
         raise errors.NoSuchId(self, file_id)
@@ -175,7 +176,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
             from_dir.encode("utf-8"))
         if mode is None: # Root
-            root_ie = self._get_dir_ie("", None)
+            root_ie = self._get_dir_ie(b"", None)
         else:
             parent_path = posixpath.dirname(from_dir.encode("utf-8"))
             parent_id = self._fileid_map.lookup_file_id(parent_path)
@@ -202,14 +203,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
                         todo.add((child_path, hexsha, ie.file_id))
                 else:
                     ie = self._get_file_ie(child_path, name, mode, hexsha, parent_id)
-                yield child_path, "V", ie.kind, ie.file_id, ie
+                yield child_path.decode('utf-8'), "V", ie.kind, ie.file_id, ie
 
     def _get_file_ie(self, path, name, mode, hexsha, parent_id):
+        assert isinstance(path, bytes)
+        assert isinstance(name, bytes)
         kind = mode_kind(mode)
         file_id = self._fileid_map.lookup_file_id(path)
         ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
         if kind == 'symlink':
-            ie.symlink_target = self.store[hexsha].data
+            ie.symlink_target = self.store[hexsha].data.decode('utf-8')
         elif kind == 'tree-reference':
             ie.reference_revision = self.mapping.revision_id_foreign_to_bzr(hexsha)
         else:
@@ -217,6 +220,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             ie.text_sha1 = osutils.sha_string(data)
             ie.text_size = len(data)
             ie.executable = mode_is_executable(mode)
+        ie.revision = self.get_file_revision(path.decode('utf-8'))
         return ie
 
     def _get_dir_ie(self, path, parent_id):
@@ -236,10 +240,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         if self.tree is None:
             return
-        # FIXME: Support yield parents
+        if yield_parents:
+            # TODO(jelmer): Support yield parents
+            raise NotImplementedError
         if specific_file_ids is not None:
-            specific_paths = [self.id2path(file_id) for file_id in specific_file_ids]
-            if specific_paths in ([u""], []):
+            specific_paths = [self.id2path(file_id).encode('utf-8') for file_id in specific_file_ids]
+            if specific_paths in ([""], []):
                 specific_paths = None
             else:
                 specific_paths = set(specific_paths)
@@ -276,22 +282,24 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-            path)
+            path.encode('utf-8'))
         return ("GIT", hexsha)
 
     def get_file_text(self, path, file_id=None):
         """See RevisionTree.get_file_text."""
         if self.tree is None:
             raise errors.NoSuchFile(path)
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
+                path.encode('utf-8'))
         if stat.S_ISREG(mode):
             return self.store[hexsha].data
         else:
-            return ""
+            return b""
 
     def get_symlink_target(self, path, file_id=None):
         """See RevisionTree.get_symlink_target."""
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path.encode('utf-8'))
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
+                path.encode('utf-8'))
         if stat.S_ISLNK(mode):
             return self.store[hexsha].data.decode('utf-8')
         else:
@@ -305,7 +313,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         try:
-            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path.encode('utf-8'))
         except KeyError:
             return ('missing', None, None, None)
         kind = mode_kind(mode)
