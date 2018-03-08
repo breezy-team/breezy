@@ -50,10 +50,12 @@ from .repository import (
     GitRepository,
     )
 
+from ..fastimport import exporter as fastexporter
+
 try:
-    from ..fastimport import exporter as fastexporter
+    import fastimport
 except ImportError:
-    fastexporter = None
+    pass
 else:
     CAPABILITIES.append("import")
 
@@ -137,8 +139,8 @@ class RemoteHelper(object):
         self.batchcmd = "push"
 
     def cmd_import(self, outf, argv):
-        if fastexporter is None:
-            raise Exception("install bzr-fastimport for 'import' command support")
+        if "fastimport" in CAPABILITIES:
+            raise Exception("install fastimport for 'import' command support")
         dest_branch_name = ref_to_branch_name(argv[1])
         if dest_branch_name == "master":
             dest_branch_name = None
