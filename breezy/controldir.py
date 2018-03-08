@@ -415,7 +415,7 @@ class ControlDir(ControlComponent):
                 # revision
                 revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
-            br_to = source.clone(self, revision_id=revision_id)
+            br_to = source.sprout(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
