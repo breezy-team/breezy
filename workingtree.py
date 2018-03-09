@@ -1412,7 +1412,7 @@ def changes_between_git_tree_and_index(store, from_tree_sha, target,
     """
     to_tree_sha = target.index.commit(store)
     return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged)
+            want_unchanged=want_unchanged, change_type_same=True)
 
 
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
@@ -1423,4 +1423,4 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     blobs = iter_fresh_blobs(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
     to_tree_sha = commit_tree(store, blobs)
     return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged)
+            want_unchanged=want_unchanged, change_type_same=True)
