@@ -74,7 +74,7 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
         :param params: A MergeHookParams describing the file to merge
         :param tree: a Tree, e.g. self.merger.this_tree.
         """
-        return urlutils.basename(tree.id2path(params.file_id))
+        return self.get_filename(params, tree)
 
     def merge_text(self, params):
         """Merge changelog changes.
