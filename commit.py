@@ -111,7 +111,11 @@ class GitCommitBuilder(CommitBuilder):
             if kind[1] == "file":
                 entry.executable = executable[1]
                 blob = Blob()
-                blob.data = workingtree.get_file_text(path[1], file_id)
+                f, st = workingtree.get_file_with_stat(path[1], file_id)
+                try:
+                    blob.data = f.read()
+                finally:
+                    f.close()
                 entry.text_size = len(blob.data)
                 entry.text_sha1 = osutils.sha_string(blob.data)
                 self.store.add_object(blob)
@@ -123,24 +127,20 @@ class GitCommitBuilder(CommitBuilder):
                 self.store.add_object(blob)
                 sha = blob.id
                 entry.symlink_target = symlink_target
+                st = None
             elif kind[1] == "tree-reference":
                 sha = treeref_sha1(path[1], file_id)
                 reference_revision = workingtree.get_reference_revision(path[1], file_id)
                 entry.reference_revision = reference_revision
+                st = None
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
             mode = object_mode(kind[1], executable[1])
             self._inv_delta.append((path[0], path[1], file_id, entry))
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
-            file_sha1 = workingtree.get_file_sha1(path[1], file_id)
-            if file_sha1 is None:
-                # File no longer exists
-                if path[0] is not None:
-                    self._blobs[path[0].encode("utf-8")] = None
-                continue
-            _, st = workingtree.get_file_with_stat(path[1], file_id)
-            yield file_id, path[1], (file_sha1, st)
+            if st is not None:
+                yield file_id, path[1], (entry.text_sha1, st)
             if self._mapping.generate_file_id(encoded_new_path) != file_id:
                 self._override_fileids[encoded_new_path] = file_id
             else:
@@ -158,20 +158,21 @@ class GitCommitBuilder(CommitBuilder):
         # Fill in entries that were not changed
         for path, entry in basis_tree.iter_entries_by_dir():
             assert isinstance(path, unicode)
-            if entry.kind not in ("file", "symlink", "tree-reference"):
+            if entry.kind == 'directory':
                 continue
-            if not path in self._blobs:
+            encoded_path = path.encode('utf-8')
+            if encoded_path not in self._blobs:
                 if entry.kind == "symlink":
                     blob = Blob()
                     blob.data = basis_tree.get_symlink_target(path, entry.file_id).encode('utf-8')
-                    self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+                    self._blobs[encoded_path] = (entry_mode(entry), blob.id)
                 elif entry.kind == "file":
                     blob = Blob()
                     blob.data = basis_tree.get_file_text(path, entry.file_id)
-                    self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+                    self._blobs[encoded_path] = (entry_mode(entry), blob.id)
                 else:
-                    (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), update_index=True)
-                    self._blobs[path.encode("utf-8")] = (mode, sha)
+                    (mode, sha) = workingtree._lookup_entry(encoded_path, update_index=True)
+                    self._blobs[encoded_path] = (mode, sha)
         if not self._lossy:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
