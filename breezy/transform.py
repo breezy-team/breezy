@@ -3240,7 +3240,7 @@ def link_tree(target_tree, source_tree):
                 continue
             trans_id = tt.trans_id_tree_file_id(file_id)
             tt.delete_contents(trans_id)
-            tt.create_hardlink(source_tree.id2abspath(file_id), trans_id)
+            tt.create_hardlink(source_tree.abspath(source_tree.id2path(file_id)), trans_id)
         tt.apply()
     finally:
         tt.finalize()
