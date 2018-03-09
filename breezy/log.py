@@ -64,7 +64,6 @@ from breezy import (
     config,
     controldir,
     diff,
-    errors,
     foreign,
     repository as _mod_repository,
     revision as _mod_revision,
@@ -74,6 +73,7 @@ from breezy.i18n import gettext, ngettext
 """)
 
 from . import (
+    errors,
     lazy_regex,
     registry,
     revisionspec,
@@ -92,7 +92,7 @@ from breezy.sixish import (
     )
 
 
-def find_touching_revisions(branch, file_id):
+def find_touching_revisions(repository, last_revision, path):
     """Yield a description of revisions which affect the file_id.
 
     Each returned element is (revno, revision_id, description)
@@ -106,11 +106,14 @@ def find_touching_revisions(branch, file_id):
     last_verifier = None
     last_path = None
     revno = 1
-    graph = branch.repository.get_graph()
-    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+    graph = repository.get_graph()
+    file_id = repository.revision_tree(last_revision).path2id(path)
+    if file_id is None:
+        raise errors.NoSuchFile(path)
+    history = list(graph.iter_lefthand_ancestry(last_revision,
         [_mod_revision.NULL_REVISION]))
     for revision_id in reversed(history):
-        this_tree = branch.repository.revision_tree(revision_id)
+        this_tree = repository.revision_tree(revision_id)
         try:
             this_path = this_tree.id2path(file_id)
         except errors.NoSuchId:
