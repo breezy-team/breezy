@@ -357,8 +357,7 @@ def versioned_grep(opts):
             tree = rev.as_tree(branch)
             for path in opts.path_list:
                 path_for_id = osutils.pathjoin(relpath, path)
-                id = tree.path2id(path_for_id)
-                if not id:
+                if not tree.is_versioned(path_for_id):
                     trace.warning("Skipped unknown file '%s'." % path)
                     continue
 
@@ -366,7 +365,7 @@ def versioned_grep(opts):
                     path_prefix = path
                     dir_grep(tree, path, relpath, opts, revno, path_prefix)
                 else:
-                    versioned_file_grep(tree, id, '.', path, opts, revno)
+                    versioned_file_grep(tree, '.', path, opts, revno)
 
 
 def workingtree_grep(opts):
@@ -473,12 +472,12 @@ def _make_display_path(relpath, path):
     return path
 
 
-def versioned_file_grep(tree, id, relpath, path, opts, revno, path_prefix = None):
+def versioned_file_grep(tree, relpath, path, opts, revno, path_prefix=None):
     """Create a file object for the specified id and pass it on to _file_grep.
     """
 
     path = _make_display_path(relpath, path)
-    file_text = tree.get_file_text(relpath, id)
+    file_text = tree.get_file_text(relpath)
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
