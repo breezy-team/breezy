@@ -614,7 +614,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _iter_files_recursive(self, from_dir=None, include_dirs=False):
         if from_dir is None:
             from_dir = ""
-        for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir)):
+        for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir).encode(osutils._fs_enc)):
             dir_relpath = dirpath[len(self.basedir):].strip("/")
             if self.controldir.is_control_filename(dir_relpath):
                 continue
@@ -624,12 +624,21 @@ class GitWorkingTree(workingtree.WorkingTree):
                     continue
                 relpath = os.path.join(dir_relpath, name)
                 if include_dirs:
-                    yield relpath
+                    try:
+                        yield relpath.decode(osutils._fs_enc)
+                    except UnicodeDecodeError as e:
+                        raise errors.BadFilenameEncoding(
+                            relpath, osutils._fs_enc)
                 if not self._has_dir(relpath):
                     dirnames.remove(name)
             for name in filenames:
                 if not self.mapping.is_special_file(name):
-                    yield os.path.join(dir_relpath, name)
+                    yp = os.path.join(dir_relpath, name)
+                    try:
+                        yield yp.decode(osutils._fs_enc)
+                    except UnicodeDecodeError:
+                        raise errors.BadFilenameEncoding(
+                            yp, osutils._fs_enc)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
