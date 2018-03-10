@@ -607,7 +607,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             else:
                 todo = [p for p in self.index if p.startswith(from_path+'/')]
                 for p in todo:
-                    self.index[posixpath.join(to_path, posixpath.relpath(from_path, p))] = self.index[p]
+                    self.index[posixpath.join(to_path, posixpath.relpath(p, from_path))] = self.index[p]
                     del self.index[p]
 
             self._versioned_dirs = None
