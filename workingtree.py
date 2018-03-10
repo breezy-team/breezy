@@ -857,10 +857,19 @@ class GitWorkingTree(workingtree.WorkingTree):
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path, file_id)
         else:
-            data = self.get_file_text(path, file_id)
+            try:
+                data = self.get_file_text(path, file_id)
+            except errors.NoSuchFile:
+                data = None
+            except IOError as e:
+                if e.errno != errno.ENOENT:
+                    raise
+                data = None
+            if data is None:
+                data = self.repository._git.object_store[sha].data
             ie.text_sha1 = osutils.sha_string(data)
             ie.text_size = len(data)
-            ie.executable = self.is_executable(path, file_id)
+            ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         ie.revision = None
         return ie
 
