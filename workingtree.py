@@ -563,9 +563,21 @@ class GitWorkingTree(workingtree.WorkingTree):
         to_path = to_rel.encode("utf-8")
         with self.lock_tree_write():
             if not after:
+                try:
+                    to_kind = self.kind(to_rel)
+                except errors.NoSuchFile:
+                    exc_type = errors.BzrRenameFailedError
+                else:
+                    exc_type = errors.BzrMoveFailedError
                 if not self.has_filename(from_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(from_rel))
+                if not self.is_versioned(from_rel):
+                    raise exc_type(from_rel, to_rel,
+                        errors.NotVersionedError(from_rel))
+                if self.is_versioned(to_rel):
+                    raise exc_type(from_rel, to_rel,
+                        errors.AlreadyVersionedError(to_rel))
             else:
                 if not self.has_filename(to_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
@@ -588,6 +600,12 @@ class GitWorkingTree(workingtree.WorkingTree):
             if kind != 'directory':
                 self.index[to_path] = self.index[from_path]
                 del self.index[from_path]
+            else:
+                todo = [p for p in self.index if p.startswith(from_path+'/')]
+                for p in todo:
+                    self.index[posixpath.join(to_path, posixpath.relpath(from_path, p))] = self.index[p]
+                    del self.index[p]
+
             self._versioned_dirs = None
             self.flush()
 
