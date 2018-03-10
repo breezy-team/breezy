@@ -181,3 +181,20 @@ def get_refs_container(controldir, object_store):
     if fn is not None:
         return fn()
     return BazaarRefsContainer(controldir, object_store)
+
+
+def remote_refs_dict_to_tag_refs(refs_dict):
+    base = {}
+    peeled = {}
+    for k, v in refs_dict.iteritems():
+        if is_peeled(k):
+            peeled[k[:-3]] = v
+        else:
+            base[k] = v
+            peeled[k] = v
+    for n in set(base.keys() + peeled.keys()):
+        try:
+            tag_name = ref_to_tag_name(n)
+        except ValueError:
+            continue
+        yield (n, tag_name, peeled.get(n), base.get(n))

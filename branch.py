@@ -61,6 +61,7 @@ from .refs import (
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
+    remote_refs_dict_to_tag_refs,
     tag_name_to_ref,
     )
 from .unpeel_map import (
@@ -95,95 +96,72 @@ class GitTags(tag.BasicTags):
         self.branch = branch
         self.repository = branch.repository
 
-    def get_refs_container(self):
-        raise NotImplementedError(self.get_refs_container)
-
-    def _iter_tag_refs(self, refs):
-        """Iterate over the tag refs.
-
-        :param refs: Refs dictionary (name -> git sha1)
-        :return: iterator over (name, peeled_sha1, unpeeled_sha1, bzr_revid)
-        """
-        for k, unpeeled in refs.as_dict().iteritems():
-            try:
-                tag_name = ref_to_tag_name(k)
-            except (ValueError, UnicodeDecodeError):
-                continue
-            peeled = refs.get_peeled(k)
-            if peeled is None:
-                try:
-                    peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
-                except KeyError:
-                    # Let's just hope it's a commit
-                    peeled = unpeeled
-            assert type(tag_name) is unicode
-            try:
-                foreign_peeled = self.branch.lookup_foreign_revision_id(peeled)
-            except NotCommitError:
-                continue
-            yield (tag_name, peeled, unpeeled, foreign_peeled)
-
-    def _merge_to_remote_git(self, target_repo, new_refs, overwrite=False):
+    def _merge_to_remote_git(self, target_repo, source_tag_refs, overwrite=False):
         updates = {}
         conflicts = []
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
-            for k, v in new_refs.iteritems():
-                if not is_tag(k):
-                    continue
-                name = ref_to_tag_name(k)
-                if old_refs.get(k) == v:
+            for ref_name, tag_name, peeled, unpeeled in source_tag_refs.iteritems():
+                if old_refs.get(ref_name) == unpeeled:
                     pass
-                elif overwrite or not k in old_refs:
-                    ret[k] = v
-                    updates[name] = target_repo.lookup_foreign_revision_id(v)
+                elif overwrite or not ref_name in old_refs:
+                    ret[ref_name] = unpeeled
+                    updates[tag_name] = target_repo.lookup_foreign_revision_id(peeled)
                 else:
-                    conflicts.append((name, v, old_refs[k]))
+                    conflicts.append(
+                        (tag_name,
+                        self.repository.lookup_foreign_revision_id(peeled),
+                        target_repo.lookup_foreign_revision_id(old_refs[ref_name])))
             return ret
         target_repo.controldir.send_pack(get_changed_refs, lambda have, want: [])
         return updates, conflicts
 
-    def _merge_to_local_git(self, target_repo, refs, overwrite=False):
+    def _merge_to_local_git(self, target_repo, source_tag_refs, overwrite=False):
         conflicts = []
         updates = {}
-        for k, unpeeled in refs.as_dict().iteritems():
-            if not is_tag(k):
-                continue
-            name = ref_to_tag_name(k)
-            peeled = self.repository.controldir.get_peeled(k)
-            if target_repo._git.refs.get(k) == unpeeled:
+        for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
+            if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
-            elif overwrite or not k in target_repo._git.refs:
-                target_repo._git.refs[k] = unpeeled or peeled
-                updates[name] = self.repository.lookup_foreign_revision_id(peeled)
+            elif overwrite or not ref_name in target_repo._git.refs:
+                target_repo._git.refs[ref_name] = unpeeled or peeled
+                updates[tag_name] = self.repository.lookup_foreign_revision_id(peeled)
             else:
-                conflicts.append((name, self.repository.lookup_foreign_revision_id(peeled), target_repo.lookup_foreign_revision_id(target_repo._git.refs[k])))
+                conflicts.append(
+                    (tag_name, self.repository.lookup_foreign_revision_id(peeled),
+                    target_repo.lookup_foreign_revision_id(target_repo._git.refs[ref_name])))
         return updates, conflicts
 
-    def _merge_to_git(self, to_tags, refs, overwrite=False):
+    def _merge_to_git(self, to_tags, source_tag_refs, overwrite=False):
         target_repo = to_tags.repository
         if self.repository.has_same_location(target_repo):
             return {}, []
-        if getattr(target_repo, "_git", None):
-            return self._merge_to_local_git(target_repo, refs, overwrite)
-        else:
-            return self._merge_to_remote_git(target_repo, refs, overwrite)
+        try:
+            if getattr(target_repo, "_git", None):
+                return self._merge_to_local_git(target_repo, source_tag_refs, overwrite)
+            else:
+                return self._merge_to_remote_git(target_repo, source_tag_refs, overwrite)
+        finally:
+            to_tags.branch._tag_refs = None
 
-    def _merge_to_non_git(self, to_tags, refs, overwrite=False):
+    def _merge_to_non_git(self, to_tags, source_tag_refs, overwrite=False):
         unpeeled_map = defaultdict(set)
         conflicts = []
         updates = {}
         result = dict(to_tags.get_tag_dict())
-        for n, peeled, unpeeled, bzr_revid in self._iter_tag_refs(refs):
+        for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
             if unpeeled is not None:
                 unpeeled_map[peeled].add(unpeeled)
-            if result.get(n) == bzr_revid:
+            try:
+                bzr_revid = self.branch.lookup_foreign_revision_id(peeled)
+            except NotCommitError:
+                continue
+            if result.get(tag_name) == bzr_revid:
                 pass
-            elif n not in result or overwrite:
-                result[n] = bzr_revid
-                updates[n] = bzr_revid
+            elif tag_name not in result or overwrite:
+                result[tag_name] = bzr_revid
+                updates[tag_name] = bzr_revid
             else:
-                conflicts.append((n, bzr_revid, result[n]))
+                conflicts.append((tag_name, bzr_revid, result[n]))
         to_tags._set_tag_dict(result)
         if len(unpeeled_map) > 0:
             map_file = UnpeelMap.from_repository(to_tags.branch.repository)
@@ -192,14 +170,14 @@ class GitTags(tag.BasicTags):
         return updates, conflicts
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False,
-                 source_refs=None):
+                 source_tag_refs=None):
         """See Tags.merge_to."""
-        if source_refs is None:
-            source_refs = self.get_refs_container()
+        if source_tag_refs is None:
+            source_tag_refs = self.branch.get_tag_refs()
         if self == to_tags:
             return {}, []
         if isinstance(to_tags, GitTags):
-            return self._merge_to_git(to_tags, source_refs,
+            return self._merge_to_git(to_tags, source_tag_refs,
                                       overwrite=overwrite)
         else:
             if ignore_master:
@@ -209,12 +187,12 @@ class GitTags(tag.BasicTags):
             if master is not None:
                 master.lock_write()
             try:
-                updates, conflicts = self._merge_to_non_git(to_tags, source_refs,
+                updates, conflicts = self._merge_to_non_git(to_tags, source_tag_refs,
                                                   overwrite=overwrite)
                 if master is not None:
                     extra_updates, extra_conflicts = self.merge_to(
                         master.tags, overwrite=overwrite,
-                                               source_refs=source_refs,
+                                               source_tag_refs=source_tag_refs,
                                                ignore_master=ignore_master)
                     updates.update(extra_updates)
                     conflicts += extra_conflicts
@@ -225,9 +203,13 @@ class GitTags(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        refs = self.get_refs_container()
-        for (name, peeled, unpeeled, bzr_revid) in self._iter_tag_refs(refs):
-            ret[name] = bzr_revid
+        for (ref_name, tag_name, peeled, unpeeled) in self.branch.get_tag_refs():
+            try:
+                bzr_revid = self.branch.lookup_foreign_revision_id(peeled)
+            except NotCommitError:
+                continue
+            else:
+                ret[tag_name] = bzr_revid
         return ret
 
 
@@ -237,9 +219,6 @@ class LocalGitTagDict(GitTags):
     def __init__(self, branch):
         super(LocalGitTagDict, self).__init__(branch)
         self.refs = self.repository.controldir._git.refs
-
-    def get_refs_container(self):
-        return self.refs
 
     def _set_tag_dict(self, to_dict):
         extra = set(self.refs.allkeys())
@@ -258,16 +237,14 @@ class LocalGitTagDict(GitTags):
         except errors.NoSuchRevision:
             raise errors.GhostTagsNotSupported(self)
         self.refs[tag_name_to_ref(name)] = git_sha
+        self.branch._tag_refs = None
 
-
-class DictTagDict(tag.BasicTags):
-
-    def __init__(self, branch, tags):
-        super(DictTagDict, self).__init__(branch)
-        self._tags = tags
-
-    def get_tag_dict(self):
-        return self._tags
+    def delete_tag(self, name):
+        ref = tag_name_to_ref(name)
+        if not ref in self.refs:
+            raise errors.NoSuchTag(name)
+        del self.refs[ref]
+        self.branch._tag_refs = None
 
 
 class GitBranchFormat(branch.BranchFormat):
@@ -354,6 +331,7 @@ class GitBranch(ForeignBranch):
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
         self._control_transport = controldir.control_transport.clone('.')
+        self._tag_refs = None
         params = {}
         try:
             self.name = ref_to_branch_name(ref)
@@ -522,6 +500,18 @@ class GitBranch(ForeignBranch):
     def get_unshelver(self, tree):
         raise errors.StoringUncommittedNotSupported(self)
 
+    def _clear_cached_state(self):
+        super(GitBranch, self)._clear_cached_state()
+        self._tag_refs = None
+
+    def _iter_tag_refs(self, refs):
+        """Iterate over the tag refs.
+
+        :param refs: Refs dictionary (name -> git sha1)
+        :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        """
+        raise NotImplementedError(self._iter_tag_refs)
+
 
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
@@ -616,6 +606,34 @@ class LocalGitBranch(GitBranch):
 
     def store_uncommitted(self, creator):
         raise errors.StoringUncommittedNotSupported(self)
+
+    def _iter_tag_refs(self):
+        """Iterate over the tag refs.
+
+        :param refs: Refs dictionary (name -> git sha1)
+        :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        """
+        refs = self.repository._git.refs
+        for ref_name, unpeeled in refs.as_dict().iteritems():
+            try:
+                tag_name = ref_to_tag_name(ref_name)
+            except (ValueError, UnicodeDecodeError):
+                continue
+            peeled = refs.get_peeled(ref_name)
+            if peeled is None:
+                try:
+                    peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
+                except KeyError:
+                    # Let's just hope it's a commit
+                    peeled = unpeeled
+            assert type(tag_name) is unicode
+            yield (ref_name, tag_name, peeled, unpeeled)
+
+    def get_tag_refs(self):
+        with self.lock_read():
+            if self._tag_refs is None:
+                self._tag_refs = list(self._iter_tag_refs())
+            return self._tag_refs
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
@@ -769,6 +787,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
               _override_hook_target, _hook_master):
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
         result = GitBranchPullResult()
         result.source_branch = self.source
         if _override_hook_target is None:
@@ -781,9 +803,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
             (result.old_revno, result.old_revid) = \
                 self.target.last_revision_info()
             result.new_git_head, remote_refs = self._update_revisions(
-                stop_revision, overwrite=overwrite)
+                stop_revision, overwrite=("history" in overwrite))
             tags_ret  = self.source.tags.merge_to(
-                    self.target.tags, overwrite, ignore_master=True)
+                    self.target.tags, ("tags" in overwrite), ignore_master=True)
             if isinstance(tags_ret, tuple):
                 result.tag_updates, result.tag_conflicts = tags_ret
             else:
@@ -935,16 +957,21 @@ class InterGitLocalGitBranch(InterGitBranch):
         interrepo.fetch_objects(determine_wants, limit=limit)
 
     def _basic_push(self, overwrite=False, stop_revision=None):
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision,
-                (result.old_revid if not overwrite else None),
+                (result.old_revid if ("history" not in overwrite) else None),
                 other_branch=self.source)
         tags_ret = self.source.tags.merge_to(self.target.tags,
-            source_refs=refs, overwrite=overwrite)
+            source_tag_refs=remote_refs_dict_to_tag_refs(refs),
+            overwrite=("tags" in overwrite))
         if isinstance(tags_ret, tuple):
             (result.tag_updates, result.tag_conflicts) = tags_ret
         else:
@@ -975,6 +1002,11 @@ class InterGitLocalGitBranch(InterGitBranch):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
+
         result = GitPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -982,10 +1014,11 @@ class InterGitLocalGitBranch(InterGitBranch):
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
             self.target.generate_revision_history(stop_revision,
-                    (result.old_revid if not overwrite else None),
+                    (result.old_revid if ("history" not in overwrite) else None),
                     other_branch=self.source)
             tags_ret = self.source.tags.merge_to(self.target.tags,
-                overwrite=overwrite, source_refs=refs)
+                overwrite=("tags" in overwrite),
+                source_tag_refs=remote_refs_dict_to_tag_refs(refs))
             if isinstance(tags_ret, tuple):
                 (result.tag_updates, result.tag_conflicts) = tags_ret
             else:
