@@ -567,6 +567,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     to_kind = self.kind(to_rel)
                 except errors.NoSuchFile:
                     exc_type = errors.BzrRenameFailedError
+                    to_kind = None
                 else:
                     exc_type = errors.BzrMoveFailedError
                 if not self.has_filename(from_rel):
@@ -578,6 +579,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                 if self.is_versioned(to_rel):
                     raise exc_type(from_rel, to_rel,
                         errors.AlreadyVersionedError(to_rel))
+                if self.has_filename(to_rel):
+                    raise errors.RenameFailedFilesExist(
+                        from_rel, to_rel, errors.FileExists(to_rel))
             else:
                 if not self.has_filename(to_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
