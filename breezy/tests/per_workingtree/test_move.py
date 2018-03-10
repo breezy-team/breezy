@@ -608,10 +608,13 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7/"])
         tree.add(["a"])
-        e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.move, ["a"], u"\xA7")
-        self.assertIsInstance(e.extra, errors.NotVersionedError)
-        self.assertEqual(e.extra.path, u"\xA7")
+        if tree.has_versioned_directories():
+            e = self.assertRaises(errors.BzrMoveFailedError,
+                tree.move, ["a"], u"\xA7")
+            self.assertIsInstance(e.extra, errors.NotVersionedError)
+            self.assertEqual(e.extra.path, u"\xA7")
+        else:
+            tree.move(["a"], u"\xA7")
 
     def test_move_unversioned_non_ascii(self):
         """Check error when moving an unversioned non-ascii file"""
