@@ -541,7 +541,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _set_root_id(self, file_id):
         self._fileid_map.set_file_id("", file_id)
 
-    def move(self, from_paths, to_dir=None, after=False):
+    def move(self, from_paths, to_dir=None, after=None):
         rename_tuples = []
         with self.lock_tree_write():
             to_abs = self.abspath(to_dir)
@@ -557,12 +557,28 @@ class GitWorkingTree(workingtree.WorkingTree):
             self.flush()
             return rename_tuples
 
-    def rename_one(self, from_rel, to_rel, after=False):
+    def rename_one(self, from_rel, to_rel, after=None):
         from_path = from_rel.encode("utf-8")
         ensure_normalized_path(to_rel)
         to_path = to_rel.encode("utf-8")
         with self.lock_tree_write():
-            if not after:
+            if after is None:
+                # Perhaps it's already moved?
+                after = (
+                    not self.has_filename(from_rel) and
+                    self.has_filename(to_rel) and
+                    self.is_versioned(from_rel) and
+                    not self.is_versioned(to_rel))
+            if after:
+                if not self.has_filename(to_rel):
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.NoSuchFile(to_rel))
+                if self.basis_tree().is_versioned(to_rel):
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.AlreadyVersionedError(to_rel))
+
+                kind = self.kind(to_rel)
+            else:
                 try:
                     to_kind = self.kind(to_rel)
                 except errors.NoSuchFile:
@@ -570,24 +586,21 @@ class GitWorkingTree(workingtree.WorkingTree):
                     to_kind = None
                 else:
                     exc_type = errors.BzrMoveFailedError
+                if self.is_versioned(to_rel):
+                    raise exc_type(from_rel, to_rel,
+                        errors.AlreadyVersionedError(to_rel))
                 if not self.has_filename(from_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(from_rel))
                 if not self.is_versioned(from_rel):
                     raise exc_type(from_rel, to_rel,
                         errors.NotVersionedError(from_rel))
-                if self.is_versioned(to_rel):
-                    raise exc_type(from_rel, to_rel,
-                        errors.AlreadyVersionedError(to_rel))
                 if self.has_filename(to_rel):
                     raise errors.RenameFailedFilesExist(
                         from_rel, to_rel, errors.FileExists(to_rel))
-            else:
-                if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(to_rel))
 
-            kind = self.kind(from_rel)
+                kind = self.kind(from_rel)
+
             if not from_path in self.index and kind != 'directory':
                 # It's not a file
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
