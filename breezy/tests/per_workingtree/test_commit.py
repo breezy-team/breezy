@@ -363,7 +363,7 @@ class TestCommit(TestCaseWithWorkingTree):
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
-        self.assertTrue(wt.has_id(a_id))
+        self.assertTrue(wt.is_versioned('a'))
         self.assertFalse(wt.has_or_had_id(b_id))
         self.assertFalse(wt.has_or_had_id(c_id))
         self.assertTrue(wt.has_filename('a'))

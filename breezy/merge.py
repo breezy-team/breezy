@@ -960,14 +960,14 @@ class Merge3Merger(object):
                 else:
                     lca_entries.append(lca_ie)
 
-            if base_inventory.has_id(file_id):
+            try:
                 base_ie = base_inventory[file_id]
-            else:
+            except errors.NoSuchId:
                 base_ie = _none_entry
 
-            if this_inventory.has_id(file_id):
+            try:
                 this_ie = this_inventory[file_id]
-            else:
+            except errors.NoSuchId:
                 this_ie = _none_entry
 
             lca_kinds = []
