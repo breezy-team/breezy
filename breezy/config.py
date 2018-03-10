@@ -2706,7 +2706,7 @@ option_registry.register(
 Whether revisions associated with tags should be fetched.
 """))
 option_registry.register_lazy(
-    'bzr.transform.orphan_policy', 'breezy.transform', 'opt_transform_orphan')
+    'transform.orphan_policy', 'breezy.transform', 'opt_transform_orphan')
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',

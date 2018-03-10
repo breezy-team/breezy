@@ -3612,7 +3612,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
 
     def _set_orphan_policy(self, wt, policy):
-        wt.branch.get_config_stack().set('bzr.transform.orphan_policy',
+        wt.branch.get_config_stack().set('transform.orphan_policy',
                                                policy)
 
     def _prepare_orphan(self, wt):

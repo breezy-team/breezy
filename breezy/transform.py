@@ -1407,7 +1407,7 @@ class DiskTreeTransform(TreeTransformBase):
 
     def new_orphan(self, trans_id, parent_id):
         conf = self._tree.get_config_stack()
-        handle_orphan = conf.get('bzr.transform.orphan_policy')
+        handle_orphan = conf.get('transform.orphan_policy')
         handle_orphan(self, trans_id, parent_id)
 
 
@@ -1477,7 +1477,7 @@ orphaning_registry._set_default_key('conflict')
 
 
 opt_transform_orphan = _mod_config.RegistryOption(
-    'bzr.transform.orphan_policy', orphaning_registry,
+    'transform.orphan_policy', orphaning_registry,
     help='Policy for orphaned files during transform operations.',
     invalid='warning')
 

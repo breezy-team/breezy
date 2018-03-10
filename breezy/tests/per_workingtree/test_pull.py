@@ -103,7 +103,7 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         trunk = self.make_branch_deleting_dir('trunk')
         work = trunk.controldir.sprout('work', revision_id='2').open_workingtree()
         work.branch.get_config_stack().set(
-            'bzr.transform.orphan_policy', 'move')
+            'transform.orphan_policy', 'move')
         # Add some unversioned files in dir
         self.build_tree(['work/dir/foo',
                          'work/dir/subdir/',
