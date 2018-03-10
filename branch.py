@@ -260,16 +260,6 @@ class LocalGitTagDict(GitTags):
         self.refs[tag_name_to_ref(name)] = git_sha
 
 
-class DictTagDict(tag.BasicTags):
-
-    def __init__(self, branch, tags):
-        super(DictTagDict, self).__init__(branch)
-        self._tags = tags
-
-    def get_tag_dict(self):
-        return self._tags
-
-
 class GitBranchFormat(branch.BranchFormat):
 
     def network_name(self):
@@ -769,6 +759,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
               _override_hook_target, _hook_master):
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
         result = GitBranchPullResult()
         result.source_branch = self.source
         if _override_hook_target is None:
@@ -781,9 +775,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
             (result.old_revno, result.old_revid) = \
                 self.target.last_revision_info()
             result.new_git_head, remote_refs = self._update_revisions(
-                stop_revision, overwrite=overwrite)
+                stop_revision, overwrite=("history" in overwrite))
             tags_ret  = self.source.tags.merge_to(
-                    self.target.tags, overwrite, ignore_master=True)
+                    self.target.tags, ("tags" in overwrite), ignore_master=True)
             if isinstance(tags_ret, tuple):
                 result.tag_updates, result.tag_conflicts = tags_ret
             else:
@@ -935,16 +929,21 @@ class InterGitLocalGitBranch(InterGitBranch):
         interrepo.fetch_objects(determine_wants, limit=limit)
 
     def _basic_push(self, overwrite=False, stop_revision=None):
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision,
-                (result.old_revid if not overwrite else None),
+                (result.old_revid if ("history" not in overwrite) else None),
                 other_branch=self.source)
         tags_ret = self.source.tags.merge_to(self.target.tags,
-            source_refs=refs, overwrite=overwrite)
+            source_refs=refs,
+            overwrite=("tags" in overwrite))
         if isinstance(tags_ret, tuple):
             (result.tag_updates, result.tag_conflicts) = tags_ret
         else:
@@ -975,6 +974,11 @@ class InterGitLocalGitBranch(InterGitBranch):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
+        if overwrite is True:
+            overwrite = set(["history", "tags"])
+        else:
+            overwrite = set()
+
         result = GitPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -982,10 +986,11 @@ class InterGitLocalGitBranch(InterGitBranch):
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
             self.target.generate_revision_history(stop_revision,
-                    (result.old_revid if not overwrite else None),
+                    (result.old_revid if ("history" not in overwrite) else None),
                     other_branch=self.source)
             tags_ret = self.source.tags.merge_to(self.target.tags,
-                overwrite=overwrite, source_refs=refs)
+                overwrite=("tags" in overwrite),
+                source_refs=refs)
             if isinstance(tags_ret, tuple):
                 (result.tag_updates, result.tag_conflicts) = tags_ret
             else:
