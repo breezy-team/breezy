@@ -1029,12 +1029,12 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not self.target.has_id(file_id):
+            try:
+                to_path = self.target.id2path(file_id)
+            except errors.NoSuchId:
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None
-            else:
-                to_path = self.target.id2path(file_id)
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
