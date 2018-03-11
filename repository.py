@@ -406,7 +406,14 @@ class LocalGitRepository(GitRepository):
         return _mod_graph.KnownGraph(parent_map)
 
     def get_signature_text(self, revision_id):
-        raise errors.NoSuchRevision(self, revision_id)
+        git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
+        try:
+            commit = self._git.object_store[git_commit_id]
+        except KeyError:
+            raise errors.NoSuchRevision(self, revision_id)
+        if commit.gpgsig is None:
+            raise errors.NoSuchRevision(self, revision_id)
+        return commit.gpgsig
 
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
         result = GitCheck(self, check_repo=check_repo)
