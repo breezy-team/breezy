@@ -50,6 +50,7 @@ from .branch import (
 from .dir import (
     GitControlDirFormat,
     GitDir,
+    BareLocalGitControlDirFormat,
     )
 from .errors import (
     GitSmartRemoteNotSupported,
@@ -150,7 +151,7 @@ class GitSmartTransport(Transport):
     def has(self, relpath):
         return False
 
-    def _get_client(self, thin_packs):
+    def _get_client(self):
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
@@ -176,13 +177,15 @@ class TCPGitSmartTransport(GitSmartTransport):
 
     _scheme = 'git'
 
-    def _get_client(self, thin_packs):
+    def _get_client(self):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
+        if self._host == '':
+            return dulwich.client.LocalGitClient()
         return dulwich.client.TCPGitClient(self._host, self._port,
-            thin_packs=thin_packs, report_activity=self._report_activity)
+            report_activity=self._report_activity)
 
 
 class SSHSocketWrapper(object):
@@ -229,14 +232,14 @@ class SSHGitSmartTransport(GitSmartTransport):
             return path[3:]
         return path
 
-    def _get_client(self, thin_packs):
+    def _get_client(self):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
         location_config = config.LocationConfig(self.base)
         client = dulwich.client.SSHGitClient(self._host, self._port, self._username,
-            thin_packs=thin_packs, report_activity=self._report_activity)
+            report_activity=self._report_activity)
         # Set up alternate pack program paths
         upload_pack = location_config.get_user_option('git_upload_pack')
         if upload_pack:
@@ -263,12 +266,12 @@ class RemoteGitBranchFormat(GitBranchFormat):
 
 class RemoteGitDir(GitDir):
 
-    def __init__(self, transport, format, get_client, client_path):
+    def __init__(self, transport, format, client, client_path):
         self._format = format
         self.root_transport = transport
         self.transport = transport
         self._mode_check_done = None
-        self._get_client = get_client
+        self._client = client
         self._client_path = client_path
         self.base = self.root_transport.base
         self._refs = None
@@ -283,9 +286,8 @@ class RemoteGitDir(GitDir):
                 trace.info("git: %s" % text)
         def wrap_determine_wants(refs_dict):
             return determine_wants(remote_refs_dict_to_container(refs_dict))
-        client = self._get_client(thin_packs=True)
         try:
-            refs_dict = client.fetch_pack(self._client_path, wrap_determine_wants,
+            refs_dict = self._client.fetch_pack(self._client_path, wrap_determine_wants,
                 graph_walker, pack_data, progress)
             if refs_dict is None:
                 refs_dict = {}
@@ -295,9 +297,8 @@ class RemoteGitDir(GitDir):
             raise parse_git_error(self.transport.external_url(), e)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        client = self._get_client(thin_packs=True)
         try:
-            return client.send_pack(self._client_path, get_changed_refs,
+            return self._client.send_pack(self._client_path, get_changed_refs,
                 generate_pack_contents)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
@@ -433,16 +434,21 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
+        scheme = urlparse.urlsplit(transport.external_url())[0]
         if isinstance(transport, GitSmartTransport):
-            get_client = transport._get_client
+            client = transport._get_client()
             client_path = transport._get_path()
-        elif urlparse.urlsplit(transport.external_url())[0] in ("http", "https"):
-            def get_client(thin_packs):
-                return BzrGitHttpClient(transport, thin_packs=thin_packs)
+        elif scheme in ("http", "https"):
+            client = BzrGitHttpClient(transport)
             client_path, _ = urlutils.split_segment_parameters(transport._path)
+        elif scheme == 'file':
+            client = dulwich.client.LocalGitClient()
+            client_path = transport.local_abspath('.')
         else:
             raise NotBranchError(transport.base)
-        return RemoteGitDir(transport, self, get_client, client_path)
+        if not _found:
+            pass # TODO(jelmer): Actually probe for something
+        return RemoteGitDir(transport, self, client, client_path)
 
     def get_format_description(self):
         return "Remote Git Repository"
