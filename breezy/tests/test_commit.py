@@ -49,14 +49,6 @@ from .matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(config.MemoryStack):
-
-    def __init__(self):
-        super(MustSignConfig, self).__init__('''
-create_signatures=always
-''')
-
-
 class CapturingReporter(NullCommitReporter):
     """This reporter captures the calls made to it for evaluation later."""
 
@@ -435,7 +427,8 @@ create_signatures=always
                 message="base", allow_pointless=True, rev_id='B',
                 working_tree=wt)
             def sign(text):
-                return breezy.gpg.LoopbackGPGStrategy(None).sign(text)
+                return breezy.gpg.LoopbackGPGStrategy(None).sign(
+                        text, breezy.gpg.MODE_CLEAR)
             self.assertEqual(sign(Testament.from_revision(branch.repository,
                                                           'B').as_short_text()),
                              branch.repository.get_signature_text('B'))

@@ -2692,7 +2692,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         with self.lock_write():
-            signature = gpg_strategy.sign(plaintext)
+            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
             self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):

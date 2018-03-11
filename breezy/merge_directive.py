@@ -251,7 +251,7 @@ class BaseMergeDirective(object):
         :return: a string
         """
         my_gpg = gpg.GPGStrategy(branch.get_config_stack())
-        return my_gpg.sign(''.join(self.to_lines()))
+        return my_gpg.sign(''.join(self.to_lines()), gpg.MODE_CLEAR)
 
     def to_email(self, mail_to, branch, sign=False):
         """Serialize as an email message.

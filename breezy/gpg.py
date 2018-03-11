@@ -52,6 +52,10 @@ SIGNATURE_NOT_VALID = 2
 SIGNATURE_NOT_SIGNED = 3
 SIGNATURE_EXPIRED = 4
 
+MODE_NORMAL = 0
+MODE_DETACH = 1
+MODE_CLEAR = 2
+
 
 class GpgNotInstalled(errors.DependencyNotPresent):
 
@@ -123,7 +127,7 @@ class DisabledGPGStrategy(object):
     def __init__(self, ignored):
         """Real strategies take a configuration."""
 
-    def sign(self, content):
+    def sign(self, content, mode):
         raise SigningFailed('Signing is disabled.')
 
     def verify(self, content, testament):
@@ -146,7 +150,7 @@ class LoopbackGPGStrategy(object):
     def __init__(self, ignored):
         """Real strategies take a configuration."""
 
-    def sign(self, content):
+    def sign(self, content, mode):
         return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
 
@@ -187,6 +191,7 @@ class GPGStrategy(object):
         try:
             import gpg
             self.context = gpg.Context()
+            self.context.armor = True
         except ImportError as error:
             pass # can't use verify()
 
@@ -224,7 +229,7 @@ class GPGStrategy(object):
         except ImportError as error:
             return False
 
-    def sign(self, content):
+    def sign(self, content, mode):
         import gpg
         if isinstance(content, unicode):
             raise errors.BzrBadParameterUnicode('content')
@@ -232,7 +237,11 @@ class GPGStrategy(object):
         plain_text = gpg.Data(content)
         try:
             output, result = self.context.sign(
-                plain_text, mode=gpg.constants.sig.mode.CLEAR)
+                plain_text, mode={
+                    MODE_DETACH: gpg.constants.sig.mode.DETACH,
+                    MODE_CLEAR: gpg.constants.sig.mode.CLEAR,
+                    MODE_NORMAL: gpg.constants.sig.mode.NORMAL,
+                    }[mode])
         except gpg.errors.GPGMEError as error:
             raise SigningFailed(str(error))
 
