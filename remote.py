@@ -524,9 +524,6 @@ class RemoteGitRepository(GitRepository):
 
 class RemoteGitTagDict(GitTags):
 
-    def get_refs_container(self):
-        return self.repository.controldir.get_refs_container()
-
     def set_tag(self, name, revid):
         # FIXME: Not supported yet, should do a push of a new ref
         raise NotImplementedError(self.set_tag)
