@@ -481,7 +481,8 @@ class LocalGitRepository(GitRepository):
             without_sig = Commit.from_string(commit.as_raw_string())
             without_sig.gpgsig = None
 
-            return gpg_strategy.verify(without_sig.as_raw_string(), commit.gpgsig)
+            (result, key, plain_text) = gpg_strategy.verify(without_sig.as_raw_string(), commit.gpgsig)
+            return (result, key)
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
         """Lookup a bzr revision id in a Git repository.
