@@ -130,7 +130,7 @@ class DisabledGPGStrategy(object):
     def sign(self, content, mode):
         raise SigningFailed('Signing is disabled.')
 
-    def verify(self, content, testament):
+    def verify(self, signed_data, signature=None):
         raise SignatureVerificationFailed('Signature verification is \
 disabled.')
 
@@ -154,7 +154,7 @@ class LoopbackGPGStrategy(object):
         return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
 
-    def verify(self, content, testament):
+    def verify(self, signed_data, signature=None):
         return SIGNATURE_VALID, None
 
     def set_acceptable_keys(self, command_line_input):
@@ -247,23 +247,24 @@ class GPGStrategy(object):
 
         return output
 
-    def verify(self, content, testament):
+    def verify(self, signed_data, signature=None):
         """Check content has a valid signature.
 
-        :param content: the commit signature
-        :param testament: the valid testament string for the commit
+        :param signed_data; Signed data
+        :param signature: optional signature (if detached)
 
-        :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid
+        :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid, plain text
         """
         try:
             import gpg
         except ImportError as error:
             raise errors.GpgNotInstalled(error)
 
-        signature = gpg.Data(content)
-        sink = gpg.Data()
+        signed_data = gpg.Data(signed_data)
+        if signature:
+            signature = gpg.Data(signature)
         try:
-            plain_output, result = self.context.verify(signature)
+            plain_output, result = self.context.verify(signed_data, signature)
         except gpg.errors.BadSignatures as error:
             fingerprint = error.result.signatures[0].fpr
             if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_EXPIRED:
@@ -271,35 +272,27 @@ class GPGStrategy(object):
                 if expires > error.result.signatures[0].timestamp:
                     # The expired key was not expired at time of signing.
                     # test_verify_expired_but_valid()
-                    return SIGNATURE_EXPIRED, fingerprint[-8:]
+                    return SIGNATURE_EXPIRED, fingerprint[-8:], None
                 else:
                     # I can't work out how to create a test where the signature
                     # was expired at the time of signing.
-                    return SIGNATURE_NOT_VALID, None
+                    return SIGNATURE_NOT_VALID, None, None
 
             # GPG does not know this key.
             # test_verify_unknown_key()
             if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_MISSING:
-                return SIGNATURE_KEY_MISSING, fingerprint[-8:]
+                return SIGNATURE_KEY_MISSING, fingerprint[-8:], None
 
-            return SIGNATURE_NOT_VALID, None
+            return SIGNATURE_NOT_VALID, None, None
         except gpg.errors.GPGMEError as error:
-            raise SignatureVerificationFailed(error[2])
+            raise SignatureVerificationFailed(error)
 
-        # No result if input is invalid.
-        # test_verify_invalid()
-        if len(result.signatures) == 0:
-            return SIGNATURE_NOT_VALID, None
         # User has specified a list of acceptable keys, check our result is in
         # it.  test_verify_unacceptable_key()
         fingerprint = result.signatures[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:
-                return SIGNATURE_KEY_MISSING, fingerprint[-8:]
-        # Check the signature actually matches the testament.
-        # test_verify_bad_testament()
-        if testament != plain_output:
-            return SIGNATURE_NOT_VALID, None
+                return SIGNATURE_KEY_MISSING, fingerprint[-8:], plain_output
         # Yay gpg set the valid bit.
         # Can't write a test for this one as you can't set a key to be
         # trusted using gpg.
@@ -307,20 +300,20 @@ class GPGStrategy(object):
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
-            return SIGNATURE_VALID, name + " <" + email + ">"
+            return SIGNATURE_VALID, name + " <" + email + ">", plain_output
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
-            return SIGNATURE_NOT_VALID, None
+            return SIGNATURE_NOT_VALID, None, plain_output
         # Summary isn't set if sig is valid but key is untrusted but if user
         # has explicity set the key as acceptable we can validate it.
         if result.signatures[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
                 # test_verify_untrusted_but_accepted()
-                return SIGNATURE_VALID, None
+                return SIGNATURE_VALID, None, plain_output
         # test_verify_valid_but_untrusted()
         if result.signatures[0].summary == 0 and self.acceptable_keys is None:
-            return SIGNATURE_NOT_VALID, None
+            return SIGNATURE_NOT_VALID, None, plain_output
         # Other error types such as revoked keys should (I think) be caught by
         # SIGSUM_RED so anything else means something is buggy.
         raise SignatureVerificationFailed(
