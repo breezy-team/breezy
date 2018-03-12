@@ -231,7 +231,7 @@ class Shelver(object):
             self.change_editor.finish()
         self.work_tree.unlock()
 
-    def get_parsed_patch(self, file_id, invert=False):
+    def get_parsed_patch(self, file_id, paths, invert=False):
         """Return a parsed version of a file's patch.
 
         :param file_id: The id of the file to generate a patch for.
@@ -250,7 +250,7 @@ class Shelver(object):
         new_path = new_tree.id2path(file_id)
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
             path_encoding=osutils.get_terminal_encoding())
-        patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
+        patch = text_differ.diff(file_id, paths[0], paths[1], 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 

@@ -309,9 +309,6 @@ class Tree(object):
         """
         raise NotImplementedError(self._comparison_data)
 
-    def _file_size(self, entry, stat_value):
-        raise NotImplementedError(self._file_size)
-
     def get_file(self, path, file_id=None):
         """Return a file object for the file file_id in the tree.
 
@@ -620,7 +617,7 @@ class Tree(object):
     def supports_content_filtering(self):
         return False
 
-    def _content_filter_stack(self, path=None, file_id=None):
+    def _content_filter_stack(self, path=None):
         """The stack of content filters for a path if filtering is supported.
 
         Readers will be applied in first-to-last order.
@@ -629,14 +626,11 @@ class Tree(object):
 
         :param path: path relative to the root of the tree
             or None if unknown
-        :param file_id: file_id or None if unknown
         :return: the list of filters - [] if there are none
         """
         filter_pref_names = filters._get_registered_names()
         if len(filter_pref_names) == 0:
             return []
-        if path is None:
-            path = self.id2path(file_id)
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
@@ -653,7 +647,7 @@ class Tree(object):
         """
         if self.supports_content_filtering():
             return lambda path, file_id: \
-                    self._content_filter_stack(path, file_id)
+                    self._content_filter_stack(path)
         else:
             return None
 
@@ -1028,12 +1022,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not self.target.has_id(file_id):
-                # common case - paths we have not emitted are not present in
-                # target.
-                to_path = None
-            else:
-                to_path = self.target.id2path(file_id)
+            to_path = find_previous_path(self.source, self.target, path)
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
@@ -1441,11 +1430,22 @@ def find_previous_paths(from_tree, to_tree, paths):
     """
     ret = {}
     for path in paths:
-        file_id = from_tree.path2id(path)
-        if file_id is None:
-            raise errors.NoSuchFile(path)
-        try:
-            ret[path] = to_tree.id2path(file_id)
-        except errors.NoSuchId:
-            ret[path] = None
+        ret[path] = find_previous_path(from_tree, to_tree, path)
     return ret
+
+
+def find_previous_path(from_tree, to_tree, path):
+    """Find previous tree path.
+
+    :param from_tree: From tree
+    :param to_tree: To tree
+    :param path: Path to search for
+    :return: path in to_tree, or None if there is no equivalent path.
+    """
+    file_id = from_tree.path2id(path)
+    if file_id is None:
+        raise errors.NoSuchFile(path)
+    try:
+        return to_tree.id2path(file_id)
+    except errors.NoSuchId:
+        return None
