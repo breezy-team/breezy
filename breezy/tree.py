@@ -1428,3 +1428,24 @@ class MultiWalker(object):
                     other_values.append(self._lookup_by_file_id(
                                             alt_extra, alt_tree, file_id))
                 yield other_path, file_id, None, other_values
+
+
+def find_previous_paths(from_tree, to_tree, paths):
+    """Find previous tree paths.
+
+    :param from_tree: From tree
+    :param to_tree: To tree
+    :param paths: Iterable over paths to search for
+    :return: Dictionary mapping from from_tree paths to paths in to_tree, or
+        None if there is no equivalent path.
+    """
+    ret = {}
+    for path in paths:
+        file_id = from_tree.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            ret[path] = to_tree.id2path(file_id)
+        except errors.NoSuchId:
+            ret[path] = None
+    return ret
