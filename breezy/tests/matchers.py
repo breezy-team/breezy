@@ -201,6 +201,10 @@ class HasPathRelations(Matcher):
         with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 previous_path = find_previous_path(tree, self.previous_tree, path)
+                if previous_path:
+                    kind = self.previous_tree.kind(previous_path)
+                    if kind == 'directory':
+                        previous_path += '/'
                 if ie.parent_id is None:
                     yield (u"", previous_path)
                 else:

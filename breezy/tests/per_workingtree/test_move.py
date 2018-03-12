@@ -139,11 +139,11 @@ class TestMove(TestCaseWithWorkingTree):
             # If 'c' was actually moved, then 'd' should have also been moved
             self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('a/', 'a'), ('a/c', 'c'), ('a/d', 'd')])
+                [('', ''), ('a/', 'a/'), ('a/c', 'c'), ('a/d', 'd')])
         else:
             self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ( 'a/', 'a'), ('c', 'c'), ('d', 'd')])
+                [('', ''), ( 'a/', 'a/'), ('c', 'c'), ('d', 'd')])
         tree._validate()
 
     def test_move_over_deleted(self):
@@ -156,7 +156,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('b', 'a/b')], tree.move(['b'], 'a'))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('a/', 'a'), ('a/b', 'b')])
+                [('', ''), ('a/', 'a/'), ('a/b', 'b')])
         tree._validate()
 
     def test_move_subdir(self):
@@ -166,12 +166,12 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial')
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b'), ('b/c', 'b/c')])
+                [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'b/c')])
         a_contents = tree.get_file_text('a')
         self.assertEqual([('a', 'b/a')], tree.move(['a'], 'b'))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b'), ('b/a', 'a'), ('b/c', 'b/c')])
+                [('', ''), ('b/', 'b/'), ('b/a', 'a'), ('b/c', 'b/c')])
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/a')
         tree._validate()
@@ -186,7 +186,7 @@ class TestMove(TestCaseWithWorkingTree):
             tree.move(['b/c'], ''))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b'), ('c', 'b/c')])
+                [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'b/c')])
         self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'c')
         tree._validate()
@@ -204,12 +204,12 @@ class TestMove(TestCaseWithWorkingTree):
         if osutils.lexists('c'):
             self.assertPathRelations(
                     tree.basis_tree(), tree,
-                    [('', ''), ('a', 'a'), ('b/', 'b'), ('c', 'c')])
+                    [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'c')])
         else:
             self.assertPathExists('b/c')
             self.assertPathRelations(
                     tree.basis_tree(), tree,
-                    [('', ''), ('a', 'a'), ('b/', 'b'), ('b/c', 'c')])
+                    [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'c')])
         tree._validate()
 
     def test_move_onto_self(self):
@@ -241,14 +241,14 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b')])
+                [('', ''), ('a', 'a'), ('b/', 'b/')])
         # We don't need after=True as long as source is missing and target
         # exists.
         self.assertEqual([('a', 'b/a')],
             tree.move(['a'], 'b'))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b'), ('b/a', 'a')])
+                [('', ''), ('b/', 'b/'), ('b/a', 'a')])
         tree._validate()
 
     def test_move_after_with_after(self):
@@ -260,12 +260,12 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b')])
+                [('', ''), ('a', 'a'), ('b/', 'b/')])
         # Passing after=True should work as well
         self.assertEqual([('a', 'b/a')], tree.move(['a'], 'b', after=True))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b'), ('b/a', 'a')])
+                [('', ''), ('b/', 'b/'), ('b/a', 'a')])
         tree._validate()
 
     def test_move_after_no_target(self):
@@ -305,7 +305,7 @@ class TestMove(TestCaseWithWorkingTree):
             tree.move(['a'], 'b', after=True))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b'), ('b/a', 'a')])
+                [('', ''), ('b/', 'b/'), ('b/a', 'a')])
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
@@ -320,8 +320,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('a', 'e/a')], tree.move(['a'], 'e'))
         self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ('e/', 'e'), ('e/a/', 'a'), ('e/a/b', 'a/b'),
-                 ('e/a/c/', 'a/c'), ('e/a/c/d', 'a/c/d')])
+                [('', ''), ('e/', 'e/'), ('e/a/', 'a/'), ('e/a/b', 'a/b'),
+                 ('e/a/c/', 'a/c/'), ('e/a/c/d', 'a/c/d')])
         tree._validate()
 
     def test_move_directory_into_parent(self):
@@ -338,9 +338,9 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
                 tree.basis_tree(), tree,
                 [('', ''),
-                 ('b/', 'c/b'),
-                 ('c/', 'c'),
-                 ('b/d/', 'c/b/d')])
+                 ('b/', 'c/b/'),
+                 ('c/', 'c/'),
+                 ('b/d/', 'c/b/d/')])
         tree._validate()
 
     def test_move_directory_with_children_in_subdir(self):
@@ -353,9 +353,9 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('a/', 'a'),
-             ('d/', 'd'),
-             ('a/c/', 'a/c'),
+             ('a/', 'a/'),
+             ('d/', 'd/'),
+             ('a/c/', 'a/c/'),
              ('a/c/b', 'a/b'),
              ])
         self.assertEqual([('a', 'd/a')],
@@ -363,9 +363,9 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('d/', 'd'),
-             ('d/a/', 'a'),
-             ('d/a/c/', 'a/c'),
+             ('d/', 'd/'),
+             ('d/a/', 'a/'),
+             ('d/a/c/', 'a/c/'),
              ('d/a/c/b', 'a/b'),
              ])
         tree._validate()
@@ -383,8 +383,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('b/', 'b'),
-             ('b/a/', 'a'),
+             ('b/', 'b/'),
+             ('b/a/', 'a/'),
              ('b/a/c', 'a/c')])
         tree._validate()
 
@@ -401,8 +401,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
                 tree.basis_tree(), tree,
                 [('', ''),
-                 ('b/', 'b'),
-                 ('b/a/', 'a'),
+                 ('b/', 'b/'),
+                 ('b/a/', 'a/'),
                  ('b/a/b', None),
                  ('b/a/c', 'a/c'),
                  ('b/a/d', None),
@@ -420,10 +420,10 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('a/', 'a'),
+             ('a/', 'a/'),
              ('b', 'a/b'),
              ('d', 'd'),
-             ('e/', 'e'),
+             ('e/', 'e/'),
              ('a/c', 'a/c'),
              ])
         self.assertEqual([('d', 'a/d')],
@@ -431,9 +431,9 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('a/', 'a'),
+             ('a/', 'a/'),
              ('b', 'a/b'),
-             ('e/', 'e'),
+             ('e/', 'e/'),
              ('a/c', 'a/c'),
              ('a/d', 'd'),
              ])
@@ -443,8 +443,8 @@ class TestMove(TestCaseWithWorkingTree):
             tree.basis_tree(), tree,
             [('', ''),
              ('b', 'a/b'),
-             ('e/', 'e'),
-             ('e/a/', 'a'),
+             ('e/', 'e/'),
+             ('e/a/', 'a/'),
              ('e/a/c', 'a/c'),
              ('e/a/d', 'd'),
              ])
@@ -460,8 +460,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('a/', 'a'),
-             ('d/', 'd'),
+             ('a/', 'a/'),
+             ('d/', 'd/'),
              ('a/c', 'a/c'),
              ('a/d', 'a/b')])
 
@@ -470,8 +470,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''),
-             ('d/', 'd'),
-             ('d/a/', 'a'),
+             ('d/', 'd/'),
+             ('d/a/', 'a/'),
              ('d/a/c', 'a/c'),
              ('d/a/d', 'a/b')])
         tree._validate()
@@ -488,8 +488,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
                 tree.basis_tree(), tree,
                 [('', ''),
-                 ('a/', 'a'),
-                 ('e/', 'e'),
+                 ('a/', 'a/'),
+                 ('e/', 'e/'),
                  ('a/b', 'a/d'),
                  ('a/c', 'a/c'),
                  ('a/d', 'a/b')])
@@ -498,8 +498,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertPathRelations(
                 tree.basis_tree(), tree,
                 [('', ''),
-                 ('e/', 'e'),
-                 ('e/a/', 'a'),
+                 ('e/', 'e/'),
+                 ('e/a/', 'a/'),
                  ('e/a/b', 'a/d'),
                  ('e/a/c', 'a/c'),
                  ('e/a/d', 'a/b')])
@@ -516,12 +516,12 @@ class TestMove(TestCaseWithWorkingTree):
             tree.move(['a/b'], 'c'))
         self.assertPathRelations(
             tree.basis_tree(), tree,
-            [('', ''), ('a/', 'a'), ('c/', 'c'), ('c/b', 'a/b')])
+            [('', ''), ('a/', 'a/'), ('c/', 'c/'), ('c/b', 'a/b')])
 
         self.assertEqual([('c/b', 'b')], tree.move(['c/b'], ''))
         self.assertPathRelations(
             tree.basis_tree(), tree,
-            [('', ''), ('a/', 'a'), ('b', 'a/b'), ('c/', 'c')])
+            [('', ''), ('a/', 'a/'), ('b', 'a/b'), ('c/', 'c/')])
         tree._validate()
 
     def test_move_to_unversioned_non_ascii_dir(self):
