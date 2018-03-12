@@ -108,6 +108,14 @@ class Tree(object):
     trees or versioned trees.
     """
 
+    def supports_rename_tracking(self):
+        """Whether this tree supports rename tracking.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
+
     def has_versioned_directories(self):
         """Whether this tree can contain explicitly versioned directories.
 

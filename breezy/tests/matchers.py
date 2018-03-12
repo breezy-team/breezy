@@ -242,6 +242,11 @@ class HasPathRelations(Matcher):
             entries = list(self._strip_unreferenced_directories(self.previous_entries))
         else:
             entries = self.previous_entries
+        if not tree.supports_rename_tracking():
+            entries = [
+                (path, path.rstrip('/')
+                if self.previous_tree.is_versioned(path) else None)
+                for (path, previous_path) in entries]
         return Equals(entries).match(actual)
 
 
