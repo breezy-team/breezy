@@ -2737,9 +2737,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             signature = self.get_signature_text(revision_id)
 
             testament = _mod_testament.Testament.from_revision(self, revision_id)
-            plaintext = testament.as_short_text()
 
-            return gpg_strategy.verify(signature, plaintext)
+            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
+            if testament.as_short_text() != signed_plaintext:
+                return gpg.SIGNATURE_NOT_VALID, None
+            return (status, key)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         self._ensure_real()
