@@ -23,7 +23,7 @@ from breezy import (
 from breezy.bzr import (
     inventory,
     )
-from breezy.tests.matchers import HasLayout
+from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -53,7 +53,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.assertRaises(errors.DuplicateFileId,
                           tree.add, ['b'], [tree.path2id('a')])
         # And the entry should not have been added.
-        self.assertTreeLayout('', 'a'], tree)
+        self.assertTreeLayout(['', 'a'], tree)
 
     def test_add_old_id(self):
         """We can add an old id, as long as it doesn't exist now."""
@@ -124,7 +124,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'])
 
-        self.assertTreeLayout([
+        self.assertTreeLayout(
             ['', 'a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'],
             tree)
 
@@ -136,7 +136,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'],
                  ['a-id', 'b-id', 'dir-id', 'subdir-id', 'foo-id'])
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', tree.get_root_id()), ('a', 'a-id'), ('b', 'b-id'),
                                ('dir/', 'dir-id'), ('dir/subdir/', 'subdir-id'),
                                ('dir/subdir/foo', 'foo-id')], tree)
 
