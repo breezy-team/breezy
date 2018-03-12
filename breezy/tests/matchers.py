@@ -244,8 +244,7 @@ class HasPathRelations(Matcher):
             entries = self.previous_entries
         if not tree.supports_rename_tracking():
             entries = [
-                (path, path.rstrip('/')
-                if self.previous_tree.is_versioned(path) else None)
+                (path, path if self.previous_tree.is_versioned(path) else None)
                 for (path, previous_path) in entries]
         return Equals(entries).match(actual)
 
