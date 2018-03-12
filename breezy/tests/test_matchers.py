@@ -165,7 +165,7 @@ class TestHasPathRelations(TestCaseWithTransport):
         self.assertThat(t, HasPathRelations(t,
             [('', ''),
              ('a', 'a'),
-             ('b/', 'b'),
+             ('b/', 'b/'),
              ('b/c', 'b/c')]))
 
     def test_mismatch(self):
