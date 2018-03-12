@@ -49,6 +49,14 @@ from .matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
+class MustSignConfig(config.MemoryStack):
+
+    def __init__(self):
+        super(MustSignConfig, self).__init__('''
+create_signatures=always
+''')
+
+
 class CapturingReporter(NullCommitReporter):
     """This reporter captures the calls made to it for evaluation later."""
 

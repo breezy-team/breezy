@@ -224,8 +224,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content,
-                            plain))
+        self.assertEqual((gpg.SIGNATURE_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_unacceptable_key(self):
         self.requireFeature(features.gpg)
@@ -255,8 +254,8 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("foo@example.com")
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'E3080E45'),
-                         my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'E3080E45', plain),
+                         my_gpg.verify(content))
 
     def test_verify_valid_but_untrusted(self):
         self.requireFeature(features.gpg)
@@ -285,40 +284,7 @@ revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
-                            plain))
-
-    def test_verify_bad_testament(self):
-        self.requireFeature(features.gpg)
-        self.import_keys()
-
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-bazaar-ng testament short form 1
-revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
-sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQEcBAEBAgAGBQJN+ekFAAoJEIdoGx7jCA5FGtEH/i+XxJRvqU6wdBtLVrGBMAGk
-FZ5VP+KyXYtymSbgSstj/vM12NeMIeFs3xGnNnYuX1MIcY6We5TKtCH0epY6ym5+
-6g2Q2QpQ5/sT2d0mWzR0K4uVngmxVQaXTdk5PdZ40O7ULeDLW6CxzxMHyUL1rsIx
-7UBUTBh1O/1n3ZfD99hUkm3hVcnsN90uTKH59zV9NWwArU0cug60+5eDKJhSJDbG
-rIwlqbFAjDZ7L/48e+IaYIJwBZFzMBpJKdCxzALLtauMf+KK8hGiL2hrRbWm7ty6
-NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
-=iwsn
------END PGP SIGNATURE-----
-"""
-        plain = """bazaar-ng testament short form 1
-revision-id: doctor@example.com-20110527185938-hluafawphszb8dl1
-sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
-"""
-        my_gpg = gpg.GPGStrategy(FakeConfig())
-        my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
-                            plain))
-
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_revoked_signature(self):
         self.requireFeature(features.gpg)
@@ -341,8 +307,7 @@ JFA6kUIJU2w9LU/b88Y=
         plain = """asdf\n"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("test@example.com")
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
-                            plain))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None), my_gpg.verify(content))
 
     def test_verify_invalid(self):
         self.requireFeature(features.gpg)
@@ -366,8 +331,8 @@ revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None),
-                            my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain),
+                            my_gpg.verify(content))
 
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpg)
@@ -388,13 +353,9 @@ dTp8VatVVrwuvzOPDVc=
 =uHen
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
-revision-id: test@example.com-20110801100657-f1dr1nompeex723z
-sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
-"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513'),
-                            my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513', None),
+                            my_gpg.verify(content))
 
     def test_verify_unknown_key(self):
         self.requireFeature(features.gpg)
@@ -415,10 +376,9 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 =RNR5
 -----END PGP SIGNATURE-----
 """
-        plain = "asdf\n"
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F'),
-                            my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F', None),
+                            my_gpg.verify(content))
 
     def test_set_acceptable_keys(self):
         self.requireFeature(features.gpg)
@@ -458,5 +418,4 @@ class TestDisabled(TestCase):
 
     def test_verify(self):
         self.assertRaises(gpg.SignatureVerificationFailed,
-                          gpg.DisabledGPGStrategy(None).verify, 'content',
-                          'testament')
+                          gpg.DisabledGPGStrategy(None).verify, 'content')

@@ -155,7 +155,9 @@ class LoopbackGPGStrategy(object):
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
 
     def verify(self, signed_data, signature=None):
-        return SIGNATURE_VALID, None
+        plain_text = signed_data.replace("-----BEGIN PSEUDO-SIGNED CONTENT-----\n", "")
+        plain_text = plain_text.replace("-----END PSEUDO-SIGNED CONTENT-----\n", "")
+        return SIGNATURE_VALID, None, plain_text
 
     def set_acceptable_keys(self, command_line_input):
         if command_line_input is not None:
@@ -286,6 +288,11 @@ class GPGStrategy(object):
             return SIGNATURE_NOT_VALID, None, None
         except gpg.errors.GPGMEError as error:
             raise SignatureVerificationFailed(error)
+
+        # No result if input is invalid.
+        # test_verify_invalid()
+        if len(result.signatures) == 0:
+            return SIGNATURE_NOT_VALID, None, plain_output
 
         # User has specified a list of acceptable keys, check our result is in
         # it.  test_verify_unacceptable_key()
