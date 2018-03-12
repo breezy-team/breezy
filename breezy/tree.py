@@ -1434,7 +1434,7 @@ def find_previous_paths(from_tree, to_tree, paths):
     return ret
 
 
-def find_previous_path(from_tree, to_tree, path):
+def find_previous_path(from_tree, to_tree, path, file_id=None):
     """Find previous tree path.
 
     :param from_tree: From tree
@@ -1442,7 +1442,8 @@ def find_previous_path(from_tree, to_tree, path):
     :param path: Path to search for
     :return: path in to_tree, or None if there is no equivalent path.
     """
-    file_id = from_tree.path2id(path)
+    if file_id is None:
+        file_id = from_tree.path2id(path)
     if file_id is None:
         raise errors.NoSuchFile(path)
     try:
