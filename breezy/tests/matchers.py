@@ -198,7 +198,7 @@ class HasPathRelations(Matcher):
 
     def get_path_map(self, tree):
         """Get the (path, previous_path) pairs for the current tree."""
-        with tree.lock_read():
+        with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 previous_path = find_previous_path(tree, self.previous_tree, path)
                 if ie.parent_id is None:
