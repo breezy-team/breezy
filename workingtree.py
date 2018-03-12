@@ -679,7 +679,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            return set(self._iter_files_recursive()) - set(self.index)
+            for p in (set(self._iter_files_recursive(include_dirs=True)) - set(self.index)):
+                try:
+                    up = p.decode(osutils._fs_enc)
+                except UnicodeDecodeError:
+                    raise errors.BadFilenameEncoding(
+                        p, osutils._fs_enc)
+                if not self._has_dir(up):
+                    yield up
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
@@ -946,7 +953,11 @@ class GitWorkingTree(workingtree.WorkingTree):
                     value = self.index[path]
                 except KeyError:
                     value = None
-                path = path.decode("utf-8")
+                try:
+                    path = path.decode("utf-8")
+                except UnicodeDecodeError:
+                    raise errors.BadFilenameEncoding(
+                        path, osutils._fs_enc)
                 kind = osutils.file_kind(self.abspath(path))
                 parent, name = posixpath.split(path)
                 for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
