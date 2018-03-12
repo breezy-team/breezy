@@ -307,7 +307,7 @@ class GPGStrategy(object):
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
-            return SIGNATURE_VALID, name + " <" + email + ">", plain_output
+            return SIGNATURE_VALID, name.decode('utf-8') + u" <" + email.decode('utf-8') + u">", plain_output
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
