@@ -1112,7 +1112,8 @@ class cmd_mv(Command):
         work_tree, file_list = WorkingTree.open_containing_paths(
             names_list, default_directory='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
-        rename_map.RenameMap.guess_renames(work_tree, dry_run)
+        rename_map.RenameMap.guess_renames(
+                work_tree.basis_tree(), work_tree, dry_run)
 
     def _run(self, tree, names_list, rel_names, after):
         into_existing = osutils.isdir(names_list[-1])
