@@ -130,6 +130,9 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
 
         last_verifier = this_verifier
         last_path = this_path
+        last_tree = this_tree
+        if last_path is None:
+            return
         revno -= 1
 
 
