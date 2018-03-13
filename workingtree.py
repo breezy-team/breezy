@@ -485,7 +485,10 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         with self.lock_tree_write():
             for filepath in osutils.canonical_relpaths(self.basedir, file_list):
-                filepath = osutils.normalized_filename(filepath)[0]
+                filepath, can_access = osutils.normalized_filename(filepath)
+                if not can_access:
+                    raise errors.InvalidNormalization(filepath)
+
                 abspath = self.abspath(filepath)
                 kind = osutils.file_kind(abspath)
                 if kind in ("file", "symlink"):
