@@ -564,12 +564,11 @@ class GitWorkingTree(workingtree.WorkingTree):
         ensure_normalized_path(to_rel)
         to_path = to_rel.encode("utf-8")
         with self.lock_tree_write():
-            if after is None:
+            if not after:
                 # Perhaps it's already moved?
                 after = (
                     not self.has_filename(from_rel) and
                     self.has_filename(to_rel) and
-                    self.is_versioned(from_rel) and
                     not self.is_versioned(to_rel))
             if after:
                 if not self.has_filename(to_rel):
@@ -603,7 +602,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
                 kind = self.kind(from_rel)
 
-            if not from_path in self.index and kind != 'directory':
+            if not after and not from_path in self.index and kind != 'directory':
                 # It's not a file
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
                     errors.NotVersionedError(path=from_rel))
@@ -617,8 +616,11 @@ class GitWorkingTree(workingtree.WorkingTree):
                             errors.NoSuchFile(to_rel))
                     raise
             if kind != 'directory':
-                self.index[to_path] = self.index[from_path]
-                del self.index[from_path]
+                try:
+                    del self.index[from_path]
+                except KeyError:
+                    pass
+                self._index_add_entry(to_rel, kind)
             else:
                 todo = [p for p in self.index if p.startswith(from_path+'/')]
                 for p in todo:
