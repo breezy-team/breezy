@@ -357,12 +357,8 @@ class GitWorkingTree(workingtree.WorkingTree):
     def unversion(self, paths, file_ids=None):
         with self.lock_tree_write():
             for path in paths:
-                encoded_path = path.encode("utf-8")
-                try:
-                    del self.index[encoded_path]
-                except KeyError:
-                    if not self._has_dir(path):
-                        raise errors.NoSuchFile(path)
+                if self._unversion_path(path) == 0:
+                    raise errors.NoSuchFile(path)
             self._versioned_dirs = None
             self.flush()
 
