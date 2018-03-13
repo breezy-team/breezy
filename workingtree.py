@@ -1218,24 +1218,29 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _walkdirs(self, prefix=""):
         if prefix != "":
             prefix += "/"
-        per_dir = defaultdict(list)
+        per_dir = defaultdict(set)
         if prefix == "":
-            per_dir[('', self.get_root_id())] = []
+            per_dir[('', self.get_root_id())] = set()
+        def add_entry(path, kind):
+            if path == '' or not path.startswith(prefix):
+                return
+            (dirname, child_name) = posixpath.split(path)
+            add_entry(dirname, 'directory')
+            dirname = dirname.decode("utf-8")
+            dir_file_id = self.path2id(dirname)
+            assert isinstance(value, tuple) and len(value) == 10
+            per_dir[(dirname, dir_file_id)].add(
+                (path.decode("utf-8"), child_name.decode("utf-8"),
+                kind, None,
+                self.path2id(path.decode("utf-8")),
+                kind))
         for path, value in self.index.iteritems():
             if self.mapping.is_special_file(path):
                 continue
             if not path.startswith(prefix):
                 continue
-            (dirname, child_name) = posixpath.split(path)
-            dirname = dirname.decode("utf-8")
-            dir_file_id = self.path2id(dirname)
-            assert isinstance(value, tuple) and len(value) == 10
-            per_dir[(dirname, dir_file_id)].append(
-                (path.decode("utf-8"), child_name.decode("utf-8"),
-                mode_kind(value.mode), None,
-                self.path2id(path.decode("utf-8")),
-                mode_kind(value.mode)))
-        return ((k, sorted(v)) for (k, v) in per_dir.iteritems())
+            add_entry(path, mode_kind(value.mode))
+        return ((k, sorted(v)) for (k, v) in sorted(per_dir.iteritems()))
 
     def _lookup_entry(self, path, update_index=False):
         assert type(path) == str
