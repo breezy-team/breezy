@@ -69,6 +69,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             self.tree = commit.tree
             self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
 
+    def supports_rename_tracking(self):
+        return False
+
     def get_file_revision(self, path, file_id=None):
         change_scanner = self._repository._file_change_scanner
         (path, commit_id) = change_scanner.find_last_change_revision(

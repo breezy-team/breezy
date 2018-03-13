@@ -132,6 +132,9 @@ class GitWorkingTree(workingtree.WorkingTree):
     def supports_tree_reference(self):
         return False
 
+    def supports_rename_tracking(self):
+        return False
+
     def lock_read(self):
         """Lock the repository for read operations.
 
