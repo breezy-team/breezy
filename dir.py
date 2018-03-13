@@ -184,12 +184,6 @@ class GitDir(ControlDir):
             and (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
-            with wt.lock_write():
-                if wt.path2id('') is None:
-                    try:
-                        wt.set_root_id(self.open_workingtree.get_root_id())
-                    except bzr_errors.NoWorkingTree:
-                        pass
         return result
 
     def clone_on_transport(self, transport, revision_id=None,
