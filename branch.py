@@ -635,6 +635,10 @@ class LocalGitBranch(GitBranch):
                 self._tag_refs = list(self._iter_tag_refs())
             return self._tag_refs
 
+    def create_memorytree(self):
+        from .memorytree import GitMemoryTree
+        return GitMemoryTree(self, self.repository._git.object_store, self.head)
+
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     assert isinstance(revid, str), "was %r" % revid

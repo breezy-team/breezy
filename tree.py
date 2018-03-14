@@ -19,9 +19,19 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+import os
+
+from dulwich.index import (
+    index_entry_from_stat,
+    )
 from dulwich.object_store import (
     tree_lookup_path,
     OverlayObjectStore,
+    )
+from dulwich.objects import (
+    Blob,
+    Tree,
     )
 import stat
 import posixpath
@@ -29,9 +39,13 @@ import posixpath
 from ... import (
     delta,
     errors,
+    lock,
+    mutabletree,
     osutils,
     revisiontree,
+    trace,
     tree,
+    workingtree,
     )
 from ...revision import NULL_REVISION
 from ...bzr import (
@@ -44,6 +58,22 @@ from .mapping import (
     GitFileIdMap,
     default_mapping,
     )
+
+
+def ensure_normalized_path(path):
+    """Check whether path is normalized.
+
+    :raises InvalidNormalization: When path is not normalized, and cannot be
+        accessed on this platform by the normalized path.
+    :return: The NFC normalised version of path.
+    """
+    norm_path, can_access = osutils.normalized_filename(path)
+    if norm_path != path:
+        if can_access:
+            return norm_path
+        else:
+            raise errors.InvalidNormalization(path)
+    return path
 
 
 class GitRevisionTree(revisiontree.RevisionTree):
@@ -115,7 +145,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             if tree_id is None:
                 continue
             tree = self.store[tree_id]
-            for name, mode, hexsha in tree.iteritems():
+            for name, mode, hexsha in tree.items():
                 subpath = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
                     todo.add((subpath, hexsha))
@@ -499,3 +529,254 @@ class InterGitRevisionTrees(InterGitTrees):
 
 
 tree.InterTree.register_optimiser(InterGitRevisionTrees)
+
+
+class MutableGitIndexTree(mutabletree.MutableTree):
+
+    def __init__(self):
+        self._lock_mode = None
+        self._lock_count = 0
+        self._versioned_dirs = None
+
+    def is_versioned(self, path):
+        with self.lock_read():
+            path = path.rstrip('/').encode('utf-8')
+            return (path in self.index or self._has_dir(path))
+
+    def _has_dir(self, path):
+        if path == "":
+            return True
+        if self._versioned_dirs is None:
+            self._load_dirs()
+        return path in self._versioned_dirs
+
+    def _load_dirs(self):
+        assert self._lock_mode is not None
+        self._versioned_dirs = set()
+        for p in self.index:
+            self._ensure_versioned_dir(posixpath.dirname(p))
+
+    def _ensure_versioned_dir(self, dirname):
+        if dirname in self._versioned_dirs:
+            return
+        if dirname != "":
+            self._ensure_versioned_dir(posixpath.dirname(dirname))
+        self._versioned_dirs.add(dirname)
+
+    def path2id(self, path):
+        with self.lock_read():
+            path = path.rstrip('/')
+            if self.is_versioned(path.rstrip('/')):
+                return self._fileid_map.lookup_file_id(path.encode("utf-8"))
+            return None
+
+    def has_id(self, file_id):
+        try:
+            self.id2path(file_id)
+        except errors.NoSuchId:
+            return False
+        else:
+            return True
+
+    def id2path(self, file_id):
+        if file_id is None:
+            return ''
+        assert isinstance(file_id, bytes), "file id not a string: %r" % file_id
+        with self.lock_read():
+            try:
+                path = self._fileid_map.lookup_path(file_id)
+            except ValueError:
+                raise errors.NoSuchId(self, file_id)
+            path = path.decode('utf-8')
+            if self.is_versioned(path):
+                return path
+            raise errors.NoSuchId(self, file_id)
+
+    def _set_root_id(self, file_id):
+        self._fileid_map.set_file_id("", file_id)
+
+    def get_root_id(self):
+        return self.path2id("")
+
+    def _add(self, files, ids, kinds):
+        for (path, file_id, kind) in zip(files, ids, kinds):
+            if file_id is not None:
+                raise workingtree.SettingFileIdUnsupported()
+            self._index_add_entry(path, kind)
+
+    def _index_add_entry(self, path, kind, flags=0):
+        assert self._lock_mode is not None
+        assert isinstance(path, basestring)
+        if kind == "directory":
+            # Git indexes don't contain directories
+            return
+        if kind == "file":
+            blob = Blob()
+            try:
+                file, stat_val = self.get_file_with_stat(path)
+            except (errors.NoSuchFile, IOError):
+                # TODO: Rather than come up with something here, use the old index
+                file = BytesIO()
+                stat_val = os.stat_result(
+                    (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            blob.set_raw_string(file.read())
+        elif kind == "symlink":
+            blob = Blob()
+            try:
+                stat_val = self._lstat(path)
+            except (errors.NoSuchFile, OSError):
+                # TODO: Rather than come up with something here, use the
+                # old index
+                stat_val = os.stat_result(
+                    (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            blob.set_raw_string(
+                self.get_symlink_target(path).encode("utf-8"))
+        else:
+            raise AssertionError("unknown kind '%s'" % kind)
+        # Add object to the repository if it didn't exist yet
+        if not blob.id in self.store:
+            self.store.add_object(blob)
+        # Add an entry to the index or update the existing entry
+        ensure_normalized_path(path)
+        encoded_path = path.encode("utf-8")
+        if b'\r' in encoded_path or b'\n' in encoded_path:
+            # TODO(jelmer): Why do we need to do this?
+            trace.mutter('ignoring path with invalid newline in it: %r', path)
+            return
+        self.index[encoded_path] = index_entry_from_stat(
+            stat_val, blob.id, flags)
+        if self._versioned_dirs is not None:
+            self._ensure_versioned_dir(encoded_path)
+
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        if yield_parents:
+            raise NotImplementedError(self.iter_entries_by_dir)
+        with self.lock_read():
+            if specific_file_ids is not None:
+                specific_paths = []
+                for file_id in specific_file_ids:
+                    if file_id is None:
+                        continue
+                    try:
+                        specific_paths.append(self.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
+                if specific_paths in ([u""], []):
+                    specific_paths = None
+                else:
+                    specific_paths = set(specific_paths)
+            else:
+                specific_paths = None
+            root_ie = self._get_dir_ie(u"", None)
+            ret = {}
+            if specific_paths is None:
+                ret[(None, u"")] = root_ie
+            dir_ids = {u"": root_ie.file_id}
+            for path, value in self.index.iteritems():
+                if self.mapping.is_special_file(path):
+                    continue
+                path = path.decode("utf-8")
+                if specific_paths is not None and not path in specific_paths:
+                    continue
+                (parent, name) = posixpath.split(path)
+                try:
+                    file_ie = self._get_file_ie(name, path, value, None)
+                except errors.NoSuchFile:
+                    continue
+                if yield_parents or specific_file_ids is None:
+                    for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
+                            dir_ids):
+                        ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
+                file_ie.parent_id = self.path2id(parent)
+                ret[(posixpath.dirname(path), path)] = file_ie
+            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
+
+
+    def _get_dir_ie(self, path, parent_id):
+        file_id = self.path2id(path)
+        return inventory.InventoryDirectory(file_id,
+            posixpath.basename(path).strip("/"), parent_id)
+
+    def _get_file_ie(self, name, path, value, parent_id):
+        assert isinstance(name, unicode)
+        assert isinstance(path, unicode)
+        assert isinstance(value, tuple) and len(value) == 10
+        (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
+        file_id = self.path2id(path)
+        if type(file_id) != str:
+            raise AssertionError
+        kind = mode_kind(mode)
+        ie = inventory.entry_factory[kind](file_id, name, parent_id)
+        if kind == 'symlink':
+            ie.symlink_target = self.get_symlink_target(path, file_id)
+        else:
+            try:
+                data = self.get_file_text(path, file_id)
+            except errors.NoSuchFile:
+                data = None
+            except IOError as e:
+                if e.errno != errno.ENOENT:
+                    raise
+                data = None
+            if data is None:
+                data = self.branch.repository._git.object_store[sha].data
+            ie.text_sha1 = osutils.sha_string(data)
+            ie.text_size = len(data)
+            ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+        ie.revision = None
+        return ie
+
+    def _add_missing_parent_ids(self, path, dir_ids):
+        if path in dir_ids:
+            return []
+        parent = posixpath.dirname(path).strip("/")
+        ret = self._add_missing_parent_ids(parent, dir_ids)
+        parent_id = dir_ids[parent]
+        ie = self._get_dir_ie(path, parent_id)
+        dir_ids[path] = ie.file_id
+        ret.append((path, ie))
+        return ret
+
+    def _comparison_data(self, entry, path):
+        if entry is None:
+            return None, False, None
+        return entry.kind, entry.executable, None
+
+    def _unversion_path(self, path):
+        assert self._lock_mode is not None
+        encoded_path = path.encode("utf-8")
+        count = 0
+        try:
+            del self.index[encoded_path]
+        except KeyError:
+            # A directory, perhaps?
+            for p in list(self.index):
+                if p.startswith(encoded_path+b"/"):
+                    count += 1
+                    del self.index[p]
+        else:
+            count = 1
+        self._versioned_dirs = None
+        return count
+
+    def unversion(self, paths, file_ids=None):
+        with self.lock_tree_write():
+            for path in paths:
+                if self._unversion_path(path) == 0:
+                    raise errors.NoSuchFile(path)
+            self._versioned_dirs = None
+            self.flush()
+
+    def flush(self):
+        pass
+
+    def update_basis_by_delta(self, revid, delta):
+        # TODO(jelmer): This shouldn't be called, it's inventory specific.
+        for (old_path, new_path, file_id, ie) in delta:
+            if old_path is not None and old_path.encode('utf-8') in self.index:
+                del self.index[old_path.encode('utf-8')]
+                self._versioned_dirs = None
+            if new_path is not None and ie.kind != 'directory':
+                self._index_add_entry(new_path, ie.kind)
+        self.flush()
+        self._set_merges_from_parent_ids([])
