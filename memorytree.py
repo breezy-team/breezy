@@ -148,7 +148,6 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         left.
         """
         if self._locks == 1:
-            self._basis_tree = None
             self._parent_ids = []
             self.index = {}
             try:
@@ -194,9 +193,20 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
     def get_config_stack(self):
         return self.branch.get_config_stack()
 
+    def has_filename(self, path):
+        return self._file_transport.has(path)
+
     def _set_merges_from_parent_ids(self, rhs_parent_ids):
         if self.head is None:
             self._parent_ids = []
         else:
             self._parent_ids = [self.last_revision()]
         self._parent_ids.extend(rhs_parent_ids)
+
+    def set_parent_ids(self, parent_ids, allow_leftmost_as_ghost=False):
+        if len(parent_ids) == 0:
+            self._parent_ids = []
+            self.head = None
+        else:
+            self._parent_ids = parent_ids
+            self.head = self.branch.repository.lookup_bzr_revision_id(parent_ids[0])[0]
