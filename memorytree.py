@@ -19,6 +19,10 @@
 
 from __future__ import absolute_import
 
+import os
+import posixpath
+import stat
+
 from dulwich.objects import (
     Tree,
     )
@@ -57,8 +61,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         with self.lock_tree_write():
             for pos, f in enumerate(files):
                 if kinds[pos] is None:
-                    stat_value = self._file_transport.stat(f)
-                    kinds[pos] = osutils.file_kind_from_stat_mode(stat_value.st_mode)
+                    kinds[pos] = self.kind(f)
 
     def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
@@ -66,34 +69,35 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
 
     def _populate_from_branch(self):
         """Populate the in-tree state from the branch."""
-        if self.head is None:
-            self._parent_ids = []
-        else:
-            self._parent_ids = [self.last_revision()]
-        self._file_transport = MemoryTransport()
-        if self.head is None:
-            tree = Tree()
-            self._basis_fileid_map = GitFileIdMap({}, self.mapping)
-        else:
-            tree_id = self.store[self.head].tree
-            self._basis_fileid_map = self.mapping.get_fileid_map(
-                self.store.__getitem__, tree_id)
-            tree = self.store[tree_id]
-        self._fileid_map = self._basis_fileid_map.copy()
+        with self.lock_write():
+            if self.head is None:
+                self._parent_ids = []
+            else:
+                self._parent_ids = [self.last_revision()]
+            self._file_transport = MemoryTransport()
+            if self.head is None:
+                tree = Tree()
+                self._basis_fileid_map = GitFileIdMap({}, self.mapping)
+            else:
+                tree_id = self.store[self.head].tree
+                self._basis_fileid_map = self.mapping.get_fileid_map(
+                    self.store.__getitem__, tree_id)
+                tree = self.store[tree_id]
+            self._fileid_map = self._basis_fileid_map.copy()
 
-        trees = [("", tree)]
-        while trees:
-            (path, tree) = trees.pop()
-            for name, mode, sha in tree.iteritems():
-                subpath = posixpath.join(path, name)
-                if stat.S_ISDIR(mode):
-                    self._file_transport.mkdir(subpath)
-                    trees.append((subpath, sha))
-                elif stat.S_ISREG(mode):
-                    self._file_transport.put_bytes(subpath, self.store[sha].data)
-                    self._index_add_entry(subpath, 'kind')
-                else:
-                    raise NotImplementedError(self._populate_from_branch)
+            trees = [("", tree)]
+            while trees:
+                (path, tree) = trees.pop()
+                for name, mode, sha in tree.iteritems():
+                    subpath = posixpath.join(path, name)
+                    if stat.S_ISDIR(mode):
+                        self._file_transport.mkdir(subpath)
+                        trees.append((subpath, self.store[sha]))
+                    elif stat.S_ISREG(mode):
+                        self._file_transport.put_bytes(subpath, self.store[sha].data)
+                        self._index_add_entry(subpath, 'file')
+                    else:
+                        raise NotImplementedError(self._populate_from_branch)
 
     def lock_read(self):
         """Lock the memory tree for reading.
@@ -159,7 +163,13 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
             self._locks -= 1
 
     def _lstat(self, path):
-        return self._file_transport.stat(path)
+        mem_stat = self._file_transport.stat(path)
+        stat_val = os.stat_result(
+            (mem_stat.st_mode, 0, 0, 0, 0, 0, mem_stat.st_size, 0, 0, 0))
+        return stat_val
+
+    def get_file_with_stat(self, path, file_id=None):
+        return (self.get_file(path, file_id), self._lstat(path))
 
     def get_file(self, path, file_id=None):
         """See Tree.get_file."""
@@ -210,3 +220,15 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         else:
             self._parent_ids = parent_ids
             self.head = self.branch.repository.lookup_bzr_revision_id(parent_ids[0])[0]
+
+    def mkdir(self, path, file_id=None):
+        """See MutableTree.mkdir()."""
+        self.add(path, None, 'directory')
+        self._file_transport.mkdir(path)
+
+    def _rename_one(self, from_rel, to_rel):
+        self._file_transport.rename(from_rel, to_rel)
+
+    def kind(self, p):
+        stat_value = self._file_transport.stat(p)
+        return osutils.file_kind_from_stat_mode(stat_value.st_mode)

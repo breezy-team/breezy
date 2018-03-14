@@ -427,95 +427,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 self.flush()
             return added, ignored
 
-    def move(self, from_paths, to_dir=None, after=None):
-        rename_tuples = []
-        with self.lock_tree_write():
-            to_abs = self.abspath(to_dir)
-            if not os.path.isdir(to_abs):
-                raise errors.BzrMoveFailedError('', to_dir,
-                    errors.NotADirectory(to_abs))
-
-            for from_rel in from_paths:
-                from_tail = os.path.split(from_rel)[-1]
-                to_rel = os.path.join(to_dir, from_tail)
-                self.rename_one(from_rel, to_rel, after=after)
-                rename_tuples.append((from_rel, to_rel))
-            self.flush()
-            return rename_tuples
-
-    def rename_one(self, from_rel, to_rel, after=None):
-        from_path = from_rel.encode("utf-8")
-        to_rel, can_access = osutils.normalized_filename(to_rel)
-        if not can_access:
-            raise errors.InvalidNormalization(to_rel)
-        to_path = to_rel.encode("utf-8")
-        with self.lock_tree_write():
-            if not after:
-                # Perhaps it's already moved?
-                after = (
-                    not self.has_filename(from_rel) and
-                    self.has_filename(to_rel) and
-                    not self.is_versioned(to_rel))
-            if after:
-                if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(to_rel))
-                if self.basis_tree().is_versioned(to_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.AlreadyVersionedError(to_rel))
-
-                kind = self.kind(to_rel)
-            else:
-                try:
-                    to_kind = self.kind(to_rel)
-                except errors.NoSuchFile:
-                    exc_type = errors.BzrRenameFailedError
-                    to_kind = None
-                else:
-                    exc_type = errors.BzrMoveFailedError
-                if self.is_versioned(to_rel):
-                    raise exc_type(from_rel, to_rel,
-                        errors.AlreadyVersionedError(to_rel))
-                if not self.has_filename(from_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(from_rel))
-                if not self.is_versioned(from_rel):
-                    raise exc_type(from_rel, to_rel,
-                        errors.NotVersionedError(from_rel))
-                if self.has_filename(to_rel):
-                    raise errors.RenameFailedFilesExist(
-                        from_rel, to_rel, errors.FileExists(to_rel))
-
-                kind = self.kind(from_rel)
-
-            if not after and not from_path in self.index and kind != 'directory':
-                # It's not a file
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NotVersionedError(path=from_rel))
-
-            if not after:
-                try:
-                    os.rename(self.abspath(from_rel), self.abspath(to_rel))
-                except OSError as e:
-                    if e.errno == errno.ENOENT:
-                        raise errors.BzrMoveFailedError(from_rel, to_rel,
-                            errors.NoSuchFile(to_rel))
-                    raise
-            if kind != 'directory':
-                try:
-                    del self.index[from_path]
-                except KeyError:
-                    pass
-                self._index_add_entry(to_rel, kind)
-            else:
-                todo = [p for p in self.index if p.startswith(from_path+'/')]
-                for p in todo:
-                    self.index[posixpath.join(to_path, posixpath.relpath(p, from_path))] = self.index[p]
-                    del self.index[p]
-
-            self._versioned_dirs = None
-            self.flush()
-
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
@@ -1115,6 +1026,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             annotations = [(key[-1], line)
                            for key, line in annotator.annotate_flat(this_key)]
             return annotations
+
+    def _rename_one(self, from_rel, to_rel):
+        os.rename(self.abspath(from_rel), self.abspath(to_rel))
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
