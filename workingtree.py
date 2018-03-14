@@ -1244,50 +1244,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             add_entry(path, mode_kind(value.mode))
         return ((k, sorted(v)) for (k, v) in sorted(per_dir.iteritems()))
 
-    def _lookup_entry(self, path, update_index=False):
-        assert type(path) == str
-        entry = self.index[path]
-        index_mode = entry[-6]
-        index_sha = entry[-2]
-        disk_path = self.abspath(path.decode('utf-8')).encode(
-            osutils._fs_enc)
-        try:
-            disk_stat = os.lstat(disk_path)
-        except OSError, (num, msg):
-            if num in (errno.EISDIR, errno.ENOENT):
-                raise KeyError(path)
-            raise
-        disk_mtime = disk_stat.st_mtime
-        if isinstance(entry[1], tuple):
-            index_mtime = entry[1][0]
-        else:
-            index_mtime = int(entry[1])
-        mtime_delta = (disk_mtime - index_mtime)
-        disk_mode = cleanup_mode(disk_stat.st_mode)
-        if mtime_delta > 0 or disk_mode != index_mode:
-            if stat.S_ISDIR(disk_mode):
-                try:
-                    subrepo = Repo(disk_path)
-                except NotGitRepository:
-                    return (None, None)
-                else:
-                    disk_mode = S_IFGITLINK
-                    git_id = subrepo.head()
-            elif stat.S_ISLNK(disk_mode):
-                blob = Blob.from_string(os.readlink(disk_path))
-                git_id = blob.id
-            elif stat.S_ISREG(disk_mode):
-                with open(disk_path, 'r') as f:
-                    blob = Blob.from_string(f.read())
-                git_id = blob.id
-            else:
-                raise AssertionError
-            if update_index:
-                flags = 0 # FIXME
-                self.index[path] = index_entry_from_stat(disk_stat, git_id, flags, disk_mode)
-            return (git_id, disk_mode)
-        return (index_sha, index_mode)
-
     def get_shelf_manager(self):
         raise workingtree.ShelvingUnsupported()
 

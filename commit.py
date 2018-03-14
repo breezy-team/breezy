@@ -171,8 +171,7 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = basis_tree.get_file_text(path, entry.file_id)
                     self._blobs[encoded_path] = (entry_mode(entry), blob.id)
                 else:
-                    (mode, sha) = workingtree._lookup_entry(encoded_path, update_index=True)
-                    self._blobs[encoded_path] = (mode, sha)
+                    raise NotImplementedError
         if not self._lossy:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
