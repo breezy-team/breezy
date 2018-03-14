@@ -77,7 +77,10 @@ class GitFileParentProvider(object):
     def _get_parents(self, file_id, text_revision):
         commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
             text_revision)
-        path = mapping.parse_file_id(file_id)
+        try:
+            path = mapping.parse_file_id(file_id)
+        except ValueError:
+            raise KeyError(file_id)
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
