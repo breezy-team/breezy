@@ -34,6 +34,7 @@ from breezy import (
     revision,
     shelf,
     tests,
+    tree as _mod_tree,
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
@@ -496,6 +497,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
         self.assertFalse(revision.NULL_REVISION in must_fetch)
         self.assertFalse(revision.NULL_REVISION in should_fetch)
+
+    def test_create_memorytree(self):
+        tree = self.make_branch_and_tree('a')
+        self.assertIsInstance(tree.branch.create_memorytree(), _mod_tree.Tree)
 
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):
