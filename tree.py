@@ -454,7 +454,9 @@ class InterGitTrees(tree.InterTree):
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        changes = self._iter_git_changes(want_unchanged=want_unchanged)
+        changes = self._iter_git_changes(want_unchanged=want_unchanged,
+                require_versioned=require_versioned,
+                specific_files=specific_files)
         source_fileid_map = self.source._fileid_map
         target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
@@ -464,7 +466,9 @@ class InterGitTrees(tree.InterTree):
     def iter_changes(self, include_unchanged=False, specific_files=None,
                      pb=None, extra_trees=[], require_versioned=True,
                      want_unversioned=False):
-        changes = self._iter_git_changes(want_unchanged=include_unchanged)
+        changes = self._iter_git_changes(want_unchanged=include_unchanged,
+                require_versioned=require_versioned,
+                specific_files=specific_files)
         return changes_from_git_changes(changes, self.target.mapping,
             specific_files=specific_files)
 
@@ -484,7 +488,14 @@ class InterGitRevisionTrees(InterGitTrees):
         return (isinstance(source, GitRevisionTree) and
                 isinstance(target, GitRevisionTree))
 
-    def _iter_git_changes(self, want_unchanged=False):
+    def _iter_git_changes(self, want_unchanged=False, require_versioned=False,
+            specific_files=None):
+        if require_versioned and specific_files:
+            for path in specific_files:
+                if (not self.source.is_versioned(path) and
+                    not self.target.is_versioned(path)):
+                    raise errors.PathsNotVersionedError(path)
+
         if self.source._repository._git.object_store != self.target._repository._git.object_store:
             store = OverlayObjectStore([self.source._repository._git.object_store,
                                         self.target._repository._git.object_store])
