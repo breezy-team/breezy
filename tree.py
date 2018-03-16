@@ -379,8 +379,7 @@ def tree_delta_from_git_changes(changes, mapping,
     return ret
 
 
-def changes_from_git_changes(changes, mapping, specific_files=None,
-                                require_versioned=False):
+def changes_from_git_changes(changes, mapping, specific_files=None, include_unchanged=False):
     """Create a iter_changes-like generator from a git stream.
 
     source and target are iterators over tuples with:
@@ -433,6 +432,10 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             else:
                 newparentpath, newname = osutils.split(newpath)
                 newparent = mapping.generate_file_id(newparentpath)
+        if (not include_unchanged and
+            oldkind == 'directory' and newkind == 'directory' and
+            oldpath == newpath):
+            continue
         yield (fileid, (oldpath, newpath), (oldsha != newsha),
              (oldpath is not None, newpath is not None),
              (oldparent, newparent), (oldname, newname),
@@ -470,7 +473,7 @@ class InterGitTrees(tree.InterTree):
                 require_versioned=require_versioned,
                 specific_files=specific_files)
         return changes_from_git_changes(changes, self.target.mapping,
-            specific_files=specific_files)
+            specific_files=specific_files, include_unchanged=include_unchanged)
 
     def _iter_git_changes(self, want_unchanged=False):
         raise NotImplementedError(self._iter_git_changes)

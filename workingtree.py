@@ -458,7 +458,6 @@ class GitWorkingTree(workingtree.WorkingTree):
                         files_to_backup.append(path[1])
                         files_to_backup.extend(osutils.parent_directories(path[1]))
 
-
             for f in files:
                 if f == '':
                     continue
@@ -1442,7 +1441,8 @@ class InterIndexGitTree(InterGitTrees):
                         untracked_changes(self.target))
             return changes_from_git_changes(
                     changes, self.target.mapping,
-                    specific_files=specific_files)
+                    specific_files=specific_files,
+                    include_unchanged=include_unchanged)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
@@ -1481,8 +1481,5 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     """
     blobs = iter_fresh_blobs(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
     to_tree_sha = commit_tree(store, blobs)
-    for change in store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged, change_type_same=True):
-        if change[1][0] == '' and not include_root:
-            continue
-        yield change
+    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
+            want_unchanged=want_unchanged, change_type_same=True)
