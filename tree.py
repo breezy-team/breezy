@@ -291,7 +291,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
         :param desired_files: a list of (path, identifier) pairs
         """
-        for file_id, identifier in desired_files:
+        for path, identifier in desired_files:
             cur_file = (self.get_file_text(path),)
             yield identifier, cur_file
 
