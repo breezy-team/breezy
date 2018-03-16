@@ -28,6 +28,7 @@ from dulwich.objects import (
     )
 
 from breezy import (
+    errors,
     lock,
     osutils,
     revision as _mod_revision,
@@ -47,10 +48,13 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         self.mapping = self.branch.repository.get_mapping()
         self.store = store
         self.index = {}
-        self.head = head
         self._locks = 0
         self._lock_mode = None
         self._populate_from_branch()
+
+    @property
+    def controldir(self):
+        return self.branch.controldir
 
     def is_control_filename(self, path):
         return False
@@ -69,35 +73,34 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
 
     def _populate_from_branch(self):
         """Populate the in-tree state from the branch."""
-        with self.lock_write():
-            if self.head is None:
-                self._parent_ids = []
-            else:
-                self._parent_ids = [self.last_revision()]
-            self._file_transport = MemoryTransport()
-            if self.head is None:
-                tree = Tree()
-                self._basis_fileid_map = GitFileIdMap({}, self.mapping)
-            else:
-                tree_id = self.store[self.head].tree
-                self._basis_fileid_map = self.mapping.get_fileid_map(
-                    self.store.__getitem__, tree_id)
-                tree = self.store[tree_id]
-            self._fileid_map = self._basis_fileid_map.copy()
+        if self.branch.head is None:
+            self._parent_ids = []
+        else:
+            self._parent_ids = [self.last_revision()]
+        self._file_transport = MemoryTransport()
+        if self.branch.head is None:
+            tree = Tree()
+            self._basis_fileid_map = GitFileIdMap({}, self.mapping)
+        else:
+            tree_id = self.store[self.branch.head].tree
+            self._basis_fileid_map = self.mapping.get_fileid_map(
+                self.store.__getitem__, tree_id)
+            tree = self.store[tree_id]
+        self._fileid_map = self._basis_fileid_map.copy()
 
-            trees = [("", tree)]
-            while trees:
-                (path, tree) = trees.pop()
-                for name, mode, sha in tree.iteritems():
-                    subpath = posixpath.join(path, name)
-                    if stat.S_ISDIR(mode):
-                        self._file_transport.mkdir(subpath)
-                        trees.append((subpath, self.store[sha]))
-                    elif stat.S_ISREG(mode):
-                        self._file_transport.put_bytes(subpath, self.store[sha].data)
-                        self._index_add_entry(subpath, 'file')
-                    else:
-                        raise NotImplementedError(self._populate_from_branch)
+        trees = [("", tree)]
+        while trees:
+            (path, tree) = trees.pop()
+            for name, mode, sha in tree.iteritems():
+                subpath = posixpath.join(path, name)
+                if stat.S_ISDIR(mode):
+                    self._file_transport.mkdir(subpath)
+                    trees.append((subpath, self.store[sha]))
+                elif stat.S_ISREG(mode):
+                    self._file_transport.put_bytes(subpath, self.store[sha].data)
+                    self._index_add_entry(subpath, 'file')
+                else:
+                    raise NotImplementedError(self._populate_from_branch)
 
     def lock_read(self):
         """Lock the memory tree for reading.
@@ -192,9 +195,9 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
     def last_revision(self):
         """See MutableTree.last_revision."""
         with self.lock_read():
-            if self.head is None:
+            if self.branch.head is None:
                 return _mod_revision.NULL_REVISION
-            return self.branch.repository.lookup_foreign_revision_id(self.head)
+            return self.branch.repository.lookup_foreign_revision_id(self.branch.head)
 
     def basis_tree(self):
         """See Tree.basis_tree()."""
@@ -207,7 +210,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         return self._file_transport.has(path)
 
     def _set_merges_from_parent_ids(self, rhs_parent_ids):
-        if self.head is None:
+        if self.branch.head is None:
             self._parent_ids = []
         else:
             self._parent_ids = [self.last_revision()]
@@ -216,10 +219,10 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
     def set_parent_ids(self, parent_ids, allow_leftmost_as_ghost=False):
         if len(parent_ids) == 0:
             self._parent_ids = []
-            self.head = None
+            self.branch.head = None
         else:
             self._parent_ids = parent_ids
-            self.head = self.branch.repository.lookup_bzr_revision_id(parent_ids[0])[0]
+            self.branch.head = self.branch.repository.lookup_bzr_revision_id(parent_ids[0])[0]
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
