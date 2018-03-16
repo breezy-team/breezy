@@ -397,11 +397,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         if to_file is None:
             to_file = sys.stdout
 
-        files = list(files)
-
-        if len(files) == 0:
-            return # nothing to do
-
         def backup(file_to_backup):
             abs_path = self.abspath(file_to_backup)
             backup_name = self.controldir._available_backup_name(file_to_backup)
@@ -410,10 +405,42 @@ class GitWorkingTree(workingtree.WorkingTree):
                 file_to_backup, backup_name)
 
         # Sort needed to first handle directory content before the directory
-        files.sort(reverse=True)
         files_to_backup = []
 
+        all_files = set()
+
+        def recurse_directory_to_add_files(directory):
+            # Recurse directory and add all files
+            # so we can check if they have changed.
+            for parent_info, file_infos in self.walkdirs(directory):
+                for relpath, basename, kind, lstat, fileid, kind in file_infos:
+                    # Is it versioned or ignored?
+                    if self.is_versioned(relpath):
+                        # Add nested content for deletion.
+                        all_files.add(relpath)
+                    else:
+                        # Files which are not versioned
+                        # should be treated as unknown.
+                        files_to_backup.append(relpath)
+
         with self.lock_tree_write():
+            for filepath in files:
+                # Get file name into canonical form.
+                abspath = self.abspath(filepath)
+                filepath = self.relpath(abspath)
+
+                if filepath:
+                    all_files.add(filepath)
+                    recurse_directory_to_add_files(filepath)
+
+            files = list(all_files)
+
+            if len(files) == 0:
+                return # nothing to do
+
+            # Sort needed to first handle directory content before the directory
+            files.sort(reverse=True)
+
             # Bail out if we are going to delete files we shouldn't
             if not keep_files and not force:
                 for (file_id, path, content_change, versioned, parent_id, name,
@@ -423,11 +450,14 @@ class GitWorkingTree(workingtree.WorkingTree):
                     if versioned[0] == False:
                         # The record is unknown or newly added
                         files_to_backup.append(path[1])
+                        files_to_backup.extend(osutils.parent_directories(path[1]))
                     elif (content_change and (kind[1] is not None) and
                             osutils.is_inside_any(files, path[1])):
                         # Versioned and changed, but not deleted, and still
                         # in one of the dirs to be deleted.
                         files_to_backup.append(path[1])
+                        files_to_backup.extend(osutils.parent_directories(path[1]))
+
 
             for f in files:
                 if f == '':
@@ -445,7 +475,6 @@ class GitWorkingTree(workingtree.WorkingTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    # XXX: Really should be a more abstract reporter interface
                     kind_ch = osutils.kind_marker(kind)
                     to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 if kind is None:
@@ -453,13 +482,15 @@ class GitWorkingTree(workingtree.WorkingTree):
                 else:
                     if not keep_files:
                         if f in files_to_backup and not force:
-                            backup(f)
+                            message = backup(f)
                         else:
                             if kind == 'directory':
                                 osutils.rmtree(abs_path)
                             else:
                                 osutils.delete_any(abs_path)
-                    message = "removed %s" % (f,)
+                            message = "deleted %s" % (f,)
+                    else:
+                        message = "removed %s" % (f,)
                 self._unversion_path(f)
 
                 # print only one message (if any) per file.
