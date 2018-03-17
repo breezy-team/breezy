@@ -145,8 +145,8 @@ def get_revisions_and_committers(a_repo, revids):
     combo_count = {}
     with ui.ui_factory.nested_progress_bar() as pb:
         trace.note('getting revisions')
-        revisions = a_repo.iter_revisions(revids)
-        for count, (revid, rev) in enumerate(revisions):
+        revisions = []
+        for count, (revid, rev) in enumerate(a_repo.iter_revisions(revids)):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
                 # XXX: There is a chance sometimes with svn imports that the
@@ -155,6 +155,7 @@ def get_revisions_and_committers(a_repo, revids):
                 email_users.setdefault(email, set()).add(username)
                 combo = (username, email)
                 combo_count[combo] = combo_count.setdefault(combo, 0) + 1
+            revisions.append(rev)
     return revisions, collapse_email_and_users(email_users, combo_count)
 
 

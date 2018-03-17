@@ -45,6 +45,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
         self.assertEqual({('Fero', ''): ('Fero', ''),
                           ('FERO', ''): ('Fero', ''),
                          }, committers)
+        self.assertEquals(['1', '2', '3'], [r.revision_id for r in revs])
 
 
 class TestCollapseByPerson(TestCase):
