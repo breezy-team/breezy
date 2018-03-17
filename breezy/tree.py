@@ -1150,7 +1150,8 @@ class InterTree(InterObject):
                     yield result
 
     def file_content_matches(
-            self, source_path, target_path, source_file_id, target_file_id,
+            self, source_path, target_path,
+            source_file_id=None, target_file_id=None,
             source_stat=None, target_stat=None):
         """Check if two files are the same in the source and target trees.
 
@@ -1159,8 +1160,8 @@ class InterTree(InterObject):
 
         :param source_path: Path of the file in the source tree
         :param target_path: Path of the file in the target tree
-        :param source_file_id: File id of the file in the source tree
-        :param target_file_id: File id of the file in the target tree
+        :param source_file_id: Optional file id of the file in the source tree
+        :param target_file_id: Optional file id of the file in the target tree
         :param source_stat: Optional stat value of the file in the source tree
         :param target_stat: Optional stat value of the file in the target tree
         :return: Boolean indicating whether the files have the same contents

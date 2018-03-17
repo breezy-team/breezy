@@ -34,6 +34,7 @@ class TestFileContentMatches(TestCaseWithTwoTrees):
         inter = self.intertree_class(tree1, tree2)
         self.assertTrue(inter.file_content_matches(
             'file', 'file', 'file-id-1', 'file-id-2'))
+        self.assertTrue(inter.file_content_matches('file', 'file'))
 
     def test_different_contents_and_same_verifier(self):
         tree1 = self.make_branch_and_tree('1')
@@ -48,3 +49,5 @@ class TestFileContentMatches(TestCaseWithTwoTrees):
         inter = self.intertree_class(tree1, tree2)
         self.assertFalse(inter.file_content_matches(
             'file', 'file', 'file-id-1', 'file-id-2'))
+        self.assertFalse(inter.file_content_matches(
+            'file', 'file'))
