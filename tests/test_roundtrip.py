@@ -18,6 +18,7 @@
 
 """Tests for roundtripping text parsing."""
 
+from __future__ import absolute_import
 
 from ....tests import TestCase
 

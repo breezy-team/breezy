@@ -16,6 +16,8 @@
 
 """Test the smart client."""
 
+from __future__ import absolute_import
+
 from ....errors import (
     BzrError,
     NotBranchError,

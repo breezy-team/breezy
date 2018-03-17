@@ -17,6 +17,8 @@
 
 """Test the GitDir class"""
 
+from __future__ import absolute_import
+
 from dulwich.repo import Repo as GitRepo
 import os
 

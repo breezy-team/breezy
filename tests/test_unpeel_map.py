@@ -16,6 +16,8 @@
 
 """Tests for the unpeel map."""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from ....tests import (

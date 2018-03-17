@@ -16,6 +16,7 @@
 
 """Tests for bzr-git's object store."""
 
+from __future__ import absolute_import
 
 from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests

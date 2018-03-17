@@ -17,6 +17,8 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
+from __future__ import absolute_import
+
 from ....controldir import (
     format_registry,
     )
