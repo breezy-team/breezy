@@ -18,6 +18,7 @@
 
 """Tests for interfacing with a Git Branch"""
 
+from __future__ import absolute_import
 
 import dulwich
 from dulwich.objects import (

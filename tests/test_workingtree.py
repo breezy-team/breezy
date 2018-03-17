@@ -17,6 +17,8 @@
 
 """Tests for Git working trees."""
 
+from __future__ import absolute_import
+
 from .... import (
     conflicts as _mod_conflicts,
     )

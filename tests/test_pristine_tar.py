@@ -16,6 +16,8 @@
 
 """Tests for pristine tar extraction code."""
 
+from __future__ import absolute_import
+
 from base64 import standard_b64encode
 
 from ..pristine_tar import (

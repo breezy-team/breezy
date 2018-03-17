@@ -16,6 +16,8 @@
 
 """Test the git revision specifiers."""
 
+from __future__ import absolute_import
+
 from ....tests import TestCase
 
 from ..revspec import (

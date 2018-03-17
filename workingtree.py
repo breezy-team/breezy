@@ -82,6 +82,7 @@ from .tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
     InterGitTrees,
+    MutableGitIndexTree,
     )
 from .mapping import (
     GitFileIdMap,
@@ -91,26 +92,11 @@ from .mapping import (
 IGNORE_FILENAME = ".gitignore"
 
 
-def ensure_normalized_path(path):
-    """Check whether path is normalized.
-
-    :raises InvalidNormalization: When path is not normalized, and cannot be
-        accessed on this platform by the normalized path.
-    :return: The NFC normalised version of path.
-    """
-    norm_path, can_access = osutils.normalized_filename(path)
-    if norm_path != path:
-        if can_access:
-            return norm_path
-        else:
-            raise errors.InvalidNormalization(path)
-    return path
-
-
-class GitWorkingTree(workingtree.WorkingTree):
+class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     """A Git working tree."""
 
     def __init__(self, controldir, repo, branch, index):
+        MutableGitIndexTree.__init__(self)
         basedir = controldir.root_transport.local_abspath('.')
         self.basedir = osutils.realpath(basedir)
         self.controldir = controldir
@@ -121,14 +107,11 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._transport = controldir.transport
         self._format = GitWorkingTreeFormat()
         self.index = index
-        self._versioned_dirs = None
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
         self._reset_data()
         self._fileid_map = self._basis_fileid_map.copy()
-        self._lock_mode = None
-        self._lock_count = 0
 
     def supports_tree_reference(self):
         return False
@@ -189,6 +172,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         if self._lock_count > 0:
             return
         self._lock_mode = None
+
+    def _cleanup(self):
+        pass
 
     def _cleanup(self):
         pass
@@ -283,103 +269,6 @@ class GitWorkingTree(workingtree.WorkingTree):
                 # Not a direct child but something further down
                 continue
             yield self.path2id(path)
-
-    def _index_add_entry(self, path, kind, flags=0):
-        if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
-        if not isinstance(path, basestring):
-            raise TypeError(path)
-        if kind == "directory":
-            # Git indexes don't contain directories
-            return
-        if kind == "file":
-            blob = Blob()
-            try:
-                file, stat_val = self.get_file_with_stat(path)
-            except (errors.NoSuchFile, IOError):
-                # TODO: Rather than come up with something here, use the old index
-                file = StringIO()
-                stat_val = os.stat_result(
-                    (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(file.read())
-        elif kind == "symlink":
-            blob = Blob()
-            try:
-                stat_val = os.lstat(self.abspath(path))
-            except (errors.NoSuchFile, OSError):
-                # TODO: Rather than come up with something here, use the
-                # old index
-                stat_val = os.stat_result(
-                    (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(
-                self.get_symlink_target(path).encode("utf-8"))
-        else:
-            raise AssertionError("unknown kind '%s'" % kind)
-        # Add object to the repository if it didn't exist yet
-        if not blob.id in self.store:
-            self.store.add_object(blob)
-        # Add an entry to the index or update the existing entry
-        ensure_normalized_path(path)
-        encoded_path = path.encode("utf-8")
-        if b'\r' in encoded_path or b'\n' in encoded_path:
-            # TODO(jelmer): Why do we need to do this?
-            trace.mutter('ignoring path with invalid newline in it: %r', path)
-            return
-        self.index[encoded_path] = index_entry_from_stat(
-            stat_val, blob.id, flags)
-        if self._versioned_dirs is not None:
-            self._ensure_versioned_dir(encoded_path)
-
-    def _ensure_versioned_dir(self, dirname):
-        if dirname in self._versioned_dirs:
-            return
-        if dirname != "":
-            self._ensure_versioned_dir(posixpath.dirname(dirname))
-        self._versioned_dirs.add(dirname)
-
-    def _load_dirs(self):
-        if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
-        self._versioned_dirs = set()
-        for p in self.index:
-            self._ensure_versioned_dir(posixpath.dirname(p))
-
-    def _unversion_path(self, path):
-        if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
-        encoded_path = path.encode("utf-8")
-        count = 0
-        try:
-            del self.index[encoded_path]
-        except KeyError:
-            # A directory, perhaps?
-            for p in list(self.index):
-                if p.startswith(encoded_path+b"/"):
-                    count += 1
-                    del self.index[p]
-        else:
-            count = 1
-        self._versioned_dirs = None
-        return count
-
-    def unversion(self, paths, file_ids=None):
-        with self.lock_tree_write():
-            for path in paths:
-                if self._unversion_path(path) == 0:
-                    raise errors.NoSuchFile(path)
-            self._versioned_dirs = None
-            self.flush()
-
-    def update_basis_by_delta(self, revid, delta):
-        # TODO(jelmer): This shouldn't be called, it's inventory specific.
-        for (old_path, new_path, file_id, ie) in delta:
-            if old_path is not None and old_path.encode('utf-8') in self.index:
-                del self.index[old_path.encode('utf-8')]
-                self._versioned_dirs = None
-            if new_path is not None and ie.kind != 'directory':
-                self._index_add_entry(new_path, ie.kind)
-        self.flush()
-        self._set_merges_from_parent_ids([])
 
     def check_state(self):
         """Check that the working state is/isn't valid."""
@@ -501,12 +390,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             self._versioned_dirs = None
             self.flush()
 
-    def _add(self, files, ids, kinds):
-        for (path, file_id, kind) in zip(files, ids, kinds):
-            if file_id is not None:
-                raise workingtree.SettingFileIdUnsupported()
-            self._index_add_entry(path, kind)
-
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         if not file_list:
             file_list = [u'.']
@@ -586,115 +469,8 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self.flush()
             return added, ignored
 
-    def _set_root_id(self, file_id):
-        self._fileid_map.set_file_id("", file_id)
-
-    def move(self, from_paths, to_dir=None, after=None):
-        rename_tuples = []
-        with self.lock_tree_write():
-            to_abs = self.abspath(to_dir)
-            if not os.path.isdir(to_abs):
-                raise errors.BzrMoveFailedError('', to_dir,
-                    errors.NotADirectory(to_abs))
-
-            for from_rel in from_paths:
-                from_tail = os.path.split(from_rel)[-1]
-                to_rel = os.path.join(to_dir, from_tail)
-                self.rename_one(from_rel, to_rel, after=after)
-                rename_tuples.append((from_rel, to_rel))
-            self.flush()
-            return rename_tuples
-
-    def rename_one(self, from_rel, to_rel, after=None):
-        from_path = from_rel.encode("utf-8")
-        ensure_normalized_path(to_rel)
-        to_path = to_rel.encode("utf-8")
-        with self.lock_tree_write():
-            if not after:
-                # Perhaps it's already moved?
-                after = (
-                    not self.has_filename(from_rel) and
-                    self.has_filename(to_rel) and
-                    not self.is_versioned(to_rel))
-            if after:
-                if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(to_rel))
-                if self.basis_tree().is_versioned(to_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.AlreadyVersionedError(to_rel))
-
-                kind = self.kind(to_rel)
-            else:
-                try:
-                    to_kind = self.kind(to_rel)
-                except errors.NoSuchFile:
-                    exc_type = errors.BzrRenameFailedError
-                    to_kind = None
-                else:
-                    exc_type = errors.BzrMoveFailedError
-                if self.is_versioned(to_rel):
-                    raise exc_type(from_rel, to_rel,
-                        errors.AlreadyVersionedError(to_rel))
-                if not self.has_filename(from_rel):
-                    raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(from_rel))
-                if not self.is_versioned(from_rel):
-                    raise exc_type(from_rel, to_rel,
-                        errors.NotVersionedError(from_rel))
-                if self.has_filename(to_rel):
-                    raise errors.RenameFailedFilesExist(
-                        from_rel, to_rel, errors.FileExists(to_rel))
-
-                kind = self.kind(from_rel)
-
-            if not after and not from_path in self.index and kind != 'directory':
-                # It's not a file
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NotVersionedError(path=from_rel))
-
-            if not after:
-                try:
-                    os.rename(self.abspath(from_rel), self.abspath(to_rel))
-                except OSError as e:
-                    if e.errno == errno.ENOENT:
-                        raise errors.BzrMoveFailedError(from_rel, to_rel,
-                            errors.NoSuchFile(to_rel))
-                    raise
-            if kind != 'directory':
-                try:
-                    del self.index[from_path]
-                except KeyError:
-                    pass
-                self._index_add_entry(to_rel, kind)
-            else:
-                todo = [p for p in self.index if p.startswith(from_path+'/')]
-                for p in todo:
-                    self.index[posixpath.join(to_path, posixpath.relpath(p, from_path))] = self.index[p]
-                    del self.index[p]
-
-            self._versioned_dirs = None
-            self.flush()
-
-    def get_root_id(self):
-        return self.path2id("")
-
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
-
-    def _has_dir(self, path):
-        if path == "":
-            return True
-        if self._versioned_dirs is None:
-            self._load_dirs()
-        return path in self._versioned_dirs
-
-    def path2id(self, path):
-        with self.lock_read():
-            path = path.rstrip('/')
-            if self.is_versioned(path.rstrip('/')):
-                return self._fileid_map.lookup_file_id(path.encode("utf-8"))
-            return None
 
     def _iter_files_recursive(self, from_dir=None, include_dirs=False):
         if from_dir is None:
@@ -777,32 +553,10 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             return True
 
-    def has_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        else:
-            return True
-
-    def id2path(self, file_id):
-        if type(file_id) is not str:
-            raise TypeError(file_id)
-        file_id = osutils.safe_utf8(file_id)
-        with self.lock_read():
-            try:
-                path = self._fileid_map.lookup_path(file_id)
-            except ValueError:
-                raise errors.NoSuchId(self, file_id)
-            path = path.decode('utf-8')
-            if self.is_versioned(path):
-                return path
-            raise errors.NoSuchId(self, file_id)
-
     def get_file_mtime(self, path, file_id=None):
         """See Tree.get_file_mtime."""
         try:
-            return os.lstat(self.abspath(path)).st_mtime
+            return self._lstat(path).st_mtime
         except OSError, (num, msg):
             if num == errno.ENOENT:
                 raise errors.NoSuchFile(path)
@@ -891,61 +645,8 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
-    def is_versioned(self, path):
-        with self.lock_read():
-            path = path.rstrip('/').encode('utf-8')
-            return (path in self.index or self._has_dir(path))
-
     def filter_unversioned_files(self, files):
         return set([p for p in files if not self.is_versioned(p)])
-
-    def _get_dir_ie(self, path, parent_id):
-        file_id = self.path2id(path)
-        return inventory.InventoryDirectory(file_id,
-            posixpath.basename(path).strip("/"), parent_id)
-
-    def _add_missing_parent_ids(self, path, dir_ids):
-        if path in dir_ids:
-            return []
-        parent = posixpath.dirname(path).strip("/")
-        ret = self._add_missing_parent_ids(parent, dir_ids)
-        parent_id = dir_ids[parent]
-        ie = self._get_dir_ie(path, parent_id)
-        dir_ids[path] = ie.file_id
-        ret.append((path, ie))
-        return ret
-
-    def _get_file_ie(self, name, path, value, parent_id):
-        if type(name) is not unicode:
-            raise TypeError(name)
-        if type(path) is not unicode:
-            raise TypeError(path)
-        if not isinstance(value, tuple) or len(value) != 10:
-            raise ValueError(value)
-        (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-        file_id = self.path2id(path)
-        if type(file_id) != str:
-            raise AssertionError
-        kind = mode_kind(mode)
-        ie = inventory.entry_factory[kind](file_id, name, parent_id)
-        if kind == 'symlink':
-            ie.symlink_target = self.get_symlink_target(path, file_id)
-        else:
-            try:
-                data = self.get_file_text(path, file_id)
-            except errors.NoSuchFile:
-                data = None
-            except IOError as e:
-                if e.errno != errno.ENOENT:
-                    raise
-                data = None
-            if data is None:
-                data = self.repository._git.object_store[sha].data
-            ie.text_sha1 = osutils.sha_string(data)
-            ie.text_size = len(data)
-            ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
-        ie.revision = None
-        return ie
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
@@ -964,9 +665,12 @@ class GitWorkingTree(workingtree.WorkingTree):
                     return "directory"
                 raise errors.NoSuchFile(path)
 
+    def _lstat(self, path):
+        return os.lstat(self.abspath(path))
+
     def is_executable(self, path, file_id=None):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
-            mode = os.lstat(self.abspath(path)).st_mode
+            mode = self._lstat(path).st_mode
         else:
             try:
                 mode = self.index[path.encode('utf-8')].mode
@@ -1095,49 +799,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             yield file_ie
         if not found_any:
             raise errors.NoSuchFile(path)
-
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
-        if yield_parents:
-            raise NotImplementedError(self.iter_entries_by_dir)
-        with self.lock_read():
-            if specific_file_ids is not None:
-                specific_paths = []
-                for file_id in specific_file_ids:
-                    if file_id is None:
-                        continue
-                    try:
-                        specific_paths.append(self.id2path(file_id))
-                    except errors.NoSuchId:
-                        pass
-                if specific_paths in ([u""], []):
-                    specific_paths = None
-                else:
-                    specific_paths = set(specific_paths)
-            else:
-                specific_paths = None
-            root_ie = self._get_dir_ie(u"", None)
-            ret = {}
-            if specific_paths is None:
-                ret[(None, u"")] = root_ie
-            dir_ids = {u"": root_ie.file_id}
-            for path, value in self.index.iteritems():
-                if self.mapping.is_special_file(path):
-                    continue
-                path = path.decode("utf-8")
-                if specific_paths is not None and not path in specific_paths:
-                    continue
-                (parent, name) = posixpath.split(path)
-                try:
-                    file_ie = self._get_file_ie(name, path, value, None)
-                except errors.NoSuchFile:
-                    continue
-                if yield_parents or specific_file_ids is None:
-                    for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
-                            dir_ids):
-                        ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
-                file_ie.parent_id = self.path2id(parent)
-                ret[(posixpath.dirname(path), path)] = file_ie
-            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
     def conflicts(self):
         with self.lock_read():
@@ -1364,6 +1025,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             annotations = [(key[-1], line)
                            for key, line in annotator.annotate_flat(this_key)]
             return annotations
+
+    def _rename_one(self, from_rel, to_rel):
+        os.rename(self.abspath(from_rel), self.abspath(to_rel))
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
