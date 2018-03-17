@@ -53,7 +53,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._revision_id = revision_id
         self._repository = repository
         self.store = repository._git.object_store
-        assert isinstance(revision_id, str)
+        if type(revision_id) is not str:
+            raise TypeError(revision_id)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:
             self.tree = None
@@ -209,8 +210,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield child_path.decode('utf-8'), "V", ie.kind, ie.file_id, ie
 
     def _get_file_ie(self, path, name, mode, hexsha, parent_id):
-        assert isinstance(path, bytes)
-        assert isinstance(name, bytes)
+        if type(path) is not bytes:
+            raise TypeError(path)
+        if type(name) is not bytes:
+            raise TypeError(name)
         kind = mode_kind(mode)
         file_id = self._fileid_map.lookup_file_id(path)
         ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
@@ -406,7 +409,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldparent = None
         else:
             oldpath = oldpath.decode("utf-8")
-            assert oldmode is not None
+            if oldmode is None:
+                raise ValueError
             oldexe = mode_is_executable(oldmode)
             oldkind = mode_kind(oldmode)
             if oldpath == u'':

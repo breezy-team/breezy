@@ -290,7 +290,8 @@ class DictCacheUpdater(CacheUpdater):
     def add_object(self, obj, bzr_key_data, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert type(bzr_key_data) is dict
+            if type(bzr_key_data) is not dict:
+                raise TypeError(bzr_key_data)
             key = self.revid
             type_data = (self.revid, self._commit.tree, bzr_key_data)
             self.cache.idmap._by_revid[self.revid] = obj.id
@@ -357,7 +358,8 @@ class SqliteCacheUpdater(CacheUpdater):
     def add_object(self, obj, bzr_key_data, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert type(bzr_key_data) is dict
+            if type(bzr_key_data) is not dict:
+                raise TypeError(bzr_key_data)
             self._testament3_sha1 = bzr_key_data.get("testament3-sha1")
         elif obj.type_name == "tree":
             if bzr_key_data is not None:
@@ -521,7 +523,8 @@ class TdbCacheUpdater(CacheUpdater):
         sha = obj.sha().digest()
         if obj.type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
-            assert type(bzr_key_data) is dict, "was %r" % bzr_key_data
+            if type(bzr_key_data) is not dict:
+                raise TypeError(bzr_key_data)
             type_data = (self.revid, obj.tree)
             try:
                 type_data += (bzr_key_data["testament3-sha1"],)
@@ -572,7 +575,8 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             basepath = transport.local_abspath(".").encode(osutils._fs_enc)
         except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
-        assert isinstance(basepath, str)
+        if type(basepath) is not str:
+            raise TypeError(basepath)
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
         except ImportError:
@@ -601,7 +605,8 @@ class TdbGitShaMap(GitShaMap):
         if path is None:
             self.db = {}
         else:
-            assert isinstance(path, str)
+            if type(path) is not str:
+                raise TypeError(path)
             if not mapdbs().has_key(path):
                 mapdbs()[path] = tdb.Tdb(path, self.TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)
@@ -729,7 +734,8 @@ class IndexCacheUpdater(CacheUpdater):
     def add_object(self, obj, bzr_key_data, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert type(bzr_key_data) is dict
+            if type(bzr_key_data) is not dict:
+                raise TypeError(bzr_key_data)
             self.cache.idmap._add_git_sha(obj.id, "commit",
                 (self.revid, obj.tree, bzr_key_data))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
@@ -827,7 +833,8 @@ class IndexGitShaMap(GitShaMap):
             return "%s()" % (self.__class__.__name__)
 
     def repack(self):
-        assert self._builder is None
+        if self._builder is not None:
+            raise errors.BzrError('builder already open')
         self.start_write_group()
         for _, key, value in self._index.iter_all_entries():
             self._builder.add_node(key, value)
@@ -841,12 +848,14 @@ class IndexGitShaMap(GitShaMap):
             self._transport.rename(name, name + '.old')
 
     def start_write_group(self):
-        assert self._builder is None
+        if self._builder is not None:
+            raise errors.BzrError('builder already open')
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
         self._name = osutils.sha()
 
     def commit_write_group(self):
-        assert self._builder is not None
+        if self._builder is None:
+            raise errors.BzrError('builder not open')
         stream = self._builder.finish()
         name = self._name.hexdigest() + ".rix"
         size = self._transport.put_file(name, stream)
@@ -856,7 +865,8 @@ class IndexGitShaMap(GitShaMap):
         self._name = None
 
     def abort_write_group(self):
-        assert self._builder is not None
+        if self._builder is None:
+            raise errors.BzrError('builder not open')
         self._builder = None
         self._name = None
 

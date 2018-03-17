@@ -200,7 +200,8 @@ class BzrGitMapping(foreign.VcsMapping):
                     rev.properties['hg:renames']))
             # TODO: Export other properties as 'bzr:' extras?
         ret = format_hg_metadata(renames, branch, extra)
-        assert isinstance(ret, str)
+        if type(ret) is not str:
+            raise TypeError(ret)
         return ret
 
     def _extract_git_svn_metadata(self, rev, message):
@@ -211,9 +212,7 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.properties['git-svn-id'] = git_svn_id
         (url, rev, uuid) = parse_git_svn_id(git_svn_id)
         # FIXME: Convert this to converted-from property somehow..
-        ret = "\n".join(lines[:-2])
-        assert isinstance(ret, str)
-        return ret
+        return "\n".join(lines[:-2])
 
     def _extract_hg_metadata(self, rev, message):
         (message, renames, branch, extra) = extract_hg_metadata(message)
@@ -275,7 +274,8 @@ class BzrGitMapping(foreign.VcsMapping):
                 if metadata is not None:
                     metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
-                assert len(git_p) == 40, "unexpected length for %r" % git_p
+                if len(git_p) != 40:
+                    raise AssertionError("unexpected length for %r" % git_p)
                 parents.append(git_p)
         commit.parents = parents
         try:
@@ -306,7 +306,8 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.gpgsig = rev.properties['git-gpg-signature'].encode('ascii')
         commit.message = self._encode_commit_message(rev, rev.message,
             encoding)
-        assert type(commit.message) == str
+        if type(commit.message) is not str:
+            raise TypeError(commit.message)
         if metadata is not None:
             try:
                 mapping_registry.parse_revision_id(rev.revision_id)
@@ -326,7 +327,8 @@ class BzrGitMapping(foreign.VcsMapping):
                                                      encoding)
             else:
                 raise NoPushSupport()
-        assert type(commit.message) == str
+        if type(commit.message) is not str:
+            raise TypeError(commit.message)
         if 'git-extra' in rev.properties:
             commit.extra.extend([l.split(' ', 1) for l in rev.properties['git-extra'].splitlines()])
         return commit
@@ -642,17 +644,21 @@ class GitFileIdMap(object):
         return self.file_ids.values()
 
     def set_file_id(self, path, file_id):
-        assert type(path) is str
-        assert type(file_id) is str
+        if type(path) is not str:
+            raise TypeError(path)
+        if type(file_id) is not str:
+            raise TypeError(file_id)
         self.file_ids[path] = file_id
 
     def lookup_file_id(self, path):
-        assert type(path) is str
+        if type(path) is not str:
+            raise TypeError(path)
         try:
             file_id = self.file_ids[path]
         except KeyError:
             file_id = self.mapping.generate_file_id(path)
-        assert type(file_id) is str
+        if type(file_id) is not str:
+            raise TypeError(file_id)
         return file_id
 
     def lookup_path(self, file_id):
@@ -665,7 +671,8 @@ class GitFileIdMap(object):
         except KeyError:
             return self.mapping.parse_file_id(file_id)
         else:
-            assert type(path) is str
+            if type(path) is not str:
+                raise TypeError(path)
             return path
 
     def copy(self):

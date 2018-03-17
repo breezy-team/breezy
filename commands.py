@@ -97,7 +97,8 @@ class cmd_git_import(Command):
         from .repository import GitRepository
 
         dest_format = controldir.ControlDirFormat.get_default_format()
-        assert dest_format is not None
+        if dest_format is None:
+            raise errors.BzrError('no default format')
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))

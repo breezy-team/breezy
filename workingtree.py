@@ -285,8 +285,10 @@ class GitWorkingTree(workingtree.WorkingTree):
             yield self.path2id(path)
 
     def _index_add_entry(self, path, kind, flags=0):
-        assert self._lock_mode is not None
-        assert isinstance(path, basestring)
+        if self._lock_mode is None:
+            raise errors.ObjectNotLocked(self)
+        if not isinstance(path, basestring):
+            raise TypeError(path)
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -336,13 +338,15 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._versioned_dirs.add(dirname)
 
     def _load_dirs(self):
-        assert self._lock_mode is not None
+        if self._lock_mode is None:
+            raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
         for p in self.index:
             self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _unversion_path(self, path):
-        assert self._lock_mode is not None
+        if self._lock_mode is None:
+            raise errors.ObjectNotLocked(self)
         encoded_path = path.encode("utf-8")
         count = 0
         try:
@@ -782,7 +786,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             return True
 
     def id2path(self, file_id):
-        assert type(file_id) is str, "file id not a string: %r" % file_id
+        if type(file_id) is not str:
+            raise TypeError(file_id)
         file_id = osutils.safe_utf8(file_id)
         with self.lock_read():
             try:
@@ -911,9 +916,12 @@ class GitWorkingTree(workingtree.WorkingTree):
         return ret
 
     def _get_file_ie(self, name, path, value, parent_id):
-        assert isinstance(name, unicode)
-        assert isinstance(path, unicode)
-        assert isinstance(value, tuple) and len(value) == 10
+        if type(name) is not unicode:
+            raise TypeError(name)
+        if type(path) is not unicode:
+            raise TypeError(path)
+        if type(value) is not tuple or len(value) != 10:
+            raise ValueError(value)
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
         file_id = self.path2id(path)
         if type(file_id) != str:
@@ -1272,7 +1280,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = dirname.decode("utf-8")
             dir_file_id = self.path2id(dirname)
-            assert isinstance(value, tuple) and len(value) == 10
+            if type(value) is not tuple or len(value) != 10:
+                raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (path.decode("utf-8"), child_name.decode("utf-8"),
                 kind, None,

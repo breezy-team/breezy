@@ -208,7 +208,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                         revid_sha_map[revid] = sha1
                         stop_revids.append(revid)
             else:
-                assert revid is not None
+                if revid is None:
+                    raise AssertionError
                 stop_revids.append(revid)
         missing = set()
         graph = self.source.get_graph()
@@ -269,7 +270,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                         gitid = revidmap[revid][0]
                     except KeyError:
                         gitid = self.source_store._lookup_revision_sha1(revid)
-                assert len(gitid) == 40 or gitid.startswith('ref: ')
+                if len(gitid) != 40 and not gitid.startswith('ref: '):
+                    raise AssertionError("invalid ref contents: %r" % gitid)
                 self.target_refs[name] = gitid
         return revidmap, old_refs, new_refs
 
