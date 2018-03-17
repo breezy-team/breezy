@@ -941,7 +941,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = dirname.decode("utf-8")
             dir_file_id = self.path2id(dirname)
-            assert isinstance(value, tuple) and len(value) == 10
+            if not isinstance(value, tuple) or len(value) != 10:
+                raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (path.decode("utf-8"), child_name.decode("utf-8"),
                 kind, None,

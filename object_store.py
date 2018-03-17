@@ -107,7 +107,10 @@ class LRUTreeCache(object):
             except KeyError:
                 todo.append(revid)
             else:
-                assert tree.get_revision_id() == revid
+                if tree.get_revision_id() != revid:
+                    raise AssertionError(
+                            "revision id did not match: %s != %s" % (
+                                tree.get_revision_id(), revid))
                 trees[revid] = tree
         for tree in self.repository.revision_trees(todo):
             trees[tree.get_revision_id()] = tree
@@ -246,7 +249,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     for path in unusual_modes:
         parent_path = posixpath.dirname(path)
         file_id = tree.path2id(parent_path)
-        assert file_id is not None, "Unable to find file id for %r" % parent_path
+        if file_id is None:
+            raise AssertionError("Unable to find file id for %r" % parent_path)
         dirty_dirs.add(file_id)
 
     try:
@@ -293,7 +297,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     for path in sorted(trees.keys(), reverse=True):
         file_id = trees[path]
-        assert tree.kind(path, file_id) == 'directory'
+        if tree.kind(path, file_id) != 'directory':
+            raise AssertionError
         ie = inv[file_id]
         obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
             dummy_file_name, path == "")
@@ -718,7 +723,8 @@ class BazaarObjectStore(BaseObjectStore):
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for (type, type_data) in ret[commit_sha]:
-                    assert type == "commit"
+                    if type != "commit":
+                        raise AssertionError("Type was %s, not commit" % type)
                     processed.add(type_data[0])
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
@@ -728,7 +734,8 @@ class BazaarObjectStore(BaseObjectStore):
                 continue
             try:
                 for (type, type_data) in ret[commit_sha]:
-                    assert type == "commit"
+                    if type != "commit":
+                        raise AssertionError("Type was %s, not commit" % type)
                     pending.add(type_data[0])
             except KeyError:
                 pass

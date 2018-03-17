@@ -157,7 +157,8 @@ class GitCommitBuilder(CommitBuilder):
             basis_tree = self.repository.revision_tree(basis_revid)
         # Fill in entries that were not changed
         for path, entry in basis_tree.iter_entries_by_dir():
-            assert isinstance(path, unicode)
+            if type(path) is not unicode:
+                raise TypeError(path)
             if entry.kind == 'directory':
                 continue
             encoded_path = path.encode('utf-8')
@@ -178,12 +179,14 @@ class GitCommitBuilder(CommitBuilder):
             except AttributeError:
                 fileid_map = {}
             for path, file_id in self._override_fileids.iteritems():
-                assert type(path) == str
+                if type(path) is not str:
+                    raise TypeError(path)
                 if file_id is None:
                     if path in fileid_map:
                         del fileid_map[path]
                 else:
-                    assert type(file_id) == str
+                    if type(file_id) is not str:
+                        raise TypeError(file_id)
                     fileid_map[path] = file_id
             if fileid_map:
                 fileid_blob = self._mapping.export_fileid_map(fileid_map)
@@ -226,7 +229,6 @@ class GitCommitBuilder(CommitBuilder):
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode(c.encoding)
-        assert len(c.id) == 40
         self.store.add_object(c)
         self.repository.commit_write_group()
         self._new_revision_id = self._mapping.revision_id_foreign_to_bzr(c.id)

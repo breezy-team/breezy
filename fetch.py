@@ -162,7 +162,8 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     if ie.revision is None:
         # Need to store a new revision
         ie.revision = revision_id
-        assert ie.revision is not None
+        if ie.revision is None:
+            raise ValueError("no file revision set")
         if ie.kind == 'symlink':
             chunks = []
         else:
@@ -227,14 +228,16 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree, existing_childre
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
-    assert type(path) is unicode
+    if type(path) is not unicode:
+        raise TypeError(path)
     ret = []
     for name, mode, hexsha in base_tree.iteritems():
         if name in existing_children:
             continue
         c_path = posixpath.join(path, name.decode("utf-8"))
         file_id = base_bzr_tree.path2id(c_path)
-        assert file_id is not None
+        if file_id is None:
+            raise TypeError(file_id)
         ret.append((c_path, None, file_id, None))
         if stat.S_ISDIR(mode):
             ret.extend(remove_disappeared_children(
@@ -255,8 +258,10 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     :param base_bzr_tree: Base inventory against which to return inventory delta
     :return: Inventory delta for this subtree
     """
-    assert type(path) is str
-    assert type(name) is str
+    if type(path) is not str:
+        raise TypeError(path)
+    if type(name) is not str:
+        raise TypeError(name)
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return [], {}
@@ -476,7 +481,8 @@ def import_git_objects(repo, mapping, object_iter,
         head = heads.pop()
         if head == ZERO_SHA:
             continue
-        assert isinstance(head, str), "head is %r" % (head,)
+        if type(head) is not str:
+            raise TypeError(head)
         try:
             o = lookup_object(head)
         except KeyError:
@@ -684,7 +690,8 @@ class DetermineWantsRecorder(object):
         self.remote_refs = {}
 
     def __call__(self, refs):
-        assert isinstance(refs, dict)
+        if type(refs) is not dict:
+            raise TypeError(refs)
         self.remote_refs = refs
         self.wants = self.actual(refs)
         return self.wants

@@ -143,7 +143,8 @@ def inject_bzr_metadata(message, commit_supplement, encoding):
     rt_data = generate_roundtripping_metadata(commit_supplement, encoding)
     if not rt_data:
         return message
-    assert type(rt_data) == str
+    if type(rt_data) is not str:
+        raise TypeError(rt_data)
     return message + "\n--BZR--\n" + rt_data
 
 
