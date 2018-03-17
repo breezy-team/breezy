@@ -1,4 +1,5 @@
 # Copyright (C) 2006-2009 Canonical Ltd
+# Copyright (C) 2012-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          Jelmer Vernooij <jelmer@samba.org>

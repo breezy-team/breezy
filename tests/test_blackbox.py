@@ -1,4 +1,5 @@
 # Copyright (C) 2007 David Allouche <ddaa@ddaa.net>
+# Copyright (C) 2007-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

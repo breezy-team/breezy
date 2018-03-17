@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2012 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2009-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 # Copyright (C) 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify

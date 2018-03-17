@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2009-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 
 # Based on the original from bzr-svn:
 # Copyright (C) 2009 Lukas Lalinsky <lalinsky@gmail.com>

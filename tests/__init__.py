@@ -1,3 +1,4 @@
+# Copyright (C) 2007-2018 Jelmer Vernoij <jelmer@jelmer.uk>
 # Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2012 Jelmer Vernooij
+# Copyright (C) 2008-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 # Copyright (C) 2008 John Carr
 # Copyright (C) 2008-2011 Canonical Ltd
 #

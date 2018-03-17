@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2007-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 # -*- encoding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
