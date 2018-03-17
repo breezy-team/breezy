@@ -151,7 +151,8 @@ class GitRepository(ForeignRepository):
     def lock_write(self):
         """See Branch.lock_write()."""
         if self._lock_mode:
-            assert self._lock_mode == 'w'
+            if self._lock_mode != 'w':
+                raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock_mode = 'w'
@@ -170,7 +171,8 @@ class GitRepository(ForeignRepository):
 
     def lock_read(self):
         if self._lock_mode:
-            assert self._lock_mode in ('r', 'w')
+            if self._lock_mode not in ('r', 'w'):
+                raise AssertionError
             self._lock_count += 1
         else:
             self._lock_mode = 'r'
@@ -431,7 +433,8 @@ class LocalGitRepository(GitRepository):
         :raise KeyError: If foreign revision was not found
         :return: bzr revision id
         """
-        assert type(foreign_revid) is str
+        if type(foreign_revid) is not str:
+            raise TypeError(foreign_revid)
         if mapping is None:
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
@@ -529,7 +532,8 @@ class LocalGitRepository(GitRepository):
             raise errors.NoSuchRevision(self, revision_id)
         revision, roundtrip_revid, verifiers = mapping.import_commit(
             commit, self.lookup_foreign_revision_id)
-        assert revision is not None
+        if revision is None:
+            raise AssertionError
         # FIXME: check verifiers ?
         if roundtrip_revid:
             revision.revision_id = roundtrip_revid

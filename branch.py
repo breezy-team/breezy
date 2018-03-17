@@ -75,7 +75,8 @@ class GitPullResult(branch.PullResult):
     """Result of a pull from a Git branch."""
 
     def _lookup_revno(self, revid):
-        assert isinstance(revid, str), "was %r" % revid
+        if type(revid) is not str:
+            raise TypeError(revid)
         # Try in source branch first, it'll be faster
         with self.target_branch.lock_read():
             return self.target_branch.revision_id_to_revno(revid)
@@ -449,7 +450,8 @@ class GitBranch(ForeignBranch):
 
     def lock_read(self):
         if self._lock_mode:
-            assert self._lock_mode in ('r', 'w')
+            if self._lock_mode not in ('r', 'w'):
+                raise ValueError(self._lock_mode)
             self._lock_count += 1
         else:
             self._lock_mode = 'r'
@@ -581,7 +583,8 @@ class LocalGitBranch(GitBranch):
         self._set_head(newhead)
 
     def _set_head(self, value):
-        assert value != ZERO_SHA
+        if value == ZERO_SHA:
+            raise ValueError(value)
         self._head = value
         if value is None:
             del self.repository._git.refs[self.ref]
@@ -626,7 +629,8 @@ class LocalGitBranch(GitBranch):
                 except KeyError:
                     # Let's just hope it's a commit
                     peeled = unpeeled
-            assert type(tag_name) is unicode
+            if type(tag_name) is not unicode:
+                raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 
     def get_tag_refs(self):
@@ -641,7 +645,8 @@ class LocalGitBranch(GitBranch):
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
-    assert isinstance(revid, str), "was %r" % revid
+    if type(revid) is not str:
+        raise TypeError(revid)
     # Try in source branch first, it'll be faster
     with local_branch.lock_read():
         try:
@@ -1061,12 +1066,14 @@ class InterToGitBranch(branch.GenericInterBranch):
                 isinstance(target, GitBranch))
 
     def _get_new_refs(self, stop_revision=None, fetch_tags=None):
-        assert self.source.is_locked()
+        if not self.source.is_locked():
+            raise errors.ObjectNotLocked(self.source)
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         else:
             stop_revno = self.source.revision_id_to_revno(stop_revision)
-        assert type(stop_revision) is str
+        if type(stop_revision) is not str:
+            raise TypeError(stop_revision)
         main_ref = self.target.ref or "refs/heads/master"
         refs = { main_ref: (None, stop_revision) }
         if fetch_tags is None:

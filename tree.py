@@ -84,7 +84,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._revision_id = revision_id
         self._repository = repository
         self.store = repository._git.object_store
-        assert isinstance(revision_id, str)
+        if type(revision_id) is not str:
+            raise TypeError(revision_id)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:
             self.tree = None
@@ -240,8 +241,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield child_path.decode('utf-8'), "V", ie.kind, ie.file_id, ie
 
     def _get_file_ie(self, path, name, mode, hexsha, parent_id):
-        assert isinstance(path, bytes)
-        assert isinstance(name, bytes)
+        if type(path) is not bytes:
+            raise TypeError(path)
+        if type(name) is not bytes:
+            raise TypeError(name)
         kind = mode_kind(mode)
         file_id = self._fileid_map.lookup_file_id(path)
         ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
@@ -437,7 +440,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldparent = None
         else:
             oldpath = oldpath.decode("utf-8")
-            assert oldmode is not None
+            if oldmode is None:
+                raise ValueError
             oldexe = mode_is_executable(oldmode)
             oldkind = mode_kind(oldmode)
             if oldpath == u'':
@@ -566,7 +570,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         return path in self._versioned_dirs
 
     def _load_dirs(self):
-        assert self._lock_mode is not None
+        if self._lock_mode is None:
+            raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
         for p in self.index:
             self._ensure_versioned_dir(posixpath.dirname(p))
@@ -596,7 +601,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def id2path(self, file_id):
         if file_id is None:
             return ''
-        assert isinstance(file_id, bytes), "file id not a string: %r" % file_id
+        if type(file_id) is not bytes:
+            raise TypeError(file_id)
         with self.lock_read():
             try:
                 path = self._fileid_map.lookup_path(file_id)
@@ -620,7 +626,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             self._index_add_entry(path, kind)
 
     def _index_add_entry(self, path, kind, flags=0):
-        assert isinstance(path, basestring)
+        if not isinstance(path, basestring):
+            raise TypeError(path)
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -712,9 +719,12 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
-        assert isinstance(name, unicode)
-        assert isinstance(path, unicode)
-        assert isinstance(value, tuple) and len(value) == 10
+        if type(name) is not unicode:
+            raise TypeError(name)
+        if type(path) is not unicode:
+            raise TypeError(path)
+        if not isinstance(value, tuple) or len(value) != 10:
+            raise TypeError(value)
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
         file_id = self.path2id(path)
         if type(file_id) != str:
@@ -757,7 +767,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         return entry.kind, entry.executable, None
 
     def _unversion_path(self, path):
-        assert self._lock_mode is not None
+        if self._lock_mode is None:
+            raise errors.ObjectNotLocked(self)
         encoded_path = path.encode("utf-8")
         count = 0
         try:
