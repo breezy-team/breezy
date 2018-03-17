@@ -43,6 +43,7 @@ from dulwich.object_store import (
     )
 from dulwich.objects import (
     Blob,
+    Tree,
     S_IFGITLINK,
     )
 from dulwich.repo import Repo
@@ -288,14 +289,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if to_file is None:
             to_file = sys.stdout
 
-        files = list(files)
-
-        if len(files) == 0:
-            return # nothing to do
-
-        # Sort needed to first handle directory content before the directory
-        files.sort(reverse=True)
-
         def backup(file_to_backup):
             abs_path = self.abspath(file_to_backup)
             backup_name = self.controldir._available_backup_name(file_to_backup)
@@ -303,49 +296,98 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             return "removed %s (but kept a copy: %s)" % (
                 file_to_backup, backup_name)
 
+        # Sort needed to first handle directory content before the directory
+        files_to_backup = []
+
+        all_files = set()
+
+        def recurse_directory_to_add_files(directory):
+            # Recurse directory and add all files
+            # so we can check if they have changed.
+            for parent_info, file_infos in self.walkdirs(directory):
+                for relpath, basename, kind, lstat, fileid, kind in file_infos:
+                    # Is it versioned or ignored?
+                    if self.is_versioned(relpath):
+                        # Add nested content for deletion.
+                        all_files.add(relpath)
+                    else:
+                        # Files which are not versioned
+                        # should be treated as unknown.
+                        files_to_backup.append(relpath)
+
         with self.lock_tree_write():
+            for filepath in files:
+                # Get file name into canonical form.
+                abspath = self.abspath(filepath)
+                filepath = self.relpath(abspath)
+
+                if filepath:
+                    all_files.add(filepath)
+                    recurse_directory_to_add_files(filepath)
+
+            files = list(all_files)
+
+            if len(files) == 0:
+                return # nothing to do
+
+            # Sort needed to first handle directory content before the directory
+            files.sort(reverse=True)
+
+            # Bail out if we are going to delete files we shouldn't
+            if not keep_files and not force:
+                for (file_id, path, content_change, versioned, parent_id, name,
+                     kind, executable) in self.iter_changes(self.basis_tree(),
+                         include_unchanged=True, require_versioned=False,
+                         want_unversioned=True, specific_files=files):
+                    if versioned[0] == False:
+                        # The record is unknown or newly added
+                        files_to_backup.append(path[1])
+                        files_to_backup.extend(osutils.parent_directories(path[1]))
+                    elif (content_change and (kind[1] is not None) and
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
+                        files_to_backup.append(path[1])
+                        files_to_backup.extend(osutils.parent_directories(path[1]))
+
             for f in files:
                 if f == '':
                     continue
+
+                try:
+                    kind = self.kind(f)
+                except errors.NoSuchFile:
+                    kind = None
+
+                abs_path = self.abspath(f)
+                if verbose:
+                    # having removed it, it must be either ignored or unknown
+                    if self.is_ignored(f):
+                        new_status = 'I'
+                    else:
+                        new_status = '?'
+                    kind_ch = osutils.kind_marker(kind)
+                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
+                if kind is None:
+                    message = "%s does not exist" % (f, )
                 else:
-                    abs_path = self.abspath(f)
-                    if verbose:
-                        # having removed it, it must be either ignored or unknown
-                        if self.is_ignored(f):
-                            new_status = 'I'
+                    if not keep_files:
+                        if f in files_to_backup and not force:
+                            message = backup(f)
                         else:
-                            new_status = '?'
-                        # XXX: Really should be a more abstract reporter interface
-                        kind_ch = osutils.kind_marker(self.kind(f))
-                        to_file.write(new_status + '       ' + f + kind_ch + '\n')
-                    # Unversion file
-                    # TODO(jelmer): _unversion_path() is O(size-of-index) for directories
-                    if self._unversion_path(f) == 0:
-                        if (osutils.isdir(abs_path) and
-                            len(os.listdir(abs_path)) == 0):
-                            if not keep_files:
+                            if kind == 'directory':
+                                osutils.rmtree(abs_path)
+                            else:
                                 osutils.delete_any(abs_path)
-                            message = "removed %s" % (f,)
-                        else:
-                            message = "%s is not versioned." % (f,)
+                            message = "deleted %s" % (f,)
                     else:
                         message = "removed %s" % (f,)
-                        if osutils.lexists(abs_path):
-                            if (osutils.isdir(abs_path) and
-                                len(os.listdir(abs_path)) > 0):
-                                if force:
-                                    osutils.rmtree(abs_path)
-                                    message = "deleted %s" % (f,)
-                                else:
-                                    message = backup(f)
-                            else:
-                                if not keep_files:
-                                    osutils.delete_any(abs_path)
-                                    message = "deleted %s" % (f,)
+                self._unversion_path(f)
 
                 # print only one message (if any) per file.
                 if message is not None:
                     trace.note(message)
+            self._versioned_dirs = None
             self.flush()
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
@@ -913,50 +955,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             add_entry(path, mode_kind(value.mode))
         return ((k, sorted(v)) for (k, v) in sorted(per_dir.iteritems()))
 
-    def _lookup_entry(self, path, update_index=False):
-        assert type(path) == str
-        entry = self.index[path]
-        index_mode = entry[-6]
-        index_sha = entry[-2]
-        disk_path = self.abspath(path.decode('utf-8')).encode(
-            osutils._fs_enc)
-        try:
-            disk_stat = os.lstat(disk_path)
-        except OSError, (num, msg):
-            if num in (errno.EISDIR, errno.ENOENT):
-                raise KeyError(path)
-            raise
-        disk_mtime = disk_stat.st_mtime
-        if isinstance(entry[1], tuple):
-            index_mtime = entry[1][0]
-        else:
-            index_mtime = int(entry[1])
-        mtime_delta = (disk_mtime - index_mtime)
-        disk_mode = cleanup_mode(disk_stat.st_mode)
-        if mtime_delta > 0 or disk_mode != index_mode:
-            if stat.S_ISDIR(disk_mode):
-                try:
-                    subrepo = Repo(disk_path)
-                except NotGitRepository:
-                    return (None, None)
-                else:
-                    disk_mode = S_IFGITLINK
-                    git_id = subrepo.head()
-            elif stat.S_ISLNK(disk_mode):
-                blob = Blob.from_string(os.readlink(disk_path))
-                git_id = blob.id
-            elif stat.S_ISREG(disk_mode):
-                with open(disk_path, 'r') as f:
-                    blob = Blob.from_string(f.read())
-                git_id = blob.id
-            else:
-                raise AssertionError
-            if update_index:
-                flags = 0 # FIXME
-                self.index[path] = index_entry_from_stat(disk_stat, git_id, flags, disk_mode)
-            return (git_id, disk_mode)
-        return (index_sha, index_mode)
-
     def get_shelf_manager(self):
         raise workingtree.ShelvingUnsupported()
 
@@ -1087,13 +1085,17 @@ class InterIndexGitTree(InterGitTrees):
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
             require_versioned=False, include_root=False):
-        # TODO(jelmer): Handle include_root
-        # TODO(jelmer): Handle require_versioned
+        if require_versioned and specific_files:
+            for path in specific_files:
+                if (not self.source.is_versioned(path) and
+                    not self.target.is_versioned(path)):
+                    raise errors.PathsNotVersionedError(path)
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
             return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
-                self.target, want_unchanged=want_unchanged)
+                self.target, want_unchanged=want_unchanged,
+                include_root=include_root)
 
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
@@ -1131,7 +1133,8 @@ class InterIndexGitTree(InterGitTrees):
                         untracked_changes(self.target))
             return changes_from_git_changes(
                     changes, self.target.mapping,
-                    specific_files=specific_files)
+                    specific_files=specific_files,
+                    include_unchanged=include_unchanged)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
@@ -1140,14 +1143,17 @@ tree.InterTree.register_optimiser(InterIndexGitTree)
 def untracked_changes(tree):
     for e in tree.extras():
         ap = tree.abspath(e)
-        st = os.stat(ap)
+        st = os.lstat(ap)
         try:
             np, accessible  = osutils.normalized_filename(e)
         except UnicodeDecodeError:
             raise errors.BadFilenameEncoding(
                 e, osutils._fs_enc)
-        yield ((None, np), (None, st.st_mode),
-               (None, blob_from_path_and_stat(ap.encode('utf-8'), st).id))
+        if stat.S_ISDIR(st.st_mode):
+            obj_id = Tree().id
+        else:
+            obj_id = blob_from_path_and_stat(ap.encode('utf-8'), st).id
+        yield ((None, np), (None, st.st_mode), (None, obj_id))
 
 
 def changes_between_git_tree_and_index(store, from_tree_sha, target,
@@ -1161,7 +1167,7 @@ def changes_between_git_tree_and_index(store, from_tree_sha, target,
 
 
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False):
+        want_unchanged=False, update_index=False, include_root=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
