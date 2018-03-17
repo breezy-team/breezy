@@ -39,16 +39,16 @@ class TestWalkdirs(TestCaseWithTree):
                'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file'),
               ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir',
                'directory',
-               None if tree.has_versioned_directories() else os.stat(tree.abspath('1top-dir/1dir-in-1topdir'),
+               None if tree.has_versioned_directories() else os.stat(tree.abspath('1top-dir/1dir-in-1topdir')),
                tree.path2id('1top-dir/1dir-in-1topdir'),
-               'directory' if tree.has_versioned_directories() else None),
-              ]),
+               'directory' if tree.has_versioned_directories() else None,
+              )]),
             (('1top-dir/1dir-in-1topdir', tree.path2id('1top-dir/1dir-in-1topdir')),
              []),
             ]
         if symlinks:
             dirblocks[0][1].append(('symlink', 'symlink', 'symlink', None,
-                                    'symlink', 'symlink'))
+                                    tree.path2id('symlink'), 'symlink'))
         return dirblocks
 
     def test_walkdir_root(self):
