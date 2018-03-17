@@ -920,7 +920,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise TypeError(name)
         if type(path) is not unicode:
             raise TypeError(path)
-        if type(value) is not tuple or len(value) != 10:
+        if not isinstance(value, tuple) or len(value) != 10:
             raise ValueError(value)
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
         file_id = self.path2id(path)
@@ -1280,7 +1280,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = dirname.decode("utf-8")
             dir_file_id = self.path2id(dirname)
-            if type(value) is not tuple or len(value) != 10:
+            if not isinstance(value, tuple) or len(value) != 10:
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (path.decode("utf-8"), child_name.decode("utf-8"),
