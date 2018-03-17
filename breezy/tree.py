@@ -537,14 +537,6 @@ class Tree(object):
         """
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
-    def iter_children(self, file_id):
-        """Iterate over the file ids of the children of an entry.
-
-        :param file_id: File id of the entry
-        :return: Iterator over child file ids.
-        """
-        raise NotImplementedError(self.iter_children)
-
     def lock_read(self):
         """Lock this tree for multiple read only operations.
 
@@ -746,13 +738,11 @@ def _find_children_across_trees(specified_ids, trees):
     # we loop so that we handle all children of each id in both trees
     while len(pending) > 0:
         new_pending = set()
-        for file_id in pending:
-            for tree in trees:
-                if not tree.has_or_had_id(file_id):
-                    continue
-                for child_id in tree.iter_children(file_id):
-                    if child_id not in interesting_ids:
-                        new_pending.add(child_id)
+        for tree in trees:
+            for path, entry in self.iter_entries_by_dir(pending):
+                for child in viewvalues(getattr(entry, 'children', {})):
+                    if child.file_id not in interesting_ids:
+                        new_pending.add(child.file_id)
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids

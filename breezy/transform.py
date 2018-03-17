@@ -2123,7 +2123,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         self._all_children_cache[trans_id] = children
         return children
 
-    def iter_children(self, file_id):
+    def _iter_children(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
         for child_trans_id in self._all_children(trans_id):
             yield self._transform.final_file_id(child_trans_id)
@@ -2197,7 +2197,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         """Return path, entry for items in a directory without recursing down."""
         dir_file_id = self.path2id(dir_path)
         ordered_ids = []
-        for file_id in self.iter_children(dir_file_id):
+        for file_id in self._iter_children(dir_file_id):
             trans_id = self._transform.trans_id_file_id(file_id)
             ordered_ids.append((trans_id, file_id))
         for entry, trans_id in self._make_inv_entries(ordered_ids):

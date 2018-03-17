@@ -252,12 +252,6 @@ class InventoryTree(Tree):
             except errors.NoSuchId:
                 raise errors.NoSuchFile(path)
 
-    def iter_children(self, file_id, path=None):
-        """See Tree.iter_children."""
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
-        for child in viewvalues(getattr(entry, 'children', {})):
-            yield child.file_id
-
     def _get_plan_merge_data(self, file_id, other, base):
         from . import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
