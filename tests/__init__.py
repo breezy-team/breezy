@@ -202,6 +202,7 @@ def test_suite():
         'test_fetch',
         'test_git_remote_helper',
         'test_mapping',
+        'test_memorytree',
         'test_object_store',
         'test_pristine_tar',
         'test_push',
