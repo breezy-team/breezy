@@ -620,7 +620,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             self._index_add_entry(path, kind)
 
     def _index_add_entry(self, path, kind, flags=0):
-        assert self._lock_mode is not None
         assert isinstance(path, basestring)
         if kind == "directory":
             # Git indexes don't contain directories
