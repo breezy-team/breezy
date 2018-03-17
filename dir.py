@@ -1,5 +1,5 @@
 # Copyright (C) 2007 Canonical Ltd
-# Copyright (C) 2010 Jelmer Vernooij
+# Copyright (C) 2010-2018 Jelmer Vernooij
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
@@ -184,12 +184,6 @@ class GitDir(ControlDir):
             and (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
-            with wt.lock_write():
-                if wt.path2id('') is None:
-                    try:
-                        wt.set_root_id(self.open_workingtree.get_root_id())
-                    except bzr_errors.NoWorkingTree:
-                        pass
         return result
 
     def clone_on_transport(self, transport, revision_id=None,

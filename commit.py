@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2010 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2009-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Support for committing in native Git working trees."""
@@ -173,8 +173,7 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = basis_tree.get_file_text(path, entry.file_id)
                     self._blobs[encoded_path] = (entry_mode(entry), blob.id)
                 else:
-                    (mode, sha) = workingtree._lookup_entry(encoded_path, update_index=True)
-                    self._blobs[encoded_path] = (mode, sha)
+                    raise NotImplementedError
         if not self._lossy:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)

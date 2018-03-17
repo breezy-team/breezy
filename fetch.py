@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2010 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2008-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+"""Fetching from git into bzr."""
 
 from __future__ import absolute_import
 
@@ -682,6 +684,7 @@ class DetermineWantsRecorder(object):
         self.remote_refs = {}
 
     def __call__(self, refs):
+        assert isinstance(refs, dict)
         self.remote_refs = refs
         self.wants = self.actual(refs)
         return self.wants
@@ -805,7 +808,7 @@ class InterGitGitRepository(InterFromGitRepository):
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
             def wrap_determine_wants(refs):
-                return determine_wants(self.source._git.refs)
+                return determine_wants(self.source._git.refs.as_dict())
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 refs = self.source._git.fetch(self.target._git, wrap_determine_wants,
@@ -857,7 +860,7 @@ class InterGitGitRepository(InterFromGitRepository):
         if branches is not None:
             def determine_wants(refs):
                 ret = []
-                for name, value in refs.as_dict().iteritems():
+                for name, value in refs.iteritems():
                     if value == ZERO_SHA:
                         continue
 
@@ -889,7 +892,7 @@ class InterGitGitRepository(InterFromGitRepository):
             include_tags=include_tags)
 
     def determine_wants_all(self, refs):
-        potential = set([v for v in refs.as_dict().values() if not v == ZERO_SHA])
+        potential = set([v for v in refs.values() if not v == ZERO_SHA])
         return list(potential - self._target_has_shas(potential))
 
     def get_determine_wants_heads(self, wants, include_tags=False):
@@ -897,7 +900,7 @@ class InterGitGitRepository(InterFromGitRepository):
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
-                for k, unpeeled in refs.as_dict().iteritems():
+                for k, unpeeled in refs.iteritems():
                     if not is_tag(k):
                         continue
                     if unpeeled == ZERO_SHA:

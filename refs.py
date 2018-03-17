@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2010-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Conversion between refs and Bazaar revision pointers."""
 
@@ -181,3 +181,20 @@ def get_refs_container(controldir, object_store):
     if fn is not None:
         return fn()
     return BazaarRefsContainer(controldir, object_store)
+
+
+def remote_refs_dict_to_tag_refs(refs_dict):
+    base = {}
+    peeled = {}
+    for k, v in refs_dict.iteritems():
+        if is_peeled(k):
+            peeled[k[:-3]] = v
+        else:
+            base[k] = v
+            peeled[k] = v
+    for n in set(base.keys() + peeled.keys()):
+        try:
+            tag_name = ref_to_tag_name(n)
+        except ValueError:
+            continue
+        yield (n, tag_name, peeled.get(n), base.get(n))

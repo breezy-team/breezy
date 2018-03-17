@@ -1,3 +1,4 @@
+# Copyright (C) 2007-2018 Jelmer Vernoij <jelmer@jelmer.uk>
 # Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -12,9 +13,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """The basic test suite for bzr-git."""
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 
@@ -199,6 +202,7 @@ def test_suite():
         'test_fetch',
         'test_git_remote_helper',
         'test_mapping',
+        'test_memorytree',
         'test_object_store',
         'test_pristine_tar',
         'test_push',

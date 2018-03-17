@@ -1,4 +1,5 @@
 # Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2012-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """File graph access."""
 
@@ -77,7 +78,10 @@ class GitFileParentProvider(object):
     def _get_parents(self, file_id, text_revision):
         commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
             text_revision)
-        path = mapping.parse_file_id(file_id)
+        try:
+            path = mapping.parse_file_id(file_id)
+        except ValueError:
+            raise KeyError(file_id)
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
