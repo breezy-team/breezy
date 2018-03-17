@@ -1,7 +1,8 @@
+# Copyright (C) 2009-2018 Jelmer Vernooij <jelmer@jelmer.uk>
 # Copyright (C) 2006-2009 Canonical Ltd
 
 # Authors: Robert Collins <robert.collins@canonical.com>
-#          Jelmer Vernooij <jelmer@samba.org>
+#          Jelmer Vernooij <jelmer@jelmer.uk>
 #          John Carr <john.carr@unrouted.co.uk>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,7 +17,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """A GIT branch and repository format implementation for bzr."""
