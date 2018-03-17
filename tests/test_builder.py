@@ -16,6 +16,8 @@
 
 """Test our ability to build up test repositories"""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from dulwich.repo import Repo as GitRepo

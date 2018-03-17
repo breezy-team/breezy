@@ -16,6 +16,8 @@
 
 """Test for git server."""
 
+from __future__ import absolute_import
+
 from dulwich.client import TCPGitClient
 from dulwich.repo import Repo
 import threading

@@ -17,6 +17,8 @@
 
 """Black-box tests for bzr-git."""
 
+from __future__ import absolute_import
+
 from dulwich.repo import (
     Repo as GitRepo,
     )

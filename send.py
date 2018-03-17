@@ -20,6 +20,8 @@
 
 """Support in "bzr send" for git-am style patches."""
 
+from __future__ import absolute_import
+
 import time
 from ... import __version__ as bzr_version
 from ... import (
