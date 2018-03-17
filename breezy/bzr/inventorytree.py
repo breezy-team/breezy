@@ -77,7 +77,8 @@ class InventoryTree(Tree):
         adjusted to account for existing elements that match case
         insensitively.
         """
-        return list(self._yield_canonical_inventory_paths(paths))
+        with self.lock_read():
+            return list(self._yield_canonical_inventory_paths(paths))
 
     def get_canonical_inventory_path(self, path):
         """Returns the first inventory item that case-insensitively matches path.
@@ -97,7 +98,8 @@ class InventoryTree(Tree):
         :return: The input path adjusted to account for existing elements
         that match case insensitively.
         """
-        return next(self._yield_canonical_inventory_paths([path]))
+        with self.lock_read():
+            return next(self._yield_canonical_inventory_paths([path]))
 
     def _yield_canonical_inventory_paths(self, paths):
         for path in paths:
@@ -112,7 +114,8 @@ class InventoryTree(Tree):
             for elt in bit_iter:
                 lelt = elt.lower()
                 new_path = None
-                for child in self.iter_children(cur_id):
+                inv, inv_file_id = self._unpack_file_id(cur_id)
+                for child in getattr(inv[inv_file_id], 'children', {}).values():
                     try:
                         # XXX: it seem like if the child is known to be in the
                         # tree, we shouldn't need to go from its id back to
@@ -122,17 +125,17 @@ class InventoryTree(Tree):
                         # by just directly looking up the original name and
                         # only then searching all children; also by not
                         # chopping paths so much. -- mbp 2010-02-11
-                        child_base = os.path.basename(self.id2path(child))
+                        child_base = os.path.basename(self.id2path(child.file_id))
                         if (child_base == elt):
                             # if we found an exact match, we can stop now; if
                             # we found an approximate match we need to keep
                             # searching because there might be an exact match
                             # later.  
-                            cur_id = child
+                            cur_id = child.file_id
                             new_path = osutils.pathjoin(cur_path, child_base)
                             break
                         elif child_base.lower() == lelt:
-                            cur_id = child
+                            cur_id = child.file_id
                             new_path = osutils.pathjoin(cur_path, child_base)
                     except errors.NoSuchId:
                         # before a change is committed we can see this error...

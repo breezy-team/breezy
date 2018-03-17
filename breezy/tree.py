@@ -739,7 +739,7 @@ def _find_children_across_trees(specified_ids, trees):
     while len(pending) > 0:
         new_pending = set()
         for tree in trees:
-            for path, entry in self.iter_entries_by_dir(pending):
+            for path, entry in tree.iter_entries_by_dir(pending):
                 for child in viewvalues(getattr(entry, 'children', {})):
                     if child.file_id not in interesting_ids:
                         new_pending.add(child.file_id)
@@ -1138,7 +1138,7 @@ class InterTree(InterObject):
                             # Reusing a discarded change.
                             old_entry = self._get_entry(self.source, file_id)
                         precise_file_ids.update(
-                                self.source.iter_children(file_id))
+                                [child.file_id for child in old_entry.children.values()])
                     changed_file_ids.add(result[0])
                     yield result
 
