@@ -114,31 +114,34 @@ class InventoryTree(Tree):
             for elt in bit_iter:
                 lelt = elt.lower()
                 new_path = None
-                for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
-                    try:
-                        # XXX: it seem like if the child is known to be in the
-                        # tree, we shouldn't need to go from its id back to
-                        # its path -- mbp 2010-02-11
-                        #
-                        # XXX: it seems like we could be more efficient
-                        # by just directly looking up the original name and
-                        # only then searching all children; also by not
-                        # chopping paths so much. -- mbp 2010-02-11
-                        child_base = os.path.basename(self.id2path(child.file_id))
-                        if (child_base == elt):
-                            # if we found an exact match, we can stop now; if
-                            # we found an approximate match we need to keep
-                            # searching because there might be an exact match
-                            # later.  
-                            cur_id = child.file_id
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                            break
-                        elif child_base.lower() == lelt:
-                            cur_id = child.file_id
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                    except errors.NoSuchId:
-                        # before a change is committed we can see this error...
-                        continue
+                try:
+                    for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
+                        try:
+                            # XXX: it seem like if the child is known to be in the
+                            # tree, we shouldn't need to go from its id back to
+                            # its path -- mbp 2010-02-11
+                            #
+                            # XXX: it seems like we could be more efficient
+                            # by just directly looking up the original name and
+                            # only then searching all children; also by not
+                            # chopping paths so much. -- mbp 2010-02-11
+                            child_base = os.path.basename(self.id2path(child.file_id))
+                            if (child_base == elt):
+                                # if we found an exact match, we can stop now; if
+                                # we found an approximate match we need to keep
+                                # searching because there might be an exact match
+                                # later.  
+                                cur_id = child.file_id
+                                new_path = osutils.pathjoin(cur_path, child_base)
+                                break
+                            elif child_base.lower() == lelt:
+                                cur_id = child.file_id
+                                new_path = osutils.pathjoin(cur_path, child_base)
+                        except errors.NoSuchId:
+                            # before a change is committed we can see this error...
+                            continue
+                except errors.NotADirectory:
+                    pass
                 if new_path:
                     cur_path = new_path
                 else:
