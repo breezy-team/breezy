@@ -123,16 +123,27 @@ class GitTreeFile(_mod_tree.TreeFile):
                 self.text_size == other.text_size and
                 self.executable == other.executable)
 
+    def copy(self):
+        ret = self.__class__(
+                self.file_id, self.name, self.parent_id,
+                self.revision)
+        ret.text_sha1 = self.text_sha1
+        ret.text_size = self.text_size
+        ret.executable = self.executable
+        return ret
+
 
 class GitTreeSymlink(_mod_tree.TreeLink):
 
     __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target', 'revision']
 
-    def __init__(self, file_id, name, parent_id):
+    def __init__(self, file_id, name, parent_id, revision=None,
+                 symlink_target=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
-        self.symlink_target = None
+        self.revision = revision
+        self.symlink_target = symlink_target
 
     @property
     def kind(self):
@@ -145,6 +156,19 @@ class GitTreeSymlink(_mod_tree.TreeLink):
     @property
     def text_size(self):
         return None
+
+    def __eq__(self, other):
+        return (self.kind == other.kind and
+                self.file_id == other.file_id and
+                self.name == other.name and
+                self.parent_id == other.parent_id and
+                self.revision == other.revision and
+                self.symlink_target == other.symlink_target)
+
+    def copy(self):
+        return self.__class__(
+                self.file_id, self.name, self.parent_id,
+                self.revision, self.symlink_target)
 
 
 entry_factory = {
