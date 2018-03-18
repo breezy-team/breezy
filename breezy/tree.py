@@ -1127,8 +1127,14 @@ class InterTree(InterObject):
                 if result is None:
                     old_entry = self._get_entry(self.source, file_id)
                     new_entry = self._get_entry(self.target, file_id)
-                    source_path = self.source.id2path(file_id)
-                    target_path = self.target.id2path(file_id)
+                    try:
+                        source_path = self.source.id2path(file_id)
+                    except errors.NoSuchId:
+                        source_path = None
+                    try:
+                        target_path = self.target.id2path(file_id)
+                    except errors.NoSuchId:
+                        target_path = None
                     result, changes = self._changes_from_entries(
                         old_entry, new_entry, source_path, target_path)
                 else:
