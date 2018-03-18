@@ -484,28 +484,6 @@ class Tree(object):
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
 
-    def _check_retrieved(self, ie, f):
-        if not __debug__:
-            return
-        fp = osutils.fingerprint_file(f)
-        f.seek(0)
-
-        if ie.text_size is not None:
-            if ie.text_size != fp['size']:
-                raise errors.BzrError(
-                        "mismatched size for file %r in %r" %
-                        (ie.file_id, self._store),
-                        ["inventory expects %d bytes" % ie.text_size,
-                         "file is actually %d bytes" % fp['size'],
-                         "store is probably damaged/corrupt"])
-
-        if ie.text_sha1 != fp['sha1']:
-            raise errors.BzrError("wrong SHA-1 for file %r in %r" %
-                    (ie.file_id, self._store),
-                    ["inventory expects %s" % ie.text_sha1,
-                     "file is actually %s" % fp['sha1'],
-                     "store is probably damaged/corrupt"])
-
     def path2id(self, path):
         """Return the id for path in this tree."""
         raise NotImplementedError(self.path2id)
