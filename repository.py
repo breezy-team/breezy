@@ -569,9 +569,6 @@ class LocalGitRepository(GitRepository):
                 specific_files = None
             yield new_tree.changes_from(old_tree, specific_files=specific_files)
 
-    def get_inventory(self, revision_id):
-        raise NotImplementedError(self.get_inventory)
-
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
