@@ -25,9 +25,6 @@ from dulwich.index import (
 import os
 import stat
 
-from ...bzr.inventory import (
-    entry_factory,
-    )
 from ... import (
     osutils,
     revision as _mod_revision,
@@ -54,6 +51,7 @@ from .mapping import (
     object_mode,
     fix_person_identifier,
     )
+from .tree import entry_factory
 
 
 class SettingCustomFileIdsUnsupported(UnsupportedOperation):

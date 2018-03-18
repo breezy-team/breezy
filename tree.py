@@ -45,13 +45,10 @@ from ... import (
     osutils,
     revisiontree,
     trace,
-    tree,
+    tree as _mod_tree,
     workingtree,
     )
 from ...revision import NULL_REVISION
-from ...bzr import (
-    inventory,
-    )
 
 from .mapping import (
     mode_is_executable,
@@ -59,6 +56,126 @@ from .mapping import (
     GitFileIdMap,
     default_mapping,
     )
+
+
+class GitTreeDirectory(_mod_tree.TreeDirectory):
+
+    __slots__ = ['file_id', 'name', 'parent_id', 'children', 'revision']
+
+    def __init__(self, file_id, name, parent_id, revision=None):
+        self.file_id = file_id
+        self.name = name
+        self.parent_id = parent_id
+        # TODO(jelmer)
+        self.children = {}
+        self.revision = revision
+
+    @property
+    def kind(self):
+        return 'directory'
+
+    @property
+    def executable(self):
+        return False
+
+    def copy(self):
+        return self.__class__(
+            self.file_id, self.name, self.parent_id, self.revision)
+
+    def __repr__(self):
+        return "%s(file_id=%r, name=%r, parent_id=%r, revision=%r)" % (
+            self.__class__.__name__, self.file_id, self.name,
+            self.parent_id, self.revision)
+
+    def __eq__(self, other):
+        return (self.kind == other.kind and
+                self.file_id == other.file_id and
+                self.name == other.name and
+                self.parent_id == other.parent_id and
+                self.revision == other.revision)
+
+
+class GitTreeFile(_mod_tree.TreeFile):
+
+    __slots__ = ['file_id', 'name', 'parent_id', 'text_size', 'text_sha1', 'revision',
+                 'executable']
+
+    def __init__(self, file_id, name, parent_id, revision=None):
+        self.file_id = file_id
+        self.name = name
+        self.parent_id = parent_id
+        self.revision = revision
+        self.text_size = None
+        self.text_sha1 = None
+        self.executable = None
+
+    @property
+    def kind(self):
+        return 'file'
+
+    def __eq__(self, other):
+        return (self.kind == other.kind and
+                self.file_id == other.file_id and
+                self.name == other.name and
+                self.parent_id == other.parent_id and
+                self.revision == other.revision and
+                self.text_sha1 == other.text_sha1 and
+                self.text_size == other.text_size and
+                self.executable == other.executable)
+
+    def copy(self):
+        ret = self.__class__(
+                self.file_id, self.name, self.parent_id,
+                self.revision)
+        ret.text_sha1 = self.text_sha1
+        ret.text_size = self.text_size
+        ret.executable = self.executable
+        return ret
+
+
+class GitTreeSymlink(_mod_tree.TreeLink):
+
+    __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target', 'revision']
+
+    def __init__(self, file_id, name, parent_id, revision=None,
+                 symlink_target=None):
+        self.file_id = file_id
+        self.name = name
+        self.parent_id = parent_id
+        self.revision = revision
+        self.symlink_target = symlink_target
+
+    @property
+    def kind(self):
+        return 'symlink'
+
+    @property
+    def executable(self):
+        return False
+
+    @property
+    def text_size(self):
+        return None
+
+    def __eq__(self, other):
+        return (self.kind == other.kind and
+                self.file_id == other.file_id and
+                self.name == other.name and
+                self.parent_id == other.parent_id and
+                self.revision == other.revision and
+                self.symlink_target == other.symlink_target)
+
+    def copy(self):
+        return self.__class__(
+                self.file_id, self.name, self.parent_id,
+                self.revision, self.symlink_target)
+
+
+entry_factory = {
+    'directory': GitTreeDirectory,
+    'file': GitTreeFile,
+    'symlink': GitTreeSymlink,
+    }
 
 
 def ensure_normalized_path(path):
@@ -247,7 +364,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             raise TypeError(name)
         kind = mode_kind(mode)
         file_id = self._fileid_map.lookup_file_id(path)
-        ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
+        ie = entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.store[hexsha].data.decode('utf-8')
         elif kind == 'tree-reference':
@@ -262,7 +379,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self._fileid_map.lookup_file_id(path)
-        ie = inventory.InventoryDirectory(file_id,
+        ie = GitTreeDirectory(file_id,
             posixpath.basename(path).decode("utf-8"), parent_id)
         ie.revision = self.get_file_revision(path.decode('utf-8'))
         return ie
@@ -295,7 +412,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             if specific_paths is None or path in specific_paths:
                 yield path.decode("utf-8"), ie
             tree = self.store[tree_sha]
-            for name, mode, hexsha  in tree.iteritems():
+            for name, mode, hexsha in tree.iteritems():
                 if self.mapping.is_special_file(name):
                     continue
                 child_path = posixpath.join(path, name)
@@ -480,7 +597,7 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
              (oldkind, newkind), (oldexe, newexe))
 
 
-class InterGitTrees(tree.InterTree):
+class InterGitTrees(_mod_tree.InterTree):
     """InterTree that works between two git trees."""
 
     _matching_from_tree_format = None
@@ -547,7 +664,7 @@ class InterGitRevisionTrees(InterGitTrees):
             include_trees=True, change_type_same=True)
 
 
-tree.InterTree.register_optimiser(InterGitRevisionTrees)
+_mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)
 
 
 class MutableGitIndexTree(mutabletree.MutableTree):
@@ -715,7 +832,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
-        return inventory.InventoryDirectory(file_id,
+        return GitTreeDirectory(file_id,
             posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
@@ -730,7 +847,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if type(file_id) != str:
             raise AssertionError
         kind = mode_kind(mode)
-        ie = inventory.entry_factory[kind](file_id, name, parent_id)
+        ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path, file_id)
         else:
