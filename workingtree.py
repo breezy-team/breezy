@@ -792,12 +792,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 file_ie = self._get_dir_ie(posixpath.join(path, dirname), parent_id)
             else:
                 (parent, name) = posixpath.split(item_path)
-                try:
-                    file_ie = self._get_file_ie(name, item_path, value, parent_id)
-                except IOError:
-                    continue
+                file_ie = self._get_file_ie(
+                        name.decode('utf-8'),
+                        item_path.decode('utf-8'), value, parent_id)
             yield file_ie
-        if not found_any:
+        if not found_any and path != u'':
             raise errors.NoSuchFile(path)
 
     def conflicts(self):
