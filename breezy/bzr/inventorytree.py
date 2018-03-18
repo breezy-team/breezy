@@ -114,8 +114,7 @@ class InventoryTree(Tree):
             for elt in bit_iter:
                 lelt = elt.lower()
                 new_path = None
-                inv, inv_file_id = self._unpack_file_id(cur_id)
-                for child in getattr(inv[inv_file_id], 'children', {}).values():
+                for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
                     try:
                         # XXX: it seem like if the child is known to be in the
                         # tree, we shouldn't need to go from its id back to
@@ -251,9 +250,13 @@ class InventoryTree(Tree):
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path, file_id)
             try:
-                return iter(viewvalues(inv[inv_file_id].children))
+                ie = inv[inv_file_id]
             except errors.NoSuchId:
                 raise errors.NoSuchFile(path)
+            else:
+                if ie.kind != 'directory':
+                    raise errors.NotADirectory(path)
+                return iter(viewvalues(ie.children))
 
     def _get_plan_merge_data(self, file_id, other, base):
         from . import versionedfile
