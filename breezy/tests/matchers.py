@@ -200,7 +200,13 @@ class HasPathRelations(Matcher):
         """Get the (path, previous_path) pairs for the current tree."""
         with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                previous_path = find_previous_path(tree, self.previous_tree, path)
+                if tree.supports_rename_tracking():
+                    previous_path = find_previous_path(tree, self.previous_tree, path)
+                else:
+                    if self.previous_tree.is_versioned(path):
+                        previous_path = path
+                    else:
+                        previous_path = None
                 if previous_path:
                     kind = self.previous_tree.kind(previous_path)
                     if kind == 'directory':
