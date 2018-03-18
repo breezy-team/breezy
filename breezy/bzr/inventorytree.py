@@ -746,7 +746,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def kind(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv[inv_file_id].kind
+        try:
+            return inv[inv_file_id].kind
+        except errors.NoSuchId:
+            raise errors.NoSuchFile(path)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""

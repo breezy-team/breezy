@@ -23,6 +23,7 @@ import difflib
 from ... import (
     debug,
     merge,
+    osutils,
     urlutils,
     )
 from ...merge3 import Merge3
@@ -63,18 +64,25 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
 
     name_prefix = "changelog"
 
-    def get_filepath(self, params, tree):
-        """Calculate the path to the file in a tree.
-
-        This is overridden to return just the basename, rather than full path,
-        so that e.g. if the config says ``changelog_merge_files = ChangeLog``,
-        then all ChangeLog files in the tree will match (not just one in the
-        root of the tree).
-        
-        :param params: A MergeHookParams describing the file to merge
-        :param tree: a Tree, e.g. self.merger.this_tree.
-        """
-        return urlutils.basename(tree.id2path(params.file_id))
+    def file_matches(self, params):
+        affected_files = self.affected_files
+        if affected_files is None:
+            config = self.merger.this_branch.get_config()
+            # Until bzr provides a better policy for caching the config, we
+            # just add the part we're interested in to the params to avoid
+            # reading the config files repeatedly (breezy.conf, location.conf,
+            # branch.conf).
+            config_key = self.name_prefix + '_merge_files'
+            affected_files = config.get_user_option_as_list(config_key)
+            if affected_files is None:
+                # If nothing was specified in the config, use the default.
+                affected_files = self.default_files
+            self.affected_files = affected_files
+        if affected_files:
+            filepath = osutils.basename(params.this_path)
+            if filepath in affected_files:
+                return True
+        return False
 
     def merge_text(self, params):
         """Merge changelog changes.

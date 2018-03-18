@@ -90,8 +90,7 @@ class _TransformResults(object):
 class TreeTransformBase(object):
     """The base class for TreeTransform and its kin."""
 
-    def __init__(self, tree, pb=None,
-                 case_sensitive=True):
+    def __init__(self, tree, pb=None, case_sensitive=True):
         """Constructor.
 
         :param tree: The tree that will be transformed, but not necessarily
