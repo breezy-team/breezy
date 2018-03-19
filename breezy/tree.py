@@ -484,28 +484,6 @@ class Tree(object):
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
 
-    def _check_retrieved(self, ie, f):
-        if not __debug__:
-            return
-        fp = osutils.fingerprint_file(f)
-        f.seek(0)
-
-        if ie.text_size is not None:
-            if ie.text_size != fp['size']:
-                raise errors.BzrError(
-                        "mismatched size for file %r in %r" %
-                        (ie.file_id, self._store),
-                        ["inventory expects %d bytes" % ie.text_size,
-                         "file is actually %d bytes" % fp['size'],
-                         "store is probably damaged/corrupt"])
-
-        if ie.text_sha1 != fp['sha1']:
-            raise errors.BzrError("wrong SHA-1 for file %r in %r" %
-                    (ie.file_id, self._store),
-                    ["inventory expects %s" % ie.text_sha1,
-                     "file is actually %s" % fp['sha1'],
-                     "store is probably damaged/corrupt"])
-
     def path2id(self, path):
         """Return the id for path in this tree."""
         raise NotImplementedError(self.path2id)
@@ -783,16 +761,14 @@ class InterTree(InterObject):
         # it works for all trees.
         return True
 
-    def _changes_from_entries(self, source_entry, target_entry,
-        source_path=None, target_path=None):
+    def _changes_from_entries(self, source_entry, target_entry, source_path,
+                              target_path):
         """Generate a iter_changes tuple between source_entry and target_entry.
 
         :param source_entry: An inventory entry from self.source, or None.
         :param target_entry: An inventory entry from self.target, or None.
-        :param source_path: The path of source_entry, if known. If not known
-            it will be looked up.
-        :param target_path: The path of target_entry, if known. If not known
-            it will be looked up.
+        :param source_path: The path of source_entry.
+        :param target_path: The path of target_entry.
         :return: A tuple, item 0 of which is an iter_changes result tuple, and
             item 1 is True if there are any changes in the result tuple.
         """
@@ -806,8 +782,6 @@ class InterTree(InterObject):
             source_versioned = True
             source_name = source_entry.name
             source_parent = source_entry.parent_id
-            if source_path is None:
-                source_path = self.source.id2path(file_id)
             source_kind, source_executable, source_stat = \
                 self.source._comparison_data(source_entry, source_path)
         else:
@@ -820,8 +794,6 @@ class InterTree(InterObject):
             target_versioned = True
             target_name = target_entry.name
             target_parent = target_entry.parent_id
-            if target_path is None:
-                target_path = self.target.id2path(file_id)
             target_kind, target_executable, target_stat = \
                 self.target._comparison_data(target_entry, target_path)
         else:
@@ -837,8 +809,8 @@ class InterTree(InterObject):
             changed_content = True
         elif source_kind == 'file':
             if not self.file_content_matches(
-                    source_path, target_path, file_id, file_id, source_stat,
-                    target_stat):
+                    source_path, target_path,
+                    file_id, file_id, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
             if (self.source.get_symlink_target(source_path, file_id) !=
@@ -1133,8 +1105,16 @@ class InterTree(InterObject):
                 if result is None:
                     old_entry = self._get_entry(self.source, file_id)
                     new_entry = self._get_entry(self.target, file_id)
+                    try:
+                        source_path = self.source.id2path(file_id)
+                    except errors.NoSuchId:
+                        source_path = None
+                    try:
+                        target_path = self.target.id2path(file_id)
+                    except errors.NoSuchId:
+                        target_path = None
                     result, changes = self._changes_from_entries(
-                        old_entry, new_entry)
+                        old_entry, new_entry, source_path, target_path)
                 else:
                     changes = True
                 # Get this parents parent to examine.
@@ -1154,8 +1134,9 @@ class InterTree(InterObject):
                     yield result
 
     def file_content_matches(
-            self, source_path, target_path=None, source_file_id=None,
-            target_file_id=None, source_stat=None, target_stat=None):
+            self, source_path, target_path,
+            source_file_id=None, target_file_id=None,
+            source_stat=None, target_stat=None):
         """Check if two files are the same in the source and target trees.
 
         This only checks that the contents of the files are the same,
@@ -1163,8 +1144,8 @@ class InterTree(InterObject):
 
         :param source_path: Path of the file in the source tree
         :param target_path: Path of the file in the target tree
-        :param source_file_id: File id of the file in the source tree
-        :param target_file_id: File id of the file in the target tree
+        :param source_file_id: Optional file id of the file in the source tree
+        :param target_file_id: Optional file id of the file in the target tree
         :param source_stat: Optional stat value of the file in the source tree
         :param target_stat: Optional stat value of the file in the target tree
         :return: Boolean indicating whether the files have the same contents
