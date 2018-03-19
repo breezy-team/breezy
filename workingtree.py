@@ -93,55 +93,6 @@ from .mapping import (
 IGNORE_FILENAME = ".gitignore"
 
 
-class ConflictList(_mod_conflicts.ConflictList):
-    """List of conflicts.
-
-    Typically obtained from WorkingTree.conflicts()
-
-    Can be instantiated from stanzas or from Conflict subclasses.
-    """
-
-    def __init__(self, conflicts=None):
-        object.__init__(self)
-        if conflicts is None:
-            self.__list = []
-        else:
-            self.__list = conflicts
-
-    def is_empty(self):
-        return len(self.__list) == 0
-
-    def __len__(self):
-        return len(self.__list)
-
-    def __iter__(self):
-        return iter(self.__list)
-
-    def __getitem__(self, key):
-        return self.__list[key]
-
-    def append(self, conflict):
-        return self.__list.append(conflict)
-
-    def __eq__(self, other_list):
-        return list(self) == list(other_list)
-
-    def __ne__(self, other_list):
-        return not (self == other_list)
-
-    def __repr__(self):
-        return "ConflictList(%r)" % self.__list
-
-    def select_conflicts(self, tree, paths, ignore_misses=False,
-                         recurse=False):
-        """Select the conflicts associated with paths in a tree.
-
-        File-ids are also used for this.
-        :return: a pair of ConflictLists: (not_selected, selected)
-        """
-        return ([], [])
-
-
 class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     """A Git working tree."""
 
@@ -471,19 +422,20 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 filepath, can_access = osutils.normalized_filename(filepath)
                 if not can_access:
                     raise errors.InvalidNormalization(filepath)
-                if filepath in self.index:
-                    # Already present
-                    continue
 
                 abspath = self.abspath(filepath)
                 kind = osutils.file_kind(abspath)
                 if kind in ("file", "symlink"):
+                    if filepath in self.index:
+                        # Already present
+                        continue
                     call_action(filepath, kind)
                     if save:
                         self._index_add_entry(filepath, kind)
                     added.append(filepath)
                 elif kind == "directory":
-                    call_action(filepath, kind)
+                    if filepath not in self.index:
+                        call_action(filepath, kind)
                     if recurse:
                         user_dirs.append(filepath)
                 else:
@@ -509,9 +461,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     subp = os.path.join(user_dir, name)
                     if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
                         continue
-                    if subp in self.index:
-                        # Already present
-                        continue
                     ignore_glob = self.is_ignored(subp)
                     if ignore_glob is not None:
                         ignored.setdefault(ignore_glob, []).append(subp)
@@ -521,6 +470,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
+                        if subp in self.index:
+                            # Already present
+                            continue
                         call_action(filepath, kind)
                         if save:
                             self._index_add_entry(subp, kind)
@@ -861,7 +813,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def conflicts(self):
         with self.lock_read():
-            conflicts = ConflictList()
+            conflicts = _mod_conflicts.ConflictList()
             for item_path, value in self.index.iteritems():
                 if value.flags & FLAG_STAGEMASK:
                     conflicts.append(_mod_conflicts.TextConflict(item_path.decode('utf-8')))
