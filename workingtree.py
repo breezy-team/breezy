@@ -1045,6 +1045,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     requires_normalized_unicode_filenames = True
 
+    supports_merge_modified = False
+
     @property
     def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
