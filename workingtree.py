@@ -37,6 +37,7 @@ from dulwich.index import (
     index_entry_from_stat,
     iter_fresh_blobs,
     blob_from_path_and_stat,
+    FLAG_STAGEMASK,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -54,8 +55,8 @@ import stat
 import sys
 
 from ... import (
-    errors,
     conflicts as _mod_conflicts,
+    errors,
     controldir as _mod_controldir,
     globbing,
     ignores,
@@ -400,6 +401,10 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if osutils.has_symlinks():
             file_list = list(map(osutils.normalizepath, file_list))
 
+        conflicts_related = set()
+        for c in self.conflicts():
+            conflicts_related.update(c.associated_filenames())
+
         added = []
         ignored = {}
         user_dirs = []
@@ -421,12 +426,16 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 abspath = self.abspath(filepath)
                 kind = osutils.file_kind(abspath)
                 if kind in ("file", "symlink"):
+                    if filepath in self.index:
+                        # Already present
+                        continue
                     call_action(filepath, kind)
                     if save:
                         self._index_add_entry(filepath, kind)
                     added.append(filepath)
                 elif kind == "directory":
-                    call_action(filepath, kind)
+                    if filepath not in self.index:
+                        call_action(filepath, kind)
                     if recurse:
                         user_dirs.append(filepath)
                 else:
@@ -461,6 +470,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
+                        if subp in self.index:
+                            # Already present
+                            continue
+                        if subp in conflicts_related:
+                            continue
                         call_action(filepath, kind)
                         if save:
                             self._index_add_entry(subp, kind)
@@ -801,8 +815,43 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def conflicts(self):
         with self.lock_read():
-            # FIXME:
-            return _mod_conflicts.ConflictList()
+            conflicts = _mod_conflicts.ConflictList()
+            for item_path, value in self.index.iteritems():
+                if value.flags & FLAG_STAGEMASK:
+                    conflicts.append(_mod_conflicts.TextConflict(item_path.decode('utf-8')))
+            return conflicts
+
+    def set_conflicts(self, conflicts):
+        by_path = set()
+        for conflict in conflicts:
+            if conflict.typestring in ('text conflict', 'contents conflict'):
+                by_path.add(conflict.path.encode('utf-8'))
+            else:
+                raise errors.UnsupportedOperation(self.set_conflicts, self)
+        with self.lock_tree_write():
+            for path in self.index:
+                self._set_conflicted(path, path in by_path)
+            self.flush()
+
+    def _set_conflicted(self, path, conflicted):
+        trace.mutter('change conflict: %r -> %r', path, conflicted)
+        value = self.index[path]
+        if conflicted:
+            self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
+        else:
+            self.index[path] = (value[:9] + (value[9] &~ FLAG_STAGEMASK, ))
+
+    def add_conflicts(self, new_conflicts):
+        with self.lock_tree_write():
+            for conflict in new_conflicts:
+                if conflict.typestring in ('text conflict', 'contents conflict'):
+                    try:
+                        self._set_conflicted(conflict.path.encode('utf-8'), True)
+                    except KeyError:
+                        raise errors.UnsupportedOperation(self.add_conflicts, self)
+                else:
+                    raise errors.UnsupportedOperation(self.add_conflicts, self)
+            self.flush()
 
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
