@@ -70,11 +70,11 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
         so that e.g. if the config says ``changelog_merge_files = ChangeLog``,
         then all ChangeLog files in the tree will match (not just one in the
         root of the tree).
-
+        
         :param params: A MergeHookParams describing the file to merge
         :param tree: a Tree, e.g. self.merger.this_tree.
         """
-        return self.get_filename(params, tree)
+        return urlutils.basename(tree.id2path(params.file_id))
 
     def merge_text(self, params):
         """Merge changelog changes.
