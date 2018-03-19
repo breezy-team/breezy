@@ -19,8 +19,9 @@
 
 from __future__ import absolute_import
 
-from .... import (
-    conflicts as _mod_conflicts,
+from ..workingtree import (
+    ConflictList,
+    FLAG_STAGEMASK,
     )
 from ....tests import TestCaseWithTransport
 
@@ -31,6 +32,13 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         super(GitWorkingTreeTests, self).setUp()
         self.tree = self.make_branch_and_tree('.', format="git")
 
-    def test_conflicts(self):
-        self.assertIsInstance(self.tree.conflicts(),
-            _mod_conflicts.ConflictList)
+    def test_conflict_list(self):
+        self.assertIsInstance(self.tree.conflicts(), ConflictList)
+
+    def test_add_conflict(self):
+        self.build_tree(['conflicted'])
+        self.tree.add(['conflicted'])
+        with self.tree.lock_tree_write():
+            self.tree.index['conflicted'] = self.tree.index['conflicted'][:9] + (FLAG_STAGEMASK, )
+        conflicts = self.tree.conflicts()
+        self.assertEqual(1, len(conflicts))
