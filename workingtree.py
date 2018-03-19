@@ -534,14 +534,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             raise errors.NotWriteLocked(self)
         self.index.write()
 
-    def __iter__(self):
-        with self.lock_read():
-            for path in self.index:
-                yield self.path2id(path)
-            self._load_dirs()
-            for path in self._versioned_dirs:
-                yield self.path2id(path)
-
     def has_or_had_id(self, file_id):
         if self.has_id(file_id):
             return True
