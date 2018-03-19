@@ -166,11 +166,14 @@ class RemoteGitProber(Prober):
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
         from ...transport.http._urllib import HttpTransport_urllib, Request
         headers = {"Content-Type": "application/x-git-upload-pack-request"}
-        if "github.com" in url:
-            # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-            headers["User-agent"] = "git/Breezy/%s" % breezy_version
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                       headers=headers)
+        if req.get_host() == "github.com":
+            # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
+            headers["User-agent"] = "git/Breezy/%s" % breezy_version
+        elif req.get_host() == "bazaar.launchpad.net":
+            # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
+            raise bzr_errors.NotBranchError(transport.base)
         req.follow_redirections = True
         resp = transport._perform(req)
         if resp.code in (404, 405):
