@@ -740,6 +740,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         for (path, file_id, kind) in zip(files, ids, kinds):
             if file_id is not None:
                 raise workingtree.SettingFileIdUnsupported()
+            path, can_access = osutils.normalized_filename(path)
+            if not can_access:
+                raise errors.InvalidNormalization(path)
             self._index_add_entry(path, kind)
 
     def _index_add_entry(self, path, kind, flags=0):
