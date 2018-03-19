@@ -473,6 +473,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         if subp in self.index:
                             # Already present
                             continue
+                        if subp in conflicts_related:
+                            continue
                         call_action(filepath, kind)
                         if save:
                             self._index_add_entry(subp, kind)
