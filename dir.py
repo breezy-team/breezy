@@ -599,8 +599,8 @@ class LocalGitDir(GitDir):
         from .workingtree import GitWorkingTree
         index = self._git.open_index()
         wt = GitWorkingTree(self, repo, from_branch, index)
-        wt.reset_state(
-            [] if revision_id == _mod_revision.NULL_REVISION else [revision_id])
+        wt.set_last_revision(revision_id)
+        wt._build_checkout_with_index()
         return wt
 
     def _find_or_create_repository(self, force_new_repo=None):
