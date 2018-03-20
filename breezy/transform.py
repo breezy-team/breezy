@@ -2002,9 +2002,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             vf.fallback_versionedfiles.append(base_vf)
         return tree_revision
 
-    def _stat_limbo_file(self, file_id=None, trans_id=None):
-        if trans_id is None:
-            trans_id = self._transform.trans_id_file_id(file_id)
+    def _stat_limbo_file(self, trans_id=None):
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
@@ -2163,11 +2161,9 @@ class _PreviewTree(inventorytree.InventoryTree):
         return ordered_ids
 
     def iter_child_entries(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        if file_id is None:
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
             raise errors.NoSuchFile(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]
         for entry, trans_id in self._make_inv_entries(todo):
@@ -2186,11 +2182,11 @@ class _PreviewTree(inventorytree.InventoryTree):
 
     def _iter_entries_for_dir(self, dir_path):
         """Return path, entry for items in a directory without recursing down."""
-        dir_file_id = self.path2id(dir_path)
         ordered_ids = []
-        for file_id in self.iter_children(dir_file_id):
-            trans_id = self._transform.trans_id_file_id(file_id)
-            ordered_ids.append((trans_id, file_id))
+        dir_trans_id = self._path2trans_id(dir_path)
+        dir_id = self._transform.final_file_id(dir_trans_id)
+        for child_trans_id in self._all_children(dir_trans_id):
+            ordered_ids.append((child_trans_id, dir_id))
         for entry, trans_id in self._make_inv_entries(ordered_ids):
             yield unicode(self._final_paths.get_path(trans_id)), entry
 
@@ -2221,15 +2217,15 @@ class _PreviewTree(inventorytree.InventoryTree):
                 yield path, 'V', entry.kind, entry.file_id, entry
 
     def kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         return self._transform.final_kind(trans_id)
 
     def stored_kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         try:
             return self._transform._new_contents[trans_id]
         except KeyError:
@@ -2244,17 +2240,14 @@ class _PreviewTree(inventorytree.InventoryTree):
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(
                     self._transform._tree.id2path(file_id), file_id)
-        return self._stat_limbo_file(file_id).st_mtime
-
-    def _file_size(self, entry, stat_value):
-        path = self.id2path(entry.file_id)
-        return self.get_file_size(path, entry.file_id)
+        trans_id = self._path2trans_id(path)
+        return self._stat_limbo_file(trans_id=trans_id).st_mtime
 
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         kind = self._transform.final_kind(trans_id)
         if kind != 'file':
             return None
@@ -2266,9 +2259,9 @@ class _PreviewTree(inventorytree.InventoryTree):
             return None
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_verifier(path, file_id)
@@ -2280,9 +2273,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 fileobj.close()
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_sha1(path, file_id)
@@ -2294,11 +2287,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 fileobj.close()
 
     def is_executable(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        if file_id is None:
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
             return False
-        trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._transform._new_executability[trans_id]
         except KeyError:
@@ -2377,7 +2368,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             file_id = self.path2id(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_file(path, file_id)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
@@ -2423,7 +2414,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             file_id = self.path2id(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_symlink_target(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
         name = self._transform._limbo_name(trans_id)
         return osutils.readlink(name)
 
