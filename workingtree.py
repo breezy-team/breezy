@@ -31,6 +31,7 @@ from dulwich.ignore import (
     )
 from dulwich.index import (
     Index,
+    build_index_from_tree,
     changes_from_tree,
     cleanup_mode,
     commit_tree,
@@ -112,7 +113,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self._rules_searcher = None
         self._detect_case_handling()
         self._reset_data()
-        self._fileid_map = self._basis_fileid_map.copy()
 
     def supports_tree_reference(self):
         return False
@@ -626,6 +626,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         else:
             self._basis_fileid_map = self.mapping.get_fileid_map(
                 self.store.__getitem__, self.store[head].tree)
+        self._fileid_map = self._basis_fileid_map.copy()
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
         with self.lock_read():
@@ -1068,6 +1069,22 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def _rename_one(self, from_rel, to_rel):
         os.rename(self.abspath(from_rel), self.abspath(to_rel))
+
+    def reset_state(self, revision_ids=None):
+        """Reset the state of the working tree.
+
+        This does a hard-reset to a last-known-good state. This is a way to
+        fix if something got corrupted (like the .git/index file)
+        """
+        with self.lock_tree_write():
+            if revision_ids is not None:
+                self.set_parent_ids(revision_ids)
+            build_index_from_tree(
+                self.user_transport.local_abspath('.'),
+                self.control_transport.local_abspath("index"),
+                self.store,
+                None if self.branch.head is None else self.store[self.branch.head].tree)
+            self._fileid_map = self._basis_fileid_map.copy()
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

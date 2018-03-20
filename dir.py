@@ -596,17 +596,11 @@ class LocalGitDir(GitDir):
         if revision_id is None:
             revision_id = from_branch.last_revision()
         repo = self.find_repository()
-        store = repo._git.object_store
-        (commit_id, mapping) = repo.lookup_bzr_revision_id(revision_id)
-        build_index_from_tree(
-            self.root_transport.local_abspath('.'),
-            self.transport.local_abspath("index"),
-            store,
-            None if revision_id == _mod_revision.NULL_REVISION else store[commit_id].tree)
         from .workingtree import GitWorkingTree
         index = self._git.open_index()
         wt = GitWorkingTree(self, repo, from_branch, index)
-        wt.set_last_revision(revision_id)
+        wt.reset_state(
+            [] if revision_id == _mod_revision.NULL_REVISION else [revision_id])
         return wt
 
     def _find_or_create_repository(self, force_new_repo=None):
