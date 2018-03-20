@@ -33,6 +33,7 @@ from dulwich.object_store import (
 from dulwich.objects import (
     Blob,
     Tree,
+    ZERO_SHA,
     )
 import stat
 import posixpath
@@ -223,6 +224,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_revision(self, path, file_id=None):
         change_scanner = self._repository._file_change_scanner
+        if self.commit_id == ZERO_SHA:
+            return NULL_REVISION
         (path, commit_id) = change_scanner.find_last_change_revision(
             path.encode('utf-8'), self.commit_id)
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
@@ -241,7 +244,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         except ValueError:
             raise errors.NoSuchId(self, file_id)
         path = path.decode('utf-8')
-        if self.has_filename(path):
+        if self.is_versioned(path):
             return path
         raise errors.NoSuchId(self, file_id)
 
@@ -276,7 +279,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self.path2id("")
 
     def has_or_had_id(self, file_id):
-        return self.has_id(file_id)
+        try:
+            path = self.id2path(file_id)
+        except errors.NoSuchId:
+            return False
+        return True
 
     def has_id(self, file_id):
         try:
@@ -802,15 +809,12 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                         specific_paths.append(self.id2path(file_id))
                     except errors.NoSuchId:
                         pass
-                if specific_paths in ([u""], []):
-                    specific_paths = None
-                else:
-                    specific_paths = set(specific_paths)
+                specific_paths = set(specific_paths)
             else:
                 specific_paths = None
             root_ie = self._get_dir_ie(u"", None)
             ret = {}
-            if specific_paths is None:
+            if specific_paths is None or u"" in specific_paths:
                 ret[(None, u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
             for path, value in self.index.iteritems():
