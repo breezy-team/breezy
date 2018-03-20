@@ -39,6 +39,7 @@ from dulwich.index import (
     iter_fresh_blobs,
     blob_from_path_and_stat,
     FLAG_STAGEMASK,
+    validate_path,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -47,6 +48,7 @@ from dulwich.objects import (
     Blob,
     Tree,
     S_IFGITLINK,
+    S_ISGITLINK,
     )
 from dulwich.repo import Repo
 import os
@@ -1070,6 +1072,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def _rename_one(self, from_rel, to_rel):
         os.rename(self.abspath(from_rel), self.abspath(to_rel))
 
+    def _build_checkout_with_index(self):
+        build_index_from_tree(
+            self.user_transport.local_abspath('.'),
+            self.control_transport.local_abspath("index"),
+            self.store,
+            None if self.branch.head is None else self.store[self.branch.head].tree)
+
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
 
@@ -1079,12 +1088,26 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         with self.lock_tree_write():
             if revision_ids is not None:
                 self.set_parent_ids(revision_ids)
-            build_index_from_tree(
-                self.user_transport.local_abspath('.'),
-                self.control_transport.local_abspath("index"),
-                self.store,
-                None if self.branch.head is None else self.store[self.branch.head].tree)
-            self._fileid_map = self._basis_fileid_map.copy()
+            self.index.clear()
+            if self.branch.head is not None:
+                for entry in self.store.iter_tree_contents(self.store[self.branch.head].tree):
+                    if not validate_path(entry.path):
+                        continue
+
+                    if S_ISGITLINK(entry.mode):
+                        pass # TODO(jelmer): record and return submodule paths
+                    else:
+                        # Let's at least try to use the working tree file:
+                        try:
+                            st = self._lstat(self.abspath(entry.path))
+                        except OSError, (num, msg):
+                            # But if it doesn't exist, we'll make something up.
+                            obj = self.store[entry.sha]
+                            st = os.stat_result((entry.mode, 0, 0, 0,
+                                  0, 0, len(obj.as_raw_string()), 0,
+                                  0, 0))
+                    self.index[entry.path] = index_entry_from_stat(st, entry.sha, 0)
+            self.flush()
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
