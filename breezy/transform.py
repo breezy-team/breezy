@@ -285,17 +285,6 @@ class TreeTransformBase(object):
         del self._new_parent[old_new_root]
         del self._new_name[old_new_root]
 
-    def trans_id_tree_file_id(self, inventory_id):
-        """Determine the transaction id of a working tree file.
-
-        This reflects only files that already exist, not ones that will be
-        added by transactions.
-        """
-        if inventory_id is None:
-            raise ValueError('None is not a valid file id')
-        path = self._tree.id2path(inventory_id)
-        return self.trans_id_tree_path(path)
-
     def trans_id_file_id(self, file_id):
         """Determine or set the transaction id associated with a file ID.
         A new id is only created for file_ids that were never present.  If
@@ -317,7 +306,8 @@ class TreeTransformBase(object):
                     self._non_present_ids[file_id] = trans_id
                     return trans_id
             else:
-                return self.trans_id_tree_file_id(file_id)
+                path = self._tree.id2path(file_id)
+                return self.trans_id_tree_path(path)
 
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
@@ -735,7 +725,8 @@ class TreeTransformBase(object):
         active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in viewitems(self._new_id):
             if file_id in active_tree_ids:
-                old_trans_id = self.trans_id_tree_file_id(file_id)
+                path = self._tree.id2path(file_id)
+                old_trans_id = self.trans_id_tree_path(path)
                 conflicts.append(('duplicate id', old_trans_id, trans_id))
         return conflicts
 
