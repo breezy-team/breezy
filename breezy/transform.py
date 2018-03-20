@@ -132,7 +132,7 @@ class TreeTransformBase(object):
         # The trans_id that will be used as the tree root
         root_id = tree.get_root_id()
         if root_id is not None:
-            self._new_root = self.trans_id_tree_file_id(root_id)
+            self._new_root = self.trans_id_tree_path('')
         else:
             self._new_root = None
         # Indicator of whether the transform has been applied
@@ -216,7 +216,7 @@ class TreeTransformBase(object):
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
         self._tree_id_paths.pop(old_root)
-        self._new_root = self.trans_id_tree_file_id(self._tree.get_root_id())
+        self._new_root = self.trans_id_tree_path('')
         if parent == old_root:
             parent = self._new_root
         self.adjust_path(name, parent, old_root)
@@ -2575,8 +2575,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     divert = set()
     try:
         pp.next_phase()
-        file_trans_id[wt.get_root_id()] = \
-            tt.trans_id_tree_file_id(wt.get_root_id())
+        file_trans_id[wt.get_root_id()] = tt.trans_id_tree_path('')
         with ui.ui_factory.nested_progress_bar() as pb:
             deferred_contents = []
             num = 0
@@ -3229,9 +3228,9 @@ def link_tree(target_tree, source_tree):
                 continue
             if executable[0] != executable[1]:
                 continue
-            trans_id = tt.trans_id_tree_file_id(file_id)
+            trans_id = tt.trans_id_tree_path(paths[1])
             tt.delete_contents(trans_id)
-            tt.create_hardlink(source_tree.id2abspath(file_id), trans_id)
+            tt.create_hardlink(source_tree.abspath(paths[0]), trans_id)
         tt.apply()
     finally:
         tt.finalize()
