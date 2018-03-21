@@ -398,6 +398,26 @@ class GitRevisionTree(revisiontree.RevisionTree):
             for name, mode, hexsha  in self.store[tree_sha].iteritems():
                 yield self._fileid_map.lookup_file_id(posixpath.join(path, name))
 
+    def iter_child_entries(self, path, file_id=None):
+        encoded_path = path.encode('utf-8')
+        (mode, tree_sha) = tree_lookup_path(self.store.__getitem__, self.tree,
+            encoded_path)
+
+        if not stat.S_ISDIR(mode):
+            return
+
+        file_id = self.path2id(path)
+        tree = self.store[tree_sha]
+        for name, mode, hexsha in tree.iteritems():
+            if self.mapping.is_special_file(name):
+                continue
+            child_path = posixpath.join(encoded_path, name)
+            if stat.S_ISDIR(mode):
+                yield self._get_dir_ie(child_path, file_id)
+            else:
+                yield self._get_file_ie(child_path, name, mode, hexsha,
+                                        file_id)
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         if self.tree is None:
             return
