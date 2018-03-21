@@ -67,6 +67,7 @@ from .repository import (
 from .refs import (
     branch_name_to_ref,
     is_peeled,
+    ref_to_tag_name,
     )
 
 import dulwich
@@ -287,7 +288,7 @@ class RemoteGitDir(GitDir):
             def progress(text):
                 trace.info("git: %s" % text)
         def wrap_determine_wants(refs_dict):
-            return determine_wants(remote_refs_dict_to_container(refs_dict))
+            return determine_wants(refs_dict)
         try:
             refs_dict = self._client.fetch_pack(self._client_path, wrap_determine_wants,
                 graph_walker, pack_data, progress)
@@ -316,7 +317,9 @@ class RemoteGitDir(GitDir):
                 raise NotBranchError(self.user_url)
             ret[refname] = "00" * 20
             return ret
-        self.send_pack(get_changed_refs, lambda have, want: [])
+        def generate_pack_contents(have, want, ofs_delta=False):
+            return []
+        self.send_pack(get_changed_refs, generate_pack_contents)
 
     @property
     def user_url(self):
@@ -579,6 +582,29 @@ class RemoteGitBranch(GitBranch):
 
     def set_push_location(self, url):
         pass
+
+    def _iter_tag_refs(self):
+        """Iterate over the tag refs.
+
+        :param refs: Refs dictionary (name -> git sha1)
+        :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        """
+        refs = self.controldir.get_refs_container()
+        for ref_name, unpeeled in refs.as_dict().iteritems():
+            try:
+                tag_name = ref_to_tag_name(ref_name)
+            except (ValueError, UnicodeDecodeError):
+                continue
+            peeled = refs.get_peeled(ref_name)
+            if peeled is None:
+                try:
+                    peeled = refs.peel_sha(unpeeled).id
+                except KeyError:
+                    # Let's just hope it's a commit
+                    peeled = unpeeled
+            if type(tag_name) is not unicode:
+                raise TypeError(tag_name)
+            yield (ref_name, tag_name, peeled, unpeeled)
 
 
 def remote_refs_dict_to_container(refs_dict):

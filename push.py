@@ -23,6 +23,7 @@ from dulwich.walk import Walker
 
 from ... import (
     errors,
+    trace,
     ui,
     )
 from ...repository import (
@@ -160,6 +161,11 @@ class InterToGitRepository(InterRepository):
                     if kind == "commit":
                         missing_revids.add(type_data[0])
         return self.source.revision_ids_to_search_result(missing_revids)
+
+    def _warn_slow(self):
+        trace.warning(
+            'Pushing from a Bazaar to a Git repository. '
+            'For better performance, push into a Bazaar repository.')
 
 
 class InterToLocalGitRepository(InterToGitRepository):
@@ -319,6 +325,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 raise AssertionError("Unsupported search result type %s" % recipe[0])
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
+        self._warn_slow()
         try:
             self.fetch_objects(stop_revisions, lossy=False)
         except NoPushSupport:
@@ -350,6 +357,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 else:
                     ret[name] = gitid
             return ret
+        self._warn_slow()
         with self.source_store.lock_read():
             new_refs = self.target.send_pack(determine_wants,
                     self.source_store.generate_lossy_pack_contents)
