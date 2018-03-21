@@ -27,10 +27,7 @@ from .... import (
     errors as bzr_errors,
     tests,
     )
-try:
-    from ....tests.features import Feature
-except ImportError: # bzr < 2.5
-    from ....tests import Feature
+from ....tests.features import Feature
 from .. import (
     import_dulwich,
     )
