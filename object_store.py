@@ -711,7 +711,7 @@ class BazaarObjectStore(BaseObjectStore):
             lossy=True)
 
     def generate_pack_contents(self, have, want, progress=None,
-            get_tagged=None, lossy=False):
+            ofs_delta=False, get_tagged=None, lossy=False):
         """Iterate over the contents of a pack file.
 
         :param have: List of SHA1s of objects that should not be sent

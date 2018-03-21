@@ -623,6 +623,11 @@ class InterGitNonGitRepository(InterFromGitRepository):
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
+    def _warn_slow(self):
+        trace.warning(
+            'Fetching from Git to Bazaar repository. '
+            'For better performance, fetch into a Git repository.')
+
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
         for revid in set(revids):
@@ -674,6 +679,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
 _GIT_PROGRESS_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
 def report_git_progress(pb, text):
     text = text.rstrip("\r\n")
+    trace.mutter('git: %s', text)
     g = _GIT_PROGRESS_RE.match(text)
     if g is not None:
         (text, pct, current, total) = g.groups()
@@ -711,9 +717,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
+        self._warn_slow()
         store = BazaarObjectStore(self.target, mapping)
-        store.lock_write()
-        try:
+        with store.lock_write():
             heads = self.get_target_heads()
             graph_walker = ObjectStoreGraphWalker(
                 [store._lookup_revision_sha1(head) for head in heads],
@@ -733,8 +739,6 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
             finally:
                 pb.finished()
-        finally:
-            store.unlock()
 
     @staticmethod
     def is_compatible(source, target):
@@ -756,6 +760,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
+        self._warn_slow()
         remote_refs = self.source.controldir.get_refs_container()
         wants = determine_wants(remote_refs)
         create_pb = None

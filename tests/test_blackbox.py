@@ -94,7 +94,9 @@ class TestGitBlackBox(ExternalBase):
         os.chdir('..')
 
         output, error = self.run_bzr(['checkout', 'gitbranch', 'bzrbranch'])
-        self.assertEqual(error, '')
+        self.assertEqual(error,
+                'Fetching from Git to Bazaar repository. '
+                'For better performance, fetch into a Git repository.\n')
         self.assertEqual(output, '')
 
     def test_branch_ls(self):

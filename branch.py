@@ -37,6 +37,7 @@ from ... import (
     repository as _mod_repository,
     revision,
     tag,
+    trace,
     transport,
     urlutils,
     )
@@ -127,9 +128,15 @@ class GitTags(tag.BasicTags):
                 target_repo._git.refs[ref_name] = unpeeled or peeled
                 updates[tag_name] = self.repository.lookup_foreign_revision_id(peeled)
             else:
-                conflicts.append(
-                    (tag_name, self.repository.lookup_foreign_revision_id(peeled),
-                    target_repo.lookup_foreign_revision_id(target_repo._git.refs[ref_name])))
+                source_revid = self.repository.lookup_foreign_revision_id(peeled)
+                try:
+                    target_revid = target_repo.lookup_foreign_revision_id(
+                            target_repo._git.refs[ref_name])
+                except KeyError:
+                    trace.warning('%s does not point to a valid object',
+                                  ref_name)
+                    continue
+                conflicts.append((tag_name, source_revid, target_revid))
         return updates, conflicts
 
     def _merge_to_git(self, to_tags, source_tag_refs, overwrite=False):
@@ -514,6 +521,12 @@ class GitBranch(ForeignBranch):
         """
         raise NotImplementedError(self._iter_tag_refs)
 
+    def get_tag_refs(self):
+        with self.lock_read():
+            if self._tag_refs is None:
+                self._tag_refs = list(self._iter_tag_refs())
+            return self._tag_refs
+
 
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
@@ -632,12 +645,6 @@ class LocalGitBranch(GitBranch):
             if type(tag_name) is not unicode:
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
-
-    def get_tag_refs(self):
-        with self.lock_read():
-            if self._tag_refs is None:
-                self._tag_refs = list(self._iter_tag_refs())
-            return self._tag_refs
 
     def create_memorytree(self):
         from .memorytree import GitMemoryTree
@@ -937,7 +944,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 refs[tag_name_to_ref(name)] = sha
             return refs
         self.target.repository.send_pack(get_changed_refs,
-            self.source.repository._git.object_store.generate_pack_contents)
+            self.source.repository._git.object_store.generate_pack_data)
         return result
 
 
