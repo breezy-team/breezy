@@ -290,12 +290,12 @@ class RemoteGitDir(GitDir):
         def wrap_determine_wants(refs_dict):
             return determine_wants(refs_dict)
         try:
-            refs_dict = self._client.fetch_pack(self._client_path, wrap_determine_wants,
+            result = self._client.fetch_pack(self._client_path, wrap_determine_wants,
                 graph_walker, pack_data, progress)
-            if refs_dict is None:
-                refs_dict = {}
-            self._refs = remote_refs_dict_to_container(refs_dict)
-            return refs_dict
+            if result.refs is None:
+                result.refs = {}
+            self._refs = remote_refs_dict_to_container(result.refs)
+            return result.refs
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
 
@@ -358,9 +358,9 @@ class RemoteGitDir(GitDir):
     def get_refs_container(self):
         if self._refs is not None:
             return self._refs
-        refs_dict = self.fetch_pack(lambda x: [], None,
+        result = self.fetch_pack(lambda x: [], None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
-        self._refs = remote_refs_dict_to_container(refs_dict)
+        self._refs = remote_refs_dict_to_container(result.refs)
         return self._refs
 
 
