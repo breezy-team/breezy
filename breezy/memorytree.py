@@ -131,12 +131,6 @@ class MemoryTree(MutableInventoryTree):
         else:
             raise NotImplementedError('unknown kind')
 
-    def _file_size(self, entry, stat_value):
-        """See Tree._file_size."""
-        if entry is None:
-            return 0
-        return entry.text_size
-
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
 

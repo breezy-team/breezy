@@ -965,9 +965,6 @@ class WorkingTree(mutabletree.MutableTree,
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
 
-    def _file_size(self, entry, stat_value):
-        return stat_value.st_size
-
     def last_revision(self):
         """Return the last revision of the branch for this tree.
 

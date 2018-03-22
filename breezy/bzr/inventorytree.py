@@ -780,9 +780,6 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             return None, False, None
         return entry.kind, entry.executable, None
 
-    def _file_size(self, entry, stat_value):
-        return entry.text_size
-
     def walkdirs(self, prefix=""):
         _directory = 'directory'
         inv, top_id = self._path2inv_file_id(prefix)

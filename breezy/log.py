@@ -85,14 +85,15 @@ from .osutils import (
     get_terminal_encoding,
     terminal_width,
     )
-from breezy.sixish import (
+from .sixish import (
     BytesIO,
     range,
     zip,
     )
+from .tree import find_previous_path
 
 
-def find_touching_revisions(branch, file_id):
+def find_touching_revisions(repository, last_revision, last_tree, last_path):
     """Yield a description of revisions which affect the file_id.
 
     Each returned element is (revno, revision_id, description)
@@ -103,40 +104,36 @@ def find_touching_revisions(branch, file_id):
     TODO: Perhaps some way to limit this to only particular revisions,
     or to traverse a non-mainline set of revisions?
     """
-    last_verifier = None
-    last_path = None
-    revno = 1
-    graph = branch.repository.get_graph()
-    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
-        [_mod_revision.NULL_REVISION]))
-    for revision_id in reversed(history):
-        this_tree = branch.repository.revision_tree(revision_id)
-        try:
-            this_path = this_tree.id2path(file_id)
-        except errors.NoSuchId:
-            this_verifier = this_path = None
-        else:
-            this_verifier = this_tree.get_file_verifier(this_path, file_id)
+    last_verifier = last_tree.get_file_verifier(last_path)
+    graph = repository.get_graph()
+    history = list(graph.iter_lefthand_ancestry(last_revision,
+        []))
+    revno = len(history)
+    for revision_id in history:
+        this_tree = repository.revision_tree(revision_id)
+        this_path = find_previous_path(last_tree, this_tree, last_path)
 
         # now we know how it was last time, and how it is in this revision.
         # are those two states effectively the same or not?
-
-        if not this_verifier and not last_verifier:
-            # not present in either
-            pass
-        elif this_verifier and not last_verifier:
-            yield revno, revision_id, "added " + this_path
-        elif not this_verifier and last_verifier:
-            # deleted here
-            yield revno, revision_id, "deleted " + last_path
+        if this_path is not None and last_path is None:
+            yield revno, revision_id, "deleted " + this_path
+            this_verifier = this_tree.get_file_verifier(this_path)
+        elif this_path is None and last_path is not None:
+            yield revno, revision_id, "added " + last_path
         elif this_path != last_path:
-            yield revno, revision_id, ("renamed %s => %s" % (last_path, this_path))
-        elif (this_verifier != last_verifier):
-            yield revno, revision_id, "modified " + this_path
+            yield revno, revision_id, ("renamed %s => %s" % (this_path, last_path))
+            this_verifier = this_tree.get_file_verifier(this_path)
+        else:
+            this_verifier = this_tree.get_file_verifier(this_path)
+            if (this_verifier != last_verifier):
+                yield revno, revision_id, "modified " + this_path
 
         last_verifier = this_verifier
         last_path = this_path
-        revno += 1
+        last_tree = this_tree
+        if last_path is None:
+            return
+        revno -= 1
 
 
 def show_log(branch,
