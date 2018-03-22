@@ -510,36 +510,7 @@ class Tree(object):
         :return: a set of paths for the specified filenames and their children
             in `tree`
         """
-        if paths is None:
-            return None;
-        file_ids = self.paths2ids(paths, trees,
-                require_versioned=require_versioned)
-        ret = set()
-        for file_id in file_ids:
-            try:
-                ret.add(self.id2path(file_id))
-            except errors.NoSuchId:
-                pass
-        return ret
-
-    def paths2ids(self, paths, trees=[], require_versioned=True):
-        """Return all the ids that can be reached by walking from paths.
-
-        Each path is looked up in this tree and any extras provided in
-        trees, and this is repeated recursively: the children in an extra tree
-        of a directory that has been renamed under a provided path in this tree
-        are all returned, even if none exist under a provided path in this
-        tree, and vice versa.
-
-        :param paths: An iterable of paths to start converting to ids from.
-            Alternatively, if paths is None, no ids should be calculated and None
-            will be returned. This is offered to make calling the api unconditional
-            for code that *might* take a list of files.
-        :param trees: Additional trees to consider.
-        :param require_versioned: If False, do not raise NotVersionedError if
-            an element of paths is not versioned in this tree and all of trees.
-        """
-        return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
+        raise NotImplementedError(self.find_related_paths_across_trees)
 
     def iter_children(self, file_id):
         """Iterate over the file ids of the children of an entry.
@@ -684,79 +655,6 @@ class Tree(object):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
         return searcher
-
-
-def find_ids_across_trees(filenames, trees, require_versioned=True):
-    """Find the ids corresponding to specified filenames.
-
-    All matches in all trees will be used, and all children of matched
-    directories will be used.
-
-    :param filenames: The filenames to find file_ids for (if None, returns
-        None)
-    :param trees: The trees to find file_ids within
-    :param require_versioned: if true, all specified filenames must occur in
-        at least one tree.
-    :return: a set of file ids for the specified filenames and their children.
-    """
-    if not filenames:
-        return None
-    specified_path_ids = _find_ids_across_trees(filenames, trees,
-        require_versioned)
-    return _find_children_across_trees(specified_path_ids, trees)
-
-
-def _find_ids_across_trees(filenames, trees, require_versioned):
-    """Find the ids corresponding to specified filenames.
-
-    All matches in all trees will be used, but subdirectories are not scanned.
-
-    :param filenames: The filenames to find file_ids for
-    :param trees: The trees to find file_ids within
-    :param require_versioned: if true, all specified filenames must occur in
-        at least one tree.
-    :return: a set of file ids for the specified filenames
-    """
-    not_versioned = []
-    interesting_ids = set()
-    for tree_path in filenames:
-        not_found = True
-        for tree in trees:
-            file_id = tree.path2id(tree_path)
-            if file_id is not None:
-                interesting_ids.add(file_id)
-                not_found = False
-        if not_found:
-            not_versioned.append(tree_path)
-    if len(not_versioned) > 0 and require_versioned:
-        raise errors.PathsNotVersionedError(not_versioned)
-    return interesting_ids
-
-
-def _find_children_across_trees(specified_ids, trees):
-    """Return a set including specified ids and their children.
-
-    All matches in all trees will be used.
-
-    :param trees: The trees to find file_ids within
-    :return: a set containing all specified ids and their children
-    """
-    interesting_ids = set(specified_ids)
-    pending = interesting_ids
-    # now handle children of interesting ids
-    # we loop so that we handle all children of each id in both trees
-    while len(pending) > 0:
-        new_pending = set()
-        for file_id in pending:
-            for tree in trees:
-                if not tree.has_or_had_id(file_id):
-                    continue
-                for child_id in tree.iter_children(file_id):
-                    if child_id not in interesting_ids:
-                        new_pending.add(child_id)
-        interesting_ids.update(new_pending)
-        pending = new_pending
-    return interesting_ids
 
 
 class InterTree(InterObject):
