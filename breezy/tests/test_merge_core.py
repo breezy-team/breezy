@@ -77,8 +77,8 @@ class MergeBuilder(object):
             if option is True:
                 new_file(tt)
 
-    def merge(self, merge_type=Merge3Merger, interesting_ids=None, **kwargs):
-        merger = self.make_merger(merge_type, interesting_ids, **kwargs)
+    def merge(self, merge_type=Merge3Merger, interesting_files=None, **kwargs):
+        merger = self.make_merger(merge_type, interesting_files, **kwargs)
         merger.do_merge()
         return merger.cooked_conflicts
 
@@ -86,7 +86,7 @@ class MergeBuilder(object):
         merger = self.make_merger(Merge3Merger, None, this_revision_tree=True)
         return merger.make_preview_transform()
 
-    def make_merger(self, merge_type, interesting_ids,
+    def make_merger(self, merge_type, interesting_files,
             this_revision_tree=False, **kwargs):
         self.base_tt.apply()
         self.base.commit('base commit')
@@ -110,7 +110,7 @@ class MergeBuilder(object):
         else:
             this_tree = self.this
         merger = merge_type(this_tree, self.this, self.base, other_basis,
-                            interesting_ids=interesting_ids, do_merge=False,
+                            interesting_files=interesting_files, do_merge=False,
                             this_branch=self.this.branch, **kwargs)
         return merger
 
@@ -251,7 +251,7 @@ class MergeTest(TestCaseWithTransport):
         builder.change_contents("1", other="text4")
         builder.add_file("2", builder.tree_root, "name2", "hello1", True)
         builder.change_contents("2", other="text4")
-        builder.merge(interesting_ids=["1"])
+        builder.merge(interesting_files=["name1"])
         self.assertEqual(builder.this.get_file("name1").read(), "text4" )
         self.assertEqual(builder.this.get_file("name2").read(), "hello1" )
         builder.cleanup()

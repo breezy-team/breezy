@@ -56,12 +56,13 @@ from .sixish import (
 # TODO: Report back as changes are merged in
 
 
-def transform_tree(from_tree, to_tree, interesting_ids=None):
+def transform_tree(from_tree, to_tree, interesting_files=None):
     from_tree.lock_tree_write()
     operation = cleanup.OperationWithCleanups(merge_inner)
     operation.add_cleanup(from_tree.unlock)
     operation.run_simple(from_tree.branch, to_tree, from_tree,
-        ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
+        ignore_zero=True, this_tree=from_tree,
+        interesting_files=interesting_files)
 
 
 class MergeHooks(hooks.Hooks):
@@ -295,7 +296,6 @@ class Merger(object):
         self.base_tree = base_tree
         self.ignore_zero = False
         self.backup_files = False
-        self.interesting_ids = None
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
@@ -610,7 +610,6 @@ class Merger(object):
     def make_merger(self):
         kwargs = {'working_tree': self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
-                  'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
                   'this_branch': self.this_branch,
                   'other_branch': self.other_branch,
@@ -722,7 +721,7 @@ class Merge3Merger(object):
     requires_file_merge_plan = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
-                 interesting_ids=None, reprocess=False, show_base=False,
+                 reprocess=False, show_base=False,
                  change_reporter=None, interesting_files=None, do_merge=True,
                  cherrypick=False, lca_trees=None, this_branch=None,
                  other_branch=None):
@@ -735,30 +734,22 @@ class Merge3Merger(object):
         :param this_branch: The branch associated with this_tree.  Defaults to
             this_tree.branch if not supplied.
         :param other_branch: The branch associated with other_tree, if any.
-        :param interesting_ids: The file_ids of files that should be
-            participate in the merge.  May not be combined with
-            interesting_files.
         :param: reprocess If True, perform conflict-reduction processing.
         :param show_base: If True, show the base revision in text conflicts.
             (incompatible with reprocess)
         :param change_reporter: An object that should report changes made
         :param interesting_files: The tree-relative paths of files that should
             participate in the merge.  If these paths refer to directories,
-            the contents of those directories will also be included.  May not
-            be combined with interesting_ids.  If neither interesting_files nor
-            interesting_ids is specified, all files may participate in the
+            the contents of those directories will also be included.  If not
+            specified, all files may participate in the
             merge.
         :param lca_trees: Can be set to a dictionary of {revision_id:rev_tree}
             if the ancestry was found to include a criss-cross merge.
             Otherwise should be None.
         """
         object.__init__(self)
-        if interesting_files is not None and interesting_ids is not None:
-            raise ValueError(
-                'specify either interesting_ids or interesting_files')
         if this_branch is None:
             this_branch = this_tree.branch
-        self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.working_tree = working_tree
         self.this_tree = this_tree
@@ -874,14 +865,14 @@ class Merge3Merger(object):
         iterator = self.other_tree.iter_changes(self.base_tree,
                 specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
+        this_interesting_files = self.this_tree.find_related_paths_across_trees(
+                self.interesting_files, trees=[self.other_tree])
         this_entries = dict((e.file_id, e) for p, e in
                             self.this_tree.iter_entries_by_dir(
-                            specific_file_ids=self.interesting_ids))
+                            specific_files=this_interesting_files))
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
-            if (self.interesting_ids is not None and
-                file_id not in self.interesting_ids):
-                continue
+            # TODOJRV
             entry = this_entries.get(file_id)
             if entry is not None:
                 this_name = entry.name
@@ -919,10 +910,10 @@ class Merge3Merger(object):
             lookup_trees = [self.this_tree, self.base_tree]
             lookup_trees.extend(self._lca_trees)
             # I think we should include the lca trees as well
-            interesting_ids = self.other_tree.paths2ids(self.interesting_files,
-                                                        lookup_trees)
+            interesting_files = self.other_tree.find_related_paths_across_trees(
+                    self.interesting_files, lookup_trees)
         else:
-            interesting_ids = self.interesting_ids
+            interesting_files = None
         result = []
         walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
 
@@ -932,7 +923,7 @@ class Merge3Merger(object):
             # Is this modified at all from any of the other trees?
             if other_ie is None:
                 other_ie = _none_entry
-            if interesting_ids is not None and file_id not in interesting_ids:
+            if interesting_files is not None and path not in interesting_files:
                 continue
 
             # If other_revision is found in any of the lcas, that means this
@@ -1816,7 +1807,7 @@ class MergeIntoMerger(Merger):
         self.merge_type = Merge3Merger
         self.show_base = False
         self.reprocess = False
-        self.interesting_ids = None
+        self.interesting_files = None
         self.merge_type = _MergeTypeParameterizer(MergeIntoMergeType,
               target_subdir=self._target_subdir,
               source_subpath=self._source_subpath)
@@ -1927,7 +1918,6 @@ class MergeIntoMergeType(Merge3Merger):
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False,
                 merge_type=Merge3Merger,
-                interesting_ids=None,
                 show_base=False,
                 reprocess=False,
                 other_rev_id=None,
@@ -1948,13 +1938,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                     change_reporter=change_reporter)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
-    merger.interesting_ids = interesting_ids
     merger.ignore_zero = ignore_zero
-    if interesting_files:
-        if interesting_ids:
-            raise ValueError('Only supply interesting_ids'
-                             ' or interesting_files')
-        merger.interesting_files = interesting_files
+    merger.interesting_files = interesting_files
     merger.show_base = show_base
     merger.reprocess = reprocess
     merger.other_rev_id = other_rev_id

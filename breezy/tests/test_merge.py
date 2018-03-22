@@ -1265,8 +1265,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         return builder
 
-    def make_Merger(self, builder, other_revision_id,
-                    interesting_files=None, interesting_ids=None):
+    def make_Merger(self, builder, other_revision_id, interesting_files=None):
         """Make a Merger object from a branch builder"""
         mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
         mem_tree.lock_write()
@@ -1274,8 +1273,6 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         merger = _mod_merge.Merger.from_revision_ids(
             mem_tree, other_revision_id)
         merger.set_interesting_files(interesting_files)
-        # It seems there is no matching function for set_interesting_ids
-        merger.interesting_ids = interesting_ids
         merger.merge_type = _mod_merge.Merge3Merger
         return merger
 
@@ -1400,10 +1397,9 @@ class TestMergerInMemory(TestMergerBase):
 class TestMergerEntriesLCA(TestMergerBase):
 
     def make_merge_obj(self, builder, other_revision_id,
-                       interesting_files=None, interesting_ids=None):
+                       interesting_files=None):
         merger = self.make_Merger(builder, other_revision_id,
-            interesting_files=interesting_files,
-            interesting_ids=interesting_ids)
+            interesting_files=interesting_files)
         return merger.make_merger()
 
     def test_simple(self):
@@ -2099,7 +2095,7 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), False, False)),
                          ], entries)
 
-    def test_interesting_ids(self):
+    def test_interesting_files(self):
         # Two files modified, but we should filter one of them
         builder = self.get_builder()
         builder.build_snapshot(None,
@@ -2114,7 +2110,7 @@ class TestMergerEntriesLCA(TestMergerBase):
              ('modify', ('b-id', 'new-content\n'))], revision_id='E-id')
         builder.build_snapshot(['B-id', 'C-id'], [], revision_id='D-id')
         merge_obj = self.make_merge_obj(builder, 'E-id',
-                                        interesting_ids=['b-id'])
+                                        interesting_files=['b'])
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('b-id', True,

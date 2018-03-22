@@ -819,6 +819,8 @@ class InterTree(InterObject):
         """
         if not extra_trees:
              extra_trees = []
+        else:
+             extra_trees = list(extra_trees)
         # The ids of items we need to examine to insure delta consistency.
         precise_file_ids = set()
         changed_file_ids = []
