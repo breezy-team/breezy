@@ -31,6 +31,7 @@ from ...errors import (
     InvalidRevisionId,
     NoSuchFile,
     NoSuchRevision,
+    NoSuchTag,
     NotBranchError,
     NotLocalUrl,
     UninitializableFormat,
@@ -68,6 +69,7 @@ from .refs import (
     branch_name_to_ref,
     is_peeled,
     ref_to_tag_name,
+    tag_name_to_ref,
     )
 
 import dulwich
@@ -77,6 +79,7 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
+    pack_objects_to_data,
     )
 from dulwich.repo import DictRefsContainer
 import os
@@ -295,19 +298,16 @@ class RemoteGitDir(GitDir):
             if result.refs is None:
                 result.refs = {}
             self._refs = remote_refs_dict_to_container(result.refs)
-            return result.refs
+            return result
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
 
-    def send_pack(self, get_changed_refs, generate_pack_contents):
+    def send_pack(self, get_changed_refs, generate_pack_data):
         try:
             return self._client.send_pack(self._client_path, get_changed_refs,
-                generate_pack_contents)
+                generate_pack_data)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
-
-    def _get_default_ref(self):
-        return "refs/heads/master"
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
@@ -315,11 +315,11 @@ class RemoteGitDir(GitDir):
             ret = dict(old_refs)
             if not refname in ret:
                 raise NotBranchError(self.user_url)
-            ret[refname] = "00" * 20
+            ret[refname] = dulwich.client.ZERO_SHA
             return ret
-        def generate_pack_contents(have, want, ofs_delta=False):
-            return []
-        self.send_pack(get_changed_refs, generate_pack_contents)
+        def generate_pack_data(have, want, ofs_delta=False):
+            return pack_objects_to_data([])
+        self.send_pack(get_changed_refs, generate_pack_data)
 
     @property
     def user_url(self):
@@ -486,8 +486,8 @@ class RemoteGitRepository(GitRepository):
         return self.controldir.fetch_pack(determine_wants, graph_walker,
                                           pack_data, progress)
 
-    def send_pack(self, get_changed_refs, generate_pack_contents):
-        return self.controldir.send_pack(get_changed_refs, generate_pack_contents)
+    def send_pack(self, get_changed_refs, generate_pack_data):
+        return self.controldir.send_pack(get_changed_refs, generate_pack_data)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
@@ -501,7 +501,7 @@ class RemoteGitRepository(GitRepository):
             return EmptyObjectStoreIterator()
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
 
-    def lookup_bzr_revision_id(self, bzr_revid):
+    def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
         # This won't work for any round-tripped bzr revisions, but it's a start..
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
@@ -530,8 +530,23 @@ class RemoteGitRepository(GitRepository):
 class RemoteGitTagDict(GitTags):
 
     def set_tag(self, name, revid):
-        # FIXME: Not supported yet, should do a push of a new ref
-        raise NotImplementedError(self.set_tag)
+        sha = self.branch.lookup_bzr_revision_id(revid)[0]
+        self._set_ref(name, sha)
+
+    def delete_tag(self, name):
+        self._set_ref(name, dulwich.client.ZERO_SHA)
+
+    def _set_ref(self, name, sha):
+        ref = tag_name_to_ref(name)
+        def get_changed_refs(old_refs):
+            ret = dict(old_refs)
+            if sha == dulwich.client.ZERO_SHA and ref not in ret:
+                raise NoSuchTag(name)
+            ret[ref] = sha
+            return ret
+        def generate_pack_data(have, want, ofs_delta=False):
+            return pack_objects_to_data([])
+        self.repository.send_pack(get_changed_refs, generate_pack_data)
 
 
 class RemoteGitBranch(GitBranch):

@@ -1081,7 +1081,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             stop_revno = self.source.revision_id_to_revno(stop_revision)
         if type(stop_revision) is not str:
             raise TypeError(stop_revision)
-        main_ref = self.target.ref or "refs/heads/master"
+        main_ref = self.target.ref
         refs = { main_ref: (None, stop_revision) }
         if fetch_tags is None:
             c = self.source.get_config_stack()

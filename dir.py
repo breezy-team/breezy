@@ -261,6 +261,23 @@ class GitDir(ControlDir):
         """
         return UseExistingRepository(self.find_repository())
 
+    def get_branches(self):
+        from .refs import ref_to_branch_name
+        ret = {}
+        for ref in self.get_refs_container().keys():
+            try:
+                branch_name = ref_to_branch_name(ref)
+            except ValueError:
+                continue
+            except UnicodeDecodeError:
+                trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            ret[branch_name] = self.open_branch(ref=ref)
+        return ret
+
+    def list_branches(self):
+        return self.get_branches().values()
+
 
 class LocalGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
@@ -512,23 +529,6 @@ class LocalGitDir(GitDir):
 
     def needs_format_conversion(self, format=None):
         return not isinstance(self._format, format.__class__)
-
-    def list_branches(self):
-        return self.get_branches().values()
-
-    def get_branches(self):
-        from .refs import ref_to_branch_name
-        ret = {}
-        for ref in self._git.refs.keys():
-            try:
-                branch_name = ref_to_branch_name(ref)
-            except ValueError:
-                continue
-            except UnicodeDecodeError:
-                trace.warning("Ignoring branch %r with unicode error ref", ref)
-                continue
-            ret[branch_name] = self.open_branch(ref=ref)
-        return ret
 
     def open_repository(self):
         """'open' a repository for this dir."""

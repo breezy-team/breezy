@@ -360,7 +360,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
         self._warn_slow()
         with self.source_store.lock_read():
             new_refs = self.target.send_pack(determine_wants,
-                    self.source_store.generate_lossy_pack_contents)
+                    self.source_store.generate_lossy_pack_data)
         # FIXME: revidmap?
         return revidmap, self.old_refs, self.new_refs
 

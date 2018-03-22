@@ -29,6 +29,9 @@ from dulwich.objects import (
 from dulwich.object_store import (
     BaseObjectStore,
     )
+from dulwich.pack import (
+    pack_objects_to_data,
+    )
 
 from ... import (
     errors,
@@ -705,10 +708,11 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise KeyError(sha)
 
-    def generate_lossy_pack_contents(self, have, want, progress=None,
-            get_tagged=None):
-        return self.generate_pack_contents(have, want, progress, get_tagged,
-            lossy=True)
+    def generate_lossy_pack_data(self, have, want, progress=None,
+            get_tagged=None, ofs_delta=False):
+        return pack_objects_to_data(
+                self.generate_pack_contents(have, want, progress, get_tagged,
+            lossy=True))
 
     def generate_pack_contents(self, have, want, progress=None,
             ofs_delta=False, get_tagged=None, lossy=False):

@@ -124,16 +124,15 @@ class cmd_git_import(Command):
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch()
-        refs_dict = refs.as_dict()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, (name, sha) in enumerate(refs_dict.iteritems()):
+            for i, (name, sha) in enumerate(refs.iteritems()):
                 try:
                     branch_name = ref_to_branch_name(name)
                 except ValueError:
                     # Not a branch, ignore
                     continue
-                pb.update(gettext("creating branches"), i, len(refs_dict))
+                pb.update(gettext("creating branches"), i, len(refs))
                 if getattr(target_controldir._format, "colocated_branches", False) and colocated:
                     if name == "HEAD":
                         branch_name = None
