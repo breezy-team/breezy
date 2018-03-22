@@ -546,7 +546,20 @@ class InterFromGitRepository(InterRepository):
         raise NotImplementedError(self._target_has_shas)
 
     def get_determine_wants_heads(self, wants, include_tags=False):
-        raise NotImplementedError(self.get_determine_wants_heads)
+        wants = set(wants)
+        def determine_wants(refs):
+            potential = set(wants)
+            if include_tags:
+                for k, unpeeled in refs.iteritems():
+                    if k.endswith("^{}"):
+                        continue
+                    if not is_tag(k):
+                        continue
+                    if unpeeled == ZERO_SHA:
+                        continue
+                    potential.add(unpeeled)
+            return list(potential - self._target_has_shas(potential))
+        return determine_wants
 
     def determine_wants_all(self, refs):
         raise NotImplementedError(self.determine_wants_all)
@@ -577,7 +590,8 @@ class InterFromGitRepository(InterRepository):
             git_shas.append(git_sha)
         walker = Walker(self.source._git.object_store,
             include=git_shas, exclude=[
-                sha for sha in self.target.controldir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
+                sha for sha in self.target.controldir.get_refs_container().as_dict().values()
+                if sha != ZERO_SHA])
         missing_revids = set()
         for entry in walker:
             missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
@@ -606,7 +620,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             # For non-git target repositories, only worry about peeled
             if v == ZERO_SHA:
                 continue
-            potential.add(self.source.controldir.get_peeled(k))
+            potential.add(self.source.controldir.get_peeled(k) or v)
         return list(potential - self._target_has_shas(potential))
 
     def get_determine_wants_heads(self, wants, include_tags=False):
@@ -619,7 +633,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
                         continue
                     if unpeeled == ZERO_SHA:
                         continue
-                    potential.add(self.source.controldir.get_peeled(k))
+                    potential.add(self.source.controldir.get_peeled(k) or unpeeled)
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
@@ -627,15 +641,6 @@ class InterGitNonGitRepository(InterFromGitRepository):
         trace.warning(
             'Fetching from Git to Bazaar repository. '
             'For better performance, fetch into a Git repository.')
-
-    def get_determine_wants_revids(self, revids, include_tags=False):
-        wants = set()
-        for revid in set(revids):
-            if self.target.has_revision(revid):
-                continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-            wants.add(git_sha)
-        return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """Fetch objects from a remote server.
@@ -646,6 +651,15 @@ class InterGitNonGitRepository(InterFromGitRepository):
         :return: Tuple with pack hint, last imported revision id and remote refs
         """
         raise NotImplementedError(self.fetch_objects)
+
+    def get_determine_wants_revids(self, revids, include_tags=False):
+        wants = set()
+        for revid in set(revids):
+            if self.target.has_revision(revid):
+                continue
+            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            wants.add(git_sha)
+        return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def fetch(self, revision_id=None, find_ghosts=False,
               mapping=None, fetch_spec=None, include_tags=False):
@@ -819,11 +833,9 @@ class InterGitGitRepository(InterFromGitRepository):
         graphwalker = self.target._git.get_graph_walker()
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
-            def wrap_determine_wants(refs):
-                return determine_wants(self.source._git.refs.as_dict())
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                refs = self.source._git.fetch(self.target._git, wrap_determine_wants,
+                refs = self.source._git.fetch(self.target._git, determine_wants,
                     lambda text: report_git_progress(pb, text))
             finally:
                 pb.finished()
@@ -900,25 +912,8 @@ class InterGitGitRepository(InterFromGitRepository):
                 continue
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
-        return self.get_determine_wants_heads(wants,
-            include_tags=include_tags)
+        return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def determine_wants_all(self, refs):
         potential = set([v for v in refs.values() if not v == ZERO_SHA])
         return list(potential - self._target_has_shas(potential))
-
-    def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                for k, unpeeled in refs.iteritems():
-                    if not is_tag(k):
-                        continue
-                    if unpeeled == ZERO_SHA:
-                        continue
-                    potential.add(unpeeled)
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
-
-
