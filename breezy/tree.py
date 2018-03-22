@@ -1018,7 +1018,7 @@ class InterTree(InterObject):
                 changed_file_ids):
                 yield result
 
-    def _get_entry(self, tree, file_id):
+    def _get_entry(self, tree, path):
         """Get an inventory entry from a tree, with missing entries as None.
 
         If the tree raises NotImplementedError on accessing .inventory, then
@@ -1028,20 +1028,12 @@ class InterTree(InterObject):
         :param tree: The tree to lookup the entry in.
         :param file_id: The file_id to lookup.
         """
+        # No inventory available.
         try:
-            inventory = tree.root_inventory
-        except (AttributeError, NotImplementedError):
-            # No inventory available.
-            try:
-                iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
-                return iterator.next()[1]
-            except StopIteration:
-                return None
-        else:
-            try:
-                return inventory[file_id]
-            except errors.NoSuchId:
-                return None
+            iterator = tree.iter_entries_by_dir(specific_files=[path])
+            return iterator.next()[1]
+        except StopIteration:
+            return None
 
     def _handle_precise_ids(self, precise_file_ids, changed_file_ids,
         discarded_changes=None):
@@ -1089,22 +1081,26 @@ class InterTree(InterObject):
                 # Examine file_id
                 if discarded_changes:
                     result = discarded_changes.get(file_id)
-                    old_entry = None
+                    source_entry = None
                 else:
                     result = None
                 if result is None:
-                    old_entry = self._get_entry(self.source, file_id)
-                    new_entry = self._get_entry(self.target, file_id)
                     try:
                         source_path = self.source.id2path(file_id)
                     except errors.NoSuchId:
                         source_path = None
+                        source_entry = None
+                    else:
+                        source_entry = self._get_entry(self.source, source_path)
                     try:
                         target_path = self.target.id2path(file_id)
                     except errors.NoSuchId:
                         target_path = None
+                        target_entry = None
+                    else:
+                        target_entry = self._get_entry(self.target, target_path)
                     result, changes = self._changes_from_entries(
-                        old_entry, new_entry, source_path, target_path)
+                        source_entry, target_entry, source_path, target_path)
                 else:
                     changes = True
                 # Get this parents parent to examine.
@@ -1115,9 +1111,9 @@ class InterTree(InterObject):
                             result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
-                        if old_entry is None:
+                        if source_entry is None:
                             # Reusing a discarded change.
-                            old_entry = self._get_entry(self.source, file_id)
+                            source_entry = self._get_entry(self.source, result[1][0])
                         precise_file_ids.update(
                                 self.source.iter_children(file_id))
                     changed_file_ids.add(result[0])
