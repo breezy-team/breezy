@@ -69,6 +69,9 @@ from .sixish import (
     viewitems,
     viewvalues,
     )
+from .tree import (
+    find_previous_path,
+    )
 
 
 ROOT_PARENT = "root-parent"
@@ -308,8 +311,8 @@ class TreeTransformBase(object):
             return self._r_new_id[file_id]
         else:
             try:
-                next(self._tree.iter_entries_by_dir([file_id]))
-            except StopIteration:
+                path = self._tree.id2path(file_id)
+            except errors.NoSuchId:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
                 else:
@@ -317,7 +320,7 @@ class TreeTransformBase(object):
                     self._non_present_ids[file_id] = trans_id
                     return trans_id
             else:
-                return self.trans_id_tree_file_id(file_id)
+                return self.trans_id_tree_path(path)
 
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
@@ -909,7 +912,8 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+            from_entry = self._tree.iter_entries_by_dir(
+                    specific_file_ids=[file_id]).next()[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -1772,7 +1776,7 @@ class TreeTransform(DiskTreeTransform):
             new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                      new_paths)
             entries = self._tree.iter_entries_by_dir(
-                viewvalues(new_path_file_ids))
+                specific_file_ids=viewvalues(new_path_file_ids))
             old_paths = dict((e.file_id, p) for p, e in entries)
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
@@ -1955,7 +1959,8 @@ class TransformPreview(DiskTreeTransform):
         file_id = self.tree_file_id(parent_id)
         if file_id is None:
             return
-        entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+        entry = self._tree.iter_entries_by_dir(
+                specific_file_ids=[file_id]).next()[1]
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
@@ -2182,12 +2187,17 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
+                            yield_parents=False):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
         # might be more efficient, but requires tricky inferences about stack
         # position.
+        if specific_files is not None and specific_file_ids is not None:
+            raise ValueError('both specific_files and specific_file_ids set')
+        if specific_files is not None:
+            specific_file_ids = [self.path2id(p) for p in specific_files]
         ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
             specific_file_ids, yield_parents=yield_parents):
@@ -2254,10 +2264,6 @@ class _PreviewTree(inventorytree.InventoryTree):
             return self._transform._tree.get_file_mtime(
                     self._transform._tree.id2path(file_id), file_id)
         return self._stat_limbo_file(file_id).st_mtime
-
-    def _file_size(self, entry, stat_value):
-        path = self.id2path(entry.file_id)
-        return self.get_file_size(path, entry.file_id)
 
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
@@ -2623,7 +2629,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                         else:
                             divert.add(file_id)
                     if (file_id not in divert and
-                        _content_match(tree, entry, file_id, kind,
+                        _content_match(tree, entry, tree_path, file_id, kind,
                         target_path)):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
@@ -2735,21 +2741,20 @@ def _reparent_transform_children(tt, old_parent, new_parent):
     return by_parent[old_parent]
 
 
-def _content_match(tree, entry, file_id, kind, target_path):
+def _content_match(tree, entry, tree_path, file_id, kind, target_path):
     if entry.kind != kind:
         return False
     if entry.kind == "directory":
         return True
-    path = tree.id2path(file_id)
     if entry.kind == "file":
         f = file(target_path, 'rb')
         try:
-            if tree.get_file_text(path, file_id) == f.read():
+            if tree.get_file_text(tree_path, file_id) == f.read():
                 return True
         finally:
             f.close()
     elif entry.kind == "symlink":
-        if tree.get_symlink_target(path, file_id) == os.readlink(target_path):
+        if tree.get_symlink_target(tree_path, file_id) == os.readlink(target_path):
             return True
     return False
 
@@ -2925,9 +2930,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        try:
-                            basis_path = basis_tree.id2path(file_id)
-                        except errors.NoSuchId:
+                        basis_path = find_previous_path(working_tree, basis_tree, wt_path)
+                        if basis_path is None:
                             if target_kind is None and not target_versioned:
                                 keep_content = True
                         else:
@@ -2964,10 +2968,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(target_path, file_id)
-                    try:
-                        basis_path = basis_tree.id2path(file_id)
-                    except errors.NoSuchId:
-                        basis_path = None
+                    basis_path = find_previous_path(target_tree, basis_tree, target_path)
                     if (basis_path is not None and
                         new_sha1 == basis_tree.get_file_sha1(basis_path, file_id)):
                         if file_id in merge_modified:
@@ -3102,7 +3103,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
                         _, entry = next(path_tree.iter_entries_by_dir(
-                            [file_id]))
+                            specific_file_ids=[file_id]))
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:

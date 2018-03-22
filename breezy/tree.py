@@ -205,7 +205,8 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
+                            yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -308,9 +309,6 @@ class Tree(object):
         present).  executable is False for non-file entries.
         """
         raise NotImplementedError(self._comparison_data)
-
-    def _file_size(self, entry, stat_value):
-        raise NotImplementedError(self._file_size)
 
     def get_file(self, path, file_id=None):
         """Return a file object for the file file_id in the tree.
@@ -598,7 +596,7 @@ class Tree(object):
     def supports_content_filtering(self):
         return False
 
-    def _content_filter_stack(self, path=None, file_id=None):
+    def _content_filter_stack(self, path=None):
         """The stack of content filters for a path if filtering is supported.
 
         Readers will be applied in first-to-last order.
@@ -607,14 +605,11 @@ class Tree(object):
 
         :param path: path relative to the root of the tree
             or None if unknown
-        :param file_id: file_id or None if unknown
         :return: the list of filters - [] if there are none
         """
         filter_pref_names = filters._get_registered_names()
         if len(filter_pref_names) == 0:
             return []
-        if path is None:
-            path = self.id2path(file_id)
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
@@ -631,7 +626,7 @@ class Tree(object):
         """
         if self.supports_content_filtering():
             return lambda path, file_id: \
-                    self._content_filter_stack(path, file_id)
+                    self._content_filter_stack(path)
         else:
             return None
 
@@ -1027,12 +1022,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not self.target.has_id(file_id):
-                # common case - paths we have not emitted are not present in
-                # target.
-                to_path = None
-            else:
-                to_path = self.target.id2path(file_id)
+            to_path = find_previous_path(self.source, self.target, path)
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
@@ -1054,7 +1044,7 @@ class InterTree(InterObject):
                 changed_file_ids):
                 yield result
 
-    def _get_entry(self, tree, file_id):
+    def _get_entry(self, tree, path):
         """Get an inventory entry from a tree, with missing entries as None.
 
         If the tree raises NotImplementedError on accessing .inventory, then
@@ -1064,20 +1054,12 @@ class InterTree(InterObject):
         :param tree: The tree to lookup the entry in.
         :param file_id: The file_id to lookup.
         """
+        # No inventory available.
         try:
-            inventory = tree.root_inventory
-        except (AttributeError, NotImplementedError):
-            # No inventory available.
-            try:
-                iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
-                return iterator.next()[1]
-            except StopIteration:
-                return None
-        else:
-            try:
-                return inventory[file_id]
-            except errors.NoSuchId:
-                return None
+            iterator = tree.iter_entries_by_dir(specific_files=[path])
+            return iterator.next()[1]
+        except StopIteration:
+            return None
 
     def _handle_precise_ids(self, precise_file_ids, changed_file_ids,
         discarded_changes=None):
@@ -1125,22 +1107,26 @@ class InterTree(InterObject):
                 # Examine file_id
                 if discarded_changes:
                     result = discarded_changes.get(file_id)
-                    old_entry = None
+                    source_entry = None
                 else:
                     result = None
                 if result is None:
-                    old_entry = self._get_entry(self.source, file_id)
-                    new_entry = self._get_entry(self.target, file_id)
                     try:
                         source_path = self.source.id2path(file_id)
                     except errors.NoSuchId:
                         source_path = None
+                        source_entry = None
+                    else:
+                        source_entry = self._get_entry(self.source, source_path)
                     try:
                         target_path = self.target.id2path(file_id)
                     except errors.NoSuchId:
                         target_path = None
+                        target_entry = None
+                    else:
+                        target_entry = self._get_entry(self.target, target_path)
                     result, changes = self._changes_from_entries(
-                        old_entry, new_entry, source_path, target_path)
+                        source_entry, target_entry, source_path, target_path)
                 else:
                     changes = True
                 # Get this parents parent to examine.
@@ -1151,9 +1137,9 @@ class InterTree(InterObject):
                             result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
-                        if old_entry is None:
+                        if source_entry is None:
                             # Reusing a discarded change.
-                            old_entry = self._get_entry(self.source, file_id)
+                            source_entry = self._get_entry(self.source, result[1][0])
                         precise_file_ids.update(
                                 self.source.iter_children(file_id))
                     changed_file_ids.add(result[0])
@@ -1432,3 +1418,36 @@ class MultiWalker(object):
                     other_values.append(self._lookup_by_file_id(
                                             alt_extra, alt_tree, file_id))
                 yield other_path, file_id, None, other_values
+
+
+def find_previous_paths(from_tree, to_tree, paths):
+    """Find previous tree paths.
+
+    :param from_tree: From tree
+    :param to_tree: To tree
+    :param paths: Iterable over paths to search for
+    :return: Dictionary mapping from from_tree paths to paths in to_tree, or
+        None if there is no equivalent path.
+    """
+    ret = {}
+    for path in paths:
+        ret[path] = find_previous_path(from_tree, to_tree, path)
+    return ret
+
+
+def find_previous_path(from_tree, to_tree, path, file_id=None):
+    """Find previous tree path.
+
+    :param from_tree: From tree
+    :param to_tree: To tree
+    :param path: Path to search for
+    :return: path in to_tree, or None if there is no equivalent path.
+    """
+    if file_id is None:
+        file_id = from_tree.path2id(path)
+    if file_id is None:
+        raise errors.NoSuchFile(path)
+    try:
+        return to_tree.id2path(file_id)
+    except errors.NoSuchId:
+        return None

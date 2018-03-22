@@ -661,7 +661,8 @@ class Merger(object):
                 other_branch = self.other_branch.reference_parent(file_id,
                                                                   relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
-                base_tree_path = self.base_tree.id2path(file_id)
+                base_tree_path = _mod_tree.find_previous_path(
+                    self.this_tree, self.base_tree, relpath)
                 base_revision = self.base_tree.get_reference_revision(
                     base_tree_path, file_id)
                 sub_merge.base_tree = \
@@ -875,7 +876,7 @@ class Merge3Merger(object):
                 extra_trees=[self.this_tree])
         this_entries = dict((e.file_id, e) for p, e in
                             self.this_tree.iter_entries_by_dir(
-                            self.interesting_ids))
+                            specific_file_ids=self.interesting_ids))
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
             if (self.interesting_ids is not None and

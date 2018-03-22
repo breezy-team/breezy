@@ -33,8 +33,8 @@ from breezy.tests import (
     )
 
 
-def get_entry(tree, file_id):
-    return tree.iter_entries_by_dir([file_id]).next()[1]
+def get_entry(tree, path):
+    return tree.iter_entries_by_dir(specific_files=[path]).next()[1]
 
 
 class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
@@ -52,7 +52,7 @@ class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
             raise TestSkipped(
                 'symlinks not accurately represented in working trees and'
                 ' preview trees')
-        entry = get_entry(self.tree, self.tree.path2id('symlink'))
+        entry = get_entry(self.tree, 'symlink')
         self.assertEqual(entry.symlink_target, 'link-target')
 
     def test_symlink_target_tree(self):
@@ -64,7 +64,7 @@ class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
         self.assertIs(None, self.tree.get_file_size('symlink'))
 
     def test_symlink(self):
-        entry = get_entry(self.tree, self.tree.path2id('symlink'))
+        entry = get_entry(self.tree, 'symlink')
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
 

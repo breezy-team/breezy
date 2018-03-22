@@ -178,6 +178,6 @@ class TestTreeReference(TestCaseWithWorkingTree):
         # wt.current_dirstate()'s idea about what files are where.
         ie = base.inventory['subdir-id']
         self.assertEqual('directory', ie.kind)
-        path, ie = next(base.iter_entries_by_dir(['subdir-id']))
+        path, ie = next(base.iter_entries_by_dir(specific_files=['subdir']))
         self.assertEqual('subdir', path)
         self.assertEqual('tree-reference', ie.kind)
