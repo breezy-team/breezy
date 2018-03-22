@@ -663,6 +663,32 @@ class Tree(object):
         return searcher
 
 
+def find_related_paths_across_trees(tree, paths, lookup_trees, require_versioned=True):
+    """Find related paths in tree corresponding to specified filenames in any
+    of `lookup_trees`.
+
+    All matches in all trees will be used, and all children of matched
+    directories will be used.
+
+    :param paths: The filenames to find related paths for (if None, returns
+        None)
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+        at least one tree.
+    :return: a set of paths for the specified filenames and their children
+        in `tree`
+    """
+    file_ids = lookup_trees[0].paths2ids(paths, lookup_trees,
+        require_versioned=require_versioned)
+    paths = set()
+    for file_id in file_ids:
+        try:
+            paths.add(tree.id2path(file_id))
+        except errors.NoSuchId:
+            pass
+    return paths
+
+
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
 

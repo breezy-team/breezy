@@ -53,6 +53,7 @@ from breezy import (
     symbol_versioning,
     timestamp,
     transport,
+    tree as _mod_tree,
     ui,
     urlutils,
     views,
@@ -952,19 +953,19 @@ class cmd_inventory(Command):
         if revision is not None:
             tree = revision.as_tree(work_tree.branch)
 
-            extra_trees = [work_tree]
+            extra_trees = [tree, work_tree]
             self.add_cleanup(tree.lock_read().unlock)
         else:
             tree = work_tree
-            extra_trees = []
+            extra_trees = [tree]
 
         self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
-            file_ids = tree.paths2ids(file_list, trees=extra_trees,
-                                      require_versioned=True)
+            paths = _mod_tree.find_related_paths_across_trees(
+                    tree, file_list, lookup_trees, require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = tree.iter_entries_by_dir(specific_file_ids=file_ids)
+            entries = tree.iter_entries_by_dir(specific_files=paths)
         else:
             entries = tree.iter_entries_by_dir()
 
