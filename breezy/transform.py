@@ -311,9 +311,8 @@ class TreeTransformBase(object):
             return self._r_new_id[file_id]
         else:
             try:
-                next(self._tree.iter_entries_by_dir(
-                    specific_file_ids=[file_id]))
-            except StopIteration:
+                path = self._tree.id2path(file_id)
+            except errors.NoSuchId:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
                 else:
@@ -321,7 +320,7 @@ class TreeTransformBase(object):
                     self._non_present_ids[file_id] = trans_id
                     return trans_id
             else:
-                return self.trans_id_tree_file_id(file_id)
+                return self.trans_id_tree_path(path)
 
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
