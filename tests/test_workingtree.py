@@ -44,3 +44,10 @@ class GitWorkingTreeTests(TestCaseWithTransport):
             self.tree.index['conflicted'] = self.tree.index['conflicted'][:9] + (FLAG_STAGEMASK, )
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
+
+    def test_revert_empty(self):
+        self.build_tree(['a'])
+        self.tree.add(['a'])
+        self.assertTrue(self.tree.is_versioned('a'))
+        self.tree.revert(['a'])
+        self.assertFalse(self.tree.is_versioned('a'))
