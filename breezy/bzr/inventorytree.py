@@ -313,7 +313,9 @@ class InventoryTree(Tree):
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""
-        entry = self.iter_entries_by_dir(specific_file_ids=[file_id]).next()[1]
+        if path is None:
+            path = self.id2path(file_id)
+        entry = self.iter_entries_by_dir(specific_files=[path]).next()[1]
         for child in viewvalues(getattr(entry, 'children', {})):
             yield child.file_id
 
