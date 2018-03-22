@@ -64,6 +64,7 @@ from ... import (
     globbing,
     ignores,
     lock,
+    merge,
     osutils,
     revision as _mod_revision,
     trace,
@@ -1108,6 +1109,28 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                                   0, 0))
                     self.index[entry.path] = index_entry_from_stat(st, entry.sha, 0)
             self.flush()
+
+    def pull(self, source, overwrite=False, stop_revision=None,
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False):
+        with self.lock_write(), source.lock_read():
+            old_revision = self.branch.last_revision()
+            basis_tree = self.basis_tree()
+            count = self.branch.pull(source, overwrite, stop_revision,
+                                     possible_transports=possible_transports,
+                                     local=local)
+            new_revision = self.branch.last_revision()
+            if new_revision != old_revision:
+                with basis_tree.lock_read():
+                    new_basis_tree = self.branch.basis_tree()
+                    merge.merge_inner(
+                                self.branch,
+                                new_basis_tree,
+                                basis_tree,
+                                this_tree=self,
+                                change_reporter=change_reporter,
+                                show_base=show_base)
+            return count
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
