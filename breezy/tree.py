@@ -205,7 +205,8 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
+                            yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.

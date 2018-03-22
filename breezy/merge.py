@@ -875,7 +875,7 @@ class Merge3Merger(object):
                 extra_trees=[self.this_tree])
         this_entries = dict((e.file_id, e) for p, e in
                             self.this_tree.iter_entries_by_dir(
-                            self.interesting_ids))
+                            specific_file_ids=self.interesting_ids))
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
             if (self.interesting_ids is not None and

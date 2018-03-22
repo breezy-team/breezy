@@ -308,7 +308,8 @@ class TreeTransformBase(object):
             return self._r_new_id[file_id]
         else:
             try:
-                next(self._tree.iter_entries_by_dir([file_id]))
+                next(self._tree.iter_entries_by_dir(
+                    specific_file_ids=[file_id]))
             except StopIteration:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
@@ -909,7 +910,8 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+            from_entry = self._tree.iter_entries_by_dir(
+                    specific_file_ids=[file_id]).next()[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -1772,7 +1774,7 @@ class TreeTransform(DiskTreeTransform):
             new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                      new_paths)
             entries = self._tree.iter_entries_by_dir(
-                viewvalues(new_path_file_ids))
+                specific_file_ids=viewvalues(new_path_file_ids))
             old_paths = dict((e.file_id, p) for p, e in entries)
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
@@ -1955,7 +1957,8 @@ class TransformPreview(DiskTreeTransform):
         file_id = self.tree_file_id(parent_id)
         if file_id is None:
             return
-        entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+        entry = self._tree.iter_entries_by_dir(
+                specific_file_ids=[file_id]).next()[1]
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
@@ -2182,12 +2185,17 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
+                            yield_parents=False):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
         # might be more efficient, but requires tricky inferences about stack
         # position.
+        if specific_files is not None and specific_file_ids is not None:
+            raise ValueError('both specific_files and specific_file_ids set')
+        if specific_files is not None:
+            specific_file_ids = [self.path2id(p) for p in specific_files]
         ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
             specific_file_ids, yield_parents=yield_parents):
@@ -3102,7 +3110,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
                         _, entry = next(path_tree.iter_entries_by_dir(
-                            [file_id]))
+                            specific_file_ids=[file_id]))
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:

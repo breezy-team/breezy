@@ -1699,13 +1699,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 blocked_parent_ids.add(ie.file_id)
             yield path, ie
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
+                            yield_parents=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
                 specific_file_ids=specific_file_ids,
-                yield_parents=yield_parents)
+                specific_files=specific_files, yield_parents=yield_parents)
         if not self.supports_tree_reference():
             return iterator
         else:

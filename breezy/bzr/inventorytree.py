@@ -217,7 +217,8 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
+                            yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -229,10 +230,19 @@ class InventoryTree(Tree):
             down to specific_file_ids that have been requested. This has no
             impact if specific_file_ids is None.
         """
+        if specific_file_ids is not None and specific_files is not None:
+            raise ValueError("both specific_files and specific_file_ids are "
+                             "set")
         with self.lock_read():
-            if specific_file_ids is None:
-                inventory_file_ids = None
-            else:
+            if specific_files is not None:
+                inventory_file_ids = []
+                for path in specific_files:
+                    inventory, inv_file_id = self._path2inv_file_id(path)
+                    if not inventory is self.root_inventory: # for now
+                        raise AssertionError("%r != %r" % (
+                            inventory, self.root_inventory))
+                    inventory_file_ids.append(inv_file_id)
+            elif specific_file_ids is not None:
                 inventory_file_ids = []
                 for tree_file_id in specific_file_ids:
                     inventory, inv_file_id = self._unpack_file_id(tree_file_id)
@@ -240,6 +250,8 @@ class InventoryTree(Tree):
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
+            else:
+                inventory_file_ids = None
             # FIXME: Handle nested trees
             return self.root_inventory.iter_entries_by_dir(
                 specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
@@ -254,7 +266,7 @@ class InventoryTree(Tree):
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        entry = self.iter_entries_by_dir(specific_file_ids=[file_id]).next()[1]
         for child in viewvalues(getattr(entry, 'children', {})):
             yield child.file_id
 
@@ -439,10 +451,11 @@ class _SmartAddHelper(object):
             return entry[3]
         # Find a 'best fit' match if the filesystem is case-insensitive
         inv_path = self.tree._fix_case_of_inventory_path(inv_path)
-        file_id = self.tree.path2id(inv_path)
-        if file_id is not None:
-            return self.tree.iter_entries_by_dir([file_id]).next()[1]
-        return None
+        try:
+            return self.tree.iter_entries_by_dir(
+                    specific_files=[inv_path]).next()[1]
+        except StopIteration:
+            return None
 
     def _convert_to_directory(self, this_ie, inv_path):
         """Convert an entry to a directory.

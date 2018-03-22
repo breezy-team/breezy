@@ -240,7 +240,8 @@ class RenameMap(object):
     def _make_inventory_delta(self, matches):
         delta = []
         file_id_matches = dict((f, p) for p, f in viewitems(matches))
-        for old_path, entry in self.tree.iter_entries_by_dir(file_id_matches):
+        for old_path, entry in self.tree.iter_entries_by_dir(
+                specific_file_ids=file_id_matches):
             new_path = file_id_matches[entry.file_id]
             parent_path, new_name = osutils.split(new_path)
             parent_id = matches.get(parent_path)
