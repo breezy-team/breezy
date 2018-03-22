@@ -25,6 +25,7 @@ from dulwich.repo import (
 from ... import (
     errors,
     osutils,
+    revision as _mod_revision,
     )
 
 is_tag = lambda x: x.startswith("refs/tags/")
@@ -97,6 +98,9 @@ class BazaarRefsContainer(RefsContainer):
         self.dir = dir
         self.object_store = object_store
 
+    def get_packed_refs(self):
+        return {}
+
     def set_symbolic_ref(self, name, other):
         if name == "HEAD":
             pass # FIXME: Switch default branch
@@ -132,8 +136,11 @@ class BazaarRefsContainer(RefsContainer):
             revid = self._get_revid_by_tag_name(tag_name)
         else:
             revid = self._get_revid_by_branch_name(branch_name)
+        if revid == _mod_revision.NULL_REVISION:
+            return None
         # FIXME: Unpeel if necessary
-        return self.object_store._lookup_revision_sha1(revid)
+        with self.object_store.lock_read():
+            return self.object_store._lookup_revision_sha1(revid)
 
     def get_peeled(self, ref):
         return self.read_loose_ref(ref)

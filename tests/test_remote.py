@@ -24,6 +24,7 @@ from ....controldir import ControlDir
 from ....errors import (
     BzrError,
     NotBranchError,
+    NoSuchTag,
     )
 
 from ....tests import (
@@ -96,12 +97,14 @@ class TestRemoteGitBranchFormat(TestCase):
         self.assertTrue(self.format.supports_tags())
 
 
-class TestFetchFromRemote(TestCaseWithTransport):
+class FetchFromRemoteTestBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
 
+    _to_format = None
+
     def setUp(self):
-        super(TestFetchFromRemote, self).setUp()
+        TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
         self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
         self.permit_url(self.remote_url)
@@ -112,8 +115,8 @@ class TestFetchFromRemote(TestCaseWithTransport):
                 committer='committer <committer@example.com>',
                 author='author <author@example.com>')
 
-        self.make_branch_and_tree('.')
         remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._to_format)
         local = remote.sprout('local')
         self.assertEqual(
                 default_mapping.revision_id_foreign_to_bzr(self.remote_real.head()),
@@ -131,8 +134,8 @@ class TestFetchFromRemote(TestCaseWithTransport):
                 ref='refs/tags/another')
         self.remote_real.refs['refs/tags/blah'] = self.remote_real.head()
 
-        self.make_branch_and_tree('.')
         remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._to_format)
         local = remote.sprout('local')
         local_branch = local.open_branch()
         self.assertEqual(
@@ -144,12 +147,24 @@ class TestFetchFromRemote(TestCaseWithTransport):
                 local_branch.tags.get_tag_dict())
 
 
-class TestPushToRemote(TestCaseWithTransport):
+class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase,TestCaseWithTransport):
+
+    _to_format = '2a'
+
+
+class FetchFromRemoteToGitTests(FetchFromRemoteTestBase,TestCaseWithTransport):
+
+    _to_format = 'git'
+
+
+class PushToRemoteBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
 
+    _from_format = None
+
     def setUp(self):
-        super(TestPushToRemote, self).setUp()
+        TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
         self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
         self.permit_url(self.remote_url)
@@ -160,20 +175,138 @@ class TestPushToRemote(TestCaseWithTransport):
                 committer='committer <committer@example.com>',
                 author='author <author@example.com>')
 
-        self.make_branch_and_tree('.')
         remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._from_format)
         local = remote.sprout('local')
         self.build_tree(['local/blah'])
         wt = local.open_workingtree()
         wt.add(['blah'])
         revid = wt.commit('blah')
         wt.branch.tags.set_tag('sometag', revid)
+        wt.branch.get_config_stack().set('branch.fetch_tags', True)
 
-        remote.push_branch(wt.branch)
+        if self._from_format == 'git':
+            wt.branch.push(remote.open_branch())
+        else:
+            wt.branch.push(remote.open_branch(), lossy=True)
 
         self.assertNotEqual(self.remote_real.head(), c1)
         self.assertEqual(
                 {'refs/heads/master': self.remote_real.head(),
                  'HEAD': self.remote_real.head(),
+                 'refs/tags/sometag': self.remote_real.head(),
                 },
                 self.remote_real.get_refs())
+
+
+class PushToRemoteFromBzrTests(PushToRemoteBase,TestCaseWithTransport):
+
+    _from_format = '2a'
+
+
+class PushToRemoteFromGitTests(PushToRemoteBase,TestCaseWithTransport):
+
+    _from_format = 'git'
+
+
+class RemoteControlDirTests(TestCaseWithTransport):
+
+    _test_needs_features = [ExecutableFeature('git')]
+
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.remote_real = GitRepo.init('remote', mkdir=True)
+        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.permit_url(self.remote_url)
+
+    def test_remove_branch(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>',
+                ref='refs/heads/blah')
+
+        remote = ControlDir.open(self.remote_url)
+        remote.destroy_branch(name='blah')
+        self.assertEqual(
+                self.remote_real.get_refs(),
+                {'refs/heads/master': self.remote_real.head(),
+                 'HEAD': self.remote_real.head(),
+                })
+
+    def test_list_branches(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>',
+                ref='refs/heads/blah')
+
+        remote = ControlDir.open(self.remote_url)
+        self.assertEqual(
+                ['', 'blah', 'master'],
+                [b.name for b in remote.list_branches()])
+
+    def test_get_branches(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>',
+                ref='refs/heads/blah')
+
+        remote = ControlDir.open(self.remote_url)
+        self.assertEqual(
+                {'', 'blah', 'master'},
+                set(remote.get_branches().keys()))
+
+    def test_remove_tag(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>',
+                ref='refs/tags/blah')
+
+        remote = ControlDir.open(self.remote_url)
+        remote_branch = remote.open_branch()
+        remote_branch.tags.delete_tag('blah')
+        self.assertRaises(NoSuchTag, remote_branch.tags.delete_tag, 'blah')
+        self.assertEqual(
+                self.remote_real.get_refs(),
+                {'refs/heads/master': self.remote_real.head(),
+                 'HEAD': self.remote_real.head(),
+                })
+
+    def test_set_tag(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+
+        remote = ControlDir.open(self.remote_url)
+        remote.open_branch().tags.set_tag(
+            'blah', default_mapping.revision_id_foreign_to_bzr(c1))
+        self.assertEqual(
+                self.remote_real.get_refs(),
+                {'refs/heads/master': self.remote_real.head(),
+                 'refs/tags/blah': c1,
+                 'HEAD': self.remote_real.head(),
+                })

@@ -115,7 +115,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         f = StringIO()
         self.helper.cmd_list(f, [])
         self.assertEquals(
-            '0000000000000000000000000000000000000000 HEAD\n\n',
+            '\n',
             f.getvalue())
 
     def test_import(self):

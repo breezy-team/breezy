@@ -22,18 +22,66 @@ from __future__ import absolute_import
 
 from .... import tests
 
-from ...git import refs
+from ..object_store import BazaarObjectStore
+from ..refs import (
+    BazaarRefsContainer,
+    ref_to_branch_name,
+    branch_name_to_ref,
+    )
 
 
 class BranchNameRefConversionTests(tests.TestCase):
 
     def test_head(self):
-        self.assertEquals("", refs.ref_to_branch_name("HEAD"))
-        self.assertEquals("HEAD", refs.branch_name_to_ref(""))
+        self.assertEquals("", ref_to_branch_name("HEAD"))
+        self.assertEquals("HEAD", branch_name_to_ref(""))
 
     def test_tag(self):
-        self.assertRaises(ValueError, refs.ref_to_branch_name, "refs/tags/FOO")
+        self.assertRaises(ValueError, ref_to_branch_name, "refs/tags/FOO")
 
     def test_branch(self):
-        self.assertEquals("frost", refs.ref_to_branch_name("refs/heads/frost"))
-        self.assertEquals("refs/heads/frost", refs.branch_name_to_ref("frost"))
+        self.assertEquals("frost", ref_to_branch_name("refs/heads/frost"))
+        self.assertEquals("refs/heads/frost", branch_name_to_ref("frost"))
+
+
+class BazaarRefsContainerTests(tests.TestCaseWithTransport):
+
+    def test_empty(self):
+        tree = self.make_branch_and_tree('.')
+        store = BazaarObjectStore(tree.branch.repository)
+        refs = BazaarRefsContainer(tree.controldir, store)
+        self.assertEqual(refs.as_dict(), {})
+
+    def test_some_commit(self):
+        tree = self.make_branch_and_tree('.')
+        revid = tree.commit('somechange')
+        store = BazaarObjectStore(tree.branch.repository)
+        refs = BazaarRefsContainer(tree.controldir, store)
+        self.assertEqual(
+                refs.as_dict(),
+                {'HEAD': store._lookup_revision_sha1(revid)})
+
+    def test_some_tag(self):
+        tree = self.make_branch_and_tree('.')
+        revid = tree.commit('somechange')
+        tree.branch.tags.set_tag('sometag', revid)
+        store = BazaarObjectStore(tree.branch.repository)
+        refs = BazaarRefsContainer(tree.controldir, store)
+        self.assertEqual(
+                refs.as_dict(),
+                {'HEAD': store._lookup_revision_sha1(revid),
+                 'refs/tags/sometag': store._lookup_revision_sha1(revid),
+                 })
+
+    def test_some_branch(self):
+        tree = self.make_branch_and_tree('.')
+        revid = tree.commit('somechange')
+        otherbranch = tree.controldir.create_branch(name='otherbranch')
+        otherbranch.generate_revision_history(revid)
+        store = BazaarObjectStore(tree.branch.repository)
+        refs = BazaarRefsContainer(tree.controldir, store)
+        self.assertEqual(
+                refs.as_dict(),
+                {'HEAD': store._lookup_revision_sha1(revid),
+                 'refs/heads/otherbranch': store._lookup_revision_sha1(revid),
+                 })

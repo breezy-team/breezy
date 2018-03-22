@@ -94,16 +94,17 @@ class TransportRefsContainer(RefsContainer):
                 pass
 
     def subkeys(self, base):
+        """Refs present in this container under a base.
+
+        :param base: The base to return refs under.
+        :return: A set of valid refs in this container under the base; the base
+            prefix is stripped from the ref names returned.
+        """
         keys = set()
-        try:
-            iter_files = self.transport.clone(base).iter_files_recursive()
-            keys.update(("%s/%s" % (base, urllib.unquote(refname))).strip("/") for
-                    refname in iter_files if check_ref_format("%s/%s" % (base, refname)))
-        except (TransportNotPossible, NoSuchFile):
-            pass
-        for key in self.get_packed_refs():
-            if key.startswith(base):
-                keys.add(key[len(base):].strip("/"))
+        base_len = len(base) + 1
+        for refname in self.allkeys():
+            if refname.startswith(base):
+                keys.add(refname[base_len:])
         return keys
 
     def allkeys(self):

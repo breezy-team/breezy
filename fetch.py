@@ -602,7 +602,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
     def determine_wants_all(self, refs):
         potential = set()
-        for k, v in refs.as_dict().iteritems():
+        for k, v in refs.iteritems():
             # For non-git target repositories, only worry about peeled
             if v == ZERO_SHA:
                 continue
@@ -614,7 +614,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
-                for k, unpeeled in refs.as_dict().iteritems():
+                for k, unpeeled in refs.iteritems():
                     if not is_tag(k):
                         continue
                     if unpeeled == ZERO_SHA:
@@ -761,7 +761,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
         self._warn_slow()
-        remote_refs = self.source.controldir.get_refs_container()
+        remote_refs = self.source.controldir.get_refs_container().as_dict()
         wants = determine_wants(remote_refs)
         create_pb = None
         pb = ui.ui_factory.nested_progress_bar()
