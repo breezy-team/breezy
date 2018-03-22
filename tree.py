@@ -276,6 +276,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return ret
 
     def get_root_id(self):
+        if self.tree is None:
+            return None
         return self.path2id("")
 
     def has_or_had_id(self, file_id):
