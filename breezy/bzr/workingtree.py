@@ -652,10 +652,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        ret = set()
-        for path, ie in self.iter_entries_by_dir():
-            ret.add(ie.file_id)
-        return ret
+        return {ie.file_id for path, ie in self.iter_entries_by_dir()}
 
     def all_versioned_paths(self):
         return {path for path, ie in self.iter_entries_by_dir()}

@@ -2943,7 +2943,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                               specific_files=specific_files))
         tree = tt._tree
         tt.apply()
-        actual_result = list(tree.iter_entries_by_dir(specific_file_ids))
+        actual_result = list(tree.iter_entries_by_dir(
+            specific_files=specific_files))
         self.assertEqual(actual_result, preview_result)
 
     def test_iter_entries_by_dir_new(self):
