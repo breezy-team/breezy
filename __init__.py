@@ -170,7 +170,7 @@ class RemoteGitProber(Prober):
                       headers=headers)
         if req.get_host() == "github.com":
             # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-            headers["User-agent"] = "git/Breezy/%s" % breezy_version
+            req.add_header("User-Agent", "git/Breezy/%s" % breezy_version)
         elif req.get_host() == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise bzr_errors.NotBranchError(transport.base)
