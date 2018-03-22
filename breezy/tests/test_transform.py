@@ -2977,7 +2977,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                        tt.trans_id_file_id('moved-id'))
         self.assertMatchingIterEntries(tt)
 
-    def test_iter_entries_by_dir_specific_file_ids(self):
+    def test_iter_entries_by_dir_specific_files(self):
         tree = self.make_branch_and_tree('tree')
         tree.set_root_id('tree-root-id')
         self.build_tree(['tree/parent/', 'tree/parent/child'])
