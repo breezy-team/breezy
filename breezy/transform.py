@@ -904,7 +904,7 @@ class TreeTransformBase(object):
                 to_trans_ids[to_file_id] = trans_id
         return from_trans_ids, to_trans_ids
 
-    def _from_file_data(self, from_trans_id, from_versioned, file_id):
+    def _from_file_data(self, from_trans_id, from_versioned, from_path):
         """Get data about a file in the from (tree) state
 
         Return a (name, parent, kind, executable) tuple
@@ -913,7 +913,7 @@ class TreeTransformBase(object):
         if from_versioned:
             # get data from working tree if versioned
             from_entry = self._tree.iter_entries_by_dir(
-                    specific_file_ids=[file_id]).next()[1]
+                    specific_files=[from_path]).next()[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -982,12 +982,6 @@ class TreeTransformBase(object):
             else:
                 to_versioned = True
 
-            from_name, from_parent, from_kind, from_executable = \
-                self._from_file_data(from_trans_id, from_versioned, file_id)
-
-            to_name, to_parent, to_kind, to_executable = \
-                self._to_file_data(to_trans_id, from_trans_id, from_executable)
-
             if not from_versioned:
                 from_path = None
             else:
@@ -996,6 +990,13 @@ class TreeTransformBase(object):
                 to_path = None
             else:
                 to_path = final_paths.get_path(to_trans_id)
+
+            from_name, from_parent, from_kind, from_executable = \
+                self._from_file_data(from_trans_id, from_versioned, from_path)
+
+            to_name, to_parent, to_kind, to_executable = \
+                self._to_file_data(to_trans_id, from_trans_id, from_executable)
+
             if from_kind != to_kind:
                 modified = True
             elif to_kind in ('file', 'symlink') and (
@@ -1956,11 +1957,8 @@ class TransformPreview(DiskTreeTransform):
             path = self._tree_id_paths[parent_id]
         except KeyError:
             return
-        file_id = self.tree_file_id(parent_id)
-        if file_id is None:
-            return
         entry = self._tree.iter_entries_by_dir(
-                specific_file_ids=[file_id]).next()[1]
+                specific_files=[path]).next()[1]
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
