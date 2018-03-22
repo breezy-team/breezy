@@ -953,16 +953,16 @@ class cmd_inventory(Command):
         if revision is not None:
             tree = revision.as_tree(work_tree.branch)
 
-            extra_trees = [tree, work_tree]
+            extra_trees = [work_tree]
             self.add_cleanup(tree.lock_read().unlock)
         else:
             tree = work_tree
-            extra_trees = [tree]
+            extra_trees = []
 
         self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
-            paths = _mod_tree.find_related_paths_across_trees(
-                    tree, file_list, lookup_trees, require_versioned=True)
+            paths = tree.find_related_paths_across_trees(
+                    file_list, extra_trees, require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
             entries = tree.iter_entries_by_dir(specific_files=paths)
