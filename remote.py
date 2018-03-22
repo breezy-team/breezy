@@ -26,6 +26,7 @@ from ... import (
     urlutils,
     )
 from ...errors import (
+    AlreadyBranchError,
     BzrError,
     InProcessTransport,
     InvalidRevisionId,
@@ -81,6 +82,7 @@ from dulwich.pack import (
     Pack,
     pack_objects_to_data,
     )
+from dulwich.refs import SYMREF
 from dulwich.repo import DictRefsContainer
 import os
 import select
@@ -189,7 +191,8 @@ class TCPGitSmartTransport(GitSmartTransport):
             self._client = None
             return ret
         if self._host == '':
-            return dulwich.client.LocalGitClient()
+            # return dulwich.client.LocalGitClient()
+            return dulwich.client.SubprocessGitClient()
         return dulwich.client.TCPGitClient(self._host, self._port,
             report_activity=self._report_activity)
 
@@ -270,6 +273,13 @@ class RemoteGitBranchFormat(GitBranchFormat):
         raise UninitializableFormat(self)
 
 
+def default_report_progress(text):
+    if text.startswith('error: '):
+        trace.show_error('git: %s', text[len('error: '):])
+    else:
+        trace.mutter("git: %s" % text)
+
+
 class RemoteGitDir(GitDir):
 
     def __init__(self, transport, format, client, client_path):
@@ -288,26 +298,38 @@ class RemoteGitDir(GitDir):
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
-            def progress(text):
-                trace.info("git: %s" % text)
-        def wrap_determine_wants(refs_dict):
-            return determine_wants(refs_dict)
+            progress = default_report_progress
         try:
-            result = self._client.fetch_pack(self._client_path, wrap_determine_wants,
+            result = self._client.fetch_pack(self._client_path, determine_wants,
                 graph_walker, pack_data, progress)
             if result.refs is None:
                 result.refs = {}
-            self._refs = remote_refs_dict_to_container(result.refs)
+            self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
             return result
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
 
-    def send_pack(self, get_changed_refs, generate_pack_data):
+    def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
+        if progress is None:
+            progress = default_report_progress
+
         try:
             return self._client.send_pack(self._client_path, get_changed_refs,
-                generate_pack_data)
+                generate_pack_data, progress)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
+
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None, ref=None):
+        refname = self._get_selected_ref(name, ref)
+        if refname != b'HEAD' and refname in self.get_refs_container():
+            raise AlreadyBranchError(self.user_url)
+        if refname in self.get_refs_container():
+            ref_chain, unused_sha = self.get_refs_container().follow(self._get_selected_ref(None))
+            if ref_chain[0] == b'HEAD':
+                refname = ref_chain[1]
+        repo = self.open_repository()
+        return RemoteGitBranch(self, repo, refname)
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
@@ -341,10 +363,15 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository(self)
 
     def open_branch(self, name=None, unsupported=False,
-            ignore_fallbacks=False, ref=None, possible_transports=None):
+            ignore_fallbacks=False, ref=None, possible_transports=None,
+            nascent_ok=False):
         repo = self.open_repository()
-        refname = self._get_selected_ref(name, ref)
-        return RemoteGitBranch(self, repo, refname)
+        ref = self._get_selected_ref(name, ref)
+        if not nascent_ok and ref not in self.get_refs_container():
+            raise NotBranchError(self.root_transport.base,
+                    controldir=self)
+        ref_chain, unused_sha = self.get_refs_container().follow(ref)
+        return RemoteGitBranch(self, repo, ref_chain[-1])
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
@@ -358,9 +385,10 @@ class RemoteGitDir(GitDir):
     def get_refs_container(self):
         if self._refs is not None:
             return self._refs
-        result = self.fetch_pack(lambda x: [], None,
+        result = self.fetch_pack(lambda x: None, None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
-        self._refs = remote_refs_dict_to_container(result.refs)
+        self._refs = remote_refs_dict_to_container(
+                result.refs, result.symrefs)
         return self._refs
 
 
@@ -622,7 +650,7 @@ class RemoteGitBranch(GitBranch):
             yield (ref_name, tag_name, peeled, unpeeled)
 
 
-def remote_refs_dict_to_container(refs_dict):
+def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
     base = {}
     peeled = {}
     for k, v in refs_dict.iteritems():
@@ -631,6 +659,8 @@ def remote_refs_dict_to_container(refs_dict):
         else:
             base[k] = v
             peeled[k] = v
+    for name, target in symrefs_dict.iteritems():
+        base[name] = SYMREF + target
     ret = DictRefsContainer(base)
     ret._peeled = peeled
     return ret

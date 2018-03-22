@@ -637,11 +637,7 @@ class LocalGitBranch(GitBranch):
                 continue
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
-                try:
-                    peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
-                except KeyError:
-                    # Let's just hope it's a commit
-                    peeled = unpeeled
+                peeled = unpeeled
             if type(tag_name) is not unicode:
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)

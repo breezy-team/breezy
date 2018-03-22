@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import os
+import time
 
 from ....controldir import ControlDir
 from ....errors import (
@@ -40,6 +41,7 @@ from ..remote import (
     RemoteGitBranchFormat,
     )
 
+from dulwich import porcelain
 from dulwich.repo import Repo as GitRepo
 
 
@@ -146,6 +148,37 @@ class FetchFromRemoteTestBase(object):
                  'another': default_mapping.revision_id_foreign_to_bzr(c2)},
                 local_branch.tags.get_tag_dict())
 
+    def test_sprout_with_annotated_tag(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>',
+                ref='refs/heads/another')
+        porcelain.tag_create(
+                self.remote_real,
+                tag="blah",
+                author='author <author@example.com>',
+                objectish=c2,
+                tag_time=int(time.time()),
+                tag_timezone=0,
+                annotated=True,
+                message="Annotated tag")
+
+        remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._to_format)
+        local = remote.sprout('local', revision_id=default_mapping.revision_id_foreign_to_bzr(c1))
+        local_branch = local.open_branch()
+        self.assertEqual(
+                default_mapping.revision_id_foreign_to_bzr(c1),
+                local_branch.last_revision())
+        self.assertEqual(
+                {'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
+                local_branch.tags.get_tag_dict())
+
 
 class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase,TestCaseWithTransport):
 
@@ -186,15 +219,15 @@ class PushToRemoteBase(object):
         wt.branch.get_config_stack().set('branch.fetch_tags', True)
 
         if self._from_format == 'git':
-            wt.branch.push(remote.open_branch())
+            wt.branch.push(remote.create_branch('newbranch'))
         else:
-            wt.branch.push(remote.open_branch(), lossy=True)
+            wt.branch.push(remote.create_branch('newbranch'), lossy=True)
 
-        self.assertNotEqual(self.remote_real.head(), c1)
         self.assertEqual(
                 {'refs/heads/master': self.remote_real.head(),
                  'HEAD': self.remote_real.head(),
-                 'refs/tags/sometag': self.remote_real.head(),
+                 'refs/heads/newbranch': self.remote_real.refs['refs/heads/newbranch'],
+                 'refs/tags/sometag': self.remote_real.refs['refs/heads/newbranch'],
                 },
                 self.remote_real.get_refs())
 
@@ -251,7 +284,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-                ['', 'blah', 'master'],
+                ['master', 'blah', 'master'],
                 [b.name for b in remote.list_branches()])
 
     def test_get_branches(self):
@@ -267,8 +300,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-                {'', 'blah', 'master'},
-                set(remote.get_branches().keys()))
+                {'': 'master', 'blah': 'blah', 'master': 'master'},
+                {n: b.name for (n, b) in remote.get_branches().items()})
 
     def test_remove_tag(self):
         c1 = self.remote_real.do_commit(
@@ -310,3 +343,43 @@ class RemoteControlDirTests(TestCaseWithTransport):
                  'refs/tags/blah': c1,
                  'HEAD': self.remote_real.head(),
                 })
+
+    def test_annotated_tag(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+
+        porcelain.tag_create(
+                self.remote_real,
+                tag="blah",
+                author='author <author@example.com>',
+                objectish=c2,
+                tag_time=int(time.time()),
+                tag_timezone=0,
+                annotated=True,
+                message="Annotated tag")
+
+        remote = ControlDir.open(self.remote_url)
+        remote_branch = remote.open_branch()
+        self.assertEqual({
+            'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
+            remote_branch.tags.get_tag_dict())
+
+    def tetst_get_branch_reference(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message='another commit',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>')
+
+        remote = ControlDir.open(self.remote_url)
+        self.assertEqual('refs/heads/master', remote.get_branch_reference(''))
+        self.assertEqual(None, remote.get_branch_reference('master'))
