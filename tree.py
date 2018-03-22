@@ -294,48 +294,43 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return False
         return self.has_filename(path)
 
-    def is_executable(self, path, file_id=None):
+    def _lookup_path(self, path):
+        if self.tree is None:
+            raise errors.NoSuchFile(path)
         try:
-            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-                path)
+            return tree_lookup_path(self.store.__getitem__, self.tree,
+                path.encode('utf-8'))
         except KeyError:
-            raise errors.NoSuchId(self, path)
+            raise errors.NoSuchFile(self, path)
+
+    def is_executable(self, path, file_id=None):
+        (mode, hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return False
         return mode_is_executable(mode)
 
     def kind(self, path, file_id=None):
-        if self.tree is None:
-            raise errors.NoSuchFile(path)
-        try:
-            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-                path)
-        except KeyError:
-            raise errors.NoSuchFile(path)
+        (mode, hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return "directory"
         return mode_kind(mode)
 
     def has_filename(self, path):
-        if self.tree is None:
-            return False
         try:
-            tree_lookup_path(self.store.__getitem__, self.tree,
-                path.encode("utf-8"))
-        except KeyError:
+            self._lookup_path(path)
+        except errors.NoSuchFile:
             return False
         else:
             return True
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
-        if from_dir is None:
-            from_dir = u""
         if self.tree is None:
             return
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-            from_dir.encode("utf-8"))
+        if from_dir is None:
+            from_dir = u""
+        (mode, hexsha) = self._lookup_path(from_dir)
         if mode is None: # Root
             root_ie = self._get_dir_ie(b"", None)
         else:
@@ -401,13 +396,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield self._fileid_map.lookup_file_id(posixpath.join(path, name))
 
     def iter_child_entries(self, path, file_id=None):
-        encoded_path = path.encode('utf-8')
-        (mode, tree_sha) = tree_lookup_path(self.store.__getitem__, self.tree,
-            encoded_path)
+        (mode, tree_sha) = self._lookup_path(path)
 
         if not stat.S_ISDIR(mode):
             return
 
+        encoded_path = path.encode('utf-8')
         file_id = self.path2id(path)
         tree = self.store[tree_sha]
         for name, mode, hexsha in tree.iteritems():
@@ -464,16 +458,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return osutils.sha_string(self.get_file_text(path, file_id))
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-            path.encode('utf-8'))
+        (mode, hexsha) = self._lookup_path(path)
         return ("GIT", hexsha)
 
     def get_file_text(self, path, file_id=None):
         """See RevisionTree.get_file_text."""
-        if self.tree is None:
-            raise errors.NoSuchFile(path)
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-                path.encode('utf-8'))
+        (mode, hexsha) = self._lookup_path(path)
         if stat.S_ISREG(mode):
             return self.store[hexsha].data
         else:
@@ -481,8 +471,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_symlink_target(self, path, file_id=None):
         """See RevisionTree.get_symlink_target."""
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
-                path.encode('utf-8'))
+        (mode, hexsha) = self._lookup_path(path)
         if stat.S_ISLNK(mode):
             return self.store[hexsha].data.decode('utf-8')
         else:
@@ -496,8 +485,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         try:
-            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path.encode('utf-8'))
-        except KeyError:
+            (mode, hexsha) = self._lookup_path(path)
+        except errors.NoSuchFile:
             return ('missing', None, None, None)
         kind = mode_kind(mode)
         if kind == 'file':
