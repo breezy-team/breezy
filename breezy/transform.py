@@ -2140,14 +2140,14 @@ class _PreviewTree(inventorytree.InventoryTree):
             if self._transform.final_file_id(trans_id) is None:
                 yield self._final_paths._determine_path(trans_id)
 
-    def _make_inv_entries(self, ordered_entries, specific_file_ids=None,
+    def _make_inv_entries(self, ordered_entries, specific_files=None,
         yield_parents=False):
         for trans_id, parent_file_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
             if file_id is None:
                 continue
-            if (specific_file_ids is not None
-                and file_id not in specific_file_ids):
+            if (specific_files is not None and
+                unicode(self._final_paths.get_path(trans_id)) not in specific_files):
                 continue
             kind = self._transform.final_kind(trans_id)
             if kind is None:
@@ -2185,20 +2185,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
-                            yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
         # might be more efficient, but requires tricky inferences about stack
         # position.
-        if specific_files is not None and specific_file_ids is not None:
-            raise ValueError('both specific_files and specific_file_ids set')
-        if specific_files is not None:
-            specific_file_ids = [self.path2id(p) for p in specific_files]
         ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
-            specific_file_ids, yield_parents=yield_parents):
+            specific_files, yield_parents=yield_parents):
             yield unicode(self._final_paths.get_path(trans_id)), entry
 
     def _iter_entries_for_dir(self, dir_path):

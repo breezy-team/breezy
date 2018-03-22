@@ -872,7 +872,6 @@ class Merge3Merger(object):
                             specific_files=this_interesting_files))
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
-            # TODOJRV
             entry = this_entries.get(file_id)
             if entry is not None:
                 this_name = entry.name

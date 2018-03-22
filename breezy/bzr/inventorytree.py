@@ -264,8 +264,7 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    def iter_entries_by_dir(self, specific_file_ids=None, specific_files=None,
-                            yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -274,25 +273,14 @@ class InventoryTree(Tree):
         See Tree.iter_entries_by_dir for details.
 
         :param yield_parents: If True, yield the parents from the root leading
-            down to specific_file_ids that have been requested. This has no
-            impact if specific_file_ids is None.
+            down to specific_files that have been requested. This has no
+            impact if specific_files is None.
         """
-        if specific_file_ids is not None and specific_files is not None:
-            raise ValueError("both specific_files and specific_file_ids are "
-                             "set")
         with self.lock_read():
             if specific_files is not None:
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
-                    if not inventory is self.root_inventory: # for now
-                        raise AssertionError("%r != %r" % (
-                            inventory, self.root_inventory))
-                    inventory_file_ids.append(inv_file_id)
-            elif specific_file_ids is not None:
-                inventory_file_ids = []
-                for tree_file_id in specific_file_ids:
-                    inventory, inv_file_id = self._unpack_file_id(tree_file_id)
                     if not inventory is self.root_inventory: # for now
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
