@@ -1776,9 +1776,6 @@ class TreeTransform(DiskTreeTransform):
                 inventory_delta.append((path, None, file_id, None))
             new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                      new_paths)
-            entries = self._tree.iter_entries_by_dir(
-                specific_file_ids=viewvalues(new_path_file_ids))
-            old_paths = dict((e.file_id, p) for p, e in entries)
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
@@ -1806,7 +1803,10 @@ class TreeTransform(DiskTreeTransform):
                     new_entry = inventory.make_entry(kind,
                         self.final_name(trans_id),
                         parent_file_id, file_id)
-                old_path = old_paths.get(new_entry.file_id)
+                try:
+                    old_path = self._tree.id2path(new_entry.file_id)
+                except errors.NoSuchId:
+                    old_path = None
                 new_executability = self._new_executability.get(trans_id)
                 if new_executability is not None:
                     new_entry.executable = new_executability
@@ -3101,7 +3101,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
                         _, entry = next(path_tree.iter_entries_by_dir(
-                            specific_file_ids=[file_id]))
+                            specific_files=[path_tree.id2path(file_id)]))
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:
