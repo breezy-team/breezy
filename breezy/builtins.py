@@ -1112,7 +1112,8 @@ class cmd_mv(Command):
         work_tree, file_list = WorkingTree.open_containing_paths(
             names_list, default_directory='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
-        rename_map.RenameMap.guess_renames(work_tree, dry_run)
+        rename_map.RenameMap.guess_renames(
+                work_tree.basis_tree(), work_tree, dry_run)
 
     def _run(self, tree, names_list, rel_names, after):
         into_existing = osutils.isdir(names_list[-1])
@@ -3024,12 +3025,11 @@ class cmd_touching_revisions(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        file_id = tree.path2id(relpath)
-        b = tree.branch
-        self.add_cleanup(b.lock_read().unlock)
-        touching_revs = log.find_touching_revisions(b, file_id)
-        for revno, revision_id, what in touching_revs:
-            self.outf.write("%6d %s\n" % (revno, what))
+        with tree.lock_read():
+            touching_revs = log.find_touching_revisions(
+                    tree.branch.repository, tree.branch.last_revision(), tree, relpath)
+            for revno, revision_id, what in reversed(list(touching_revs)):
+                self.outf.write("%6d %s\n" % (revno, what))
 
 
 class cmd_ls(Command):

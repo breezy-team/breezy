@@ -1729,9 +1729,6 @@ class DirStateRevisionTree(InventoryTree):
         # sensible: the entry might not have come from us?
         return entry.kind, entry.executable, None
 
-    def _file_size(self, entry, stat_value):
-        return entry.text_size
-
     def filter_unversioned_files(self, paths):
         """Filter out paths that are not versioned.
 
