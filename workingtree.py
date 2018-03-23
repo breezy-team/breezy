@@ -72,6 +72,9 @@ from ... import (
     tree,
     workingtree,
     )
+from ...decorators import (
+    only_raises,
+    )
 from ...bzr import (
     inventory,
     )
@@ -137,7 +140,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self.branch.lock_read()
         return lock.LogicalLockResult(self.unlock)
 
-    def lock_tree_write(self):
+    def _lock_write_tree(self):
+        # TODO(jelmer): Actually create index.lock
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -146,20 +150,24 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count +=1
+
+    def lock_tree_write(self):
         self.branch.lock_read()
-        return lock.LogicalLockResult(self.unlock)
+        try:
+            self._lock_write_tree()
+            return lock.LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
 
     def lock_write(self, token=None):
-        if not self._lock_mode:
-            self._lock_mode = 'w'
-            self._lock_count = 1
-            self.index.read()
-        elif self._lock_mode == 'r':
-            raise errors.ReadOnlyError(self)
-        else:
-            self._lock_count +=1
         self.branch.lock_write()
-        return lock.LogicalLockResult(self.unlock)
+        try:
+            self._lock_write_tree()
+            return lock.LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
 
     def is_locked(self):
         return self._lock_count >= 1
@@ -167,18 +175,18 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def get_physical_lock_status(self):
         return False
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
-        self.branch.unlock()
-        self._cleanup()
-        self._lock_count -= 1
-        if self._lock_count > 0:
-            return
-        self._lock_mode = None
-
-    def _cleanup(self):
-        pass
+        try:
+            self._cleanup()
+            self._lock_count -= 1
+            if self._lock_count > 0:
+                return
+            self._lock_mode = None
+        finally:
+            self.branch.unlock()
 
     def _cleanup(self):
         pass

@@ -66,6 +66,7 @@ from ... import (
 from ...errors import (
     AlreadyControlDirError,
     FileExists,
+    LockError,
     NoSuchFile,
     TransportNotPossible,
     )
@@ -324,6 +325,21 @@ class TransportRefsContainer(RefsContainer):
             return self[name]
         except KeyError:
             return default
+
+    def lock_ref(self, name):
+        if name == b"HEAD":
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
+        self._ensure_dir_exists(name)
+        return transport.lock_write(name + ".lock")
+        #transport.put_bytes(name + ".lock", "Locked by brz-git")
+
+    def unlock_ref(self, name):
+        if name == b"HEAD":
+            self.worktree_transport.delete("HEAD.lock")
+        else:
+            self.transport.delete(name + ".lock")
 
 
 class TransportRepo(BaseRepo):
