@@ -2253,7 +2253,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt = self.get_wt_from_builder(builder)
         tt = transform.TreeTransform(wt)
         try:
-            tt.set_executability(True, tt.trans_id_tree_file_id('foo-id'))
+            tt.set_executability(True, tt.trans_id_tree_path('foo'))
             tt.apply()
         except:
             tt.finalize()

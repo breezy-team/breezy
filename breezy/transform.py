@@ -132,7 +132,7 @@ class TreeTransformBase(object):
         # The trans_id that will be used as the tree root
         root_id = tree.get_root_id()
         if root_id is not None:
-            self._new_root = self.trans_id_tree_file_id(root_id)
+            self._new_root = self.trans_id_tree_path('')
         else:
             self._new_root = None
         # Indicator of whether the transform has been applied
@@ -216,7 +216,7 @@ class TreeTransformBase(object):
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
         self._tree_id_paths.pop(old_root)
-        self._new_root = self.trans_id_tree_file_id(self._tree.get_root_id())
+        self._new_root = self.trans_id_tree_path('')
         if parent == old_root:
             parent = self._new_root
         self.adjust_path(name, parent, old_root)
@@ -285,17 +285,6 @@ class TreeTransformBase(object):
         del self._new_parent[old_new_root]
         del self._new_name[old_new_root]
 
-    def trans_id_tree_file_id(self, inventory_id):
-        """Determine the transaction id of a working tree file.
-
-        This reflects only files that already exist, not ones that will be
-        added by transactions.
-        """
-        if inventory_id is None:
-            raise ValueError('None is not a valid file id')
-        path = self._tree.id2path(inventory_id)
-        return self.trans_id_tree_path(path)
-
     def trans_id_file_id(self, file_id):
         """Determine or set the transaction id associated with a file ID.
         A new id is only created for file_ids that were never present.  If
@@ -308,8 +297,8 @@ class TreeTransformBase(object):
             return self._r_new_id[file_id]
         else:
             try:
-                next(self._tree.iter_entries_by_dir([file_id]))
-            except StopIteration:
+                path = self._tree.id2path(file_id)
+            except errors.NoSuchId:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
                 else:
@@ -317,7 +306,7 @@ class TreeTransformBase(object):
                     self._non_present_ids[file_id] = trans_id
                     return trans_id
             else:
-                return self.trans_id_tree_file_id(file_id)
+                return self.trans_id_tree_path(path)
 
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
@@ -735,7 +724,8 @@ class TreeTransformBase(object):
         active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in viewitems(self._new_id):
             if file_id in active_tree_ids:
-                old_trans_id = self.trans_id_tree_file_id(file_id)
+                path = self._tree.id2path(file_id)
+                old_trans_id = self.trans_id_tree_path(path)
                 conflicts.append(('duplicate id', old_trans_id, trans_id))
         return conflicts
 
@@ -2584,8 +2574,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     divert = set()
     try:
         pp.next_phase()
-        file_trans_id[wt.get_root_id()] = \
-            tt.trans_id_tree_file_id(wt.get_root_id())
+        file_trans_id[wt.get_root_id()] = tt.trans_id_tree_path('')
         with ui.ui_factory.nested_progress_bar() as pb:
             deferred_contents = []
             num = 0
@@ -3238,9 +3227,9 @@ def link_tree(target_tree, source_tree):
                 continue
             if executable[0] != executable[1]:
                 continue
-            trans_id = tt.trans_id_tree_file_id(file_id)
+            trans_id = tt.trans_id_tree_path(paths[1])
             tt.delete_contents(trans_id)
-            tt.create_hardlink(source_tree.id2abspath(file_id), trans_id)
+            tt.create_hardlink(source_tree.abspath(paths[0]), trans_id)
         tt.apply()
     finally:
         tt.finalize()
