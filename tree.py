@@ -388,13 +388,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
         ie.revision = self.get_file_revision(path.decode('utf-8'))
         return ie
 
-    def iter_children(self, file_id):
-        path = self._fileid_map.lookup_path(file_id)
-        mode, tree_sha = tree_lookup_path(self.store.__getitem__, self.tree, path)
-        if stat.S_ISDIR(mode):
-            for name, mode, hexsha  in self.store[tree_sha].iteritems():
-                yield self._fileid_map.lookup_file_id(posixpath.join(path, name))
-
     def iter_child_entries(self, path, file_id=None):
         (mode, tree_sha) = self._lookup_path(path)
 
