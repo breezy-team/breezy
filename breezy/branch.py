@@ -1517,7 +1517,7 @@ class Branch(controldir.ControlComponent):
     def create_memorytree(self):
         """Create a memory tree for this branch.
 
-        :return: A `MutableTree
+        :return: An in-memory MutableTree instance
         """
         return memorytree.MemoryTree.create_on_branch(self)
 
