@@ -332,14 +332,16 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
         self._ensure_dir_exists(name)
-        return transport.lock_write(name + ".lock")
-        #transport.put_bytes(name + ".lock", "Locked by brz-git")
-
-    def unlock_ref(self, name):
-        if name == b"HEAD":
-            self.worktree_transport.delete("HEAD.lock")
-        else:
-            self.transport.delete(name + ".lock")
+        lockname = name + ".lock"
+        try:
+            return transport.lock_write(lockname)
+        except TransportNotPossible:
+            # better than not locking at all, I guess?
+            if transport.has(lockname):
+                raise LockError(lockname + " exists")
+            transport.put_bytes(lockname, "Locked by brz-git")
+            from ...lock import LogicalLockResult
+            return LogicalLockResult(lambda: transport.delete(lockname))
 
 
 class TransportRepo(BaseRepo):
