@@ -66,6 +66,7 @@ from ... import (
 from ...errors import (
     AlreadyControlDirError,
     FileExists,
+    LockError,
     NoSuchFile,
     TransportNotPossible,
     )
@@ -324,6 +325,23 @@ class TransportRefsContainer(RefsContainer):
             return self[name]
         except KeyError:
             return default
+
+    def lock_ref(self, name):
+        if name == b"HEAD":
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
+        self._ensure_dir_exists(name)
+        lockname = name + ".lock"
+        try:
+            return transport.lock_write(lockname)
+        except TransportNotPossible:
+            # better than not locking at all, I guess?
+            if transport.has(lockname):
+                raise LockError(lockname + " exists")
+            transport.put_bytes(lockname, "Locked by brz-git")
+            from ...lock import LogicalLockResult
+            return LogicalLockResult(lambda: transport.delete(lockname))
 
 
 class TransportRepo(BaseRepo):
