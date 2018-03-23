@@ -1065,6 +1065,8 @@ class Merge3Merger(object):
         return result
 
     def write_modified(self, results):
+        if not self.working_tree.supports_merge_modified():
+            return
         modified_hashes = {}
         for path in results.modified_paths:
             wt_relpath = self.working_tree.relpath(path)
@@ -1075,10 +1077,7 @@ class Merge3Merger(object):
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
-        try:
-            self.working_tree.set_merge_modified(modified_hashes)
-        except errors.UnsupportedOperation:
-            pass  # Well, whatever.
+        self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
     def parent(entry, file_id):

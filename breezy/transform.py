@@ -2848,10 +2848,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
             trace.warning(unicode(conflict))
         pp.next_phase()
         tt.apply()
-        try:
+        if working_tree.supports_merge_modified():
             working_tree.set_merge_modified(merge_modified)
-        except errors.UnsupportedOperation:
-            pass  # well, whatever.
     finally:
         target_tree.unlock()
         tt.finalize()
