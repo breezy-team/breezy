@@ -17,8 +17,6 @@
 
 from __future__ import absolute_import
 
-import itertools
-
 from ... import (
     branch,
     commands,
@@ -147,7 +145,7 @@ def get_revisions_and_committers(a_repo, revids):
     combo_count = {}
     with ui.ui_factory.nested_progress_bar() as pb:
         trace.note('getting revisions')
-        revision_iters = itertools.tee(a_repo.iter_revisions(revids))
+        revision_iters = list(a_repo.iter_revisions(revids))
         for count, (revid, rev) in enumerate(revision_iters[0]):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
