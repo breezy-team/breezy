@@ -64,12 +64,16 @@ from ... import (
     globbing,
     ignores,
     lock,
+    merge,
     osutils,
     revision as _mod_revision,
     trace,
     transport as _mod_transport,
     tree,
     workingtree,
+    )
+from ...decorators import (
+    only_raises,
     )
 from ...bzr import (
     inventory,
@@ -136,7 +140,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self.branch.lock_read()
         return lock.LogicalLockResult(self.unlock)
 
-    def lock_tree_write(self):
+    def _lock_write_tree(self):
+        # TODO(jelmer): Actually create index.lock
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -145,20 +150,24 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count +=1
+
+    def lock_tree_write(self):
         self.branch.lock_read()
-        return lock.LogicalLockResult(self.unlock)
+        try:
+            self._lock_write_tree()
+            return lock.LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
 
     def lock_write(self, token=None):
-        if not self._lock_mode:
-            self._lock_mode = 'w'
-            self._lock_count = 1
-            self.index.read()
-        elif self._lock_mode == 'r':
-            raise errors.ReadOnlyError(self)
-        else:
-            self._lock_count +=1
         self.branch.lock_write()
-        return lock.LogicalLockResult(self.unlock)
+        try:
+            self._lock_write_tree()
+            return lock.LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
 
     def is_locked(self):
         return self._lock_count >= 1
@@ -166,18 +175,18 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def get_physical_lock_status(self):
         return False
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
-        self.branch.unlock()
-        self._cleanup()
-        self._lock_count -= 1
-        if self._lock_count > 0:
-            return
-        self._lock_mode = None
-
-    def _cleanup(self):
-        pass
+        try:
+            self._cleanup()
+            self._lock_count -= 1
+            if self._lock_count > 0:
+                return
+            self._lock_mode = None
+        finally:
+            self.branch.unlock()
 
     def _cleanup(self):
         pass
@@ -260,18 +269,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 revision_id = l.rstrip('\n')
                 parents.append(self.branch.lookup_foreign_revision_id(revision_id))
         return parents
-
-    def iter_children(self, file_id):
-        dpath = self.id2path(file_id) + "/"
-        if dpath in self.index:
-            return
-        for path in self.index:
-            if not path.startswith(dpath):
-                continue
-            if "/" in path[len(dpath):]:
-                # Not a direct child but something further down
-                continue
-            yield self.path2id(path)
 
     def check_state(self):
         """Check that the working state is/isn't valid."""
@@ -490,7 +487,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def _iter_files_recursive(self, from_dir=None, include_dirs=False):
         if from_dir is None:
-            from_dir = ""
+            from_dir = u""
         for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir).encode(osutils._fs_enc)):
             dir_relpath = dirpath[len(self.basedir):].strip("/")
             if self.controldir.is_control_filename(dir_relpath):
@@ -503,7 +500,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 if include_dirs:
                     try:
                         yield relpath.decode(osutils._fs_enc)
-                    except UnicodeDecodeError as e:
+                    except UnicodeDecodeError:
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
                 if not self._has_dir(relpath):
@@ -521,14 +518,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            for p in (set(self._iter_files_recursive(include_dirs=True)) - set(self.index)):
-                try:
-                    up = p.decode(osutils._fs_enc)
-                except UnicodeDecodeError:
-                    raise errors.BadFilenameEncoding(
-                        p, osutils._fs_enc)
-                if not self._has_dir(up):
-                    yield up
+            for p in (set(self._iter_files_recursive(include_dirs=True)) - set([p.decode('utf-8') for p in self.index])):
+                if not self._has_dir(p):
+                    yield p
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
@@ -633,7 +625,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def get_file_verifier(self, path, file_id=None, stat_value=None):
         with self.lock_read():
             try:
-                return ("GIT", self.index[path][-2])
+                return ("GIT", self.index[path.encode('utf-8')].sha)
             except KeyError:
                 if self._has_dir(path):
                     return ("GIT", None)
@@ -667,7 +659,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def stored_kind(self, path, file_id=None):
         with self.lock_read():
             try:
-                return mode_kind(self.index[path.encode("utf-8")][4])
+                return mode_kind(self.index[path.encode("utf-8")].mode)
             except KeyError:
                 # Maybe it's a directory?
                 if self._has_dir(path):
@@ -678,14 +670,15 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         return os.lstat(self.abspath(path))
 
     def is_executable(self, path, file_id=None):
-        if getattr(self, "_supports_executable", osutils.supports_executable)():
-            mode = self._lstat(path).st_mode
-        else:
-            try:
-                mode = self.index[path.encode('utf-8')].mode
-            except KeyError:
-                mode = 0
-        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+        with self.lock_read():
+            if getattr(self, "_supports_executable", osutils.supports_executable)():
+                mode = self._lstat(path).st_mode
+            else:
+                try:
+                    mode = self.index[path.encode('utf-8')].mode
+                except KeyError:
+                    mode = 0
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
         if getattr(self, "_supports_executable", osutils.supports_executable)():
@@ -695,7 +688,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None:
-            from_dir = ""
+            from_dir = u""
         dir_ids = {}
         fk_entries = {'directory': tree.TreeDirectory,
                       'file': tree.TreeFile,
@@ -708,23 +701,19 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             if recursive:
                 path_iterator = sorted(self._iter_files_recursive(from_dir, include_dirs=True))
             else:
-                if from_dir is None:
-                    start = self.basedir
-                else:
-                    start = os.path.join(self.basedir, from_dir)
-                path_iterator = sorted([os.path.join(from_dir, name) for name in
-                    os.listdir(start) if not self.controldir.is_control_filename(name)
+                path_iterator = sorted([os.path.join(from_dir, name.decode(osutils._fs_enc)) for name in
+                    os.listdir(self.abspath(from_dir).encode(osutils._fs_enc)) if not self.controldir.is_control_filename(name)
                     and not self.mapping.is_special_file(name)])
             for path in path_iterator:
                 try:
-                    value = self.index[path]
-                except KeyError:
-                    value = None
-                try:
-                    path = path.decode("utf-8")
-                except UnicodeDecodeError:
+                    index_path = path.encode("utf-8")
+                except UnicodeEncodeError:
                     raise errors.BadFilenameEncoding(
                         path, osutils._fs_enc)
+                try:
+                    value = self.index[index_path]
+                except KeyError:
+                    value = None
                 kind = osutils.file_kind(self.abspath(path))
                 parent, name = posixpath.split(path)
                 for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
@@ -786,27 +775,28 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def iter_child_entries(self, path, file_id=None):
         encoded_path = path.encode('utf-8')
-        parent_id = self.path2id(path)
-        found_any = False
-        seen_children = set()
-        for item_path, value in self.index.iteritems():
-            if self.mapping.is_special_file(item_path):
-                continue
-            if not osutils.is_inside(encoded_path, item_path):
-                continue
-            found_any = True
-            subpath = posixpath.relpath(item_path, encoded_path)
-            if b'/' in subpath:
-                dirname = subpath.split(b'/', 1)[0]
-                file_ie = self._get_dir_ie(posixpath.join(path, dirname), parent_id)
-            else:
-                (parent, name) = posixpath.split(item_path)
-                file_ie = self._get_file_ie(
-                        name.decode('utf-8'),
-                        item_path.decode('utf-8'), value, parent_id)
-            yield file_ie
-        if not found_any and path != u'':
-            raise errors.NoSuchFile(path)
+        with self.lock_read():
+            parent_id = self.path2id(path)
+            found_any = False
+            seen_children = set()
+            for item_path, value in self.index.iteritems():
+                if self.mapping.is_special_file(item_path):
+                    continue
+                if not osutils.is_inside(encoded_path, item_path):
+                    continue
+                found_any = True
+                subpath = posixpath.relpath(item_path, encoded_path)
+                if b'/' in subpath:
+                    dirname = subpath.split(b'/', 1)[0]
+                    file_ie = self._get_dir_ie(posixpath.join(path, dirname), parent_id)
+                else:
+                    (parent, name) = posixpath.split(item_path)
+                    file_ie = self._get_file_ie(
+                            name.decode('utf-8'),
+                            item_path.decode('utf-8'), value, parent_id)
+                yield file_ie
+            if not found_any and path != u'':
+                raise errors.NoSuchFile(path)
 
     def conflicts(self):
         with self.lock_read():
@@ -974,6 +964,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def _walkdirs(self, prefix=""):
         if prefix != "":
             prefix += "/"
+        prefix = prefix.encode('utf-8')
         per_dir = defaultdict(set)
         if prefix == "":
             per_dir[('', self.get_root_id())] = set()
@@ -991,12 +982,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 kind, None,
                 self.path2id(path.decode("utf-8")),
                 kind))
-        for path, value in self.index.iteritems():
-            if self.mapping.is_special_file(path):
-                continue
-            if not path.startswith(prefix):
-                continue
-            add_entry(path, mode_kind(value.mode))
+        with self.lock_read():
+            for path, value in self.index.iteritems():
+                if self.mapping.is_special_file(path):
+                    continue
+                if not path.startswith(prefix):
+                    continue
+                add_entry(path, mode_kind(value.mode))
         return ((k, sorted(v)) for (k, v) in sorted(per_dir.iteritems()))
 
     def get_shelf_manager(self):
@@ -1113,6 +1105,28 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     self.index[entry.path] = index_entry_from_stat(st, entry.sha, 0)
             self.flush()
 
+    def pull(self, source, overwrite=False, stop_revision=None,
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False):
+        with self.lock_write(), source.lock_read():
+            old_revision = self.branch.last_revision()
+            basis_tree = self.basis_tree()
+            count = self.branch.pull(source, overwrite, stop_revision,
+                                     possible_transports=possible_transports,
+                                     local=local)
+            new_revision = self.branch.last_revision()
+            if new_revision != old_revision:
+                with basis_tree.lock_read():
+                    new_basis_tree = self.branch.basis_tree()
+                    merge.merge_inner(
+                                self.branch,
+                                new_basis_tree,
+                                basis_tree,
+                                this_tree=self,
+                                change_reporter=change_reporter,
+                                show_base=show_base)
+            return count
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
@@ -1179,10 +1193,6 @@ class InterIndexGitTree(InterGitTrees):
             specific_files = self.target.find_related_paths_across_trees(
                     specific_files, trees,
                     require_versioned=require_versioned)
-            for path in specific_files:
-                if (not self.source.is_versioned(path) and
-                    not self.target.is_versioned(path)):
-                    raise errors.PathsNotVersionedError(path)
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
             return changes_between_git_tree_and_working_copy(

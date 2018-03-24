@@ -1,9 +1,6 @@
 - Fix tests
- + Tree Transform
  + Rename detection
- + Parent URLs are absolute in Git
- + Heavy checkouts
- + Branch presence vs branch absence
- + Fetch limit
  + Check for diverged branches
  + Inventory deltas
+ + Remaining CommitBuilder tests
+ + Commit slowness

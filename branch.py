@@ -419,6 +419,7 @@ class GitBranch(ForeignBranch):
                 raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
+            self._lock_ref()
             self._lock_mode = 'w'
             self._lock_count = 1
         self.repository.lock_write()
@@ -472,13 +473,25 @@ class GitBranch(ForeignBranch):
     def is_locked(self):
         return (self._lock_mode is not None)
 
+    def _lock_ref(self):
+        pass
+
+    def _unlock_ref(self):
+        pass
+
     def unlock(self):
         """See Branch.unlock()."""
-        self._lock_count -= 1
         if self._lock_count == 0:
-            self._lock_mode = None
-            self._clear_cached_state()
-        self.repository.unlock()
+            raise errors.LockNotHeld(self)
+        try:
+            self._lock_count -= 1
+            if self._lock_count == 0:
+                if self._lock_mode == 'w':
+                    self._unlock_ref()
+                self._lock_mode = None
+                self._clear_cached_state()
+        finally:
+            self.repository.unlock()
 
     def get_physical_lock_status(self):
         return False
@@ -553,6 +566,12 @@ class LocalGitBranch(GitBranch):
             from_branch = None
         return checkout.create_workingtree(revision_id,
                 from_branch=from_branch, hardlink=hardlink)
+
+    def _lock_ref(self):
+        self._ref_lock = self.repository._git.refs.lock_ref(self.ref)
+
+    def _unlock_ref(self):
+        self._ref_lock.unlock()
 
     def fetch(self, from_branch, last_revision=None, limit=None):
         return branch.InterBranch.get(from_branch, self).fetch(
@@ -637,11 +656,7 @@ class LocalGitBranch(GitBranch):
                 continue
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
-                try:
-                    peeled = self.repository.controldir._git.object_store.peel_sha(unpeeled).id
-                except KeyError:
-                    # Let's just hope it's a commit
-                    peeled = unpeeled
+                peeled = unpeeled
             if type(tag_name) is not unicode:
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
