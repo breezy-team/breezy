@@ -638,9 +638,22 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        made_branch = self.make_branch('.')
+        made_controldir = self.make_controldir('.')
+        made_controldir.create_repository()
+        if made_controldir._format.colocated_branches:
+            # Formats that support colocated branches sometimes have a default
+            # branch that is a reference branch (such as Git). Cope with
+            # those by creating a different colocated branch.
+            name = 'foo'
+        else:
+            name = None
+        try:
+            made_branch = made_controldir.create_branch(name)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('Uninitializable branch format')
+
         self.assertEqual(None,
-            made_branch._format.get_reference(made_branch.controldir))
+            made_branch._format.get_reference(made_branch.controldir, name))
 
     def test_set_reference(self):
         """set_reference on all regular branches should be callable."""
