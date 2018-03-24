@@ -429,11 +429,16 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if not tree.has_or_had_id(file_id):
+                try:
+                    path = tree.id2path(file_id)
+                except errors.NoSuchId:
                     continue
-                for child_id in tree.iter_children(file_id):
-                    if child_id not in interesting_ids:
-                        new_pending.add(child_id)
+                try:
+                    for child in tree.iter_child_entries(path, file_id):
+                        if child.file_id not in interesting_ids:
+                            new_pending.add(child.file_id)
+                except errors.NotADirectory:
+                    pass
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids
