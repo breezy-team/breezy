@@ -661,7 +661,8 @@ class Merger(object):
                 other_branch = self.other_branch.reference_parent(file_id,
                                                                   relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
-                base_tree_path = self.base_tree.id2path(file_id)
+                base_tree_path = _mod_tree.find_previous_path(
+                    self.this_tree, self.base_tree, relpath)
                 base_revision = self.base_tree.get_reference_revision(
                     base_tree_path, file_id)
                 sub_merge.base_tree = \
@@ -960,14 +961,14 @@ class Merge3Merger(object):
                 else:
                     lca_entries.append(lca_ie)
 
-            if base_inventory.has_id(file_id):
+            try:
                 base_ie = base_inventory[file_id]
-            else:
+            except errors.NoSuchId:
                 base_ie = _none_entry
 
-            if this_inventory.has_id(file_id):
+            try:
                 this_ie = this_inventory[file_id]
-            else:
+            except errors.NoSuchId:
                 this_ie = _none_entry
 
             lca_kinds = []
@@ -1065,6 +1066,8 @@ class Merge3Merger(object):
         return result
 
     def write_modified(self, results):
+        if not self.working_tree.supports_merge_modified():
+            return
         modified_hashes = {}
         for path in results.modified_paths:
             wt_relpath = self.working_tree.relpath(path)
@@ -1075,10 +1078,7 @@ class Merge3Merger(object):
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
-        try:
-            self.working_tree.set_merge_modified(modified_hashes)
-        except errors.UnsupportedOperation:
-            pass  # Well, whatever.
+        self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
     def parent(entry, file_id):

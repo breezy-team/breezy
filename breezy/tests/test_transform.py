@@ -168,7 +168,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertIs(self.wt.is_executable('name2'), False)
         self.assertEqual('directory', file_kind(self.wt.abspath('oz')))
         self.assertEqual(len(modified_paths), 3)
-        tree_mod_paths = [self.wt.id2abspath(f) for f in
+        tree_mod_paths = [self.wt.abspath(self.wt.id2path(f)) for f in
                           ('ozzie', 'my_pretties', 'my_pretties2')]
         self.assertSubset(tree_mod_paths, modified_paths)
         # is it safe to finalize repeatedly?
@@ -1763,7 +1763,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        with file(this.wt.id2abspath('a'), 'wb') as f: f.write('booga')
+        with file(this.wt.abspath(this.wt.id2path('a')), 'wb') as f: f.write('booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
@@ -2977,7 +2977,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                        tt.trans_id_file_id('moved-id'))
         self.assertMatchingIterEntries(tt)
 
-    def test_iter_entries_by_dir_specific_file_ids(self):
+    def test_iter_entries_by_dir_specific_files(self):
         tree = self.make_branch_and_tree('tree')
         tree.set_root_id('tree-root-id')
         self.build_tree(['tree/parent/', 'tree/parent/child'])
