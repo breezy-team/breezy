@@ -222,22 +222,20 @@ class HasPathRelations(Matcher):
 
         :param entries: List of path strings or (path, previous_path) tuples to process
         """
+        directory_used = set()
         directories = []
-        for entry in entries:
-            if isinstance(entry, (str, text_type)):
-                path = entry
-            else:
-                path = entry[0]
+        for (path, previous_path) in entries:
             if not path or path[-1] == "/":
                 # directory
-                directories.append((path, entry))
+                directories.append((path, previous_path))
             else:
                 # Yield the referenced parent directories
-                for dirpath, direntry in directories:
-                    if osutils.is_inside(dirpath, path):
-                        yield direntry
-                directories = []
-                yield entry
+                for direntry in directories:
+                    if osutils.is_inside(direntry[0], path):
+                        directory_used.add(direntry[0])
+        for (path, previous_path) in entries:
+            if (not path.endswith("/")) or path in directory_used:
+                yield (path, previous_path)
 
     def __str__(self):
         return 'HasPathRelations(%r, %r)' % (self.previous_tree, self.previous_entries)
