@@ -26,6 +26,7 @@ from breezy import (
     config as _mod_config,
     debug,
     fetch,
+    memorytree,
     repository,
     revision as _mod_revision,
     tag as _mod_tag,
@@ -1512,6 +1513,13 @@ class Branch(controldir.ControlComponent):
         must_fetch.discard(_mod_revision.NULL_REVISION)
         if_present_fetch.discard(_mod_revision.NULL_REVISION)
         return must_fetch, if_present_fetch
+
+    def create_memorytree(self):
+        """Create a memory tree for this branch.
+
+        :return: An in-memory MutableTree instance
+        """
+        return memorytree.MemoryTree.create_on_branch(self)
 
 
 class BranchFormat(controldir.ControlComponentFormat):
