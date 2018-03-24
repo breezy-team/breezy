@@ -178,8 +178,11 @@ class InventoryEntry(object):
         candidates = {}
         # identify candidate head revision ids.
         for inv in previous_inventories:
-            if inv.has_id(self.file_id):
+            try:
                 ie = inv[self.file_id]
+            except errors.NoSuchId:
+                pass
+            else:
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
