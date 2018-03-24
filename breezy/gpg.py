@@ -194,10 +194,9 @@ class GPGStrategy(object):
             import gpg
             self.context = gpg.Context()
             self.context.armor = True
+            self.context.signers = self._get_signing_keys()
         except ImportError as error:
             pass # can't use verify()
-
-        self.context.signers = self._get_signing_keys()
 
     def _get_signing_keys(self):
         import gpg
