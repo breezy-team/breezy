@@ -232,15 +232,15 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
-                         tree.iter_files_bytes([(tree.path2id('foo'), 'id1'),
-                                                (tree.path2id('bar'), 'id2'),
-                                                (tree.path2id('baz'), 'id3')]))
+                         tree.iter_files_bytes([('foo', 'id1'),
+                                                ('bar', 'id2'),
+                                                ('baz', 'id3')]))
         self.assertEqual('foo', extracted['id1'])
         self.assertEqual('bar', extracted['id2'])
         self.assertEqual('baz', extracted['id3'])
-        self.assertRaises(errors.NoSuchId, lambda: list(
+        self.assertRaises(errors.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
-                          [('qux-id', 'file1-notpresent')])))
+                          [('qux', 'file1-notpresent')])))
 
 
 class TestConflicts(TestCaseWithTree):

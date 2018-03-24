@@ -829,7 +829,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def get_file_revision(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv[inv_file_id]
+        try:
+            ie = inv[inv_file_id]
+        except errors.NoSuchId:
+            raise errors.NoSuchFile(path)
         return ie.revision
 
     def is_executable(self, path, file_id=None):
@@ -931,7 +934,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         """See Tree.iter_files_bytes.
 
         This version is implemented on top of Repository.iter_files_bytes"""
-        repo_desired_files = [(f, self.get_file_revision(self.id2path(f), f), i)
+        repo_desired_files = [(self.path2id(f), self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):

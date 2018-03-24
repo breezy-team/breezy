@@ -79,8 +79,7 @@ class TestCat(tests.TestCaseWithTransport):
         # tree and the working tree
         self.build_tree_contents([('a-rev-tree', 'foo\n'),
             ('c-rev', 'baz\n'), ('d-rev', 'bar\n'), ('e-rev', 'qux\n')])
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add(['a-rev-tree', 'c-rev', 'd-rev', 'e-rev'])
             tree.commit('add test files', rev_id='first')
             # remove currently uses self._write_inventory -
@@ -92,9 +91,6 @@ class TestCat(tests.TestCaseWithTransport):
             tree.rename_one('e-rev', 'old-rev')
             self.build_tree_contents([('e-rev', 'new\n')])
             tree.add(['e-rev'])
-        finally:
-            # calling brz as another process require free lock on win32
-            tree.unlock()
 
         # 'b-tree' is not present in the old tree.
         self.run_bzr_error(["^brz: ERROR: u?'b-tree' "
@@ -103,8 +99,8 @@ class TestCat(tests.TestCaseWithTransport):
 
         # get to the old file automatically
         out, err = self.run_bzr('cat d-rev')
-        self.assertEqual('bar\n', out)
         self.assertEqual('', err)
+        self.assertEqual('bar\n', out)
 
         out, err = \
                 self.run_bzr('cat a-rev-tree --name-from-revision')

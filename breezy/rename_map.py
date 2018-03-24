@@ -65,7 +65,7 @@ class RenameMap(object):
         :param tree: The tree containing the files.
         :param file_ids: A list of file_ids to perform the updates for.
         """
-        desired_files = [(f, f) for f in file_ids]
+        desired_files = [(tree.id2path(f), f) for f in file_ids]
         with ui_factory.nested_progress_bar() as task:
             for num, (file_id, contents) in enumerate(
                 tree.iter_files_bytes(desired_files)):

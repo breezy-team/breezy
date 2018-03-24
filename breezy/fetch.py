@@ -317,7 +317,7 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.get_file_revision(u'', root_id))
+                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id), root_id))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

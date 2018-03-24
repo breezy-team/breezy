@@ -90,6 +90,12 @@ check-nodocs2: extensions
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
 
+check-ci: docs extensions
+	# FIXME: Remove -Wignore::FutureWarning once
+	# https://github.com/paramiko/paramiko/issues/713 is not a concern
+	# anymore -- vila 2017-05-24
+	python -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2
+
 # Run Python style checker (apt-get install pyflakes)
 #
 # Note that at present this gives many false warnings, because it doesn't
