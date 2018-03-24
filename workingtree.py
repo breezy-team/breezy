@@ -1000,8 +1000,12 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def apply_inventory_delta(self, changes):
         for (old_path, new_path, file_id, ie) in changes:
             if old_path is not None:
-                del self.index[old_path.encode('utf-8')]
-                self._versioned_dirs = None
+                try:
+                    del self.index[old_path.encode('utf-8')]
+                except KeyError:
+                    pass
+                else:
+                    self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
         self.flush()
@@ -1181,12 +1185,14 @@ class InterIndexGitTree(InterGitTrees):
                 isinstance(target, GitWorkingTree))
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=False, include_root=False):
-        if require_versioned and specific_files is not None:
-            for path in specific_files:
-                if (not self.source.is_versioned(path) and
-                    not self.target.is_versioned(path)):
-                    raise errors.PathsNotVersionedError(path)
+            require_versioned=False, include_root=False, extra_trees=None):
+        trees = [self.source]
+        if extra_trees is not None:
+            trees.extend(extra_trees)
+        if specific_files is not None:
+            specific_files = self.target.find_related_paths_across_trees(
+                    specific_files, trees,
+                    require_versioned=require_versioned)
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
             return changes_between_git_tree_and_working_copy(
@@ -1202,7 +1208,8 @@ class InterIndexGitTree(InterGitTrees):
                     want_unchanged=want_unchanged,
                     specific_files=specific_files,
                     require_versioned=require_versioned,
-                    include_root=include_root)
+                    include_root=include_root,
+                    extra_trees=extra_trees)
             source_fileid_map = self.source._fileid_map
             target_fileid_map = self.target._fileid_map
             ret = tree_delta_from_git_changes(changes, self.target.mapping,
@@ -1223,7 +1230,8 @@ class InterIndexGitTree(InterGitTrees):
             changes = self._iter_git_changes(
                     want_unchanged=include_unchanged,
                     specific_files=specific_files,
-                    require_versioned=require_versioned)
+                    require_versioned=require_versioned,
+                    extra_trees=extra_trees)
             if want_unversioned:
                 changes = itertools.chain(
                         changes,

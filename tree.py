@@ -407,25 +407,22 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield self._get_file_ie(child_path, name, mode, hexsha,
                                         file_id)
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         if self.tree is None:
             return
         if yield_parents:
             # TODO(jelmer): Support yield parents
             raise NotImplementedError
-        if specific_file_ids is not None:
-            specific_paths = [self.id2path(file_id).encode('utf-8') for file_id in specific_file_ids]
-            if specific_paths in ([""], []):
-                specific_paths = None
+        if specific_files is not None:
+            if specific_files in ([""], []):
+                specific_files = None
             else:
-                specific_paths = set(specific_paths)
-        else:
-            specific_paths = None
+                specific_files = set([p.encode('utf-8') for p in specific_files])
         todo = set([("", self.tree, None)])
         while todo:
             path, tree_sha, parent_id = todo.pop()
             ie = self._get_dir_ie(path, parent_id)
-            if specific_paths is None or path in specific_paths:
+            if specific_files is None or path in specific_files:
                 yield path.decode("utf-8"), ie
             tree = self.store[tree_sha]
             for name, mode, hexsha in tree.iteritems():
@@ -433,10 +430,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     continue
                 child_path = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
-                    if (specific_paths is None or
-                        any(filter(lambda p: p.startswith(child_path), specific_paths))):
+                    if (specific_files is None or
+                        any(filter(lambda p: p.startswith(child_path), specific_files))):
                         todo.add((child_path, hexsha, ie.file_id))
-                elif specific_paths is None or child_path in specific_paths:
+                elif specific_files is None or child_path in specific_files:
                     yield (child_path.decode("utf-8"),
                             self._get_file_ie(child_path, name, mode, hexsha,
                            ie.file_id))
@@ -490,6 +487,23 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return (kind, None, None, self.store[hexsha].data)
         else:
             return (kind, None, None, None)
+
+    def find_related_paths_across_trees(self, paths, trees=[],
+            require_versioned=True):
+        if paths is None:
+            return None
+        if require_versioned:
+            trees = [self] + (trees if trees is not None else [])
+            unversioned = set()
+            for p in paths:
+                for t in trees:
+                    if t.is_versioned(p):
+                        break
+                else:
+                    unversioned.add(p)
+            if unversioned:
+                raise errors.PathsNotVersionedError(unversioned)
+        return filter(self.is_versioned, paths)
 
 
 def tree_delta_from_git_changes(changes, mapping,
@@ -625,7 +639,8 @@ class InterGitTrees(_mod_tree.InterTree):
                 want_unversioned=False):
         changes = self._iter_git_changes(want_unchanged=want_unchanged,
                 require_versioned=require_versioned,
-                specific_files=specific_files)
+                specific_files=specific_files,
+                extra_trees=extra_trees)
         source_fileid_map = self.source._fileid_map
         target_fileid_map = self.target._fileid_map
         return tree_delta_from_git_changes(changes, self.target.mapping,
@@ -637,11 +652,13 @@ class InterGitTrees(_mod_tree.InterTree):
                      want_unversioned=False):
         changes = self._iter_git_changes(want_unchanged=include_unchanged,
                 require_versioned=require_versioned,
-                specific_files=specific_files)
+                specific_files=specific_files,
+                extra_trees=extra_trees)
         return changes_from_git_changes(changes, self.target.mapping,
             specific_files=specific_files, include_unchanged=include_unchanged)
 
-    def _iter_git_changes(self, want_unchanged=False):
+    def _iter_git_changes(self, want_unchanged=False, specific_files=None,
+            require_versioned=False, extra_trees=None):
         raise NotImplementedError(self._iter_git_changes)
 
 
@@ -657,13 +674,15 @@ class InterGitRevisionTrees(InterGitTrees):
         return (isinstance(source, GitRevisionTree) and
                 isinstance(target, GitRevisionTree))
 
-    def _iter_git_changes(self, want_unchanged=False, require_versioned=False,
-            specific_files=None):
-        if require_versioned and specific_files:
-            for path in specific_files:
-                if (not self.source.is_versioned(path) and
-                    not self.target.is_versioned(path)):
-                    raise errors.PathsNotVersionedError(path)
+    def _iter_git_changes(self, want_unchanged=False, specific_files=None,
+            require_versioned=True, extra_trees=None):
+        trees = [self.source]
+        if extra_trees is not None:
+            trees.extend(extra_trees)
+        if specific_files is not None:
+            specific_files = self.target.find_related_paths_across_trees(
+                    specific_files, trees,
+                    require_versioned=require_versioned)
 
         if self.source._repository._git.object_store != self.target._repository._git.object_store:
             store = OverlayObjectStore([self.source._repository._git.object_store,
@@ -800,39 +819,31 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(encoded_path)
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         if yield_parents:
             raise NotImplementedError(self.iter_entries_by_dir)
         with self.lock_read():
-            if specific_file_ids is not None:
-                specific_paths = []
-                for file_id in specific_file_ids:
-                    if file_id is None:
-                        continue
-                    try:
-                        specific_paths.append(self.id2path(file_id))
-                    except errors.NoSuchId:
-                        pass
-                specific_paths = set(specific_paths)
+            if specific_files is not None:
+                specific_files = set(specific_files)
             else:
-                specific_paths = None
+                specific_files = None
             root_ie = self._get_dir_ie(u"", None)
             ret = {}
-            if specific_paths is None or u"" in specific_paths:
+            if specific_files is None or u"" in specific_files:
                 ret[(None, u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
             for path, value in self.index.iteritems():
                 if self.mapping.is_special_file(path):
                     continue
                 path = path.decode("utf-8")
-                if specific_paths is not None and not path in specific_paths:
+                if specific_files is not None and not path in specific_files:
                     continue
                 (parent, name) = posixpath.split(path)
                 try:
                     file_ie = self._get_file_ie(name, path, value, None)
                 except errors.NoSuchFile:
                     continue
-                if yield_parents or specific_file_ids is None:
+                if yield_parents or specific_files is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
                             dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
@@ -1022,3 +1033,22 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
             self._versioned_dirs = None
             self.flush()
+
+    def find_related_paths_across_trees(self, paths, trees=[],
+            require_versioned=True):
+        if paths is None:
+            return None
+
+        if require_versioned:
+            trees = [self] + (trees if trees is not None else [])
+            unversioned = set()
+            for p in paths:
+                for t in trees:
+                    if t.is_versioned(p):
+                        break
+                else:
+                    unversioned.add(p)
+            if unversioned:
+                raise errors.PathsNotVersionedError(unversioned)
+
+        return filter(self.is_versioned, paths)
