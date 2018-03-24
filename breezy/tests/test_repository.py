@@ -105,7 +105,7 @@ class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Sample .bzr repository format."
+        return b"Sample .bzr repository format."
 
     def initialize(self, a_controldir, shared=False):
         """Initialize a repository in a BzrDir"""
@@ -154,11 +154,11 @@ class TestRepositoryFormat(TestCaseWithTransport):
     def test_from_string(self):
         self.assertIsInstance(
             SampleRepositoryFormat.from_string(
-                "Sample .bzr repository format."),
+                b"Sample .bzr repository format."),
             SampleRepositoryFormat)
         self.assertRaises(AssertionError,
             SampleRepositoryFormat.from_string,
-                "Different .bzr repository format.")
+                b"Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -169,15 +169,15 @@ class TestRepositoryFormat(TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.repository.update_feature_flags({"name": "necessity"})
+        tree.branch.repository.update_feature_flags({b"name": b"necessity"})
         found_format = bzrrepository.RepositoryFormatMetaDir.find_format(tree.controldir)
         self.assertIsInstance(found_format, bzrrepository.RepositoryFormatMetaDir)
-        self.assertEqual(found_format.features.get("name"), "necessity")
+        self.assertEqual(found_format.features.get(b"name"), b"necessity")
         self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-            "name")
-        bzrrepository.RepositoryFormatMetaDir.register_feature("name")
+            b"name")
+        bzrrepository.RepositoryFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
 
@@ -190,9 +190,9 @@ class TestRepositoryFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleRepositoryFormat()
         self.registry.register(format)
-        self.assertEqual(format, self.registry.get("Sample .bzr repository format."))
+        self.assertEqual(format, self.registry.get(b"Sample .bzr repository format."))
         self.registry.remove(format)
-        self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
+        self.assertRaises(KeyError, self.registry.get, b"Sample .bzr repository format.")
 
     def test_get_all(self):
         format = SampleRepositoryFormat()
@@ -447,14 +447,14 @@ class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
     @classmethod
     def get_format_string(cls):
-        return "Test Format 1"
+        return b"Test Format 1"
 
 
 class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
 
     @classmethod
     def get_format_string(cls):
-        return "Test Format 2"
+        return b"Test Format 2"
 
 
 class TestRepositoryConverter(TestCaseWithTransport):
@@ -1719,18 +1719,18 @@ class TestFeatures(tests.TestCaseWithTransport):
     def test_open_with_present_feature(self):
         self.addCleanup(
             bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-            "makes-cheese-sandwich")
+            b"makes-cheese-sandwich")
         bzrrepository.RepositoryFormatMetaDir.register_feature(
-            "makes-cheese-sandwich")
+            b"makes-cheese-sandwich")
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.features[b"makes-cheese-sandwich"] = b"required"
         repo._format.check_support_status(False)
         repo.unlock()
 
     def test_open_with_missing_required_feature(self):
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.features[b"makes-cheese-sandwich"] = b"required"
         self.assertRaises(bzrdir.MissingFeature,
             repo._format.check_support_status, False)

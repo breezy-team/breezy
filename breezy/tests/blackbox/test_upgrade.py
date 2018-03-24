@@ -64,7 +64,7 @@ class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
 
     @classmethod
     def get_format_string(cls):
-        return "Ancient Test Format"
+        return b"Ancient Test Format"
 
     def _open(self, transport):
         return OldBzrDir(transport, self)

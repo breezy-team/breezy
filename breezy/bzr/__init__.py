@@ -35,19 +35,17 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-            # GZ 2017-06-09: Where should format strings get decoded...
-            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            first_line = format_text[:format_text.index("\n")+1]
+            first_line = format_string[:format_string.index(b"\n")+1]
         except ValueError:
-            first_line = format_text
+            first_line = format_string
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
             raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
-        return cls.from_string(format_text)
+        return cls.from_string(format_string)
 
     @classmethod
     def known_formats(cls):
@@ -100,10 +98,10 @@ controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)
 
 # Register bzr formats
 BzrProber.formats.register_lazy(
-    "Bazaar-NG meta directory, format 1\n",
+    b"Bazaar-NG meta directory, format 1\n",
     __name__ + '.bzrdir', 'BzrDirMetaFormat1')
 BzrProber.formats.register_lazy(
-    "Bazaar meta directory, format 1 (with colocated branches)\n",
+    b"Bazaar meta directory, format 1 (with colocated branches)\n",
     __name__ + '.bzrdir', 'BzrDirMetaFormat1Colo')
 
 

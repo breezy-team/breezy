@@ -292,19 +292,19 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.put_bytes, 'a', 'some text for a\n')
+                    t.put_bytes, 'a', b'some text for a\n')
             return
 
-        t.put_bytes('a', 'some text for a\n')
+        t.put_bytes('a', b'some text for a\n')
         self.assertTrue(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
 
         # The contents should be overwritten
-        t.put_bytes('a', 'new text for a\n')
+        t.put_bytes('a', b'new text for a\n')
         self.check_transport_contents('new text for a\n', t, 'a')
 
         self.assertRaises(NoSuchFile,
-                          t.put_bytes, 'path/doesnt/exist/c', 'contents')
+                          t.put_bytes, 'path/doesnt/exist/c', b'contents')
 
     def test_put_bytes_non_atomic(self):
         t = self.get_transport()
@@ -352,19 +352,19 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_bytes('mode644', 'test text\n', mode=0o644)
+        t.put_bytes('mode644', b'test text\n', mode=0o644)
         self.assertTransportMode(t, 'mode644', 0o644)
-        t.put_bytes('mode666', 'test text\n', mode=0o666)
+        t.put_bytes('mode666', b'test text\n', mode=0o666)
         self.assertTransportMode(t, 'mode666', 0o666)
-        t.put_bytes('mode600', 'test text\n', mode=0o600)
+        t.put_bytes('mode600', b'test text\n', mode=0o600)
         self.assertTransportMode(t, 'mode600', 0o600)
         # Yes, you can put_bytes a file such that it becomes readonly
-        t.put_bytes('mode400', 'test text\n', mode=0o400)
+        t.put_bytes('mode400', b'test text\n', mode=0o400)
         self.assertTransportMode(t, 'mode400', 0o400)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
-        t.put_bytes('nomode', 'test text\n', mode=None)
+        t.put_bytes('nomode', b'test text\n', mode=None)
         self.assertTransportMode(t, 'nomode', 0o666 & ~umask)
 
     def test_put_bytes_non_atomic_permissions(self):
@@ -564,7 +564,7 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(FileExists, t.mkdir, 'dir_g')
 
         # Test get/put in sub-directories
-        t.put_bytes('dir_a/a', 'contents of dir_a/a')
+        t.put_bytes('dir_a/a', b'contents of dir_a/a')
         t.put_file('dir_b/b', BytesIO(b'contents of dir_b/b'))
         self.check_transport_contents('contents of dir_a/a', t, 'dir_a/a')
         self.check_transport_contents('contents of dir_b/b', t, 'dir_b/b')
@@ -657,7 +657,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(['e/', 'e/f'])
         else:
             t.mkdir('e')
-            t.put_bytes('e/f', 'contents of e')
+            t.put_bytes('e/f', b'contents of e')
         self.assertRaises(NoSuchFile, t.copy_to, ['e/f'], temp_transport)
         temp_transport.mkdir('e')
         t.copy_to(['e/f'], temp_transport)
@@ -695,8 +695,8 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible,
                     t.append_file, 'a', 'add\nsome\nmore\ncontents\n')
             return
-        t.put_bytes('a', 'diff\ncontents for\na\n')
-        t.put_bytes('b', 'contents\nfor b\n')
+        t.put_bytes('a', b'diff\ncontents for\na\n')
+        t.put_bytes('b', b'contents\nfor b\n')
 
         self.assertEqual(20,
             t.append_file('a', BytesIO(b'add\nsome\nmore\ncontents\n')))
@@ -742,9 +742,9 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             return
-        t.put_bytes('a', 'diff\ncontents for\na\n'
-                         'add\nsome\nmore\ncontents\n')
-        t.put_bytes('b', 'contents\nfor b\n')
+        t.put_bytes('a', b'diff\ncontents for\na\n'
+                         b'add\nsome\nmore\ncontents\n')
+        t.put_bytes('b', b'contents\nfor b\n')
 
         self.assertEqual((43, 15),
             t.append_multi([('a', BytesIO(b'and\nthen\nsome\nmore\n')),
@@ -816,16 +816,16 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible, t.delete, 'missing')
             return
 
-        t.put_bytes('a', 'a little bit of text\n')
+        t.put_bytes('a', b'a little bit of text\n')
         self.assertTrue(t.has('a'))
         t.delete('a')
         self.assertFalse(t.has('a'))
 
         self.assertRaises(NoSuchFile, t.delete, 'a')
 
-        t.put_bytes('a', 'a text\n')
-        t.put_bytes('b', 'b text\n')
-        t.put_bytes('c', 'c text\n')
+        t.put_bytes('a', b'a text\n')
+        t.put_bytes('b', b'b text\n')
+        t.put_bytes('c', b'c text\n')
         self.assertEqual([True, True, True],
                 list(t.has_multi(['a', 'b', 'c'])))
         t.delete_multi(['a', 'c'])
@@ -841,8 +841,8 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                 t.delete_multi, iter(['a', 'b', 'c']))
 
-        t.put_bytes('a', 'another a text\n')
-        t.put_bytes('c', 'another c text\n')
+        t.put_bytes('a', b'another a text\n')
+        t.put_bytes('c', b'another c text\n')
         t.delete_multi(iter(['a', 'b', 'c']))
 
         # We should have deleted everything
@@ -896,7 +896,7 @@ class TransportTests(TestTransportImplementation):
         if t.is_readonly():
             return
         t.mkdir('foo')
-        t.put_bytes('foo-bar', '')
+        t.put_bytes('foo-bar', b'')
         t.mkdir('foo-baz')
         t.rmdir('foo')
         self.assertRaises((NoSuchFile, PathError), t.rmdir, 'foo')
@@ -941,7 +941,7 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('b')
         ta = t.clone('a')
         tb = t.clone('b')
-        ta.put_bytes('f', 'aoeu')
+        ta.put_bytes('f', b'aoeu')
         ta.rename('f', '../b/f')
         self.assertTrue(tb.has('f'))
         self.assertFalse(ta.has('f'))
@@ -989,7 +989,7 @@ class TransportTests(TestTransportImplementation):
         # creates control files in the working directory
         # perhaps all of this could be done in a subdirectory
 
-        t.put_bytes('a', 'a first file\n')
+        t.put_bytes('a', b'a first file\n')
         self.assertEqual([True, False], list(t.has_multi(['a', 'b'])))
 
         t.move('a', 'b')
@@ -1000,7 +1000,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual([False, True], list(t.has_multi(['a', 'b'])))
 
         # Overwrite a file
-        t.put_bytes('c', 'c this file\n')
+        t.put_bytes('c', b'c this file\n')
         t.move('c', 'b')
         self.assertFalse(t.has('c'))
         self.check_transport_contents('c this file\n', t, 'b')
@@ -1015,7 +1015,7 @@ class TransportTests(TestTransportImplementation):
         if t.is_readonly():
             return
 
-        t.put_bytes('a', 'a file\n')
+        t.put_bytes('a', b'a file\n')
         t.copy('a', 'b')
         self.check_transport_contents('a file\n', t, 'b')
 
@@ -1024,7 +1024,7 @@ class TransportTests(TestTransportImplementation):
         # What should the assert be if you try to copy a
         # file over a directory?
         #self.assertRaises(Something, t.copy, 'a', 'c')
-        t.put_bytes('d', 'text in d\n')
+        t.put_bytes('d', b'text in d\n')
         t.copy('d', 'b')
         self.check_transport_contents('text in d\n', t, 'b')
 
@@ -1312,7 +1312,7 @@ class TransportTests(TestTransportImplementation):
         if t1.is_readonly():
             self.build_tree_contents([('b/d', 'newfile\n')])
         else:
-            t2.put_bytes('d', 'newfile\n')
+            t2.put_bytes('d', b'newfile\n')
 
         self.assertTrue(t1.has('b/d'))
         self.assertTrue(t2.has('d'))
@@ -1566,7 +1566,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         if transport.is_readonly():
             return
-        transport.put_bytes('foo', 'bar')
+        transport.put_bytes('foo', b'bar')
         transport3 = self.get_transport()
         self.check_transport_contents('bar', transport3, 'foo')
 
@@ -1585,7 +1585,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
             return
-        transport.put_bytes('lock', '')
+        transport.put_bytes('lock', b'')
         try:
             lock = transport.lock_write('lock')
         except TransportNotPossible:
@@ -1603,7 +1603,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             file('lock', 'w').close()
         else:
-            transport.put_bytes('lock', '')
+            transport.put_bytes('lock', b'')
         try:
             lock = transport.lock_read('lock')
         except TransportNotPossible:
@@ -1617,7 +1617,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             with file('a', 'w') as f: f.write('0123456789')
         else:
-            transport.put_bytes('a', '0123456789')
+            transport.put_bytes('a', b'0123456789')
 
         d = list(transport.readv('a', ((0, 1),)))
         self.assertEqual(d[0], (0, '0'))
@@ -1633,7 +1633,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             with file('a', 'w') as f: f.write('0123456789')
         else:
-            transport.put_bytes('a', '01234567890')
+            transport.put_bytes('a', b'01234567890')
 
         d = list(transport.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
         self.assertEqual(d[0], (1, '1'))
@@ -1711,7 +1711,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             with file('a', 'w') as f: f.write('a'*1024*1024)
         else:
-            transport.put_bytes('a', 'a'*1024*1024)
+            transport.put_bytes('a', b'a'*1024*1024)
         broken_vector = [(465219, 800), (225221, 800), (445548, 800),
             (225037, 800), (221357, 800), (437077, 800), (947670, 800),
             (465373, 800), (947422, 800)]
@@ -1751,7 +1751,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             with file('a', 'w') as f: f.write('0123456789')
         else:
-            transport.put_bytes('a', '01234567890')
+            transport.put_bytes('a', b'01234567890')
 
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there

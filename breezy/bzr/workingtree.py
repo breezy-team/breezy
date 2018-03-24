@@ -1723,8 +1723,7 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         """Return format name for the working tree object in controldir."""
         try:
             transport = controldir.get_workingtree_transport(None)
-            # GZ 2017-06-09: When do decode format strings?
-            return transport.get_bytes("format").decode('ascii')
+            return transport.get_bytes("format")
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 

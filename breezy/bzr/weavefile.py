@@ -40,7 +40,7 @@ from __future__ import absolute_import
 # an iterator returning the weave lines...  We don't really need to
 # deserialize it into memory.
 
-FORMAT_1 = '# bzr weave file v5\n'
+FORMAT_1 = b'# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
@@ -58,32 +58,32 @@ def write_weave_v5(weave, f):
         if included:
             # mininc = weave.minimal_parents(version)
             mininc = included
-            f.write('i ')
-            f.write(' '.join(str(i) for i in mininc))
-            f.write('\n')
+            f.write(b'i ')
+            f.write(b' '.join(str(i).encode('ascii') for i in mininc))
+            f.write(b'\n')
         else:
-            f.write('i\n')
-        f.write('1 ' + weave._sha1s[version] + '\n')
-        f.write('n ' + weave._names[version] + '\n')
+            f.write(b'i\n')
+        f.write(b'1 ' + weave._sha1s[version] + b'\n')
+        f.write(b'n ' + weave._names[version] + b'\n')
         f.write('\n')
 
-    f.write('w\n')
+    f.write(b'w\n')
 
     for l in weave._weave:
         if isinstance(l, tuple):
             if l[0] == '}':
-                f.write('}\n')
+                f.write(b'}\n')
             else:
-                f.write('%s %d\n' % l)
+                f.write(b'%s %d\n' % l)
         else: # text line
             if not l:
-                f.write(', \n')
+                f.write(b', \n')
             elif l[-1] == '\n':
-                f.write('. ' + l)
+                f.write(b'. ' + l)
             else:
-                f.write(', ' + l + '\n')
+                f.write(b', ' + l + b'\n')
 
-    f.write('W\n')
+    f.write(b'W\n')
 
 
 
