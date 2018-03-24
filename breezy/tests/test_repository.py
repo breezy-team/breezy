@@ -1719,18 +1719,18 @@ class TestFeatures(tests.TestCaseWithTransport):
     def test_open_with_present_feature(self):
         self.addCleanup(
             bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-            "makes-cheese-sandwich")
+            b"makes-cheese-sandwich")
         bzrrepository.RepositoryFormatMetaDir.register_feature(
-            "makes-cheese-sandwich")
+            b"makes-cheese-sandwich")
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.features[b"makes-cheese-sandwich"] = b"required"
         repo._format.check_support_status(False)
         repo.unlock()
 
     def test_open_with_missing_required_feature(self):
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.features[b"makes-cheese-sandwich"] = b"required"
         self.assertRaises(bzrdir.MissingFeature,
             repo._format.check_support_status, False)
