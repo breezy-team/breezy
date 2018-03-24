@@ -1203,8 +1203,8 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         # tricky to figure out how to create an illegal filename.
         # \xb5 is an illegal path because it should be \xc2\xb5 for UTF-8
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/subdir/'])
-        tree.add('subdir')
+        self.build_tree(['tree/subdir/', 'tree/subdir/somefile'])
+        tree.add(['subdir', 'subdir/somefile'])
 
         f = open('tree/subdir/m\xb5', 'wb')
         try:
@@ -1220,7 +1220,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
 
         e = self.assertListRaises(errors.BadFilenameEncoding,
                                   tree.iter_changes, tree.basis_tree(),
-                                                     want_unversioned=True)
+                                  want_unversioned=True)
         # We should display the relative path
         self.assertEqual('subdir/m\xb5', e.filename)
         self.assertEqual(osutils._fs_enc, e.fs_encoding)
