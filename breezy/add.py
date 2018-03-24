@@ -22,6 +22,7 @@ import sys
 import os
 
 from . import (
+    errors,
     osutils,
     ui,
     )
@@ -127,10 +128,12 @@ class AddFromBaseAction(AddAction):
         we look for a file with the same name in that directory.
         Else, we look for an entry in the base tree with the same path.
         """
-        if self.base_tree.has_id(parent_ie.file_id):
-            base_path = osutils.pathjoin(
-                self.base_tree.id2path(parent_ie.file_id),
-                osutils.basename(path))
+        try:
+            parent_path = self.base_tree.id2path(parent_ie.file_id)
+        except errors.NoSuchId:
+            pass
+        else:
+            base_path = osutils.pathjoin(parent_path, osutils.basename(path))
             base_id = self.base_tree.path2id(base_path)
             if base_id is not None:
                 return (base_id, base_path)

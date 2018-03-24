@@ -569,8 +569,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         ignore_globs = set()
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
-        if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file(breezy.IGNORE_FILENAME)
+        if self.has_filename(self._format.ignore_filename):
+            f = self.get_file(self._format.ignore_filename)
             try:
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
@@ -652,10 +652,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        ret = set()
-        for path, ie in self.iter_entries_by_dir():
-            ret.add(ie.file_id)
-        return ret
+        return {ie.file_id for path, ie in self.iter_entries_by_dir()}
 
     def all_versioned_paths(self):
         return {path for path, ie in self.iter_entries_by_dir()}
@@ -828,7 +825,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     try:
                         kind = parent_tree.kind(path, file_id)
-                    except errors.NoSuchId:
+                    except errors.NoSuchFile:
                         continue
                     if kind != 'file':
                         # Note: this is slightly unnecessary, because symlinks and
@@ -1699,13 +1696,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 blocked_parent_ids.add(ie.file_id)
             yield path, ie
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None,
+                            yield_parents=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-                specific_file_ids=specific_file_ids,
-                yield_parents=yield_parents)
+                specific_files=specific_files, yield_parents=yield_parents)
         if not self.supports_tree_reference():
             return iterator
         else:
@@ -1715,45 +1712,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
-    def __init__(self):
-        WorkingTreeFormat.__init__(self)
-        bzrdir.BzrFormat.__init__(self)
-
-    @classmethod
-    def find_format_string(klass, controldir):
-        """Return format name for the working tree object in controldir."""
-        try:
-            transport = controldir.get_workingtree_transport(None)
-            return transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
-
-    @classmethod
-    def find_format(klass, controldir):
-        """Return the format for the working tree object in controldir."""
-        format_string = klass.find_format_string(controldir)
-        return klass._find_format(format_registry, 'working tree',
-                format_string)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        WorkingTreeFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
-        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-
-    def get_controldir_for_branch(self):
-        """Get the control directory format for creating branches.
-
-        This is to support testing of working tree formats that can not exist
-        in the same control directory as a branch.
-        """
-        return self._matchingcontroldir
-
-
-class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
-    """Base class for working trees that live in bzr meta directories."""
+    ignore_filename = '.bzrignore'
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)

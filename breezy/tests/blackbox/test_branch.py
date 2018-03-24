@@ -81,7 +81,7 @@ class TestBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr(
             'init --format=development-colo file:b,branch=orig')
         self.assertEqual(
-            """Created a lightweight checkout (format: development-colo)\n""",
+            """Created a standalone tree (format: development-colo)\n""",
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr(

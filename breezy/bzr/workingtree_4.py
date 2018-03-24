@@ -1729,9 +1729,6 @@ class DirStateRevisionTree(InventoryTree):
         # sensible: the entry might not have come from us?
         return entry.kind, entry.executable, None
 
-    def _file_size(self, entry, stat_value):
-        return entry.text_size
-
     def filter_unversioned_files(self, paths):
         """Filter out paths that are not versioned.
 
@@ -1966,7 +1963,7 @@ class DirStateRevisionTree(InventoryTree):
     def kind(self, path, file_id=None):
         entry = self._get_entry(file_id=file_id, path=path)[1]
         if entry is None:
-            raise errors.NoSuchId(tree=self, file_id=file_id)
+            raise errors.NoSuchFile(path)
         parent_index = self._get_parent_index()
         return dirstate.DirState._minikind_to_kind[entry[parent_index][0]]
 

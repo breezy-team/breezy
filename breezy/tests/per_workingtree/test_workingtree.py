@@ -711,17 +711,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             tree.add(['somefile'])
             d = {tree.path2id('somefile'): osutils.sha_string('hello')}
-            try:
+            if tree.supports_merge_modified():
                 tree.set_merge_modified(d)
-            except errors.UnsupportedOperation:
-                mm = tree.merge_modified()
-                self.assertEqual(mm, {})
-                supports_merge_modified = False
-            else:
                 mm = tree.merge_modified()
                 self.assertEqual(mm, d)
-                supports_merge_modified = True
-        if supports_merge_modified:
+            else:
+                self.assertRaises(
+                    errors.UnsupportedOperation,
+                    tree.set_merge_modified, d)
+                mm = tree.merge_modified()
+                self.assertEqual(mm, {})
+        if tree.supports_merge_modified():
             mm = tree.merge_modified()
             self.assertEqual(mm, d)
         else:
@@ -1203,8 +1203,8 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         # tricky to figure out how to create an illegal filename.
         # \xb5 is an illegal path because it should be \xc2\xb5 for UTF-8
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/subdir/'])
-        tree.add('subdir')
+        self.build_tree(['tree/subdir/', 'tree/subdir/somefile'])
+        tree.add(['subdir', 'subdir/somefile'])
 
         f = open('tree/subdir/m\xb5', 'wb')
         try:
@@ -1220,7 +1220,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
 
         e = self.assertListRaises(errors.BadFilenameEncoding,
                                   tree.iter_changes, tree.basis_tree(),
-                                                     want_unversioned=True)
+                                  want_unversioned=True)
         # We should display the relative path
         self.assertEqual('subdir/m\xb5', e.filename)
         self.assertEqual(osutils._fs_enc, e.fs_encoding)
@@ -1233,9 +1233,6 @@ class TestControlComponent(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('wt')
         self.assertIsInstance(wt.user_url, str)
         self.assertEqual(wt.user_url, wt.user_transport.base)
-        # for all current bzrdir implementations the user dir must be 
-        # above the control dir but we might need to relax that?
-        self.assertEqual(wt.control_url.find(wt.user_url), 0)
         self.assertEqual(wt.control_url, wt.control_transport.base)
 
 

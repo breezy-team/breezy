@@ -38,8 +38,8 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         self.tree_from = self.make_branch_and_tree('from')
         self.first_rev = self.tree_from.commit('first post')
         self.tree_to = self.tree_from.controldir.sprout('to').open_workingtree()
-        self.second_rev = self.tree_from.commit('second rev', allow_pointless=True)
-        self.to_second_rev = self.tree_to.commit('second rev', allow_pointless=True)
+        self.second_rev = self.tree_from.commit('second rev on from', allow_pointless=True)
+        self.to_second_rev = self.tree_to.commit('second rev on to', allow_pointless=True)
 
     def test_smoking_merge(self):
         """Smoke test of merge_from_branch."""
@@ -111,7 +111,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree_contents([('this/foo', 'baz')])
         this.commit('content -> baz')
         class QuxMerge(merge.Merge3Merger):
-            def text_merge(self, file_id, trans_id):
+            def text_merge(self, trans_id, paths, file_id):
                 self.tt.create_file('qux', trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
         self.assertEqual('qux', this.get_file_text('foo'))

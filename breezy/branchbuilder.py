@@ -112,7 +112,7 @@ class BranchBuilder(object):
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(base_id,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-        tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        tree = self._branch.create_memorytree()
         tree.lock_write()
         try:
             if parent_ids is not None:
@@ -157,7 +157,7 @@ class BranchBuilder(object):
             # We are cheating a little bit here, and locking the new tree
             # before the old tree is unlocked. But that way the branch stays
             # locked throughout.
-            new_tree = memorytree.MemoryTree.create_on_branch(self._branch)
+            new_tree = self._branch.create_memorytree()
             new_tree.lock_write()
             self._tree.unlock()
             self._tree = new_tree
@@ -172,7 +172,7 @@ class BranchBuilder(object):
         if self._tree is not None:
             raise AssertionError('You cannot start a new series while a'
                                  ' series is already going.')
-        self._tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        self._tree = self._branch.create_memorytree()
         self._tree.lock_write()
 
     def finish_series(self):
@@ -223,7 +223,7 @@ class BranchBuilder(object):
         if self._tree is not None:
             tree = self._tree
         else:
-            tree = memorytree.MemoryTree.create_on_branch(self._branch)
+            tree = self._branch.create_memorytree()
         tree.lock_write()
         try:
             if parent_ids is not None:

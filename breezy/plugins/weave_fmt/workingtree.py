@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+import breezy
+
 from ... import (
     conflicts as _mod_conflicts,
     errors,
@@ -64,6 +66,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     missing_parent_conflicts = False
 
     supports_versioned_directories = True
+
+    ignore_filename = '.bzrignore'
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
