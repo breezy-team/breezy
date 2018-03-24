@@ -90,8 +90,7 @@ class _TransformResults(object):
 class TreeTransformBase(object):
     """The base class for TreeTransform and its kin."""
 
-    def __init__(self, tree, pb=None,
-                 case_sensitive=True):
+    def __init__(self, tree, pb=None, case_sensitive=True):
         """Constructor.
 
         :param tree: The tree that will be transformed, but not necessarily
@@ -443,12 +442,14 @@ class TreeTransformBase(object):
         else:
             return self.tree_kind(trans_id)
 
+    def tree_path(self, trans_id):
+        """Determine the tree path associated with the trans_id."""
+        return self._tree_id_paths.get(trans_id)
+
     def tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
-        try:
-            path = self._tree_id_paths[trans_id]
-        except KeyError:
-            # the file is a new, unversioned file, or invalid trans_id
+        path = self.tree_path(trans_id)
+        if path is None:
             return None
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
@@ -556,10 +557,9 @@ class TreeTransformBase(object):
         parents.extend([t for t in self._removed_contents if
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
-            file_id = self.tree_file_id(trans_id)
-            path = self._tree.id2path(file_id)
-            if file_id is not None:
-                if self._tree.stored_kind(path, file_id) == 'directory':
+            path = self.tree_path(trans_id)
+            if path is not None:
+                if self._tree.stored_kind(path) == 'directory':
                     parents.append(trans_id)
             elif self.tree_kind(trans_id) == 'directory':
                 parents.append(trans_id)
@@ -1067,28 +1067,27 @@ class TreeTransformBase(object):
         return revision_id
 
     def _text_parent(self, trans_id):
-        file_id = self.tree_file_id(trans_id)
+        path = self.tree_path(trans_id)
         try:
-            if (file_id is None or
-                    self._tree.kind(self._tree.id2path(file_id), file_id) != 'file'):
+            if path is None or self._tree.kind(path) != 'file':
                 return None
         except errors.NoSuchFile:
             return None
-        return file_id
+        return path
 
     def _get_parents_texts(self, trans_id):
         """Get texts for compression parents of this file."""
-        file_id = self._text_parent(trans_id)
-        if file_id is None:
+        path = self._text_parent(trans_id)
+        if path is None:
             return ()
-        return (self._tree.get_file_text(self._tree.id2path(file_id), file_id),)
+        return (self._tree.get_file_text(path),)
 
     def _get_parents_lines(self, trans_id):
         """Get lines for compression parents of this file."""
-        file_id = self._text_parent(trans_id)
-        if file_id is None:
+        path = self._text_parent(trans_id)
+        if path is None:
             return ()
-        return (self._tree.get_file_lines(self._tree.id2path(file_id), file_id),)
+        return (self._tree.get_file_lines(path),)
 
     def serialize(self, serializer):
         """Serialize this TreeTransform.
@@ -2001,9 +2000,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             vf.fallback_versionedfiles.append(base_vf)
         return tree_revision
 
-    def _stat_limbo_file(self, file_id=None, trans_id=None):
-        if trans_id is None:
-            trans_id = self._transform.trans_id_file_id(file_id)
+    def _stat_limbo_file(self, trans_id):
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
@@ -2243,7 +2240,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(
                     self._transform._tree.id2path(file_id), file_id)
-        return self._stat_limbo_file(file_id).st_mtime
+        trans_id = self._transform.trans_id_file_id(file_id)
+        return self._stat_limbo_file(trans_id).st_mtime
 
     def _file_size(self, entry, stat_value):
         path = self.id2path(entry.file_id)
@@ -2258,7 +2256,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         if kind != 'file':
             return None
         if trans_id in self._transform._new_contents:
-            return self._stat_limbo_file(trans_id=trans_id).st_size
+            return self._stat_limbo_file(trans_id).st_size
         if self.kind(path, file_id) == 'file':
             return self._transform._tree.get_file_size(path, file_id)
         else:
