@@ -376,6 +376,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_rename_dir_changes(self):
         # renaming a dir changes the last modified.
         tree = self.make_branch_and_tree('.')
+        if not tree.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self.build_tree(['dir/'])
         self._add_commit_renamed_check_changed(tree, 'dir')
 
@@ -697,6 +700,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_merge_new_dir_unchanged(self):
         # merge a new dir does not change the last modified.
         tree1 = self.make_branch_and_tree('t1')
+        if not tree1.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self._commit_sprout_make_merge(tree1, self.make_dir)
 
     def test_last_modified_revision_after_merge_new_file_unchanged(self):
