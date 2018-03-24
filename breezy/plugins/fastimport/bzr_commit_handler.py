@@ -734,7 +734,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
-            del new_inv[inventory.ROOT_ID]
+            new_inv.delete(inventory.ROOT_ID)
             try:
                 new_inv.apply_delta(delta)
             except errors.InconsistentDelta:

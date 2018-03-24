@@ -1214,7 +1214,7 @@ class Inventory(CommonInventory):
         ie = make_entry(kind, parts[-1], parent_id, file_id)
         return self.add(ie)
 
-    def __delitem__(self, file_id):
+    def delete(self, file_id):
         """Remove entry by id.
 
         >>> inv = Inventory()
@@ -1222,7 +1222,7 @@ class Inventory(CommonInventory):
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> inv.has_id('123')
         True
-        >>> del inv['123']
+        >>> inv.delete('123')
         >>> inv.has_id('123')
         False
         """
