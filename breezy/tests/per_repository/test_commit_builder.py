@@ -231,7 +231,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev_tree = builder.revision_tree()
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertFalse(rev_tree.path2id('foo'))
+        self.assertFalse(rev_tree.is_versioned('foo'))
 
     def test_revision_tree_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
@@ -301,8 +301,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev1 = tree.commit('')
         rev2 = self.mini_commit_record_iter_changes(tree, name, name, False, False)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.get_file_revision(tree1.id2path(file_id)))
-        self.assertEqual(rev1, tree2.get_file_revision(tree2.id2path(file_id)))
+        self.assertEqual(rev1, tree1.get_file_revision(name))
+        self.assertEqual(rev1, tree2.get_file_revision(name))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         self.assertFileGraph(expected_graph, tree, (file_id, rev1))
@@ -589,7 +589,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev4 = self.mini_commit_record_iter_changes(tree1, 'new_' + name, 'new_' + name,
             expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
-        self.assertEqual(rev4, tree3.get_file_revision(tree3.id2path(file_id)))
+        self.assertEqual(rev4, tree3.get_file_revision('new_' + name))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
@@ -637,7 +637,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             tree3, = self._get_revtrees(in_tree, [rev2])
             self.assertEqual(
                     rev2,
-                    tree3.get_file_revision(tree3.id2path(file_id), file_id))
+                    tree3.get_file_revision('new_' + name, file_id))
             expected_graph = {}
             expected_graph[(file_id, rev1)] = ()
             expected_graph[(file_id, rev2)] = ((file_id, rev1),)
