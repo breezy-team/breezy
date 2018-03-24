@@ -1431,6 +1431,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         # BASE, lca1, lca2, OTHER, THIS
         root_id = 'a-root-id'
         self.assertEqual([('a-id', True,
+                           ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((False, [False, False]), False, False)),
@@ -1476,6 +1477,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('bar-id', True,
+                           ((None, [u'bar', u'bar']), u'bar', u'bar'),
                            ((None, [root_id, root_id]), root_id, root_id),
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
                            ((None, [False, False]), False, False)),
@@ -1508,6 +1510,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('a-id', True,
+                           ((u'a', [u'a', u'a']), u'a', None),
                            ((root_id, [root_id, root_id]), root_id, None),
                            ((u'a', [u'a', u'a']), u'a', None),
                            ((False, [False, False]), False, None)),
@@ -1558,6 +1561,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('a-id', True,
+                           ((u'a', [u'a', u'a']), None, u'a'),
                            ((root_id, [root_id, root_id]), None, root_id),
                            ((u'a', [u'a', u'a']), None, u'a'),
                            ((False, [False, False]), None, False)),
@@ -1623,6 +1627,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('foo-id', True,
+                           ((u'foo', [u'foo', None]), None, u'foo'),
                            ((root_id, [root_id, None]), None, root_id),
                            ((u'foo', [u'foo', None]), None, 'foo'),
                            ((False, [False, None]), None, False)),
@@ -1677,6 +1682,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('a-id', True,
+                           ((None, [None, None]), u'a', None),
                            ((None, [None, None]), root_id, None),
                            ((None, [None, None]), u'a', None),
                            ((None, [None, None]), False, None)),
@@ -1839,6 +1845,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('foo-id', True,
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((False, [False, False]), False, False)),
@@ -1876,6 +1883,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('foo-id', True,
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((False, [False, False]), False, False)),
@@ -1937,6 +1945,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         root_id = 'a-root-id'
         # The content was not changed, only the path
         self.assertEqual([('a-id', False,
+                           ((u'a', [u'b', u'b']), u'b', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'b', u'a'),
                            ((False, [False, False]), False, False)),
@@ -1962,6 +1971,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         root_id = 'a-root-id'
         # Only the kind was changed (content)
         self.assertEqual([('a-id', True,
+                           ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((False, [False, False]), False, False)),
@@ -2007,6 +2017,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('b-id', True,
+                           ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((False, [False, False]), False, False)),
@@ -2034,6 +2045,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('b-id', True,
+                           ((u'b', [u'b', u'b']), u'b', u'c'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'c'),
                            ((False, [False, False]), False, False)),
@@ -2063,6 +2075,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('c-id', True,
+                           ((u'c', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'c', [u'b', u'b']), u'b', u'b'),
                            ((False, [False, False]), False, False)),
@@ -2090,6 +2103,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('b-id', True,
+                           ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'c', u'b']), u'b', u'b'),
                            ((False, [False, False]), False, False)),
@@ -2114,6 +2128,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('b-id', True,
+                           ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((False, [False, False]), False, False)),
@@ -2428,6 +2443,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         # No content change, just a path change
         self.assertEqual([('foo-id', False,
+                           ((u'foo', [u'blah', u'blah']), u'blah', u'barry'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'barry', u'foo']), u'blah', u'barry'),
                            ((False, [False, False]), False, False)),
@@ -2532,6 +2548,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = wt.path2id('')
         self.assertEqual([('foo-id', True,
+                           ((None, [u'foo', None]), u'foo', u'foo'),
                            ((None, [root_id, None]), root_id, root_id),
                            ((None, [u'foo', None]), u'foo', u'foo'),
                            ((None, [False, None]), False, False)),
@@ -2593,6 +2610,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = wt.path2id('')
         self.assertEqual([('foo-id', True,
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((False, [False, False]), False, False)),
@@ -2716,10 +2734,12 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('a-id', False,
+                           ((u'a', [u'c', u'c']), u'c', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((False, [False, False]), False, False)),
                           ('foo-id', True,
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((False, [False, False]), False, False)),
@@ -2834,6 +2854,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('sub-tree-root', False,
+                           ((u'sub', [u'alt_sub', u'alt_sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((False, [False, False]), False, False)),
@@ -2878,6 +2899,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('sub-tree-root', False,
+                           ((u'sub', [u'alt_sub', u'alt_sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((False, [False, False]), False, False)),
