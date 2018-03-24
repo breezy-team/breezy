@@ -64,7 +64,6 @@ from breezy import (
     config,
     controldir,
     diff,
-    errors,
     foreign,
     repository as _mod_repository,
     revision as _mod_revision,
@@ -74,6 +73,7 @@ from breezy.i18n import gettext, ngettext
 """)
 
 from . import (
+    errors,
     lazy_regex,
     registry,
     revisionspec,
@@ -106,8 +106,7 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
     """
     last_verifier = last_tree.get_file_verifier(last_path)
     graph = repository.get_graph()
-    history = list(graph.iter_lefthand_ancestry(last_revision,
-        []))
+    history = list(graph.iter_lefthand_ancestry(last_revision, []))
     revno = len(history)
     for revision_id in history:
         this_tree = repository.revision_tree(revision_id)
