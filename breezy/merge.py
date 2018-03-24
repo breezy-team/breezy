@@ -1876,9 +1876,10 @@ class MergeIntoMergeType(Merge3Merger):
         with ui.ui_factory.nested_progress_bar() as child_pb:
             entries = self._entries_to_incorporate()
             entries = list(entries)
-            for num, (entry, parent_id, path) in enumerate(entries):
+            for num, (entry, parent_id, relpath) in enumerate(entries):
                 child_pb.update(gettext('Preparing file merge'), num, len(entries))
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
+                path = osutils.pathjoin(self._source_subpath, relpath)
                 trans_id = transform.new_by_entry(path, self.tt, entry,
                     parent_trans_id, self.other_tree)
         self._finish_computing_transform()

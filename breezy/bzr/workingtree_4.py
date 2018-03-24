@@ -1896,10 +1896,8 @@ class DirStateRevisionTree(InventoryTree):
         return inv[inv_file_id].text_size
 
     def get_file_text(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
         content = None
-        for _, content_iter in self.iter_files_bytes([(file_id, None)]):
+        for _, content_iter in self.iter_files_bytes([(path, None)]):
             if content is not None:
                 raise AssertionError('iter_files_bytes returned'
                     ' too many entries')
@@ -1921,11 +1919,11 @@ class DirStateRevisionTree(InventoryTree):
         This version is implemented on top of Repository.iter_files_bytes"""
         parent_index = self._get_parent_index()
         repo_desired_files = []
-        for file_id, identifier in desired_files:
-            entry = self._get_entry(file_id)
+        for path, identifier in desired_files:
+            entry = self._get_entry(path=path)
             if entry == (None, None):
-                raise errors.NoSuchId(self, file_id)
-            repo_desired_files.append((file_id, entry[1][parent_index][4],
+                raise errors.NoSuchFile(self, path)
+            repo_desired_files.append((entry[0][2], entry[1][parent_index][4],
                                        identifier))
         return self._repository.iter_files_bytes(repo_desired_files)
 
