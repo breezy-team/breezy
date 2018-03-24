@@ -270,7 +270,12 @@ class MemoryTree(MutableInventoryTree):
             # is not relevant to memory tree. Until that is done in unlock by
             # working tree, we cannot share the implementation.
             if file_ids is None:
-                file_ids = {self.path2id(path) for path in paths}
+                file_ids = set()
+                for path in paths:
+                    file_id = self.path2id(path)
+                    if file_id is None:
+                        raise errors.NoSuchFile(path)
+                    file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)
