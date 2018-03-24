@@ -69,6 +69,9 @@ from .sixish import (
     viewitems,
     viewvalues,
     )
+from .tree import (
+    find_previous_path,
+    )
 
 
 ROOT_PARENT = "root-parent"
@@ -2243,10 +2246,6 @@ class _PreviewTree(inventorytree.InventoryTree):
         trans_id = self._transform.trans_id_file_id(file_id)
         return self._stat_limbo_file(trans_id).st_mtime
 
-    def _file_size(self, entry, stat_value):
-        path = self.id2path(entry.file_id)
-        return self.get_file_size(path, entry.file_id)
-
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
         if file_id is None:
@@ -2610,7 +2609,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                         else:
                             divert.add(file_id)
                     if (file_id not in divert and
-                        _content_match(tree, entry, file_id, kind,
+                        _content_match(tree, entry, tree_path, file_id, kind,
                         target_path)):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
@@ -2722,21 +2721,20 @@ def _reparent_transform_children(tt, old_parent, new_parent):
     return by_parent[old_parent]
 
 
-def _content_match(tree, entry, file_id, kind, target_path):
+def _content_match(tree, entry, tree_path, file_id, kind, target_path):
     if entry.kind != kind:
         return False
     if entry.kind == "directory":
         return True
-    path = tree.id2path(file_id)
     if entry.kind == "file":
         f = file(target_path, 'rb')
         try:
-            if tree.get_file_text(path, file_id) == f.read():
+            if tree.get_file_text(tree_path, file_id) == f.read():
                 return True
         finally:
             f.close()
     elif entry.kind == "symlink":
-        if tree.get_symlink_target(path, file_id) == os.readlink(target_path):
+        if tree.get_symlink_target(tree_path, file_id) == os.readlink(target_path):
             return True
     return False
 
@@ -2910,9 +2908,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        try:
-                            basis_path = basis_tree.id2path(file_id)
-                        except errors.NoSuchId:
+                        basis_path = find_previous_path(working_tree, basis_tree, wt_path)
+                        if basis_path is None:
                             if target_kind is None and not target_versioned:
                                 keep_content = True
                         else:
@@ -2949,10 +2946,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(target_path, file_id)
-                    try:
-                        basis_path = basis_tree.id2path(file_id)
-                    except errors.NoSuchId:
-                        basis_path = None
+                    basis_path = find_previous_path(target_tree, basis_tree, target_path)
                     if (basis_path is not None and
                         new_sha1 == basis_tree.get_file_sha1(basis_path, file_id)):
                         if file_id in merge_modified:

@@ -23,7 +23,7 @@ from breezy import (
 from breezy.bzr import (
     inventory,
     )
-from breezy.tests.matchers import HasLayout
+from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -33,14 +33,15 @@ class TestAdd(TestCaseWithWorkingTree):
         """Check that the tree has the correct layout."""
         self.assertThat(tree, HasLayout(expected))
 
+    def assertPathRelations(self, previous_tree, tree, relations):
+        self.assertThat(tree, HasPathRelations(previous_tree, relations))
+
     def test_add_one(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['one'])
         tree.add('one')
-        root_id = tree.get_root_id()
 
-        self.assertTreeLayout(
-            [('', root_id), ('one', tree.path2id('one'))], tree)
+        self.assertTreeLayout(['', 'one'], tree)
 
     def test_add_existing_id(self):
         """Adding an entry with a pre-existing id raises DuplicateFileId"""
@@ -51,9 +52,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['a'])
         self.assertRaises(errors.DuplicateFileId,
                           tree.add, ['b'], [tree.path2id('a')])
-        root_id = tree.get_root_id()
         # And the entry should not have been added.
-        self.assertTreeLayout([('', root_id), ('a', tree.path2id('a'))], tree)
+        self.assertTreeLayout(['', 'a'], tree)
 
     def test_add_old_id(self):
         """We can add an old id, as long as it doesn't exist now."""
@@ -64,31 +64,26 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['a'])
         file_id = tree.path2id('a')
         tree.commit('first')
-        root_id = tree.get_root_id()
         # And the entry should not have been added.
         tree.unversion(['a'])
         tree.add(['b'], [file_id])
-        self.assertTreeLayout([('', root_id), ('b', file_id)], tree)
-        self.assertTreeLayout([('', root_id), ('a', file_id)],
-                              tree.basis_tree())
+        self.assertPathRelations(
+                tree.basis_tree(), tree,
+                [('', ''), ('b', 'a')])
 
     def test_add_one_list(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['one'])
         tree.add(['one'])
-        root_id = tree.get_root_id()
 
-        self.assertTreeLayout(
-            [('', root_id), ('one', tree.path2id('one'))], tree)
+        self.assertTreeLayout(['', 'one'], tree)
 
     def test_add_one_new_id(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['one'])
         tree.add(['one'])
-        root_id = tree.get_root_id()
-        one_id = tree.path2id('one')
 
-        self.assertTreeLayout([('', root_id), ('one', one_id)], tree)
+        self.assertTreeLayout(['', 'one'], tree)
 
     def test_add_unicode(self):
         tree = self.make_branch_and_tree('.')
@@ -97,10 +92,8 @@ class TestAdd(TestCaseWithWorkingTree):
         except UnicodeError:
             raise tests.TestSkipped('Filesystem does not support filename.')
         tree.add([u'f\xf6'])
-        root_id = tree.get_root_id()
-        foo_id = tree.path2id(u'f\xf6')
 
-        self.assertTreeLayout([('', root_id), (u'f\xf6', foo_id)], tree)
+        self.assertTreeLayout(['', u'f\xf6'], tree)
 
     def test_add_subdir_with_ids(self):
         tree = self.make_branch_and_tree('.')
@@ -122,24 +115,17 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['dir'])
         tree.add(['dir/subdir'])
         tree.add(['dir/subdir/foo'])
-        root_id = tree.get_root_id()
 
-        self.assertTreeLayout([
-            ('', root_id),
-            ('dir/', tree.path2id('dir')),
-            ('dir/subdir/', tree.path2id('dir/subdir')),
-            ('dir/subdir/foo', tree.path2id('dir/subdir/foo'))],
-            tree)
+        self.assertTreeLayout(
+            ['', 'dir/', 'dir/subdir/', 'dir/subdir/foo'], tree)
 
     def test_add_multiple(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'])
-        root_id = tree.get_root_id()
 
-        self.assertTreeLayout([
-            (p, tree.path2id(p))
-            for p in ['', 'a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo']],
+        self.assertTreeLayout(
+            ['', 'a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'],
             tree)
 
     def test_add_multiple_with_file_ids(self):
@@ -149,9 +135,8 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'],
                  ['a-id', 'b-id', 'dir-id', 'subdir-id', 'foo-id'])
-        root_id = tree.get_root_id()
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', tree.get_root_id()), ('a', 'a-id'), ('b', 'b-id'),
                                ('dir/', 'dir-id'), ('dir/subdir/', 'subdir-id'),
                                ('dir/subdir/foo', 'foo-id')], tree)
 
@@ -161,11 +146,10 @@ class TestAdd(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'format does not support versioned directories')
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
-        root_id = tree.get_root_id()
 
         self.assertRaises(errors.NotVersionedError,
                           tree.add, ['dir/subdir'])
-        self.assertTreeLayout([('', root_id)], tree)
+        self.assertTreeLayout([''], tree)
 
     def test_add_after_remove(self):
         tree = self.make_branch_and_tree('.')
@@ -173,7 +157,6 @@ class TestAdd(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'format does not support versioned directories')
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
-        root_id = tree.get_root_id()
         tree.add(['dir'])
         tree.commit('dir')
         tree.unversion(['dir'])
