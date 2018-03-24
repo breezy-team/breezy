@@ -894,7 +894,7 @@ class TreeTransformBase(object):
                 to_trans_ids[to_file_id] = trans_id
         return from_trans_ids, to_trans_ids
 
-    def _from_file_data(self, from_trans_id, from_versioned, file_id):
+    def _from_file_data(self, from_trans_id, from_versioned, from_path):
         """Get data about a file in the from (tree) state
 
         Return a (name, parent, kind, executable) tuple
@@ -902,7 +902,8 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+            from_entry = self._tree.iter_entries_by_dir(
+                    specific_files=[from_path]).next()[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -971,12 +972,6 @@ class TreeTransformBase(object):
             else:
                 to_versioned = True
 
-            from_name, from_parent, from_kind, from_executable = \
-                self._from_file_data(from_trans_id, from_versioned, file_id)
-
-            to_name, to_parent, to_kind, to_executable = \
-                self._to_file_data(to_trans_id, from_trans_id, from_executable)
-
             if not from_versioned:
                 from_path = None
             else:
@@ -985,6 +980,13 @@ class TreeTransformBase(object):
                 to_path = None
             else:
                 to_path = final_paths.get_path(to_trans_id)
+
+            from_name, from_parent, from_kind, from_executable = \
+                self._from_file_data(from_trans_id, from_versioned, from_path)
+
+            to_name, to_parent, to_kind, to_executable = \
+                self._to_file_data(to_trans_id, from_trans_id, from_executable)
+
             if from_kind != to_kind:
                 modified = True
             elif to_kind in ('file', 'symlink') and (
@@ -1763,9 +1765,6 @@ class TreeTransform(DiskTreeTransform):
                 inventory_delta.append((path, None, file_id, None))
             new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                      new_paths)
-            entries = self._tree.iter_entries_by_dir(
-                viewvalues(new_path_file_ids))
-            old_paths = dict((e.file_id, p) for p, e in entries)
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
@@ -1793,7 +1792,10 @@ class TreeTransform(DiskTreeTransform):
                     new_entry = inventory.make_entry(kind,
                         self.final_name(trans_id),
                         parent_file_id, file_id)
-                old_path = old_paths.get(new_entry.file_id)
+                try:
+                    old_path = self._tree.id2path(new_entry.file_id)
+                except errors.NoSuchId:
+                    old_path = None
                 new_executability = self._new_executability.get(trans_id)
                 if new_executability is not None:
                     new_entry.executable = new_executability
@@ -1944,10 +1946,8 @@ class TransformPreview(DiskTreeTransform):
             path = self._tree_id_paths[parent_id]
         except KeyError:
             return
-        file_id = self.tree_file_id(parent_id)
-        if file_id is None:
-            return
-        entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+        entry = self._tree.iter_entries_by_dir(
+                specific_files=[path]).next()[1]
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
@@ -2127,14 +2127,14 @@ class _PreviewTree(inventorytree.InventoryTree):
             if self._transform.final_file_id(trans_id) is None:
                 yield self._final_paths._determine_path(trans_id)
 
-    def _make_inv_entries(self, ordered_entries, specific_file_ids=None,
+    def _make_inv_entries(self, ordered_entries, specific_files=None,
         yield_parents=False):
         for trans_id, parent_file_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
             if file_id is None:
                 continue
-            if (specific_file_ids is not None
-                and file_id not in specific_file_ids):
+            if (specific_files is not None and
+                unicode(self._final_paths.get_path(trans_id)) not in specific_files):
                 continue
             kind = self._transform.final_kind(trans_id)
             if kind is None:
@@ -2162,17 +2162,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         return ordered_ids
 
     def iter_child_entries(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        if file_id is None:
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
             raise errors.NoSuchFile(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
@@ -2180,16 +2178,16 @@ class _PreviewTree(inventorytree.InventoryTree):
         # position.
         ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
-            specific_file_ids, yield_parents=yield_parents):
+            specific_files, yield_parents=yield_parents):
             yield unicode(self._final_paths.get_path(trans_id)), entry
 
     def _iter_entries_for_dir(self, dir_path):
         """Return path, entry for items in a directory without recursing down."""
-        dir_file_id = self.path2id(dir_path)
         ordered_ids = []
-        for file_id in self._iter_children(dir_file_id):
-            trans_id = self._transform.trans_id_file_id(file_id)
-            ordered_ids.append((trans_id, file_id))
+        dir_trans_id = self._path2trans_id(dir_path)
+        dir_id = self._transform.final_file_id(dir_trans_id)
+        for child_trans_id in self._all_children(dir_trans_id):
+            ordered_ids.append((child_trans_id, dir_id))
         for entry, trans_id in self._make_inv_entries(ordered_ids):
             yield unicode(self._final_paths.get_path(trans_id)), entry
 
@@ -2220,15 +2218,15 @@ class _PreviewTree(inventorytree.InventoryTree):
                 yield path, 'V', entry.kind, entry.file_id, entry
 
     def kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         return self._transform.final_kind(trans_id)
 
     def stored_kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         try:
             return self._transform._new_contents[trans_id]
         except KeyError:
@@ -2243,14 +2241,14 @@ class _PreviewTree(inventorytree.InventoryTree):
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(
                     self._transform._tree.id2path(file_id), file_id)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
         return self._stat_limbo_file(trans_id).st_mtime
 
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         kind = self._transform.final_kind(trans_id)
         if kind != 'file':
             return None
@@ -2262,9 +2260,9 @@ class _PreviewTree(inventorytree.InventoryTree):
             return None
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_verifier(path, file_id)
@@ -2276,9 +2274,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 fileobj.close()
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_sha1(path, file_id)
@@ -2290,11 +2288,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 fileobj.close()
 
     def is_executable(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        if file_id is None:
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
             return False
-        trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._transform._new_executability[trans_id]
         except KeyError:
@@ -2373,7 +2369,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             file_id = self.path2id(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_file(path, file_id)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
@@ -2419,7 +2415,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             file_id = self.path2id(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_symlink_target(path)
-        trans_id = self._transform.trans_id_file_id(file_id)
+        trans_id = self._path2trans_id(path)
         name = self._transform._limbo_name(trans_id)
         return osutils.readlink(name)
 
@@ -3081,7 +3077,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
                         _, entry = next(path_tree.iter_entries_by_dir(
-                            [file_id]))
+                            specific_files=[path_tree.id2path(file_id)]))
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:

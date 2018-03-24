@@ -2937,13 +2937,14 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertFalse(preview_tree.is_versioned('old_name/child'))
         self.assertEqual('child-id', preview_tree.path2id('new_name/child'))
 
-    def assertMatchingIterEntries(self, tt, specific_file_ids=None):
+    def assertMatchingIterEntries(self, tt, specific_files=None):
         preview_tree = tt.get_preview_tree()
         preview_result = list(preview_tree.iter_entries_by_dir(
-                              specific_file_ids))
+                              specific_files=specific_files))
         tree = tt._tree
         tt.apply()
-        actual_result = list(tree.iter_entries_by_dir(specific_file_ids))
+        actual_result = list(tree.iter_entries_by_dir(
+            specific_files=specific_files))
         self.assertEqual(actual_result, preview_result)
 
     def test_iter_entries_by_dir_new(self):
@@ -2983,7 +2984,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree(['tree/parent/', 'tree/parent/child'])
         tree.add(['parent', 'parent/child'], ['parent-id', 'child-id'])
         tt = TreeTransform(tree)
-        self.assertMatchingIterEntries(tt, ['tree-root-id', 'child-id'])
+        self.assertMatchingIterEntries(tt, ['', 'parent/child'])
 
     def test_symlink_content_summary(self):
         self.requireFeature(SymlinkFeature)
