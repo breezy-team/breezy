@@ -1161,7 +1161,7 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
             raise errors.IncompatibleFormat(self, a_controldir)
         index = Index(a_controldir.root_transport.local_abspath(".git/index"))
         index.write()
-        branch = a_controldir.open_branch()
+        branch = a_controldir.open_branch(nascent_ok=True)
         if revision_id is not None:
             branch.set_last_revision(revision_id)
         wt = GitWorkingTree(
