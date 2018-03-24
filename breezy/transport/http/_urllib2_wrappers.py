@@ -669,7 +669,9 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
     def http_request(self, request):
         """Common headers setting"""
 
-        request.headers.update(self._default_headers.copy())
+        for name, value in self._default_headers.items():
+            if name not in request.headers:
+                request.headers[name] = value
         # FIXME: We may have to add the Content-Length header if
         # we have data to send.
         return request
