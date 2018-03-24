@@ -461,7 +461,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         """Perform a miniature commit looking for record entry results.
 
         This version uses the record_iter_changes interface.
-        
+
         :param tree: The tree to commit.
         :param name: The path in the basis tree of the tree being committed.
         :param new_name: The path in the tree being committed.
