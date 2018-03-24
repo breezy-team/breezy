@@ -213,7 +213,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -239,8 +239,8 @@ class Tree(object):
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
 
         :param yield_parents: If True, yield the parents from the root leading
-            down to specific_file_ids that have been requested. This has no
-            impact if specific_file_ids is None.
+            down to specific_files that have been requested. This has no
+            impact if specific_files is None.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
@@ -501,24 +501,23 @@ class Tree(object):
         """
         return self.path2id(path) is not None
 
-    def paths2ids(self, paths, trees=[], require_versioned=True):
-        """Return all the ids that can be reached by walking from paths.
+    def find_related_paths_across_trees(self, paths, trees=[],
+            require_versioned=True):
+        """Find related paths in tree corresponding to specified filenames in any
+        of `lookup_trees`.
 
-        Each path is looked up in this tree and any extras provided in
-        trees, and this is repeated recursively: the children in an extra tree
-        of a directory that has been renamed under a provided path in this tree
-        are all returned, even if none exist under a provided path in this
-        tree, and vice versa.
+        All matches in all trees will be used, and all children of matched
+        directories will be used.
 
-        :param paths: An iterable of paths to start converting to ids from.
-            Alternatively, if paths is None, no ids should be calculated and None
-            will be returned. This is offered to make calling the api unconditional
-            for code that *might* take a list of files.
-        :param trees: Additional trees to consider.
-        :param require_versioned: If False, do not raise NotVersionedError if
-            an element of paths is not versioned in this tree and all of trees.
+        :param paths: The filenames to find related paths for (if None, returns
+            None)
+        :param trees: The trees to find file_ids within
+        :param require_versioned: if true, all specified filenames must occur in
+            at least one tree.
+        :return: a set of paths for the specified filenames and their children
+            in `tree`
         """
-        return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
+        raise NotImplementedError(self.find_related_paths_across_trees)
 
     def lock_read(self):
         """Lock this tree for multiple read only operations.
@@ -657,84 +656,6 @@ class Tree(object):
         return searcher
 
 
-def find_ids_across_trees(filenames, trees, require_versioned=True):
-    """Find the ids corresponding to specified filenames.
-
-    All matches in all trees will be used, and all children of matched
-    directories will be used.
-
-    :param filenames: The filenames to find file_ids for (if None, returns
-        None)
-    :param trees: The trees to find file_ids within
-    :param require_versioned: if true, all specified filenames must occur in
-        at least one tree.
-    :return: a set of file ids for the specified filenames and their children.
-    """
-    if not filenames:
-        return None
-    specified_path_ids = _find_ids_across_trees(filenames, trees,
-        require_versioned)
-    return _find_children_across_trees(specified_path_ids, trees)
-
-
-def _find_ids_across_trees(filenames, trees, require_versioned):
-    """Find the ids corresponding to specified filenames.
-
-    All matches in all trees will be used, but subdirectories are not scanned.
-
-    :param filenames: The filenames to find file_ids for
-    :param trees: The trees to find file_ids within
-    :param require_versioned: if true, all specified filenames must occur in
-        at least one tree.
-    :return: a set of file ids for the specified filenames
-    """
-    not_versioned = []
-    interesting_ids = set()
-    for tree_path in filenames:
-        not_found = True
-        for tree in trees:
-            file_id = tree.path2id(tree_path)
-            if file_id is not None:
-                interesting_ids.add(file_id)
-                not_found = False
-        if not_found:
-            not_versioned.append(tree_path)
-    if len(not_versioned) > 0 and require_versioned:
-        raise errors.PathsNotVersionedError(not_versioned)
-    return interesting_ids
-
-
-def _find_children_across_trees(specified_ids, trees):
-    """Return a set including specified ids and their children.
-
-    All matches in all trees will be used.
-
-    :param trees: The trees to find file_ids within
-    :return: a set containing all specified ids and their children
-    """
-    interesting_ids = set(specified_ids)
-    pending = interesting_ids
-    # now handle children of interesting ids
-    # we loop so that we handle all children of each id in both trees
-    while len(pending) > 0:
-        new_pending = set()
-        for tree in trees:
-            for file_id in pending:
-                try:
-                    path = tree.id2path(file_id)
-                except errors.NoSuchId:
-                    continue
-                try:
-                    for child in tree.iter_child_entries(path, file_id):
-                        if child.file_id not in interesting_ids:
-                            new_pending.add(child.file_id)
-                except errors.NotADirectory:
-                    pass
-        interesting_ids.update(new_pending)
-        pending = new_pending
-    return interesting_ids
-
-
 class InterTree(InterObject):
     """This class represents operations taking place between two Trees.
 
@@ -854,18 +775,6 @@ class InterTree(InterObject):
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
         with self.lock_read():
-            # target is usually the newer tree:
-            specific_file_ids = self.target.paths2ids(specific_files, trees,
-                require_versioned=require_versioned)
-            if specific_files and not specific_file_ids:
-                # All files are unversioned, so just return an empty delta
-                # _compare_trees would think we want a complete delta
-                result = delta.TreeDelta()
-                fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
-                result.unversioned = [(path, None,
-                    self.target._comparison_data(fake_entry, path)[0]) for path in
-                    specific_files]
-                return result
             return delta._compare_trees(self.source, self.target, want_unchanged,
                 specific_files, include_root, extra_trees=extra_trees,
                 require_versioned=require_versioned,
@@ -907,17 +816,23 @@ class InterTree(InterObject):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        lookup_trees = [self.source]
-        if extra_trees:
-             lookup_trees.extend(extra_trees)
+        if not extra_trees:
+             extra_trees = []
+        else:
+             extra_trees = list(extra_trees)
         # The ids of items we need to examine to insure delta consistency.
         precise_file_ids = set()
         changed_file_ids = []
         if specific_files == []:
-            specific_file_ids = []
+            target_specific_files = []
+            source_specific_files = []
         else:
-            specific_file_ids = self.target.paths2ids(specific_files,
-                lookup_trees, require_versioned=require_versioned)
+            target_specific_files = self.target.find_related_paths_across_trees(
+                    specific_files, [self.source] + extra_trees,
+                    require_versioned=require_versioned)
+            source_specific_files = self.source.find_related_paths_across_trees(
+                    specific_files, [self.target] + extra_trees,
+                    require_versioned=require_versioned)
         if specific_files is not None:
             # reparented or added entries must have their parents included
             # so that valid deltas can be created. The seen_parents set
@@ -937,10 +852,10 @@ class InterTree(InterObject):
             all_unversioned = collections.deque()
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids))
+            specific_files=source_specific_files))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
         to_entries_by_dir = list(self.target.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids))
+            specific_files=target_specific_files))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         # the unversioned path lookup only occurs on real trees - where there
@@ -969,7 +884,7 @@ class InterTree(InterObject):
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
             if changes or include_unchanged:
-                if specific_file_ids is not None:
+                if specific_files is not None:
                     new_parent_id = result[4][1]
                     precise_file_ids.add(new_parent_id)
                     changed_file_ids.append(result[0])
@@ -1017,12 +932,12 @@ class InterTree(InterObject):
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
         changed_file_ids = set(changed_file_ids)
-        if specific_file_ids is not None:
+        if specific_files is not None:
             for result in self._handle_precise_ids(precise_file_ids,
                 changed_file_ids):
                 yield result
 
-    def _get_entry(self, tree, file_id):
+    def _get_entry(self, tree, path):
         """Get an inventory entry from a tree, with missing entries as None.
 
         If the tree raises NotImplementedError on accessing .inventory, then
@@ -1032,20 +947,12 @@ class InterTree(InterObject):
         :param tree: The tree to lookup the entry in.
         :param file_id: The file_id to lookup.
         """
+        # No inventory available.
         try:
-            inventory = tree.root_inventory
-        except (AttributeError, NotImplementedError):
-            # No inventory available.
-            try:
-                iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
-                return iterator.next()[1]
-            except StopIteration:
-                return None
-        else:
-            try:
-                return inventory[file_id]
-            except errors.NoSuchId:
-                return None
+            iterator = tree.iter_entries_by_dir(specific_files=[path])
+            return iterator.next()[1]
+        except StopIteration:
+            return None
 
     def _handle_precise_ids(self, precise_file_ids, changed_file_ids,
         discarded_changes=None):
@@ -1093,22 +1000,26 @@ class InterTree(InterObject):
                 # Examine file_id
                 if discarded_changes:
                     result = discarded_changes.get(file_id)
-                    old_entry = None
+                    source_entry = None
                 else:
                     result = None
                 if result is None:
-                    old_entry = self._get_entry(self.source, file_id)
-                    new_entry = self._get_entry(self.target, file_id)
                     try:
                         source_path = self.source.id2path(file_id)
                     except errors.NoSuchId:
                         source_path = None
+                        source_entry = None
+                    else:
+                        source_entry = self._get_entry(self.source, source_path)
                     try:
                         target_path = self.target.id2path(file_id)
                     except errors.NoSuchId:
                         target_path = None
+                        target_entry = None
+                    else:
+                        target_entry = self._get_entry(self.target, target_path)
                     result, changes = self._changes_from_entries(
-                        old_entry, new_entry, source_path, target_path)
+                        source_entry, target_entry, source_path, target_path)
                 else:
                     changes = True
                 # Get this parents parent to examine.
@@ -1119,9 +1030,9 @@ class InterTree(InterObject):
                             result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
-                        if old_entry is None:
+                        if source_entry is None:
                             # Reusing a discarded change.
-                            old_entry = self._get_entry(self.source, file_id)
+                            source_entry = self._get_entry(self.source, result[1][0])
                         precise_file_ids.update(
                                 child.file_id
                                 for child in self.source.iter_child_entries(result[1][0]))

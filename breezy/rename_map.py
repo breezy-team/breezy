@@ -26,6 +26,7 @@ from .i18n import gettext
 from .sixish import (
     BytesIO,
     viewitems,
+    viewvalues,
     )
 from .ui import ui_factory
 
@@ -237,7 +238,14 @@ class RenameMap(object):
     def _make_inventory_delta(self, matches):
         delta = []
         file_id_matches = dict((f, p) for p, f in viewitems(matches))
-        for old_path, entry in self.tree.iter_entries_by_dir(file_id_matches):
+        file_id_query = []
+        for f in viewvalues(matches):
+            try:
+                file_id_query.append(self.tree.id2path(f))
+            except errors.NoSuchId:
+                pass
+        for old_path, entry in self.tree.iter_entries_by_dir(
+                specific_files=file_id_query):
             new_path = file_id_matches[entry.file_id]
             parent_path, new_name = osutils.split(new_path)
             parent_id = matches.get(parent_path)

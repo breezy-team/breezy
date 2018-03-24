@@ -228,11 +228,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                         (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id),
                        ]
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
-        finally:
-            tree.unlock()
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path) # Paths should match
@@ -276,11 +273,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                         (u'ba\N{Euro Sign}r/qu\N{Euro Sign}x',
                          qux_id, bar_id, revision_id_2),
                        ]
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
-        finally:
-            tree.unlock()
 
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
