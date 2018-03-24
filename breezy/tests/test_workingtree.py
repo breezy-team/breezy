@@ -31,7 +31,7 @@ from ..bzr import (
 from ..lock import write_locked
 from ..lockdir import LockDir
 from . import TestCase, TestCaseWithTransport, TestSkipped
-from ..workingtree import (
+from ..tree import (
     TreeEntry,
     TreeDirectory,
     TreeFile,
@@ -257,7 +257,8 @@ class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
         subtree = self.make_branch_and_tree('tree/a/b')
         self.assertEqual([('tree-reference', 'b-id')],
                          [(ie.kind, ie.file_id)
-                          for path, ie in tree.iter_entries_by_dir(['b-id'])])
+                          for path, ie in tree.iter_entries_by_dir(
+                              specific_files=['a/b'])])
 
     def test_direct_subtree(self):
         tree = self.make_simple_tree()

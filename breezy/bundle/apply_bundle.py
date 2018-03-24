@@ -32,9 +32,7 @@ def install_bundle(repository, bundle_reader):
     custom_install = getattr(bundle_reader, 'install', None)
     if custom_install is not None:
         return custom_install(repository)
-    pb = ui.ui_factory.nested_progress_bar()
-    repository.lock_write()
-    try:
+    with repository.lock_write(), ui.ui_factory.nested_progress_bar() as pb:
         real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
             pb.update(gettext("Install revisions"), i, len(real_revisions))
@@ -43,9 +41,6 @@ def install_bundle(repository, bundle_reader):
             cset_tree = bundle_reader.revision_tree(repository,
                                                        revision.revision_id)
             install_revision(repository, revision, cset_tree)
-    finally:
-        repository.unlock()
-        pb.finished()
 
 
 def merge_bundle(reader, tree, check_clean, merge_type,

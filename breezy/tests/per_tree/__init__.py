@@ -277,56 +277,6 @@ class TestCaseWithTree(TestCaseWithControlDir):
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 
-    def get_tree_with_utf8(self, tree):
-        """Generate a tree with a utf8 revision and unicode paths."""
-        self._create_tree_with_utf8(tree)
-        return self.workingtree_to_test_tree(tree)
-
-    def _create_tree_with_utf8(self, tree):
-        """Generate a tree with a utf8 revision and unicode paths."""
-        self.requireFeature(features.UnicodeFilenameFeature)
-        # We avoid combining characters in file names here, normalization
-        # checks (as performed by some file systems (OSX) are outside the scope
-        # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
-        # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
-        paths = [u'',
-                 u'fo\N{Euro Sign}o',
-                 u'ba\N{Euro Sign}r/',
-                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
-                ]
-        # bzr itself does not create unicode file ids, but we want them for
-        # testing.
-        file_ids = ['TREE_ROOT',
-                    'fo\xe2\x82\xaco-id',
-                    'ba\xe2\x82\xacr-id',
-                    'ba\xe2\x82\xacz-id',
-                   ]
-        self.build_tree(paths[1:])
-        if tree.get_root_id() is None:
-            # Some trees do not have a root yet.
-            tree.add(paths, file_ids)
-        else:
-            # Some trees will already have a root
-            tree.set_root_id(file_ids[0])
-            tree.add(paths[1:], file_ids[1:])
-        try:
-            tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
-        except errors.NonAsciiRevisionId:
-            raise tests.TestSkipped('non-ascii revision ids not supported')
-
-    def get_tree_with_merged_utf8(self, tree):
-        """Generate a tree with utf8 ancestors."""
-        self._create_tree_with_utf8(tree)
-        tree2 = tree.controldir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
-        tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
-                  [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
-        tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
-
-        tree.merge_from_branch(tree2.branch)
-        tree.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
-        return self.workingtree_to_test_tree(tree)
-
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
     """Generate test suites for each Tree implementation in breezy.

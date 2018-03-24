@@ -42,9 +42,6 @@ import codecs
 import sys
 
 
-IGNORE_FILENAME = ".bzrignore"
-
-
 __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of

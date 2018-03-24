@@ -143,10 +143,9 @@ def get_revisions_and_committers(a_repo, revids):
 
     email_users = {} # user@email.com => User Name
     combo_count = {}
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         trace.note('getting revisions')
-        revisions = a_repo.iter_revisions(revids)
+        revisions = list(a_repo.iter_revisions(revids))
         for count, (revid, rev) in enumerate(revisions):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
@@ -156,25 +155,19 @@ def get_revisions_and_committers(a_repo, revids):
                 email_users.setdefault(email, set()).add(username)
                 combo = (username, email)
                 combo_count[combo] = combo_count.setdefault(combo, 0) + 1
-    finally:
-        pb.finished()
-    return revisions, collapse_email_and_users(email_users, combo_count)
+    return ((rev for (revid, rev) in revisions),
+            collapse_email_and_users(email_users, combo_count))
 
 
 def get_info(a_repo, revision):
     """Get all of the information for a particular revision"""
-    pb = ui.ui_factory.nested_progress_bar()
-    a_repo.lock_read()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
         trace.note('getting ancestry')
         graph = a_repo.get_graph()
         ancestry = [
             r for (r, ps) in graph.iter_ancestry([revision])
             if ps is not None and r != NULL_REVISION]
         revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
-    finally:
-        a_repo.unlock()
-        pb.finished()
 
     return collapse_by_person(revs, canonical_committer)
 
@@ -184,16 +177,11 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
     This lets us figure out what has actually changed between 2 revisions.
     """
-    pb = ui.ui_factory.nested_progress_bar()
-    a_repo.lock_read()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
         graph = a_repo.get_graph()
         trace.note('getting ancestry diff')
         ancestry = graph.find_difference(start_rev, end_rev)[1]
         revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
-    finally:
-        a_repo.unlock()
-        pb.finished()
 
     return collapse_by_person(revs, canonical_committer)
 
@@ -314,8 +302,7 @@ class cmd_ancestor_growth(commands.Command):
 def gather_class_stats(repository, revs):
     ret = {}
     total = 0
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         with repository.lock_read():
             i = 0
             for delta in repository.get_deltas_for_revisions(revs):
@@ -326,8 +313,6 @@ def gather_class_stats(repository, revs):
                     ret[c] += 1
                     total += 1
                 i += 1
-    finally:
-        pb.finished()
     return ret, total
 
 
@@ -367,8 +352,7 @@ def find_credits(repository, revid):
         ancestry = [r for (r, ps) in graph.iter_ancestry([revid])
                     if ps is not None and r != NULL_REVISION]
         revs = repository.get_revisions(ancestry)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             iterator = zip(revs, repository.get_deltas_for_revisions(revs))
             for i, (rev, delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
@@ -380,8 +364,6 @@ def find_credits(repository, revid):
                         if not author in ret[c]:
                             ret[c][author] = 0
                         ret[c][author] += 1
-        finally:
-            pb.finished()
     def sort_class(name):
         return [author
             for author, _  in sorted(ret[name].items(), key=classify_key)]

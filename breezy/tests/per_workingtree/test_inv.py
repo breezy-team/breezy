@@ -68,7 +68,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
         wt.apply_inventory_delta([('foo', None, 'foo-id', None),
                                   ('foo/bar', None, 'bar-id', None)])
-        self.assertIs(None, wt.path2id('foo'))
+        self.assertFalse(wt.is_versioned('foo'))
 
     def test_rename_dir_with_children(self):
         wt = self.make_branch_and_tree('.')
@@ -178,6 +178,6 @@ class TestTreeReference(TestCaseWithWorkingTree):
         # wt.current_dirstate()'s idea about what files are where.
         ie = base.inventory['subdir-id']
         self.assertEqual('directory', ie.kind)
-        path, ie = next(base.iter_entries_by_dir(['subdir-id']))
+        path, ie = next(base.iter_entries_by_dir(specific_files=['subdir']))
         self.assertEqual('subdir', path)
         self.assertEqual('tree-reference', ie.kind)

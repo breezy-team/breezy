@@ -271,9 +271,7 @@ class cmd_lp_find_proposal(Command):
         from . import lp_api
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
-        pb = ui.ui_factory.nested_progress_bar()
-        b.lock_read()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
             if revision is None:
                 revision_id = b.last_revision()
             else:
@@ -284,9 +282,6 @@ class cmd_lp_find_proposal(Command):
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
                 webbrowser.open(lp_api.canonical_url(mp))
-        finally:
-            b.unlock()
-            pb.finished()
 
     def _find_proposals(self, revision_id, pb):
         from . import (lp_api, lp_registration)

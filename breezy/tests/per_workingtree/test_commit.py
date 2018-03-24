@@ -235,6 +235,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.add(['a'], None, ['file'])
         a_id = wt.path2id('a')
+        self.assertEqual('a', wt.id2path(a_id))
         def fail_message(obj):
             raise errors.BzrCommandError("empty commit message")
         self.assertRaises(errors.BzrCommandError, wt.commit,
@@ -362,7 +363,7 @@ class TestCommit(TestCaseWithWorkingTree):
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
-        self.assertTrue(wt.has_id(a_id))
+        self.assertTrue(wt.is_versioned('a'))
         self.assertFalse(wt.has_or_had_id(b_id))
         self.assertFalse(wt.has_or_had_id(c_id))
         self.assertTrue(wt.has_filename('a'))

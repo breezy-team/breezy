@@ -123,7 +123,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
                          '-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
-            (gpg.SIGNATURE_VALID, None, ),
+            (gpg.SIGNATURE_VALID, None),
             repo.verify_revision_signature(a, strategy))
 
     def test_verify_revision_signatures(self):

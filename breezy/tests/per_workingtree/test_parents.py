@@ -28,10 +28,14 @@ from ...bzr.inventory import (
     InventoryDirectory,
     InventoryLink,
     )
-from ...bzr.inventorytree import InventoryRevisionTree
+from ...bzr.inventorytree import (
+    InventoryRevisionTree,
+    InventoryTree,
+    )
 from ...sixish import (
     BytesIO,
     )
+from ...tests import TestNotApplicable
 from ..per_workingtree import TestCaseWithWorkingTree
 from .. import (
     features,
@@ -102,9 +106,14 @@ class TestSetParents(TestParents):
         # remove the tree's history
         uncommit(t.branch, tree=t)
         rev_tree = t.branch.repository.revision_tree(revision_in_repo)
-        t.set_parent_trees([(revision_in_repo, rev_tree),
-            ('another-missing', None)])
-        self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+        if t._format.supports_righthand_parent_id_as_ghost:
+            t.set_parent_trees([(revision_in_repo, rev_tree),
+                ('another-missing', None)])
+            self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+        else:
+            self.assertRaises(errors.GhostRevisionUnusableHere,
+                t.set_parent_trees, [(revision_in_repo, rev_tree),
+                ('another-missing', None)])
 
     def test_set_three_parents(self):
         t = self.make_branch_and_tree('.')
@@ -154,8 +163,12 @@ class TestSetParents(TestParents):
         # remove the tree's history
         uncommit(t.branch, tree=t)
         rev_tree = t.branch.repository.revision_tree(revision_in_repo)
-        t.set_parent_ids([revision_in_repo, 'another-missing'])
-        self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+        if t._format.supports_righthand_parent_id_as_ghost:
+            t.set_parent_ids([revision_in_repo, 'another-missing'])
+            self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+        else:
+            self.assertRaises(errors.GhostRevisionUnusableHere,
+                t.set_parent_ids, [revision_in_repo, 'another-missing'])
 
     def test_set_three_parents_ids(self):
         t = self.make_branch_and_tree('.')
@@ -316,8 +329,12 @@ class TestAddParent(TestParents):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
-        tree.add_parent_tree_id('second')
-        self.assertConsistentParents([first_revision, 'second'], tree)
+        if tree._format.supports_righthand_parent_id_as_ghost:
+            tree.add_parent_tree_id('second')
+            self.assertConsistentParents([first_revision, 'second'], tree)
+        else:
+            self.assertRaises(errors.GhostRevisionUnusableHere,
+                    tree.add_parent_tree_id, 'second')
 
     def test_add_first_parent_tree(self):
         """Test adding the first parent id"""
@@ -360,8 +377,12 @@ class TestAddParent(TestParents):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
-        tree.add_parent_tree(('second', None))
-        self.assertConsistentParents([first_revision, 'second'], tree)
+        if tree._format.supports_righthand_parent_id_as_ghost:
+            tree.add_parent_tree(('second', None))
+            self.assertConsistentParents([first_revision, 'second'], tree)
+        else:
+            self.assertRaises(errors.GhostRevisionUnusableHere,
+                    tree.add_parent_tree, ('second', None))
 
 
 class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
@@ -375,11 +396,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def assertDeltaApplicationResultsInExpectedBasis(self, tree, revid, delta,
         expected_inventory):
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.update_basis_by_delta(revid, delta)
-        finally:
-            tree.unlock()
         # check the last revision was adjusted to rev_id
         self.assertEqual(revid, tree.last_revision())
         # check the parents are what we expect
@@ -387,11 +405,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # check that the basis tree has the inventory we expect from applying
         # the delta.
         result_basis = tree.basis_tree()
-        result_basis.lock_read()
-        try:
+        with result_basis.lock_read():
             self.assertEqual(expected_inventory, result_basis.root_inventory)
-        finally:
-            result_basis.unlock()
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
@@ -412,6 +427,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         return delta
 
     def fake_up_revision(self, tree, revid, shape):
+
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable("test requires inventory tree")
 
         class ShapeTree(InventoryRevisionTree):
 

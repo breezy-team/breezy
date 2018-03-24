@@ -97,6 +97,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self.repository = _repository
         self.conf_store = None
         Branch.__init__(self, possible_transports)
+        self._tags_bytes = None
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, self.user_url)
@@ -401,6 +402,36 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             self._format._update_feature_flags(updated_flags)
             self.control_transport.put_bytes('format', self._format.as_string())
+
+    def _get_tags_bytes(self):
+        """Get the bytes of a serialised tags dict.
+
+        Note that not all branches support tags, nor do all use the same tags
+        logic: this method is specific to BasicTags. Other tag implementations
+        may use the same method name and behave differently, safely, because
+        of the double-dispatch via
+        format.make_tags->tags_instance->get_tags_dict.
+
+        :return: The bytes of the tags file.
+        :seealso: Branch._set_tags_bytes.
+        """
+        with self.lock_read():
+            if self._tags_bytes is None:
+                self._tags_bytes = self._transport.get_bytes('tags')
+            return self._tags_bytes
+
+    def _set_tags_bytes(self, bytes):
+        """Mirror method for _get_tags_bytes.
+
+        :seealso: Branch._get_tags_bytes.
+        """
+        with self.lock_write():
+            self._tags_bytes = bytes
+            return self._transport.put_bytes('tags', bytes)
+
+    def _clear_cached_state(self):
+        super(BzrBranch, self)._clear_cached_state()
+        self._tags_bytes = None
 
 
 class BzrBranch8(BzrBranch):

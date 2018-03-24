@@ -34,6 +34,7 @@ from breezy import (
     revision,
     shelf,
     tests,
+    tree as _mod_tree,
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
@@ -162,7 +163,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         rev1 = wt_a.commit('commit one')
 
         branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
-        self.assertEqual(wt_a.branch.base, branch_b.get_parent())
+        self.assertEqual(wt_a.branch.user_url, branch_b.get_parent())
         return branch_b
 
     def test_clone_branch_nickname(self):
@@ -424,7 +425,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
         self.assertEqual('null:', checkout_b.last_revision())
-        rev1 = checkout_b.commit('rev1')
+        try:
+            rev1 = checkout_b.commit('rev1')
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                    'roundtripping between %r and %r not supported' %
+                    (checkout_b.branch, checkout_b.branch.get_master_branch()))
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
@@ -491,6 +497,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
         self.assertFalse(revision.NULL_REVISION in must_fetch)
         self.assertFalse(revision.NULL_REVISION in should_fetch)
+
+    def test_create_memorytree(self):
+        tree = self.make_branch_and_tree('a')
+        self.assertIsInstance(tree.branch.create_memorytree(), _mod_tree.Tree)
 
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):
@@ -628,9 +638,22 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        made_branch = self.make_branch('.')
+        made_controldir = self.make_controldir('.')
+        made_controldir.create_repository()
+        if made_controldir._format.colocated_branches:
+            # Formats that support colocated branches sometimes have a default
+            # branch that is a reference branch (such as Git). Cope with
+            # those by creating a different colocated branch.
+            name = 'foo'
+        else:
+            name = None
+        try:
+            made_branch = made_controldir.create_branch(name)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('Uninitializable branch format')
+
         self.assertEqual(None,
-            made_branch._format.get_reference(made_branch.controldir))
+            made_branch._format.get_reference(made_branch.controldir, name))
 
     def test_set_reference(self):
         """set_reference on all regular branches should be callable."""
@@ -649,7 +672,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             pass
         else:
             ref = this_branch._format.get_reference(this_branch.controldir)
-            self.assertEqual(ref, other_branch.base)
+            self.assertEqual(ref, other_branch.user_url)
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -1022,9 +1045,6 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)
         self.assertEqual(br.user_url, br.user_transport.base)
-        # for all current bzrdir implementations the user dir must be 
-        # above the control dir but we might need to relax that?
-        self.assertEqual(br.control_url.find(br.user_url), 0)
         self.assertEqual(br.control_url, br.control_transport.base)
 
 

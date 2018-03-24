@@ -28,7 +28,7 @@ class TestExtract(TestCaseWithTransport):
         wt = self.make_branch_and_tree('a', format='rich-root-pack')
         wt.add(['b', 'b/c', 'd'], ['b-id', 'c-id', 'd-id'])
         wt.commit('added files')
-        b_wt = wt.extract('b-id')
+        b_wt = wt.extract('b', 'b-id')
         self.assertEqual('b-id', b_wt.get_root_id())
         self.assertEqual('c-id', b_wt.path2id('c'))
         self.assertEqual('c', b_wt.id2path('c-id'))
@@ -43,7 +43,7 @@ class TestExtract(TestCaseWithTransport):
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
         wt.commit('added files')
-        return wt.extract('b-id')
+        return wt.extract('b', 'b-id')
 
     def test_extract_in_checkout(self):
         a_branch = self.make_branch('branch', format='rich-root-pack')
@@ -59,7 +59,7 @@ class TestExtract(TestCaseWithTransport):
         wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], ['b-id', 'c-id', 'd-id',
                 'e-id'])
         wt.commit('added files')
-        b_wt = wt.extract('d-id')
+        b_wt = wt.extract('b/c/d', 'd-id')
         b_branch = branch.Branch.open('branch/b/c/d')
         b_branch_ref = branch.Branch.open('a/b/c/d')
         self.assertEqual(b_branch.base, b_branch_ref.base)

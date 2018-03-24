@@ -118,8 +118,8 @@ else:
                 return asbytes()
         return s
 
-    _bad.func_code = _b_for_broken_paramiko.func_code
-    _bad_asbytes.func_code = _asbytes_for_broken_paramiko.func_code
+    _bad.__code__ = _b_for_broken_paramiko.__code__
+    _bad_asbytes.__code__ = _asbytes_for_broken_paramiko.__code__
 
 
 class SFTPLock(object):
