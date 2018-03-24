@@ -693,7 +693,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 update_inventory = True
                 inv = self.root_inventory
                 to_dir_id = to_entry[0][2]
-                to_dir_ie = inv[to_dir_id]
+                to_dir_ie = inv.get_entry(to_dir_id)
             else:
                 update_inventory = False
 
@@ -782,7 +782,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # to rollback
                     if update_inventory:
                         # rename the entry
-                        from_entry = inv[from_id]
+                        from_entry = inv.get_entry(from_id)
                         current_parent = from_entry.parent_id
                         inv.rename(from_id, to_dir_id, from_tail)
                         rollbacks.add_cleanup(
@@ -1885,7 +1885,7 @@ class DirStateRevisionTree(InventoryTree):
     def get_file_revision(self, path, file_id=None):
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path, file_id)
-            return inv[inv_file_id].revision
+            return inv.get_entry(inv_file_id).revision
 
     def get_file(self, path, file_id=None):
         return BytesIO(self.get_file_text(path, file_id))
@@ -1893,7 +1893,7 @@ class DirStateRevisionTree(InventoryTree):
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv[inv_file_id].text_size
+        return inv.get_entry(inv_file_id).text_size
 
     def get_file_text(self, path, file_id=None):
         content = None
@@ -1911,7 +1911,7 @@ class DirStateRevisionTree(InventoryTree):
 
     def get_reference_revision(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv[inv_file_id].reference_revision
+        return inv.get_entry(inv_file_id).reference_revision
 
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
@@ -1976,7 +1976,7 @@ class DirStateRevisionTree(InventoryTree):
         inv, inv_file_id = self._path2inv_file_id(path)
         if inv_file_id is None:
             return ('missing', None, None, None)
-        entry = inv[inv_file_id]
+        entry = inv.get_entry(inv_file_id)
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -1987,7 +1987,7 @@ class DirStateRevisionTree(InventoryTree):
 
     def is_executable(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv[inv_file_id]
+        ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False
         return ie.executable
@@ -2081,7 +2081,7 @@ class DirStateRevisionTree(InventoryTree):
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv[file_id]
+            entry = inv.get_entry(file_id)
             for name, child in entry.sorted_children():
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None,

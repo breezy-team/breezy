@@ -590,7 +590,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             (from_basename, to_basename), (kind, None), (False, False))
 
     def deleted(self, tree, file_id):
-        entry = tree.root_inventory[file_id]
+        entry = tree.root_inventory.get_entry(file_id)
         path = tree.id2path(file_id)
         return (file_id, (path, None), True, (True, False), (entry.parent_id, None),
                 (entry.name, None), (entry.kind, None),

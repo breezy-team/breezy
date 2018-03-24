@@ -2499,7 +2499,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == '':
                 # Replace the root entry
-                inv._byid.delete(inv.root.file_id)
+                del inv._byid[inv.root.file_id]
                 inv.root.file_id = file_id
                 inv._byid[file_id] = inv.root
                 dir_ids[''] = file_id

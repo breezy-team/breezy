@@ -314,7 +314,7 @@ class TestInventoryUpdates(TestCase):
         inv.root.file_id = b'some-new-root'
         ie.name = u'file2'
         self.assertEqual(b'some-tree-root', inv2.root.file_id)
-        self.assertEqual(u'hello', inv2[b'hello-id'].name)
+        self.assertEqual(u'hello', inv2.get_entry(b'hello-id').name)
 
     def test_copy_empty(self):
         """Make sure an empty inventory can be copied."""
@@ -611,7 +611,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_sha1 = ''
         delta = [(None, u'path', 'file-id', file1)]
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
-        self.assertEqual('file-id', res_inv['file-id'].file_id)
+        self.assertEqual('file-id', res_inv.get_entry('file-id').file_id)
 
     def test_remove_file(self):
         inv = self.get_empty_inventory()
@@ -940,18 +940,18 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
         new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
-        root_entry = new_inv[inv.root.file_id]
+        root_entry = new_inv.get_entry(inv.root.file_id)
         self.assertEqual(None, root_entry._children)
         self.assertEqual({'file'}, set(root_entry.children))
-        file_direct = new_inv["fileid"]
+        file_direct = new_inv.get_entry("fileid")
         file_found = root_entry.children['file']
         self.assertEqual(file_direct.kind, file_found.kind)
         self.assertEqual(file_direct.file_id, file_found.file_id)
@@ -977,20 +977,20 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(120, p_id_basename._root_node.maximum_size)
         self.assertEqual(2, p_id_basename._root_node._key_width)
 
-    def test___iter__(self):
+    def test_iter_all_ids(self):
         inv = Inventory()
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
         new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
-        fileids = sorted(new_inv.__iter__())
+        fileids = sorted(new_inv.iter_all_ids())
         self.assertEqual([inv.root.file_id, "fileid"], fileids)
 
     def test__len__(self):
@@ -998,29 +998,29 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         self.assertEqual(2, len(chk_inv))
 
-    def test___getitem__(self):
+    def test_get_entry(self):
         inv = Inventory()
         inv.revision_id = b"revid"
         inv.root.revision = b"rootrev"
         inv.add(InventoryFile(b"fileid", u"file", inv.root.file_id))
-        inv[b"fileid"].revision = b"filerev"
-        inv[b"fileid"].executable = True
-        inv[b"fileid"].text_sha1 = b"ffff"
-        inv[b"fileid"].text_size = 1
+        inv.get_entry(b"fileid").revision = b"filerev"
+        inv.get_entry(b"fileid").executable = True
+        inv.get_entry(b"fileid").text_sha1 = b"ffff"
+        inv.get_entry(b"fileid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         data = b''.join(chk_inv.to_lines())
         new_inv = CHKInventory.deserialise(chk_bytes, data, (b"revid",))
-        root_entry = new_inv[inv.root.file_id]
-        file_entry = new_inv[b"fileid"]
+        root_entry = new_inv.get_entry(inv.root.file_id)
+        file_entry = new_inv.get_entry(b"fileid")
         self.assertEqual("directory", root_entry.kind)
         self.assertEqual(inv.root.file_id, root_entry.file_id)
         self.assertEqual(inv.root.parent_id, root_entry.parent_id)
@@ -1041,10 +1041,10 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         self.assertTrue(chk_inv.has_id('fileid'))
@@ -1066,11 +1066,11 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         fileentry = InventoryFile("fileid", "file", "dirid")
         inv.add(direntry)
         inv.add(fileentry)
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
-        inv["dirid"].revision = "filerev"
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
+        inv.get_entry("dirid").revision = "filerev"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
@@ -1087,11 +1087,11 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         fileentry = InventoryFile("fileid", "file", "dirid")
         inv.add(direntry)
         inv.add(fileentry)
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
-        inv["dirid"].revision = "filerev"
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
+        inv.get_entry("dirid").revision = "filerev"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
@@ -1172,18 +1172,18 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         inv2 = Inventory()
         inv2.revision_id = "revid2"
         inv2.root.revision = "rootrev"
         inv2.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv2["fileid"].revision = "filerev2"
-        inv2["fileid"].executable = False
-        inv2["fileid"].text_sha1 = "bbbb"
-        inv2["fileid"].text_size = 2
+        inv2.get_entry("fileid").revision = "filerev2"
+        inv2.get_entry("fileid").executable = False
+        inv2.get_entry("fileid").text_sha1 = "bbbb"
+        inv2.get_entry("fileid").text_size = 2
         # get fresh objects.
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
@@ -1202,10 +1202,10 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         inv.add(InventoryFile("fileid", "file", inv.root.file_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         # get fresh objects.
         chk_bytes = self.get_chk_bytes()
         tmp_inv = CHKInventory.from_inventory(chk_bytes, inv)
@@ -1327,14 +1327,14 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.root.revision = "rootrev"
         root_id = inv.root.file_id
         inv.add(InventoryFile("fileid", u'f\xefle', root_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 0
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 0
         inv.add(InventoryDirectory("dirid", u'dir-\N{EURO SIGN}', root_id))
         inv.add(InventoryFile("childid", u'ch\xefld', "dirid"))
-        inv["childid"].revision = "filerev"
-        inv["childid"].text_sha1 = "ffff"
-        inv["childid"].text_size = 0
+        inv.get_entry("childid").revision = "filerev"
+        inv.get_entry("childid").text_sha1 = "ffff"
+        inv.get_entry("childid").text_size = 0
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
@@ -1360,16 +1360,16 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.root.revision = "rootrev"
         root_id = inv.root.file_id
         inv.add(InventoryFile("fileid", "file", root_id))
-        inv["fileid"].revision = "filerev"
-        inv["fileid"].executable = True
-        inv["fileid"].text_sha1 = "ffff"
-        inv["fileid"].text_size = 1
+        inv.get_entry("fileid").revision = "filerev"
+        inv.get_entry("fileid").executable = True
+        inv.get_entry("fileid").text_sha1 = "ffff"
+        inv.get_entry("fileid").text_size = 1
         inv.add(InventoryDirectory("dirid", "dir", root_id))
         inv.add(InventoryFile("childid", "child", "dirid"))
-        inv["childid"].revision = "filerev"
-        inv["childid"].executable = False
-        inv["childid"].text_sha1 = "dddd"
-        inv["childid"].text_size = 1
+        inv.get_entry("childid").revision = "filerev"
+        inv.get_entry("childid").executable = False
+        inv.get_entry("childid").text_sha1 = "dddd"
+        inv.get_entry("childid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
@@ -1388,7 +1388,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test__preload_handles_partially_evaluated_inventory(self):
         new_inv = self.make_basic_utf8_inventory()
-        ie = new_inv[new_inv.root_id]
+        ie = new_inv.get_entry(new_inv.root_id)
         self.assertIs(None, ie._children)
         self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
                          sorted(ie.children.keys()))
@@ -1399,7 +1399,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         # No change
         self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
                          sorted(ie._children.keys()))
-        ie_dir = new_inv["dirid"]
+        ie_dir = new_inv.get_entry("dirid")
         self.assertEqual([u'ch\xefld'],
                          sorted(ie_dir._children.keys()))
 
@@ -1574,9 +1574,9 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
         inv = mutable_inventory_from_tree(tree)
         self.assertEqual(revid, inv.revision_id)
         self.assertEqual(2, len(inv))
-        self.assertEqual("a", inv['thefileid'].name)
+        self.assertEqual("a", inv.get_entry('thefileid').name)
         # The inventory should be mutable and independent of
         # the original tree
-        self.assertFalse(tree.root_inventory['thefileid'].executable)
-        inv['thefileid'].executable = True
-        self.assertFalse(tree.root_inventory['thefileid'].executable)
+        self.assertFalse(tree.root_inventory.get_entry('thefileid').executable)
+        inv.get_entry('thefileid').executable = True
+        self.assertFalse(tree.root_inventory.get_entry('thefileid').executable)
