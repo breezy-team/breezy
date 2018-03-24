@@ -718,7 +718,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def is_versioned(self, path):
         with self.lock_read():
             path = path.rstrip('/').encode('utf-8')
-            return (path in self.index or self._has_dir(path))
+            (index, subpath) = self._lookup_index(path)
+            return (subpath in index or self._has_dir(path))
 
     def _has_dir(self, path):
         if path == "":
@@ -731,6 +732,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._lock_mode is None:
             raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
+        # TODO(jelmer): Browse over all indexes
         for p in self.index:
             self._ensure_versioned_dir(posixpath.dirname(p))
 
@@ -786,6 +788,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 raise errors.InvalidNormalization(path)
             self._index_add_entry(path, kind)
 
+    def _lookup_index(self, encoded_path):
+        if not isinstance(encoded_path, bytes):
+            raise TypeError(encoded_path)
+        return self.index, encoded_path
+
     def _index_add_entry(self, path, kind, flags=0):
         if not isinstance(path, basestring):
             raise TypeError(path)
@@ -825,10 +832,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             # TODO(jelmer): Why do we need to do this?
             trace.mutter('ignoring path with invalid newline in it: %r', path)
             return
-        self.index[encoded_path] = index_entry_from_stat(
+        (index, index_path) = self._lookup_index(encoded_path)
+        index[index_path] = index_entry_from_stat(
             stat_val, blob.id, flags)
         if self._versioned_dirs is not None:
-            self._ensure_versioned_dir(encoded_path)
+            self._ensure_versioned_dir(index_path)
 
     def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         if yield_parents:
@@ -843,6 +851,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if specific_files is None or u"" in specific_files:
                 ret[(None, u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
+            # TODO(jelmer): Recursive into submodules
             for path, value in self.index.iteritems():
                 if self.mapping.is_special_file(path):
                     continue
@@ -921,14 +930,16 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             raise errors.ObjectNotLocked(self)
         encoded_path = path.encode("utf-8")
         count = 0
+        (index, subpath) = self._lookup_index(encoded_path)
         try:
-            del self.index[encoded_path]
+            del index[subpath]
         except KeyError:
             # A directory, perhaps?
-            for p in list(self.index):
-                if p.startswith(encoded_path+b"/"):
+            # TODO(jelmer): Deletes that involve submodules?
+            for p in list(index):
+                if p.startswith(subpath+b"/"):
                     count += 1
-                    del self.index[p]
+                    del index[p]
         else:
             count = 1
         self._versioned_dirs = None
@@ -948,9 +959,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def update_basis_by_delta(self, revid, delta):
         # TODO(jelmer): This shouldn't be called, it's inventory specific.
         for (old_path, new_path, file_id, ie) in delta:
-            if old_path is not None and old_path.encode('utf-8') in self.index:
-                del self.index[old_path.encode('utf-8')]
-                self._versioned_dirs = None
+            if old_path is not None:
+                (index, old_subpath) = self._lookup_index(old_path.encode('utf-8'))
+                if old_subpath in index:
+                    del index[old_subpath]
+                    self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
         self.flush()
@@ -1018,10 +1031,13 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
                 kind = self.kind(from_rel)
 
-            if not after and not from_path in self.index and kind != 'directory':
-                # It's not a file
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NotVersionedError(path=from_rel))
+            
+            if not after and kind != 'directory':
+                (index, from_subpath) = self._lookup_index(from_path)
+                if from_subpath not in index:
+                    # It's not a file
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.NotVersionedError(path=from_rel))
 
             if not after:
                 try:
@@ -1032,12 +1048,14 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                             errors.NoSuchFile(to_rel))
                     raise
             if kind != 'directory':
+                (index, from_subpath) = self._lookup_index(from_path)
                 try:
-                    del self.index[from_path]
+                    del index[from_subpath]
                 except KeyError:
                     pass
                 self._index_add_entry(to_rel, kind)
             else:
+                # TODO(jelmer): Handle submodules
                 todo = [p for p in self.index if p.startswith(from_path+'/')]
                 for p in todo:
                     self.index[posixpath.join(to_path, posixpath.relpath(p, from_path))] = self.index[p]
