@@ -26,6 +26,7 @@ from dulwich.repo import (
 import os
 
 from .... import (
+    config,
     errors,
     revision,
     )
@@ -191,6 +192,28 @@ class TestGitRepository(tests.TestCaseWithTransport):
     def test_get_parent_map_null(self):
         self.assertEquals({revision.NULL_REVISION: ()}, 
                            self.git_repo.get_parent_map([revision.NULL_REVISION]))
+
+
+class SigningGitRepository(tests.TestCaseWithTransport):
+
+    def test_signed_commit(self):
+        import breezy.gpg
+        oldstrategy = breezy.gpg.GPGStrategy
+        wt = self.make_branch_and_tree('.', format='git')
+        branch = wt.branch
+        revid = wt.commit("base", allow_pointless=True)
+        self.assertFalse(branch.repository.has_signature_for_revision_id(revid))
+        try:
+            breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
+            conf = config.MemoryStack('''
+create_signatures=always
+''')
+            revid2 = wt.commit(config=conf, message="base", allow_pointless=True)
+            def sign(text):
+                return breezy.gpg.LoopbackGPGStrategy(None).sign(text)
+            self.assertIsInstance(branch.repository.get_signature_text(revid2), str)
+        finally:
+            breezy.gpg.GPGStrategy = oldstrategy
 
 
 class GitRepositoryFormat(tests.TestCase):

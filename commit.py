@@ -26,6 +26,8 @@ import os
 import stat
 
 from ... import (
+    config as _mod_config,
+    gpg,
     osutils,
     revision as _mod_revision,
     )
@@ -227,6 +229,9 @@ class GitCommitBuilder(CommitBuilder):
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode(c.encoding)
+        if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
+            strategy = gpg.GPGStrategy(self._config_stack)
+            c.gpgsig = strategy.sign(c.as_raw_string(), gpg.MODE_DETACH)
         self.store.add_object(c)
         self.repository.commit_write_group()
         self._new_revision_id = self._mapping.revision_id_foreign_to_bzr(c.id)
