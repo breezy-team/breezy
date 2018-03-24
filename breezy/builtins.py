@@ -53,6 +53,7 @@ from breezy import (
     symbol_versioning,
     timestamp,
     transport,
+    tree as _mod_tree,
     ui,
     urlutils,
     views,
@@ -960,11 +961,11 @@ class cmd_inventory(Command):
 
         self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
-            file_ids = tree.paths2ids(file_list, trees=extra_trees,
-                                      require_versioned=True)
+            paths = tree.find_related_paths_across_trees(
+                    file_list, extra_trees, require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = tree.iter_entries_by_dir(specific_file_ids=file_ids)
+            entries = tree.iter_entries_by_dir(specific_files=paths)
         else:
             entries = tree.iter_entries_by_dir()
 
@@ -4775,29 +4776,27 @@ class cmd_remerge(Command):
                                          " merges.  Not cherrypicking or"
                                          " multi-merges."))
         repository = tree.branch.repository
-        interesting_ids = None
+        interesting_files = None
         new_conflicts = []
         conflicts = tree.conflicts()
         if file_list is not None:
-            interesting_ids = set()
+            interesting_files = set()
             for filename in file_list:
-                file_id = tree.path2id(filename)
-                if file_id is None:
+                if not tree.is_versioned(filename):
                     raise errors.NotVersionedError(filename)
-                interesting_ids.add(file_id)
-                if tree.kind(filename, file_id) != "directory":
+                interesting_files.add(filename)
+                if tree.kind(filename) != "directory":
                     continue
 
-                # FIXME: Support nested trees
-                for name, ie in tree.root_inventory.iter_entries(file_id):
-                    interesting_ids.add(ie.file_id)
+                for path, ie in tree.iter_entries_by_dir(specific_files=[filename]):
+                    interesting_files.add(path)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:
             # Remerge only supports resolving contents conflicts
             allowed_conflicts = ('text conflict', 'contents conflict')
             restore_files = [c.path for c in conflicts
                              if c.typestring in allowed_conflicts]
-        _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
+        _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_files)
         tree.set_conflicts(ConflictList(new_conflicts))
         if file_list is not None:
             restore_files = file_list
@@ -4814,7 +4813,7 @@ class cmd_remerge(Command):
         tree.set_parent_ids(parents[:1])
         try:
             merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
-            merger.interesting_ids = interesting_ids
+            merger.interesting_files = interesting_files
             merger.merge_type = merge_type
             merger.show_base = show_base
             merger.reprocess = reprocess
