@@ -359,7 +359,7 @@ class TestHasVersionedDirectories(TestCaseWithTree):
     def test_has_versioned_directories(self):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
-        self.assertSubset([tree.has_versioned_directories()], (True, False))
+        self.assertIn(tree.has_versioned_directories(), (True, False))
 
 
 class TestSupportsRenameTracking(TestCaseWithTree):
