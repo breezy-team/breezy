@@ -151,6 +151,11 @@ class WorkingTree(mutabletree.MutableTree,
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
 
+    def supports_merge_modified(self):
+        """Indicate whether this workingtree supports storing merge_modified.
+        """
+        return self._format.supports_merge_modified
+
     def _supports_executable(self):
         if sys.platform == 'win32':
             return False
@@ -1407,6 +1412,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     """If this format supports missing parent conflicts."""
 
     supports_versioned_directories = None
+
+    supports_merge_modified = True
+    """If this format supports storing merge modified hashes."""
 
     supports_setting_file_ids = True
     """If this format allows setting the file id."""

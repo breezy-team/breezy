@@ -77,7 +77,8 @@ class InventoryTree(Tree):
         adjusted to account for existing elements that match case
         insensitively.
         """
-        return list(self._yield_canonical_inventory_paths(paths))
+        with self.lock_read():
+            return list(self._yield_canonical_inventory_paths(paths))
 
     def get_canonical_inventory_path(self, path):
         """Returns the first inventory item that case-insensitively matches path.
@@ -97,7 +98,8 @@ class InventoryTree(Tree):
         :return: The input path adjusted to account for existing elements
         that match case insensitively.
         """
-        return next(self._yield_canonical_inventory_paths([path]))
+        with self.lock_read():
+            return next(self._yield_canonical_inventory_paths([path]))
 
     def _yield_canonical_inventory_paths(self, paths):
         for path in paths:
@@ -112,31 +114,34 @@ class InventoryTree(Tree):
             for elt in bit_iter:
                 lelt = elt.lower()
                 new_path = None
-                for child in self.iter_children(cur_id):
-                    try:
-                        # XXX: it seem like if the child is known to be in the
-                        # tree, we shouldn't need to go from its id back to
-                        # its path -- mbp 2010-02-11
-                        #
-                        # XXX: it seems like we could be more efficient
-                        # by just directly looking up the original name and
-                        # only then searching all children; also by not
-                        # chopping paths so much. -- mbp 2010-02-11
-                        child_base = os.path.basename(self.id2path(child))
-                        if (child_base == elt):
-                            # if we found an exact match, we can stop now; if
-                            # we found an approximate match we need to keep
-                            # searching because there might be an exact match
-                            # later.  
-                            cur_id = child
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                            break
-                        elif child_base.lower() == lelt:
-                            cur_id = child
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                    except errors.NoSuchId:
-                        # before a change is committed we can see this error...
-                        continue
+                try:
+                    for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
+                        try:
+                            # XXX: it seem like if the child is known to be in the
+                            # tree, we shouldn't need to go from its id back to
+                            # its path -- mbp 2010-02-11
+                            #
+                            # XXX: it seems like we could be more efficient
+                            # by just directly looking up the original name and
+                            # only then searching all children; also by not
+                            # chopping paths so much. -- mbp 2010-02-11
+                            child_base = os.path.basename(self.id2path(child.file_id))
+                            if (child_base == elt):
+                                # if we found an exact match, we can stop now; if
+                                # we found an approximate match we need to keep
+                                # searching because there might be an exact match
+                                # later.  
+                                cur_id = child.file_id
+                                new_path = osutils.pathjoin(cur_path, child_base)
+                                break
+                            elif child_base.lower() == lelt:
+                                cur_id = child.file_id
+                                new_path = osutils.pathjoin(cur_path, child_base)
+                        except errors.NoSuchId:
+                            # before a change is committed we can see this error...
+                            continue
+                except errors.NotADirectory:
+                    pass
                 if new_path:
                     cur_path = new_path
                 else:
@@ -295,17 +300,13 @@ class InventoryTree(Tree):
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path, file_id)
             try:
-                return iter(viewvalues(inv[inv_file_id].children))
+                ie = inv[inv_file_id]
             except errors.NoSuchId:
                 raise errors.NoSuchFile(path)
-
-    def iter_children(self, file_id, path=None):
-        """See Tree.iter_children."""
-        if path is None:
-            path = self.id2path(file_id)
-        entry = self.iter_entries_by_dir(specific_files=[path]).next()[1]
-        for child in viewvalues(getattr(entry, 'children', {})):
-            yield child.file_id
+            else:
+                if ie.kind != 'directory':
+                    raise errors.NotADirectory(path)
+                return iter(viewvalues(ie.children))
 
     def _get_plan_merge_data(self, file_id, other, base):
         from . import versionedfile

@@ -108,6 +108,14 @@ class Tree(object):
     trees or versioned trees.
     """
 
+    def supports_rename_tracking(self):
+        """Whether this tree supports rename tracking.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
+
     def has_versioned_directories(self):
         """Whether this tree can contain explicitly versioned directories.
 
@@ -510,14 +518,6 @@ class Tree(object):
             in `tree`
         """
         raise NotImplementedError(self.find_related_paths_across_trees)
-
-    def iter_children(self, file_id):
-        """Iterate over the file ids of the children of an entry.
-
-        :param file_id: File id of the entry
-        :return: Iterator over child file ids.
-        """
-        raise NotImplementedError(self.iter_children)
 
     def lock_read(self):
         """Lock this tree for multiple read only operations.
@@ -1034,7 +1034,8 @@ class InterTree(InterObject):
                             # Reusing a discarded change.
                             source_entry = self._get_entry(self.source, result[1][0])
                         precise_file_ids.update(
-                                self.source.iter_children(file_id))
+                                child.file_id
+                                for child in self.source.iter_child_entries(result[1][0]))
                     changed_file_ids.add(result[0])
                     yield result
 

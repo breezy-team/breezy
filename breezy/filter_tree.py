@@ -47,7 +47,7 @@ class ContentFilterTree(tree.Tree):
     def get_file_text(self, path, file_id=None):
         chunks = self.backing_tree.get_file_lines(path, file_id)
         filters = self.filter_stack_callback(path)
-        context = ContentFilterContext(path, self, None)
+        context = ContentFilterContext(path, self)
         contents = filtered_output_bytes(chunks, filters, context)
         content = ''.join(contents)
         return content
