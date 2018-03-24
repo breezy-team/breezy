@@ -219,14 +219,14 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.path2id("grandparent/parent"), "b")
         self.assertEqual(btree.path2id("grandparent/parent/file"), "c")
 
-        self.assertTrue(btree.path2id("grandparent2") is None)
-        self.assertTrue(btree.path2id("grandparent2/parent") is None)
-        self.assertTrue(btree.path2id("grandparent2/parent/file") is None)
+        self.assertIs(btree.path2id("grandparent2"), None)
+        self.assertIs(btree.path2id("grandparent2/parent"), None)
+        self.assertIs(btree.path2id("grandparent2/parent/file"), None)
 
         btree.note_rename("grandparent", "grandparent2")
-        self.assertTrue(btree.old_path("grandparent") is None)
-        self.assertTrue(btree.old_path("grandparent/parent") is None)
-        self.assertTrue(btree.old_path("grandparent/parent/file") is None)
+        self.assertIs(btree.old_path("grandparent"), None)
+        self.assertIs(btree.old_path("grandparent/parent"), None)
+        self.assertIs(btree.old_path("grandparent/parent/file"), None)
 
         self.assertEqual(btree.id2path("a"), "grandparent2")
         self.assertEqual(btree.id2path("b"), "grandparent2/parent")
@@ -351,7 +351,7 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.get_file(btree.id2path("c")).read(), "Hello\n")
         btree.note_deletion("grandparent/parent/file")
         self.assertTrue(btree.id2path("c") is None)
-        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
+        self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):
         ids = sorted(tree.all_file_ids())
@@ -663,7 +663,7 @@ class BundleTester(object):
                 , 'sub/sub'
                 ])
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('exe-1')
+        trans_id = tt.trans_id_tree_path('executable')
         tt.set_executability(False, trans_id)
         tt.apply()
         self.tree1.commit('removed', rev_id='a@cset-0-3')
@@ -731,7 +731,7 @@ class BundleTester(object):
             self.assertEqual(link_target, bund_tree.get_symlink_target(link_name))
 
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id(link_id)
+        trans_id = tt.trans_id_tree_path(link_name)
         tt.adjust_path('link2', tt.root, trans_id)
         tt.delete_contents(trans_id)
         tt.create_symlink(new_link_target, trans_id)
@@ -745,7 +745,7 @@ class BundleTester(object):
                              bund_tree.get_symlink_target('link2'))
 
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id(link_id)
+        trans_id = tt.trans_id_tree_path('link2')
         tt.delete_contents(trans_id)
         tt.create_symlink('jupiter', trans_id)
         tt.apply()
@@ -753,7 +753,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('l@cset-0-2', 'l@cset-0-3')
 
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id(link_id)
+        trans_id = tt.trans_id_tree_path('link2')
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('Delete symlink', rev_id='l@cset-0-4')
@@ -783,7 +783,7 @@ class BundleTester(object):
 
         # Delete
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('binary-1')
+        trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('delete binary', rev_id='b@cset-0-2')
@@ -791,7 +791,7 @@ class BundleTester(object):
 
         # Rename & modify
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('binary-2')
+        trans_id = tt.trans_id_tree_path('file2')
         tt.adjust_path('file3', tt.root, trans_id)
         tt.delete_contents(trans_id)
         tt.create_file('file\rcontents\x00\n\x00', trans_id)
@@ -801,7 +801,7 @@ class BundleTester(object):
 
         # Modify
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('binary-2')
+        trans_id = tt.trans_id_tree_path('file3')
         tt.delete_contents(trans_id)
         tt.create_file('\x00file\rcontents', trans_id)
         tt.apply()
@@ -820,7 +820,7 @@ class BundleTester(object):
         self.tree1.commit('create file', rev_id='a@lmod-0-1')
 
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('file')
+        trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
         tt.create_file('file2', trans_id)
         tt.apply()
@@ -828,7 +828,7 @@ class BundleTester(object):
 
         other = self.get_checkout('a@lmod-0-1')
         tt = TreeTransform(other)
-        trans_id = tt.trans_id_tree_file_id('file')
+        trans_id = tt.trans_id_tree_path('file2')
         tt.delete_contents(trans_id)
         tt.create_file('file2', trans_id)
         tt.apply()

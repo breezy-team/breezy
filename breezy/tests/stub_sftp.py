@@ -489,8 +489,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
             # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
         else:
-            # But unix SFTP servers should just deal in bytestreams
-            self._homedir = self._homedir.encode('utf-8')
+            self._homedir = self._homedir
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'

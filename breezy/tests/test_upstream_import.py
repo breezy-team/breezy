@@ -233,8 +233,8 @@ class TestImport(TestCaseInTempDir):
         tree.lock_write()
         try:
             importer(tree, archive_file)
-            self.assertTrue(tree.path2id('README') is not None)
-            self.assertTrue(tree.path2id('FEEDME') is not None)
+            self.assertTrue(tree.is_versioned('README'))
+            self.assertTrue(tree.is_versioned('FEEDME'))
             self.assertTrue(os.path.isfile(tree.abspath('README')))
             self.assertEqual(tree.stored_kind('README'), 'file')
             self.assertEqual(tree.stored_kind('FEEDME'), 'file')
@@ -246,7 +246,7 @@ class TestImport(TestCaseInTempDir):
                 warnings.simplefilter('ignore')
                 archive_file = self.make_archive2(builder, subdir)
                 importer(tree, archive_file)
-            self.assertTrue(tree.path2id('README') is not None)
+            self.assertTrue(tree.is_versioned('README'))
             # Ensure the second version of the file is used.
             self.assertEqual(tree.get_file_text('README'), 'Wow?')
             self.assertTrue(not os.path.exists(tree.abspath('FEEDME')))
@@ -258,13 +258,13 @@ class TestImport(TestCaseInTempDir):
         tar_file = self.make_messed_tar()
         tree = BzrDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
-        self.assertTrue(tree.path2id('project-0.1/README') is not None)
+        self.assertTrue(tree.is_versioned('project-0.1/README'))
 
     def test_untar_gzip(self):
         tar_file = self.make_tar(mode='w:gz')
         tree = BzrDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
-        self.assertTrue(tree.path2id('README') is not None)
+        self.assertTrue(tree.is_versioned('README'))
 
     def test_no_crash_with_bzrdir(self):
         tar_file = self.make_tar_with_bzrdir()

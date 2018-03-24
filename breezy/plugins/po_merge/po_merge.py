@@ -99,7 +99,7 @@ class PoMerger(merge.PerFileMerger):
             # Return early if there is no options defined
             return False
         po_dir = None
-        po_path = self.get_filepath(params, self.merger.this_tree)
+        po_path = params.this_path
         for po_dir in self.po_dirs:
             glob = osutils.pathjoin(po_dir, self.po_glob)
             if fnmatch.fnmatch(po_path, glob):

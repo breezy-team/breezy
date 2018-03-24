@@ -21,7 +21,6 @@ from breezy import (
     tests,
     )
 from breezy.workingtree import ShelvingUnsupported
-from breezy.tests.matchers import HasLayout
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 

@@ -182,7 +182,7 @@ def common_directory(names):
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
-    if isdir(path) and tree.path2id(relative_path) is not None:
+    if isdir(path) and tree.is_versioned(relative_path):
         tt.cancel_deletion(trans_id)
     else:
         tt.create_directory(trans_id)

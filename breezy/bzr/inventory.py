@@ -178,8 +178,11 @@ class InventoryEntry(object):
         candidates = {}
         # identify candidate head revision ids.
         for inv in previous_inventories:
-            if inv.has_id(self.file_id):
+            try:
                 ie = inv[self.file_id]
+            except errors.NoSuchId:
+                pass
+            else:
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
@@ -717,12 +720,12 @@ class CommonInventory(object):
 
     def _preload_cache(self):
         """Populate any caches, we are about to access all items.
-        
+
         The default implementation does nothing, because CommonInventory doesn't
         have a cache.
         """
         pass
-    
+
     def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
         yield_parents=False):
         """Iterate over the entries in a directory first order.

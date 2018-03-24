@@ -111,9 +111,6 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         one_id = tree.path2id('one')
 
         os.remove('tree/one')
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'one')
-        finally:
-            tree.unlock()
 

@@ -460,9 +460,7 @@ class Commit(object):
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such
         # as updating its basis and unversioning paths that were missing.
-        self.work_tree.unversion(
-                {self.work_tree.id2path(file_id) for file_id in self.deleted_ids},
-                self.deleted_ids)
+        self.work_tree.unversion(self.deleted_paths)
         self._set_progress_stage("Updating the working tree")
         self.work_tree.update_basis_by_delta(self.rev_id,
              self.builder.get_basis_delta())
@@ -694,7 +692,7 @@ class Commit(object):
         """
         reporter = self.reporter
         report_changes = reporter.is_verbose()
-        deleted_ids = []
+        deleted_paths = []
         for change in iter_changes:
             if report_changes:
                 old_path = change[1][0]
@@ -706,7 +704,7 @@ class Commit(object):
                 # 'missing' path
                 if report_changes:
                     reporter.missing(new_path)
-                deleted_ids.append(change[0])
+                deleted_paths.append(change[1][1])
                 # Reset the new path (None) and new versioned flag (False)
                 change = (change[0], (change[1][0], None), change[2],
                     (change[3][0], False)) + change[4:]
@@ -731,8 +729,8 @@ class Commit(object):
                             # repositories.
                             reporter.snapshot_change(gettext('modified'), new_path)
             self._next_progress_entry()
-        # Unversion IDs that were found to be deleted
-        self.deleted_ids = deleted_ids
+        # Unversion files that were found to be deleted
+        self.deleted_paths = deleted_paths
 
     def _check_strict(self):
         # XXX: when we use iter_changes this would likely be faster if

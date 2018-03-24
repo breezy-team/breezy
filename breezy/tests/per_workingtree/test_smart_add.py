@@ -84,7 +84,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
             wt.unlock()
         # and the disk state should be the same - reopen to check.
         wt = wt.controldir.open_workingtree()
-        self.assertEqual(wt.path2id('file'), None)
+        self.assertFalse(wt.is_versioned('file'))
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree."""
@@ -93,7 +93,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.smart_add((u".",))
         for path in paths:
-            self.assertNotEqual(wt.path2id(path), None)
+            self.assertTrue(wt.is_versioned(path))
 
     def test_skip_nested_trees(self):
         """Test smart-adding a nested tree ignors it and warns."""
@@ -104,7 +104,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
         wt.smart_add((u".",))
-        self.assertIs(wt.path2id("nested"), None)
+        self.assertFalse(wt.is_versioned("nested"))
         self.assertEqual(
             ['skipping nested tree %r' % nested_wt.basedir], warnings)
 
@@ -115,7 +115,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.smart_add((u".",))
         for path in paths:
-            self.assertNotEqual(wt.path2id(path), None)
+            self.assertTrue(wt.is_versioned(path))
 
     def test_add_tree_from_above_tree(self):
         """Test adding a tree from above the tree."""
@@ -126,7 +126,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('branch')
         wt.smart_add(("branch",))
         for path in paths:
-            self.assertNotEqual(wt.path2id(path), None)
+            self.assertTrue(wt.is_versioned(path))
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
@@ -138,19 +138,19 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         self.build_tree(build_paths)
         wt = self.make_branch_and_tree('.')
-        if wt.user_url != wt.branch.user_url:
+        if wt.controldir.user_url != wt.branch.controldir.user_url:
             # Lightweight checkout, make sure we have a repo location.
             wt.branch.controldir.root_transport.mkdir('original')
         child_tree = self.make_branch_and_tree('original/child')
         wt.smart_add((".",))
         for path in paths:
-            self.assertNotEqual((path, wt.path2id(path)),
-                                (path, None))
+            self.assertNotEqual((path, wt.is_versioned(path)),
+                                (path, False))
         for path in full_child_paths:
-            self.assertEqual((path, wt.path2id(path)),
-                             (path, None))
+            self.assertEqual((path, wt.is_versioned(path)),
+                             (path, False))
         for path in child_paths:
-            self.assertEqual(child_tree.path2id(path), None)
+            self.assertFalse(child_tree.is_versioned(path))
 
     def test_add_paths(self):
         """Test smart-adding a list of paths."""
@@ -159,7 +159,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.smart_add(paths)
         for path in paths:
-            self.assertNotEqual(wt.path2id(path), None)
+            self.assertTrue(wt.is_versioned(path))
 
     def test_add_ignored_nested_paths(self):
         """Test smart-adding a list of paths which includes ignored ones."""
@@ -170,8 +170,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(tree_shape)
         wt.smart_add(add_paths)
         for path in expected_paths:
-            self.assertNotEqual(wt.path2id(path), None,
-                "No id added for %s" % path)
+            self.assertTrue(wt.is_versioned(path), "No id added for %s" % path)
 
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
@@ -186,8 +185,12 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
         added, ignored = wt.smart_add(u'.')
-        self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
-                          added)
+        if wt.has_versioned_directories():
+            self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
+                              added)
+        else:
+            self.assertSubset(('inertiatic/esp', 'inertiatic/CVS'),
+                              added)
         self.assertSubset(('*.py[co]',), ignored)
         self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[co]'])
 
@@ -206,10 +209,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt.smart_add(['file1', 'file2', 'dir1', 'dir2'])
 
         for path in added_paths:
-            self.assertNotEqual(None, wt.path2id(path.rstrip('/')),
+            self.assertTrue(wt.is_versioned(path.rstrip('/')),
                     'Failed to add path: %s' % (path,))
         for path in not_added:
-            self.assertEqual(None, wt.path2id(path.rstrip('/')),
+            self.assertFalse(wt.is_versioned(path.rstrip('/')),
                     'Accidentally added path: %s' % (path,))
 
     def test_add_file_in_unknown_dir(self):

@@ -190,7 +190,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     :return: None
     """
     # read in the existing ignores set
-    ifn = tree.abspath(breezy.IGNORE_FILENAME)
+    ifn = tree.abspath(tree._format.ignore_filename)
     if tree.has_filename(ifn):
         with open(ifn, 'rbU') as f:
             file_contents = f.read()
@@ -203,13 +203,13 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     else:
         file_contents = b""
         newline = os.linesep.encode()
-    
+
     sio = BytesIO(file_contents)
     try:
         ignores = parse_ignore_file(sio)
     finally:
         sio.close()
-    
+
     # write out the updated ignores set
     f = atomicfile.AtomicFile(ifn, 'wb')
     try:
@@ -225,5 +225,5 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     finally:
         f.close()
 
-    if not tree.path2id(breezy.IGNORE_FILENAME):
-        tree.add([breezy.IGNORE_FILENAME])
+    if not tree.is_versioned(tree._format.ignore_filename):
+        tree.add([tree._format.ignore_filename])

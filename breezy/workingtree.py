@@ -81,61 +81,6 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
-class TreeEntry(object):
-    """An entry that implements the minimum interface used by commands.
-
-    This needs further inspection, it may be better to have
-    InventoryEntries without ids - though that seems wrong. For now,
-    this is a parallel hierarchy to InventoryEntry, and needs to become
-    one of several things: decorates to that hierarchy, children of, or
-    parents of it.
-    Another note is that these objects are currently only used when there is
-    no InventoryEntry available - i.e. for unversioned objects.
-    Perhaps they should be UnversionedEntry et al. ? - RBC 20051003
-    """
-
-    def __eq__(self, other):
-        # yes, this us ugly, TODO: best practice __eq__ style.
-        return (isinstance(other, TreeEntry)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "???"
-
-
-class TreeDirectory(TreeEntry):
-    """See TreeEntry. This is a directory in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeDirectory)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "/"
-
-
-class TreeFile(TreeEntry):
-    """See TreeEntry. This is a regular file in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeFile)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
-class TreeLink(TreeEntry):
-    """See TreeEntry. This is a symlink in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeLink)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
 class WorkingTree(mutabletree.MutableTree,
     controldir.ControlComponent):
     """Working copy tree.
@@ -205,6 +150,11 @@ class WorkingTree(mutabletree.MutableTree,
     def has_versioned_directories(self):
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
+
+    def supports_merge_modified(self):
+        """Indicate whether this workingtree supports storing merge_modified.
+        """
+        return self._format.supports_merge_modified
 
     def _supports_executable(self):
         if sys.platform == 'win32':
@@ -423,7 +373,12 @@ class WorkingTree(mutabletree.MutableTree,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         abspath = self.abspath(path)
-        file_obj = open(abspath, 'rb')
+        try:
+            file_obj = open(abspath, 'rb')
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
@@ -510,9 +465,6 @@ class WorkingTree(mutabletree.MutableTree,
                 else:
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
-
-    def id2abspath(self, file_id):
-        return self.abspath(self.id2path(file_id))
 
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
@@ -778,10 +730,7 @@ class WorkingTree(mutabletree.MutableTree,
             return file_id
 
     def get_symlink_target(self, path, file_id=None):
-        if path is not None:
-            abspath = self.abspath(path)
-        else:
-            abspath = self.id2abspath(file_id)
+        abspath = self.abspath(path)
         target = osutils.readlink(abspath)
         return target
 
@@ -814,7 +763,7 @@ class WorkingTree(mutabletree.MutableTree,
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-    def extract(self, file_id, format=None):
+    def extract(self, path, file_id=None, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -826,8 +775,6 @@ class WorkingTree(mutabletree.MutableTree,
         raise NotImplementedError(self.flush)
 
     def kind(self, relpath, file_id=None):
-        if file_id is not None:
-            return osutils.file_kind(self.id2abspath(file_id))
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -966,7 +913,7 @@ class WorkingTree(mutabletree.MutableTree,
     def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
         with self.lock_write():
-            stream = file(self.abspath(path), 'wb')
+            stream = open(self.abspath(path), 'wb')
             try:
                 stream.write(bytes)
             finally:
@@ -1019,9 +966,6 @@ class WorkingTree(mutabletree.MutableTree,
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
-
-    def _file_size(self, entry, stat_value):
-        return stat_value.st_size
 
     def last_revision(self):
         """Return the last revision of the branch for this tree.
@@ -1353,11 +1297,12 @@ class WorkingTree(mutabletree.MutableTree,
             resolved = _mod_conflicts.ConflictList()
             conflict_re = re.compile('^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
+                path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(self.id2path(conflict.file_id), conflict.file_id) != 'file'):
+                    self.kind(path, conflict.file_id) != 'file'):
                     un_resolved.append(conflict)
                     continue
-                my_file = open(self.id2abspath(conflict.file_id), 'rb')
+                my_file = open(self.abspath(path), 'rb')
                 try:
                     for line in my_file:
                         if conflict_re.search(line):
@@ -1466,6 +1411,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_versioned_directories = None
 
+    supports_merge_modified = True
+    """If this format supports storing merge modified hashes."""
+
     supports_setting_file_ids = True
     """If this format allows setting the file id."""
 
@@ -1473,6 +1421,11 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     """If this format supports shelve-like functionality."""
 
     supports_leftmost_parent_id_as_ghost = True
+
+    supports_righthand_parent_id_as_ghost = True
+
+    ignore_filename = None
+    """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

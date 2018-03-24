@@ -1959,11 +1959,12 @@ class TestCase(testtools.TestCase):
             os.chdir(working_dir)
 
         try:
-            result = self.apply_redirected(
-                ui.ui_factory.stdin,
-                stdout, stderr,
-                _mod_commands.run_bzr_catch_user_errors,
-                args)
+            with ui.ui_factory:
+                result = self.apply_redirected(
+                    ui.ui_factory.stdin,
+                    stdout, stderr,
+                    _mod_commands.run_bzr_catch_user_errors,
+                    args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -2693,7 +2694,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
         b = self.make_branch(relpath, format=format)
-        return memorytree.MemoryTree.create_on_branch(b)
+        return b.create_memorytree()
 
     def make_branch_builder(self, relpath, format=None):
         branch = self.make_branch(relpath, format=format)
@@ -2865,7 +2866,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
-            self.assertIsNot(tree.path2id(path), None,
+            self.assertTrue(tree.is_versioned(path),
                 path+' not in working tree.')
 
     def assertNotInWorkingTree(self, path, root_path='.', tree=None):
@@ -2876,7 +2877,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertNotInWorkingTree(p, tree=tree)
         else:
-            self.assertIs(tree.path2id(path), None, path+' in working tree.')
+            self.assertFalse(tree.is_versioned(path), path+' in working tree.')
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
