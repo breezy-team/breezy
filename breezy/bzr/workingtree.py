@@ -370,7 +370,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
-                    if self.path2id(relpath):
+                    if self.is_versioned(relpath):
                         # Add nested content for deletion.
                         all_files.add(relpath)
                     else:
