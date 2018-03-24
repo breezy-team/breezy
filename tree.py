@@ -997,7 +997,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 if not self.has_filename(from_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(from_rel))
-                if not self.is_versioned(from_rel):
+                kind = self.kind(from_rel)
+                if not self.is_versioned(from_rel) and kind != 'directory':
                     raise exc_type(from_rel, to_rel,
                         errors.NotVersionedError(from_rel))
                 if self.has_filename(to_rel):
