@@ -81,8 +81,11 @@ class TestResetState(TestCaseWithState):
         tree = self.make_initial_tree()
         foo_id = tree.path2id('foo')
         tree.rename_one('foo', 'baz')
-        self.assertEqual(None, tree.path2id('foo'))
-        self.assertEqual(foo_id, tree.path2id('baz'))
+        self.assertFalse(tree.is_versioned('foo'))
+        if tree.supports_rename_tracking():
+            self.assertEqual(foo_id, tree.path2id('baz'))
+        else:
+            self.assertTrue(tree.is_versioned('baz'))
         tree.reset_state()
         # After reset, we should have forgotten about the rename, but we won't
         # have

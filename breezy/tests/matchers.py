@@ -28,6 +28,7 @@ assertions in Test Case objects, so they are recommended for new testing work.
 
 __all__ = [
     'HasLayout',
+    'HasPathRelations',
     'MatchesAncestry',
     'ContainsNoVfsCalls',
     'ReturnsUnlockable',
@@ -47,6 +48,7 @@ from breezy.bzr.smart import vfs
 from ..sixish import (
     text_type,
     )
+from ..tree import find_previous_path
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -179,6 +181,77 @@ class HasLayout(Matcher):
             entries = list(self._strip_unreferenced_directories(self.entries))
         else:
             entries = self.entries
+        return Equals(entries).match(actual)
+
+
+class HasPathRelations(Matcher):
+    """Matcher verifies that paths have a relation to those in another tree.
+
+    :ivar previous_tree: tree to compare to
+    :ivar previous_entries: List of expected entries, as (path, previous_path) pairs.
+    """
+
+    def __init__(self, previous_tree, previous_entries):
+        Matcher.__init__(self)
+        self.previous_tree = previous_tree
+        self.previous_entries = previous_entries
+
+    def get_path_map(self, tree):
+        """Get the (path, previous_path) pairs for the current tree."""
+        with tree.lock_read(), self.previous_tree.lock_read():
+            for path, ie in tree.iter_entries_by_dir():
+                if tree.supports_rename_tracking():
+                    previous_path = find_previous_path(tree, self.previous_tree, path)
+                else:
+                    if self.previous_tree.is_versioned(path):
+                        previous_path = path
+                    else:
+                        previous_path = None
+                if previous_path:
+                    kind = self.previous_tree.kind(previous_path)
+                    if kind == 'directory':
+                        previous_path += '/'
+                if ie.parent_id is None:
+                    yield (u"", previous_path)
+                else:
+                    yield (path+ie.kind_character(), previous_path)
+
+    @staticmethod
+    def _strip_unreferenced_directories(entries):
+        """Strip all directories that don't (in)directly contain any files.
+
+        :param entries: List of path strings or (path, previous_path) tuples to process
+        """
+        directories = []
+        for entry in entries:
+            if isinstance(entry, (str, text_type)):
+                path = entry
+            else:
+                path = entry[0]
+            if not path or path[-1] == "/":
+                # directory
+                directories.append((path, entry))
+            else:
+                # Yield the referenced parent directories
+                for dirpath, direntry in directories:
+                    if osutils.is_inside(dirpath, path):
+                        yield direntry
+                directories = []
+                yield entry
+
+    def __str__(self):
+        return 'HasPathRelations(%r, %r)' % (self.previous_tree, self.previous_entries)
+
+    def match(self, tree):
+        actual = list(self.get_path_map(tree))
+        if not tree.has_versioned_directories():
+            entries = list(self._strip_unreferenced_directories(self.previous_entries))
+        else:
+            entries = self.previous_entries
+        if not tree.supports_rename_tracking():
+            entries = [
+                (path, path if self.previous_tree.is_versioned(path) else None)
+                for (path, previous_path) in entries]
         return Equals(entries).match(actual)
 
 

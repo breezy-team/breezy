@@ -77,7 +77,8 @@ class InventoryTree(Tree):
         adjusted to account for existing elements that match case
         insensitively.
         """
-        return list(self._yield_canonical_inventory_paths(paths))
+        with self.lock_read():
+            return list(self._yield_canonical_inventory_paths(paths))
 
     def get_canonical_inventory_path(self, path):
         """Returns the first inventory item that case-insensitively matches path.
@@ -97,7 +98,8 @@ class InventoryTree(Tree):
         :return: The input path adjusted to account for existing elements
         that match case insensitively.
         """
-        return next(self._yield_canonical_inventory_paths([path]))
+        with self.lock_read():
+            return next(self._yield_canonical_inventory_paths([path]))
 
     def _yield_canonical_inventory_paths(self, paths):
         for path in paths:
@@ -112,31 +114,34 @@ class InventoryTree(Tree):
             for elt in bit_iter:
                 lelt = elt.lower()
                 new_path = None
-                for child in self.iter_children(cur_id):
-                    try:
-                        # XXX: it seem like if the child is known to be in the
-                        # tree, we shouldn't need to go from its id back to
-                        # its path -- mbp 2010-02-11
-                        #
-                        # XXX: it seems like we could be more efficient
-                        # by just directly looking up the original name and
-                        # only then searching all children; also by not
-                        # chopping paths so much. -- mbp 2010-02-11
-                        child_base = os.path.basename(self.id2path(child))
-                        if (child_base == elt):
-                            # if we found an exact match, we can stop now; if
-                            # we found an approximate match we need to keep
-                            # searching because there might be an exact match
-                            # later.  
-                            cur_id = child
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                            break
-                        elif child_base.lower() == lelt:
-                            cur_id = child
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                    except errors.NoSuchId:
-                        # before a change is committed we can see this error...
-                        continue
+                try:
+                    for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
+                        try:
+                            # XXX: it seem like if the child is known to be in the
+                            # tree, we shouldn't need to go from its id back to
+                            # its path -- mbp 2010-02-11
+                            #
+                            # XXX: it seems like we could be more efficient
+                            # by just directly looking up the original name and
+                            # only then searching all children; also by not
+                            # chopping paths so much. -- mbp 2010-02-11
+                            child_base = os.path.basename(self.id2path(child.file_id))
+                            if (child_base == elt):
+                                # if we found an exact match, we can stop now; if
+                                # we found an approximate match we need to keep
+                                # searching because there might be an exact match
+                                # later.  
+                                cur_id = child.file_id
+                                new_path = osutils.pathjoin(cur_path, child_base)
+                                break
+                            elif child_base.lower() == lelt:
+                                cur_id = child.file_id
+                                new_path = osutils.pathjoin(cur_path, child_base)
+                        except errors.NoSuchId:
+                            # before a change is committed we can see this error...
+                            continue
+                except errors.NotADirectory:
+                    pass
                 if new_path:
                     cur_path = new_path
                 else:
@@ -164,6 +169,53 @@ class InventoryTree(Tree):
                 raise ValueError("nested trees not yet supported: %r" % file_id)
             file_id = file_id[0]
         return self.root_inventory, file_id
+
+    def find_related_paths_across_trees(self, paths, trees=[],
+            require_versioned=True):
+        """Find related paths in tree corresponding to specified filenames in any
+        of `lookup_trees`.
+
+        All matches in all trees will be used, and all children of matched
+        directories will be used.
+
+        :param paths: The filenames to find related paths for (if None, returns
+            None)
+        :param trees: The trees to find file_ids within
+        :param require_versioned: if true, all specified filenames must occur in
+            at least one tree.
+        :return: a set of paths for the specified filenames and their children
+            in `tree`
+        """
+        if paths is None:
+            return None;
+        file_ids = self.paths2ids(
+                paths, trees, require_versioned=require_versioned)
+        ret = set()
+        for file_id in file_ids:
+            try:
+                ret.add(self.id2path(file_id))
+            except errors.NoSuchId:
+                pass
+        return ret
+
+    def paths2ids(self, paths, trees=[], require_versioned=True):
+        """Return all the ids that can be reached by walking from paths.
+
+        Each path is looked up in this tree and any extras provided in
+        trees, and this is repeated recursively: the children in an extra tree
+        of a directory that has been renamed under a provided path in this tree
+        are all returned, even if none exist under a provided path in this
+        tree, and vice versa.
+
+        :param paths: An iterable of paths to start converting to ids from.
+            Alternatively, if paths is None, no ids should be calculated and None
+            will be returned. This is offered to make calling the api unconditional
+            for code that *might* take a list of files.
+        :param trees: Additional trees to consider.
+        :param require_versioned: If False, do not raise NotVersionedError if
+            an element of paths is not versioned in this tree and all of trees.
+        """
+        return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def path2id(self, path):
         """Return the id for path in this tree."""
@@ -217,7 +269,7 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -226,20 +278,20 @@ class InventoryTree(Tree):
         See Tree.iter_entries_by_dir for details.
 
         :param yield_parents: If True, yield the parents from the root leading
-            down to specific_file_ids that have been requested. This has no
-            impact if specific_file_ids is None.
+            down to specific_files that have been requested. This has no
+            impact if specific_files is None.
         """
         with self.lock_read():
-            if specific_file_ids is None:
-                inventory_file_ids = None
-            else:
+            if specific_files is not None:
                 inventory_file_ids = []
-                for tree_file_id in specific_file_ids:
-                    inventory, inv_file_id = self._unpack_file_id(tree_file_id)
+                for path in specific_files:
+                    inventory, inv_file_id = self._path2inv_file_id(path)
                     if not inventory is self.root_inventory: # for now
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
+            else:
+                inventory_file_ids = None
             # FIXME: Handle nested trees
             return self.root_inventory.iter_entries_by_dir(
                 specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
@@ -248,15 +300,13 @@ class InventoryTree(Tree):
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path, file_id)
             try:
-                return iter(viewvalues(inv[inv_file_id].children))
+                ie = inv[inv_file_id]
             except errors.NoSuchId:
                 raise errors.NoSuchFile(path)
-
-    def iter_children(self, file_id, path=None):
-        """See Tree.iter_children."""
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
-        for child in viewvalues(getattr(entry, 'children', {})):
-            yield child.file_id
+            else:
+                if ie.kind != 'directory':
+                    raise errors.NotADirectory(path)
+                return iter(viewvalues(ie.children))
 
     def _get_plan_merge_data(self, file_id, other, base):
         from . import versionedfile
@@ -314,6 +364,84 @@ class InventoryTree(Tree):
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
         return last_revision
+
+
+def find_ids_across_trees(filenames, trees, require_versioned=True):
+    """Find the ids corresponding to specified filenames.
+
+    All matches in all trees will be used, and all children of matched
+    directories will be used.
+
+    :param filenames: The filenames to find file_ids for (if None, returns
+        None)
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+        at least one tree.
+    :return: a set of file ids for the specified filenames and their children.
+    """
+    if not filenames:
+        return None
+    specified_path_ids = _find_ids_across_trees(filenames, trees,
+        require_versioned)
+    return _find_children_across_trees(specified_path_ids, trees)
+
+
+def _find_ids_across_trees(filenames, trees, require_versioned):
+    """Find the ids corresponding to specified filenames.
+
+    All matches in all trees will be used, but subdirectories are not scanned.
+
+    :param filenames: The filenames to find file_ids for
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+        at least one tree.
+    :return: a set of file ids for the specified filenames
+    """
+    not_versioned = []
+    interesting_ids = set()
+    for tree_path in filenames:
+        not_found = True
+        for tree in trees:
+            file_id = tree.path2id(tree_path)
+            if file_id is not None:
+                interesting_ids.add(file_id)
+                not_found = False
+        if not_found:
+            not_versioned.append(tree_path)
+    if len(not_versioned) > 0 and require_versioned:
+        raise errors.PathsNotVersionedError(not_versioned)
+    return interesting_ids
+
+
+def _find_children_across_trees(specified_ids, trees):
+    """Return a set including specified ids and their children.
+
+    All matches in all trees will be used.
+
+    :param trees: The trees to find file_ids within
+    :return: a set containing all specified ids and their children
+    """
+    interesting_ids = set(specified_ids)
+    pending = interesting_ids
+    # now handle children of interesting ids
+    # we loop so that we handle all children of each id in both trees
+    while len(pending) > 0:
+        new_pending = set()
+        for file_id in pending:
+            for tree in trees:
+                try:
+                    path = tree.id2path(file_id)
+                except errors.NoSuchId:
+                    continue
+                try:
+                    for child in tree.iter_child_entries(path, file_id):
+                        if child.file_id not in interesting_ids:
+                            new_pending.add(child.file_id)
+                except errors.NotADirectory:
+                    pass
+        interesting_ids.update(new_pending)
+        pending = new_pending
+    return interesting_ids
 
 
 class MutableInventoryTree(MutableTree, InventoryTree):
@@ -439,10 +567,11 @@ class _SmartAddHelper(object):
             return entry[3]
         # Find a 'best fit' match if the filesystem is case-insensitive
         inv_path = self.tree._fix_case_of_inventory_path(inv_path)
-        file_id = self.tree.path2id(inv_path)
-        if file_id is not None:
-            return self.tree.iter_entries_by_dir([file_id]).next()[1]
-        return None
+        try:
+            return self.tree.iter_entries_by_dir(
+                    specific_files=[inv_path]).next()[1]
+        except StopIteration:
+            return None
 
     def _convert_to_directory(self, this_ie, inv_path):
         """Convert an entry to a directory.
@@ -746,7 +875,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def kind(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv[inv_file_id].kind
+        try:
+            return inv[inv_file_id].kind
+        except errors.NoSuchId:
+            raise errors.NoSuchFile(path)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
@@ -766,9 +898,6 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         if entry is None:
             return None, False, None
         return entry.kind, entry.executable, None
-
-    def _file_size(self, entry, stat_value):
-        return entry.text_size
 
     def walkdirs(self, prefix=""):
         _directory = 'directory'

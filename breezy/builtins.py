@@ -53,6 +53,7 @@ from breezy import (
     symbol_versioning,
     timestamp,
     transport,
+    tree as _mod_tree,
     ui,
     urlutils,
     views,
@@ -960,11 +961,11 @@ class cmd_inventory(Command):
 
         self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
-            file_ids = tree.paths2ids(file_list, trees=extra_trees,
-                                      require_versioned=True)
+            paths = tree.find_related_paths_across_trees(
+                    file_list, extra_trees, require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = tree.iter_entries_by_dir(specific_file_ids=file_ids)
+            entries = tree.iter_entries_by_dir(specific_files=paths)
         else:
             entries = tree.iter_entries_by_dir()
 
@@ -1112,7 +1113,8 @@ class cmd_mv(Command):
         work_tree, file_list = WorkingTree.open_containing_paths(
             names_list, default_directory='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
-        rename_map.RenameMap.guess_renames(work_tree, dry_run)
+        rename_map.RenameMap.guess_renames(
+                work_tree.basis_tree(), work_tree, dry_run)
 
     def _run(self, tree, names_list, rel_names, after):
         into_existing = osutils.isdir(names_list[-1])
@@ -1128,10 +1130,9 @@ class cmd_mv(Command):
             else:
                 # 'fix' the case of a potential 'from'
                 from_path = tree.get_canonical_inventory_path(rel_names[0])
-                from_id = tree.path2id(from_path)
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and
-                    tree.stored_kind(from_path, from_id) == "directory"):
+                    tree.is_versioned(from_path) and
+                    tree.stored_kind(from_path) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
@@ -3024,12 +3025,11 @@ class cmd_touching_revisions(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        file_id = tree.path2id(relpath)
-        b = tree.branch
-        self.add_cleanup(b.lock_read().unlock)
-        touching_revs = log.find_touching_revisions(b, file_id)
-        for revno, revision_id, what in touching_revs:
-            self.outf.write("%6d %s\n" % (revno, what))
+        with tree.lock_read():
+            touching_revs = log.find_touching_revisions(
+                    tree.branch.repository, tree.branch.last_revision(), tree, relpath)
+            for revno, revision_id, what in reversed(list(touching_revs)):
+                self.outf.write("%6d %s\n" % (revno, what))
 
 
 class cmd_ls(Command):
@@ -4776,29 +4776,27 @@ class cmd_remerge(Command):
                                          " merges.  Not cherrypicking or"
                                          " multi-merges."))
         repository = tree.branch.repository
-        interesting_ids = None
+        interesting_files = None
         new_conflicts = []
         conflicts = tree.conflicts()
         if file_list is not None:
-            interesting_ids = set()
+            interesting_files = set()
             for filename in file_list:
-                file_id = tree.path2id(filename)
-                if file_id is None:
+                if not tree.is_versioned(filename):
                     raise errors.NotVersionedError(filename)
-                interesting_ids.add(file_id)
-                if tree.kind(filename, file_id) != "directory":
+                interesting_files.add(filename)
+                if tree.kind(filename) != "directory":
                     continue
 
-                # FIXME: Support nested trees
-                for name, ie in tree.root_inventory.iter_entries(file_id):
-                    interesting_ids.add(ie.file_id)
+                for path, ie in tree.iter_entries_by_dir(specific_files=[filename]):
+                    interesting_files.add(path)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:
             # Remerge only supports resolving contents conflicts
             allowed_conflicts = ('text conflict', 'contents conflict')
             restore_files = [c.path for c in conflicts
                              if c.typestring in allowed_conflicts]
-        _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
+        _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_files)
         tree.set_conflicts(ConflictList(new_conflicts))
         if file_list is not None:
             restore_files = file_list
@@ -4815,7 +4813,7 @@ class cmd_remerge(Command):
         tree.set_parent_ids(parents[:1])
         try:
             merger = _mod_merge.Merger.from_revision_ids(tree, parents[1])
-            merger.interesting_ids = interesting_ids
+            merger.interesting_files = interesting_files
             merger.merge_type = merge_type
             merger.show_base = show_base
             merger.reprocess = reprocess
@@ -6775,7 +6773,7 @@ class cmd_export_pot(Command):
     __doc__ = """Export command helps and error messages in po format."""
 
     hidden = True
-    takes_options = [Option('plugin', 
+    takes_options = [Option('plugin',
                             help='Export help text from named command '\
                                  '(defaults to all built in commands).',
                             type=text_type),

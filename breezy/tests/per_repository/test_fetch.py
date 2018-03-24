@@ -126,6 +126,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         remote_format = isinstance(repo, remote.RemoteRepository)
         if not repo._format.rich_root_data and not remote_format:
             return # not relevant
+        if not repo._format.supports_full_versioned_files:
+            raise TestNotApplicable(
+                'format does not support full versioned files')
         builder = self.make_branch_builder('source', format='1.9')
         builder.start_series()
         for revision_id, parent_ids, actions in snapshots:
