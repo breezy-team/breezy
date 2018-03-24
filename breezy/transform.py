@@ -3102,8 +3102,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'unversioned parent':
             file_id = tt.inactive_file_id(conflict[1])
             # special-case the other tree root (move its children instead)
-            if path_tree and path_tree.has_id(file_id):
-                if path_tree.path2id('') == file_id:
+            if path_tree and path_tree.path2id('') == file_id:
                     # This is the root entry, skip it
                     continue
             tt.version_file(file_id, conflict[1])

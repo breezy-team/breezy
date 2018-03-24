@@ -280,8 +280,11 @@ class AbstractRevisionStore(object):
             list(parent_candidate_entries))
         heads = []
         for inv in self._rev_parent_invs:
-            if inv.has_id(ie.file_id):
+            try:
                 old_rev = inv[ie.file_id].revision
+            except errors.NoSuchId:
+                pass
+            else:
                 if old_rev in head_set:
                     rev_id = inv[ie.file_id].revision
                     heads.append(rev_id)
