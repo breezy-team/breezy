@@ -270,18 +270,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 parents.append(self.branch.lookup_foreign_revision_id(revision_id))
         return parents
 
-    def iter_children(self, file_id):
-        dpath = self.id2path(file_id) + "/"
-        if dpath in self.index:
-            return
-        for path in self.index:
-            if not path.startswith(dpath):
-                continue
-            if "/" in path[len(dpath):]:
-                # Not a direct child but something further down
-                continue
-            yield self.path2id(path)
-
     def check_state(self):
         """Check that the working state is/isn't valid."""
         pass
