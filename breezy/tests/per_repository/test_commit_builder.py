@@ -517,7 +517,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertFalse(version_recorded)
 
             revtree = builder.revision_tree()
-            new_entry = revtree.iter_entries_by_dir(specific_file_ids=[file_id]).next()[1]
+            new_entry = revtree.iter_entries_by_dir(specific_files=[new_name]).next()[1]
 
             if delta_against_basis:
                 if tree.supports_rename_tracking() or name == new_name:
