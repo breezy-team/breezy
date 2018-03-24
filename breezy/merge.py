@@ -1879,8 +1879,7 @@ class MergeIntoMergeType(Merge3Merger):
             for num, (entry, parent_id, path) in enumerate(entries):
                 child_pb.update(gettext('Preparing file merge'), num, len(entries))
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
-                trans_id = transform.new_by_entry(
-                    self.other_tree.id2path(entry.file_id), self.tt, entry,
+                trans_id = transform.new_by_entry(path, self.tt, entry,
                     parent_trans_id, self.other_tree)
         self._finish_computing_transform()
 
