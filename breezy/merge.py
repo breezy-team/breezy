@@ -1356,8 +1356,9 @@ class Merge3Merger(object):
                     self.tt.unversion_file(trans_id)
                 # This is a contents conflict, because none of the available
                 # functions could merge it.
-                file_group = self._dump_conflicts(name, paths, parent_id, file_id,
-                                                  set_version=True)
+                file_group = self._dump_conflicts(
+                        name, (base_path, other_path, this_path), parent_id,
+                        file_id, set_version=True)
                 self._raw_conflicts.append(('contents conflict', file_group))
         elif hook_status == 'success':
             self.tt.create_file(lines, trans_id)
@@ -1368,7 +1369,8 @@ class Merge3Merger(object):
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            self._dump_conflicts(name, paths, parent_id, file_id)
+            self._dump_conflicts(
+                name, (base_path, other_path, this_path), parent_id, file_id)
         elif hook_status == 'delete':
             self.tt.unversion_file(trans_id)
             result = "deleted"
