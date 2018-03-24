@@ -194,7 +194,8 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             dir_id = tree.path2id('dir')
             tree.add('dir/subfile')
             dir_subfile_id = tree.path2id('dir/subfile')
-            tree.mkdir('to_be_unversioned')
+            tree.put_file_bytes_non_atomic('to_be_unversioned', 'blah')
+            tree.add(['to_be_unversioned'])
             to_be_unversioned_id = tree.path2id('to_be_unversioned')
             tree.put_file_bytes_non_atomic('dir/subfile', 'def')
             revid1 = tree.commit('first revision')
@@ -212,11 +213,19 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             revid2 = tree.commit('second revision')
 
         expected_delta = delta.TreeDelta()
-        expected_delta.added = [('added_dir', added_dir_id, 'directory')]
-        expected_delta.removed = [('to_be_unversioned',
-                                   to_be_unversioned_id, 'directory')]
-        expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
-                                   dir_subfile_id, 'file', False, False)]
+        if tree.has_versioned_directories():
+            expected_delta.added.append(('added_dir', added_dir_id, 'directory'))
+        if tree.supports_rename_tracking():
+            expected_delta.removed = [('to_be_unversioned',
+                                       to_be_unversioned_id, 'file')]
+            expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
+                                       dir_subfile_id, 'file', False, False)]
+        else:
+            expected_delta.added.append(('dir/subfile_renamed',
+                                        tree.path2id('dir/subfile_renamed'), 'file'))
+            expected_delta.removed = [
+                    ('dir/subfile', dir_subfile_id, 'file'),
+                    ('to_be_unversioned', to_be_unversioned_id, 'file')]
         expected_delta.modified=[('rootfile', rootfile_id, 'file', True,
                                   False)]
         self.assertEqual([('pre_commit', 1, revid1, 2, revid2,
