@@ -711,17 +711,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             tree.add(['somefile'])
             d = {tree.path2id('somefile'): osutils.sha_string('hello')}
-            try:
+            if tree.supports_merge_modified():
                 tree.set_merge_modified(d)
-            except errors.UnsupportedOperation:
-                mm = tree.merge_modified()
-                self.assertEqual(mm, {})
-                supports_merge_modified = False
-            else:
                 mm = tree.merge_modified()
                 self.assertEqual(mm, d)
-                supports_merge_modified = True
-        if supports_merge_modified:
+            else:
+                self.assertRaises(
+                    errors.UnsupportedOperation,
+                    tree.set_merge_modified, d)
+                mm = tree.merge_modified()
+                self.assertEqual(mm, {})
+        if tree.supports_merge_modified():
             mm = tree.merge_modified()
             self.assertEqual(mm, d)
         else:

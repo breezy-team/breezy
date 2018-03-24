@@ -151,6 +151,11 @@ class WorkingTree(mutabletree.MutableTree,
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
 
+    def supports_merge_modified(self):
+        """Indicate whether this workingtree supports storing merge_modified.
+        """
+        return self._format.supports_merge_modified
+
     def _supports_executable(self):
         if sys.platform == 'win32':
             return False
@@ -456,9 +461,6 @@ class WorkingTree(mutabletree.MutableTree,
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
 
-    def id2abspath(self, file_id):
-        return self.abspath(self.id2path(file_id))
-
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
@@ -723,10 +725,7 @@ class WorkingTree(mutabletree.MutableTree,
             return file_id
 
     def get_symlink_target(self, path, file_id=None):
-        if path is not None:
-            abspath = self.abspath(path)
-        else:
-            abspath = self.id2abspath(file_id)
+        abspath = self.abspath(path)
         target = osutils.readlink(abspath)
         return target
 
@@ -771,8 +770,6 @@ class WorkingTree(mutabletree.MutableTree,
         raise NotImplementedError(self.flush)
 
     def kind(self, relpath, file_id=None):
-        if file_id is not None:
-            return osutils.file_kind(self.id2abspath(file_id))
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -964,9 +961,6 @@ class WorkingTree(mutabletree.MutableTree,
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
-
-    def _file_size(self, entry, stat_value):
-        return stat_value.st_size
 
     def last_revision(self):
         """Return the last revision of the branch for this tree.
@@ -1298,11 +1292,12 @@ class WorkingTree(mutabletree.MutableTree,
             resolved = _mod_conflicts.ConflictList()
             conflict_re = re.compile('^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
+                path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(self.id2path(conflict.file_id), conflict.file_id) != 'file'):
+                    self.kind(path, conflict.file_id) != 'file'):
                     un_resolved.append(conflict)
                     continue
-                my_file = open(self.id2abspath(conflict.file_id), 'rb')
+                my_file = open(self.abspath(path), 'rb')
                 try:
                     for line in my_file:
                         if conflict_re.search(line):
@@ -1410,6 +1405,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     """If this format supports missing parent conflicts."""
 
     supports_versioned_directories = None
+
+    supports_merge_modified = True
+    """If this format supports storing merge modified hashes."""
 
     supports_setting_file_ids = True
     """If this format allows setting the file id."""

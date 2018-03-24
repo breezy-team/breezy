@@ -652,7 +652,8 @@ class Merger(object):
                 other_branch = self.other_branch.reference_parent(file_id,
                                                                   relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
-                base_tree_path = self.base_tree.id2path(file_id)
+                base_tree_path = _mod_tree.find_previous_path(
+                    self.this_tree, self.base_tree, relpath)
                 base_revision = self.base_tree.get_reference_revision(
                     base_tree_path, file_id)
                 sub_merge.base_tree = \
@@ -871,18 +872,13 @@ class Merge3Merger(object):
             if (self.interesting_ids is not None and
                 file_id not in self.interesting_ids):
                 continue
-            try:
-                this_path = self.this_tree.id2path(file_id)
-            except errors.NoSuchId:
-                this_path = None
-                this_entry = None
+            if paths[0] is not None:
+                this_path = _mod_tree.find_previous_path(
+                        self.base_tree, self.this_tree, paths[0])
             else:
-                this_entry = this_entries.get(this_path)
-            # TODO(jelmer): when find_previous_path lands:
-            # if paths[0] is not None:
-            #     this_path = _mod_tree.find_previous_path(self.base_tree, self.this_tree, paths[0])
-            # else:
-            #     this_path = _mod_tree.find_previous_path(self.other_tree, self.this_tree, paths[1])
+                this_path = _mod_tree.find_previous_path(
+                        self.other_tree, self.this_tree, paths[1])
+            this_entry = this_entries.get(this_path)
             if this_entry is not None:
                 this_name = this_entry.name
                 this_parent = this_entry.parent_id
@@ -1084,6 +1080,8 @@ class Merge3Merger(object):
         return result
 
     def write_modified(self, results):
+        if not self.working_tree.supports_merge_modified():
+            return
         modified_hashes = {}
         for path in results.modified_paths:
             wt_relpath = self.working_tree.relpath(path)
@@ -1094,10 +1092,7 @@ class Merge3Merger(object):
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
-        try:
-            self.working_tree.set_merge_modified(modified_hashes)
-        except errors.UnsupportedOperation:
-            pass  # Well, whatever.
+        self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
     def parent(entry, file_id):

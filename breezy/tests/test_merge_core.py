@@ -432,7 +432,7 @@ y
         builder.change_contents("1", other="text3")
         builder.add_file("2", builder.tree_root, "name1.new", "text2", True)
         builder.merge()
-        os.lstat(builder.this.id2abspath("2"))
+        os.lstat(builder.this.abspath(builder.this.id2path("2")))
         builder.cleanup()
 
     def test_spurious_conflict(self):
