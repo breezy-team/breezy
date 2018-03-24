@@ -394,14 +394,6 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 self.assertEqual(eparent, ie.parent_id)
             if eparent is not None:
                 self.assertIsInstance(ie.parent_id, bytes)
-            # WorkingTree's return None for the last modified revision
-            if ie.revision is not None:
-                self.assertIsInstance(ie.revision, str)
-                if epath == '':
-                    # Some trees will preserve the revision id of the tree root,
-                    # but not all will
-                    continue
-                self.assertEqual(erev, ie.revision)
         self.assertEqual(len(path_and_ids), len(path_entries),
                          "%r vs %r" % (
                              [p for (p, f, pf, r) in path_and_ids],
