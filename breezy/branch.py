@@ -97,7 +97,6 @@ class Branch(controldir.ControlComponent):
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
         self._partial_revision_history_cache = []
-        self._tags_bytes = None
         self._last_revision_info_cache = None
         self._master_branch_cache = None
         self._merge_sorted_revisions_cache = None
@@ -258,23 +257,6 @@ class Branch(controldir.ControlComponent):
         url = urlutils.join(self.base, url)
         a_branch = Branch.open(url, possible_transports=possible_transports)
         return a_branch.repository
-
-    def _get_tags_bytes(self):
-        """Get the bytes of a serialised tags dict.
-
-        Note that not all branches support tags, nor do all use the same tags
-        logic: this method is specific to BasicTags. Other tag implementations
-        may use the same method name and behave differently, safely, because
-        of the double-dispatch via
-        format.make_tags->tags_instance->get_tags_dict.
-
-        :return: The bytes of the tags file.
-        :seealso: Branch._set_tags_bytes.
-        """
-        with self.lock_read():
-            if self._tags_bytes is None:
-                self._tags_bytes = self._transport.get_bytes('tags')
-            return self._tags_bytes
 
     def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
@@ -909,15 +891,6 @@ class Branch(controldir.ControlComponent):
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
 
-    def _set_tags_bytes(self, bytes):
-        """Mirror method for _get_tags_bytes.
-
-        :seealso: Branch._get_tags_bytes.
-        """
-        with self.lock_write():
-            self._tags_bytes = bytes
-            return self._transport.put_bytes('tags', bytes)
-
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
 
@@ -953,7 +926,6 @@ class Branch(controldir.ControlComponent):
         self._merge_sorted_revisions_cache = None
         self._partial_revision_history_cache = []
         self._partial_revision_id_to_revno_cache = {}
-        self._tags_bytes = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
