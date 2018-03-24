@@ -335,12 +335,14 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         class FakeMerger(object):
             def __init__(self, this_tree):
                 self.this_tree = this_tree
-            def get_lines(self, tree, file_id):
-                return tree.get_file_lines(tree.id2path(file_id), file_id)
+            def get_lines(self, tree, path, file_id):
+                return tree.get_file_lines(path, file_id)
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
-        params = params_cls(merger, 'c-id', None, 'file', 'file', 'this')
+        params = params_cls(merger, 'c-id', ('debian/changelog',
+            'debian/changelog', 'debian/changelog'), None, 'file', 'file',
+            'this')
         return params, merger
 
 
