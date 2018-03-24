@@ -94,7 +94,12 @@ check-ci: docs extensions
 	# FIXME: Remove -Wignore::FutureWarning once
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
-	python -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O \
+	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
+	  | subunit-filter -s --passthrough --rename "^" "python2."
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O \
+	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --load-list=python3.passing --subunit2 | \
+	  | subunit-filter -s --passthrough --rename "^" "python3."
 
 # Run Python style checker (apt-get install pyflakes)
 #
