@@ -1185,7 +1185,8 @@ class InterIndexGitTree(InterGitTrees):
                 isinstance(target, GitWorkingTree))
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=False, include_root=False, extra_trees=None):
+            require_versioned=False, include_root=False, extra_trees=None,
+            want_unversioned=False):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -1198,7 +1199,8 @@ class InterIndexGitTree(InterGitTrees):
             return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
-                include_root=include_root)
+                include_root=include_root,
+                want_unversioned=want_unversioned)
 
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
@@ -1209,18 +1211,13 @@ class InterIndexGitTree(InterGitTrees):
                     specific_files=specific_files,
                     require_versioned=require_versioned,
                     include_root=include_root,
-                    extra_trees=extra_trees)
+                    extra_trees=extra_trees, want_unversioned=want_unversioned)
             source_fileid_map = self.source._fileid_map
             target_fileid_map = self.target._fileid_map
             ret = tree_delta_from_git_changes(changes, self.target.mapping,
                 (source_fileid_map, target_fileid_map),
                 specific_files=specific_files, require_versioned=require_versioned,
                 include_root=include_root)
-            if want_unversioned:
-                for e in self.target.extras():
-                    ret.unversioned.append(
-                        (osutils.normalized_filename(e)[0], None,
-                        osutils.file_kind(self.target.abspath(e))))
             return ret
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
@@ -1231,11 +1228,8 @@ class InterIndexGitTree(InterGitTrees):
                     want_unchanged=include_unchanged,
                     specific_files=specific_files,
                     require_versioned=require_versioned,
-                    extra_trees=extra_trees)
-            if want_unversioned:
-                changes = itertools.chain(
-                        changes,
-                        untracked_changes(self.target))
+                    extra_trees=extra_trees,
+                    want_unversioned=want_unversioned)
             return changes_from_git_changes(
                     changes, self.target.mapping,
                     specific_files=specific_files,
@@ -1246,24 +1240,9 @@ class InterIndexGitTree(InterGitTrees):
 tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
-def untracked_changes(tree):
-    for e in tree.extras():
-        ap = tree.abspath(e)
-        st = os.lstat(ap)
-        try:
-            np, accessible = osutils.normalized_filename(e)
-        except UnicodeDecodeError:
-            raise errors.BadFilenameEncoding(
-                e, osutils._fs_enc)
-        if stat.S_ISDIR(st.st_mode):
-            obj_id = Tree().id
-        else:
-            obj_id = blob_from_path_and_stat(ap.encode('utf-8'), st).id
-        yield ((None, np), (None, st.st_mode), (None, obj_id))
-
-
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False, include_root=False):
+        want_unchanged=False, update_index=False, include_root=False,
+        want_unversioned=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
@@ -1276,6 +1255,22 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
             missing.add(entry[0])
         else:
             blobs.append(entry)
+    if want_unversioned:
+        for e in target.extras():
+            ap = target.abspath(e)
+            st = os.lstat(ap)
+            try:
+                np, accessible = osutils.normalized_filename(e)
+            except UnicodeDecodeError:
+                raise errors.BadFilenameEncoding(
+                    e, osutils._fs_enc)
+            if stat.S_ISDIR(st.st_mode):
+                blob = Tree()
+            else:
+                blob = blob_from_path_and_stat(ap.encode('utf-8'), st)
+            store.add_object(blob)
+            np = np.encode('utf-8')
+            blobs.append((np, blob.id, st.st_mode))
     for p in missing:
         del target.index[p]
     to_tree_sha = commit_tree(store, blobs)
