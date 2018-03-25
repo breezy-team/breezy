@@ -36,10 +36,6 @@ from dulwich.objects import (
     ZERO_SHA,
     S_IFGITLINK,
     )
-from dulwich.repo import (
-    NotGitRepository,
-    Repo as GitRepo,
-    )
 import stat
 import posixpath
 
@@ -188,10 +184,46 @@ class GitTreeSymlink(_mod_tree.TreeLink):
                 self.revision, self.symlink_target)
 
 
+class GitTreeSubmodule(_mod_tree.TreeLink):
+
+    __slots__ = ['file_id', 'name', 'parent_id', 'revision', 'reference_revision']
+
+    def __init__(self, file_id, name, parent_id, revision=None,
+                 reference_revision=None):
+        self.file_id = file_id
+        self.name = name
+        self.parent_id = parent_id
+        self.revision = revision
+        self.reference_revision = reference_revision
+
+    @property
+    def kind(self):
+        return 'tree-reference'
+
+    def __repr__(self):
+        return "%s(file_id=%r, name=%r, parent_id=%r, revision=%r, reference_revision=%r)" % (
+            type(self).__name__, self.file_id, self.name, self.parent_id,
+            self.revision, self.reference_revision)
+
+    def __eq__(self, other):
+        return (self.kind == other.kind and
+                self.file_id == other.file_id and
+                self.name == other.name and
+                self.parent_id == other.parent_id and
+                self.revision == other.revision and
+                self.reference_revision == other.reference_revision)
+
+    def copy(self):
+        return self.__class__(
+                self.file_id, self.name, self.parent_id,
+                self.revision, self.reference_revision)
+
+
 entry_factory = {
     'directory': GitTreeDirectory,
     'file': GitTreeFile,
     'symlink': GitTreeSymlink,
+    'tree-reference': GitTreeSubmodule,
     }
 
 
@@ -501,6 +533,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return (kind, len(contents), executable, osutils.sha_string(contents))
         elif kind == 'symlink':
             return (kind, None, None, self.store[hexsha].data)
+        elif kind == 'tree-reference':
+            return (kind, None, None,
+                    self._repository.lookup_foreign_revision_id(hexsha))
         else:
             return (kind, None, None, None)
 
@@ -793,6 +828,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 raise errors.InvalidNormalization(path)
             self._index_add_entry(path, kind)
 
+    def _read_submodule_head(self, path):
+        raise NotImplementedError(self._read_submodule_head)
+
     def _lookup_index(self, encoded_path):
         if not isinstance(encoded_path, bytes):
             raise TypeError(encoded_path)
@@ -834,10 +872,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 self.store.add_object(blob)
             hexsha = blob.id
         elif kind == "tree-reference":
-            try:
-                hexsha = GitRepo(path).head()
-            except NotGitRepository:
-                hexsha = ZERO_SHA
+            hexsha = self._read_submodule_head(path)
             try:
                 stat_val = self._lstat(path)
             except EnvironmentError:
@@ -1102,3 +1137,34 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 raise errors.PathsNotVersionedError(unversioned)
 
         return filter(self.is_versioned, paths)
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        try:
+            stat_result = self._lstat(path)
+        except OSError as e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                # no file.
+                return ('missing', None, None, None)
+            # propagate other errors
+            raise
+        kind = mode_kind(stat_result.st_mode)
+        if kind == 'file':
+            return self._file_content_summary(path, stat_result)
+        elif kind == 'directory':
+            # perhaps it looks like a plain directory, but it's really a
+            # reference.
+            if self._directory_is_tree_reference(path):
+                kind = 'tree-reference'
+            return kind, None, None, None
+        elif kind == 'symlink':
+            target = osutils.readlink(self.abspath(path))
+            return ('symlink', None, None, target)
+        else:
+            return (kind, None, None, None)
+
+    def kind(self, relpath, file_id=None):
+        kind = osutils.file_kind(self.abspath(relpath))
+        if kind == 'directory' and self._directory_is_tree_reference(relpath):
+            return 'tree-reference'
+        return kind

@@ -49,8 +49,12 @@ from dulwich.objects import (
     Tree,
     S_IFGITLINK,
     S_ISGITLINK,
+    ZERO_SHA,
     )
-from dulwich.repo import Repo
+from dulwich.repo import (
+    NotGitRepository,
+    Repo as GitRepo,
+    )
 import os
 import posixpath
 import re
@@ -698,7 +702,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         dir_ids = {}
         fk_entries = {'directory': tree.TreeDirectory,
                       'file': tree.TreeFile,
-                      'symlink': tree.TreeLink}
+                      'symlink': tree.TreeLink,
+                      'tree-reference': tree.TreeNested}
         with self.lock_read():
             root_ie = self._get_dir_ie(u"", None)
             if include_root and not from_dir:
@@ -721,11 +726,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     value = index[index_path]
                 except KeyError:
                     value = None
-                kind = osutils.file_kind(self.abspath(path))
+                kind = self.kind(path)
                 parent, name = posixpath.split(path)
                 for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
                     pass
-                if kind == 'directory':
+                if kind in ('directory', 'tree-reference'):
                     if path != from_dir:
                         if self._has_dir(path):
                             ie = self._get_dir_ie(path, self.path2id(path))
@@ -775,10 +780,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         break
                     paths.add(path)
             return paths
-
-    def _directory_is_tree_reference(self, path):
-        # FIXME: Check .gitsubmodules for path
-        return False
 
     def iter_child_entries(self, path, file_id=None):
         encoded_path = path.encode('utf-8')
@@ -1135,6 +1136,12 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                                 show_base=show_base)
             return count
 
+    def _read_submodule_head(self, path):
+        try:
+            return GitRepo(path).head()
+        except NotGitRepository:
+            return ZERO_SHA
+
     def add_reference(self, sub_tree):
         """Add a TreeReference to the tree, pointing at sub_tree.
 
@@ -1149,8 +1156,17 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
             self._add([sub_tree_path], [None], ['tree-reference'])
 
+    def get_reference_revision(self, path, file_id=None):
+        hexsha = self._read_submodule_head(path)
+        return self.branch.lookup_foreign_revision_id(hexsha)
+
     def get_nested_tree(self, path, file_id=None):
         return workingtree.WorkingTree.open(self.abspath(path))
+
+    def _directory_is_tree_reference(self, relpath):
+        # as a special case, if a directory contains control files then
+        # it's a tree reference, except that the root of the tree is not
+        return relpath and osutils.lexists(self.abspath(relpath) + u"/.git")
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
