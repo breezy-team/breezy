@@ -33,8 +33,8 @@ class TestReference(TestCaseWithTransport):
 
     def test_no_args_lists(self):
         branch = self.make_branch('branch')
-        branch.set_reference_info('file-id', 'path', 'http://example.org')
-        branch.set_reference_info('file-id2', 'lath', 'http://example.org/2')
+        branch.set_reference_info('path', 'http://example.org', b'file-id')
+        branch.set_reference_info('lath', 'http://example.org/2', b'file-id2')
         out, err = self.run_bzr('reference', working_dir='branch')
         lines = out.splitlines()
         self.assertEqual('lath http://example.org/2', lines[0])
@@ -44,9 +44,9 @@ class TestReference(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/newpath'])
         tree.add('newpath', b'file-id')
-        tree.branch.set_reference_info('file-id', 'path', 'http://example.org')
-        tree.branch.set_reference_info('file-id2', 'lath',
-                                       'http://example.org/2')
+        tree.branch.set_reference_info('newpath', 'http://example.org', b'file-id')
+        tree.branch.set_reference_info('lath', 'http://example.org/2',
+                b'file-id2')
         return tree
 
     def test_uses_working_tree_location(self):
@@ -76,9 +76,9 @@ class TestReference(TestCaseWithTransport):
         self.build_tree(['tree/file'])
         tree.add('file', b'file-id')
         out, err = self.run_bzr('reference tree/file http://example.org')
-        path, location = tree.branch.get_reference_info('file-id')
+        location, file_id = tree.branch.get_reference_info('file')
         self.assertEqual('http://example.org', location)
-        self.assertEqual('file', path)
+        self.assertEqual(b'file-id', file_id)
         self.assertEqual('', out)
         self.assertEqual('', err)
 

@@ -504,9 +504,11 @@ class BzrBranch8(BzrBranch):
         """
         s = BytesIO()
         writer = rio.RioWriter(s)
-        for key, (tree_path, branch_location) in viewitems(info_dict):
-            stanza = rio.Stanza(file_id=key, tree_path=tree_path,
+        for tree_path, ( branch_location, file_id) in viewitems(info_dict):
+            stanza = rio.Stanza(tree_path=tree_path,
                                 branch_location=branch_location)
+            if file_id is not None:
+                stanza.add('file_id', file_id)
             writer.write_stanza(stanza)
         with self.lock_write():
             self._transport.put_bytes('references', s.getvalue())
@@ -515,55 +517,50 @@ class BzrBranch8(BzrBranch):
     def _get_all_reference_info(self):
         """Return all the reference info stored in a branch.
 
-        :return: A dict of {file_id: (tree_path, branch_location)}
+        :return: A dict of {tree_path: (branch_location, file_id)}
         """
         with self.lock_read():
             if self._reference_info is not None:
                 return self._reference_info
             with self._transport.get('references') as rio_file:
                 stanzas = rio.read_stanzas(rio_file)
-                info_dict = dict((s['file_id'], (s['tree_path'],
-                                 s['branch_location'])) for s in stanzas)
+                info_dict = {
+                    s['tree_path']: (s['branch_location'], s.get('file_id'))
+                    for s in stanzas}
             self._reference_info = info_dict
             return info_dict
 
-    def set_reference_info(self, file_id, tree_path, branch_location):
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
         """Set the branch location to use for a tree reference.
 
-        :param file_id: The file-id of the tree reference.
         :param tree_path: The path of the tree reference in the tree.
         :param branch_location: The location of the branch to retrieve tree
             references from.
+        :param file_id: The file-id of the tree reference.
         """
         info_dict = self._get_all_reference_info()
-        info_dict[file_id] = (tree_path, branch_location)
-        if None in (tree_path, branch_location):
-            if tree_path is not None:
-                raise ValueError('tree_path must be None when branch_location'
-                                 ' is None.')
-            if branch_location is not None:
-                raise ValueError('branch_location must be None when tree_path'
-                                 ' is None.')
-            del info_dict[file_id]
+        info_dict[tree_path] = (branch_location, file_id)
+        if branch_location is None:
+            del info_dict[tree_path]
         self._set_all_reference_info(info_dict)
 
-    def get_reference_info(self, file_id):
+    def get_reference_info(self, path):
         """Get the tree_path and branch_location for a tree reference.
 
-        :return: a tuple of (tree_path, branch_location)
+        :return: a tuple of (branch_location, file_id)
         """
-        return self._get_all_reference_info().get(file_id, (None, None))
+        return self._get_all_reference_info().get(path, (None, None))
 
-    def reference_parent(self, file_id, path, possible_transports=None):
+    def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id.
 
         :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
         :return: A branch associated with the file_id
         """
-        branch_location = self.get_reference_info(file_id)[1]
+        branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return Branch.reference_parent(self, file_id, path,
+            return Branch.reference_parent(self, path, file_id,
                                            possible_transports)
         branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
@@ -665,15 +662,14 @@ class BzrBranch8(BzrBranch):
 class BzrBranch7(BzrBranch8):
     """A branch with support for a fallback repository."""
 
-    def set_reference_info(self, file_id, tree_path, branch_location):
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
         Branch.set_reference_info(self, file_id, tree_path, branch_location)
 
-    def get_reference_info(self, file_id):
-        Branch.get_reference_info(self, file_id)
+    def get_reference_info(self, path):
+        Branch.get_reference_info(self, path)
 
-    def reference_parent(self, file_id, path, possible_transports=None):
-        return Branch.reference_parent(self, file_id, path,
-                                       possible_transports)
+    def reference_parent(self, path, file_id=None, possible_transports=None):
+        return Branch.reference_parent(self, path, file_id, possible_transports)
 
 
 class BzrBranch6(BzrBranch7):

@@ -475,7 +475,7 @@ class BzrDir(controldir.ControlDir):
                 subtrees = []
             for path, file_id in subtrees:
                 target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation = source_branch.reference_parent(path, file_id)
                 sublocation.controldir.sprout(target,
                     basis.get_reference_revision(path, file_id),
                     force_new_repo=force_new_repo, recurse=recurse,

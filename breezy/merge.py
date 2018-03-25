@@ -648,8 +648,8 @@ class Merger(object):
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                 sub_merge.merge_type = self.merge_type
-                other_branch = self.other_branch.reference_parent(file_id,
-                                                                  relpath)
+                other_branch = self.other_branch.reference_parent(
+                    relpath, file_id)
                 sub_merge.set_other_revision(other_revision, other_branch)
                 base_tree_path = _mod_tree.find_previous_path(
                     self.this_tree, self.base_tree, relpath)
