@@ -36,7 +36,7 @@ class TestSplit(tests.TestCaseWithTransport):
         a_branch = repo.controldir.create_branch()
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
         wt = a_branch.create_checkout('a', lightweight=True)
-        wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
+        wt.add(['b', 'b/c', 'b/c/d'], [b'b-id', b'c-id', b'd-id'])
         wt.commit('added files')
         self.run_bzr_error(('must upgrade your branch at .*a',), 'split a/b')
 

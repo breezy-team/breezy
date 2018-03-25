@@ -99,7 +99,7 @@ class TestCommit(TestCaseWithWorkingTree):
                 HasPathRelations(
                     tree_a, [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
 
-        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        self.build_tree_contents([('A/a/n', b'new contents for n\n')])
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified
@@ -145,7 +145,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['a'])
         tree.smart_add(['.'])
         tree.commit('setup test')
-        self.build_tree_contents([('a', 'new contents for "a"\n')])
+        self.build_tree_contents([('a', b'new contents for "a"\n')])
         self.assertRaises(PointlessCommit, tree.commit, 'test',
             exclude=['a'], allow_pointless=False)
 
@@ -175,7 +175,7 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         if tree.branch.repository._format.supports_setting_revision_ids:
-            committed_id = tree.commit('foo', rev_id='foo')
+            committed_id = tree.commit('foo', rev_id=b'foo')
             # the commit should have returned the same id we asked for.
             self.assertEqual('foo', committed_id)
         else:
@@ -419,7 +419,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.get_reference_revision('subtree')
         child_revid = subtree.last_revision()
         # now change the child tree
-        self.build_tree_contents([('subtree/file', 'new-content')])
+        self.build_tree_contents([('subtree/file', b'new-content')])
         # and commit in the parent should commit the child and grab its revid,
         # we test with allow_pointless=False here so that we are simulating
         # what users will see.

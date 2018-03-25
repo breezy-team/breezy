@@ -1105,7 +1105,7 @@ class TestSetLastRevisionVerbMixin(object):
         self.tree.add('')
         rev_id_utf8 = u'\xc8'.encode('utf-8')
         r1 = self.tree.commit('1st commit', rev_id=rev_id_utf8)
-        r2 = self.tree.commit('2nd commit', rev_id='rev-2')
+        r2 = self.tree.commit('2nd commit', rev_id=b'rev-2')
         self.tree.unlock()
 
     def test_branch_last_revision_info_is_updated(self):
@@ -1236,13 +1236,13 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.tree.add('')
         r1 = self.tree.commit('1st commit')
         revno_1, revid_1 = self.tree.branch.last_revision_info()
-        r2 = self.tree.commit('2nd commit', rev_id='child-1')
+        r2 = self.tree.commit('2nd commit', rev_id=b'child-1')
         # Undo the second commit
         self.tree.branch.set_last_revision_info(revno_1, revid_1)
         self.tree.set_parent_ids([revid_1])
         # Make a new second commit, child-2.  child-2 has diverged from
         # child-1.
-        new_r2 = self.tree.commit('2nd commit', rev_id='child-2')
+        new_r2 = self.tree.commit('2nd commit', rev_id=b'child-2')
         self.tree.unlock()
 
     def test_not_allow_diverged(self):
@@ -1580,7 +1580,7 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         write_token = tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add('')
-        tree.commit("Message", rev_id='rev1')
+        tree.commit("Message", rev_id=b'rev1')
         tree.branch.repository.start_write_group()
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute('', write_token,
@@ -1615,8 +1615,8 @@ class TestSmartServerRepositoryAllRevisionIds(
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        tree.commit(rev_id='origineel', message="message")
-        tree.commit(rev_id='nog-een-revisie', message="message")
+        tree.commit(rev_id=b'origineel', message="message")
+        tree.commit(rev_id=b'nog-een-revisie', message="message")
         tree.unlock()
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(("ok", ),
@@ -1899,9 +1899,9 @@ class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
         request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
-        self.build_tree_contents([("file", "somecontents")])
-        t.add(["file"], ["thefileid"])
-        t.commit(rev_id='somerev', message="add file")
+        self.build_tree_contents([("file", b"somecontents")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
         self.assertIs(None, request.execute(''))
         response = request.do_body("thefileid\0somerev\n")
         self.assertTrue(response.is_successful())
@@ -1944,7 +1944,7 @@ class TestSmartServerRequestHasSignatureForRevisionId(
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        r1 = tree.commit('a commit', rev_id='A')
+        r1 = tree.commit('a commit', rev_id=b'A')
         tree.unlock()
         self.assertTrue(tree.branch.repository.has_revision('A'))
         self.assertEqual(smart_req.SmartServerResponse(('no', )),
@@ -1959,7 +1959,7 @@ class TestSmartServerRequestHasSignatureForRevisionId(
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        r1 = tree.commit('a commit', rev_id='A')
+        r1 = tree.commit('a commit', rev_id=b'A')
         tree.branch.repository.start_write_group()
         tree.branch.repository.sign_revision('A', strategy)
         tree.branch.repository.commit_write_group()
@@ -2066,7 +2066,7 @@ class TestSmartServerRepositoryGetRevisionSignatureText(
         request = smart_repo.SmartServerRepositoryGetRevisionSignatureText(
             backing)
         bb = self.make_branch_builder('.')
-        bb.build_commit(rev_id='A')
+        bb.build_commit(rev_id=b'A')
         repo = bb.get_branch().repository
         strategy = gpg.LoopbackGPGStrategy(None)
         self.addCleanup(repo.lock_write().unlock)
@@ -2671,9 +2671,9 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         request = smart_repo.SmartServerRepositoryGetInventories(backing)
         t = self.make_branch_and_tree('.', format='2a')
         self.addCleanup(t.lock_write().unlock)
-        self.build_tree_contents([("file", "somecontents")])
-        t.add(["file"], ["thefileid"])
-        t.commit(rev_id='somerev', message="add file")
+        self.build_tree_contents([("file", b"somecontents")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
         self.assertIs(None, request.execute('', 'unordered'))
         response = request.do_body("somerev\n")
         self.assertTrue(response.is_successful())
@@ -2692,9 +2692,9 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         request = smart_repo.SmartServerRepositoryGetInventories(backing)
         t = self.make_branch_and_tree('.', format='2a')
         self.addCleanup(t.lock_write().unlock)
-        self.build_tree_contents([("file", "somecontents")])
-        t.add(["file"], ["thefileid"])
-        t.commit(rev_id='somerev', message="add file")
+        self.build_tree_contents([("file", b"somecontents")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
         self.assertIs(None, request.execute('', 'unordered'))
         response = request.do_body("")
         self.assertTrue(response.is_successful())

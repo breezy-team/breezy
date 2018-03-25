@@ -1741,7 +1741,7 @@ class TestSetUnsetEnv(tests.TestCase):
 class TestSizeShaFile(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
-        self.build_tree_contents([('foo', '')])
+        self.build_tree_contents([('foo', b'')])
         expected_sha = osutils.sha_string('')
         f = open('foo')
         self.addCleanup(f.close)
@@ -1750,7 +1750,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
         self.assertEqual(expected_sha, sha)
 
     def test_sha_mixed_endings(self):
-        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        text = b'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         f = open('foo', 'rb')
@@ -1763,12 +1763,12 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
 class TestShaFileByName(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
-        self.build_tree_contents([('foo', '')])
+        self.build_tree_contents([('foo', b'')])
         expected_sha = osutils.sha_string('')
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
     def test_sha_mixed_endings(self):
-        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        text = b'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))

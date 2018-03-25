@@ -110,7 +110,7 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
         super(TestConfigBreakLock, self).setUp()
         self.config_file_name = './my.conf'
         self.build_tree_contents([(self.config_file_name,
-                                   '[DEFAULT]\none=1\n')])
+                                   b'[DEFAULT]\none=1\n')])
         self.config = config.LockableConfig(file_name=self.config_file_name)
         self.config.lock_write()
 

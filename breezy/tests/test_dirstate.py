@@ -227,9 +227,9 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'b-c', 'f']
         file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'b-c-id', 'f-id']
         self.build_tree(['tree/' + p for p in paths])
-        tree.set_root_id('TREE_ROOT')
+        tree.set_root_id(b'TREE_ROOT')
         tree.add([p.rstrip('/') for p in paths], file_ids)
-        tree.commit('initial', rev_id='rev-1')
+        tree.commit('initial', rev_id=b'rev-1')
         revision_id = 'rev-1'
         # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
         t = self.get_transport('tree')
@@ -452,7 +452,7 @@ class TestTreeToDirState(TestCaseWithDirState):
     def get_tree_with_a_file(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a file'])
-        tree.add('a file', 'a-file-id')
+        tree.add('a file', b'a-file-id')
         return tree
 
     def test_non_empty_no_parents_to_dirstate(self):
@@ -476,13 +476,13 @@ class TestTreeToDirState(TestCaseWithDirState):
         rev_id = tree.commit('first post').encode('utf8')
         # change the current content to be different this will alter stat, sha
         # and length:
-        self.build_tree_contents([('tree/a file', 'new content\n')])
+        self.build_tree_contents([('tree/a file', b'new content\n')])
         expected_result = ([rev_id], [
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
              ]),
-            (('', 'a file', 'a-file-id'), # common
+            (('', 'a file', b'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
               ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
                rev_id), # first parent
@@ -503,7 +503,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         tree.merge_from_branch(tree2.branch)
         # change the current content to be different this will alter stat, sha
         # and length again, giving us three distinct values:
-        self.build_tree_contents([('tree/a file', 'new content\n')])
+        self.build_tree_contents([('tree/a file', b'new content\n')])
         expected_result = ([rev_id, rev_id2], [
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
@@ -549,7 +549,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
     def create_updated_dirstate(self):
         self.build_tree(['a-file'])
         tree = self.make_branch_and_tree('.')
-        tree.add(['a-file'], ['a-id'])
+        tree.add(['a-file'], [b'a-id'])
         tree.commit('add a-file')
         # Save and unlock the state, re-open it in readonly mode
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -566,7 +566,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         # write to disk.
         lines = state.get_lines()
         state.unlock()
-        self.build_tree_contents([('dirstate', ''.join(lines))])
+        self.build_tree_contents([('dirstate', b''.join(lines))])
         # get a state object
         # no parents, default tree content
         expected_result = ([], [
@@ -681,16 +681,16 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             # No stat and no sha1 sum.
-            state.add('a-file', 'a-file-id', 'file', None, '')
+            state.add('a-file', b'a-file-id', 'file', None, '')
             state.save()
         finally:
             state.unlock()
 
         # The dirstate should include TREE_ROOT and 'a-file' and nothing else
         expected_blocks = [
-            ('', [(('', '', 'TREE_ROOT'),
+            ('', [(('', '', b'TREE_ROOT'),
                    [('d', '', 0, False, dirstate.DirState.NULLSTAT)])]),
-            ('', [(('', 'a-file', 'a-file-id'),
+            ('', [(('', 'a-file', b'a-file-id'),
                    [('f', '', 0, False, dirstate.DirState.NULLSTAT)])]),
         ]
 
@@ -701,7 +701,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
             self.assertEqual(expected_blocks, state._dirblocks)
 
             # Now modify the state, but mark it as inconsistent
-            state.add('a-dir', 'a-dir-id', 'directory', None, '')
+            state.add(b'a-dir', b'a-dir-id', 'directory', None, '')
             state._changes_aborted = True
             state.save()
         finally:
@@ -752,16 +752,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
-        self.assertEqual(['a-root-value', 'subdir-id'], sorted(id_index))
-        state.add('file-name', 'file-id', 'file', None, '')
-        self.assertEqual(['a-root-value', 'file-id', 'subdir-id'],
+        self.assertEqual(['a-root-value', b'subdir-id'], sorted(id_index))
+        state.add('file-name', b'file-id', 'file', None, '')
+        self.assertEqual(['a-root-value', b'file-id', b'subdir-id'],
                          sorted(id_index))
-        state.update_minimal(('', 'new-name', 'file-id'), 'f',
+        state.update_minimal(('', 'new-name', b'file-id'), 'f',
                              path_utf8='new-name')
-        self.assertEqual(['a-root-value', 'file-id', 'subdir-id'],
+        self.assertEqual(['a-root-value', b'file-id', b'subdir-id'],
                          sorted(id_index))
-        self.assertEqual([('', 'new-name', 'file-id')],
-                         sorted(id_index['file-id']))
+        self.assertEqual([('', 'new-name', b'file-id')],
+                         sorted(id_index[b'file-id']))
         state._validate()
 
     def test_set_state_from_inventory_no_content_no_parents(self):
@@ -841,9 +841,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             # make a dirstate with some valid hashcache data
             # file on disk, but that's not needed for this test
-            foo_contents = 'contents of foo'
+            foo_contents = b'contents of foo'
             self.build_tree_contents([('foo', foo_contents)])
-            tree.add('foo', 'foo-id')
+            tree.add('foo', b'foo-id')
 
             foo_stat = os.stat('foo')
             foo_packed = dirstate.pack_stat(foo_stat)
@@ -901,7 +901,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
                       ['a-id', 'b-id', 'a-b-id', 'foo-id', 'bar-id'])
-            tree1.commit('rev1', rev_id='rev1')
+            tree1.commit('rev1', rev_id=b'rev1')
             root_id = tree1.get_root_id()
             inv = tree1.root_inventory
         finally:
@@ -972,8 +972,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
         """Set the root file id in a dirstate with parents"""
         mt = self.make_branch_and_tree('mt')
         # in case the default tree format uses a different root id
-        mt.set_root_id('TREE_ROOT')
-        mt.commit('foo', rev_id='parent-revid')
+        mt.set_root_id(b'TREE_ROOT')
+        mt.commit('foo', rev_id=b'parent-revid')
         rt = mt.branch.repository.revision_tree('parent-revid')
         state = dirstate.DirState.initialize('dirstate')
         state._validate()
@@ -1104,7 +1104,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree1.lock_write()
         try:
             tree1.add('')
-            tree1.add(['a file'], ['file-id'], ['file'])
+            tree1.add(['a file'], [b'file-id'], ['file'])
             tree1.put_file_bytes_non_atomic('a file', 'file-content')
             revid1 = tree1.commit('foo')
         finally:
@@ -1158,15 +1158,15 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # the 1*20 is the sha1 pretend value.
         state = dirstate.DirState.initialize('dirstate')
         expected_entries = [
-            (('', '', 'TREE_ROOT'), [
+            (('', '', b'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a file', 'a-file-id'), [
+            (('', 'a file', b'a-file-id'), [
              ('f', '1'*20, 19, False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         try:
-            state.add('a file', 'a-file-id', 'file', stat, '1'*20)
+            state.add('a file', b'a-file-id', 'file', stat, '1'*20)
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1277,8 +1277,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a dir', 'a dir id', 'directory', dirstat, None)
-            state.add('a dir/a file', 'a-file-id', 'file', filestat, '1'*20)
+            state.add('a dir', b'a dir id', 'directory', dirstat, None)
+            state.add('a dir/a file', b'a-file-id', 'file', filestat, '1'*20)
             # added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1294,13 +1294,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # make a dirstate and add a tree reference
         state = dirstate.DirState.initialize('dirstate')
         expected_entry = (
-            ('', 'subdir', 'subdir-id'),
+            ('', 'subdir', b'subdir-id'),
             [('t', 'subtree-123123', 0, False,
               'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')],
             )
         try:
-            state.add('subdir', 'subdir-id', 'tree-reference', None, 'subtree-123123')
-            entry = state._get_entry(0, 'subdir-id', 'subdir')
+            state.add('subdir', b'subdir-id', 'tree-reference', None, 'subtree-123123')
+            entry = state._get_entry(0, b'subdir-id', 'subdir')
             self.assertEqual(entry, expected_entry)
             state._validate()
             state.save()
@@ -1310,11 +1310,11 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state.lock_read()
         self.addCleanup(state.unlock)
         state._validate()
-        entry2 = state._get_entry(0, 'subdir-id', 'subdir')
+        entry2 = state._get_entry(0, b'subdir-id', 'subdir')
         self.assertEqual(entry, entry2)
         self.assertEqual(entry, expected_entry)
         # and lookup by id should work too
-        entry2 = state._get_entry(0, fileid_utf8='subdir-id')
+        entry2 = state._get_entry(0, fileid_utf8=b'subdir-id')
         self.assertEqual(entry, expected_entry)
 
     def test_add_forbidden_names(self):
@@ -1335,7 +1335,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.build_tree(['tree1/b'])
         tree1.lock_write()
         try:
-            tree1.add(['b'], ['b-id'])
+            tree1.add(['b'], [b'b-id'])
             root_id = tree1.get_root_id()
             inv = tree1.root_inventory
             state = dirstate.DirState.initialize('dirstate')
@@ -1382,7 +1382,7 @@ class TestDirStateHashUpdates(TestCaseWithDirState):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c', 'd'])
         tree.lock_write()
-        tree.add(['c', 'd'], ['c-id', 'd-id'])
+        tree.add(['c', 'd'], [b'c-id', b'd-id'])
         tree.commit('add c and d')
         state = InstrumentedDirState.on_file(tree.current_dirstate()._filename,
                                              worth_saving_limit=2)
@@ -2224,7 +2224,7 @@ class TestDirstateTreeReference(TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree', format='development-subtree')
         subtree = self.make_branch_and_tree('tree/subtree',
                             format='development-subtree')
-        subtree.set_root_id('subtree')
+        subtree.set_root_id(b'subtree')
         tree.add_reference(subtree)
         tree.add('subtree')
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -2434,14 +2434,14 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         self.assertRaises(NotImplementedError, p.stat_and_sha1, "foo")
 
     def test_defaultsha1provider_sha1(self):
-        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        text = b'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         p = dirstate.DefaultSHA1Provider()
         self.assertEqual(expected_sha, p.sha1('foo'))
 
     def test_defaultsha1provider_stat_and_sha1(self):
-        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        text = b'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         p = dirstate.DefaultSHA1Provider()

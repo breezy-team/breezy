@@ -81,7 +81,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def prepare_lightweight_checkout_to_branch(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
-        checkout.commit('first commit', rev_id='rev1')
+        checkout.commit('first commit', rev_id=b'rev1')
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.controldir)
         return reconfiguration, checkout
 
@@ -229,7 +229,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def make_unsynced_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout')
-        checkout.commit('test', rev_id='new-commit', local=True)
+        checkout.commit('test', rev_id=b'new-commit', local=True)
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             checkout.controldir)
         return checkout, parent, reconfiguration
@@ -252,7 +252,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def prepare_branch_to_lightweight_checkout(self):
         parent = self.make_branch('parent')
         child = parent.controldir.sprout('child').open_workingtree()
-        child.commit('test', rev_id='new-commit')
+        child.commit('test', rev_id=b'new-commit')
         parent.pull(child.branch)
         child.controldir.destroy_workingtree()
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
@@ -329,7 +329,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_standalone_to_use_shared(self):
         self.build_tree(['root/'])
         tree = self.make_branch_and_tree('root/tree')
-        tree.commit('Hello', rev_id='hello-id')
+        tree.commit('Hello', rev_id=b'hello-id')
         repo = self.make_repository('root', shared=True)
         reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.controldir)
         reconfiguration.apply()
@@ -339,7 +339,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def add_dead_head(self, tree):
         revno, revision_id = tree.branch.last_revision_info()
-        tree.commit('Dead head', rev_id='dead-head-id')
+        tree.commit('Dead head', rev_id=b'dead-head-id')
         tree.branch.set_last_revision_info(revno, revision_id)
         tree.set_last_revision(revision_id)
 
@@ -347,7 +347,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.build_tree(['root/'])
         tree = self.make_branch_and_tree('root/tree')
         self.add_dead_head(tree)
-        tree.commit('Hello', rev_id='hello-id')
+        tree.commit('Hello', rev_id=b'hello-id')
         repo = self.make_repository('root', shared=True)
         reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.controldir)
         reconfiguration.apply()
@@ -369,7 +369,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_use_shared_to_standalone(self):
         tree = self.make_repository_tree()
-        tree.commit('Hello', rev_id='hello-id')
+        tree.commit('Hello', rev_id=b'hello-id')
         reconfigure.Reconfigure.to_standalone(tree.controldir).apply()
         tree = workingtree.WorkingTree.open('root/tree')
         repo = tree.branch.repository
@@ -380,7 +380,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_use_shared_to_standalone_preserves_dead_heads(self):
         tree = self.make_repository_tree()
         self.add_dead_head(tree)
-        tree.commit('Hello', rev_id='hello-id')
+        tree.commit('Hello', rev_id=b'hello-id')
         reconfigure.Reconfigure.to_standalone(tree.controldir).apply()
         tree = workingtree.WorkingTree.open('root/tree')
         repo = tree.branch.repository

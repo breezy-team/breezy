@@ -45,10 +45,10 @@ class TestamentSetup(TestCaseWithTransport):
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
-                 rev_id='test@user-1')
-        self.build_tree_contents([('hello', 'contents of hello file'),
+                 rev_id=b'test@user-1')
+        self.build_tree_contents([('hello', b'contents of hello file'),
                              ('src/', ),
-                             ('src/foo.c', 'int main()\n{\n}\n')])
+                             ('src/foo.c', b'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
                              [b'hello-id', b'src-id', b'foo.c-id'])
         tt = TreeTransform(self.wt)
@@ -58,7 +58,7 @@ class TestamentSetup(TestCaseWithTransport):
         self.wt.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
-                 rev_id='test@user-2',
+                 rev_id=b'test@user-2',
                  committer='test@user')
 
 
@@ -106,14 +106,14 @@ class TestamentTests(TestamentSetup):
         """Testament containing symlink (where possible)"""
         self.requireFeature(SymlinkFeature)
         os.symlink('wibble/linktarget', 'link')
-        self.wt.add(['link'], ['link-id'])
+        self.wt.add(['link'], [b'link-id'])
         self.wt.commit(message='add symlink',
                  timestamp=1129025493,
                  timezone=36000,
-                 rev_id='test@user-3',
+                 rev_id=b'test@user-3',
                  committer='test@user')
         t = self.from_revision(self.b.repository, 'test@user-3')
-        self.assertEqualDiff(t.as_text(), self.expected('rev_3'))
+        self.assertEqualDiff(t.as_text(), self.expected(b'rev_3'))
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
@@ -124,7 +124,7 @@ class TestamentTests(TestamentSetup):
         self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
-                      rev_id='test@user-3',
+                      rev_id=b'test@user-3',
                       committer='test@user',
                       revprops=props)
         t = self.from_revision(self.b.repository, 'test@user-3')
@@ -135,7 +135,7 @@ class TestamentTests(TestamentSetup):
             message=u'non-ascii commit \N{COPYRIGHT SIGN} me',
             timestamp=1129025493,
             timezone=36000,
-            rev_id='test@user-3',
+            rev_id=b'test@user-3',
             committer=u'Erik B\xe5gfors <test@user>',
             revprops={'uni':u'\xb5'}
             )

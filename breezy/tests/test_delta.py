@@ -283,16 +283,16 @@ class TestDeltaShow(tests.TestCaseWithTransport):
         # We build the delta from a real tree to avoid depending on internal
         # implementation details.
         wt = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/f1', '1\n'),
-                                  ('branch/f2', '2\n'),
-                                  ('branch/f3', '3\n'),
-                                  ('branch/f4', '4\n'),
-                                  ('branch/f5', '5\n'),
+        self.build_tree_contents([('branch/f1', b'1\n'),
+                                  ('branch/f2', b'2\n'),
+                                  ('branch/f3', b'3\n'),
+                                  ('branch/f4', b'4\n'),
+                                  ('branch/f5', b'5\n'),
                                   ('branch/dir/',),
                                  ])
         wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
-               ['f1-id', 'f2-id', 'f3-id', 'f4-id', 'dir-id'])
-        wt.commit('commit one', rev_id='1')
+               [b'f1-id', b'f2-id', b'f3-id', b'f4-id', b'dir-id'])
+        wt.commit('commit one', rev_id=b'1')
 
         # TODO add rename,removed,etc. here?
         wt.add('f5')

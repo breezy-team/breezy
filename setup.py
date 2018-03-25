@@ -24,11 +24,8 @@ import breezy
 def get_long_description():
     dirname = os.path.dirname(__file__)
     readme = os.path.join(dirname, 'README')
-    f = open(readme, 'rb')
-    try:
+    with open(readme, 'rb') as f:
         return f.read()
-    finally:
-        f.close()
 
 
 ##
@@ -136,9 +133,8 @@ class my_install_scripts(install_scripts):
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
-                f = file(batch_path, "w")
-                f.write(batch_str)
-                f.close()
+                with file(batch_path, "w") as f:
+                    f.write(batch_str)
                 print(("Created: %s" % batch_path))
             except Exception:
                 e = sys.exc_info()[1]

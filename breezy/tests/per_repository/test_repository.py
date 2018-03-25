@@ -493,13 +493,13 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file1', 'foo'),
-                                  ('tree/file2', 'bar')])
+        self.build_tree_contents([('tree/file1', b'foo'),
+                                  ('tree/file2', b'bar')])
         tree.add(['file1', 'file2'])
         file1_id = tree.path2id('file1')
         file2_id = tree.path2id('file2')
         rev1 = tree.commit('rev1')
-        self.build_tree_contents([('tree/file1', 'baz')])
+        self.build_tree_contents([('tree/file1', b'baz')])
         rev2 = tree.commit('rev2')
         repository = tree.branch.repository
         repository.lock_read()

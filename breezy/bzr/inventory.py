@@ -123,7 +123,7 @@ class InventoryEntry(object):
     src/hello.c
     src/wibble
     src/wibble/wibble.c
-    >>> i.id2path('2326')
+    >>> i.id2path(b'2326')
     'src/wibble/wibble.c'
     """
 
@@ -655,9 +655,9 @@ class CommonInventory(object):
         """Return as a string the path to file_id.
 
         >>> i = Inventory()
-        >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
-        >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
-        >>> print i.id2path('foo-id')
+        >>> e = i.add(InventoryDirectory(b'src-id', 'src', ROOT_ID))
+        >>> e = i.add(InventoryFile(b'foo-id', 'foo.c', parent_id='src-id'))
+        >>> print i.id2path(b'foo-id')
         src/foo.c
 
         :raises NoSuchId: If file_id is not present in the inventory.
@@ -679,7 +679,7 @@ class CommonInventory(object):
                 return
             from_dir = self.root
             yield '', self.root
-        elif isinstance(from_dir, (str, text_type)):
+        elif isinstance(from_dir, bytes):
             from_dir = self.get_entry(from_dir)
 
         # unrolling the recursive called changed the time from

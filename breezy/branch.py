@@ -53,6 +53,7 @@ from .inter import InterObject
 from .lock import LogicalLockResult
 from .sixish import (
     BytesIO,
+    text_type,
     viewitems,
     )
 from .trace import mutter, mutter_callsite, note, is_quiet
@@ -771,7 +772,7 @@ class Branch(controldir.ControlComponent):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file. RBC 20060125
         if url is not None:
-            if isinstance(url, unicode):
+            if isinstance(url, text_type):
                 try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:

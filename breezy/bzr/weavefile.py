@@ -65,20 +65,20 @@ def write_weave_v5(weave, f):
             f.write(b'i\n')
         f.write(b'1 ' + weave._sha1s[version] + b'\n')
         f.write(b'n ' + weave._names[version] + b'\n')
-        f.write('\n')
+        f.write(b'\n')
 
     f.write(b'w\n')
 
     for l in weave._weave:
         if isinstance(l, tuple):
-            if l[0] == '}':
+            if l[0] == b'}':
                 f.write(b'}\n')
             else:
-                f.write(b'%s %d\n' % l)
+                f.write(l[0] + b' %d\n' % l[1])
         else: # text line
             if not l:
                 f.write(b', \n')
-            elif l[-1] == '\n':
+            elif l[-1] == b'\n':
                 f.write(b'. ' + l)
             else:
                 f.write(b', ' + l + b'\n')

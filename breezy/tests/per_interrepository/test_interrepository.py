@@ -71,9 +71,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
         # add a real revision 'rev1'
-        tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
+        tree_a.commit('rev1', rev_id=b'rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
-        tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
+        tree_a.commit('rev2', rev_id=b'rev2', allow_pointless=True)
         # and sign 'rev2'
         tree_a.branch.repository.lock_write()
         tree_a.branch.repository.start_write_group()

@@ -208,16 +208,16 @@ class TestPush(tests.TestCaseWithTransport):
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
-        tree_a.commit('commit a-1', rev_id='a-1')
+        tree_a.commit('commit a-1', rev_id=b'a-1')
         f = open('repo/a/file', 'ab')
         f.write('more stuff\n')
         f.close()
-        tree_a.commit('commit a-2', rev_id='a-2')
+        tree_a.commit('commit a-2', rev_id=b'a-2')
 
         tree_b = make_shared_tree('b')
         self.build_tree(['repo/b/file'])
         tree_b.add('file')
-        tree_b.commit('commit b-1', rev_id='b-1')
+        tree_b.commit('commit b-1', rev_id=b'b-1')
 
         self.assertTrue(shared_repo.has_revision('a-1'))
         self.assertTrue(shared_repo.has_revision('a-2'))
@@ -256,9 +256,9 @@ class TestPush(tests.TestCaseWithTransport):
         source.start_series()
         source.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
-        source.build_snapshot(['A'], [], revision_id='B')
-        source.build_snapshot(['A'], [], revision_id='C')
+            revision_id=b'A')
+        source.build_snapshot(['A'], [], revision_id=b'B')
+        source.build_snapshot(['A'], [], revision_id=b'C')
         source.finish_series()
         self.run_bzr('push target -d source')
         self.addCleanup(target_repo.lock_read().unlock)
@@ -363,8 +363,8 @@ class TestPush(tests.TestCaseWithTransport):
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='r1')
+        tree.add(['a'], [b'a-id'])
+        tree.commit('one', rev_id=b'r1')
         return tree
 
     def test_push_create_prefix(self):
@@ -578,11 +578,11 @@ class TestPush(tests.TestCaseWithTransport):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('filename', 'f-id', 'file', 'content\n'))],
-            revision_id='rev-1')
-        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
+            revision_id=b'rev-1')
+        builder.build_snapshot(['rev-1'], [], revision_id=b'rev-2')
         builder.build_snapshot(['rev-2'],
             [('modify', ('f-id', 'new-content\n'))],
-            revision_id='rev-3')
+            revision_id=b'rev-3')
         builder.finish_series()
         branch = builder.get_branch()
         # Push rev-1 to "trunk", so that we can stack on it.
@@ -727,11 +727,11 @@ class TestPushStrictMixin(object):
 
     def make_local_branch_and_tree(self):
         self.tree = self.make_branch_and_tree('local')
-        self.build_tree_contents([('local/file', 'initial')])
+        self.build_tree_contents([('local/file', b'initial')])
         self.tree.add('file')
-        self.tree.commit('adding file', rev_id='added')
-        self.build_tree_contents([('local/file', 'modified')])
-        self.tree.commit('modify file', rev_id='modified')
+        self.tree.commit('adding file', rev_id=b'added')
+        self.build_tree_contents([('local/file', b'modified')])
+        self.tree.commit('modify file', rev_id=b'modified')
 
     def set_config_push_strict(self, value):
         br = branch.Branch.open('local')
@@ -823,16 +823,16 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
     def _uncommitted_changes(self):
         self.make_local_branch_and_tree()
         # Make a change without committing it
-        self.build_tree_contents([('local/file', 'in progress')])
+        self.build_tree_contents([('local/file', b'in progress')])
 
     def _pending_merges(self):
         self.make_local_branch_and_tree()
         # Create 'other' branch containing a new file
         other_bzrdir = self.tree.controldir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
-        self.build_tree_contents([('other/other-file', 'other')])
+        self.build_tree_contents([('other/other-file', b'other')])
         other_tree.add('other-file')
-        other_tree.commit('other commit', rev_id='other')
+        other_tree.commit('other commit', rev_id=b'other')
         # Merge and revert, leaving a pending merge
         self.tree.merge_from_branch(other_tree.branch)
         self.tree.revert(filenames=['other-file'], backups=False)
@@ -841,8 +841,8 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.make_local_branch_and_tree()
         self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
         # Make a change and commit it
-        self.build_tree_contents([('local/file', 'modified in local')])
-        self.tree.commit('modify file', rev_id='modified-in-local')
+        self.build_tree_contents([('local/file', b'modified in local')])
+        self.tree.commit('modify file', rev_id=b'modified-in-local')
         # Exercise commands from the checkout directory
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
@@ -889,9 +889,9 @@ class TestPushForeign(tests.TestCaseWithTransport):
         builder = self.make_branch_builder(
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
         builder.build_snapshot(None,
-            [('add', ('', 'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', 'fooid', 'file', 'bar'))],
-            revision_id='revid')
+            [('add', ('', b'TREE_ROOT', 'directory', None)),
+             ('add', ('foo', b'fooid', 'file', 'bar'))],
+            revision_id=b'revid')
         return builder
 
     def test_no_roundtripping(self):

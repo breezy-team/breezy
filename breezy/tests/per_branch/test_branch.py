@@ -103,7 +103,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Test fetch-revision operation."""
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
-        self.build_tree_contents([('b1/foo', 'hello')])
+        self.build_tree_contents([('b1/foo', b'hello')])
         wt.add(['foo'])
         rev1 = wt.commit('lala!', allow_pointless=False)
 
@@ -119,7 +119,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/b', 'b')])
+        self.build_tree_contents([('a/b', b'b')])
         tree_a.add('b')
         tree_a.commit("silly commit")
 
@@ -424,7 +424,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
-        self.assertEqual('null:', checkout_b.last_revision())
+        self.assertEqual(b'null:', checkout_b.last_revision())
         try:
             rev1 = checkout_b.commit('rev1')
         except errors.NoRoundtrippingSupport:
@@ -1119,7 +1119,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def test_get_unshelver(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('')
-        self.build_tree_contents([('tree/file', 'contents1')])
+        self.build_tree_contents([('tree/file', b'contents1')])
         tree.add('file')
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()
@@ -1129,7 +1129,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def test_get_unshelver_bound(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('')
-        self.build_tree_contents([('tree/file', 'contents1')])
+        self.build_tree_contents([('tree/file', b'contents1')])
         tree.add('file')
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()

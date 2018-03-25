@@ -2744,7 +2744,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
         graph = tree.branch.repository.get_graph()
         # This provides an opportunity for the missing rev-id to be cached.
         self.assertEqual({}, graph.get_parent_map(['rev1']))
-        tree.commit('message', rev_id='rev1')
+        tree.commit('message', rev_id=b'rev1')
         graph = tree.branch.repository.get_graph()
         self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
 
@@ -3921,7 +3921,7 @@ class TestStacking(tests.TestCaseWithTransport):
         """Get stacked_upon and stacked branches with content in each."""
         self.setup_smart_server_with_call_log()
         tree1 = self.make_branch_and_tree('tree1', format='1.9')
-        tree1.commit('rev1', rev_id='rev1')
+        tree1.commit('rev1', rev_id=b'rev1')
         tree2 = tree1.branch.controldir.sprout('tree2', stacked=True
             ).open_workingtree()
         local_tree = tree2.branch.create_checkout('local')

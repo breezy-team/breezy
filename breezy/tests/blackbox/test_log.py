@@ -215,23 +215,23 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # mainline
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', ''))],
-            revision_id='1')
-        builder.build_snapshot(['1'], [], revision_id='2')
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [], revision_id=b'2')
         # branch
-        builder.build_snapshot(['1'], [], revision_id='1.1.1')
+        builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
         # merge branch into mainline
-        builder.build_snapshot(['2', '1.1.1'], [], revision_id='3')
+        builder.build_snapshot([b'2', '1.1.1'], [], revision_id=b'3')
         # new commits in branch
-        builder.build_snapshot(['1.1.1'], [], revision_id='1.1.2')
-        builder.build_snapshot(['1.1.2'], [], revision_id='1.1.3')
+        builder.build_snapshot([b'1.1.1'], [], revision_id=b'1.1.2')
+        builder.build_snapshot([b'1.1.2'], [], revision_id=b'1.1.3')
         # merge branch into mainline
-        builder.build_snapshot(['3', '1.1.3'], [], revision_id='4')
+        builder.build_snapshot([b'3', b'1.1.3'], [], revision_id=b'4')
         # merge mainline into branch
-        builder.build_snapshot(['1.1.3', '4'], [], revision_id='1.1.4')
+        builder.build_snapshot([b'1.1.3', b'4'], [], revision_id=b'1.1.4')
         # merge branch into mainline
-        builder.build_snapshot(['4', '1.1.4'], [], revision_id='5')
-        builder.build_snapshot(['5'], [], revision_id='5.1.1')
-        builder.build_snapshot(['5', '5.1.1'], [], revision_id='6')
+        builder.build_snapshot([b'4', b'1.1.4'], [], revision_id=b'5')
+        builder.build_snapshot([b'5'], [], revision_id=b'5.1.1')
+        builder.build_snapshot([b'5', b'5.1.1'], [], revision_id=b'6')
         builder.finish_series()
 
     def test_n0(self):
@@ -287,16 +287,16 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         # |       /
         # 5 -----/
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))], revision_id='1')
-        builder.build_snapshot(['1'], [], revision_id='2')
-        builder.build_snapshot(['1'], [], revision_id='1.1.1')
-        builder.build_snapshot(['2'], [], revision_id='2.1.1')
-        builder.build_snapshot(['2', '1.1.1'], [], revision_id='3')
-        builder.build_snapshot(['2.1.1'], [], revision_id='2.1.2')
-        builder.build_snapshot(['2.1.1'], [], revision_id='2.2.1')
-        builder.build_snapshot(['2.1.2', '2.2.1'], [], revision_id='2.1.3')
-        builder.build_snapshot(['3', '2.1.3'], [], revision_id='4')
-        builder.build_snapshot(['4', '2.1.2'], [], revision_id='5')
+            ('add', ('', b'root-id', 'directory', ''))], revision_id=b'1')
+        builder.build_snapshot(['1'], [], revision_id=b'2')
+        builder.build_snapshot(['1'], [], revision_id=b'1.1.1')
+        builder.build_snapshot(['2'], [], revision_id=b'2.1.1')
+        builder.build_snapshot(['2', '1.1.1'], [], revision_id=b'3')
+        builder.build_snapshot(['2.1.1'], [], revision_id=b'2.1.2')
+        builder.build_snapshot(['2.1.1'], [], revision_id=b'2.2.1')
+        builder.build_snapshot(['2.1.2', '2.2.1'], [], revision_id=b'2.1.3')
+        builder.build_snapshot(['3', '2.1.3'], [], revision_id=b'4')
+        builder.build_snapshot(['4', '2.1.2'], [], revision_id=b'5')
         builder.finish_series()
         return builder
 
@@ -625,7 +625,7 @@ class TestLogDiff(TestLogWithLogCatcher):
         self.wt_commit(level0, 'in branch level0')
 
         level1 = level0.controldir.sprout('level1').open_workingtree()
-        self.build_tree_contents([('level1/file2', 'hello\n')])
+        self.build_tree_contents([('level1/file2', b'hello\n')])
         self.wt_commit(level1, 'in branch level1')
         level0.merge_from_branch(level1.branch)
         self.wt_commit(level0, 'merge branch level1')
@@ -713,7 +713,7 @@ class TestLogUnicodeDiff(TestLog):
     def test_log_show_diff_non_ascii(self):
         # Smoke test for bug #328007 UnicodeDecodeError on 'log -p'
         message = u'Message with \xb5'
-        body = 'Body with \xb5\n'
+        body = b'Body with \xb5\n'
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo', body)])
         wt.add('foo')
@@ -759,7 +759,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
     def create_branch(self):
         brz = self.run_bzr
         brz('init')
-        self.build_tree_contents([('a', 'some stuff\n')])
+        self.build_tree_contents([('a', b'some stuff\n')])
         brz('add a')
         brz(['commit', '-m', self._message])
 
@@ -850,7 +850,7 @@ class TestLogFile(TestLogWithLogCatcher):
         tree.add('file3')
         tree.commit('add file3')
         child_tree = tree.controldir.sprout('child').open_workingtree()
-        self.build_tree_contents([('child/file2', 'hello')])
+        self.build_tree_contents([('child/file2', b'hello')])
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
@@ -943,7 +943,7 @@ class TestLogMultiple(TestLogWithLogCatcher):
         tree.add('dir1/file5')
         tree.commit('add file5')
         child_tree = tree.controldir.sprout('child').open_workingtree()
-        self.build_tree_contents([('child/file2', 'hello')])
+        self.build_tree_contents([('child/file2', b'hello')])
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
@@ -990,8 +990,8 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         tree = self.make_branch_and_tree('')
         tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
-        tree.commit('msg1', rev_id='rev1')
-        tree.commit('msg2', rev_id='rev2')
+        tree.commit('msg1', rev_id=b'rev1')
+        tree.commit('msg2', rev_id=b'rev2')
 
     def test_log_range(self):
         self.assertLogRevnos(["-r1..2"], ["2", "1"])
@@ -1072,7 +1072,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
     def test_standard_log(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
@@ -1089,7 +1089,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
     def test_verbose_log(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
@@ -1106,7 +1106,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
     def test_per_file(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

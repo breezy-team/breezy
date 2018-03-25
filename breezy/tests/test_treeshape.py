@@ -39,6 +39,6 @@ class TestTreeShape(tests.TestCaseWithTransport):
 
     def test_build_tree_symlink(self):
         self.requireFeature(features.SymlinkFeature)
-        self.build_tree_contents([('link@', b'target')])
+        self.build_tree_contents([('link@', 'target')])
         self.assertEqual('target',
             os.readlink('link'))

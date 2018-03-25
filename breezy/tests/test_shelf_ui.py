@@ -62,13 +62,13 @@ class ExpectShelver(shelf_ui.Shelver):
         return response
 
 
-LINES_AJ = 'a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n'
+LINES_AJ = b'a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n'
 
 
-LINES_ZY = 'z\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
+LINES_ZY = b'z\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 
 
-LINES_AY = 'a\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
+LINES_AY = b'a\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 
 
 class ShelfTestCase(tests.TestCaseWithTransport):
@@ -76,7 +76,7 @@ class ShelfTestCase(tests.TestCaseWithTransport):
     def create_shelvable_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/foo', LINES_AJ)])
-        tree.add('foo', 'foo-id')
+        tree.add('foo', b'foo-id')
         tree.commit('added foo')
         self.build_tree_contents([('tree/foo', LINES_ZY)])
         return tree
@@ -153,7 +153,7 @@ class TestShelver(ShelfTestCase):
 
     def test_shelve_binary_change(self):
         tree = self.create_shelvable_tree()
-        self.build_tree_contents([('tree/foo', '\x00')])
+        self.build_tree_contents([('tree/foo', b'\x00')])
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
@@ -219,7 +219,7 @@ class TestShelver(ShelfTestCase):
         self.requireFeature(features.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
-        tree.add('baz', 'baz-id')
+        tree.add('baz', b'baz-id')
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
@@ -378,7 +378,7 @@ class TestApplyReporter(ShelfTestCase):
 
     def test_shelve_binary_change(self):
         tree = self.create_shelvable_tree()
-        self.build_tree_contents([('tree/foo', '\x00')])
+        self.build_tree_contents([('tree/foo', b'\x00')])
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
@@ -448,7 +448,7 @@ class TestApplyReporter(ShelfTestCase):
         self.requireFeature(features.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
-        tree.add('baz', 'baz-id')
+        tree.add('baz', b'baz-id')
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
@@ -471,7 +471,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         tree.lock_write()
         try:
             self.build_tree_contents([('tree/foo', LINES_AJ)])
-            tree.add('foo', 'foo-id')
+            tree.add('foo', b'foo-id')
             tree.commit('added foo')
             self.build_tree_contents([('tree/foo', LINES_ZY)])
             shelver = shelf_ui.Shelver(tree, tree.basis_tree(),

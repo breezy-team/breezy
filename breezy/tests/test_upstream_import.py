@@ -142,14 +142,12 @@ class TestImport(TestCaseInTempDir):
             os.mkdir(prefix + 'junk')
             archive_file.add(prefix + 'junk')
 
-            f = file(prefix + 'README', 'wb')
-            f.write('Now?')
-            f.close()
+            with file(prefix + 'README', 'wb') as f:
+                f.write('Now?')
             archive_file.add(prefix + 'README')
 
-            f = file(prefix + 'README', 'wb')
-            f.write('Wow?')
-            f.close()
+            with file(prefix + 'README', 'wb') as f:
+                f.write('Wow?')
             # Add a second entry for README with different contents.
             archive_file.add(prefix + 'README')
             archive_file.close()
@@ -162,18 +160,16 @@ class TestImport(TestCaseInTempDir):
 
     def make_messed_tar(self):
         result = StringIO()
-        tar_file = tarfile.open('project-0.1.tar', 'w', result)
-        os.mkdir('project-0.1')
-        tar_file.add('project-0.1')
+        with tarfile.open('project-0.1.tar', 'w', result) as tar_file:
+            os.mkdir('project-0.1')
+            tar_file.add('project-0.1')
 
-        os.mkdir('project-0.2')
-        tar_file.add('project-0.2')
+            os.mkdir('project-0.2')
+            tar_file.add('project-0.2')
 
-        f = file('project-0.1/README', 'wb')
-        f.write('What?')
-        f.close()
-        tar_file.add('project-0.1/README')
-        tar_file.close()
+            with file('project-0.1/README', 'wb') as f:
+                f.write('What?')
+            tar_file.add('project-0.1/README')
         rmtree('project-0.1')
         result.seek(0)
         return result
@@ -185,12 +181,11 @@ class TestImport(TestCaseInTempDir):
 
     def make_tar_with_bzrdir(self):
         result = StringIO()
-        tar_file = tarfile.open('tar-with-bzrdir.tar', 'w', result)
-        os.mkdir('toplevel-dir')
-        tar_file.add('toplevel-dir')
-        os.mkdir('toplevel-dir/.bzr')
-        tar_file.add('toplevel-dir/.bzr')
-        tar_file.close()
+        with tarfile.open('tar-with-bzrdir.tar', 'w', result) as tar_file:
+            os.mkdir('toplevel-dir')
+            tar_file.add('toplevel-dir')
+            os.mkdir('toplevel-dir/.bzr')
+            tar_file.add('toplevel-dir/.bzr')
         rmtree('toplevel-dir')
         result.seek(0)
         return result
@@ -238,9 +233,8 @@ class TestImport(TestCaseInTempDir):
             self.assertTrue(os.path.isfile(tree.abspath('README')))
             self.assertEqual(tree.stored_kind('README'), 'file')
             self.assertEqual(tree.stored_kind('FEEDME'), 'file')
-            f = file(tree.abspath('junk/food'), 'wb')
-            f.write('I like food\n')
-            f.close()
+            with file(tree.abspath('junk/food'), 'wb') as f:
+                f.write('I like food\n')
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')

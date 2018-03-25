@@ -175,7 +175,7 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         """Text conflicts can be resolved automatically"""
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file',
-            '<<<<<<<\na\n=======\n>>>>>>>\n')])
+            b'<<<<<<<\na\n=======\n>>>>>>>\n')])
         tree.add('file', 'file_id')
         self.assertEqual(tree.kind('file', 'file_id'), 'file')
         file_conflict = conflicts.TextConflict('file', file_id='file_id')
@@ -184,6 +184,6 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         self.assertContainsRe(note, '0 conflicts auto-resolved.')
         self.assertContainsRe(note,
             'Remaining conflicts:\nText conflict in file')
-        self.build_tree_contents([('tree/file', 'a\n')])
+        self.build_tree_contents([('tree/file', b'a\n')])
         note = self.run_bzr('resolve', working_dir='tree')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')

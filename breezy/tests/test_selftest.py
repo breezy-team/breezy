@@ -635,7 +635,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         dir_format = controldir.format_registry.make_controldir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
-        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+        self.assertEqual(b'Bazaar-NG Knit Repository Format 1',
                          self.get_transport().get_bytes(
                             'dir/.bzr/repository/format'))
 

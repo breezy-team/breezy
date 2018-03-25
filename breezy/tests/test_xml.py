@@ -352,24 +352,24 @@ class TestSerializer(TestCase):
         self.assertEqual(props, new_rev.properties)
 
     def get_sample_inventory(self):
-        inv = Inventory('tree-root-321', revision_id='rev_outer')
-        inv.add(inventory.InventoryFile('file-id', 'file', 'tree-root-321'))
-        inv.add(inventory.InventoryDirectory('dir-id', 'dir',
-                                             'tree-root-321'))
-        inv.add(inventory.InventoryLink('link-id', 'link', 'tree-root-321'))
-        inv.get_entry('tree-root-321').revision = 'rev_outer'
-        inv.get_entry('dir-id').revision = 'rev_outer'
-        inv.get_entry('file-id').revision = 'rev_outer'
-        inv.get_entry('file-id').text_sha1 = 'A'
-        inv.get_entry('file-id').text_size = 1
-        inv.get_entry('link-id').revision = 'rev_outer'
-        inv.get_entry('link-id').symlink_target = 'a'
+        inv = Inventory(b'tree-root-321', revision_id=b'rev_outer')
+        inv.add(inventory.InventoryFile(b'file-id', 'file', b'tree-root-321'))
+        inv.add(inventory.InventoryDirectory(b'dir-id', 'dir',
+                                             b'tree-root-321'))
+        inv.add(inventory.InventoryLink(b'link-id', 'link', b'tree-root-321'))
+        inv.get_entry(b'tree-root-321').revision = b'rev_outer'
+        inv.get_entry(b'dir-id').revision = b'rev_outer'
+        inv.get_entry(b'file-id').revision = b'rev_outer'
+        inv.get_entry(b'file-id').text_sha1 = 'A'
+        inv.get_entry(b'file-id').text_size = 1
+        inv.get_entry(b'link-id').revision = b'rev_outer'
+        inv.get_entry(b'link-id').symlink_target = 'a'
         return inv
 
     def test_roundtrip_inventory_v7(self):
         inv = self.get_sample_inventory()
-        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
-                                        'rev_outer', 'rev_inner'))
+        inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
+                                        b'rev_outer', b'rev_inner'))
         txt = xml7.serializer_v7.write_inventory_to_string(inv)
         lines = xml7.serializer_v7.write_inventory_to_lines(inv)
         self.assertEqual(breezy.osutils.split_lines(txt), lines)
@@ -403,10 +403,10 @@ class TestSerializer(TestCase):
         s_v5 = breezy.bzr.xml5.serializer_v5
         s_v6 = breezy.bzr.xml6.serializer_v6
         s_v7 = xml7.serializer_v7
-        inv = Inventory('tree-root-321', revision_id='rev-outer')
-        inv.root.revision = 'root-rev'
-        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
-                                        'rev-outer', 'rev-inner'))
+        inv = Inventory(b'tree-root-321', revision_id=b'rev-outer')
+        inv.root.revision = b'root-rev'
+        inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
+                                        b'rev-outer', b'rev-inner'))
         self.assertRaises(errors.UnsupportedInventoryKind,
                           s_v5.write_inventory_to_string, inv)
         self.assertRaises(errors.UnsupportedInventoryKind,
@@ -415,9 +415,9 @@ class TestSerializer(TestCase):
         lines = s_v7.write_inventory_to_lines(inv)
         self.assertEqual(breezy.osutils.split_lines(txt), lines)
         inv2 = s_v7.read_inventory_from_string(txt)
-        self.assertEqual('tree-root-321', inv2.get_entry('nested-id').parent_id)
-        self.assertEqual('rev-outer', inv2.get_entry('nested-id').revision)
-        self.assertEqual('rev-inner', inv2.get_entry('nested-id').reference_revision)
+        self.assertEqual(b'tree-root-321', inv2.get_entry(b'nested-id').parent_id)
+        self.assertEqual(b'rev-outer', inv2.get_entry(b'nested-id').revision)
+        self.assertEqual(b'rev-inner', inv2.get_entry(b'nested-id').reference_revision)
 
     def test_roundtrip_inventory_v8(self):
         inv = self.get_sample_inventory()

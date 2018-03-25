@@ -317,7 +317,7 @@ class TestSwitch(TestCaseWithTransport):
     def test_create_branch(self):
         branch = self.make_branch('branch')
         tree = branch.create_checkout('tree', lightweight=True)
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
         self.run_bzr('switch --create-branch ../branch2', working_dir='tree')
         tree = WorkingTree.open('tree')
         self.assertEndsWith(tree.branch.base, '/branch2/')
@@ -325,7 +325,7 @@ class TestSwitch(TestCaseWithTransport):
     def test_create_branch_local(self):
         branch = self.make_branch('branch')
         tree = branch.create_checkout('tree', lightweight=True)
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
         self.run_bzr('switch --create-branch branch2', working_dir='tree')
         tree = WorkingTree.open('tree')
         # The new branch should have been created at the same level as
@@ -335,7 +335,7 @@ class TestSwitch(TestCaseWithTransport):
     def test_create_branch_short_name(self):
         branch = self.make_branch('branch')
         tree = branch.create_checkout('tree', lightweight=True)
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
         self.run_bzr('switch -b branch2', working_dir='tree')
         tree = WorkingTree.open('tree')
         # The new branch should have been created at the same level as
@@ -385,13 +385,13 @@ class TestSwitch(TestCaseWithTransport):
 
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', 'initial\n')])
+        self.build_tree_contents([('a/a', b'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        self.build_tree_contents([('b/a', b'initial\nmore\n')])
         b_tree.commit(message='more')
 
         self.run_bzr('checkout --lightweight a checkout')

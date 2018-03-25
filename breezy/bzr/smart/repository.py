@@ -834,16 +834,13 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
         return tmp_dirname, tmp_repo
 
     def _tarfile_response(self, tmp_dirname, compression):
-        temp = tempfile.NamedTemporaryFile()
-        try:
+        with tempfile.NamedTemporaryFile() as temp:
             self._tarball_of_dir(tmp_dirname, compression, temp.file)
             # all finished; write the tempfile out to the network
             temp.seek(0)
             return SuccessfulSmartServerResponse(('ok',), temp.read())
             # FIXME: Don't read the whole thing into memory here; rather stream
             # it out from the file onto the network. mbp 20070411
-        finally:
-            temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
         import tarfile
