@@ -559,12 +559,15 @@ def tree_delta_from_git_changes(changes, mapping,
     return ret
 
 
-def changes_from_git_changes(changes, mapping, specific_files=None, include_unchanged=False):
+def changes_from_git_changes(changes, mapping, specific_files=None, include_unchanged=False,
+                             target_missing=None):
     """Create a iter_changes-like generator from a git stream.
 
     source and target are iterators over tuples with:
         (filename, sha, mode)
     """
+    if target_missing is None:
+        target_missing = set()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if not (specific_files is None or
                 (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
@@ -618,7 +621,7 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldpath == newpath):
             continue
         yield (fileid, (oldpath, newpath), (oldsha != newsha),
-             (oldpath is not None, newpath is not None),
+             (oldpath is not None, newpath is not None or newpath in target_missing),
              (oldparent, newparent), (oldname, newname),
              (oldkind, newkind), (oldexe, newexe))
 
@@ -638,7 +641,8 @@ class InterGitTrees(_mod_tree.InterTree):
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        changes = self._iter_git_changes(want_unchanged=want_unchanged,
+        changes, target_missing = self._iter_git_changes(
+                want_unchanged=want_unchanged,
                 require_versioned=require_versioned,
                 specific_files=specific_files,
                 extra_trees=extra_trees)
@@ -651,12 +655,14 @@ class InterGitTrees(_mod_tree.InterTree):
     def iter_changes(self, include_unchanged=False, specific_files=None,
                      pb=None, extra_trees=[], require_versioned=True,
                      want_unversioned=False):
-        changes = self._iter_git_changes(want_unchanged=include_unchanged,
+        changes, target_missing = self._iter_git_changes(
+                want_unchanged=include_unchanged,
                 require_versioned=require_versioned,
                 specific_files=specific_files,
                 extra_trees=extra_trees)
         return changes_from_git_changes(changes, self.target.mapping,
-            specific_files=specific_files, include_unchanged=include_unchanged)
+            specific_files=specific_files, include_unchanged=include_unchanged,
+            target_missing=target_missing)
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
             require_versioned=False, extra_trees=None):
@@ -692,7 +698,7 @@ class InterGitRevisionTrees(InterGitTrees):
             store = self.source._repository._git.object_store
         return self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged,
-            include_trees=True, change_type_same=True)
+            include_trees=True, change_type_same=True), set()
 
 
 _mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)

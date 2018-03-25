@@ -1204,7 +1204,7 @@ class InterIndexGitTree(InterGitTrees):
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
         with self.lock_read():
-            changes = self._iter_git_changes(
+            changes, target_missing = self._iter_git_changes(
                     want_unchanged=want_unchanged,
                     specific_files=specific_files,
                     require_versioned=require_versioned,
@@ -1227,7 +1227,7 @@ class InterIndexGitTree(InterGitTrees):
                      pb=None, extra_trees=[], require_versioned=True,
                      want_unversioned=False):
         with self.lock_read():
-            changes = self._iter_git_changes(
+            changes, target_missing = self._iter_git_changes(
                     want_unchanged=include_unchanged,
                     specific_files=specific_files,
                     require_versioned=require_versioned,
@@ -1239,7 +1239,8 @@ class InterIndexGitTree(InterGitTrees):
             return changes_from_git_changes(
                     changes, self.target.mapping,
                     specific_files=specific_files,
-                    include_unchanged=include_unchanged)
+                    include_unchanged=include_unchanged,
+                    target_missing=target_missing)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
@@ -1250,7 +1251,7 @@ def untracked_changes(tree):
         ap = tree.abspath(e)
         st = os.lstat(ap)
         try:
-            np, accessible  = osutils.normalized_filename(e)
+            np, accessible = osutils.normalized_filename(e)
         except UnicodeDecodeError:
             raise errors.BadFilenameEncoding(
                 e, osutils._fs_enc)
@@ -1266,17 +1267,19 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    missing = []
+    missing = set()
     blobs = []
     for entry in iter_fresh_objects(target.index,
             target.abspath('.').encode(sys.getfilesystemencoding()),
             include_deleted=True):
         if entry[1] is None:
-            missing.append(entry[0])
+            missing.add(entry[0])
         else:
             blobs.append(entry)
     for p in missing:
         del target.index[p]
     to_tree_sha = commit_tree(store, blobs)
-    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged, change_type_same=True)
+    return (store.tree_changes(
+        from_tree_sha, to_tree_sha, include_trees=True,
+        want_unchanged=want_unchanged, change_type_same=True),
+        missing)
