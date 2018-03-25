@@ -1137,10 +1137,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             return count
 
     def _read_submodule_head(self, path):
-        try:
-            return GitRepo(path).head()
-        except NotGitRepository:
-            return ZERO_SHA
+        repo = GitRepo(self.abspath(path))
+        return repo.head()
 
     def add_reference(self, sub_tree):
         """Add a TreeReference to the tree, pointing at sub_tree.
