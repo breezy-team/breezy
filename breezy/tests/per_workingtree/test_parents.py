@@ -419,11 +419,11 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         for file_id in deletes:
             delta.append((old.id2path(file_id), None, file_id, None))
         for file_id in adds:
-            delta.append((None, new.id2path(file_id), file_id, new[file_id]))
+            delta.append((None, new.id2path(file_id), file_id, new.get_entry(file_id)))
         for file_id in common:
-            if old[file_id] != new[file_id]:
+            if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
-                    file_id, new[file_id]))
+                    file_id, new.get_entry(file_id)))
         return delta
 
     def fake_up_revision(self, tree, revid, shape):
@@ -440,7 +440,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             def get_file_text(self, path, file_id=None):
                 if file_id is None:
                     file_id = self.path2id(path)
-                ie = self.root_inventory[file_id]
+                ie = self.root_inventory.get_entry(file_id)
                 if ie.kind != "file":
                     return ""
                 return 'a' * ie.text_size

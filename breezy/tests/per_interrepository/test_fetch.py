@@ -498,7 +498,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.lock_write()
         self.addCleanup(source.unlock)
         source.start_write_group()
-        inv['id'].revision = 'b'
+        inv.get_entry('id').revision = 'b'
         inv.revision_id = 'b'
         sha1 = source.add_inventory('b', inv, ['a'])
         rev = Revision(timestamp=0,

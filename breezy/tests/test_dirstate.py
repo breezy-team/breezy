@@ -925,7 +925,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             for entry in state._iter_entries():
                 values.append(entry[0] + entry[1][0][:1])
             self.assertEqual(expected_result1, values)
-            del inv['b-id']
+            inv.delete('b-id')
             state.set_state_from_inventory(inv)
             values = []
             for entry in state._iter_entries():
