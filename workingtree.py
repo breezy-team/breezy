@@ -1185,7 +1185,7 @@ class InterIndexGitTree(InterGitTrees):
                 isinstance(target, GitWorkingTree))
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=False, include_root=False, extra_trees=None,
+            require_versioned=False, extra_trees=None,
             want_unversioned=False):
         trees = [self.source]
         if extra_trees is not None:
@@ -1199,49 +1199,14 @@ class InterIndexGitTree(InterGitTrees):
             return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
-                include_root=include_root,
                 want_unversioned=want_unversioned)
-
-    def compare(self, want_unchanged=False, specific_files=None,
-                extra_trees=None, require_versioned=False, include_root=False,
-                want_unversioned=False):
-        with self.lock_read():
-            changes, target_missing = self._iter_git_changes(
-                    want_unchanged=want_unchanged,
-                    specific_files=specific_files,
-                    require_versioned=require_versioned,
-                    include_root=include_root,
-                    extra_trees=extra_trees, want_unversioned=want_unversioned)
-            source_fileid_map = self.source._fileid_map
-            target_fileid_map = self.target._fileid_map
-            ret = tree_delta_from_git_changes(changes, self.target.mapping,
-                (source_fileid_map, target_fileid_map),
-                specific_files=specific_files, require_versioned=require_versioned,
-                include_root=include_root)
-            return ret
-
-    def iter_changes(self, include_unchanged=False, specific_files=None,
-                     pb=None, extra_trees=[], require_versioned=True,
-                     want_unversioned=False):
-        with self.lock_read():
-            changes, target_missing = self._iter_git_changes(
-                    want_unchanged=include_unchanged,
-                    specific_files=specific_files,
-                    require_versioned=require_versioned,
-                    extra_trees=extra_trees,
-                    want_unversioned=want_unversioned)
-            return changes_from_git_changes(
-                    changes, self.target.mapping,
-                    specific_files=specific_files,
-                    include_unchanged=include_unchanged,
-                    target_missing=target_missing)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False, include_root=False,
+        want_unchanged=False, update_index=False,
         want_unversioned=False):
     """Determine the changes between a git tree and a working tree with index.
 
