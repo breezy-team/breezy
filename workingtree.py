@@ -39,6 +39,7 @@ from dulwich.index import (
     iter_fresh_blobs,
     blob_from_path_and_stat,
     FLAG_STAGEMASK,
+    read_submodule_head,
     validate_path,
     )
 from dulwich.object_store import (
@@ -1136,10 +1137,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                                 show_base=show_base)
             return count
 
-    def _read_submodule_head(self, path):
-        repo = GitRepo(self.abspath(path))
-        return repo.head()
-
     def add_reference(self, sub_tree):
         """Add a TreeReference to the tree, pointing at sub_tree.
 
@@ -1153,6 +1150,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         self, sub_tree, 'Target not inside tree.')
 
             self._add([sub_tree_path], [None], ['tree-reference'])
+
+    def _read_submodule_head(self, path):
+        return read_submodule_head(self.abspath(path))
 
     def get_reference_revision(self, path, file_id=None):
         hexsha = self._read_submodule_head(path)

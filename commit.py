@@ -45,6 +45,7 @@ from dulwich.objects import (
     Blob,
     Commit,
     )
+from dulwich.index import read_submodule_head
 from dulwich.repo import Repo
 
 
@@ -86,7 +87,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         def treeref_sha1(path, file_id):
-            return Repo.open(os.path.join(workingtree.basedir, path)).head()
+            return read_submodule_head(os.path.join(workingtree.basedir, path))
         seen_root = False
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:

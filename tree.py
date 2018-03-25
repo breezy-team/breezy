@@ -891,7 +891,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 index = self.index
             for path, value in index.iteritems():
                 yield (posixpath.join(basepath, path), value)
-                if S_ISGITLINK(value.mode):
+                (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
+                if S_ISGITLINK(mode):
                     pass # TODO(jelmer): dive into submodule
 
 

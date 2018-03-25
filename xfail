@@ -121,3 +121,4 @@ breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_list_files_ve
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_merge_revert(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTreeUpdate.test_update_remove_commit(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_workingtree.TestWorkingTreeUpdate.test_update_revision(GitWorkingTreeFormat)
+breezy.tests.per_tree.test_tree.TestReference.test_iter_references(GitWorkingTreeFormat)
