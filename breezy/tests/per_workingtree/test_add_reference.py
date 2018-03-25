@@ -52,7 +52,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         sub_tree_root_id = sub_tree.get_root_id()
         tree.lock_write()
         try:
-            self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
+            if tree.supports_setting_file_ids():
+                self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
             self.assertEqual(tree.kind('sub-tree'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()

@@ -106,7 +106,8 @@ class TestReference(TestCaseWithTree):
         tree, subtree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual([(u'subtree', subtree.get_root_id())],
+        self.assertEqual(
+            [(u'subtree', subtree.get_root_id())],
             list(tree.iter_references()))
 
     def test_get_root_id(self):
