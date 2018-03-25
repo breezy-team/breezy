@@ -173,25 +173,12 @@ class TransportTests(TestTransportImplementation):
     def test_get(self):
         t = self.get_transport()
 
-        files = ['a', 'b', 'e', 'g']
-        contents = ['contents of a\n',
-                    'contents of b\n',
-                    'contents of e\n',
-                    'contents of g\n',
-                    ]
-        self.build_tree(files, transport=t, line_endings='binary')
+        files = ['a']
+        content = 'contents of a\n'
+        self.build_tree(['a'], transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
-        content_f = t.get_multi(files)
-        # Must use iter zip() from future not old version which will fully
-        # evaluate its inputs, the transport requests should be issued and
-        # handled sequentially (we don't want to force transport to buffer).
-        for content, f in zip(contents, content_f):
-            self.assertEqual(content, f.read())
-
-        content_f = t.get_multi(iter(files))
-        # Again this zip() must come from the future
-        for content, f in zip(contents, content_f):
-            self.assertEqual(content, f.read())
+        f = t.get('a')
+        self.assertEqual(content, f.read())
 
     def test_get_unknown_file(self):
         t = self.get_transport()

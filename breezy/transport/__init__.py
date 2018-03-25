@@ -838,23 +838,6 @@ class Transport(object):
             coalesced_offsets.append(cur)
         return coalesced_offsets
 
-    def get_multi(self, relpaths, pb=None):
-        """Get a list of file-like objects, one for each entry in relpaths.
-
-        :param relpaths: A list of relative paths.
-        :param pb:  An optional ProgressTask for indicating percent done.
-        :return: A list or generator of file-like objects
-        """
-        # TODO: Consider having this actually buffer the requests,
-        # in the default mode, it probably won't give worse performance,
-        # and all children wouldn't have to implement buffering
-        total = self._get_total(relpaths)
-        count = 0
-        for relpath in relpaths:
-            self._update_pb(pb, 'get', count, total)
-            yield self.get(relpath)
-            count += 1
-
     def put_bytes(self, relpath, raw_bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
