@@ -107,7 +107,7 @@ class TestInventoryCreateByApplyDelta(TestInventory):
             (None, "a", "a-id", self.make_file('a-id', 'a', 'tree-root')),
             ], 'new-rev-1')
         self.assertEqual('a', inv.id2path('a-id'))
-        a_ie = inv['a-id']
+        a_ie = inv.get_entry('a-id')
         b_ie = self.make_file(a_ie.file_id, "b", a_ie.parent_id)
         inv = inv.create_by_apply_delta([("a", "b", "a-id", b_ie)], 'new-rev-2')
         self.assertEqual("b", inv.id2path('a-id'))
@@ -128,7 +128,7 @@ class TestInventoryReads(TestInventory):
         inv = self.make_init_inventory()
         self.assertTrue(inv.is_root('tree-root'))
         self.assertFalse(inv.is_root('booga'))
-        ie = inv['tree-root'].copy()
+        ie = inv.get_entry('tree-root').copy()
         ie.file_id = 'booga'
         inv = inv.create_by_apply_delta([("", None, "tree-root", None),
                                          (None, "", "booga", ie)], 'new-rev-2')

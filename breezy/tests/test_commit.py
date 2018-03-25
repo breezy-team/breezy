@@ -331,9 +331,9 @@ class TestCommit(TestCaseWithTransport):
             wt.unlock()
 
         inv = b.repository.get_inventory(r4)
-        eq(inv['hello-id'].revision, r4)
-        eq(inv['a-id'].revision, r1)
-        eq(inv['b-id'].revision, r3)
+        eq(inv.get_entry('hello-id').revision, r4)
+        eq(inv.get_entry('a-id').revision, r1)
+        eq(inv.get_entry('b-id').revision, r3)
 
     def test_removed_commit(self):
         """Commit with a removed file"""
@@ -373,10 +373,10 @@ class TestCommit(TestCaseWithTransport):
               ['dirid', 'file1id', 'file2id'])
         wt.commit('dir/file1', specific_files=['dir/file1'], rev_id='1')
         inv = b.repository.get_inventory('1')
-        self.assertEqual('1', inv['dirid'].revision)
-        self.assertEqual('1', inv['file1id'].revision)
+        self.assertEqual('1', inv.get_entry('dirid').revision)
+        self.assertEqual('1', inv.get_entry('file1id').revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
-        self.assertRaises(BzrError, inv.__getitem__, 'file2id')
+        self.assertRaises(BzrError, inv.get_entry, 'file2id')
 
     def test_strict_commit(self):
         """Try and commit with unknown files and strict = True, should fail."""
