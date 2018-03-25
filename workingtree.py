@@ -703,7 +703,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         fk_entries = {'directory': tree.TreeDirectory,
                       'file': tree.TreeFile,
                       'symlink': tree.TreeLink,
-                      'tree-reference': tree.TreeNested}
+                      'tree-reference': tree.TreeReference}
         with self.lock_read():
             root_ie = self._get_dir_ie(u"", None)
             if include_root and not from_dir:
@@ -1317,5 +1317,6 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     """
     blobs = iter_fresh_blobs(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
     to_tree_sha = commit_tree(store, blobs)
+    # TODO(jelmer): Also report changes in nested trees
     return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
             want_unchanged=want_unchanged, change_type_same=True)
