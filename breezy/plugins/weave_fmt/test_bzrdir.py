@@ -299,7 +299,8 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade('.', BzrDirFormat6())
         t = self.get_transport('.')
-        t.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
+        t.delete('.bzr/pending-merges')
+        t.delete('.bzr/inventory')
         self.assertFalse(t.has('.bzr/stat-cache'))
         t.delete_tree('backup.bzr.~1~')
         # At this point, we have a format6 branch without checkout files.

@@ -1144,11 +1144,6 @@ class Transport(object):
         """Delete the item at relpath"""
         raise NotImplementedError(self.delete)
 
-    def delete_multi(self, relpaths, pb=None):
-        """Queue up a bunch of deletes to be done.
-        """
-        return self._iterate_over(relpaths, self.delete, pb, 'delete', expand=False)
-
     def delete_tree(self, relpath):
         """Delete an entire tree. This may require a listable transport."""
         subtree = self.clone(relpath)
@@ -1166,7 +1161,8 @@ class Transport(object):
                     directories.append(path)
                 else:
                     files.append(path)
-        subtree.delete_multi(files)
+        for file in files:
+            subtree.delete(file)
         pending_rmdirs.reverse()
         for dir in pending_rmdirs:
             subtree.rmdir(dir)

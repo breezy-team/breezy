@@ -828,22 +828,16 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('c', b'c text\n')
         self.assertEqual([True, True, True],
                 list(t.has_multi(['a', 'b', 'c'])))
-        t.delete_multi(['a', 'c'])
+        t.delete('a')
+        t.delete('c')
         self.assertEqual([False, True, False],
                 list(t.has_multi(['a', 'b', 'c'])))
         self.assertFalse(t.has('a'))
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('c'))
 
-        self.assertRaises(NoSuchFile,
-                t.delete_multi, ['a', 'b', 'c'])
-
-        self.assertRaises(NoSuchFile,
-                t.delete_multi, iter(['a', 'b', 'c']))
-
-        t.put_bytes('a', b'another a text\n')
-        t.put_bytes('c', b'another c text\n')
-        t.delete_multi(iter(['a', 'b', 'c']))
+        for name in ['a', 'b', 'c']:
+            self.assertRaises(NoSuchFile, t.delete, name)
 
         # We should have deleted everything
         # SftpServer creates control files in the
