@@ -100,12 +100,14 @@ class GitTreeFile(_mod_tree.TreeFile):
                  'executable']
 
     def __init__(self, file_id, name, parent_id):
+    def __init__(self, file_id, name, parent_id, text_size=None,
+                 text_sha1=None, executable=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
-        self.text_size = None
-        self.text_sha1 = None
-        self.executable = None
+        self.text_size = text_size
+        self.text_sha1 = text_sha1
+        self.executable = executable
 
     @property
     def kind(self):
@@ -119,6 +121,11 @@ class GitTreeFile(_mod_tree.TreeFile):
                 self.text_sha1 == other.text_sha1 and
                 self.text_size == other.text_size and
                 self.executable == other.executable)
+
+    def __repr__(self):
+        return "%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, text_sha1=%r, executable=%r)" % (
+            type(self).__name__, self.file_id, self.name, self.parent_id,
+            self.text_size, self.text_sha1, self.executable)
 
     def copy(self):
         ret = self.__class__(
@@ -151,6 +158,11 @@ class GitTreeSymlink(_mod_tree.TreeLink):
     @property
     def text_size(self):
         return None
+
+    def __repr__(self):
+        return "%s(file_id=%r, name=%r, parent_id=%r, symlink_target=%r)" % (
+            type(self).__name__, self.file_id, self.name, self.parent_id,
+            self.symlink_target)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
@@ -986,7 +998,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 if not self.has_filename(from_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(from_rel))
-                if not self.is_versioned(from_rel):
+                kind = self.kind(from_rel)
+                if not self.is_versioned(from_rel) and kind != 'directory':
                     raise exc_type(from_rel, to_rel,
                         errors.NotVersionedError(from_rel))
                 if self.has_filename(to_rel):
