@@ -527,7 +527,6 @@ class TransportTests(TestTransportImplementation):
             # defined for the transport interface.
             self.assertRaises(TransportNotPossible, t.mkdir, '.')
             self.assertRaises(TransportNotPossible, t.mkdir, 'new_dir')
-            self.assertRaises(TransportNotPossible, t.mkdir_multi, ['new_dir'])
             self.assertRaises(TransportNotPossible, t.mkdir, 'path/doesnt/exist')
             return
         # Test mkdir
@@ -538,14 +537,11 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('dir_b')
         self.assertEqual(t.has('dir_b'), True)
 
-        t.mkdir_multi(['dir_c', 'dir_d'])
+        t.mkdir(['dir_c', 'dir_d'])
 
-        t.mkdir_multi(iter(['dir_e', 'dir_f']))
         self.assertEqual([t.has(n) for n in
-            ['dir_a', 'dir_b', 'dir_c', 'dir_q',
-             'dir_d', 'dir_e', 'dir_f', 'dir_b']],
-            [True, True, True, False,
-             True, True, True, True])
+            ['dir_a', 'dir_b', 'dir_q', 'dir_b']],
+            [True, True, False, True])
 
         # we were testing that a local mkdir followed by a transport
         # mkdir failed thusly, but given that we * in one process * do not
@@ -580,7 +576,7 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'dmode777', 0o777)
         t.mkdir('dmode700', mode=0o700)
         self.assertTransportMode(t, 'dmode700', 0o700)
-        t.mkdir_multi(['mdmode755'], mode=0o755)
+        t.mkdir('mdmode755', mode=0o755)
         self.assertTransportMode(t, 'mdmode755', 0o755)
 
         # Default mode should be based on umask

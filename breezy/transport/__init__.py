@@ -939,12 +939,6 @@ class Transport(object):
         """Create a directory at the given path."""
         raise NotImplementedError(self.mkdir)
 
-    def mkdir_multi(self, relpaths, mode=None, pb=None):
-        """Create a group of directories"""
-        def mkdir(path):
-            self.mkdir(path, mode=mode)
-        return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
-
     def open_write_stream(self, relpath, mode=None):
         """Open a writable file stream at relpath.
 
