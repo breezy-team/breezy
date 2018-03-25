@@ -93,7 +93,7 @@ class Test_TreeShim(tests.TestCase):
         basis_inv = self.make_trivial_basis_inv()
 
         def content_provider(file_id):
-            return 'content of\n' + file_id + '\n'
+            return b'content of\n' + file_id + b'\n'
 
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[],

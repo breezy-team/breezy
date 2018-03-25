@@ -567,7 +567,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
         if self.has_filename(self._format.ignore_filename):
-            with self.get_file(self._format.ignore_filename)
+            with self.get_file(self._format.ignore_filename) as f:
                 ignore_globs.update(ignores.parse_ignore_file(f))
         self._ignoreset = ignore_globs
         return ignore_globs
