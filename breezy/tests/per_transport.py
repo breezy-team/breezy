@@ -195,10 +195,6 @@ class TransportTests(TestTransportImplementation):
                 # consume before we close the handle.
                 content = f.read()
                 f.close()
-        self.assertRaises(NoSuchFile, iterate_and_close,
-                          t.get_multi, ['a', 'b', 'c'])
-        self.assertRaises(NoSuchFile, iterate_and_close,
-                          t.get_multi, iter(['a', 'b', 'c']))
 
     def test_get_directory_read_gives_ReadError(self):
         """consistent errors for read() on a file returned by get()."""
@@ -524,8 +520,6 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('dir_b')
         self.assertEqual(t.has('dir_b'), True)
 
-        t.mkdir(['dir_c', 'dir_d'])
-
         self.assertEqual([t.has(n) for n in
             ['dir_a', 'dir_b', 'dir_q', 'dir_b']],
             [True, True, False, True])
@@ -760,7 +754,7 @@ class TransportTests(TestTransportImplementation):
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('c'))
 
-        for name in ['a', 'b', 'c']:
+        for name in ['a', 'c', 'd']:
             self.assertRaises(NoSuchFile, t.delete, name)
 
         # We should have deleted everything
