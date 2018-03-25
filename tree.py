@@ -63,15 +63,14 @@ from .mapping import (
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'children', 'revision']
+    __slots__ = ['file_id', 'name', 'parent_id', 'children']
 
-    def __init__(self, file_id, name, parent_id, revision=None):
+    def __init__(self, file_id, name, parent_id):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
         # TODO(jelmer)
         self.children = {}
-        self.revision = revision
 
     @property
     def kind(self):
@@ -83,32 +82,30 @@ class GitTreeDirectory(_mod_tree.TreeDirectory):
 
     def copy(self):
         return self.__class__(
-            self.file_id, self.name, self.parent_id, self.revision)
+            self.file_id, self.name, self.parent_id)
 
     def __repr__(self):
-        return "%s(file_id=%r, name=%r, parent_id=%r, revision=%r)" % (
+        return "%s(file_id=%r, name=%r, parent_id=%r)" % (
             self.__class__.__name__, self.file_id, self.name,
-            self.parent_id, self.revision)
+            self.parent_id)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
                 self.file_id == other.file_id and
                 self.name == other.name and
-                self.parent_id == other.parent_id and
-                self.revision == other.revision)
+                self.parent_id == other.parent_id)
 
 
 class GitTreeFile(_mod_tree.TreeFile):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'text_size', 'text_sha1', 'revision',
+    __slots__ = ['file_id', 'name', 'parent_id', 'text_size', 'text_sha1',
                  'executable']
 
-    def __init__(self, file_id, name, parent_id, revision=None, text_size=None,
+    def __init__(self, file_id, name, parent_id, text_size=None,
                  text_sha1=None, executable=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
-        self.revision = revision
         self.text_size = text_size
         self.text_sha1 = text_sha1
         self.executable = executable
@@ -122,20 +119,18 @@ class GitTreeFile(_mod_tree.TreeFile):
                 self.file_id == other.file_id and
                 self.name == other.name and
                 self.parent_id == other.parent_id and
-                self.revision == other.revision and
                 self.text_sha1 == other.text_sha1 and
                 self.text_size == other.text_size and
                 self.executable == other.executable)
 
     def __repr__(self):
-        return "%s(file_id=%r, name=%r, parent_id=%r, revision=%r, text_size=%r, text_sha1=%r, executable=%r)" % (
+        return "%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, text_sha1=%r, executable=%r)" % (
             type(self).__name__, self.file_id, self.name, self.parent_id,
-            self.revision, self.text_size, self.text_sha1, self.executable)
+            self.text_size, self.text_sha1, self.executable)
 
     def copy(self):
         ret = self.__class__(
-                self.file_id, self.name, self.parent_id,
-                self.revision)
+                self.file_id, self.name, self.parent_id)
         ret.text_sha1 = self.text_sha1
         ret.text_size = self.text_size
         ret.executable = self.executable
@@ -144,14 +139,13 @@ class GitTreeFile(_mod_tree.TreeFile):
 
 class GitTreeSymlink(_mod_tree.TreeLink):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target', 'revision']
+    __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target']
 
-    def __init__(self, file_id, name, parent_id, revision=None,
+    def __init__(self, file_id, name, parent_id,
                  symlink_target=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
-        self.revision = revision
         self.symlink_target = symlink_target
 
     @property
@@ -167,22 +161,21 @@ class GitTreeSymlink(_mod_tree.TreeLink):
         return None
 
     def __repr__(self):
-        return "%s(file_id=%r, name=%r, parent_id=%r, revision=%r, symlink_target=%r)" % (
+        return "%s(file_id=%r, name=%r, parent_id=%r, symlink_target=%r)" % (
             type(self).__name__, self.file_id, self.name, self.parent_id,
-            self.revision, self.symlink_target)
+            self.symlink_target)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
                 self.file_id == other.file_id and
                 self.name == other.name and
                 self.parent_id == other.parent_id and
-                self.revision == other.revision and
                 self.symlink_target == other.symlink_target)
 
     def copy(self):
         return self.__class__(
                 self.file_id, self.name, self.parent_id,
-                self.revision, self.symlink_target)
+                self.symlink_target)
 
 
 class GitTreeSubmodule(_mod_tree.TreeLink):
@@ -427,15 +420,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
             ie.text_sha1 = osutils.sha_string(data)
             ie.text_size = len(data)
             ie.executable = mode_is_executable(mode)
-        ie.revision = self.get_file_revision(path.decode('utf-8'))
         return ie
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self._fileid_map.lookup_file_id(path)
-        ie = GitTreeDirectory(file_id,
+        return GitTreeDirectory(file_id,
             posixpath.basename(path).decode("utf-8"), parent_id)
-        ie.revision = self.get_file_revision(path.decode('utf-8'))
-        return ie
 
     def iter_child_entries(self, path, file_id=None):
         (mode, tree_sha) = self._lookup_path(path)
@@ -978,7 +968,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             ie.text_sha1 = osutils.sha_string(data)
             ie.text_size = len(data)
             ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
-        ie.revision = None
         return ie
 
     def _add_missing_parent_ids(self, path, dir_ids):
