@@ -938,7 +938,6 @@ class TransportTests(TestTransportImplementation):
 
         # TODO: Try to write a test for atomicity
         # TODO: Test moving into a non-existent subdirectory
-        # TODO: Test Transport.move_multi
 
     def test_copy(self):
         t = self.get_transport()

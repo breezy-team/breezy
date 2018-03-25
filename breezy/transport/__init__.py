@@ -1081,25 +1081,6 @@ class Transport(object):
             self.copy(rel_from, rel_to)
             self.delete(rel_from)
 
-    def move_multi(self, relpaths, pb=None):
-        """Move a bunch of entries.
-
-        :param relpaths: A list of tuples of the form [(from1, to1), (from2, to2),...]
-        """
-        return self._iterate_over(relpaths, self.move, pb, 'move', expand=True)
-
-    def move_multi_to(self, relpaths, rel_to):
-        """Move a bunch of entries to a single location.
-        This differs from move_multi in that you give a list of from, and
-        a single destination, rather than multiple destinations.
-
-        :param relpaths: A list of relative paths [from1, from2, from3, ...]
-        :param rel_to: A directory where each entry should be placed.
-        """
-        # This is not implemented, because you need to do special tricks to
-        # extract the basename, and add it to rel_to
-        raise NotImplementedError(self.move_multi_to)
-
     def delete(self, relpath):
         """Delete the item at relpath"""
         raise NotImplementedError(self.delete)
