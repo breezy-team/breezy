@@ -604,7 +604,7 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             newparent = None
         else:
             newpath = newpath.decode("utf-8")
-            if newmode is not None:
+            if newmode is not None and newpath not in target_missing:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
             else:

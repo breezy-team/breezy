@@ -35,6 +35,7 @@ from dulwich.index import (
     changes_from_tree,
     cleanup_mode,
     commit_tree,
+    index_entry_from_path,
     index_entry_from_stat,
     iter_fresh_entries,
     blob_from_path_and_stat,
@@ -1213,13 +1214,19 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     """
     missing = set()
     blobs = []
-    for path, entry in iter_fresh_entries(target.index,
-            target.abspath('.').encode(sys.getfilesystemencoding())):
-        if entry is None:
-            missing.add(path)
-            # TODO blobs.append((path, target.index[path].sha, target.index[path].mode))
+    target_root_path = target.abspath('.').encode(sys.getfilesystemencoding())
+    for path, index_entry in target.index.iteritems():
+        try:
+            live_entry = index_entry_from_path(
+                    target.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
+        except EnvironmentError as e:
+            if e.errno in (errno.ENOENT, errno.EISDIR):
+                missing.add(path)
+                # TODO blobs.append((path, index_entry.sha, index_entry.mode))
+            else:
+                raise
         else:
-            blobs.append((path, entry.sha, cleanup_mode(entry.mode)))
+            blobs.append((path, live_entry.sha, cleanup_mode(live_entry.mode)))
     if want_unversioned:
         for e in target.extras():
             ap = target.abspath(e)
