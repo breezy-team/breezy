@@ -959,8 +959,6 @@ class TransportTests(TestTransportImplementation):
         t.copy('d', 'b')
         self.check_transport_contents('text in d\n', t, 'b')
 
-        # TODO: test copy_multi
-
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
 

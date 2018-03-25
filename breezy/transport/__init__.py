@@ -995,15 +995,6 @@ class Transport(object):
         """
         self.put_file(rel_to, self.get(rel_from))
 
-    def copy_multi(self, relpaths, pb=None):
-        """Copy a bunch of entries.
-
-        :param relpaths: A list of tuples of the form [(from, to), (from, to),...]
-        """
-        # This is the non-pipelined implementation, so that
-        # implementors don't have to implement everything.
-        return self._iterate_over(relpaths, self.copy, pb, 'copy', expand=True)
-
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
