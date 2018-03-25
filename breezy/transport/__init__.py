@@ -299,13 +299,6 @@ class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
 
-    Most functions have a _multi variant, which allows you to queue up
-    multiple requests. They generally have a dumb base implementation
-    which just iterates over the arguments, but smart Transport
-    implementations can do pipelining.
-    In general implementations should support having a generator or a list
-    as an argument (ie always iterate, never index)
-
     :ivar base: Base URL for the transport; should always end in a slash.
     """
 
@@ -999,15 +992,6 @@ class Transport(object):
             raise TypeError(
                 'bytes must be a plain string, not %s' % type(data))
         return self.append_file(relpath, BytesIO(data), mode=mode)
-
-    def append_multi(self, files, pb=None):
-        """Append the text in each file-like or string object to
-        the supplied location.
-
-        :param files: A set of (path, f) entries
-        :param pb:  An optional ProgressTask for indicating percent done.
-        """
-        return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to.

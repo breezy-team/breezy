@@ -729,57 +729,6 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                           t.append_bytes, 'missing/path', 'content')
 
-    def test_append_multi(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        t.put_bytes('a', b'diff\ncontents for\na\n'
-                         b'add\nsome\nmore\ncontents\n')
-        t.put_bytes('b', b'contents\nfor b\n')
-
-        self.assertEqual((43, 15),
-            t.append_multi([('a', BytesIO(b'and\nthen\nsome\nmore\n')),
-                            ('b', BytesIO(b'some\nmore\nfor\nb\n'))]))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\n'
-            'add\nsome\nmore\ncontents\n'
-            'and\nthen\nsome\nmore\n',
-            t, 'a')
-        self.check_transport_contents(
-                'contents\nfor b\n'
-                'some\nmore\nfor\nb\n',
-                t, 'b')
-
-        self.assertEqual((62, 31),
-            t.append_multi(iter([('a', BytesIO(b'a little bit more\n')),
-                                 ('b', BytesIO(b'from an iterator\n'))])))
-        self.check_transport_contents(
-            'diff\ncontents for\na\n'
-            'add\nsome\nmore\ncontents\n'
-            'and\nthen\nsome\nmore\n'
-            'a little bit more\n',
-            t, 'a')
-        self.check_transport_contents(
-                'contents\nfor b\n'
-                'some\nmore\nfor\nb\n'
-                'from an iterator\n',
-                t, 'b')
-
-        self.assertEqual((80, 0),
-            t.append_multi([('a', BytesIO(b'some text in a\n')),
-                            ('d', BytesIO(b'missing file r\n'))]))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\n'
-            'add\nsome\nmore\ncontents\n'
-            'and\nthen\nsome\nmore\n'
-            'a little bit more\n'
-            'some text in a\n',
-            t, 'a')
-        self.check_transport_contents('missing file r\n', t, 'd')
-
     def test_append_file_mode(self):
         """Check that append accepts a mode parameter"""
         # check append accepts a mode
