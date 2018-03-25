@@ -99,7 +99,6 @@ class GitTreeFile(_mod_tree.TreeFile):
     __slots__ = ['file_id', 'name', 'parent_id', 'text_size', 'text_sha1',
                  'executable']
 
-    def __init__(self, file_id, name, parent_id):
     def __init__(self, file_id, name, parent_id, text_size=None,
                  text_sha1=None, executable=None):
         self.file_id = file_id
