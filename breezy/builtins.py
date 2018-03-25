@@ -3064,7 +3064,7 @@ class cmd_ls(Command):
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None, directory=None):
 
-        if kind and kind not in ('file', 'directory', 'symlink'):
+        if kind and kind not in ('file', 'directory', 'symlink', 'tree-reference'):
             raise errors.BzrCommandError(gettext('invalid kind specified'))
 
         if verbose and null:

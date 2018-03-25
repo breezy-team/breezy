@@ -86,29 +86,27 @@ class TestReference(TestCaseWithTree):
         try:
             self.skip_if_no_reference(work_tree)
             subtree = self.make_branch_and_tree('wt/subtree')
-            subtree.set_root_id(b'sub-root')
-            subtree.commit('foo', rev_id=b'sub-1')
+            subtree.commit('foo')
             work_tree.add_reference(subtree)
         finally:
             work_tree.unlock()
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
-        return tree
+        return tree, subtree
 
     def test_get_reference_revision(self):
-        tree = self.create_nested()
+        tree, subtree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        path = tree.id2path(b'sub-root')
-        self.assertEqual(b'sub-1',
-            tree.get_reference_revision(path, 'sub-root'))
+        self.assertEqual(
+            subtree.last_revision(),
+            tree.get_reference_revision('subtree'))
 
     def test_iter_references(self):
-        tree = self.create_nested()
+        tree, subtree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        entry = tree.root_inventory['sub-root']
-        self.assertEqual([(u'subtree', 'sub-root')],
+        self.assertEqual([(u'subtree', subtree.get_root_id())],
             list(tree.iter_references()))
 
     def test_get_root_id(self):

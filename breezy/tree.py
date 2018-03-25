@@ -95,6 +95,13 @@ class TreeLink(TreeEntry):
         return ''
 
 
+class TreeReference(TreeEntry):
+    """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    def kind_character(self):
+        return '/'
+
+
 class Tree(object):
     """Abstract file tree.
 
