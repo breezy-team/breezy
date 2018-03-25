@@ -566,15 +566,6 @@ class Transport(object):
         """
         raise NotImplementedError(self.has)
 
-    def has_multi(self, relpaths, pb=None):
-        """Return True/False for each entry in relpaths"""
-        total = self._get_total(relpaths)
-        count = 0
-        for relpath in relpaths:
-            self._update_pb(pb, 'has', count, total)
-            yield self.has(relpath)
-            count += 1
-
     def has_any(self, relpaths):
         """Return True if any of the paths exist."""
         for relpath in relpaths:

@@ -154,17 +154,9 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has('a'))
         self.assertEqual(False, t.has('c'))
         self.assertEqual(True, t.has(urlutils.escape('%')))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd',
-                                           'e', 'f', 'g', 'h'])),
-                         [True, True, False, False,
-                          True, False, True, False])
         self.assertEqual(True, t.has_any(['a', 'b', 'c']))
         self.assertEqual(False, t.has_any(['c', 'd', 'f',
                                            urlutils.escape('%%')]))
-        self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd',
-                                                'e', 'f', 'g', 'h']))),
-                         [True, True, False, False,
-                          True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
@@ -549,9 +541,9 @@ class TransportTests(TestTransportImplementation):
         t.mkdir_multi(['dir_c', 'dir_d'])
 
         t.mkdir_multi(iter(['dir_e', 'dir_f']))
-        self.assertEqual(list(t.has_multi(
+        self.assertEqual([t.has(n) for n in
             ['dir_a', 'dir_b', 'dir_c', 'dir_q',
-             'dir_d', 'dir_e', 'dir_f', 'dir_b'])),
+             'dir_d', 'dir_e', 'dir_f', 'dir_b']],
             [True, True, True, False,
              True, True, True, True])
 
@@ -827,11 +819,11 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('b', b'b text\n')
         t.put_bytes('c', b'c text\n')
         self.assertEqual([True, True, True],
-                list(t.has_multi(['a', 'b', 'c'])))
+                [t.has(n) for n in ['a', 'b', 'c']])
         t.delete('a')
         t.delete('c')
         self.assertEqual([False, True, False],
-                list(t.has_multi(['a', 'b', 'c'])))
+                [t.has(n) for n in ['a', 'b', 'c']])
         self.assertFalse(t.has('a'))
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('c'))
@@ -984,14 +976,14 @@ class TransportTests(TestTransportImplementation):
         # perhaps all of this could be done in a subdirectory
 
         t.put_bytes('a', b'a first file\n')
-        self.assertEqual([True, False], list(t.has_multi(['a', 'b'])))
+        self.assertEqual([True, False], [t.has(n) for n in ['a', 'b']])
 
         t.move('a', 'b')
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('a'))
 
         self.check_transport_contents('a first file\n', t, 'b')
-        self.assertEqual([False, True], list(t.has_multi(['a', 'b'])))
+        self.assertEqual([False, True], [t.has(n) for n in ['a', 'b']])
 
         # Overwrite a file
         t.put_bytes('c', b'c this file\n')
