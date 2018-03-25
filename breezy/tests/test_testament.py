@@ -38,7 +38,7 @@ class TestamentSetup(TestCaseWithTransport):
     def setUp(self):
         super(TestamentSetup, self).setUp()
         self.wt = self.make_branch_and_tree('.', format='development-subtree')
-        self.wt.set_root_id('TREE_ROT')
+        self.wt.set_root_id(b'TREE_ROT')
         b = self.b = self.wt.branch
         b.nick = "test branch"
         self.wt.commit(message='initial null commit',
@@ -50,7 +50,7 @@ class TestamentSetup(TestCaseWithTransport):
                              ('src/', ),
                              ('src/foo.c', 'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
-                             ['hello-id', 'src-id', 'foo.c-id'])
+                             [b'hello-id', b'src-id', b'foo.c-id'])
         tt = TreeTransform(self.wt)
         trans_id = tt.trans_id_tree_path('hello')
         tt.set_executability(True, trans_id)

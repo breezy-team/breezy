@@ -40,6 +40,7 @@ from ...sixish import (
     reraise,
 )
 from . import message, request
+from ...sixish import text_type
 from ...trace import log_exception_quietly, mutter
 from ...bencode import bdecode_as_tuple, bencode
 
@@ -47,10 +48,10 @@ from ...bencode import bdecode_as_tuple, bencode
 # Protocol version strings.  These are sent as prefixes of bzr requests and
 # responses to identify the protocol version being used. (There are no version
 # one strings because that version doesn't send any).
-REQUEST_VERSION_TWO = 'bzr request 2\n'
-RESPONSE_VERSION_TWO = 'bzr response 2\n'
+REQUEST_VERSION_TWO = b'bzr request 2\n'
+RESPONSE_VERSION_TWO = b'bzr response 2\n'
 
-MESSAGE_VERSION_THREE = 'bzr message 3 (bzr 1.6)\n'
+MESSAGE_VERSION_THREE = b'bzr message 3 (bzr 1.6)\n'
 RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
 
 
@@ -60,17 +61,17 @@ def _recv_tuple(from_file):
 
 
 def _decode_tuple(req_line):
-    if req_line is None or req_line == '':
+    if req_line is None or req_line == b'':
         return None
-    if req_line[-1] != '\n':
+    if req_line[-1] != b'\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
     return tuple(req_line[:-1].split('\x01'))
 
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    joined = '\x01'.join(args) + '\n'
-    if isinstance(joined, unicode):
+    joined = b'\x01'.join(args) + b'\n'
+    if isinstance(joined, text_type):
         # XXX: We should fix things so this never happens!  -AJB, 20100304
         mutter('response args contain unicode, should be only bytes: %r',
                joined)
@@ -795,11 +796,11 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
     def query_version(self):
         """Return protocol version number of the server."""
-        self.call('hello')
+        self.call(b'hello')
         resp = self.read_response_tuple()
-        if resp == ('ok', '1'):
+        if resp == (b'ok', '1'):
             return 1
-        elif resp == ('ok', '2'):
+        elif resp == (b'ok', '2'):
             return 2
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
@@ -1126,7 +1127,7 @@ class _ProtocolThreeEncoder(object):
         self._write_func('s')
         utf8_args = []
         for arg in args:
-            if isinstance(arg, unicode):
+            if isinstance(arg, text_type):
                 utf8_args.append(arg.encode('utf8'))
             else:
                 utf8_args.append(arg)

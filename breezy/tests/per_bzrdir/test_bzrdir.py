@@ -53,7 +53,7 @@ class IdentifiableTestBranchFormat(breezy.branch.BranchFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
@@ -67,7 +67,7 @@ class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
@@ -81,7 +81,7 @@ class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class TestBzrDir(TestCaseWithBzrDir):

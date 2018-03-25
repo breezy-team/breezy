@@ -902,8 +902,8 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.iter_entries_by_dir(
-                    specific_files=[from_path]).next()[1]
+            from_entry = next(self._tree.iter_entries_by_dir(
+                    specific_files=[from_path]))[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -1946,8 +1946,8 @@ class TransformPreview(DiskTreeTransform):
             path = self._tree_id_paths[parent_id]
         except KeyError:
             return
-        entry = self._tree.iter_entries_by_dir(
-                specific_files=[path]).next()[1]
+        entry = next(self._tree.iter_entries_by_dir(
+                specific_files=[path]))[1]
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)

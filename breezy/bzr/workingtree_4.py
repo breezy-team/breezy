@@ -1627,7 +1627,7 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
+        return b"Bazaar Working Tree Format 4 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -1645,7 +1645,7 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree Format 5 (bzr 1.11)\n"
+        return b"Bazaar Working Tree Format 5 (bzr 1.11)\n"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -1666,7 +1666,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree Format 6 (bzr 1.14)\n"
+        return b"Bazaar Working Tree Format 6 (bzr 1.14)\n"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""

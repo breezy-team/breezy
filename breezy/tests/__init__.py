@@ -1959,11 +1959,12 @@ class TestCase(testtools.TestCase):
             os.chdir(working_dir)
 
         try:
-            result = self.apply_redirected(
-                ui.ui_factory.stdin,
-                stdout, stderr,
-                _mod_commands.run_bzr_catch_user_errors,
-                args)
+            with ui.ui_factory:
+                result = self.apply_redirected(
+                    ui.ui_factory.stdin,
+                    stdout, stderr,
+                    _mod_commands.run_bzr_catch_user_errors,
+                    args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory

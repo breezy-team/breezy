@@ -1851,7 +1851,7 @@ class StreamSink(object):
         # read back from the inserted data, so flush the writes to the new pack
         # (if this is pack format).
         if new_pack is not None:
-            new_pack._write_data('', flush=True)
+            new_pack._write_data(b'', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
         missing_keys = self.target_repo.get_missing_parent_inventories(
             check_for_missing_texts=is_resume)

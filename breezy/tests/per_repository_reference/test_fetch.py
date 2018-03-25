@@ -35,17 +35,17 @@ class TestFetchBase(TestCaseWithRepository):
                   ]
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', ''.join(content))),
-            ], revision_id='A-id')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('a', b'a-id', 'file', ''.join(content))),
+            ], revision_id=b'A-id')
         content.append('and some more lines for B\n')
-        builder.build_snapshot(['A-id'], [
-            ('modify', ('a-id', ''.join(content)))],
-            revision_id='B-id')
+        builder.build_snapshot([b'A-id'], [
+            ('modify', (b'a-id', ''.join(content)))],
+            revision_id=b'B-id')
         content.append('and yet even more content for C\n')
-        builder.build_snapshot(['B-id'], [
-            ('modify', ('a-id', ''.join(content)))],
-            revision_id='C-id')
+        builder.build_snapshot([b'B-id'], [
+            ('modify', (b'a-id', ''.join(content)))],
+            revision_id=b'C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

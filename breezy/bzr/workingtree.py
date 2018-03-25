@@ -370,7 +370,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
-                    if self.path2id(relpath):
+                    if self.is_versioned(relpath):
                         # Add nested content for deletion.
                         all_files.add(relpath)
                     else:
@@ -1723,8 +1723,7 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         """Return format name for the working tree object in controldir."""
         try:
             transport = controldir.get_workingtree_transport(None)
-            # GZ 2017-06-09: When do decode format strings?
-            return transport.get_bytes("format").decode('ascii')
+            return transport.get_bytes("format")
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 

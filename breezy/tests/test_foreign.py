@@ -151,7 +151,7 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
 
     @classmethod
     def get_format_string(cls):
-        return "Dummy Foreign Vcs Repository"
+        return b"Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
         return "Dummy Foreign Vcs Repository"
@@ -234,7 +234,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
 
     @classmethod
     def get_format_string(cls):
-        return "Branch for Testing"
+        return b"Branch for Testing"
 
     @property
     def _matchingcontroldir(self):
@@ -266,7 +266,7 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
 
     @classmethod
     def get_format_string(cls):
-        return "A Dummy VCS Dir"
+        return b"A Dummy VCS Dir"
 
     @classmethod
     def get_format_description(cls):

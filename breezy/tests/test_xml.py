@@ -32,7 +32,7 @@ from ..bzr.inventory import Inventory
 from . import TestCase
 import breezy.bzr.xml5
 
-_revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
+_revision_v5 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     timestamp="1125907235.212"
@@ -46,7 +46,7 @@ _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 </revision>
 """
 
-_revision_v5_utc = """\
+_revision_v5_utc = b"""\
 <revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
@@ -61,7 +61,7 @@ _revision_v5_utc = """\
 </revision>
 """
 
-_committed_inv_v5 = """<inventory>
+_committed_inv_v5 = b"""<inventory>
 <file file_id="bar-20050901064931-73b4b1138abc9cd2"
       name="bar" parent_id="TREE_ROOT"
       revision="mbp@foo-123123"
@@ -77,7 +77,7 @@ _committed_inv_v5 = """<inventory>
 </inventory>
 """
 
-_basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92">
+_basis_inv_v5 = b"""<inventory revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92">
 <file file_id="bar-20050901064931-73b4b1138abc9cd2"
       name="bar" parent_id="TREE_ROOT"
       revision="mbp@foo-123123"/>
@@ -93,7 +93,7 @@ _basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-439
 
 
 # DO NOT REFLOW THIS. Its the exact revision we want.
-_expected_rev_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="5" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.212" timezone="36000">
+_expected_rev_v5 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="5" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.212" timezone="36000">
 <message>- start splitting code for xml (de)serialization away from objects
   preparatory to supporting multiple formats by a single library
 </message>
@@ -105,7 +105,7 @@ _expected_rev_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt
 
 
 # DO NOT REFLOW THIS. Its the exact inventory we want.
-_expected_inv_v5 = """<inventory format="5">
+_expected_inv_v5 = b"""<inventory format="5">
 <file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" revision="mbp@foo-123123" text_sha1="A" text_size="1" />
 <directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" revision="mbp@foo-00" />
 <file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" text_sha1="B" text_size="0" />
@@ -113,7 +113,7 @@ _expected_inv_v5 = """<inventory format="5">
 """
 
 
-_expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mother!">
+_expected_inv_v5_root = b"""<inventory file_id="f&lt;" format="5" revision_id="mother!">
 <file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" parent_id="f&lt;" revision="mbp@foo-123123" text_sha1="A" text_size="1" />
 <directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" parent_id="f&lt;" revision="mbp@foo-00" />
 <file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" text_sha1="B" text_size="0" />
@@ -121,7 +121,7 @@ _expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mo
 </inventory>
 """
 
-_expected_inv_v6 = """<inventory format="6" revision_id="rev_outer">
+_expected_inv_v6 = b"""<inventory format="6" revision_id="rev_outer">
 <directory file_id="tree-root-321" name="" revision="rev_outer" />
 <directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
 <file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
@@ -129,7 +129,7 @@ _expected_inv_v6 = """<inventory format="6" revision_id="rev_outer">
 </inventory>
 """
 
-_expected_inv_v7 = """<inventory format="7" revision_id="rev_outer">
+_expected_inv_v7 = b"""<inventory format="7" revision_id="rev_outer">
 <directory file_id="tree-root-321" name="" revision="rev_outer" />
 <directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
 <file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
@@ -138,7 +138,7 @@ _expected_inv_v7 = """<inventory format="7" revision_id="rev_outer">
 </inventory>
 """
 
-_expected_rev_v8 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="8" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.212" timezone="36000">
+_expected_rev_v8 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="8" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.212" timezone="36000">
 <message>- start splitting code for xml (de)serialization away from objects
   preparatory to supporting multiple formats by a single library
 </message>
@@ -148,7 +148,7 @@ _expected_rev_v8 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt
 </revision>
 """
 
-_expected_inv_v8 = """<inventory format="8" revision_id="rev_outer">
+_expected_inv_v8 = b"""<inventory format="8" revision_id="rev_outer">
 <directory file_id="tree-root-321" name="" revision="rev_outer" />
 <directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
 <file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
@@ -156,7 +156,7 @@ _expected_inv_v8 = """<inventory format="8" revision_id="rev_outer">
 </inventory>
 """
 
-_revision_utf8_v5 = """<revision committer="Erik B&#229;gfors &lt;erik@foo.net&gt;"
+_revision_utf8_v5 = b"""<revision committer="Erik B&#229;gfors &lt;erik@foo.net&gt;"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="erik@b&#229;gfors-02"
     timestamp="1125907235.212"
@@ -169,7 +169,7 @@ _revision_utf8_v5 = """<revision committer="Erik B&#229;gfors &lt;erik@foo.net&g
 </revision>
 """
 
-_inventory_utf8_v5 = """<inventory file_id="TRE&#233;_ROOT" format="5"
+_inventory_utf8_v5 = b"""<inventory file_id="TRE&#233;_ROOT" format="5"
                                    revision_id="erik@b&#229;gfors-02">
 <file file_id="b&#229;r-01"
       name="b&#229;r" parent_id="TRE&#233;_ROOT"
@@ -185,12 +185,12 @@ _inventory_utf8_v5 = """<inventory file_id="TRE&#233;_ROOT" format="5"
 """
 
 # Before revision_id was always stored as an attribute
-_inventory_v5a = """<inventory format="5">
+_inventory_v5a = b"""<inventory format="5">
 </inventory>
 """
 
 # Before revision_id was always stored as an attribute
-_inventory_v5b = """<inventory format="5" revision_id="a-rev-id">
+_inventory_v5b = b"""<inventory format="5" revision_id="a-rev-id">
 </inventory>
 """
 
