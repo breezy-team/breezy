@@ -35,6 +35,7 @@ from dulwich.objects import (
     Tree,
     ZERO_SHA,
     S_IFGITLINK,
+    S_ISGITLINK,
     )
 import stat
 import posixpath
@@ -893,6 +894,17 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
 
+    def _recurse_index_entries(self, index=None, basepath=""):
+        # Iterate over all index entries
+        with self.lock_read():
+            if index is None:
+                index = self.index
+            for path, value in index.iteritems():
+                yield (posixpath.join(basepath, path), value)
+                if S_ISGITLINK(value.mode):
+                    pass # TODO(jelmer): dive into submodule
+
+
     def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         if yield_parents:
             raise NotImplementedError(self.iter_entries_by_dir)
@@ -906,8 +918,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if specific_files is None or u"" in specific_files:
                 ret[(None, u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
-            # TODO(jelmer): Recursive into submodules
-            for path, value in self.index.iteritems():
+            for path, value in self._recurse_index_entries():
                 if self.mapping.is_special_file(path):
                     continue
                 path = path.decode("utf-8")
@@ -922,10 +933,14 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
                             dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
-                file_ie.parent_id = self.path2id(parent)
                 ret[(posixpath.dirname(path), path)] = file_ie
             return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
+    def iter_references(self):
+        # TODO(jelmer): Implement a more efficient version of this
+        for path, entry in self.iter_entries_by_dir():
+            if entry.kind == 'tree-reference':
+                yield path, entry.file_id
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
@@ -947,6 +962,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path, file_id)
+        elif kind == 'tree-reference':
+            ie.reference_revision = self.get_reference_revision(path, file_id)
         else:
             try:
                 data = self.get_file_text(path, file_id)
