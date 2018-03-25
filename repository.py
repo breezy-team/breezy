@@ -619,7 +619,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     """Git repository format."""
 
     supports_versioned_directories = False
-    supports_tree_reference = False
+    supports_tree_reference = True
     rich_root_data = True
     supports_leaving_lock = False
     fast_deltas = True

@@ -34,6 +34,11 @@ from dulwich.objects import (
     Blob,
     Tree,
     ZERO_SHA,
+    S_IFGITLINK,
+    )
+from dulwich.repo import (
+    NotGitRepository,
+    Repo as GitRepo,
     )
 import stat
 import posixpath
@@ -809,22 +814,38 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 stat_val = os.stat_result(
                     (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(file.read())
+            # Add object to the repository if it didn't exist yet
+            if not blob.id in self.store:
+                self.store.add_object(blob)
+            hexsha = blob.id
         elif kind == "symlink":
             blob = Blob()
             try:
                 stat_val = self._lstat(path)
-            except (errors.NoSuchFile, OSError):
+            except EnvironmentError:
                 # TODO: Rather than come up with something here, use the
                 # old index
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(
                 self.get_symlink_target(path).encode("utf-8"))
+            # Add object to the repository if it didn't exist yet
+            if not blob.id in self.store:
+                self.store.add_object(blob)
+            hexsha = blob.id
+        elif kind == "tree-reference":
+            try:
+                hexsha = GitRepo(path).head()
+            except NotGitRepository:
+                hexsha = ZERO_SHA
+            try:
+                stat_val = self._lstat(path)
+            except EnvironmentError:
+                stat_val = os.stat_result(
+                    (S_IFGITLINK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            stat_val = os.stat_result((S_IFGITLINK, ) + stat_val[1:])
         else:
             raise AssertionError("unknown kind '%s'" % kind)
-        # Add object to the repository if it didn't exist yet
-        if not blob.id in self.store:
-            self.store.add_object(blob)
         # Add an entry to the index or update the existing entry
         ensure_normalized_path(path)
         encoded_path = path.encode("utf-8")
@@ -833,8 +854,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             trace.mutter('ignoring path with invalid newline in it: %r', path)
             return
         (index, index_path) = self._lookup_index(encoded_path)
-        index[index_path] = index_entry_from_stat(
-            stat_val, blob.id, flags)
+        index[index_path] = index_entry_from_stat(stat_val, hexsha, flags)
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
 
