@@ -568,8 +568,8 @@ class _SmartAddHelper(object):
         # Find a 'best fit' match if the filesystem is case-insensitive
         inv_path = self.tree._fix_case_of_inventory_path(inv_path)
         try:
-            return self.tree.iter_entries_by_dir(
-                    specific_files=[inv_path]).next()[1]
+            return next(self.tree.iter_entries_by_dir(
+                    specific_files=[inv_path]))[1]
         except StopIteration:
             return None
 
@@ -594,9 +594,9 @@ class _SmartAddHelper(object):
         :param parent_ie: Parent inventory entry if known, or None.  If
             None, the parent is looked up by name and used if present, otherwise it
             is recursively added.
-        :param path: 
+        :param path: Filesystem path to add
         :param kind: Kind of new entry (file, directory, etc)
-        :param inv_path:
+        :param inv_path: Inventory path
         :return: Inventory entry for path and a list of paths which have been added.
         """
         # Nothing to do if path is already versioned.

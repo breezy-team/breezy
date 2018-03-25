@@ -76,8 +76,8 @@ class RepoFetcher(object):
         self.find_ghosts = find_ghosts
         self.from_repository.lock_read()
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.from_repository, self.from_repository._format,
-               self.to_repository, self.to_repository._format)
+               str(self.from_repository), str(self.from_repository._format),
+               str(self.to_repository), str(self.to_repository._format))
         try:
             self.__fetch()
         finally:

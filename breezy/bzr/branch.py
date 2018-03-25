@@ -348,7 +348,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             self._master_branch_cache = None
             if location:
-                self._transport.put_bytes('bound', location+'\n',
+                self._transport.put_bytes('bound', location+b'\n',
                     mode=self.controldir._get_file_mode())
             else:
                 try:

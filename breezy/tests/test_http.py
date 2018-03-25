@@ -735,7 +735,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
 
     def setUp(self):
         super(TestRangeRequestServer, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def test_readv(self):
         t = self.get_readonly_transport()
@@ -962,7 +962,7 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
 
     def setUp(self):
         super(TestTruncatedMultipleRangeServer, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def test_readv_with_short_reads(self):
         server = self.get_readonly_server()
@@ -1036,7 +1036,7 @@ class TestTruncatedBeforeBoundary(TestSpecificRequestHandler):
 
     def setUp(self):
         super(TestTruncatedBeforeBoundary, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def test_readv_with_short_reads(self):
         server = self.get_readonly_server()
@@ -1095,8 +1095,8 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         super(TestLimitedRangeRequestServer, self).setUp()
         # We need to manipulate ranges that correspond to real chunks in the
         # response, so we build a content appropriately.
-        filler = ''.join(['abcdefghij' for x in range(102)])
-        content = ''.join(['%04d' % v + filler for v in range(16)])
+        filler = b''.join([b'abcdefghij' for x in range(102)])
+        content = b''.join([b'%04d' % v + filler for v in range(16)])
         self.build_tree_contents([('a', content)],)
 
     def test_few_ranges(self):
@@ -1192,8 +1192,8 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     def setUp(self):
         super(TestProxyHttpServer, self).setUp()
         self.transport_secondary_server = http_utils.ProxyServer
-        self.build_tree_contents([('foo', 'contents of foo\n'),
-                                  ('foo-proxied', 'proxied contents of foo\n')])
+        self.build_tree_contents([('foo', b'contents of foo\n'),
+                                  ('foo-proxied', b'proxied contents of foo\n')])
         # Let's setup some attributes for tests
         server = self.get_readonly_server()
         self.server_host_port = '%s:%d' % (server.host, server.port)
@@ -1260,7 +1260,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def setUp(self):
         super(TestRanges, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def create_transport_readonly_server(self):
         return http_server.HttpServer(protocol_version=self._protocol_version)
@@ -1310,9 +1310,9 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestHTTPRedirections, self).setUp()
-        self.build_tree_contents([('a', '0123456789'),
+        self.build_tree_contents([('a', b'0123456789'),
                                   ('bundle',
-                                  '# Bazaar revision bundle v0.9\n#\n')
+                                  b'# Bazaar revision bundle v0.9\n#\n')
                                   ],)
 
     def test_redirected(self):
@@ -1380,17 +1380,17 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         super(TestHTTPSilentRedirections, self).setUp()
         install_redirected_request(self)
         cleanup_http_redirection_connections(self)
-        self.build_tree_contents([('a', 'a'),
+        self.build_tree_contents([('a', b'a'),
                                   ('1/',),
-                                  ('1/a', 'redirected once'),
+                                  ('1/a', b'redirected once'),
                                   ('2/',),
-                                  ('2/a', 'redirected twice'),
+                                  ('2/a', b'redirected twice'),
                                   ('3/',),
-                                  ('3/a', 'redirected thrice'),
+                                  ('3/a', b'redirected thrice'),
                                   ('4/',),
-                                  ('4/a', 'redirected 4 times'),
+                                  ('4/a', b'redirected 4 times'),
                                   ('5/',),
-                                  ('5/a', 'redirected 5 times'),
+                                  ('5/a', b'redirected 5 times'),
                                   ],)
 
     def test_one_redirection(self):
@@ -1429,7 +1429,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
-        self.build_tree_contents([('a', '0123456789'),],)
+        self.build_tree_contents([('a', b'0123456789'),],)
         cleanup_http_redirection_connections(self)
 
         self.old_transport = self.get_old_transport()
@@ -1512,8 +1512,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def setUp(self):
         super(TestAuth, self).setUp()
         self.server = self.get_readonly_server()
-        self.build_tree_contents([('a', 'contents of a\n'),
-                                  ('b', 'contents of b\n'),])
+        self.build_tree_contents([('a', b'contents of a\n'),
+                                  ('b', b'contents of b\n'),])
 
     def create_transport_readonly_server(self):
         server = self._auth_server(protocol_version=self._protocol_version)
@@ -1713,10 +1713,10 @@ class TestProxyAuth(TestAuth):
     def setUp(self):
         super(TestProxyAuth, self).setUp()
         # Override the contents to avoid false positives
-        self.build_tree_contents([('a', 'not proxied contents of a\n'),
-                                  ('b', 'not proxied contents of b\n'),
-                                  ('a-proxied', 'contents of a\n'),
-                                  ('b-proxied', 'contents of b\n'),
+        self.build_tree_contents([('a', b'not proxied contents of a\n'),
+                                  ('b', b'not proxied contents of b\n'),
+                                  ('a-proxied', b'contents of a\n'),
+                                  ('b-proxied', b'contents of b\n'),
                                   ])
 
     def get_user_transport(self, user, password):
@@ -2163,9 +2163,9 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestAuthOnRedirected, self).setUp()
-        self.build_tree_contents([('a', 'a'),
+        self.build_tree_contents([('a', b'a'),
                                   ('1/',),
-                                  ('1/a', 'redirected once'),
+                                  ('1/a', b'redirected once'),
                                   ],)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)

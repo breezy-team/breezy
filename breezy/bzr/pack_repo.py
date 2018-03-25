@@ -465,7 +465,7 @@ class NewPack(Pack):
             return
         self._writer.end()
         if self._buffer[1]:
-            self._write_data('', flush=True)
+            self._write_data(b'', flush=True)
         self.name = self._hash.hexdigest()
 
     def finish(self, suspend=False):

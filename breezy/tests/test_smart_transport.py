@@ -1241,27 +1241,27 @@ class TestGetProtocolFactoryForBytes(tests.TestCase):
 
     def test_version_three(self):
         result = medium._get_protocol_factory_for_bytes(
-            'bzr message 3 (bzr 1.6)\nextra bytes')
+            b'bzr message 3 (bzr 1.6)\nextra bytes')
         protocol_factory, remainder = result
         self.assertEqual(
             protocol.build_server_protocol_three, protocol_factory)
-        self.assertEqual('extra bytes', remainder)
+        self.assertEqual(b'extra bytes', remainder)
 
     def test_version_two(self):
         result = medium._get_protocol_factory_for_bytes(
-            'bzr request 2\nextra bytes')
+            b'bzr request 2\nextra bytes')
         protocol_factory, remainder = result
         self.assertEqual(
             protocol.SmartServerRequestProtocolTwo, protocol_factory)
-        self.assertEqual('extra bytes', remainder)
+        self.assertEqual(b'extra bytes', remainder)
 
     def test_version_one(self):
         """Version one requests have no version markers."""
-        result = medium._get_protocol_factory_for_bytes('anything\n')
+        result = medium._get_protocol_factory_for_bytes(b'anything\n')
         protocol_factory, remainder = result
         self.assertEqual(
             protocol.SmartServerRequestProtocolOne, protocol_factory)
-        self.assertEqual('anything\n', remainder)
+        self.assertEqual(b'anything\n', remainder)
 
 
 class TestSmartTCPServer(tests.TestCase):

@@ -1058,11 +1058,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
-            if not isinstance(element, str):
+            if not isinstance(element, bytes):
                 raise TypeError("key contains non-strings: %r" % (key,))
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + digest,)
-        elif not isinstance(key[-1], str):
+        elif not isinstance(key[-1], bytes):
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -1080,7 +1080,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         if delta:
             options.append('line-delta')
             store_lines = self._factory.lower_line_delta(delta_hunks)
-            size, bytes = self._record_to_data(key, digest,
+            size, data = self._record_to_data(key, digest,
                 store_lines)
         else:
             options.append('fulltext')
@@ -1091,16 +1091,16 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 dense_lines = [line_bytes]
                 if no_eol:
                     dense_lines.append('\n')
-                size, bytes = self._record_to_data(key, digest,
+                size, data = self._record_to_data(key, digest,
                     lines, dense_lines)
             else:
                 # get mixed annotation + content and feed it into the
                 # serialiser.
                 store_lines = self._factory.lower_fulltext(content)
-                size, bytes = self._record_to_data(key, digest,
+                size, data = self._record_to_data(key, digest,
                     store_lines)
 
-        access_memo = self._access.add_raw_records([(key, size)], bytes)[0]
+        access_memo = self._access.add_raw_records([(key, size)], data)[0]
         self._index.add_records(
             ((key, options, access_memo, parents),),
             random_id=random_id)
@@ -2447,7 +2447,7 @@ class _KndxIndex(object):
         ABI change with the C extension that reads .kndx files.
     """
 
-    HEADER = "# bzr knit index 8\n"
+    HEADER = b"# bzr knit index 8\n"
 
     def __init__(self, transport, mapper, get_scope, allow_writes, is_locked):
         """Create a _KndxIndex on transport using mapper."""

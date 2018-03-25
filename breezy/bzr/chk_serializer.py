@@ -93,7 +93,7 @@ class BEncodeRevisionSerializer1(object):
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.items():
-            revprops[key] = encode_utf8(value)[0]
+            revprops[encode_utf8(key)[0]] = encode_utf8(value)[0]
         ret.append((b'properties', revprops))
         ret.extend([
             (b"timestamp", b"%.3f" % rev.timestamp),

@@ -136,7 +136,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
             modify.
         """
         if empty_tree.supports_setting_file_ids():
-            empty_tree.set_root_id('empty-root-id')
+            empty_tree.set_root_id(b'empty-root-id')
         return self._convert_tree(empty_tree, converter)
 
     def _make_abc_tree(self, tree):

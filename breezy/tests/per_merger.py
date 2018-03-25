@@ -300,14 +300,14 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         return builder
 
     def create_file_needing_contents_merge(self, builder, file_id):
-        builder.add_file(file_id, builder.tree_root, "name1", "text1", True)
+        builder.add_file(file_id, builder.tree_root, "name1", b"text1", True)
         builder.change_contents(file_id, other="text4", this="text3")
 
     def test_change_vs_change(self):
         """Hook is used for (changed, changed)"""
         self.install_hook_success()
         builder = self.make_merge_builder()
-        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", b"text1", True)
         builder.change_contents("1", other="text4", this="text3")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
@@ -318,7 +318,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """Hook is used for (changed, deleted)"""
         self.install_hook_success()
         builder = self.make_merge_builder()
-        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", b"text1", True)
         builder.change_contents("1", this="text2")
         builder.remove_file("1", other=True)
         conflicts = builder.merge(self.merge_type)
@@ -355,7 +355,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """
         self.install_hook_log_lines()
         builder = self.make_merge_builder()
-        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", b"text1", True)
         builder.change_contents("1", this="text2", other="text3")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(
