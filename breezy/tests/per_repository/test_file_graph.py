@@ -25,11 +25,11 @@ class TestPerFileGraph(TestCaseWithRepository):
 
     def test_file_graph(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([("a", "contents")])
+        self.build_tree_contents([("a", b"contents")])
         tree.add(["a"])
         fileid = tree.path2id("a")
         revid1 = tree.commit("msg")
-        self.build_tree_contents([("a", "new contents")])
+        self.build_tree_contents([("a", b"new contents")])
         revid2 = tree.commit("msg")
         self.addCleanup(tree.lock_read().unlock)
         graph = tree.branch.repository.get_file_graph()

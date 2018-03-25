@@ -54,7 +54,7 @@ class TreeBuilder(object):
         """
         self._ensure_building()
         if not self._root_done:
-            self._tree.add('', 'root-id', 'directory')
+            self._tree.add('', b'root-id', 'directory')
             self._root_done = True
         for name in recipe:
             if name[-1] == '/':

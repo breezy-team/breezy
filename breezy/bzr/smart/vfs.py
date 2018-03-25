@@ -187,17 +187,17 @@ class ReadvRequest(VfsRequest):
     def do_body(self, body_bytes):
         """accept offsets for a readv request."""
         offsets = self._deserialise_offsets(body_bytes)
-        backing_bytes = ''.join(bytes for offset, bytes in
+        backing_bytes = b''.join(bytes for offset, bytes in
             self._backing_transport.readv(self._relpath, offsets))
-        return request.SuccessfulSmartServerResponse(('readv',), backing_bytes)
+        return request.SuccessfulSmartServerResponse((b'readv',), backing_bytes)
 
     def _deserialise_offsets(self, text):
         # XXX: FIXME this should be on the protocol object.
         offsets = []
-        for line in text.split('\n'):
+        for line in text.split(b'\n'):
             if not line:
                 continue
-            start, length = line.split(',')
+            start, length = line.split(b',')
             offsets.append((int(start), int(length)))
         return offsets
 

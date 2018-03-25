@@ -205,6 +205,18 @@ class LateReadError(object):
     def close(self):
         """a no-op - do nothing."""
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # If there was an error raised, prefer the original one
+        try:
+            self.close()
+        except:
+            if exc_type is None:
+                raise
+        return False
+
     def _fail(self):
         """Raise ReadError."""
         raise errors.ReadError(self._path)

@@ -58,16 +58,16 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         subtree = self.make_branch_and_tree('subtree')
-        tree.add(['subtree'], ['subtree-id'])
+        tree.add(['subtree'], [b'subtree-id'])
         return tree
 
     def test_kind_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        self.assertEqual('directory', tree.kind('subtree', 'subtree-id'))
+        self.assertEqual('directory', tree.kind('subtree', b'subtree-id'))
 
     def test_comparison_data_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        ie = inventory.InventoryDirectory('subtree-id', 'subtree',
+        ie = inventory.InventoryDirectory(b'subtree-id', 'subtree',
                                           tree.path2id(''))
         self.assertEqual('directory',
                          tree._comparison_data(ie, 'subtree')[0])

@@ -115,17 +115,17 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def create_base(self):
         wt = self.make_branch_and_tree('.')
-        self.build_tree_contents([('a', 'foo\n')])
+        self.build_tree_contents([('a', b'foo\n')])
         wt.add('a')
         wt.commit('adding a')
 
         self.build_tree_contents(
-            [('b', 'non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')])
+            [('b', b'non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')])
         wt.add('b')
         wt.commit(self.info['message'])
 
         fname = self.info['filename']
-        self.build_tree_contents([(fname, 'unicode filename\n')])
+        self.build_tree_contents([(fname, b'unicode filename\n')])
         wt.add(fname)
         wt.commit(u'And a unicode file\n')
         self.wt = wt
@@ -137,7 +137,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_status(self):
         self.build_tree_contents(
-            [(self.info['filename'], 'changed something\n')])
+            [(self.info['filename'], b'changed something\n')])
         txt = self.run_bzr_decode('status')
         self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
@@ -259,7 +259,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         out_bzrdir.sprout(url2)
 
         self.build_tree_contents(
-            [(osutils.pathjoin(dirname1, "a"), 'different text\n')])
+            [(osutils.pathjoin(dirname1, "a"), b'different text\n')])
         self.wt.commit('mod a')
 
         txt = self.run_bzr_decode('pull', working_dir=dirname2)
@@ -269,7 +269,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
                 'No revisions or tags to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(
-            [(osutils.pathjoin(dirname1, 'a'), 'and yet more\n')])
+            [(osutils.pathjoin(dirname1, 'a'), b'and yet more\n')])
         self.wt.commit(u'modifying a by ' + self.info['committer'])
 
         # We should be able to pull, even if our encoding is bad
@@ -288,14 +288,14 @@ class TestNonAscii(tests.TestCaseWithTransport):
         dirname = self.info['directory']
         self.run_bzr_decode(['push', dirname])
 
-        self.build_tree_contents([('a', 'adding more text\n')])
+        self.build_tree_contents([('a', b'adding more text\n')])
         self.wt.commit('added some stuff')
 
         # TODO: check the output text is properly encoded
         self.run_bzr_decode('push')
 
         self.build_tree_contents(
-            [('a', 'and a bit more: \n%s\n' % (dirname.encode('utf-8'),))])
+            [('a', b'and a bit more: \n%s\n' % (dirname.encode('utf-8'),))])
 
         self.wt.commit('Added some ' + dirname)
         self.run_bzr_decode('push --verbose', encoding='ascii')
@@ -372,7 +372,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         # TODO: jam 20060106 diff is a difficult one to test, because it
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
-        self.build_tree_contents([(self.info['filename'], 'newline\n')])
+        self.build_tree_contents([(self.info['filename'], b'newline\n')])
         txt = self.run_bzr('diff', retcode=1)[0]
 
     def test_deleted(self):
@@ -394,7 +394,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_modified(self):
         fname = self.info['filename']
-        self.build_tree_contents([(fname, 'modified\n')])
+        self.build_tree_contents([(fname, b'modified\n')])
 
         txt = self.run_bzr_decode('modified')
         self._check_OSX_can_roundtrip(self.info['filename'])
@@ -404,7 +404,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_added(self):
         fname = self.info['filename'] + '2'
-        self.build_tree_contents([(fname, 'added\n')])
+        self.build_tree_contents([(fname, b'added\n')])
         self.wt.add(fname)
 
         txt = self.run_bzr_decode('added')
@@ -474,7 +474,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_unknowns(self):
         fname = self.info['filename'] + '2'
-        self.build_tree_contents([(fname, 'unknown\n')])
+        self.build_tree_contents([(fname, b'unknown\n')])
 
         # TODO: jam 20060112 brz unknowns is the only one which
         #       quotes paths do we really want it to?
@@ -487,7 +487,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_ignore(self):
         fname2 = self.info['filename'] + '2.txt'
-        self.build_tree_contents([(fname2, 'ignored\n')])
+        self.build_tree_contents([(fname2, b'ignored\n')])
 
         def check_unknowns(expected):
             self.assertEqual(expected, list(self.wt.unknowns()))
@@ -499,7 +499,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         check_unknowns([])
 
         fname3 = self.info['filename'] + '3.txt'
-        self.build_tree_contents([(fname3, 'unknown 3\n')])
+        self.build_tree_contents([(fname3, b'unknown 3\n')])
         check_unknowns([fname3])
 
         # Ignore should not care what the encoding is
@@ -509,7 +509,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         # Now try a wildcard match
         fname4 = self.info['filename'] + '4.txt'
-        self.build_tree_contents([(fname4, 'unknown 4\n')])
+        self.build_tree_contents([(fname4, b'unknown 4\n')])
         self.run_bzr_decode('ignore *.txt')
         check_unknowns([])
 
@@ -541,7 +541,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_ignored(self):
         fname = self.info['filename'] + '1.txt'
-        self.build_tree_contents([(fname, 'ignored\n')])
+        self.build_tree_contents([(fname, b'ignored\n')])
         self.run_bzr(['ignore', fname])
         txt = self.run_bzr_decode(['ignored'])
         self.assertEqual(txt, '%-50s %s\n' % (fname, fname))

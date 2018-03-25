@@ -227,11 +227,11 @@ class TestSerializer(TestCase):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
-        ie = inv['bar-20050824000535-6bc48cfad47ed134']
+        ie = inv.get_entry('bar-20050824000535-6bc48cfad47ed134')
         eq(ie.kind, 'file')
         eq(ie.revision, 'mbp@foo-00')
         eq(ie.name, 'bar')
-        eq(inv[ie.parent_id].kind, 'directory')
+        eq(inv.get_entry(ie.parent_id).kind, 'directory')
 
     def test_unpack_basis_inventory_5(self):
         """Unpack canned new-style inventory"""
@@ -240,11 +240,11 @@ class TestSerializer(TestCase):
         eq = self.assertEqual
         eq(len(inv), 4)
         eq(inv.revision_id, 'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
-        ie = inv['bar-20050824000535-6bc48cfad47ed134']
+        ie = inv.get_entry('bar-20050824000535-6bc48cfad47ed134')
         eq(ie.kind, 'file')
         eq(ie.revision, 'mbp@foo-00')
         eq(ie.name, 'bar')
-        eq(inv[ie.parent_id].kind, 'directory')
+        eq(inv.get_entry(ie.parent_id).kind, 'directory')
 
     def test_unpack_inventory_5a(self):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
@@ -352,24 +352,24 @@ class TestSerializer(TestCase):
         self.assertEqual(props, new_rev.properties)
 
     def get_sample_inventory(self):
-        inv = Inventory('tree-root-321', revision_id='rev_outer')
-        inv.add(inventory.InventoryFile('file-id', 'file', 'tree-root-321'))
-        inv.add(inventory.InventoryDirectory('dir-id', 'dir',
-                                             'tree-root-321'))
-        inv.add(inventory.InventoryLink('link-id', 'link', 'tree-root-321'))
-        inv['tree-root-321'].revision = 'rev_outer'
-        inv['dir-id'].revision = 'rev_outer'
-        inv['file-id'].revision = 'rev_outer'
-        inv['file-id'].text_sha1 = 'A'
-        inv['file-id'].text_size = 1
-        inv['link-id'].revision = 'rev_outer'
-        inv['link-id'].symlink_target = 'a'
+        inv = Inventory(b'tree-root-321', revision_id=b'rev_outer')
+        inv.add(inventory.InventoryFile(b'file-id', 'file', b'tree-root-321'))
+        inv.add(inventory.InventoryDirectory(b'dir-id', 'dir',
+                                             b'tree-root-321'))
+        inv.add(inventory.InventoryLink(b'link-id', 'link', b'tree-root-321'))
+        inv.get_entry(b'tree-root-321').revision = b'rev_outer'
+        inv.get_entry(b'dir-id').revision = b'rev_outer'
+        inv.get_entry(b'file-id').revision = b'rev_outer'
+        inv.get_entry(b'file-id').text_sha1 = 'A'
+        inv.get_entry(b'file-id').text_size = 1
+        inv.get_entry(b'link-id').revision = b'rev_outer'
+        inv.get_entry(b'link-id').symlink_target = 'a'
         return inv
 
     def test_roundtrip_inventory_v7(self):
         inv = self.get_sample_inventory()
-        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
-                                        'rev_outer', 'rev_inner'))
+        inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
+                                        b'rev_outer', b'rev_inner'))
         txt = xml7.serializer_v7.write_inventory_to_string(inv)
         lines = xml7.serializer_v7.write_inventory_to_lines(inv)
         self.assertEqual(breezy.osutils.split_lines(txt), lines)
@@ -377,7 +377,7 @@ class TestSerializer(TestCase):
         inv2 = xml7.serializer_v7.read_inventory_from_string(txt)
         self.assertEqual(5, len(inv2))
         for path, ie in inv.iter_entries():
-            self.assertEqual(ie, inv2[ie.file_id])
+            self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_roundtrip_inventory_v6(self):
         inv = self.get_sample_inventory()
@@ -388,7 +388,7 @@ class TestSerializer(TestCase):
         inv2 = xml6.serializer_v6.read_inventory_from_string(txt)
         self.assertEqual(4, len(inv2))
         for path, ie in inv.iter_entries():
-            self.assertEqual(ie, inv2[ie.file_id])
+            self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_wrong_format_v7(self):
         """Can't accidentally open a file with wrong serializer"""
@@ -403,10 +403,10 @@ class TestSerializer(TestCase):
         s_v5 = breezy.bzr.xml5.serializer_v5
         s_v6 = breezy.bzr.xml6.serializer_v6
         s_v7 = xml7.serializer_v7
-        inv = Inventory('tree-root-321', revision_id='rev-outer')
-        inv.root.revision = 'root-rev'
-        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
-                                        'rev-outer', 'rev-inner'))
+        inv = Inventory(b'tree-root-321', revision_id=b'rev-outer')
+        inv.root.revision = b'root-rev'
+        inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
+                                        b'rev-outer', b'rev-inner'))
         self.assertRaises(errors.UnsupportedInventoryKind,
                           s_v5.write_inventory_to_string, inv)
         self.assertRaises(errors.UnsupportedInventoryKind,
@@ -415,9 +415,9 @@ class TestSerializer(TestCase):
         lines = s_v7.write_inventory_to_lines(inv)
         self.assertEqual(breezy.osutils.split_lines(txt), lines)
         inv2 = s_v7.read_inventory_from_string(txt)
-        self.assertEqual('tree-root-321', inv2['nested-id'].parent_id)
-        self.assertEqual('rev-outer', inv2['nested-id'].revision)
-        self.assertEqual('rev-inner', inv2['nested-id'].reference_revision)
+        self.assertEqual(b'tree-root-321', inv2.get_entry(b'nested-id').parent_id)
+        self.assertEqual(b'rev-outer', inv2.get_entry(b'nested-id').revision)
+        self.assertEqual(b'rev-inner', inv2.get_entry(b'nested-id').reference_revision)
 
     def test_roundtrip_inventory_v8(self):
         inv = self.get_sample_inventory()
@@ -425,7 +425,7 @@ class TestSerializer(TestCase):
         inv2 = xml8.serializer_v8.read_inventory_from_string(txt)
         self.assertEqual(4, len(inv2))
         for path, ie in inv.iter_entries():
-            self.assertEqual(ie, inv2[ie.file_id])
+            self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_inventory_text_v8(self):
         inv = self.get_sample_inventory()

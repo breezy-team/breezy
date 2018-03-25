@@ -176,7 +176,7 @@ class TestGetTo(TestCaseInTempDir):
         my_config = config.MemoryStack(text)
         self.branch = BzrDir.create_branch_convenience('.')
         tree = self.branch.controldir.open_workingtree()
-        tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id='A',
+        tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id=b'A',
             allow_pointless=True,
             timestamp=1,
             timezone=0,

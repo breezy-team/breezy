@@ -348,7 +348,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             self._master_branch_cache = None
             if location:
-                self._transport.put_bytes('bound', location+b'\n',
+                self._transport.put_bytes('bound', location.encode('utf-8')+b'\n',
                     mode=self.controldir._get_file_mode())
             else:
                 try:
@@ -520,13 +520,10 @@ class BzrBranch8(BzrBranch):
         with self.lock_read():
             if self._reference_info is not None:
                 return self._reference_info
-            rio_file = self._transport.get('references')
-            try:
+            with self._transport.get('references') as rio_file:
                 stanzas = rio.read_stanzas(rio_file)
                 info_dict = dict((s['file_id'], (s['tree_path'],
                                  s['branch_location'])) for s in stanzas)
-            finally:
-                rio_file.close()
             self._reference_info = info_dict
             return info_dict
 
@@ -969,8 +966,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         if name is None:
             name = a_controldir._get_selected_branch()
         branch_transport = a_controldir.get_branch_transport(self, name=name)
-        branch_transport.put_bytes('location',
-            target_branch.user_url)
+        branch_transport.put_bytes('location', target_branch.user_url)
         branch_transport.put_bytes('format', self.as_string())
         branch = self.open(a_controldir, name, _found=True,
             possible_transports=[target_branch.controldir.root_transport])

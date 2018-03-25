@@ -286,11 +286,8 @@ class BundleInfo(object):
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            f = open(',,bogus-inv', 'wb')
-            try:
+            with open(',,bogus-inv', 'wb') as f:
                 f.write(s)
-            finally:
-                f.close()
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 

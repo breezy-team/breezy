@@ -1193,7 +1193,7 @@ class MultiWalker(object):
             return (None, None)
         else:
             self._out_of_order_processed.add(file_id)
-            cur_ie = other_tree.root_inventory[file_id]
+            cur_ie = other_tree.root_inventory.get_entry(file_id)
             return (cur_path, cur_ie)
 
     def iter_all(self):

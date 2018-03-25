@@ -86,11 +86,8 @@ def output_news_file_sphinx(out_file, news_file_name):
 
 
 def output_news_file_plain(out_file, news_file_name):
-    f = open(news_file_name, 'rb')
-    try:
+    with open(news_file_name, 'rb') as f:
         lines = f.readlines()
-    finally:
-        f.close()
     title = os.path.basename(news_file_name)[len('brz-'):-len('.txt')]
     for line in lines:
         if line == '####################\n':
@@ -124,13 +121,10 @@ def main(argv):
         preamble = preamble_plain
         output_news_file = output_news_file_plain
 
-    out_file = open(out_file_name, 'w')
-    try:
+    with open(out_file_name, 'w') as out_file:
         out_file.write(preamble)
         for news_file_name in news_file_names:
             output_news_file(out_file, news_file_name)
-    finally:
-        out_file.close()
 
 
 if __name__ == '__main__':

@@ -268,7 +268,7 @@ class ZipExporterTests(tests.TestCaseWithTransport):
 
     def test_per_file_timestamps(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('har', 'foo')])
+        self.build_tree_contents([('har', b'foo')])
         tree.add('har')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         timestamp = 347151600

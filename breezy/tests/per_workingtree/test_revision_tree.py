@@ -81,9 +81,9 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             raise tests.TestNotApplicable(
                 'tree does not support setting file ids')
-        tree.set_root_id('one')
+        tree.set_root_id(b'one')
         rev1 = tree.commit('first post')
-        tree.set_root_id('two')
+        tree.set_root_id(b'two')
         try:
             cached_revision_tree = tree.revision_tree(rev1)
         except errors.NoSuchRevision:

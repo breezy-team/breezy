@@ -33,8 +33,8 @@ class TestLS(tests.TestCaseWithTransport):
 
         self.wt = self.make_branch_and_tree('.')
         self.build_tree_contents([
-                                 ('.bzrignore', '*.pyo\n'),
-                                 ('a', 'hello\n'),
+                                 ('.bzrignore', b'*.pyo\n'),
+                                 ('a', b'hello\n'),
                                  ])
 
     def ls_equals(self, value, args=None, recursive=True, working_dir=None):
@@ -97,7 +97,7 @@ class TestLS(tests.TestCaseWithTransport):
 
     def test_show_ids(self):
         self.build_tree(['subdir/'])
-        self.wt.add(['a', 'subdir'], ['a-id', 'subdir-id'])
+        self.wt.add(['a', 'subdir'], [b'a-id', b'subdir-id'])
         self.ls_equals(
             '.bzrignore                                         \n'
             'a                                                  a-id\n'
@@ -247,7 +247,7 @@ class TestSmartServerLs(tests.TestCaseWithTransport):
     def test_simple_ls(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

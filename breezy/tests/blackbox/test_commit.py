@@ -92,10 +92,10 @@ brz: ERROR: No changes to commit.\
         self.run_bzr(['commit', '-m', 'first commit', 'a'])
 
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a_file', 'changes in b')])
+        self.build_tree_contents([('b/a_file', b'changes in b')])
         self.run_bzr(['commit', '-m', 'first commit in b', 'b'])
 
-        self.build_tree_contents([('a/a_file', 'new contents')])
+        self.build_tree_contents([('a/a_file', b'new contents')])
         self.run_bzr(['commit', '-m', 'change in a', 'a'])
 
         b_tree.merge_from_branch(a_tree.branch)
@@ -126,7 +126,7 @@ brz: ERROR: No changes to commit.\
     def test_verbose_commit_modified(self):
         # Verbose commit of modified file should say so
         wt = self.prepare_simple_history()
-        self.build_tree_contents([('hello.txt', 'new contents')])
+        self.build_tree_contents([('hello.txt', b'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
@@ -320,8 +320,8 @@ brz: ERROR: No changes to commit.\
             other_tree.remove(['dirtoremove', 'filetoremove'])
             self.build_tree_contents([
                 ('other/newdir/',),
-                ('other/filetomodify', 'new content'),
-                ('other/newfile', 'new file content')])
+                ('other/filetomodify', b'new content'),
+                ('other/newfile', b'new file content')])
             other_tree.add('newfile')
             other_tree.add('newdir/')
             other_tree.commit('modify all sample files and dirs.')
@@ -347,7 +347,7 @@ brz: ERROR: No changes to commit.\
 
     def test_empty_commit_message(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('foo.c', 'int main() {}')])
+        self.build_tree_contents([('foo.c', b'int main() {}')])
         tree.add('foo.c')
         self.run_bzr('commit -m ""')
 
@@ -357,8 +357,8 @@ brz: ERROR: No changes to commit.\
         outer_tree = self.make_branch_and_tree('.')
         inner_tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([
-            ('branch/foo.c', 'int main() {}'),
-            ('branch/bar.c', 'int main() {}')])
+            ('branch/foo.c', b'int main() {}'),
+            ('branch/bar.c', b'int main() {}')])
         inner_tree.add(['foo.c', 'bar.c'])
         # can't commit files in different trees; sane error
         self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
@@ -403,16 +403,16 @@ brz: ERROR: No changes to commit.\
         trunk = self.make_branch_and_tree('trunk')
 
         u1 = trunk.branch.create_checkout('u1')
-        self.build_tree_contents([('u1/hosts', 'initial contents\n')])
+        self.build_tree_contents([('u1/hosts', b'initial contents\n')])
         u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
         u2 = trunk.branch.create_checkout('u2')
-        self.build_tree_contents([('u2/hosts', 'altered in u2\n')])
+        self.build_tree_contents([('u2/hosts', b'altered in u2\n')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
         # make an offline commits
-        self.build_tree_contents([('u1/hosts', 'first offline change in u1\n')])
+        self.build_tree_contents([('u1/hosts', b'first offline change in u1\n')])
         self.run_bzr('commit -m checkin-offline --local u1')
 
         # now try to pull in online work from u2, and then commit our offline
@@ -432,7 +432,7 @@ altered in u2
         # add a text change here to represent resolving the merge conflicts in
         # favour of a new version of the file not identical to either the u1
         # version or the u2 version.
-        self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
+        self.build_tree_contents([('u1/hosts', b'merge resolution\n')])
         self.run_bzr('commit -m checkin-merge-of-the-offline-work-from-u1 u1')
 
     def test_commit_exclude_excludes_modified_files(self):
@@ -759,7 +759,7 @@ altered in u2
         # then during partial commit we have error
         # parent_id {dir-XXX} not in inventory
         t.rename_one('dir/a', 'a')
-        self.build_tree_contents([('test', 'changes in test')])
+        self.build_tree_contents([('test', b'changes in test')])
         # partial commit
         out, err = self.run_bzr('commit test -m "partial commit"')
         self.assertEqual('', out)

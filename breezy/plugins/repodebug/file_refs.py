@@ -42,7 +42,7 @@ class cmd_file_refs(commands.Command):
         # print len(all_invs)
         for inv in repo.iter_inventories(all_invs, 'unordered'):
             try:
-                entry = inv[file_id]
+                entry = inv.get_entry(file_id)
             except errors.NoSuchId:
                 # This file doesn't even appear in this inv.
                 continue

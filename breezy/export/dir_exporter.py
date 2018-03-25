@@ -82,11 +82,8 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         mode = 0o666
         if tree.is_executable(treepath, file_id):
             mode = 0o777
-        out = os.fdopen(os.open(fullpath, flags, mode), 'wb')
-        try:
+        with os.fdopen(os.open(fullpath, flags, mode), 'wb') as out:
             out.writelines(chunks)
-        finally:
-            out.close()
         if force_mtime is not None:
             mtime = force_mtime
         else:

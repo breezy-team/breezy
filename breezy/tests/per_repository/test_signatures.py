@@ -80,7 +80,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
                           branch.repository.has_signature_for_revision_id,
                           'A')
         if wt.branch.repository._format.supports_setting_revision_ids:
-            wt.commit("base", rev_id='A', allow_pointless=True)
+            wt.commit("base", rev_id=b'A', allow_pointless=True)
             self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
                              'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
                              branch.repository.get_signature_text('A'))

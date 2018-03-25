@@ -141,9 +141,9 @@ class TestFetch(TestCaseWithTransport):
         # root revision to change for each commit, even though the content,
         # parent, name, and other attributes are unchanged.
         tree = self.make_branch_and_tree('tree', knit1_format)
-        tree.set_root_id('tree-root')
-        tree.commit('rev1', rev_id='rev1')
-        tree.commit('rev2', rev_id='rev2')
+        tree.set_root_id(b'tree-root')
+        tree.commit('rev1', rev_id=b'rev1')
+        tree.commit('rev2', rev_id=b'rev2')
 
         # Now we convert it to a knit2 repository so that it has a root knit
         Convert(tree.basedir, knit2_format)
@@ -188,11 +188,11 @@ class TestMergeFetch(TestCaseWithTransport):
         """Merge brings across history from unrelated source"""
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
-        wt1.commit(message='rev 1-1', rev_id='1-1')
-        wt1.commit(message='rev 1-2', rev_id='1-2')
+        wt1.commit(message='rev 1-1', rev_id=b'1-1')
+        wt1.commit(message='rev 1-2', rev_id=b'1-2')
         wt2 = self.make_branch_and_tree('br2')
         br2 = wt2.branch
-        wt2.commit(message='rev 2-1', rev_id='2-1')
+        wt2.commit(message='rev 2-1', rev_id=b'2-1')
         wt2.merge_from_branch(br1, from_revision='null:')
         self._check_revs_present(br2)
 
@@ -200,12 +200,12 @@ class TestMergeFetch(TestCaseWithTransport):
         """Merge brings across history from source"""
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
-        wt1.commit(message='rev 1-1', rev_id='1-1')
+        wt1.commit(message='rev 1-1', rev_id=b'1-1')
         dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
-        wt1.commit(message='rev 1-2', rev_id='1-2')
+        wt1.commit(message='rev 1-2', rev_id=b'1-2')
         wt2 = dir_2.open_workingtree()
-        wt2.commit(message='rev 2-1', rev_id='2-1')
+        wt2.commit(message='rev 2-1', rev_id=b'2-1')
         wt2.merge_from_branch(br1)
         self._check_revs_present(br2)
 
@@ -223,20 +223,20 @@ class TestMergeFileHistory(TestCaseWithTransport):
         super(TestMergeFileHistory, self).setUp()
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
-        self.build_tree_contents([('br1/file', 'original contents\n')])
-        wt1.add('file', 'this-file-id')
-        wt1.commit(message='rev 1-1', rev_id='1-1')
+        self.build_tree_contents([('br1/file', b'original contents\n')])
+        wt1.add('file', b'this-file-id')
+        wt1.commit(message='rev 1-1', rev_id=b'1-1')
         dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
         wt2 = dir_2.open_workingtree()
-        self.build_tree_contents([('br1/file', 'original from 1\n')])
-        wt1.commit(message='rev 1-2', rev_id='1-2')
-        self.build_tree_contents([('br1/file', 'agreement\n')])
-        wt1.commit(message='rev 1-3', rev_id='1-3')
-        self.build_tree_contents([('br2/file', 'contents in 2\n')])
-        wt2.commit(message='rev 2-1', rev_id='2-1')
-        self.build_tree_contents([('br2/file', 'agreement\n')])
-        wt2.commit(message='rev 2-2', rev_id='2-2')
+        self.build_tree_contents([('br1/file', b'original from 1\n')])
+        wt1.commit(message='rev 1-2', rev_id=b'1-2')
+        self.build_tree_contents([('br1/file', b'agreement\n')])
+        wt1.commit(message='rev 1-3', rev_id=b'1-3')
+        self.build_tree_contents([('br2/file', b'contents in 2\n')])
+        wt2.commit(message='rev 2-1', rev_id=b'2-1')
+        self.build_tree_contents([('br2/file', b'agreement\n')])
+        wt2.commit(message='rev 2-2', rev_id=b'2-2')
 
     def test_merge_fetches_file_history(self):
         """Merge brings across file histories"""
@@ -275,9 +275,9 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='dirstate')
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
-        tree.set_root_id('root-id')
-        tree.add('file', 'file-id')
-        tree.commit('one', rev_id='rev-one')
+        tree.set_root_id(b'root-id')
+        tree.add('file', b'file-id')
+        tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
                         source.texts)
@@ -315,9 +315,9 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='dirstate')
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
-        tree.set_root_id('root-id')
-        tree.add('file', 'file-id')
-        tree.commit('one', rev_id='rev-one')
+        tree.set_root_id(b'root-id')
+        tree.add('file', b'file-id')
+        tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
                         source.texts)
@@ -360,12 +360,12 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='dirstate')
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
-        tree.set_root_id('root-id')
-        tree.add('file', 'file-id')
-        tree.commit('one', rev_id='rev-one')
+        tree.set_root_id(b'root-id')
+        tree.add('file', b'file-id')
+        tree.commit('one', rev_id=b'rev-one')
         # Hack the KVF for revisions so that it "accidentally" allows a delta
         tree.branch.repository.revisions._max_delta_chain = 200
-        tree.commit('two', rev_id='rev-two')
+        tree.commit('two', rev_id=b'rev-two')
         source = tree.branch.repository
         # Ensure that we stored a delta
         source.lock_read()
@@ -487,14 +487,14 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def test_fetch_ghosts(self):
         self.make_tree_and_repo()
-        self.tree.commit('first commit', rev_id='left-parent')
+        self.tree.commit('first commit', rev_id=b'left-parent')
         self.tree.add_parent_tree_id('ghost-parent')
         fork = self.tree.controldir.sprout('fork', 'null:').open_workingtree()
-        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        fork.commit('not a ghost', rev_id=b'not-ghost-parent')
         self.tree.branch.repository.fetch(fork.branch.repository,
                                      'not-ghost-parent')
         self.tree.add_parent_tree_id('not-ghost-parent')
-        self.tree.commit('second commit', rev_id='second-id')
+        self.tree.commit('second commit', rev_id=b'second-id')
         self.repo.fetch(self.tree.branch.repository, 'second-id')
         root_id = self.tree.get_root_id()
         self.assertEqual(
@@ -503,10 +503,10 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def make_two_commits(self, change_root, fetch_twice):
         self.make_tree_and_repo()
-        self.tree.commit('first commit', rev_id='first-id')
+        self.tree.commit('first commit', rev_id=b'first-id')
         if change_root:
-            self.tree.set_root_id('unique-id')
-        self.tree.commit('second commit', rev_id='second-id')
+            self.tree.set_root_id(b'unique-id')
+        self.tree.commit('second commit', rev_id=b'second-id')
         if fetch_twice:
             self.repo.fetch(self.tree.branch.repository, 'first-id')
         self.repo.fetch(self.tree.branch.repository, 'second-id')

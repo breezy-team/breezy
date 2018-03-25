@@ -28,13 +28,13 @@ class TestRevisionHistory(tests.TestCaseWithTransport):
         with open('test/foo', 'wb') as f:
             f.write('1111\n')
         tree.add('foo')
-        tree.commit('added foo', rev_id='revision_1')
+        tree.commit('added foo', rev_id=b'revision_1')
         with open('test/foo', 'wb')as f:
             f.write('2222\n')
-        tree.commit('updated foo', rev_id='revision_2')
+        tree.commit('updated foo', rev_id=b'revision_2')
         with open('test/foo', 'wb')as f:
             f.write('3333\n')
-        tree.commit('updated foo again', rev_id='revision_3')
+        tree.commit('updated foo again', rev_id=b'revision_3')
         return tree
 
     def _check_revision_history(self, location='', working_dir=None):

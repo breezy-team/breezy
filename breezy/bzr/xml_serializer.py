@@ -47,7 +47,7 @@ from .. import (
     errors,
     lazy_regex,
     )
-from ..sixish import text_type
+from ..sixish import text_type, bytesintern
 from . import (
     inventory,
     serializer,
@@ -151,7 +151,7 @@ def get_utf8_or_ascii(a_str, _encode_utf8=cache_utf8.encode):
     if a_str.__class__ is text_type:
         return _encode_utf8(a_str)
     else:
-        return intern(a_str)
+        return bytesintern(a_str)
 
 
 _utf8_re = lazy_regex.lazy_compile(b'[&<>\'\"]|[\x80-\xff]+')
