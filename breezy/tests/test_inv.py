@@ -1034,7 +1034,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(b"ffff", file_entry.text_sha1)
         self.assertEqual(1, file_entry.text_size)
         self.assertEqual(True, file_entry.executable)
-        self.assertRaises(errors.NoSuchId, new_inv.__getitem__, 'missing')
+        self.assertRaises(errors.NoSuchId, new_inv.get_entry, 'missing')
 
     def test_has_id_true(self):
         inv = Inventory()
