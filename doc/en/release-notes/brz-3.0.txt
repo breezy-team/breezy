@@ -63,6 +63,10 @@ External Compatibility Breaks
    out to the gnupg command. The ``gpg_signing_command`` option has been
    removed.  (Jelmer Vernooĳ, #847388)
 
+ * The ``bzr.transform.orphan_policy`` configuration option
+   has been renamed to ``transform.orphan_policy``.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -259,6 +263,9 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for brz developers.
+
+* Allow overriding of default HTTP headers by caller.
+  (Jelmer Vernooĳ, #1753734)
 
 Testing
 *******

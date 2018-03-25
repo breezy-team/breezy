@@ -374,12 +374,9 @@ class GenericCommitHandler(processor.CommitHandler):
                 % (kind, path))
             return
         # Record it
-        if inv.has_id(file_id):
+        try:
             old_ie = inv[file_id]
-            if old_ie.kind == 'directory':
-                self.record_delete(path, old_ie)
-            self.record_changed(path, ie, parent_id)
-        else:
+        except errors.NoSuchId:
             try:
                 self.record_new(path, ie)
             except:
@@ -387,6 +384,10 @@ class GenericCommitHandler(processor.CommitHandler):
                     % (path, ie, self.command.id))
                 print("parent's children are:\n%r\n" % (ie.parent_id.children,))
                 raise
+        else:
+            if old_ie.kind == 'directory':
+                self.record_delete(path, old_ie)
+            self.record_changed(path, ie, parent_id)
 
     def _ensure_directory(self, path, inv):
         """Ensure that the containing directory exists for 'path'"""

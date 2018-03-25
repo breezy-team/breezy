@@ -26,6 +26,7 @@ from .i18n import gettext
 from .sixish import (
     BytesIO,
     viewitems,
+    viewvalues,
     )
 from .ui import ui_factory
 
@@ -64,9 +65,8 @@ class RenameMap(object):
         :param tree: The tree containing the files.
         :param file_ids: A list of file_ids to perform the updates for.
         """
-        desired_files = [(f, f) for f in file_ids]
-        task = ui_factory.nested_progress_bar()
-        try:
+        desired_files = [(tree.id2path(f), f) for f in file_ids]
+        with ui_factory.nested_progress_bar() as task:
             for num, (file_id, contents) in enumerate(
                 tree.iter_files_bytes(desired_files)):
                 task.update(gettext('Calculating hashes'), num, len(file_ids))
@@ -74,8 +74,6 @@ class RenameMap(object):
                 s.writelines(contents)
                 s.seek(0)
                 self.add_edge_hashes(s.readlines(), file_id)
-        finally:
-            task.finished()
 
     def hitcounts(self, lines):
         """Count the number of hash hits for each tag, for the given lines.
@@ -104,14 +102,11 @@ class RenameMap(object):
         :return: A list of tuples of count, path, file_id.
         """
         all_hits = []
-        task = ui_factory.nested_progress_bar()
-        try:
+        with ui_factory.nested_progress_bar() as task:
             for num, path in enumerate(paths):
                 task.update(gettext('Determining hash hits'), num, len(paths))
                 hits = self.hitcounts(self.tree.get_file_lines(path))
                 all_hits.extend((v, path, k) for k, v in viewitems(hits))
-        finally:
-            task.finished()
         return all_hits
 
     def file_match(self, paths):
@@ -178,10 +173,9 @@ class RenameMap(object):
         missing_files = set()
         missing_parents = {}
         candidate_files = set()
-        task = ui_factory.nested_progress_bar()
-        iterator = self.tree.iter_changes(basis, want_unversioned=True,
-                                          pb=task)
-        try:
+        with ui_factory.nested_progress_bar() as task:
+            iterator = self.tree.iter_changes(basis, want_unversioned=True,
+                                              pb=task)
             for (file_id, paths, changed_content, versioned, parent, name,
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
@@ -202,34 +196,28 @@ class RenameMap(object):
                             for child in children:
                                 if child[2] == 'file':
                                     candidate_files.add(child[0])
-        finally:
-            task.finished()
         return missing_files, missing_parents, candidate_files
 
     @classmethod
-    def guess_renames(klass, tree, dry_run=False):
+    def guess_renames(klass, from_tree, to_tree, dry_run=False):
         """Guess which files to rename, and perform the rename.
 
         We assume that unversioned files and missing files indicate that
         versioned files have been renamed outside of Bazaar.
 
-        :param tree: A write-locked working tree.
+        :param from_tree: A tree to compare from
+        :param to_tree: A write-locked working tree.
         """
         required_parents = {}
-        task = ui_factory.nested_progress_bar()
-        try:
+        with ui_factory.nested_progress_bar() as task:
             pp = progress.ProgressPhase('Guessing renames', 4, task)
-            basis = tree.basis_tree()
-            basis.lock_read()
-            try:
-                rn = klass(tree)
+            with from_tree.lock_read():
+                rn = klass(to_tree)
                 pp.next_phase()
                 missing_files, missing_parents, candidate_files = (
-                    rn._find_missing_files(basis))
+                    rn._find_missing_files(from_tree))
                 pp.next_phase()
-                rn.add_file_edge_hashes(basis, missing_files)
-            finally:
-                basis.unlock()
+                rn.add_file_edge_hashes(from_tree, missing_files)
             pp.next_phase()
             matches = rn.file_match(candidate_files)
             parents_matches = matches
@@ -244,15 +232,20 @@ class RenameMap(object):
             for old, new, file_id, entry in delta:
                 trace.note( gettext("{0} => {1}").format(old, new) )
             if not dry_run:
-                tree.add(required_parents)
-                tree.apply_inventory_delta(delta)
-        finally:
-            task.finished()
+                to_tree.add(required_parents)
+                to_tree.apply_inventory_delta(delta)
 
     def _make_inventory_delta(self, matches):
         delta = []
         file_id_matches = dict((f, p) for p, f in viewitems(matches))
-        for old_path, entry in self.tree.iter_entries_by_dir(file_id_matches):
+        file_id_query = []
+        for f in viewvalues(matches):
+            try:
+                file_id_query.append(self.tree.id2path(f))
+            except errors.NoSuchId:
+                pass
+        for old_path, entry in self.tree.iter_entries_by_dir(
+                specific_files=file_id_query):
             new_path = file_id_matches[entry.file_id]
             parent_path, new_name = osutils.split(new_path)
             parent_id = matches.get(parent_path)

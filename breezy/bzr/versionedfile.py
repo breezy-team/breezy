@@ -669,7 +669,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 
-    def plan_merge(self, ver_a, ver_b):
+    def plan_merge(self, ver_a, ver_b, base=None):
         """Return pseudo-annotation indicating how the two versions merge.
 
         This is computed between versions a and b and their common

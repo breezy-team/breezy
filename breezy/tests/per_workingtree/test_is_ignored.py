@@ -15,21 +15,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import config, ignores
+from breezy import config, ignores, tests
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestIsIgnored(TestCaseWithWorkingTree):
 
+    def setUp(self):
+        super(TestIsIgnored, self).setUp()
+        if self.workingtree_format.ignore_filename != '.bzrignore':
+            raise tests.TestNotApplicable(
+                'format does not use .bzrignore for ignore patterns')
+
     def _set_user_ignore_content(self, ignores):
         """Create user ignore file and set its content to ignores."""
         config.ensure_config_dir_exists()
         user_ignore_file = config.user_ignore_config_filename()
-        f = open(user_ignore_file, 'wb')
-        try:
+        with open(user_ignore_file, 'wb') as f:
             f.write(ignores)
-        finally:
-            f.close()
 
     def test_is_ignored(self):
         tree = self.make_branch_and_tree('.')
@@ -76,7 +79,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual("path/from/ro?t", tree.is_ignored('path/from/root'))
         self.assertEqual("path/from/ro?t", tree.is_ignored('path/from/roat'))
         self.assertEqual(None, tree.is_ignored('roat'))
-        
+
         self.assertEqual('**/piffle.py', tree.is_ignored('piffle.py'))
         self.assertEqual('**/piffle.py', tree.is_ignored('a/piffle.py'))
         self.assertEqual(None, tree.is_ignored('b/piffle.py')) # exclusion
@@ -96,7 +99,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*bar', tree.is_ignored(r'foo\nbar'))
         self.assertEqual('*bar', tree.is_ignored('bar'))
         self.assertEqual('*bar', tree.is_ignored('.bar'))
-        
+
         self.assertEqual(None, tree.is_ignored('bazbar')) # exclusion
 
         self.assertEqual('?foo', tree.is_ignored('afoo'))
@@ -110,7 +113,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
-        
+
         self.assertEqual('RE:dir2/.*\.wombat', tree.is_ignored('dir2/foo.wombat'))
         self.assertEqual(None, tree.is_ignored('dir2/foo'))
 

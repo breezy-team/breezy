@@ -557,7 +557,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     @staticmethod
     def get_path_entry(tree, file_id):
-        iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
+        with tree.lock_read():
+            path = tree.id2path(file_id)
+        iterator = tree.iter_entries_by_dir(specific_files=[path])
         try:
             return next(iterator)
         except StopIteration:

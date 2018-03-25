@@ -149,7 +149,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # moment trigger inventory writes and thus will not
         # let us trigger a read-when-dirty situation.
         old_root = tree.get_root_id()
-        tree.set_root_id(b'new-root')
+        tree.add('')
         # to detect that the inventory is written by unlock, we
         # first check that it was not written yet.
         # TODO: This requires taking a read lock while we are holding the above
@@ -164,7 +164,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         tree.unlock()
         # and check it was written using another reference tree
         reference_tree = tree.controldir.open_workingtree()
-        self.assertEqual('new-root', reference_tree.get_root_id())
+        self.assertIsNot(None, reference_tree.get_root_id())
 
     def test_unlock_from_tree_write_lock_flushes(self):
         self._test_unlock_with_lock_method("lock_tree_write")

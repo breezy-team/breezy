@@ -36,7 +36,12 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_tree(files)
         tree.add(files)
         tree.commit(message)
-        self.assertInWorkingTree(files)
+        if not tree.has_versioned_directories():
+            self.assertInWorkingTree(
+                [f for f in files if not f.endswith("/")])
+            self.assertPathExists(files)
+        else:
+            self.assertInWorkingTree(files)
         return tree
 
     def assertRemovedAndDeleted(self, files):
@@ -51,7 +56,6 @@ class TestRemove(TestCaseWithWorkingTree):
         """Check that files and directories are unversioned but not deleted."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
-        self.assertInWorkingTree(TestRemove.files)
 
         tree.remove(TestRemove.files)
         self.assertRemovedAndNotDeleted(TestRemove.files)
@@ -76,7 +80,6 @@ class TestRemove(TestCaseWithWorkingTree):
         """Removal of newly added files must back them up."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
-        self.assertInWorkingTree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertNotInWorkingTree(TestRemove.files)
         self.assertPathExists(TestRemove.backup_files)
@@ -97,7 +100,6 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(TestRemove.files)
         for f in TestRemove.rfiles:
             osutils.delete_any(f)
-        self.assertInWorkingTree(TestRemove.files)
         self.assertPathDoesNotExist(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)
@@ -110,7 +112,6 @@ class TestRemove(TestCaseWithWorkingTree):
         for f in TestRemove.rfiles:
             tree.rename_one(f, f+'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
-        self.assertInWorkingTree(rfilesx)
         self.assertPathExists(rfilesx)
 
         tree.remove(rfilesx, keep_files=False)
@@ -126,20 +127,21 @@ class TestRemove(TestCaseWithWorkingTree):
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
         self.build_tree_contents([('ax', b'changed and renamed!'),
                                   ('bx/cx', b'changed and renamed!')])
-        self.assertInWorkingTree(rfilesx)
         self.assertPathExists(rfilesx)
 
         tree.remove(rfilesx, keep_files=False)
         self.assertNotInWorkingTree(rfilesx)
         self.assertPathExists(['bx.~1~/cx.~1~', 'bx.~1~', 'ax.~1~'])
-        self.assertPathDoesNotExist('dx.~1~') # unchanged file
+        if tree.supports_rename_tracking():
+            self.assertPathDoesNotExist('dx.~1~') # unchanged file
+        else:
+            self.assertPathExists('dx.~1~') # renamed, so appears changed
         tree._validate()
 
     def test_force_remove_changed_files(self):
         """Check that changed files are removed and deleted when forced."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
-        self.assertInWorkingTree(TestRemove.files)
 
         tree.remove(TestRemove.files, keep_files=False, force=True)
         self.assertRemovedAndDeleted(TestRemove.files)
@@ -201,7 +203,6 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_tree(files)
         tree.add(files)
         ignores.add_runtime_ignores(["*ignored*"])
-        self.assertInWorkingTree(files)
         self.assertNotEqual(None, tree.is_ignored(files[0]))
 
         tree.remove(files, keep_files=False)
@@ -211,7 +212,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
     def test_dont_remove_directory_with_unknowns(self):
         """Directories with unknowns should be backed up."""
-        directories = ['a/', 'b/', 'c/', 'c/c/']
+        directories = ['a/', 'b/', 'c/', 'c/c/', 'c/blah']
         tree = self.get_committed_tree(directories)
 
         self.build_tree(['a/unknown_file'])
@@ -288,7 +289,7 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_directory_with_renames(self):
         """Delete directory with renames in or out."""
 
-        files = ['a/', 'a/file', 'a/directory/', 'b/']
+        files = ['a/', 'a/file', 'a/directory/', 'a/directory/stuff', 'b/']
         files_to_move = ['a/file', 'a/directory/']
 
         tree = self.get_committed_tree(files)

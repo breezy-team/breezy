@@ -101,29 +101,29 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
         tree.add(files)
-        tree.commit('a, b and b/c', rev_id=b'base')
+        base_revid = tree.commit('a, b and b/c')
         tree2 = tree.controldir.sprout(relpath + '2').open_workingtree()
         # Delete 'a' in tree
         tree.remove('a', keep_files=False)
-        tree.commit('remove a', rev_id=b'this')
+        this_revid = tree.commit('remove a')
         # Delete 'c' in tree2
         tree2.remove('b/c', keep_files=False)
         tree2.remove('b', keep_files=False)
-        tree2.commit('remove b/c', rev_id=b'other')
+        other_revid = tree2.commit('remove b/c')
         # Merge tree2 into tree
         tree.merge_from_branch(tree2.branch)
-        return tree
+        return tree, [base_revid, this_revid, other_revid]
 
     def test_kind_parent_tree(self):
-        tree = self.make_branch_with_merged_deletions()
+        tree, [base_revid, this_revid, other_revid] = self.make_branch_with_merged_deletions()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         parents = tree.get_parent_ids()
-        self.assertEqual(['this', 'other'], parents)
+        self.assertEqual([this_revid, other_revid], parents)
         basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertRaises(errors.NoSuchId, basis.kind, 'a')
+        self.assertRaises(errors.NoSuchFile, basis.kind, 'a')
         self.assertEqual(['directory', 'file'],
                          [basis.kind('b'), basis.kind('b/c')])
         try:
@@ -134,6 +134,6 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
                 % type(tree))
         other.lock_read()
         self.addCleanup(other.unlock)
-        self.assertRaises(errors.NoSuchId, other.kind, 'b')
-        self.assertRaises(errors.NoSuchId, other.kind, 'c')
+        self.assertRaises(errors.NoSuchFile, other.kind, 'b')
+        self.assertRaises(errors.NoSuchFile, other.kind, 'c')
         self.assertEqual('file', other.kind('a'))

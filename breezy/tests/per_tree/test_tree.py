@@ -56,6 +56,8 @@ class TestPlanFileMerge(TestCaseWithTree):
         work_b = work_a.controldir.sprout('wtb').open_workingtree()
         self.build_tree_contents([('wta/file', b'b\nc\nd\ne\n')])
         tree_a = self.workingtree_to_test_tree(work_a)
+        if getattr(tree_a, 'plan_file_merge', None) is None:
+            raise tests.TestNotApplicable('Tree does not support plan_file_merge')
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
         self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
@@ -120,6 +122,12 @@ class TestReference(TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         self.assertTrue(tree.is_versioned(''))
         self.assertFalse(tree.is_versioned('blah'))
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        self.assertFalse(tree.is_versioned('dir'))
+        self.assertFalse(tree.is_versioned('dir/'))
+        tree.add(['dir', 'dir/file'])
+        self.assertTrue(tree.is_versioned('dir'))
+        self.assertTrue(tree.is_versioned('dir/'))
 
 
 class TestFileIds(TestCaseWithTree):
@@ -224,15 +232,15 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
-                         tree.iter_files_bytes([(tree.path2id('foo'), 'id1'),
-                                                (tree.path2id('bar'), 'id2'),
-                                                (tree.path2id('baz'), 'id3')]))
+                         tree.iter_files_bytes([('foo', 'id1'),
+                                                ('bar', 'id2'),
+                                                ('baz', 'id3')]))
         self.assertEqual('foo', extracted['id1'])
         self.assertEqual('bar', extracted['id2'])
         self.assertEqual('baz', extracted['id3'])
-        self.assertRaises(errors.NoSuchId, lambda: list(
+        self.assertRaises(errors.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
-                          [('qux-id', 'file1-notpresent')])))
+                          [('qux', 'file1-notpresent')])))
 
 
 class TestConflicts(TestCaseWithTree):
@@ -351,4 +359,12 @@ class TestHasVersionedDirectories(TestCaseWithTree):
     def test_has_versioned_directories(self):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
-        self.assertSubset([tree.has_versioned_directories()], (True, False))
+        self.assertIn(tree.has_versioned_directories(), (True, False))
+
+
+class TestSupportsRenameTracking(TestCaseWithTree):
+
+    def test_supports_rename_tracking(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertSubset([tree.supports_rename_tracking()], (True, False))

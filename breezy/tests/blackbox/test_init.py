@@ -57,7 +57,7 @@ class TestInit(TestCaseWithTransport):
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
         out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
-        self.assertEqual("""Created a lightweight checkout (format: development-colo)\n""",
+        self.assertEqual("""Created a standalone tree (format: development-colo)\n""",
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr('branches')

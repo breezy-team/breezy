@@ -41,6 +41,13 @@ class ProgressRecordingUIFactory(ui.UIFactory, progress.DummyProgress):
     def finished(self):
         self.depth -= 1
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.finished()
+        return False
+
     def update(self, message, count=None, total=None):
         if self.depth == 1:
             self._calls.append(("update", count, total, message))

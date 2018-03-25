@@ -191,8 +191,9 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
         # won't write the new value to disk where get_user_option can get it).
         merger.this_branch.get_config().set_user_option(
             'changelog_merge_files', 'ChangeLog')
-        merge_hook_params = merge.MergeFileHookParams(merger, 'clog-id', None,
-            'file', 'file', 'conflict')
+        merge_hook_params = merge.MergeFileHookParams(merger, 'clog-id',
+                ['ChangeLog', 'ChangeLog', 'ChangeLog'], None,
+                'file', 'file', 'conflict')
         changelog_merger = changelog_merge.ChangeLogMerger(merger)
         return changelog_merger, merge_hook_params
 

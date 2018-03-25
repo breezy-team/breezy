@@ -206,7 +206,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def check_shelve_creation(self, creator, tree):
         self.assertRaises(StopIteration,
-                          next, tree.iter_entries_by_dir([b'foo-id']))
+                          next, tree.iter_entries_by_dir(specific_files=['foo']))
         s_trans_id = creator.shelf_transform.trans_id_file_id(b'foo-id')
         self.assertEqual(b'foo-id',
                          creator.shelf_transform.final_file_id(s_trans_id))
@@ -349,7 +349,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_creation(b'foo-id')
         creator.transform()
         self.assertRaises(StopIteration,
-                          next, tree.iter_entries_by_dir([b'foo-id']))
+                          next, tree.iter_entries_by_dir(specific_files=['foo']))
         self.assertShelvedFileEqual('', creator, b'foo-id')
         s_trans_id = creator.shelf_transform.trans_id_file_id(b'foo-id')
         self.assertEqual(b'foo-id',

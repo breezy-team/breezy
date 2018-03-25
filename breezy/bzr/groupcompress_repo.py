@@ -402,15 +402,12 @@ class GCCHKPacker(Packer):
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
         self.pb.update('repacking %s' % (message,), pb_offset)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _ in target_vf._insert_record_stream(stream,
                                                      random_id=True,
                                                      reuse_blocks=False):
                 pass
-        finally:
-            child_pb.finished()
 
     def _copy_revision_texts(self):
         source_vf, target_vf = self._build_vfs('revision', True, False)
@@ -458,16 +455,13 @@ class GCCHKPacker(Packer):
                      len(self._chk_id_roots), len(self._chk_p_id_roots),
                      len(total_keys))
         self.pb.update('repacking chk', 3)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             for stream in self._get_chk_streams(source_vf, total_keys,
                                                 pb=child_pb):
                 for _ in target_vf._insert_record_stream(stream,
                                                          random_id=True,
                                                          reuse_blocks=False):
                     pass
-        finally:
-            child_pb.finished()
 
     def _copy_text_texts(self):
         source_vf, target_vf = self._build_vfs('text', True, True)
@@ -619,11 +613,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         This is useful to get the side-effects of generating a stream.
         """
         self.pb.update('scanning %s' % (message,), pb_offset)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             list(vf_to_stream(source_vf, keys, message, child_pb))
-        finally:
-            child_pb.finished()
 
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
@@ -1025,8 +1016,7 @@ class CHKInventoryRepository(PackRepository):
         rich_root = self.supports_rich_root()
         bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         file_id_revisions = {}
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             revision_keys = [(r,) for r in revision_ids]
             parent_keys = self._find_parent_keys_of_revisions(revision_keys)
             # TODO: instead of using _find_present_inventory_keys, change the
@@ -1058,8 +1048,6 @@ class CHKInventoryRepository(PackRepository):
                         file_id_revisions[file_id].add(revision_id)
                     except KeyError:
                         file_id_revisions[file_id] = {revision_id}
-        finally:
-            pb.finished()
         return file_id_revisions
 
     def find_text_key_references(self):
@@ -1077,8 +1065,7 @@ class CHKInventoryRepository(PackRepository):
         revision_keys = self.revisions.keys()
         result = {}
         rich_roots = self.supports_rich_root()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             all_revs = self.all_revision_ids()
             total = len(all_revs)
             for pos, inv in enumerate(self.iter_inventories(all_revs)):
@@ -1091,8 +1078,6 @@ class CHKInventoryRepository(PackRepository):
                     if entry.revision == inv.revision_id:
                         result[key] = True
             return result
-        finally:
-            pb.finished()
 
     def reconcile_canonicalize_chks(self):
         """Reconcile this repository to make sure all CHKs are in canonical

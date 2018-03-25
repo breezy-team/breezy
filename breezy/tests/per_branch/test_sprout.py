@@ -43,7 +43,7 @@ class TestSprout(TestCaseWithBranch):
     def test_sprout_branch_parent(self):
         source = self.make_branch('source')
         target = source.controldir.sprout(self.get_url('target')).open_branch()
-        self.assertEqual(source.controldir.root_transport.base, target.get_parent())
+        self.assertEqual(source.user_url, target.get_parent())
 
     def test_sprout_uses_bzrdir_branch_format(self):
         # branch.sprout(bzrdir) is defined as using the branch format selected

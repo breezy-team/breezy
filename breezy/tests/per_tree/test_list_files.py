@@ -60,12 +60,8 @@ class TestListFiles(TestCaseWithTree):
         expected = [('', 'V', 'directory', tree.path2id('')),
                     ('a', 'V', 'file', tree.path2id('a')),
                    ]
-        if tree.has_versioned_directories():
-            expected.append(
-                ('b', 'V', 'directory', tree.path2id('b')))
-        else:
-            expected.append(
-                ('b', '?', 'directory', None))
+        expected.append(
+            ('b', 'V', 'directory', tree.path2id('b')))
         with tree.lock_read():
             actual = [(path, status, kind, file_id)
                 for path, status, kind, file_id, ie in
@@ -76,12 +72,8 @@ class TestListFiles(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
         expected = [('a', 'V', 'file', tree.path2id('a'))]
-        if tree.has_versioned_directories():
-            expected.append(
-                ('b', 'V', 'directory', tree.path2id('b')))
-        else:
-            expected.append(
-                ('b', '?', 'directory', None))
+        expected.append(
+            ('b', 'V', 'directory', tree.path2id('b')))
         tree.lock_read()
         try:
             actual = [(path, status, kind, file_id)
@@ -110,11 +102,8 @@ class TestListFiles(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
         expected = [('a', 'V', 'file', tree.path2id('a'))]
-        if tree.has_versioned_directories():
-            expected.append(
-                ('b', 'V', 'directory', tree.path2id('b')))
-        else:
-            expected.append(('b', '?', 'directory', None))
+        expected.append(
+            ('b', 'V', 'directory', tree.path2id('b')))
 
         with tree.lock_read():
             actual = [(path, status, kind, file_id)

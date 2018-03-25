@@ -786,11 +786,8 @@ class VersionedFileRepository(Repository):
         This is responsible for verifying the sha1 of inventories and
         creating a pending_keys set that covers data referenced by inventories.
         """
-        bar = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as bar:
             self._do_check_inventories(checker, bar)
-        finally:
-            bar.finished()
 
     def _do_check_inventories(self, checker, bar):
         """Helper for _check_inventories."""
@@ -1143,12 +1140,9 @@ class VersionedFileRepository(Repository):
         """
         revision_keys = self.revisions.keys()
         w = self.inventories
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             return self._serializer._find_text_key_references(
                 w.iter_lines_added_or_present_in_keys(revision_keys, pb=pb))
-        finally:
-            pb.finished()
 
     def _inventory_xml_lines_for_keys(self, keys):
         """Get a line iterator of the sort needed for findind references.
@@ -1270,12 +1264,9 @@ class VersionedFileRepository(Repository):
             ancestors = graph.get_parent_map(self.all_revision_ids())
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             return self._do_generate_text_key_index(ancestors,
                 text_key_references, pb)
-        finally:
-            pb.finished()
 
     def _do_generate_text_key_index(self, ancestors, text_key_references, pb):
         """Helper for _generate_text_key_index to avoid deep nesting."""
@@ -2760,11 +2751,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             # Walk though all revisions; get inventory deltas, copy referenced
             # texts that delta references, insert the delta, revision and
             # signature.
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 self._fetch_all_revisions(revision_ids, pb)
-            finally:
-                pb.finished()
             return len(revision_ids), 0
 
     def _get_basis(self, first_revision_id):

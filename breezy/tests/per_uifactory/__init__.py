@@ -44,6 +44,7 @@ from ... import (
 from ..ui_testing import (
     StringIOWithEncoding,
     StringIOAsTTY,
+    TextUIFactory,
     )
 
 
@@ -124,11 +125,15 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def setUp(self):
         super(TestTextUIFactory, self).setUp()
-        self.stdin = StringIOWithEncoding()
-        self.stdout = StringIOWithEncoding()
-        self.stderr = StringIOWithEncoding()
-        self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
-            self.stderr)
+        self.factory = self._create_ui_factory()
+        self.factory.__enter__()
+        self.addCleanup(self.factory.__exit__, None, None, None)
+        self.stdin = self.factory.stdin
+        self.stdout = self.factory.stdout
+        self.stderr = self.factory.stderr
+
+    def _create_ui_factory(self):
+        return TextUIFactory(u'')
 
     def _check_note(self, note_text):
         self.assertEqual("%s\n" % note_text,
@@ -172,16 +177,11 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
 class TestTTYTextUIFactory(TestTextUIFactory):
 
-    def setUp(self):
-        super(TestTTYTextUIFactory, self).setUp()
-
+    def _create_ui_factory(self):
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
         self.overrideEnv('TERM', None)
-        self.stderr = StringIOAsTTY()
-        self.stdout = StringIOAsTTY()
-        self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
-            self.stderr)
+        return TextUIFactory(u'', StringIOAsTTY(), StringIOAsTTY())
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())

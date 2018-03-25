@@ -138,7 +138,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         self.build_tree(build_paths)
         wt = self.make_branch_and_tree('.')
-        if wt.user_url != wt.branch.user_url:
+        if wt.controldir.user_url != wt.branch.controldir.user_url:
             # Lightweight checkout, make sure we have a repo location.
             wt.branch.controldir.root_transport.mkdir('original')
         child_tree = self.make_branch_and_tree('original/child')
@@ -185,8 +185,12 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
         added, ignored = wt.smart_add(u'.')
-        self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
-                          added)
+        if wt.has_versioned_directories():
+            self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
+                              added)
+        else:
+            self.assertSubset(('inertiatic/esp', 'inertiatic/CVS'),
+                              added)
         self.assertSubset(('*.py[co]',), ignored)
         self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[co]'])
 

@@ -52,7 +52,7 @@ class TestFlush(TestCaseWithWorkingTree):
         tree.lock_write()
         try:
             old_root = tree.get_root_id()
-            tree.set_root_id(b'new-root')
+            tree.add('')
             # to detect that the inventory is written by flush, we
             # first check that it was not written yet.
             reference_tree = tree.controldir.open_workingtree()
@@ -61,7 +61,7 @@ class TestFlush(TestCaseWithWorkingTree):
             tree.flush()
             # and check it was written using another reference tree
             reference_tree = tree.controldir.open_workingtree()
-            self.assertEqual('new-root', reference_tree.get_root_id())
+            self.assertIsNot(None, reference_tree.get_root_id())
         finally:
             tree.unlock()
 

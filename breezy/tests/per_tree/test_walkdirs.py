@@ -38,14 +38,17 @@ class TestWalkdirs(TestCaseWithTree):
              [('1top-dir/0file-in-1topdir', '0file-in-1topdir',
                'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file'),
               ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir',
-               'directory', None, tree.path2id('1top-dir/1dir-in-1topdir'), 'directory'),
-              ]),
+               'directory',
+               None if tree.has_versioned_directories() else os.stat(tree.abspath('1top-dir/1dir-in-1topdir')),
+               tree.path2id('1top-dir/1dir-in-1topdir'),
+               'directory' if tree.has_versioned_directories() else None,
+              )]),
             (('1top-dir/1dir-in-1topdir', tree.path2id('1top-dir/1dir-in-1topdir')),
              []),
             ]
         if symlinks:
             dirblocks[0][1].append(('symlink', 'symlink', 'symlink', None,
-                                    'symlink', 'symlink'))
+                                    tree.path2id('symlink'), 'symlink'))
         return dirblocks
 
     def test_walkdir_root(self):
@@ -105,8 +108,10 @@ class TestWalkdirs(TestCaseWithTree):
         if tree.path2id('file') is None:
             raise tests.TestNotApplicable(
                 'Tree type cannot represent dangling ids.')
-        expected = [(('', work_tree.path2id('')), [
-            ('dir', 'dir', 'unknown', None, dir_id, 'directory'),
-            ('file', 'file', 'unknown', None, file_id, 'file')]),
-            (('dir', dir_id), [])]
+        expected = [(('', work_tree.path2id('')), ([
+            ('dir', 'dir', 'unknown', None, dir_id, 'directory')]
+            if tree.has_versioned_directories() else []) +
+            [('file', 'file', 'unknown', None, file_id, 'file')])]
+        if tree.has_versioned_directories():
+            expected.append((('dir', dir_id), []))
         self.assertEqual(expected, list(tree.walkdirs()))

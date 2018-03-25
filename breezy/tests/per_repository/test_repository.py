@@ -958,7 +958,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         revtree = branch.repository.revision_tree(rev1)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        contents = revtree.get_file_text(u'', FOO_ID)
+        contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
 
     def test_create_bundle(self):

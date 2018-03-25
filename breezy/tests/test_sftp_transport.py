@@ -239,7 +239,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self.vfs_transport_server = create_server
         f = open('a_file', 'wb')
         try:
-            f.write('foobar\n')
+            f.write(b'foobar\n')
         finally:
             f.close()
 

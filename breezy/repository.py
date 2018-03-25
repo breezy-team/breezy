@@ -887,7 +887,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         with self.lock_write():
-            signature = gpg_strategy.sign(plaintext)
+            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
             self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
@@ -1104,11 +1104,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return gpg.SIGNATURE_NOT_SIGNED, None
             signature = self.get_signature_text(revision_id)
 
-            testament = _mod_testament.Testament.from_revision(
-                    self, revision_id)
-            plaintext = testament.as_short_text()
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
 
-            return gpg_strategy.verify(signature, plaintext)
+            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
+            if testament.as_short_text() != signed_plaintext:
+                return gpg.SIGNATURE_NOT_VALID, None
+            return (status, key)
 
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.
@@ -1579,33 +1580,32 @@ class CopyConverter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        self.count = 0
-        self.total = 4
-        # this is only useful with metadir layouts - separated repo content.
-        # trigger an assertion if not such
-        repo._format.get_format_string()
-        self.repo_dir = repo.controldir
-        pb.update(gettext('Moving repository to repository.backup'))
-        self.repo_dir.transport.move('repository', 'repository.backup')
-        backup_transport =  self.repo_dir.transport.clone('repository.backup')
-        repo._format.check_conversion_target(self.target_format)
-        self.source_repo = repo._format.open(self.repo_dir,
-            _found=True,
-            _override_transport=backup_transport)
-        pb.update(gettext('Creating new repository'))
-        converted = self.target_format.initialize(self.repo_dir,
-                                                  self.source_repo.is_shared())
-        converted.lock_write()
-        try:
-            pb.update(gettext('Copying content'))
-            self.source_repo.copy_content_into(converted)
-        finally:
-            converted.unlock()
-        pb.update(gettext('Deleting old repository content'))
-        self.repo_dir.transport.delete_tree('repository.backup')
-        ui.ui_factory.note(gettext('repository converted'))
-        pb.finished()
+        with ui.ui_factory.nested_progress_bar() as pb:
+            self.count = 0
+            self.total = 4
+            # this is only useful with metadir layouts - separated repo content.
+            # trigger an assertion if not such
+            repo._format.get_format_string()
+            self.repo_dir = repo.controldir
+            pb.update(gettext('Moving repository to repository.backup'))
+            self.repo_dir.transport.move('repository', 'repository.backup')
+            backup_transport =  self.repo_dir.transport.clone('repository.backup')
+            repo._format.check_conversion_target(self.target_format)
+            self.source_repo = repo._format.open(self.repo_dir,
+                _found=True,
+                _override_transport=backup_transport)
+            pb.update(gettext('Creating new repository'))
+            converted = self.target_format.initialize(self.repo_dir,
+                                                      self.source_repo.is_shared())
+            converted.lock_write()
+            try:
+                pb.update(gettext('Copying content'))
+                self.source_repo.copy_content_into(converted)
+            finally:
+                converted.unlock()
+            pb.update(gettext('Deleting old repository content'))
+            self.repo_dir.transport.delete_tree('repository.backup')
+            ui.ui_factory.note(gettext('repository converted'))
 
 
 def _strip_NULL_ghosts(revision_graph):

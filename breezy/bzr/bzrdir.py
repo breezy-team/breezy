@@ -495,8 +495,7 @@ class BzrDir(controldir.ControlDir):
         :return: Tuple with old path name and new path name
         """
 
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
@@ -505,8 +504,6 @@ class BzrDir(controldir.ControlDir):
                 urlutils.unescape_for_display(new_path, 'utf-8')))
             self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
-        finally:
-            pb.finished()
 
     def retire_bzrdir(self, limit=10000):
         """Permanently disable the bzrdir.
