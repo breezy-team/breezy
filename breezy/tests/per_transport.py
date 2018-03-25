@@ -983,14 +983,9 @@ class TransportTests(TestTransportImplementation):
                 self.assertTrue(S_ISREG(st.st_mode))
                 self.assertEqual(size, st.st_size)
 
-        remote_stats = list(t.stat_multi(paths))
-        remote_iter_stats = list(t.stat_multi(iter(paths)))
-
         self.assertRaises(NoSuchFile, t.stat, 'q')
         self.assertRaises(NoSuchFile, t.stat, 'b/a')
 
-        self.assertListRaises(NoSuchFile, t.stat_multi, ['a', 'c', 'd'])
-        self.assertListRaises(NoSuchFile, t.stat_multi, iter(['a', 'c', 'd']))
         self.build_tree(['subdir/', 'subdir/file'], transport=t)
         subdir = t.clone('subdir')
         st = subdir.stat('./file')

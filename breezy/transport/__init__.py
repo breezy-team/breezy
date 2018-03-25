@@ -1111,18 +1111,6 @@ class Transport(object):
         """Remove a directory at the given path."""
         raise NotImplementedError
 
-    def stat_multi(self, relpaths, pb=None):
-        """Stat multiple files and return the information.
-        """
-        #TODO:  Is it worth making this a generator instead of a
-        #       returning a list?
-        stats = []
-        def gather(path):
-            stats.append(self.stat(path))
-
-        count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
-        return stats
-
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
         raise errors.TransportNotPossible("Dereferencing symlinks is not supported on %s" % self)
