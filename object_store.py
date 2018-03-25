@@ -268,7 +268,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             if file_id is None or not inv.has_id(file_id):
                 continue
             trees[inv.id2path(file_id)] = file_id
-            ie = inv[file_id]
+            ie = inv.get_entry(file_id)
             if ie.parent_id is not None:
                 new_dirs.add(ie.parent_id)
         dirty_dirs = new_dirs
@@ -302,7 +302,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         file_id = trees[path]
         if tree.kind(path, file_id) != 'directory':
             raise AssertionError
-        ie = inv[file_id]
+        ie = inv.get_entry(file_id)
         obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
             dummy_file_name, path == "")
         if obj is not None:
@@ -553,7 +553,7 @@ class BazaarObjectStore(BaseObjectStore):
             inv = bzr_tree.root_inventory
         except AttributeError:
             inv = bzr_tree.inventory
-        tree = directory_to_tree(inv[fileid].children,
+        tree = directory_to_tree(inv.get_entry(fileid).children,
                 get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
                 bzr_tree.get_root_id() == fileid)
         if (bzr_tree.get_root_id() == fileid and
