@@ -36,7 +36,7 @@ from dulwich.index import (
     cleanup_mode,
     commit_tree,
     index_entry_from_stat,
-    iter_fresh_blobs,
+    iter_fresh_objects,
     blob_from_path_and_stat,
     FLAG_STAGEMASK,
     validate_path,
@@ -1261,22 +1261,22 @@ def untracked_changes(tree):
         yield ((None, np), (None, st.st_mode), (None, obj_id))
 
 
-def changes_between_git_tree_and_index(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False):
-    """Determine the changes between a git tree and a working tree with index.
-
-    """
-    to_tree_sha = target.index.commit(store)
-    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged, change_type_same=True)
-
-
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
         want_unchanged=False, update_index=False, include_root=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    blobs = iter_fresh_blobs(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
+    missing = []
+    blobs = []
+    for entry in iter_fresh_objects(target.index,
+            target.abspath('.').encode(sys.getfilesystemencoding()),
+            include_deleted=True):
+        if entry[1] is None:
+            missing.append(entry[0])
+        else:
+            blobs.append(entry)
+    for p in missing:
+        del target.index[p]
     to_tree_sha = commit_tree(store, blobs)
     return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
             want_unchanged=want_unchanged, change_type_same=True)
