@@ -278,7 +278,7 @@ class SmartClientMediumTests(tests.TestCase):
         #   Lucid py2.6.5, we get IOError(EPIPE)
         # In both cases, it should be wrapped to ConnectionReset
         self.assertRaises(errors.ConnectionReset,
-                          client_medium._accept_bytes, 'more')
+                          client_medium._accept_bytes, b'more')
 
     def test_simple_pipes__accept_bytes_pipe_closed(self):
         child_read, client_write = create_file_pipes()
@@ -292,7 +292,7 @@ class SmartClientMediumTests(tests.TestCase):
         # In both cases, it should be wrapped to ConnectionReset
         child_read.close()
         self.assertRaises(errors.ConnectionReset,
-                          client_medium._accept_bytes, 'more')
+                          client_medium._accept_bytes, b'more')
 
     def test_simple_pipes__flush_pipe_closed(self):
         child_read, client_write = create_file_pipes()
@@ -381,9 +381,9 @@ class SmartClientMediumTests(tests.TestCase):
         # always tries to read from the underlying pipe.
         input = BytesIO(b'abcdef')
         client_medium = medium.SmartSimplePipesClientMedium(input, None, 'base')
-        self.assertEqual('abc', client_medium.read_bytes(3))
+        self.assertEqual(b'abc', client_medium.read_bytes(3))
         client_medium.disconnect()
-        self.assertEqual('def', client_medium.read_bytes(3))
+        self.assertEqual(b'def', client_medium.read_bytes(3))
 
     def test_simple_pipes_client_supports__flush(self):
         # invoking _flush on a SimplePipesClient should flush the output
@@ -725,7 +725,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
             input, output, 'base')
         request = medium.SmartClientStreamMediumRequest(client_medium)
         request.finished_writing()
-        self.assertEqual('321', request.read_bytes(3))
+        self.assertEqual(b'321', request.read_bytes(3))
         request.finished_reading()
         self.assertEqual('', input.read())
         self.assertEqual('', output.getvalue())
@@ -1151,7 +1151,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # This should not block or consume any actual content
         self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
         data = server.read_bytes(5)
-        self.assertEqual('data\n', data)
+        self.assertEqual(b'data\n', data)
 
     def test_socket_wait_for_bytes_with_timeout_no_data(self):
         server, client_sock = self.create_socket_context(None)
@@ -1160,7 +1160,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
                           server._wait_for_bytes_with_timeout, 0.01)
         client_sock.close()
         data = server.read_bytes(1)
-        self.assertEqual('', data)
+        self.assertEqual(b'', data)
 
     def test_socket_wait_for_bytes_with_timeout_closed(self):
         server, client_sock = self.create_socket_context(None)
@@ -1172,7 +1172,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         client_sock.close()
         self.assertFalse(server._wait_for_bytes_with_timeout(10))
         data = server.read_bytes(1)
-        self.assertEqual('', data)
+        self.assertEqual(b'', data)
 
     def test_socket_wait_for_bytes_with_shutdown(self):
         server, client_sock = self.create_socket_context(None)
@@ -1200,11 +1200,11 @@ class TestSmartServerStreamMedium(tests.TestCase):
         with os.fdopen(r_server, 'rb') as rf_server:
             server = self.create_pipe_medium(
                 rf_server, None, None)
-            os.write(w_client, 'data\n')
+            os.write(w_client, b'data\n')
             # This should not block or consume any actual content
             server._wait_for_bytes_with_timeout(0.1)
             data = server.read_bytes(5)
-            self.assertEqual('data\n', data)
+            self.assertEqual(b'data\n', data)
 
     def test_pipe_wait_for_bytes_with_timeout_no_data(self):
         # We intentionally use a real pipe here, so that we can 'select' on it.
@@ -1223,7 +1223,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
                                   server._wait_for_bytes_with_timeout, 0.01)
             os.close(w_client)
             data = server.read_bytes(5)
-            self.assertEqual('', data)
+            self.assertEqual(b'', data)
 
     def test_pipe_wait_for_bytes_no_fileno(self):
         server, _ = self.create_pipe_context('', None)
