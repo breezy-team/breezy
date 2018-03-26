@@ -25,7 +25,6 @@ from cStringIO import (
     )
 from collections import defaultdict
 import errno
-from dulwich.errors import NotGitRepository
 from dulwich.ignore import (
     IgnoreFilterManager,
     )
@@ -35,8 +34,9 @@ from dulwich.index import (
     changes_from_tree,
     cleanup_mode,
     commit_tree,
+    index_entry_from_path,
     index_entry_from_stat,
-    iter_fresh_blobs,
+    iter_fresh_entries,
     blob_from_path_and_stat,
     FLAG_STAGEMASK,
     read_submodule_head,
@@ -526,7 +526,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            for p in (set(self._iter_files_recursive(include_dirs=True)) - set([p.decode('utf-8') for p in self.index])):
+            index_paths = set([p.decode('utf-8') for p, i in self._recurse_index_entries()])
+            all_paths = set(self._iter_files_recursive(include_dirs=True))
+            for p in (all_paths - index_paths):
                 if not self._has_dir(p):
                     yield p
 
@@ -1224,7 +1226,8 @@ class InterIndexGitTree(InterGitTrees):
                 isinstance(target, GitWorkingTree))
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=False, include_root=False, extra_trees=None):
+            require_versioned=False, extra_trees=None,
+            want_unversioned=False):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -1237,86 +1240,57 @@ class InterIndexGitTree(InterGitTrees):
             return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
-                include_root=include_root)
-
-    def compare(self, want_unchanged=False, specific_files=None,
-                extra_trees=None, require_versioned=False, include_root=False,
-                want_unversioned=False):
-        with self.lock_read():
-            changes = self._iter_git_changes(
-                    want_unchanged=want_unchanged,
-                    specific_files=specific_files,
-                    require_versioned=require_versioned,
-                    include_root=include_root,
-                    extra_trees=extra_trees)
-            source_fileid_map = self.source._fileid_map
-            target_fileid_map = self.target._fileid_map
-            ret = tree_delta_from_git_changes(changes, self.target.mapping,
-                (source_fileid_map, target_fileid_map),
-                specific_files=specific_files, require_versioned=require_versioned,
-                include_root=include_root)
-            if want_unversioned:
-                for e in self.target.extras():
-                    ret.unversioned.append(
-                        (osutils.normalized_filename(e)[0], None,
-                        osutils.file_kind(self.target.abspath(e))))
-            return ret
-
-    def iter_changes(self, include_unchanged=False, specific_files=None,
-                     pb=None, extra_trees=[], require_versioned=True,
-                     want_unversioned=False):
-        with self.lock_read():
-            changes = self._iter_git_changes(
-                    want_unchanged=include_unchanged,
-                    specific_files=specific_files,
-                    require_versioned=require_versioned,
-                    extra_trees=extra_trees)
-            if want_unversioned:
-                changes = itertools.chain(
-                        changes,
-                        untracked_changes(self.target))
-            return changes_from_git_changes(
-                    changes, self.target.mapping,
-                    specific_files=specific_files,
-                    include_unchanged=include_unchanged)
+                want_unversioned=want_unversioned)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
-def untracked_changes(tree):
-    for e in tree.extras():
-        ap = tree.abspath(e)
-        st = os.lstat(ap)
-        try:
-            np, accessible  = osutils.normalized_filename(e)
-        except UnicodeDecodeError:
-            raise errors.BadFilenameEncoding(
-                e, osutils._fs_enc)
-        if stat.S_ISDIR(st.st_mode):
-            obj_id = Tree().id
-        else:
-            obj_id = blob_from_path_and_stat(ap.encode('utf-8'), st).id
-        yield ((None, np), (None, st.st_mode), (None, obj_id))
-
-
-def changes_between_git_tree_and_index(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False):
-    """Determine the changes between a git tree and a working tree with index.
-
-    """
-    to_tree_sha = target.index.commit(store)
-    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged, change_type_same=True)
-
-
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False, include_root=False):
+        want_unchanged=False, want_unversioned=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    blobs = iter_fresh_blobs(target.index, target.abspath('.').encode(sys.getfilesystemencoding()))
-    to_tree_sha = commit_tree(store, blobs)
-    # TODO(jelmer): Also report changes in nested trees
-    return store.tree_changes(from_tree_sha, to_tree_sha, include_trees=True,
-            want_unchanged=want_unchanged, change_type_same=True)
+    extras = set()
+    blobs = {}
+    # Report dirified directories to commit_tree first, so that they can be
+    # replaced with non-empty directories if they have contents.
+    dirified = []
+    target_root_path = target.abspath('.').encode(sys.getfilesystemencoding())
+    for path, index_entry in target._recurse_index_entries():
+        try:
+            live_entry = index_entry_from_path(
+                    target.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                # Entry was removed; keep it listed, but mark it as gone.
+                blobs[path] = (ZERO_SHA, 0)
+            elif e.errno == errno.EISDIR:
+                # Entry was turned into a directory
+                dirified.append((path, Tree().id, stat.S_IFDIR))
+                store.add_object(Tree())
+            else:
+                raise
+        else:
+            blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
+    if want_unversioned:
+        for e in target.extras():
+            ap = target.abspath(e)
+            st = os.lstat(ap)
+            try:
+                np, accessible = osutils.normalized_filename(e)
+            except UnicodeDecodeError:
+                raise errors.BadFilenameEncoding(
+                    e, osutils._fs_enc)
+            if stat.S_ISDIR(st.st_mode):
+                blob = Tree()
+            else:
+                blob = blob_from_path_and_stat(ap.encode('utf-8'), st)
+            store.add_object(blob)
+            np = np.encode('utf-8')
+            blobs[np] = (blob.id, st.st_mode)
+            extras.add(np)
+    to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.iteritems()])
+    return store.tree_changes(
+        from_tree_sha, to_tree_sha, include_trees=True,
+        want_unchanged=want_unchanged, change_type_same=True), extras
