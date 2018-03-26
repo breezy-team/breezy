@@ -74,8 +74,7 @@ class XMLRPCTransport(xmlrpclib.Transport):
         self.verbose = verbose
         url = self._scheme + "://" + host + handler
         request = _urllib2_wrappers.Request("POST", url, request_body)
-        # FIXME: _urllib2_wrappers will override user-agent with its own
-        # request.add_header("User-Agent", self.user_agent)
+        request.add_header("User-Agent", self.user_agent)
         request.add_header("Content-Type", "text/xml")
 
         response = self._opener.open(request)
@@ -122,7 +121,7 @@ class LaunchpadService(object):
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
-            transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
+            transport.user_agent = 'Breezy/%s (xmlrpclib/%s)' \
                     % (_breezy_version, xmlrpclib.__version__)
         self.transport = transport
 

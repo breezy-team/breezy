@@ -50,13 +50,13 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.tree.lock_write()
         self.addCleanup(self.tree.unlock)
         self.tree.add(['a'])
-        self.tree.commit('a', rev_id='r1')
+        self.tree.commit('a', rev_id=b'r1')
 
         self.tree2 = self.tree.controldir.sprout('tree2').open_workingtree()
-        self.tree2.commit('alt', rev_id='alt_r2')
+        self.tree2.commit('alt', rev_id=b'alt_r2')
 
         self.tree.merge_from_branch(self.tree2.branch)
-        self.tree.commit('second', rev_id='r2')
+        self.tree.commit('second', rev_id=b'r2')
 
     def get_in_history(self, revision_spec):
         return spec_in_history(revision_spec, self.tree.branch)
@@ -171,7 +171,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertAsRevisionId('r2', '3')
         self.build_tree(['tree/b'])
         self.tree.add(['b'])
-        self.tree.commit('b', rev_id='r3')
+        self.tree.commit('b', rev_id=b'r3')
         self.assertAsRevisionId('r3', '3')
 
     def test_dwim_spec_date(self):
@@ -300,7 +300,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
     def test_different_history_lengths(self):
         # Make sure we use the revisions and offsets in the supplied branch
         # not the ones in the original branch.
-        self.tree2.commit('three', rev_id='r3')
+        self.tree2.commit('three', rev_id=b'r3')
         self.assertInHistoryIs(3, 'r3', 'revno:3:tree2')
         self.assertInHistoryIs(3, 'r3', 'revno:-1:tree2')
 
@@ -309,7 +309,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
                           self.get_in_history, 'revno:-1:tree3')
 
     def test_invalid_revno_in_branch(self):
-        self.tree.commit('three', rev_id='r3')
+        self.tree.commit('three', rev_id=b'r3')
         self.assertInvalid('revno:3:tree2')
 
     def test_revno_n_path(self):
@@ -317,16 +317,16 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         wta = self.make_branch_and_tree('a')
         ba = wta.branch
 
-        wta.commit('Commit one', rev_id='a@r-0-1')
-        wta.commit('Commit two', rev_id='a@r-0-2')
-        wta.commit('Commit three', rev_id='a@r-0-3')
+        wta.commit('Commit one', rev_id=b'a@r-0-1')
+        wta.commit('Commit two', rev_id=b'a@r-0-2')
+        wta.commit('Commit three', rev_id=b'a@r-0-3')
 
         wtb = self.make_branch_and_tree('b')
         bb = wtb.branch
 
-        wtb.commit('Commit one', rev_id='b@r-0-1')
-        wtb.commit('Commit two', rev_id='b@r-0-2')
-        wtb.commit('Commit three', rev_id='b@r-0-3')
+        wtb.commit('Commit one', rev_id=b'b@r-0-1')
+        wtb.commit('Commit two', rev_id=b'b@r-0-2')
+        wtb.commit('Commit three', rev_id=b'b@r-0-3')
 
 
         self.assertEqual((1, 'a@r-0-1'),
@@ -379,14 +379,14 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInHistoryIs(None, 'alt_r2', 'revid:alt_r2')
 
     def test_not_here(self):
-        self.tree2.commit('alt third', rev_id='alt_r3')
+        self.tree2.commit('alt third', rev_id=b'alt_r3')
         # It exists in tree2, but not in tree
         self.assertInvalid('revid:alt_r3', invalid_as_revision_id=False)
 
     def test_in_repository(self):
         """We can get any revision id in the repository"""
         # XXX: This may change in the future, but for now, it is true
-        self.tree2.commit('alt third', rev_id='alt_r3')
+        self.tree2.commit('alt third', rev_id=b'alt_r3')
         self.tree.branch.fetch(self.tree2.branch, 'alt_r3')
         self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
 
@@ -463,7 +463,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
 
     def test_alt_no_parents(self):
         new_tree = self.make_branch_and_tree('new_tree')
-        new_tree.commit('first', rev_id='new_r1')
+        new_tree.commit('first', rev_id=b'new_r1')
         self.tree.branch.fetch(new_tree.branch, 'new_r1')
         self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
 
@@ -513,10 +513,10 @@ class TestRevisionSpec_date(TestRevisionSpec):
         super(TestRevisionSpec, self).setUp()
 
         new_tree = self.make_branch_and_tree('new_tree')
-        new_tree.commit('Commit one', rev_id='new_r1',
+        new_tree.commit('Commit one', rev_id=b'new_r1',
                         timestamp=time.time() - 60*60*24)
-        new_tree.commit('Commit two', rev_id='new_r2')
-        new_tree.commit('Commit three', rev_id='new_r3')
+        new_tree.commit('Commit two', rev_id=b'new_r2')
+        new_tree.commit('Commit three', rev_id=b'new_r3')
 
         self.tree = new_tree
 
@@ -570,9 +570,9 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
     def test_unrelated(self):
         new_tree = self.make_branch_and_tree('new_tree')
 
-        new_tree.commit('Commit one', rev_id='new_r1')
-        new_tree.commit('Commit two', rev_id='new_r2')
-        new_tree.commit('Commit three', rev_id='new_r3')
+        new_tree.commit('Commit one', rev_id=b'new_r1')
+        new_tree.commit('Commit two', rev_id=b'new_r2')
+        new_tree.commit('Commit three', rev_id=b'new_r3')
 
         # With no common ancestor, we should raise another user error
         self.assertRaises(errors.NoCommonAncestor,
@@ -598,7 +598,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
 
         # Create a branch with a parent to default to
         tree3 = self.tree.controldir.sprout('tree3').open_workingtree()
-        tree3.commit('foo', rev_id='r3')
+        tree3.commit('foo', rev_id=b'r3')
         self.tree = tree3
         self.assertInHistoryIs(2, 'r2', 'ancestor:')
 
@@ -620,9 +620,9 @@ class TestRevisionSpec_branch(TestRevisionSpec):
     def test_unrelated(self):
         new_tree = self.make_branch_and_tree('new_tree')
 
-        new_tree.commit('Commit one', rev_id='new_r1')
-        new_tree.commit('Commit two', rev_id='new_r2')
-        new_tree.commit('Commit three', rev_id='new_r3')
+        new_tree.commit('Commit one', rev_id=b'new_r1')
+        new_tree.commit('Commit two', rev_id=b'new_r2')
+        new_tree.commit('Commit three', rev_id=b'new_r3')
 
         self.assertInHistoryIs(None, 'new_r3', 'branch:new_tree')
 
@@ -689,12 +689,12 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
     def setUp(self):
         super(TestRevisionSpec_annotate, self).setUp()
         self.tree = self.make_branch_and_tree('annotate-tree')
-        self.build_tree_contents([('annotate-tree/file1', '1\n')])
+        self.build_tree_contents([('annotate-tree/file1', b'1\n')])
         self.tree.add('file1')
-        self.tree.commit('r1', rev_id='r1')
-        self.build_tree_contents([('annotate-tree/file1', '2\n1\n')])
-        self.tree.commit('r2', rev_id='r2')
-        self.build_tree_contents([('annotate-tree/file1', '2\n1\n3\n')])
+        self.tree.commit('r1', rev_id=b'r1')
+        self.build_tree_contents([('annotate-tree/file1', b'2\n1\n')])
+        self.tree.commit('r2', rev_id=b'r2')
+        self.build_tree_contents([('annotate-tree/file1', b'2\n1\n3\n')])
 
     def test_as_revision_id_r1(self):
         self.assertAsRevisionId('r1', 'annotate:annotate-tree/file1:2')

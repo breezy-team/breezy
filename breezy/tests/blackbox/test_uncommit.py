@@ -35,10 +35,10 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
         wt.add(['a', 'b', 'c'])
-        wt.commit('initial commit', rev_id='a1')
+        wt.commit('initial commit', rev_id=b'a1')
 
-        self.build_tree_contents([('tree/a', 'new contents of a\n')])
-        wt.commit('second commit', rev_id='a2')
+        self.build_tree_contents([('tree/a', b'new contents of a\n')])
+        wt.commit('second commit', rev_id=b'a2')
 
         return wt
 
@@ -163,11 +163,11 @@ class TestUncommit(TestCaseWithTransport):
 
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
 
-        tree2.commit('unchanged', rev_id='b3')
-        tree2.commit('unchanged', rev_id='b4')
+        tree2.commit('unchanged', rev_id=b'b3')
+        tree2.commit('unchanged', rev_id=b'b4')
 
         wt.merge_from_branch(tree2.branch)
-        wt.commit('merge b4', rev_id='a3')
+        wt.commit('merge b4', rev_id=b'a3')
 
         self.assertEqual(['a3'], wt.get_parent_ids())
 
@@ -179,7 +179,7 @@ class TestUncommit(TestCaseWithTransport):
     def test_uncommit_pending_merge(self):
         wt = self.create_simple_tree()
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
-        tree2.commit('unchanged', rev_id='b3')
+        tree2.commit('unchanged', rev_id=b'b3')
 
         wt.branch.fetch(tree2.branch)
         wt.set_pending_merges(['b3'])
@@ -192,16 +192,16 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.create_simple_tree()
 
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
-        tree2.commit('unchanged', rev_id='b3')
+        tree2.commit('unchanged', rev_id=b'b3')
 
         tree3 = wt.controldir.sprout('tree3').open_workingtree()
-        tree3.commit('unchanged', rev_id='c3')
+        tree3.commit('unchanged', rev_id=b'c3')
 
         wt.merge_from_branch(tree2.branch)
-        wt.commit('merge b3', rev_id='a3')
+        wt.commit('merge b3', rev_id=b'a3')
 
         wt.merge_from_branch(tree3.branch)
-        wt.commit('merge c3', rev_id='a4')
+        wt.commit('merge c3', rev_id=b'a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())
 
@@ -214,13 +214,13 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.create_simple_tree()
 
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
-        tree2.commit('unchanged', rev_id='b3')
+        tree2.commit('unchanged', rev_id=b'b3')
         tree3 = wt.controldir.sprout('tree3').open_workingtree()
-        tree3.commit('unchanged', rev_id='c3')
+        tree3.commit('unchanged', rev_id=b'c3')
 
         wt.branch.fetch(tree2.branch)
         wt.set_pending_merges(['b3'])
-        wt.commit('merge b3', rev_id='a3')
+        wt.commit('merge b3', rev_id=b'a3')
 
 
         wt.merge_from_branch(tree3.branch)
@@ -255,19 +255,19 @@ You can restore the old tip by running:
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
         tree3 = wt.controldir.sprout('tree3').open_workingtree()
 
-        tree2.commit('unchanged', rev_id='b3')
-        tree3.commit('unchanged', rev_id='c3')
+        tree2.commit('unchanged', rev_id=b'b3')
+        tree3.commit('unchanged', rev_id=b'c3')
 
         wt.merge_from_branch(tree2.branch)
         wt.merge_from_branch(tree3.branch, force=True)
-        wt.commit('merge b3, c3', rev_id='a3')
+        wt.commit('merge b3, c3', rev_id=b'a3')
 
-        tree2.commit('unchanged', rev_id='b4')
-        tree3.commit('unchanged', rev_id='c4')
+        tree2.commit('unchanged', rev_id=b'b4')
+        tree3.commit('unchanged', rev_id=b'c4')
 
         wt.merge_from_branch(tree3.branch)
         wt.merge_from_branch(tree2.branch, force=True)
-        wt.commit('merge b4, c4', rev_id='a4')
+        wt.commit('merge b4, c4', rev_id=b'a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())
 
@@ -327,7 +327,7 @@ class TestInconsistentDelta(TestCaseWithTransport):
         wt = self.make_branch_and_tree('test')
         self.build_tree(['test/a/', 'test/a/b', 'test/a/c'])
         wt.add(['a', 'a/b', 'a/c'])
-        wt.commit('initial commit', rev_id='a1')
+        wt.commit('initial commit', rev_id=b'a1')
         wt.remove(['a/b', 'a/c'])
-        wt.commit('remove b and c', rev_id='a2')
+        wt.commit('remove b and c', rev_id=b'a2')
         self.run_bzr("uncommit --force test")

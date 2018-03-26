@@ -32,8 +32,8 @@ from .sixish import (
     text_type,
     )
 
-NULL_REVISION=b"null:"
-CURRENT_REVISION=b"current:"
+NULL_REVISION = b"null:"
+CURRENT_REVISION = b"current:"
 
 
 class Revision(object):

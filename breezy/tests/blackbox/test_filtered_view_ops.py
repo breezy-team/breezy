@@ -160,8 +160,8 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         wt2.views.set_view('my', ['a', 'b'])
         # Commit a change to the first tree
         self.build_tree_contents([
-            ('tree_1/a', 'changed a\n'),
-            ('tree_1/c', 'changed c\n'),
+            ('tree_1/a', b'changed a\n'),
+            ('tree_1/c', b'changed c\n'),
             ])
         wt1.commit("changing a c")
         return wt1, wt2

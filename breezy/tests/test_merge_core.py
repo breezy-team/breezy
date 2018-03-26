@@ -77,8 +77,8 @@ class MergeBuilder(object):
             if option is True:
                 new_file(tt)
 
-    def merge(self, merge_type=Merge3Merger, interesting_ids=None, **kwargs):
-        merger = self.make_merger(merge_type, interesting_ids, **kwargs)
+    def merge(self, merge_type=Merge3Merger, interesting_files=None, **kwargs):
+        merger = self.make_merger(merge_type, interesting_files, **kwargs)
         merger.do_merge()
         return merger.cooked_conflicts
 
@@ -86,7 +86,7 @@ class MergeBuilder(object):
         merger = self.make_merger(Merge3Merger, None, this_revision_tree=True)
         return merger.make_preview_transform()
 
-    def make_merger(self, merge_type, interesting_ids,
+    def make_merger(self, merge_type, interesting_files,
             this_revision_tree=False, **kwargs):
         self.base_tt.apply()
         self.base.commit('base commit')
@@ -110,7 +110,7 @@ class MergeBuilder(object):
         else:
             this_tree = self.this
         merger = merge_type(this_tree, self.this, self.base, other_basis,
-                            interesting_ids=interesting_ids, do_merge=False,
+                            interesting_files=interesting_files, do_merge=False,
                             this_branch=self.this.branch, **kwargs)
         return merger
 
@@ -251,7 +251,7 @@ class MergeTest(TestCaseWithTransport):
         builder.change_contents("1", other="text4")
         builder.add_file("2", builder.tree_root, "name2", "hello1", True)
         builder.change_contents("2", other="text4")
-        builder.merge(interesting_ids=["1"])
+        builder.merge(interesting_files=["name1"])
         self.assertEqual(builder.this.get_file("name1").read(), "text4" )
         self.assertEqual(builder.this.get_file("name2").read(), "hello1" )
         builder.cleanup()
@@ -320,7 +320,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(
-                builder.this.get_file(builder.this.id2path("a")).read(),
+                builder.this.get_file(builder.this.id2path(b"a")).read(),
                 expected)
         builder.cleanup()
 
@@ -373,7 +373,7 @@ y
                                      ContentsConflict('name2', file_id='2'),
                                      ContentsConflict('name3', file_id='3')])
         self.assertEqual(
-            builder.this.get_file(builder.this.id2path('2')).read(),
+            builder.this.get_file(builder.this.id2path(b'2')).read(),
             '\x00')
         builder.cleanup()
 
@@ -432,7 +432,7 @@ y
         builder.change_contents("1", other="text3")
         builder.add_file("2", builder.tree_root, "name1.new", "text2", True)
         builder.merge()
-        os.lstat(builder.this.id2abspath("2"))
+        os.lstat(builder.this.abspath(builder.this.id2path("2")))
         builder.cleanup()
 
     def test_spurious_conflict(self):
@@ -489,13 +489,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_conflicts(self):
         wta = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/file', 'contents\n')])
+        self.build_tree_contents([('a/file', b'contents\n')])
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
         d_b = wta.branch.controldir.clone('b')
-        self.build_tree_contents([('a/file', 'other contents\n')])
+        self.build_tree_contents([('a/file', b'other contents\n')])
         wta.commit('other revision', allow_pointless=False)
-        self.build_tree_contents([('b/file', 'this contents contents\n')])
+        self.build_tree_contents([('b/file', b'this contents contents\n')])
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(1, wtb.merge_from_branch(wta.branch))
@@ -617,15 +617,15 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt = self.make_branch_and_tree('a')
         with file('a/un', 'wb') as f: f.write('UN')
         with file('a/deux', 'wb') as f: f.write('DEUX')
-        a_wt.add('un', 'un-id')
-        a_wt.add('deux', 'deux-id')
-        a_wt.commit('r0', rev_id='r0')
+        a_wt.add('un', b'un-id')
+        a_wt.add('deux', b'deux-id')
+        a_wt.commit('r0', rev_id=b'r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('un', 'tmp')
         b_wt.rename_one('deux', 'un')
         b_wt.rename_one('tmp', 'deux')
-        b_wt.commit('r1', rev_id='r1')
+        b_wt.commit('r1', rev_id=b'r1')
         self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
             b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
         self.assertPathExists('a/un')
@@ -772,10 +772,10 @@ class TestMerger(TestCaseWithTransport):
 
     def set_up_trees(self):
         this = self.make_branch_and_tree('this')
-        this.commit('rev1', rev_id='rev1')
+        this.commit('rev1', rev_id=b'rev1')
         other = this.controldir.sprout('other').open_workingtree()
-        this.commit('rev2a', rev_id='rev2a')
-        other.commit('rev2b', rev_id='rev2b')
+        this.commit('rev2a', rev_id=b'rev2a')
+        other.commit('rev2b', rev_id=b'rev2b')
         return this, other
 
     def test_from_revision_ids(self):
@@ -801,7 +801,7 @@ class TestMerger(TestCaseWithTransport):
 
     def prepare_for_merging(self):
         this, other = self.set_up_trees()
-        other.commit('rev3', rev_id='rev3')
+        other.commit('rev3', rev_id=b'rev3')
         this.lock_write()
         self.addCleanup(this.unlock)
         return this, other

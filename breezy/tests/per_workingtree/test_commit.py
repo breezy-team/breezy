@@ -33,6 +33,7 @@ from breezy.commit import (
     CannotCommitSelectedFileMerge,
     PointlessCommit,
     )
+from breezy.tests.matchers import HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 from breezy.tests.testui import ProgressRecordingUIFactory
 
@@ -66,67 +67,52 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir2/'])
         tree_a.add(['dir', 'dir/f1', 'dir/f2', 'dir2'])
-        dir2_id =  tree_a.path2id('dir2')
-        f1_id = tree_a.path2id('dir/f1')
         rev_id1 = tree_a.commit('init')
+        revtree = tree_a.branch.repository.revision_tree(rev_id1)
         # Rename one entry out of this directory
         tree_a.rename_one('dir/f1', 'dir2/a')
         osutils.rmtree('a/dir')
         tree_a.commit('autoremoved')
 
-        with tree_a.lock_read():
-            root_id = tree_a.get_root_id()
-            paths = [(path, ie.file_id)
-                     for path, ie in tree_a.iter_entries_by_dir()]
         # The only paths left should be the root
-        self.assertEqual([('', root_id),
-                          ('dir2', dir2_id),
-                          ('dir2/a', f1_id),
-                         ], paths)
+        self.assertThat(
+            tree_a, HasPathRelations(
+                revtree,
+                [('', ''), ('dir2/', 'dir2/'), ('dir2/a', 'dir/f1')]))
 
     def test_no_autodelete_alternate_renamed(self):
         # Test for bug #114615
         tree_a = self.make_branch_and_tree('A')
         self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
         tree_a.add(['a', 'a/m', 'a/n'])
-        a_id = tree_a.path2id('a')
-        m_id = tree_a.path2id('a/m')
-        n_id = tree_a.path2id('a/n')
         tree_a.commit('init')
-
-        with tree_a.lock_read():
-            root_id = tree_a.get_root_id()
 
         tree_b = tree_a.controldir.sprout('B').open_workingtree()
         self.build_tree(['B/xyz/'])
         tree_b.add(['xyz'])
-        xyz_id = tree_b.path2id('xyz')
         tree_b.rename_one('a/m', 'xyz/m')
         osutils.rmtree('B/a')
         tree_b.commit('delete in B')
 
-        paths = [(path, ie.file_id)
-                 for path, ie in tree_b.iter_entries_by_dir()]
-        self.assertEqual([('', root_id),
-                          ('xyz', xyz_id),
-                          ('xyz/m', m_id),
-                         ], paths)
+        self.assertThat(
+                tree_b,
+                HasPathRelations(
+                    tree_a, [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
 
-        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        self.build_tree_contents([('A/a/n', b'new contents for n\n')])
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified
         # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(3, num_conflicts)
-        paths = [(path, ie.file_id)
-                 for path, ie in tree_b.iter_entries_by_dir()]
-        self.assertEqual([('', root_id),
-                          ('a', a_id),
-                          ('xyz', xyz_id),
-                          ('a/n.OTHER', n_id),
-                          ('xyz/m', m_id),
-                         ], paths)
+
+        self.assertThat(
+                tree_b, HasPathRelations(
+                    tree_a,
+                    [('', ''), ('a/', 'a/'), ('xyz/', None),
+                     ('a/n.OTHER', 'a/n'), ('xyz/m', 'a/m')]))
+
         osutils.rmtree('B/a')
         try:
             # bzr resolve --all
@@ -136,12 +122,11 @@ class TestCommit(TestCaseWithWorkingTree):
             # effect.
             pass
         tree_b.commit('autoremove a, without touching xyz/m')
-        paths = [(path, ie.file_id)
-                 for path, ie in tree_b.iter_entries_by_dir()]
-        self.assertEqual([('', root_id),
-                          ('xyz', xyz_id),
-                          ('xyz/m', m_id),
-                         ], paths)
+
+        self.assertThat(
+                tree_b, HasPathRelations(
+                    tree_a,
+                    [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
 
     def test_commit_exclude_pending_merge_fails(self):
         """Excludes are a form of partial commit."""
@@ -160,7 +145,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['a'])
         tree.smart_add(['.'])
         tree.commit('setup test')
-        self.build_tree_contents([('a', 'new contents for "a"\n')])
+        self.build_tree_contents([('a', b'new contents for "a"\n')])
         self.assertRaises(PointlessCommit, tree.commit, 'test',
             exclude=['a'], allow_pointless=False)
 
@@ -173,15 +158,13 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
-        self.assertEqual(2, len(changes))
-        self.assertEqual((None, 'b'), changes[0][1])
-        self.assertEqual((None, 'c'), changes[1][1])
+        self.assertEqual([(None, 'b'), (None, 'c')], [c[1] for c in changes])
 
     def test_commit_exclude_subtree_of_selected(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['a/', 'a/b'])
+        self.build_tree(['a/', 'a/b', 'a/c'])
         tree.smart_add(['.'])
-        tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        tree.commit('test', specific_files=['a', 'a/c'], exclude=['a/b'])
         # If a/b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -192,7 +175,7 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         if tree.branch.repository._format.supports_setting_revision_ids:
-            committed_id = tree.commit('foo', rev_id='foo')
+            committed_id = tree.commit('foo', rev_id=b'foo')
             # the commit should have returned the same id we asked for.
             self.assertEqual('foo', committed_id)
         else:
@@ -363,7 +346,7 @@ class TestCommit(TestCaseWithWorkingTree):
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
-        self.assertTrue(wt.has_id(a_id))
+        self.assertTrue(wt.is_versioned('a'))
         self.assertFalse(wt.has_or_had_id(b_id))
         self.assertFalse(wt.has_or_had_id(c_id))
         self.assertTrue(wt.has_filename('a'))
@@ -436,7 +419,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.get_reference_revision('subtree')
         child_revid = subtree.last_revision()
         # now change the child tree
-        self.build_tree_contents([('subtree/file', 'new-content')])
+        self.build_tree_contents([('subtree/file', b'new-content')])
         # and commit in the parent should commit the child and grab its revid,
         # we test with allow_pointless=False here so that we are simulating
         # what users will see.

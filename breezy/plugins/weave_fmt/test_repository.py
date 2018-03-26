@@ -142,10 +142,10 @@ class TestFormat7(TestCaseWithTransport):
         # disk.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], ['Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('foo', 'content\n', 'Foo:Bar')
+        tree.add(['foo'], [b'Foo:Bar'], ['file'])
+        tree.put_file_bytes_non_atomic('foo', 'content\n', b'Foo:Bar')
         try:
-            tree.commit('first post', rev_id='first')
+            tree.commit('first post', rev_id=b'first')
         except IllegalPath:
             if sys.platform != 'win32':
                 raise
@@ -280,14 +280,14 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                          InterRepository.get(repo_a, repo_b).__class__)
 
 
-_working_inventory_v4 = """<inventory file_id="TREE_ROOT">
+_working_inventory_v4 = b"""<inventory file_id="TREE_ROOT">
 <entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
 <entry file_id="foo-20050801201819-4139aa4a272f4250" kind="directory" name="foo" parent_id="TREE_ROOT" />
 <entry file_id="bar-20050824000535-6bc48cfad47ed134" kind="file" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" />
 </inventory>"""
 
 
-_revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
+_revision_v4 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"

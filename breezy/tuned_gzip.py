@@ -77,4 +77,4 @@ def chunks_to_gzip(chunks, factory=zlib.compressobj,
     result.append(compress.flush())
     # size may exceed 2GB, or even 4GB
     result.append(struct.pack("<LL", LOWU32(crc), LOWU32(total_len)))
-    return b''.join(result)
+    return result

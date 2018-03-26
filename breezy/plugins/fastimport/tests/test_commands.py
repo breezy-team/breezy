@@ -188,7 +188,7 @@ class TestFastExport(ExternalBase):
         data2 = self.run_bzr("fast-export bl")[0]
         self.assertEquals(data1, data2)
 
-simple_fast_import_stream = """commit refs/heads/master
+simple_fast_import_stream = b"""commit refs/heads/master
 mark :1
 committer Jelmer Vernooij <jelmer@samba.org> 1299718135 +0100
 data 7
@@ -236,7 +236,7 @@ class TestFastImport(ExternalBase):
     _test_needs_features = [FastimportFeature]
 
     def test_empty(self):
-        self.build_tree_contents([('empty.fi', "")])
+        self.build_tree_contents([('empty.fi', b"")])
         self.make_branch_and_tree("br")
         self.assertEquals("", self.run_bzr("fast-import empty.fi br")[0])
 
@@ -247,7 +247,7 @@ class TestFastImport(ExternalBase):
         self.assertEquals(1, tree.branch.revno())
 
     def test_missing_bytes(self):
-        self.build_tree_contents([('empty.fi', """
+        self.build_tree_contents([('empty.fi', b"""
 commit refs/heads/master
 mark :1
 committer
@@ -262,11 +262,11 @@ class TestFastImportFilter(ExternalBase):
     _test_needs_features = [FastimportFeature]
 
     def test_empty(self):
-        self.build_tree_contents([('empty.fi', "")])
+        self.build_tree_contents([('empty.fi', b"")])
         self.make_branch_and_tree("br")
         self.assertEquals("", self.run_bzr("fast-import-filter -")[0])
 
     def test_default_stdin(self):
-        self.build_tree_contents([('empty.fi', "")])
+        self.build_tree_contents([('empty.fi', b"")])
         self.make_branch_and_tree("br")
         self.assertEquals("", self.run_bzr("fast-import-filter")[0])

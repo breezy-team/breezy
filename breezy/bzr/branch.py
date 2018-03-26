@@ -97,6 +97,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self.repository = _repository
         self.conf_store = None
         Branch.__init__(self, possible_transports)
+        self._tags_bytes = None
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, self.user_url)
@@ -347,7 +348,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             self._master_branch_cache = None
             if location:
-                self._transport.put_bytes('bound', location+'\n',
+                self._transport.put_bytes('bound', location.encode('utf-8')+b'\n',
                     mode=self.controldir._get_file_mode())
             else:
                 try:
@@ -401,6 +402,36 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             self._format._update_feature_flags(updated_flags)
             self.control_transport.put_bytes('format', self._format.as_string())
+
+    def _get_tags_bytes(self):
+        """Get the bytes of a serialised tags dict.
+
+        Note that not all branches support tags, nor do all use the same tags
+        logic: this method is specific to BasicTags. Other tag implementations
+        may use the same method name and behave differently, safely, because
+        of the double-dispatch via
+        format.make_tags->tags_instance->get_tags_dict.
+
+        :return: The bytes of the tags file.
+        :seealso: Branch._set_tags_bytes.
+        """
+        with self.lock_read():
+            if self._tags_bytes is None:
+                self._tags_bytes = self._transport.get_bytes('tags')
+            return self._tags_bytes
+
+    def _set_tags_bytes(self, bytes):
+        """Mirror method for _get_tags_bytes.
+
+        :seealso: Branch._get_tags_bytes.
+        """
+        with self.lock_write():
+            self._tags_bytes = bytes
+            return self._transport.put_bytes('tags', bytes)
+
+    def _clear_cached_state(self):
+        super(BzrBranch, self)._clear_cached_state()
+        self._tags_bytes = None
 
 
 class BzrBranch8(BzrBranch):
@@ -489,13 +520,10 @@ class BzrBranch8(BzrBranch):
         with self.lock_read():
             if self._reference_info is not None:
                 return self._reference_info
-            rio_file = self._transport.get('references')
-            try:
+            with self._transport.get('references') as rio_file:
                 stanzas = rio.read_stanzas(rio_file)
                 info_dict = dict((s['file_id'], (s['tree_path'],
                                  s['branch_location'])) for s in stanzas)
-            finally:
-                rio_file.close()
             self._reference_info = info_dict
             return info_dict
 
@@ -676,12 +704,10 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             raise errors.NotBranchError(path=name, controldir=controldir)
         try:
             format_string = transport.get_bytes("format")
-            # GZ 2017-06-09: Where should format strings get decoded...
-            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NotBranchError(
                 path=transport.base, controldir=controldir)
-        return klass._find_format(format_registry, 'branch', format_text)
+        return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
@@ -790,7 +816,7 @@ class BzrBranchFormat6(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 6 (bzr 0.15)\n"
+        return b"Bazaar Branch Format 6 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -799,10 +825,10 @@ class BzrBranchFormat6(BranchFormatMetadir):
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', '0 null:\n'),
+        utf8_files = [('last-revision', b'0 null:\n'),
                       ('branch.conf',
                           self._get_initial_config(append_revisions_only)),
-                      ('tags', ''),
+                      ('tags', b''),
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
@@ -823,7 +849,7 @@ class BzrBranchFormat8(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 8 (needs bzr 1.15)\n"
+        return b"Bazaar Branch Format 8 (needs bzr 1.15)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -832,11 +858,11 @@ class BzrBranchFormat8(BranchFormatMetadir):
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', '0 null:\n'),
+        utf8_files = [('last-revision', b'0 null:\n'),
                       ('branch.conf',
                           self._get_initial_config(append_revisions_only)),
-                      ('tags', ''),
-                      ('references', '')
+                      ('tags', b''),
+                      ('references', b'')
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
@@ -878,7 +904,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
+        return b"Bazaar Branch Format 7 (needs bzr 1.6)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -911,7 +937,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG Branch Reference Format 1\n"
+        return b"Bazaar-NG Branch Reference Format 1\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -940,8 +966,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         if name is None:
             name = a_controldir._get_selected_branch()
         branch_transport = a_controldir.get_branch_transport(self, name=name)
-        branch_transport.put_bytes('location',
-            target_branch.user_url)
+        branch_transport.put_bytes('location', target_branch.user_url)
         branch_transport.put_bytes('format', self.as_string())
         branch = self.open(a_controldir, name, _found=True,
             possible_transports=[target_branch.controldir.root_transport])

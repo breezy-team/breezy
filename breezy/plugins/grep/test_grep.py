@@ -2155,8 +2155,8 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def make_example_branch(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            ('hello', 'foo\n'),
-            ('goodbye', 'baz\n')])
+            ('hello', b'foo\n'),
+            ('goodbye', b'baz\n')])
         tree.add(['hello'])
         tree.commit('setup')
         tree.add(['goodbye'])
@@ -2166,7 +2166,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_basic(self):
         """grep -p basic test."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '-p', 'hello'])
         self.assertEqual(err, '')
@@ -2185,7 +2185,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_revision(self):
         """grep -p specific revision."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '-p', '-r', '3', 'hello'])
         self.assertEqual(err, '')
@@ -2200,9 +2200,9 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_revision_range(self):
         """grep -p revision range."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!1\n')]) # rev 3
+        self.build_tree_contents([('hello', b'hello world!1\n')]) # rev 3
         tree.commit('rev3')
-        self.build_tree_contents([('blah', 'hello world!2\n')]) # rev 4
+        self.build_tree_contents([('blah', b'hello world!2\n')]) # rev 4
         tree.add('blah')
         tree.commit('rev4')
         open('hello', 'a').write('hello world!3\n')
@@ -2229,7 +2229,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_color(self):
         """grep -p color test."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '--diff', '-r', '3',
             '--color', 'always', 'hello'])

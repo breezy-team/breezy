@@ -258,7 +258,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             result = (None, path, ie.file_id, ie)
             self._basis_delta.append(result)
             return result
-        elif ie != basis_inv[ie.file_id]:
+        elif ie != basis_inv.get_entry(ie.file_id):
             # common but altered
             # TODO: avoid tis id2path call.
             result = (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
@@ -345,7 +345,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         continue
                     if change[2] not in merged_ids:
                         if change[0] is not None:
-                            basis_entry = basis_inv[change[2]]
+                            basis_entry = basis_inv.get_entry(change[2])
                             merged_ids[change[2]] = [
                                 # basis revid
                                 basis_entry.revision,
@@ -371,7 +371,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         for change in iter_changes:
             # This probably looks up in basis_inv way to much.
             if change[1][0] is not None:
-                head_candidate = [basis_inv[change[0]].revision]
+                head_candidate = [basis_inv.get_entry(change[0]).revision]
             else:
                 head_candidate = []
             changes[change[0]] = change, merged_ids.get(change[0],
@@ -391,7 +391,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             #   changed_content, versioned, parent, name, kind,
             #   executable)
             try:
-                basis_entry = basis_inv[file_id]
+                basis_entry = basis_inv.get_entry(file_id)
             except errors.NoSuchId:
                 # a change from basis->some_parents but file_id isn't in basis
                 # so was new in the merge, which means it must have changed
@@ -1330,7 +1330,7 @@ class VersionedFileRepository(Repository):
                                 inv = self.revision_tree(parent_id).root_inventory
                                 inventory_cache[parent_id] = inv
                             try:
-                                parent_entry = inv[text_key[0]]
+                                parent_entry = inv.get_entry(text_key[0])
                             except (KeyError, errors.NoSuchId):
                                 parent_entry = None
                             if parent_entry is not None:
@@ -1851,7 +1851,7 @@ class StreamSink(object):
         # read back from the inserted data, so flush the writes to the new pack
         # (if this is pack format).
         if new_pack is not None:
-            new_pack._write_data('', flush=True)
+            new_pack._write_data(b'', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
         missing_keys = self.target_repo.get_missing_parent_inventories(
             check_for_missing_texts=is_resume)
@@ -2610,7 +2610,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                 for file_key in list(texts_possibly_new_in_tree):
                     file_id, file_revision = file_key
                     try:
-                        entry = basis_inv[file_id]
+                        entry = basis_inv.get_entry(file_id)
                     except errors.NoSuchId:
                         continue
                     if entry.revision == file_revision:

@@ -465,7 +465,7 @@ class NewPack(Pack):
             return
         self._writer.end()
         if self._buffer[1]:
-            self._write_data('', flush=True)
+            self._write_data(b'', flush=True)
         self.name = self._hash.hexdigest()
 
     def finish(self, suspend=False):
@@ -1914,8 +1914,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
         dirs = ['indices', 'obsolete_packs', 'packs', 'upload']
         builder = self.index_builder_class()
         files = [('pack-names', builder.finish())]
-        # GZ 2017-06-09: Where should format strings get decoded...
-        utf8_files = [('format', self.get_format_string().encode('ascii'))]
+        utf8_files = [('format', self.get_format_string())]
 
         self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
         repository = self.open(a_controldir=a_controldir, _found=True)

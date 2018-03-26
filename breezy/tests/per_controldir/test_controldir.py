@@ -497,8 +497,16 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_get_branch_reference_on_non_reference(self):
         """get_branch_reference should return None for non-reference branches."""
-        branch = self.make_branch('referenced')
-        self.assertEqual(None, branch.controldir.get_branch_reference())
+        dir = self.make_controldir('referenced')
+        dir.create_repository()
+        if dir._format.colocated_branches:
+            # The default branch in a controldir might be a reference branch
+            # (e.g. for Git), so let's create another one.
+            name = 'foo'
+        else:
+            name = None
+        branch = dir.create_branch(name)
+        self.assertEqual(None, branch.controldir.get_branch_reference(name))
 
     def test_get_branch_reference_no_branch(self):
         """get_branch_reference should not mask NotBranchErrors."""

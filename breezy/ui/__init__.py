@@ -522,12 +522,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     """
     # this is now always TextUIFactory, which in turn decides whether it
     # should display progress bars etc
-    from .text import TextUIFactory, _wrap_in_stream, _wrap_out_stream
-    # GZ 2017-05-21: May want to rewrap streams on Python 3 if encoding config
-    if not PY3:
-        stdin = _wrap_in_stream(stdin)
-        stdout = _wrap_out_stream(stdout)
-        stderr = _wrap_out_stream(stderr)
+    from .text import TextUIFactory
     return TextUIFactory(stdin, stdout, stderr)
 
 

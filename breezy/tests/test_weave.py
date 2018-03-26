@@ -764,8 +764,5 @@ class TestNeedsReweave(TestCase):
 class TestWeaveFile(TestCaseInTempDir):
 
     def test_empty_file(self):
-        f = open('empty.weave', 'wb+')
-        try:
+        with open('empty.weave', 'wb+') as f:
             self.assertRaises(WeaveFormatError, read_weave, f)
-        finally:
-            f.close()

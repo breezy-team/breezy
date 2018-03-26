@@ -151,6 +151,11 @@ class WorkingTree(mutabletree.MutableTree,
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
 
+    def supports_merge_modified(self):
+        """Indicate whether this workingtree supports storing merge_modified.
+        """
+        return self._format.supports_merge_modified
+
     def _supports_executable(self):
         if sys.platform == 'win32':
             return False
@@ -368,7 +373,12 @@ class WorkingTree(mutabletree.MutableTree,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         abspath = self.abspath(path)
-        file_obj = file(abspath, 'rb')
+        try:
+            file_obj = open(abspath, 'rb')
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
@@ -376,19 +386,13 @@ class WorkingTree(mutabletree.MutableTree,
         return (file_obj, stat_value)
 
     def get_file_text(self, path, file_id=None, filtered=True):
-        my_file = self.get_file(path, file_id, filtered=filtered)
-        try:
+        with self.get_file(path, file_id, filtered=filtered) as my_file:
             return my_file.read()
-        finally:
-            my_file.close()
 
     def get_file_lines(self, path, file_id=None, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(path, file_id, filtered=filtered)
-        try:
+        with self.get_file(path, file_id, filtered=filtered) as file:
             return file.readlines()
-        finally:
-            file.close()
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -455,9 +459,6 @@ class WorkingTree(mutabletree.MutableTree,
                 else:
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
-
-    def id2abspath(self, file_id):
-        return self.abspath(self.id2path(file_id))
 
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
@@ -583,7 +584,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._transport.put_bytes('pending-merges', '\n'.join(merges),
+        self._transport.put_bytes('pending-merges', b'\n'.join(merges),
             mode=self.controldir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
@@ -723,10 +724,7 @@ class WorkingTree(mutabletree.MutableTree,
             return file_id
 
     def get_symlink_target(self, path, file_id=None):
-        if path is not None:
-            abspath = self.abspath(path)
-        else:
-            abspath = self.id2abspath(file_id)
+        abspath = self.abspath(path)
         target = osutils.readlink(abspath)
         return target
 
@@ -771,8 +769,6 @@ class WorkingTree(mutabletree.MutableTree,
         raise NotImplementedError(self.flush)
 
     def kind(self, relpath, file_id=None):
-        if file_id is not None:
-            return osutils.file_kind(self.id2abspath(file_id))
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -910,12 +906,8 @@ class WorkingTree(mutabletree.MutableTree,
 
     def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
-        with self.lock_write():
-            stream = file(self.abspath(path), 'wb')
-            try:
+        with self.lock_write(), file(self.abspath(path), 'wb') as stream:
                 stream.write(bytes)
-            finally:
-                stream.close()
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -964,9 +956,6 @@ class WorkingTree(mutabletree.MutableTree,
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
-
-    def _file_size(self, entry, stat_value):
-        return stat_value.st_size
 
     def last_revision(self):
         """Return the last revision of the branch for this tree.
@@ -1298,20 +1287,18 @@ class WorkingTree(mutabletree.MutableTree,
             resolved = _mod_conflicts.ConflictList()
             conflict_re = re.compile('^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
+                path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(self.id2path(conflict.file_id), conflict.file_id) != 'file'):
+                    self.kind(path, conflict.file_id) != 'file'):
                     un_resolved.append(conflict)
                     continue
-                my_file = open(self.id2abspath(conflict.file_id), 'rb')
-                try:
+                with open(self.abspath(path), 'rb') as my_file:
                     for line in my_file:
                         if conflict_re.search(line):
                             un_resolved.append(conflict)
                             break
                     else:
                         resolved.append(conflict)
-                finally:
-                    my_file.close()
             resolved.remove_files(self)
             self.set_conflicts(un_resolved)
             return un_resolved, resolved
@@ -1411,6 +1398,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_versioned_directories = None
 
+    supports_merge_modified = True
+    """If this format supports storing merge modified hashes."""
+
     supports_setting_file_ids = True
     """If this format allows setting the file id."""
 
@@ -1420,6 +1410,9 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     supports_leftmost_parent_id_as_ghost = True
 
     supports_righthand_parent_id_as_ghost = True
+
+    ignore_filename = None
+    """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -1474,12 +1467,12 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingcontroldir
 
 
-format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
-format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
-format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
-format_registry.register_lazy("Bazaar-NG Working Tree format 3",
+format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
     "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
-format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")
+format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")

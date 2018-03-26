@@ -45,8 +45,8 @@ class TestPull(tests.TestCaseWithTransport):
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (osutils.pathjoin(path, 'hello'),   'foo'),
-            (osutils.pathjoin(path, 'goodbye'), 'baz')])
+            (osutils.pathjoin(path, 'hello'),   b'foo'),
+            (osutils.pathjoin(path, 'goodbye'), b'baz')])
         tree.add('hello')
         tree.commit(message='setup')
         tree.add('goodbye')
@@ -120,8 +120,8 @@ class TestPull(tests.TestCaseWithTransport):
         """Pull some changes from one branch to another."""
         a_tree = self.example_branch('a')
         self.build_tree_contents([
-            ('a/hello2',   'foo'),
-            ('a/goodbye2', 'baz')])
+            ('a/hello2',   b'foo'),
+            ('a/goodbye2', b'baz')])
         a_tree.add('hello2')
         a_tree.commit(message="setup")
         a_tree.add('goodbye2')
@@ -161,16 +161,16 @@ class TestPull(tests.TestCaseWithTransport):
         # even if the target branch has merged
         # everything already.
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/foo', 'original\n')])
+        self.build_tree_contents([('a/foo', b'original\n')])
         a_tree.add('foo')
         a_tree.commit(message='initial commit')
 
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
-        self.build_tree_contents([('a/foo', 'changed\n')])
+        self.build_tree_contents([('a/foo', b'changed\n')])
         a_tree.commit(message='later change')
 
-        self.build_tree_contents([('a/foo', 'a third change')])
+        self.build_tree_contents([('a/foo', b'a third change')])
         a_tree.commit(message='a third change')
 
         self.assertEqual(a_tree.branch.last_revision_info()[0], 3)
@@ -189,16 +189,16 @@ class TestPull(tests.TestCaseWithTransport):
         # Make sure pull --overwrite sets the revision-history
         # to be identical to the pull source, even if we have convergence
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/foo', 'original\n')])
+        self.build_tree_contents([('a/foo', b'original\n')])
         a_tree.add('foo')
         a_tree.commit(message='initial commit')
 
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
-        self.build_tree_contents([('a/foo', 'changed\n')])
+        self.build_tree_contents([('a/foo', b'changed\n')])
         a_tree.commit(message='later change')
 
-        self.build_tree_contents([('a/foo', 'a third change')])
+        self.build_tree_contents([('a/foo', b'a third change')])
         a_tree.commit(message='a third change')
 
         self.assertEqual(a_tree.branch.last_revision_info()[0], 3)
@@ -208,7 +208,7 @@ class TestPull(tests.TestCaseWithTransport):
 
         self.assertEqual(b_tree.branch.last_revision_info()[0], 2)
 
-        self.build_tree_contents([('a/foo', 'a fourth change\n')])
+        self.build_tree_contents([('a/foo', b'a fourth change\n')])
         a_tree.commit(message='a fourth change')
 
         rev_info_a = a_tree.branch.last_revision_info()

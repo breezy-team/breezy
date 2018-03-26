@@ -293,9 +293,9 @@ class ShelfCreator(object):
 
     @staticmethod
     def metadata_record(serializer, revision_id, message=None):
-        metadata = {'revision_id': revision_id}
+        metadata = {b'revision_id': revision_id}
         if message is not None:
-            metadata['message'] = message.encode('utf-8')
+            metadata[b'message'] = message.encode('utf-8')
         return serializer.bytes_record(
             bencode.bencode(metadata), (('metadata',),))
 

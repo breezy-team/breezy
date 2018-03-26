@@ -104,7 +104,7 @@ class MutableTree(tree.Tree):
         if isinstance(files, (str, text_type)):
             # XXX: Passing a single string is inconsistent and should be
             # deprecated.
-            if not (ids is None or isinstance(ids, (str, text_type))):
+            if not (ids is None or isinstance(ids, bytes)):
                 raise AssertionError()
             if not (kinds is None or isinstance(kinds, (str, text_type))):
                 raise AssertionError()

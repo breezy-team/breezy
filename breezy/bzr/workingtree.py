@@ -276,11 +276,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
         self._inventory_is_modified = False
-        f = self._transport.get('inventory')
-        try:
+        with self._transport.get('inventory') as f:
             result = self._deserialize(f)
-        finally:
-            f.close()
         self._set_inventory(result, dirty=False)
 
     def store_uncommitted(self):
@@ -331,15 +328,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self._inventory_is_modified = True
         # we preserve the root inventory entry object, but
         # unlinkit from the byid index
-        del inv._byid[inv.root.file_id]
+        inv.delete(inv.root.file_id)
         inv.root.file_id = file_id
         # and link it into the index with the new changed id.
         inv._byid[inv.root.file_id] = inv.root
         # and finally update all children to reference the new id.
         # XXX: this should be safe to just look at the root.children
         # list, not the WHOLE INVENTORY.
-        for fid in inv:
-            entry = inv[fid]
+        for fid in inv.iter_all_ids():
+            entry = inv.get_entry(fid)
             if entry.parent_id == orig_root_id:
                 entry.parent_id = inv.root.file_id
 
@@ -370,7 +367,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
-                    if self.path2id(relpath):
+                    if self.is_versioned(relpath):
                         # Add nested content for deletion.
                         all_files.add(relpath)
                     else:
@@ -569,12 +566,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         ignore_globs = set()
         ignore_globs.update(ignores.get_runtime_ignores())
         ignore_globs.update(ignores.get_user_ignores())
-        if self.has_filename(breezy.IGNORE_FILENAME):
-            f = self.get_file(breezy.IGNORE_FILENAME)
-            try:
+        if self.has_filename(self._format.ignore_filename):
+            with self.get_file(self._format.ignore_filename) as f:
                 ignore_globs.update(ignores.parse_ignore_file(f))
-            finally:
-                f.close()
         self._ignoreset = ignore_globs
         return ignore_globs
 
@@ -619,11 +613,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             if self._inventory_is_modified:
                 raise errors.InventoryModified(self)
-            f = self._transport.get('inventory')
-            try:
+            with self._transport.get('inventory') as f:
                 result = self._deserialize(f)
-            finally:
-                f.close()
             self._set_inventory(result, dirty=False)
             return result
 
@@ -652,10 +643,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        ret = set()
-        for path, ie in self.iter_entries_by_dir():
-            ret.add(ie.file_id)
-        return ret
+        return {ie.file_id for path, ie in self.iter_entries_by_dir()}
 
     def all_versioned_paths(self):
         return {path for path, ie in self.iter_entries_by_dir()}
@@ -747,7 +735,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # For unversioned files on win32, we just assume they are not
             # executable
             return False
-        return inv[file_id].executable
+        return inv.get_entry(file_id).executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
@@ -756,7 +744,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def is_executable(self, path, file_id=None):
         if not self._supports_executable():
             inv, inv_file_id = self._path2inv_file_id(path, file_id)
-            return inv[inv_file_id].executable
+            return inv.get_entry(inv_file_id).executable
         else:
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -828,7 +816,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     try:
                         kind = parent_tree.kind(path, file_id)
-                    except errors.NoSuchId:
+                    except errors.NoSuchFile:
                         continue
                     if kind != 'file':
                         # Note: this is slightly unnecessary, because symlinks and
@@ -988,7 +976,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             child_inv = inventory.Inventory(root_id=None)
             if file_id is None:
                 file_id = self.path2id(sub_path)
-            new_root = my_inv[file_id]
+            new_root = my_inv.get_entry(file_id)
             my_inv.remove_recursive_id(file_id)
             new_root.parent_id = None
             child_inv.add(new_root)
@@ -1064,7 +1052,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     # absolute path
                     fap = from_dir_abspath + '/' + f
 
-                    dir_ie = inv[from_dir_id]
+                    dir_ie = inv.get_entry(from_dir_id)
                     if dir_ie.kind == 'directory':
                         f_ie = dir_ie.children.get(f)
                     else:
@@ -1181,7 +1169,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 raise errors.BzrMoveFailedError(
                         '', to_dir, errors.NotVersionedError(path=to_dir))
 
-            to_dir_ie = to_inv[to_dir_id]
+            to_dir_ie = to_inv.get_entry(to_dir_id)
             if to_dir_ie.kind != 'directory':
                 raise errors.BzrMoveFailedError(
                         '', to_dir, errors.NotADirectory(to_abs))
@@ -1194,7 +1182,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     raise errors.BzrMoveFailedError(from_rel, to_dir,
                         errors.NotVersionedError(path=from_rel))
 
-                from_entry = from_inv[from_id]
+                from_entry = from_inv.get_entry(from_id)
                 from_parent_id = from_entry.parent_id
                 to_rel = osutils.pathjoin(to_dir, from_tail)
                 rename_entry = InventoryWorkingTree._RenameEntry(
@@ -1261,11 +1249,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         from_rel, to_rel,
                         errors.NotVersionedError(path=from_rel))
                 # put entry back in the inventory so we can rename it
-                from_entry = basis_tree.root_inventory[from_id].copy()
+                from_entry = basis_tree.root_inventory.get_entry(from_id).copy()
                 from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
-                from_entry = from_inv[from_inv_id]
+                from_entry = from_inv.get_entry(from_inv_id)
             from_parent_id = from_entry.parent_id
             to_dir, to_tail = os.path.split(to_rel)
             to_inv, to_dir_id = self._path2inv_file_id(to_dir)
@@ -1467,7 +1455,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
         if inv_file_id is None:
             raise errors.NoSuchFile(self, path)
-        return inv[inv_file_id].kind
+        return inv.get_entry(inv_file_id).kind
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -1661,7 +1649,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv[top_id]
+            entry = inv.get_entry(top_id)
             if entry.kind == 'directory':
                 for name, child in entry.sorted_children():
                     dirblock.append((relroot + name, name, child.kind, None,
@@ -1699,13 +1687,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 blocked_parent_ids.add(ie.file_id)
             yield path, ie
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None,
+                            yield_parents=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-                specific_file_ids=specific_file_ids,
-                yield_parents=yield_parents)
+                specific_files=specific_files, yield_parents=yield_parents)
         if not self.supports_tree_reference():
             return iterator
         else:
@@ -1714,6 +1702,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
+
+    ignore_filename = '.bzrignore'
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)
@@ -1725,47 +1715,6 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         try:
             transport = controldir.get_workingtree_transport(None)
             return transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
-
-    @classmethod
-    def find_format(klass, controldir):
-        """Return the format for the working tree object in controldir."""
-        format_string = klass.find_format_string(controldir)
-        return klass._find_format(format_registry, 'working tree',
-                format_string)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        WorkingTreeFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
-        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-
-    def get_controldir_for_branch(self):
-        """Get the control directory format for creating branches.
-
-        This is to support testing of working tree formats that can not exist
-        in the same control directory as a branch.
-        """
-        return self._matchingcontroldir
-
-
-class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
-    """Base class for working trees that live in bzr meta directories."""
-
-    def __init__(self):
-        WorkingTreeFormat.__init__(self)
-        bzrdir.BzrFormat.__init__(self)
-
-    @classmethod
-    def find_format_string(klass, controldir):
-        """Return format name for the working tree object in controldir."""
-        try:
-            transport = controldir.get_workingtree_transport(None)
-            # GZ 2017-06-09: When do decode format strings?
-            return transport.get_bytes("format").decode('ascii')
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 

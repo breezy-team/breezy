@@ -19,6 +19,7 @@ import sys
 from .. import (
     branch as _mod_branch,
     controldir,
+    errors,
     info,
     tests,
     workingtree,
@@ -152,6 +153,9 @@ class TestInfo(tests.TestCaseWithTransport):
                 continue
             # legacy: weave does not support checkouts
             if key == 'weave':
+                continue
+            # foreign: git checkouts can actually be bzr controldirs
+            if key in ('git', 'git-bare'):
                 continue
             if controldir.format_registry.get_info(key).experimental:
                 # We don't require that experimental formats support checkouts

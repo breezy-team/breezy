@@ -135,8 +135,8 @@ def make_branch_and_populated_tree(testcase):
     # doesn't need to be bound to the particular files created? -- mbp
     # 20110705
     tree = testcase.make_branch_and_tree('t')
-    testcase.build_tree_contents([('t/hello', 'hello world')])
-    tree.add(['hello'], ['hello-id'])
+    testcase.build_tree_contents([('t/hello', b'hello world')])
+    tree.add(['hello'], [b'hello-id'])
     return tree
 
 

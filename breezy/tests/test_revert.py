@@ -28,7 +28,7 @@ class TestRevert(tests.TestCaseWithTransport):
         source_tree.commit('empty tree')
         target_tree = source_tree.controldir.sprout('target').open_workingtree()
         self.build_tree(['source/dir/', 'source/dir/contents'])
-        source_tree.add(['dir', 'dir/contents'], ['dir-id', 'contents-id'])
+        source_tree.add(['dir', 'dir/contents'], [b'dir-id', b'contents-id'])
         source_tree.commit('added dir')
         target_tree.lock_write()
         self.addCleanup(target_tree.unlock)
@@ -77,7 +77,7 @@ class TestRevert(tests.TestCaseWithTransport):
         # files should not be deleted if changed after a merge
         merge_target.merge_from_branch(tree.branch)
         self.assertPathExists('merge_target/new_file')
-        self.build_tree_contents([('merge_target/new_file', 'new_contents')])
+        self.build_tree_contents([('merge_target/new_file', b'new_contents')])
         merge_target.revert()
         self.assertPathExists('merge_target/new_file')
 
@@ -97,7 +97,7 @@ class TestRevert(tests.TestCaseWithTransport):
     def test_preserve_execute(self):
         tree = self.tree_with_executable()
         tt = transform.TreeTransform(tree)
-        newfile = tt.trans_id_tree_file_id('newfile-id')
+        newfile = tt.trans_id_tree_path('newfile')
         tt.delete_contents(newfile)
         tt.create_file('Woooorld!', newfile)
         tt.apply()
@@ -112,7 +112,7 @@ class TestRevert(tests.TestCaseWithTransport):
     def test_revert_executable(self):
         tree = self.tree_with_executable()
         tt = transform.TreeTransform(tree)
-        newfile = tt.trans_id_tree_file_id('newfile-id')
+        newfile = tt.trans_id_tree_path('newfile')
         tt.set_executability(False, newfile)
         tt.apply()
         tree.lock_write()
@@ -124,7 +124,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         tree.add('file')
-        tree.commit('added file', rev_id='rev1')
+        tree.commit('added file', rev_id=b'rev1')
         os.unlink('file')
         tree.commit('removed file')
         self.assertPathDoesNotExist('file')
@@ -151,11 +151,11 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_revert_root_id_change(self):
         tree = self.make_branch_and_tree('.')
-        tree.set_root_id('initial-root-id')
+        tree.set_root_id(b'initial-root-id')
         self.build_tree(['file1'])
         tree.add(['file1'])
         tree.commit('first')
-        tree.set_root_id('temp-root-id')
+        tree.set_root_id(b'temp-root-id')
         self.assertEqual('temp-root-id', tree.get_root_id())
         tree.revert()
         self.assertEqual('initial-root-id', tree.get_root_id())
