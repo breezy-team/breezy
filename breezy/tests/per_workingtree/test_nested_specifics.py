@@ -63,10 +63,6 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         tree.add(['subtree'])
         return tree
 
-    def test_kind_does_not_autodetect_subtree(self):
-        tree = self.prepare_with_subtree()
-        self.assertEqual('directory', tree.kind('subtree'))
-
     def test_comparison_data_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
         ie = inventory.InventoryDirectory(b'subtree-id', 'subtree',

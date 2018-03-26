@@ -351,6 +351,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # modified.
         tree = self.make_branch_and_tree('.')
         subtree = self.make_reference('reference')
+        subtree.commit('')
         try:
             tree.add_reference(subtree)
             self._commit_check_unchanged(tree, 'reference',
@@ -400,6 +401,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # renaming a reference changes the last modified.
         tree = self.make_branch_and_tree('.')
         subtree = self.make_reference('reference')
+        subtree.commit('')
         try:
             tree.add_reference(subtree)
             self._commit_renamed_check_changed(tree, 'reference')
