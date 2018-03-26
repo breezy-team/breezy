@@ -81,7 +81,7 @@ class TestObsoleteRepoFormat(RepositoryFormat2a):
 
     @classmethod
     def get_format_string(cls):
-        return "Test Obsolete Repository Format"
+        return b"Test Obsolete Repository Format"
 
     def is_deprecated(self):
         return True

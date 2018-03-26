@@ -40,9 +40,9 @@ class ReSign(tests.TestCaseInTempDir):
 
     def setup_tree(self):
         wt = ControlDir.create_standalone_workingtree('.')
-        wt.commit("base A", allow_pointless=True, rev_id='A')
-        wt.commit("base B", allow_pointless=True, rev_id='B')
-        wt.commit("base C", allow_pointless=True, rev_id='C')
+        wt.commit("base A", allow_pointless=True, rev_id=b'A')
+        wt.commit("base B", allow_pointless=True, rev_id=b'B')
+        wt.commit("base C", allow_pointless=True, rev_id=b'C')
 
         return wt
 
@@ -90,9 +90,9 @@ class ReSign(tests.TestCaseInTempDir):
     def test_resign_directory(self):
         """Test --directory option"""
         wt = ControlDir.create_standalone_workingtree('a')
-        wt.commit("base A", allow_pointless=True, rev_id='A')
-        wt.commit("base B", allow_pointless=True, rev_id='B')
-        wt.commit("base C", allow_pointless=True, rev_id='C')
+        wt.commit("base A", allow_pointless=True, rev_id=b'A')
+        wt.commit("base B", allow_pointless=True, rev_id=b'B')
+        wt.commit("base C", allow_pointless=True, rev_id=b'C')
         repo = wt.branch.repository
         self.monkey_patch_gpg()
         self.run_bzr('re-sign --directory=a -r revid:A')

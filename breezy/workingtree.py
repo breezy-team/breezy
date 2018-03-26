@@ -386,19 +386,13 @@ class WorkingTree(mutabletree.MutableTree,
         return (file_obj, stat_value)
 
     def get_file_text(self, path, file_id=None, filtered=True):
-        my_file = self.get_file(path, file_id, filtered=filtered)
-        try:
+        with self.get_file(path, file_id, filtered=filtered) as my_file:
             return my_file.read()
-        finally:
-            my_file.close()
 
     def get_file_lines(self, path, file_id=None, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(path, file_id, filtered=filtered)
-        try:
+        with self.get_file(path, file_id, filtered=filtered) as file:
             return file.readlines()
-        finally:
-            file.close()
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -590,7 +584,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._transport.put_bytes('pending-merges', '\n'.join(merges),
+        self._transport.put_bytes('pending-merges', b'\n'.join(merges),
             mode=self.controldir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
@@ -912,12 +906,8 @@ class WorkingTree(mutabletree.MutableTree,
 
     def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
-        with self.lock_write():
-            stream = open(self.abspath(path), 'wb')
-            try:
+        with self.lock_write(), file(self.abspath(path), 'wb') as stream:
                 stream.write(bytes)
-            finally:
-                stream.close()
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -1302,16 +1292,13 @@ class WorkingTree(mutabletree.MutableTree,
                     self.kind(path, conflict.file_id) != 'file'):
                     un_resolved.append(conflict)
                     continue
-                my_file = open(self.abspath(path), 'rb')
-                try:
+                with open(self.abspath(path), 'rb') as my_file:
                     for line in my_file:
                         if conflict_re.search(line):
                             un_resolved.append(conflict)
                             break
                     else:
                         resolved.append(conflict)
-                finally:
-                    my_file.close()
             resolved.remove_files(self)
             self.set_conflicts(un_resolved)
             return un_resolved, resolved
@@ -1480,12 +1467,12 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingcontroldir
 
 
-format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
-format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
-format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
+format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
     "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
-format_registry.register_lazy("Bazaar-NG Working Tree format 3",
+format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
     "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
-format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")
+format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")

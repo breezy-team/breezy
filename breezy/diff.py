@@ -816,11 +816,8 @@ class DiffFromTool(DiffPath):
                 raise
         source = tree.get_file(relpath, file_id)
         try:
-            target = open(full_path, 'wb')
-            try:
+            with open(full_path, 'wb') as target:
                 osutils.pumpfile(source, target)
-            finally:
-                target.close()
         finally:
             source.close()
         try:
@@ -871,11 +868,8 @@ class DiffFromTool(DiffPath):
                 file_id=file_id)
         command = self._get_command(old_abs_path, new_abs_path)
         subprocess.call(command, cwd=self._root)
-        new_file = open(new_abs_path, 'rb')
-        try:
+        with open(new_abs_path, 'rb') as new_file:
             return new_file.read()
-        finally:
-            new_file.close()
 
 
 class DiffTree(object):

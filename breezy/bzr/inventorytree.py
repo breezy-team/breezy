@@ -300,7 +300,7 @@ class InventoryTree(Tree):
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path, file_id)
             try:
-                ie = inv[inv_file_id]
+                ie = inv.get_entry(inv_file_id)
             except errors.NoSuchId:
                 raise errors.NoSuchFile(path)
             else:
@@ -568,8 +568,8 @@ class _SmartAddHelper(object):
         # Find a 'best fit' match if the filesystem is case-insensitive
         inv_path = self.tree._fix_case_of_inventory_path(inv_path)
         try:
-            return self.tree.iter_entries_by_dir(
-                    specific_files=[inv_path]).next()[1]
+            return next(self.tree.iter_entries_by_dir(
+                    specific_files=[inv_path]))[1]
         except StopIteration:
             return None
 
@@ -594,9 +594,9 @@ class _SmartAddHelper(object):
         :param parent_ie: Parent inventory entry if known, or None.  If
             None, the parent is looked up by name and used if present, otherwise it
             is recursively added.
-        :param path: 
+        :param path: Filesystem path to add
         :param kind: Kind of new entry (file, directory, etc)
-        :param inv_path:
+        :param inv_path: Inventory path
         :return: Inventory entry for path and a list of paths which have been added.
         """
         # Nothing to do if path is already versioned.
@@ -807,7 +807,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def get_file_mtime(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
         try:
-            ie = inv[inv_file_id]
+            ie = inv.get_entry(inv_file_id)
         except errors.NoSuchId:
             raise errors.NoSuchFile(path)
         try:
@@ -818,11 +818,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def get_file_size(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv[inv_file_id].text_size
+        return inv.get_entry(inv_file_id).text_size
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv[inv_file_id]
+        ie = inv.get_entry(inv_file_id)
         if ie.kind == "file":
             return ie.text_sha1
         return None
@@ -830,14 +830,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def get_file_revision(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
         try:
-            ie = inv[inv_file_id]
+            ie = inv.get_entry(inv_file_id)
         except errors.NoSuchId:
             raise errors.NoSuchFile(path)
         return ie.revision
 
     def is_executable(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv[inv_file_id]
+        ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False
         return ie.executable
@@ -864,13 +864,13 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def get_symlink_target(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv[inv_file_id]
+        ie = inv.get_entry(inv_file_id)
         # Inventories store symlink targets in unicode
         return ie.symlink_target
 
     def get_reference_revision(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv[inv_file_id].reference_revision
+        return inv.get_entry(inv_file_id).reference_revision
 
     def get_root_id(self):
         if self.root_inventory.root:
@@ -879,7 +879,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def kind(self, path, file_id=None):
         inv, inv_file_id = self._path2inv_file_id(path, file_id)
         try:
-            return inv[inv_file_id].kind
+            return inv.get_entry(inv_file_id).kind
         except errors.NoSuchId:
             raise errors.NoSuchFile(path)
 
@@ -888,7 +888,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         inv, file_id = self._path2inv_file_id(path)
         if file_id is None:
             return ('missing', None, None, None)
-        entry = inv[file_id]
+        entry = inv.get_entry(file_id)
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -918,7 +918,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv[currentdir[4]]
+            entry = inv.get_entry(currentdir[4])
             for name, child in entry.sorted_children():
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None,

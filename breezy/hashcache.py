@@ -255,7 +255,7 @@ class HashCache(object):
         try:
             inf = open(fn, 'rb', buffering=65000)
         except IOError as e:
-            trace.mutter("failed to open %s: %s", fn, e)
+            trace.mutter("failed to open %s: %s", fn, str(e))
             # better write it now so it is valid
             self.needs_write = True
             return

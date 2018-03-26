@@ -36,11 +36,11 @@ from ...timestamp import unpack_highres_date, format_highres_date
 
 
 # New bundles should try to use this header format
-BUNDLE_HEADER = '# Bazaar revision bundle v'
+BUNDLE_HEADER = b'# Bazaar revision bundle v'
 BUNDLE_HEADER_RE = re.compile(
-    r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+    br'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 CHANGESET_OLD_HEADER_RE = re.compile(
-    r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+    br'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 
 
 _serializers = {}

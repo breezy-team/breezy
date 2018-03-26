@@ -454,13 +454,10 @@ class SFTPTransport(ConnectedTransport):
 
     def get_bytes(self, relpath):
         # reimplement this here so that we can report how many bytes came back
-        f = self.get(relpath)
-        try:
+        with self.get(relpath) as f:
             bytes = f.read()
             self._report_activity(len(bytes), 'read')
             return bytes
-        finally:
-            f.close()
 
     def _readv(self, relpath, offsets):
         """See Transport.readv()"""
@@ -875,8 +872,8 @@ class SFTPTransport(ConnectedTransport):
                 self.path = path
             def unlock(self):
                 pass
-            def __exit__(self):
-                pass
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                return False
             def __enter__(self):
                 pass
         return BogusLock(relpath)

@@ -46,13 +46,13 @@ class BranchBuilder(object):
     >>> builder = BranchBuilder(MemoryTransport("memory:///"))
     >>> builder.start_series()
     >>> builder.build_snapshot(None, [
-    ...     ('add', ('', 'root-id', 'directory', '')),
-    ...     ('add', ('filename', 'f-id', 'file', 'content\n'))],
-    ...     revision_id='rev-id')
+    ...     ('add', ('', b'root-id', 'directory', '')),
+    ...     ('add', ('filename', b'f-id', 'file', 'content\n'))],
+    ...     revision_id=b'rev-id')
     'rev-id'
     >>> builder.build_snapshot(['rev-id'],
-    ...     [('modify', ('f-id', 'new-content\n'))],
-    ...     revision_id='rev2-id')
+    ...     [('modify', (b'f-id', 'new-content\n'))],
+    ...     revision_id=b'rev2-id')
     'rev2-id'
     >>> builder.finish_series()
     >>> branch = builder.get_branch()

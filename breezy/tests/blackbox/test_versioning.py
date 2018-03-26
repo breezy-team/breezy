@@ -135,10 +135,10 @@ class SubdirCommit(TestCaseWithTransport):
                 ('b/two', contents),
                 ('top', contents),
                 ])
-        set_contents('old contents')
+        set_contents(b'old contents')
         tree.smart_add(['.'])
         tree.commit('first revision')
-        set_contents('new contents')
+        set_contents(b'new contents')
 
         mutter('start selective subdir commit')
         self.run_bzr(['commit', 'a', '-m', 'commit a only'])

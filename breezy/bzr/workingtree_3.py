@@ -161,7 +161,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar-NG Working Tree format 3"
+        return b"Bazaar-NG Working Tree format 3"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""

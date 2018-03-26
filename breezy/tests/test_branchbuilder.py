@@ -208,7 +208,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         self.assertEqual('new\ncontent\n',
-                         rev_tree.get_file_text(rev_tree.id2path('a-id')))
+                         rev_tree.get_file_text(rev_tree.id2path(b'a-id')))
 
     def test_delete_file(self):
         builder = self.build_a_rev()

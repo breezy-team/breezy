@@ -43,9 +43,9 @@ class TestCICPBase(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(['CamelCaseParent/', 'lowercaseparent/'])
-        self.build_tree_contents([('CamelCaseParent/CamelCase', 'camel case'),
-                                  ('lowercaseparent/lowercase', 'lower case'),
-                                  ('lowercaseparent/mixedCase', 'mixedCasecase'),
+        self.build_tree_contents([('CamelCaseParent/CamelCase', b'camel case'),
+                                  ('lowercaseparent/lowercase', b'lower case'),
+                                  ('lowercaseparent/mixedCase', b'mixedCasecase'),
                                  ])
         return wt
 

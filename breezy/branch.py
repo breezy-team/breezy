@@ -53,6 +53,7 @@ from .inter import InterObject
 from .lock import LogicalLockResult
 from .sixish import (
     BytesIO,
+    text_type,
     viewitems,
     )
 from .trace import mutter, mutter_callsite, note, is_quiet
@@ -771,7 +772,7 @@ class Branch(controldir.ControlComponent):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file. RBC 20060125
         if url is not None:
-            if isinstance(url, unicode):
+            if isinstance(url, text_type):
                 try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
@@ -1885,22 +1886,22 @@ format_registry = BranchFormatRegistry(network_format_registry)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 format_registry.register_lazy(
-    "Bazaar-NG branch format 5\n", "breezy.bzr.fullhistory",
+    b"Bazaar-NG branch format 5\n", "breezy.bzr.fullhistory",
     "BzrBranchFormat5")
 format_registry.register_lazy(
-    "Bazaar Branch Format 6 (bzr 0.15)\n",
+    b"Bazaar Branch Format 6 (bzr 0.15)\n",
     "breezy.bzr.branch", "BzrBranchFormat6")
 format_registry.register_lazy(
-    "Bazaar Branch Format 7 (needs bzr 1.6)\n",
+    b"Bazaar Branch Format 7 (needs bzr 1.6)\n",
     "breezy.bzr.branch", "BzrBranchFormat7")
 format_registry.register_lazy(
-    "Bazaar Branch Format 8 (needs bzr 1.15)\n",
+    b"Bazaar Branch Format 8 (needs bzr 1.15)\n",
     "breezy.bzr.branch", "BzrBranchFormat8")
 format_registry.register_lazy(
-    "Bazaar-NG Branch Reference Format 1\n",
+    b"Bazaar-NG Branch Reference Format 1\n",
     "breezy.bzr.branch", "BranchReferenceFormat")
 
-format_registry.set_default_key("Bazaar Branch Format 7 (needs bzr 1.6)\n")
+format_registry.set_default_key(b"Bazaar Branch Format 7 (needs bzr 1.6)\n")
 
 
 class BranchWriteLockResult(LogicalLockResult):

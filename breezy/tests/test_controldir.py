@@ -42,7 +42,7 @@ class TestErrors(tests.TestCase):
 class SampleComponentFormat(controldir.ControlComponentFormat):
 
     def get_format_string(self):
-        return "Example component format."
+        return b"Example component format."
 
 
 class SampleExtraComponentFormat(controldir.ControlComponentFormat):
@@ -59,10 +59,10 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         format = SampleComponentFormat()
         self.registry.register(format)
         self.assertEqual(format,
-            self.registry.get("Example component format."))
+            self.registry.get(b"Example component format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
-            "Example component format.")
+            b"Example component format.")
 
     def test_get_all(self):
         format = SampleComponentFormat()

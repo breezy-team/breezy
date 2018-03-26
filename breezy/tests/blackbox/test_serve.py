@@ -275,7 +275,7 @@ class TestBzrServe(TestBzrServeBase):
         # Save the config as the subprocess will use it
         gs.store.save()
         process, url = self.start_server_port()
-        self.build_tree_contents([('a_file', 'contents\n')])
+        self.build_tree_contents([('a_file', b'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
         self.assertEqual('contents\n', t.get_bytes('a_file'))
@@ -292,7 +292,7 @@ class TestBzrServe(TestBzrServeBase):
 
     def test_bzr_serve_supports_client_timeout(self):
         process, url = self.start_server_port(['--client-timeout=0.1'])
-        self.build_tree_contents([('a_file', 'contents\n')])
+        self.build_tree_contents([('a_file', b'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
         self.assertEqual('contents\n', t.get_bytes('a_file'))
@@ -311,7 +311,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_graceful_shutdown(self):
-        big_contents = 'a'*64*1024
+        big_contents = b'a'*64*1024
         self.build_tree_contents([('bigfile', big_contents)])
         process, url = self.start_server_port(['--client-timeout=1.0'])
         t = transport.get_transport_from_url(url)

@@ -46,8 +46,8 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
             raise TestNotApplicable("repository format does not support ghosts")
         tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
-        tree.commit('msg1', rev_id='rev1')
-        tree.commit('msg2', rev_id='rev2')
+        tree.commit('msg1', rev_id=b'rev1')
+        tree.commit('msg2', rev_id=b'rev2')
         # Some older branch formats store the full known revision history
         # and thus can't distinguish between not being able to find a revno because of
         # a ghost and the revision not being on the mainline. As such,

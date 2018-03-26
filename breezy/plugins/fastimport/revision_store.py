@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 
-from ...sixish import StringIO
+from io import BytesIO
 
 from ... import (
     errors,
@@ -68,7 +68,7 @@ class _TreeShim(object):
 
     def get_file_with_stat(self, path, file_id=None):
         content = self.get_file_text(path, file_id)
-        sio = StringIO(content)
+        sio = BytesIO(content)
         return sio, None
 
     def get_file_text(self, path, file_id=None):
@@ -79,7 +79,7 @@ class _TreeShim(object):
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
             assert file_id not in self._new_info_by_id
-            old_ie = self._basis_inv[file_id]
+            old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream([old_text_key],
                                                         'unordered', True)
@@ -91,7 +91,7 @@ class _TreeShim(object):
         if file_id in self._new_info_by_id:
             ie = self._new_info_by_id[file_id][1]
             return ie.symlink_target
-        return self._basis_inv[file_id].symlink_target
+        return self._basis_inv.get_entry(file_id).symlink_target
 
     def get_reference_revision(self, path, file_id=None):
         raise NotImplementedError(_TreeShim.get_reference_revision)
@@ -114,7 +114,7 @@ class _TreeShim(object):
             # Since the *very* common case is that the file already exists, it
             # probably is better to optimize for that
             try:
-                old_ie = basis_inv[file_id]
+                old_ie = basis_inv.get_entry(file_id)
             except errors.NoSuchId:
                 old_ie = None
                 if ie is None:
@@ -281,12 +281,12 @@ class AbstractRevisionStore(object):
         heads = []
         for inv in self._rev_parent_invs:
             try:
-                old_rev = inv[ie.file_id].revision
+                old_rev = inv.get_entry(ie.file_id).revision
             except errors.NoSuchId:
                 pass
             else:
                 if old_rev in head_set:
-                    rev_id = inv[ie.file_id].revision
+                    rev_id = inv.get_entry(ie.file_id).revision
                     heads.append(rev_id)
                     head_set.remove(rev_id)
 
@@ -511,7 +511,7 @@ class AbstractRevisionStore(object):
             else:
                 new_inv = inventory.Inventory(revision_id=revision_id)
                 # This is set in the delta so remove it to prevent a duplicate
-                del new_inv[inventory.ROOT_ID]
+                new_inv.delete(inventory.ROOT_ID)
                 new_inv.apply_delta(inv_delta)
             validator = self.repo.add_inventory(revision_id, new_inv, parents)
         return validator, new_inv

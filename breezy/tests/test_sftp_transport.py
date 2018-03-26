@@ -195,7 +195,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         t = controldir.ControlDir.create_standalone_workingtree('a')
         b = t.branch
         t.add('foo')
-        t.commit('foo', rev_id='a1')
+        t.commit('foo', rev_id=b'a1')
 
         b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
@@ -203,7 +203,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.assertEqual(b2.last_revision(), 'a1')
 
         with open('a/foo', 'wt') as f: f.write('something new in foo\n')
-        t.commit('new', rev_id='a2')
+        t.commit('new', rev_id=b'a2')
         b2.pull(b)
 
         self.assertEqual(b2.last_revision(), 'a2')
@@ -239,7 +239,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self.vfs_transport_server = create_server
         f = open('a_file', 'wb')
         try:
-            f.write('foobar\n')
+            f.write(b'foobar\n')
         finally:
             f.close()
 
@@ -296,7 +296,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor"""
-        f = file(os.devnull, "wb")
+        f = open(os.devnull, "wb")
         self.addCleanup(f.close)
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)

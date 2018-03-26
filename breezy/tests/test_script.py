@@ -314,7 +314,7 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.assertEqual(None, err)
 
     def test_cat_file_to_output(self):
-        self.build_tree_contents([('file', 'content\n')])
+        self.build_tree_contents([('file', b'content\n')])
         retcode, out, err = self.run_command(['cat', 'file'],
                                              None, 'content\n', None)
         self.assertEqual('content\n', out)
@@ -333,14 +333,14 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.assertEqual(None, err)
 
     def test_cat_file_to_file(self):
-        self.build_tree_contents([('file', 'content\n')])
+        self.build_tree_contents([('file', b'content\n')])
         retcode, out, err = self.run_command(['cat', 'file', '>file2'],
                                              None, None, None)
         self.assertFileEqual('content\n', 'file2')
 
     def test_cat_files_to_file(self):
-        self.build_tree_contents([('cat', 'cat\n')])
-        self.build_tree_contents([('dog', 'dog\n')])
+        self.build_tree_contents([('cat', b'cat\n')])
+        self.build_tree_contents([('dog', b'dog\n')])
         retcode, out, err = self.run_command(['cat', 'cat', 'dog', '>file'],
                                              None, None, None)
         self.assertFileEqual('cat\ndog\n', 'file')

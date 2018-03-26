@@ -171,8 +171,8 @@ class GraphIndexBuilder(object):
         if self._key_length != len(key):
             raise BadIndexKey(key)
         for element in key:
-            if not element or _whitespace_re.search(element) is not None:
-                raise BadIndexKey(element)
+            if not element or type(element) != bytes or _whitespace_re.search(element) is not None:
+                raise BadIndexKey(key)
 
     def _external_references(self):
         """Return references that are not present in this index.
@@ -530,7 +530,7 @@ class GraphIndex(object):
         self._nodes_by_key = None
         trailers = 0
         pos = stream.tell()
-        lines = stream.read().split('\n')
+        lines = stream.read().split(b'\n')
         # GZ 2009-09-20: Should really use a try/finally block to ensure close
         stream.close()
         del lines[-1]
@@ -1140,7 +1140,7 @@ class GraphIndex(object):
                         raise AssertionError("%s %s" % (self._size, pos))
                 trailers += 1
                 continue
-            elements = line.split('\0')
+            elements = line.split(b'\0')
             if len(elements) != self._expected_elements:
                 raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many

@@ -399,15 +399,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_unicode_author(self):
         tree1 = self.make_branch_and_tree('tree1')
 
-        self.build_tree_contents([('tree1/a', 'adi\xc3\xb3s')])
-        tree1.add(['a'], ['a-id'])
-        tree1.commit('a', rev_id='rev-1',
+        self.build_tree_contents([('tree1/a', b'adi\xc3\xb3s')])
+        tree1.add(['a'], [b'a-id'])
+        tree1.commit('a', rev_id=b'rev-1',
                      committer=u'Pepe P\xe9rez <pperez@ejemplo.com>',
                      timestamp=1166046000.00, timezone=0)
 
-        self.build_tree_contents([('tree1/b', 'bye')])
-        tree1.add(['b'], ['b-id'])
-        tree1.commit('b', rev_id='rev-2',
+        self.build_tree_contents([('tree1/b', b'bye')])
+        tree1.add(['b'], [b'b-id'])
+        tree1.commit('b', rev_id=b'rev-2',
                      committer=u'p\xe9rez',
                      timestamp=1166046000.00, timezone=0)
 
@@ -437,15 +437,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_author_or_committer(self):
         tree1 = self.make_branch_and_tree('tree1')
 
-        self.build_tree_contents([('tree1/a', 'hello')])
-        tree1.add(['a'], ['a-id'])
-        tree1.commit('a', rev_id='rev-1',
+        self.build_tree_contents([('tree1/a', b'hello')])
+        tree1.add(['a'], [b'a-id'])
+        tree1.commit('a', rev_id=b'rev-1',
                      committer='Committer <committer@example.com>',
                      timestamp=1166046000.00, timezone=0)
 
-        self.build_tree_contents([('tree1/b', 'bye')])
-        tree1.add(['b'], ['b-id'])
-        tree1.commit('b', rev_id='rev-2',
+        self.build_tree_contents([('tree1/b', b'bye')])
+        tree1.add(['b'], [b'b-id'])
+        tree1.commit('b', rev_id=b'rev-2',
                      committer='Committer <committer@example.com>',
                      authors=['Author <author@example.com>'],
                      timestamp=1166046000.00, timezone=0)

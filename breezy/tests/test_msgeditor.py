@@ -61,7 +61,7 @@ class MsgEditorTest(TestCaseWithTransport):
         b = working_tree.branch
         filename = u'hell\u00d8'
         try:
-            self.build_tree_contents([(filename, 'contents of hello')])
+            self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
             self.skipTest("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())

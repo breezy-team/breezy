@@ -99,7 +99,7 @@ class TestReadonly(TestCaseWithWorkingTree):
             hack_dirstate = True
 
         # Make it a little dirty
-        self.build_tree_contents([('tree/a', 'new contents of a\n')])
+        self.build_tree_contents([('tree/a', b'new contents of a\n')])
 
         # Make it readonly, and do some operations and then unlock
         self.set_dirs_readonly('tree')

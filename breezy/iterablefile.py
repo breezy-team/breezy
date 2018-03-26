@@ -132,6 +132,18 @@ class IterableFile(object):
 
     closed = property(lambda x: x._closed)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # If there was an error raised, prefer the original one
+        try:
+            self.close()
+        except:
+            if exc_type is None:
+                raise
+        return False
+
     def flush(self):
         """No-op for standard compliance.
         >>> f = IterableFile([])

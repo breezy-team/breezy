@@ -70,9 +70,9 @@ class TestConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_conflict_dir(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('hello', 'hello world4'),
-                                  ('hello.THIS', 'hello world2'),
-                                  ('hello.BASE', 'hello world1'),
+        self.build_tree_contents([('hello', b'hello world4'),
+                                  ('hello.THIS', b'hello world2'),
+                                  ('hello.BASE', b'hello world1'),
                                   ])
         os.mkdir('hello.OTHER')
         tree.add('hello', 'q')

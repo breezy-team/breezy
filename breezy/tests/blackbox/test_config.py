@@ -57,12 +57,12 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
 
     def test_unexpected_regexp(self):
         self.run_bzr_error(
-            ['The "\*file" configuration option does not exist',],
+            ['The "\\*file" configuration option does not exist',],
             ['config', '*file'])
 
     def test_wrong_regexp(self):
         self.run_bzr_error(
-            ['Invalid pattern\(s\) found. "\*file" nothing to repeat',],
+            ['Invalid pattern\\(s\\) found. "\\*file" nothing to repeat',],
             ['config', '--all', '*file'])
 
 
