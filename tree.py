@@ -963,7 +963,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         # TODO(jelmer): Implement a more efficient version of this
         for path, entry in self.iter_entries_by_dir():
             if entry.kind == 'tree-reference':
-                yield path, entry.file_id
+                yield path, self.mapping.generate_file_id(b'')
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
