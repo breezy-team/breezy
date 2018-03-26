@@ -1128,19 +1128,19 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                             errors.NoSuchFile(to_rel))
                     raise
             if kind != 'directory':
-                (index, from_subpath) = self._lookup_index(from_path)
+                (index, from_index_path) = self._lookup_index(from_path)
                 try:
-                    del index[from_subpath]
+                    del index[from_index_path]
                 except KeyError:
                     pass
                 self._index_add_entry(to_rel, kind)
             else:
                 todo = [(p, i) for (p, i) in self._recurse_index_entries() if p.startswith(from_path+'/')]
-                for from_subpath, from_value in todo:
-                    (to_index, to_subpath) = self._lookup_index(posixpath.join(to_path, posixpath.relpath(p, from_path)))
-                    to_index[to_subpath] = from_value
-                    # TODO(jelmer): Handle submodules
-                    del self.index[from_subpath]
+                for child_path, child_value in todo:
+                    (child_to_index, child_to_index_path) = self._lookup_index(posixpath.join(to_path, posixpath.relpath(child_path, from_path)))
+                    child_to_index[child_to_index_path] = child_value
+                    (child_from_index, child_from_index_path) = self._lookup_index(child_path)
+                    del child_from_index[child_from_index_path]
 
             self._versioned_dirs = None
             self.flush()
