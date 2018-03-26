@@ -503,6 +503,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return None
 
+    def get_reference_revision(self, path, file_id=None):
+        """See RevisionTree.get_symlink_target."""
+        (mode, hexsha) = self._lookup_path(path)
+        if S_ISGITLINK(mode):
+            return self._repository.lookup_foreign_revision_id(hexsha)
+        else:
+            return None
+
     def _comparison_data(self, entry, path):
         if entry is None:
             return None, False, None

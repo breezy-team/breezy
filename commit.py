@@ -172,6 +172,9 @@ class GitCommitBuilder(CommitBuilder):
                     blob = Blob()
                     blob.data = basis_tree.get_file_text(path, entry.file_id)
                     self._blobs[encoded_path] = (entry_mode(entry), blob.id)
+                elif entry.kind == "tree-reference":
+                    self._blobs[encoded_path] = (
+                        entry_mode(entry), read_submodule_head(path))
                 else:
                     raise NotImplementedError
         if not self._lossy:

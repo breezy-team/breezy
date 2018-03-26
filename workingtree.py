@@ -532,6 +532,21 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 if not self._has_dir(p):
                     yield p
 
+    def _gather_kinds(self, files, kinds):
+        """See MutableTree._gather_kinds."""
+        with self.lock_tree_write():
+            for pos, f in enumerate(files):
+                if kinds[pos] is None:
+                    fullpath = osutils.normpath(self.abspath(f))
+                    try:
+                         kind = osutils.file_kind(fullpath)
+                    except OSError as e:
+                        if e.errno == errno.ENOENT:
+                            raise errors.NoSuchFile(fullpath)
+                    if kind == 'directory' and f != '' and os.path.exists(os.path.join(fullpath, '.git')):
+                        kind = 'tree-reference'
+                    kinds[pos] = kind
+
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
         if self._lock_mode != 'w':

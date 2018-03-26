@@ -584,7 +584,7 @@ def object_mode(kind, executable):
 
 def entry_mode(entry):
     """Determine the git file mode for an inventory entry."""
-    return object_mode(entry.kind, entry.executable)
+    return object_mode(entry.kind, getattr(entry, 'executable', False))
 
 
 def directory_to_tree(children, lookup_ie_sha1, unusual_modes, empty_file_name,
