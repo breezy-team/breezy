@@ -86,8 +86,6 @@ class GitCommitBuilder(CommitBuilder):
         return self._any_changes
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
-        def treeref_sha1(path, file_id):
-            return read_submodule_head(os.path.join(workingtree.basedir, path))
         seen_root = False
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
@@ -130,7 +128,7 @@ class GitCommitBuilder(CommitBuilder):
                 entry.symlink_target = symlink_target
                 st = None
             elif kind[1] == "tree-reference":
-                sha = treeref_sha1(path[1], file_id)
+                sha = read_submodule_head(workingtree.abspath(path[1]))
                 reference_revision = workingtree.get_reference_revision(path[1], file_id)
                 entry.reference_revision = reference_revision
                 st = None
@@ -174,7 +172,7 @@ class GitCommitBuilder(CommitBuilder):
                     self._blobs[encoded_path] = (entry_mode(entry), blob.id)
                 elif entry.kind == "tree-reference":
                     self._blobs[encoded_path] = (
-                        entry_mode(entry), read_submodule_head(path))
+                        entry_mode(entry), read_submodule_head(workingtree.abspath(path)))
                 else:
                     raise NotImplementedError
         if not self._lossy:
