@@ -673,8 +673,11 @@ class LocalGitBranch(GitBranch):
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return branch.Branch.open(self.controldir.root_transport.clone(path).base,
-                           possible_transports=possible_transports)
+        url = urlutils.join(self.user_url, path)
+        return branch.Branch.open(
+                url,
+                possible_transports=possible_transports)
+
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
