@@ -588,10 +588,12 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
         else:
             oldversioned = True
             oldpath = oldpath.decode("utf-8")
-            if oldmode is None:
-                raise ValueError
-            oldexe = mode_is_executable(oldmode)
-            oldkind = mode_kind(oldmode)
+            if oldmode:
+                oldexe = mode_is_executable(oldmode)
+                oldkind = mode_kind(oldmode)
+            else:
+                oldexe = False
+                oldkind = None
             if oldpath == u'':
                 oldparent = None
                 oldname = ''
