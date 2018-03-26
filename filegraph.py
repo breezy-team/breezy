@@ -44,7 +44,7 @@ class GitFileLastChangeScanner(object):
         target_mode, target_sha = tree_lookup_path(self.store.__getitem__,
             commit.tree, path)
         if path == '':
-            target_mode = stat.S_IFDIR | 0644
+            target_mode = stat.S_IFDIR
         if target_mode is None:
             raise AssertionError("sha %r for %r in %r" % (target_sha, path, commit_id))
         while True:
@@ -58,7 +58,7 @@ class GitFileLastChangeScanner(object):
                 else:
                     parent_commits.append(parent_commit)
                 if path == '':
-                    mode = stat.S_IFDIR | 0644
+                    mode = stat.S_IFDIR
                 # Candidate found iff, mode or text changed,
                 # or is a directory that didn't previously exist.
                 if mode != target_mode or (

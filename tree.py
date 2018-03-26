@@ -559,12 +559,15 @@ def tree_delta_from_git_changes(changes, mapping,
     return ret
 
 
-def changes_from_git_changes(changes, mapping, specific_files=None, include_unchanged=False):
+def changes_from_git_changes(changes, mapping, specific_files=None, include_unchanged=False,
+                             target_extras=None):
     """Create a iter_changes-like generator from a git stream.
 
     source and target are iterators over tuples with:
         (filename, sha, mode)
     """
+    if target_extras is None:
+        target_extras = set()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if not (specific_files is None or
                 (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
@@ -581,12 +584,16 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldkind = None
             oldname = None
             oldparent = None
+            oldversioned = False
         else:
+            oldversioned = True
             oldpath = oldpath.decode("utf-8")
-            if oldmode is None:
-                raise ValueError
-            oldexe = mode_is_executable(oldmode)
-            oldkind = mode_kind(oldmode)
+            if oldmode:
+                oldexe = mode_is_executable(oldmode)
+                oldkind = mode_kind(oldmode)
+            else:
+                oldexe = False
+                oldkind = None
             if oldpath == u'':
                 oldparent = None
                 oldname = ''
@@ -599,14 +606,16 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             newkind = None
             newname = None
             newparent = None
+            newversioned = False
         else:
-            newpath = newpath.decode("utf-8")
-            if newmode is not None:
+            newversioned = (newpath not in target_extras)
+            if newmode:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
             else:
                 newexe = False
                 newkind = None
+            newpath = newpath.decode("utf-8")
             if newpath == u'':
                 newparent = None
                 newname = u''
@@ -618,7 +627,7 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldpath == newpath):
             continue
         yield (fileid, (oldpath, newpath), (oldsha != newsha),
-             (oldpath is not None, newpath is not None),
+             (oldversioned, newversioned),
              (oldparent, newparent), (oldname, newname),
              (oldkind, newkind), (oldexe, newexe))
 
@@ -638,28 +647,38 @@ class InterGitTrees(_mod_tree.InterTree):
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        changes = self._iter_git_changes(want_unchanged=want_unchanged,
-                require_versioned=require_versioned,
-                specific_files=specific_files,
-                extra_trees=extra_trees)
-        source_fileid_map = self.source._fileid_map
-        target_fileid_map = self.target._fileid_map
-        return tree_delta_from_git_changes(changes, self.target.mapping,
-            (source_fileid_map, target_fileid_map),
-            specific_files=specific_files, include_root=include_root)
+        with self.lock_read():
+            changes, target_extras = self._iter_git_changes(
+                    want_unchanged=want_unchanged,
+                    require_versioned=require_versioned,
+                    specific_files=specific_files,
+                    extra_trees=extra_trees,
+                    want_unversioned=want_unversioned)
+            source_fileid_map = self.source._fileid_map
+            target_fileid_map = self.target._fileid_map
+            return tree_delta_from_git_changes(changes, self.target.mapping,
+                (source_fileid_map, target_fileid_map),
+                specific_files=specific_files, include_root=include_root)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
                      pb=None, extra_trees=[], require_versioned=True,
                      want_unversioned=False):
-        changes = self._iter_git_changes(want_unchanged=include_unchanged,
-                require_versioned=require_versioned,
-                specific_files=specific_files,
-                extra_trees=extra_trees)
-        return changes_from_git_changes(changes, self.target.mapping,
-            specific_files=specific_files, include_unchanged=include_unchanged)
+        with self.lock_read():
+            changes, target_extras = self._iter_git_changes(
+                    want_unchanged=include_unchanged,
+                    require_versioned=require_versioned,
+                    specific_files=specific_files,
+                    extra_trees=extra_trees,
+                    want_unversioned=want_unversioned)
+            return changes_from_git_changes(
+                    changes, self.target.mapping,
+                    specific_files=specific_files,
+                    include_unchanged=include_unchanged,
+                    target_extras=target_extras)
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=False, extra_trees=None):
+            require_versioned=False, extra_trees=None,
+            want_unversioned=False):
         raise NotImplementedError(self._iter_git_changes)
 
 
@@ -676,7 +695,8 @@ class InterGitRevisionTrees(InterGitTrees):
                 isinstance(target, GitRevisionTree))
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=True, extra_trees=None):
+            require_versioned=True, extra_trees=None,
+            want_unversioned=False):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -692,7 +712,7 @@ class InterGitRevisionTrees(InterGitTrees):
             store = self.source._repository._git.object_store
         return self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged,
-            include_trees=True, change_type_same=True)
+            include_trees=True, change_type_same=True), set()
 
 
 _mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)
