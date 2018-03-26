@@ -1190,7 +1190,4 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return (kind, None, None, None)
 
     def kind(self, relpath, file_id=None):
-        kind = osutils.file_kind(self.abspath(relpath))
-        if kind == 'directory' and self._directory_is_tree_reference(relpath):
-            return 'tree-reference'
-        return kind
+        return osutils.file_kind(self.abspath(relpath))
