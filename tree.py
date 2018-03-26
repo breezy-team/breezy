@@ -180,14 +180,12 @@ class GitTreeSymlink(_mod_tree.TreeLink):
 
 class GitTreeSubmodule(_mod_tree.TreeLink):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'revision', 'reference_revision']
+    __slots__ = ['file_id', 'name', 'parent_id', 'reference_revision']
 
-    def __init__(self, file_id, name, parent_id, revision=None,
-                 reference_revision=None):
+    def __init__(self, file_id, name, parent_id, reference_revision=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
-        self.revision = revision
         self.reference_revision = reference_revision
 
     @property
@@ -195,22 +193,21 @@ class GitTreeSubmodule(_mod_tree.TreeLink):
         return 'tree-reference'
 
     def __repr__(self):
-        return "%s(file_id=%r, name=%r, parent_id=%r, revision=%r, reference_revision=%r)" % (
+        return "%s(file_id=%r, name=%r, parent_id=%r, reference_revision=%r)" % (
             type(self).__name__, self.file_id, self.name, self.parent_id,
-            self.revision, self.reference_revision)
+            self.reference_revision)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
                 self.file_id == other.file_id and
                 self.name == other.name and
                 self.parent_id == other.parent_id and
-                self.revision == other.revision and
                 self.reference_revision == other.reference_revision)
 
     def copy(self):
         return self.__class__(
                 self.file_id, self.name, self.parent_id,
-                self.revision, self.reference_revision)
+                self.reference_revision)
 
 
 entry_factory = {
@@ -945,6 +942,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
                             dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
+                file_ie.parent_id = self.path2id(parent)
                 ret[(posixpath.dirname(path), path)] = file_ie
             return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
@@ -1142,7 +1140,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     (to_index, to_subpath) = self._lookup_index(posixpath.join(to_path, posixpath.relpath(p, from_path)))
                     to_index[to_subpath] = from_value
                     # TODO(jelmer): Handle submodules
-                    del self.index[p]
+                    del self.index[from_subpath]
 
             self._versioned_dirs = None
             self.flush()
