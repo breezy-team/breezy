@@ -852,7 +852,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent(
             urlutils.relative_url(tree.branch.user_url, subtree.branch.user_url))
-        self.assertEqual(subtree.branch.base, reference_parent.base)
+        self.assertEqual(subtree.branch.user_url, reference_parent.user_url)
 
     def test_reference_parent_accepts_possible_transports(self):
         tree = self.make_branch_and_tree('tree')
