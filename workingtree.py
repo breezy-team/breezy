@@ -1168,6 +1168,46 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         # it's a tree reference, except that the root of the tree is not
         return relpath and osutils.lexists(self.abspath(relpath) + u"/.git")
 
+    def extract(self, sub_path, file_id=None, format=None):
+        """Extract a subtree from this tree.
+
+        A new branch will be created, relative to the path for this tree.
+        """
+        def mkdirs(path):
+            segments = osutils.splitpath(path)
+            transport = self.branch.controldir.root_transport
+            for name in segments:
+                transport = transport.clone(name)
+                transport.ensure_base()
+            return transport
+
+        with self.lock_tree_write():
+            self.flush()
+            branch_transport = mkdirs(sub_path)
+            if format is None:
+                format = self.controldir.cloning_metadir()
+            branch_transport.ensure_base()
+            branch_bzrdir = format.initialize_on_transport(branch_transport)
+            try:
+                repo = branch_bzrdir.find_repository()
+            except errors.NoRepositoryPresent:
+                repo = branch_bzrdir.create_repository()
+            if not repo.supports_rich_root():
+                raise errors.RootNotRich()
+            new_branch = branch_bzrdir.create_branch()
+            new_branch.pull(self.branch)
+            for parent_id in self.get_parent_ids():
+                new_branch.fetch(self.branch, parent_id)
+            tree_transport = self.controldir.root_transport.clone(sub_path)
+            if tree_transport.base != branch_transport.base:
+                tree_bzrdir = format.initialize_on_transport(tree_transport)
+                tree_bzrdir.set_branch_reference(new_branch)
+            else:
+                tree_bzrdir = branch_bzrdir
+            wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
+            wt.set_parent_ids(self.get_parent_ids())
+            return wt
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
