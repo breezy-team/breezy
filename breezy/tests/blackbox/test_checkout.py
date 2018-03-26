@@ -41,10 +41,10 @@ class TestCheckout(TestCaseWithTransport):
     def setUp(self):
         super(TestCheckout, self).setUp()
         tree = controldir.ControlDir.create_standalone_workingtree('branch')
-        tree.commit('1', rev_id='1', allow_pointless=True)
+        tree.commit('1', rev_id=b'1', allow_pointless=True)
         self.build_tree(['branch/added_in_2'])
         tree.add('added_in_2')
-        tree.commit('2', rev_id='2')
+        tree.commit('2', rev_id=b'2')
 
     def test_checkout_makes_bound_branch(self):
         self.run_bzr('checkout branch checkout')
@@ -118,13 +118,13 @@ class TestCheckout(TestCaseWithTransport):
 
     def _test_checkout_existing_dir(self, lightweight):
         source = self.make_branch_and_tree('source')
-        self.build_tree_contents([('source/file1', 'content1'),
-                                  ('source/file2', 'content2'),])
+        self.build_tree_contents([('source/file1', b'content1'),
+                                  ('source/file2', b'content2'),])
         source.add(['file1', 'file2'])
         source.commit('added files')
-        self.build_tree_contents([('target/', ''),
-                                  ('target/file1', 'content1'),
-                                  ('target/file2', 'content3'),])
+        self.build_tree_contents([('target/', b''),
+                                  ('target/file1', b'content1'),
+                                  ('target/file2', b'content3'),])
         cmd = ['checkout', 'source', 'target']
         if lightweight:
             cmd.append('--lightweight')

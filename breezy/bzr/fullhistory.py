@@ -86,12 +86,12 @@ class FullHistoryBzrBranch(BzrBranch):
         This performs the actual writing to disk.
         It is intended to be called by set_revision_history."""
         self._transport.put_bytes(
-            'revision-history', '\n'.join(history),
+            'revision-history', b'\n'.join(history),
             mode=self.controldir._get_file_mode())
 
     def _gen_revision_history(self):
-        history = self._transport.get_bytes('revision-history').split('\n')
-        if history[-1:] == ['']:
+        history = self._transport.get_bytes('revision-history').split(b'\n')
+        if history[-1:] == [b'']:
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
@@ -154,7 +154,7 @@ class BzrBranchFormat5(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 5\n"
+        return b"Bazaar-NG branch format 5\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -165,8 +165,8 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """Create a branch of this format in a_controldir."""
         if append_revisions_only:
             raise errors.UpgradeRequired(a_controldir.user_url)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
+        utf8_files = [('revision-history', b''),
+                      ('branch-name', b''),
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 

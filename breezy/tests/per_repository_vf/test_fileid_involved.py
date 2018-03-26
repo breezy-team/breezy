@@ -51,7 +51,7 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         old_rt = b.repository.revision_tree('A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = 'B-id'
-        new_inv['a-file-id'].revision = 'ghost-id'
+        new_inv.get_entry('a-file-id').revision = 'ghost-id'
         new_rev = _mod_revision.Revision('B-id',
             timestamp=time.time(),
             timezone=0,
@@ -429,10 +429,9 @@ def set_executability(wt, path, executable=True):
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.
     """
-    file_id = wt.path2id(path)
     tt = transform.TreeTransform(wt)
     try:
-        tt.set_executability(executable, tt.trans_id_tree_file_id(file_id))
+        tt.set_executability(executable, tt.trans_id_tree_path(path))
         tt.apply()
     finally:
         tt.finalize()

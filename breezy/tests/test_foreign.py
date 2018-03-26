@@ -151,7 +151,7 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
 
     @classmethod
     def get_format_string(cls):
-        return "Dummy Foreign Vcs Repository"
+        return b"Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
         return "Dummy Foreign Vcs Repository"
@@ -234,7 +234,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
 
     @classmethod
     def get_format_string(cls):
-        return "Branch for Testing"
+        return b"Branch for Testing"
 
     @property
     def _matchingcontroldir(self):
@@ -266,7 +266,7 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
 
     @classmethod
     def get_format_string(cls):
-        return "A Dummy VCS Dir"
+        return b"A Dummy VCS Dir"
 
     @classmethod
     def get_format_description(cls):
@@ -418,7 +418,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
 
     def test_update_workingtree(self):
         wt = self.make_branch_and_tree('br1')
-        self.build_tree_contents([('br1/bla', 'original contents\n')])
+        self.build_tree_contents([('br1/bla', b'original contents\n')])
         wt.add('bla', 'bla-a')
         wt.commit('bla-a')
         root_id = wt.get_root_id()

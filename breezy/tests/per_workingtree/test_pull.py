@@ -61,13 +61,13 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('from')
         if not tree._format.supports_versioned_directories:
             self.skipTest('format does not support custom root ids')
-        tree.set_root_id('first_root_id')
+        tree.set_root_id(b'first_root_id')
         self.build_tree(['from/file'])
         tree.add(['file'])
         tree.commit('first')
         to_tree = tree.controldir.sprout('to').open_workingtree()
         self.assertEqual('first_root_id', to_tree.get_root_id())
-        tree.set_root_id('second_root_id')
+        tree.set_root_id(b'second_root_id')
         tree.commit('second')
         to_tree.pull(tree.branch)
         self.assertEqual('second_root_id', to_tree.get_root_id())
@@ -103,7 +103,7 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         trunk = self.make_branch_deleting_dir('trunk')
         work = trunk.controldir.sprout('work', revision_id='2').open_workingtree()
         work.branch.get_config_stack().set(
-            'bzr.transform.orphan_policy', 'move')
+            'transform.orphan_policy', 'move')
         # Add some unversioned files in dir
         self.build_tree(['work/dir/foo',
                          'work/dir/subdir/',

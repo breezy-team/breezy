@@ -48,7 +48,7 @@ class TestAdd(tests.TestCaseWithTransport):
         """add command prints the names of added files."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
-        self.build_tree_contents([('.bzrignore', 'CVS\n')])
+        self.build_tree_contents([('.bzrignore', b'CVS\n')])
         out = self.run_bzr('add')[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
@@ -249,9 +249,9 @@ class TestAdd(tests.TestCaseWithTransport):
         """Test skipping files larger than add.maximum_file_size"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['small.txt', 'big.txt', 'big2.txt'])
-        self.build_tree_contents([('small.txt', '0\n')])
-        self.build_tree_contents([('big.txt', '01234567890123456789\n')])
-        self.build_tree_contents([('big2.txt', '01234567890123456789\n')])
+        self.build_tree_contents([('small.txt', b'0\n')])
+        self.build_tree_contents([('big.txt', b'01234567890123456789\n')])
+        self.build_tree_contents([('big2.txt', b'01234567890123456789\n')])
         tree.branch.get_config_stack().set('add.maximum_file_size', 5)
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))

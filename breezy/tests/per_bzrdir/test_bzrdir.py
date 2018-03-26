@@ -53,7 +53,7 @@ class IdentifiableTestBranchFormat(breezy.branch.BranchFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
@@ -67,7 +67,7 @@ class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
@@ -81,7 +81,7 @@ class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class TestBzrDir(TestCaseWithBzrDir):
@@ -232,7 +232,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
@@ -298,7 +298,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
@@ -426,7 +426,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)

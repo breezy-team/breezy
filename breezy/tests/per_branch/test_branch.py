@@ -34,6 +34,7 @@ from breezy import (
     revision,
     shelf,
     tests,
+    tree as _mod_tree,
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
@@ -102,7 +103,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Test fetch-revision operation."""
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
-        self.build_tree_contents([('b1/foo', 'hello')])
+        self.build_tree_contents([('b1/foo', b'hello')])
         wt.add(['foo'])
         rev1 = wt.commit('lala!', allow_pointless=False)
 
@@ -118,7 +119,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/b', 'b')])
+        self.build_tree_contents([('a/b', b'b')])
         tree_a.add('b')
         tree_a.commit("silly commit")
 
@@ -423,8 +424,13 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
-        self.assertEqual('null:', checkout_b.last_revision())
-        rev1 = checkout_b.commit('rev1')
+        self.assertEqual(b'null:', checkout_b.last_revision())
+        try:
+            rev1 = checkout_b.commit('rev1')
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                    'roundtripping between %r and %r not supported' %
+                    (checkout_b.branch, checkout_b.branch.get_master_branch()))
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
@@ -491,6 +497,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
         self.assertFalse(revision.NULL_REVISION in must_fetch)
         self.assertFalse(revision.NULL_REVISION in should_fetch)
+
+    def test_create_memorytree(self):
+        tree = self.make_branch_and_tree('a')
+        self.assertIsInstance(tree.branch.create_memorytree(), _mod_tree.Tree)
 
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):
@@ -628,9 +638,22 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        made_branch = self.make_branch('.')
+        made_controldir = self.make_controldir('.')
+        made_controldir.create_repository()
+        if made_controldir._format.colocated_branches:
+            # Formats that support colocated branches sometimes have a default
+            # branch that is a reference branch (such as Git). Cope with
+            # those by creating a different colocated branch.
+            name = 'foo'
+        else:
+            name = None
+        try:
+            made_branch = made_controldir.create_branch(name)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('Uninitializable branch format')
+
         self.assertEqual(None,
-            made_branch._format.get_reference(made_branch.controldir))
+            made_branch._format.get_reference(made_branch.controldir, name))
 
     def test_set_reference(self):
         """set_reference on all regular branches should be callable."""
@@ -1096,7 +1119,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def test_get_unshelver(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('')
-        self.build_tree_contents([('tree/file', 'contents1')])
+        self.build_tree_contents([('tree/file', b'contents1')])
         tree.add('file')
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()
@@ -1106,7 +1129,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def test_get_unshelver_bound(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('')
-        self.build_tree_contents([('tree/file', 'contents1')])
+        self.build_tree_contents([('tree/file', b'contents1')])
         tree.add('file')
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()

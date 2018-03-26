@@ -122,7 +122,7 @@ class BranchUpdater(object):
                     br = self.make_branch(name, ref_name, dir_policy)
                     branch_tips.append((br, tip))
                     continue
-                except errors.BzrError, ex:
+                except errors.BzrError as ex:
                     show_error("ERROR: failed to create branch %s: %s",
                         name, ex)
             lost_head = self.cache_mgr.lookup_committish(tip)
@@ -146,7 +146,7 @@ class BranchUpdater(object):
             to_transport.create_prefix()
             try:
                 return controldir.ControlDir.open(location).open_branch()
-            except errors.NotBranchError, ex:
+            except errors.NotBranchError as ex:
                 return controldir.ControlDir.create_branch_convenience(
                     location,
                     format=self._branch_format,
@@ -154,7 +154,7 @@ class BranchUpdater(object):
         else:
             try:
                 return self.repo.controldir.open_branch(name)
-            except errors.NotBranchError, ex:
+            except errors.NotBranchError as ex:
                 return self.repo.controldir.create_branch(name)
 
 

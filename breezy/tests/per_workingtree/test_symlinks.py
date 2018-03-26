@@ -39,7 +39,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
     def test_smart_add_symlink(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
-            ('tree/link@', 'target'),
+            ('tree/link@', b'target'),
             ])
         tree.smart_add(['tree/link'])
         self.assertTrue(tree.is_versioned('link'))
@@ -57,13 +57,13 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertEqual('symlink', tree.kind('link'))
 
     def test_add_file_under_symlink(self):
-        # similar to 
+        # similar to
         # https://bugs.launchpad.net/bzr/+bug/192859/comments/3
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/link@', 'dir'),
             ('tree/dir/',),
-            ('tree/dir/file', 'content'),
+            ('tree/dir/file', b'content'),
             ])
         if tree.has_versioned_directories():
             self.assertEqual(
@@ -101,7 +101,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
         os.unlink('tree/a')
         self.build_tree_contents([
             ('tree/a/',),
-            ('tree/a/f', 'content'),
+            ('tree/a/f', b'content'),
             ])
         tree.smart_add(['tree/a/f'])
         tree.commit('change to dir')
@@ -121,7 +121,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/a/',),
-            ('tree/a/file', 'content'),
+            ('tree/a/file', b'content'),
             ])
         tree.smart_add(['tree/a'])
         tree.commit('add dir')
@@ -174,8 +174,8 @@ class TestOpenTree(TestCaseWithWorkingTree):
         self.build_tree_contents([
             ('link@', 'tree'),
             ('tree/outerlink@', '/not/there'),
-            ('tree/content', 'hello'),
+            ('tree/content', b'hello'),
             ('tree/sublink@', 'subdir'),
             ('tree/subdir/',),
-            ('tree/subdir/subcontent', 'subcontent stuff')
+            ('tree/subdir/subcontent', b'subcontent stuff')
             ])

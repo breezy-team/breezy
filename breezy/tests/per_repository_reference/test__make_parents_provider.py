@@ -34,8 +34,8 @@ class Test_MakeParentsProvider(TestCaseWithRepository):
         self.assertEqual({}, pp.get_parent_map(['revid2']))
         # Add a fallback repo with a commit
         wt_a = self.make_branch_and_tree('fallback')
-        wt_a.commit('first commit', rev_id='revid1')
-        wt_a.commit('second commit', rev_id='revid2')
+        wt_a.commit('first commit', rev_id=b'revid1')
+        wt_a.commit('second commit', rev_id=b'revid2')
         fallback_repo = wt_a.branch.repository
         referring_repo.add_fallback_repository(fallback_repo)
         # Now revid1 appears in pp's results.

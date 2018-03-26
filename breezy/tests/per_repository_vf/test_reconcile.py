@@ -356,11 +356,11 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.second_tree = self.make_branch_and_tree(
             'reversed-secondary-parents')
         for t in [self.first_tree, self.second_tree]:
-            t.commit('1', rev_id='1')
+            t.commit('1', rev_id=b'1')
             uncommit(t.branch, tree=t)
-            t.commit('2', rev_id='2')
+            t.commit('2', rev_id=b'2')
             uncommit(t.branch, tree=t)
-            t.commit('3', rev_id='3')
+            t.commit('3', rev_id=b'3')
             uncommit(t.branch, tree=t)
         #second_tree = self.make_branch_and_tree('reversed-secondary-parents')
         #second_tree.pull(tree) # XXX won't copy the repo?

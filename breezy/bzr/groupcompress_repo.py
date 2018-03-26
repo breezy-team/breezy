@@ -1384,7 +1384,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
 
     @classmethod
     def get_format_string(cls):
-        return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')
+        return b'Bazaar repository format 2a (needs bzr 1.16 or later)\n'
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -1407,7 +1407,7 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
 
     @classmethod
     def get_format_string(cls):
-        return ('Bazaar development format 8\n')
+        return b'Bazaar development format 8\n'
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

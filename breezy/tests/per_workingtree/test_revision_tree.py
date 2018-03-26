@@ -81,9 +81,9 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             raise tests.TestNotApplicable(
                 'tree does not support setting file ids')
-        tree.set_root_id('one')
+        tree.set_root_id(b'one')
         rev1 = tree.commit('first post')
-        tree.set_root_id('two')
+        tree.set_root_id(b'two')
         try:
             cached_revision_tree = tree.revision_tree(rev1)
         except errors.NoSuchRevision:
@@ -123,7 +123,7 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertRaises(errors.NoSuchId, basis.kind, 'a')
+        self.assertRaises(errors.NoSuchFile, basis.kind, 'a')
         self.assertEqual(['directory', 'file'],
                          [basis.kind('b'), basis.kind('b/c')])
         try:
@@ -134,6 +134,6 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
                 % type(tree))
         other.lock_read()
         self.addCleanup(other.unlock)
-        self.assertRaises(errors.NoSuchId, other.kind, 'b')
-        self.assertRaises(errors.NoSuchId, other.kind, 'c')
+        self.assertRaises(errors.NoSuchFile, other.kind, 'b')
+        self.assertRaises(errors.NoSuchFile, other.kind, 'c')
         self.assertEqual('file', other.kind('a'))

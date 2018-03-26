@@ -105,7 +105,7 @@ class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Sample .bzr repository format."
+        return b"Sample .bzr repository format."
 
     def initialize(self, a_controldir, shared=False):
         """Initialize a repository in a BzrDir"""
@@ -154,11 +154,11 @@ class TestRepositoryFormat(TestCaseWithTransport):
     def test_from_string(self):
         self.assertIsInstance(
             SampleRepositoryFormat.from_string(
-                "Sample .bzr repository format."),
+                b"Sample .bzr repository format."),
             SampleRepositoryFormat)
         self.assertRaises(AssertionError,
             SampleRepositoryFormat.from_string,
-                "Different .bzr repository format.")
+                b"Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -169,15 +169,15 @@ class TestRepositoryFormat(TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.repository.update_feature_flags({"name": "necessity"})
+        tree.branch.repository.update_feature_flags({b"name": b"necessity"})
         found_format = bzrrepository.RepositoryFormatMetaDir.find_format(tree.controldir)
         self.assertIsInstance(found_format, bzrrepository.RepositoryFormatMetaDir)
-        self.assertEqual(found_format.features.get("name"), "necessity")
+        self.assertEqual(found_format.features.get(b"name"), b"necessity")
         self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-            "name")
-        bzrrepository.RepositoryFormatMetaDir.register_feature("name")
+            b"name")
+        bzrrepository.RepositoryFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
 
@@ -190,9 +190,9 @@ class TestRepositoryFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleRepositoryFormat()
         self.registry.register(format)
-        self.assertEqual(format, self.registry.get("Sample .bzr repository format."))
+        self.assertEqual(format, self.registry.get(b"Sample .bzr repository format."))
         self.registry.remove(format)
-        self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
+        self.assertRaises(KeyError, self.registry.get, b"Sample .bzr repository format.")
 
     def test_get_all(self):
         format = SampleRepositoryFormat()
@@ -253,7 +253,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         tree = control.create_workingtree()
         tree.add(['foo'], ['Nasty-IdC:'], ['file'])
         tree.put_file_bytes_non_atomic('foo', '')
-        tree.commit('1st post', rev_id='foo')
+        tree.commit('1st post', rev_id=b'foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             '\nfoo fulltext 0 81  :')
 
@@ -447,14 +447,14 @@ class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
     @classmethod
     def get_format_string(cls):
-        return "Test Format 1"
+        return b"Test Format 1"
 
 
 class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
 
     @classmethod
     def get_format_string(cls):
-        return "Test Format 2"
+        return b"Test Format 2"
 
 
 class TestRepositoryConverter(TestCaseWithTransport):
@@ -518,7 +518,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
             revision_tree.get_file_lines(u'', revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
-        tree.commit("Another dull commit", rev_id='dull2')
+        tree.commit("Another dull commit", rev_id=b'dull2')
         revision_tree = tree.branch.repository.revision_tree('dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
@@ -538,7 +538,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         mt = self.make_branch_and_memory_tree('test', format='2a')
         mt.lock_write()
         self.addCleanup(mt.unlock)
-        mt.add([''], ['root-id'])
+        mt.add([''], [b'root-id'])
         mt.commit('first')
         index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
         self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
@@ -553,12 +553,12 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder = self.make_branch_builder('source', format='2a')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='1')
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            revision_id=b'1')
         builder.build_snapshot(['1'], [
-            ('modify', ('file-id', 'content-2\n'))],
-            revision_id='2')
+            ('modify', (b'file-id', 'content-2\n'))],
+            revision_id=b'2')
         builder.finish_series()
         source = builder.get_branch()
         target = self.make_repository('target', format='2a')
@@ -566,9 +566,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
-            [('file-id', '1',), ('file-id', '2',)])
-        file_1_details = details[('file-id', '1')]
-        file_2_details = details[('file-id', '2')]
+            [(b'file-id', '1',), (b'file-id', '2',)])
+        file_1_details = details[(b'file-id', '1')]
+        file_2_details = details[(b'file-id', '2')]
         # The index, and what to read off disk, should be the same for both
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
@@ -577,12 +577,12 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder = self.make_branch_builder('source', format='2a')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='1')
-        builder.build_snapshot(['1'], [
-            ('modify', ('file-id', 'content-2\n'))],
-            revision_id='2')
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [
+            ('modify', (b'file-id', 'content-2\n'))],
+            revision_id=b'2')
         builder.finish_series()
         source = builder.get_branch()
         target = self.make_repository('target', format='2a')
@@ -590,9 +590,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
-            [('file-id', '1',), ('file-id', '2',)])
-        file_1_details = details[('file-id', '1')]
-        file_2_details = details[('file-id', '2')]
+            [(b'file-id', '1',), (b'file-id', '2',)])
+        file_1_details = details[(b'file-id', '1')]
+        file_2_details = details[(b'file-id', '2')]
         # The index, and what to read off disk, should be the same for both
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
@@ -601,12 +601,12 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder = self.make_branch_builder('source', format='2a')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='1')
-        builder.build_snapshot(['1'], [
-            ('modify', ('file-id', 'content-2\n'))],
-            revision_id='2')
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [
+            ('modify', (b'file-id', 'content-2\n'))],
+            revision_id=b'2')
         builder.finish_series()
         source = builder.get_branch()
         target = self.make_repository('target', format='2a')
@@ -614,9 +614,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
-            [('file-id', '1',), ('file-id', '2',)])
-        file_1_details = details[('file-id', '1')]
-        file_2_details = details[('file-id', '2')]
+            [(b'file-id', '1',), (b'file-id', '2',)])
+        file_1_details = details[(b'file-id', '1')]
+        file_2_details = details[(b'file-id', '2')]
         # The index, and what to read off disk, should be the same for both
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
@@ -628,7 +628,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
     def test_inventories_use_chk_map_with_parent_base_dict(self):
         tree = self.make_branch_and_memory_tree('repo', format="2a")
         tree.lock_write()
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         revid = tree.commit("foo")
         tree.unlock()
         tree.lock_read()
@@ -649,7 +649,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         for pos in range(20):
             tree.commit(str(pos))
 
@@ -657,7 +657,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         # 1 commit to leave untouched
         tree.commit('1')
         to_keep = tree.branch.repository._pack_collection.names()
@@ -693,22 +693,22 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                             format='2a')
         # We have to build a fairly large tree, so that we are sure the chk
         # pages will have split into multiple pages.
-        entries = [('add', ('', 'a-root-id', 'directory', None))]
+        entries = [('add', ('', b'a-root-id', 'directory', None))]
         for i in 'abcdefghijklmnopqrstuvwxyz123456789':
             for j in 'abcdefghijklmnopqrstuvwxyz123456789':
                 fname = i + j
-                fid = fname + '-id'
+                fid = fname.encode('utf-8') + b'-id'
                 content = 'content for %s\n' % (fname,)
                 entries.append(('add', (fname, fid, 'file', content)))
         source_builder.start_series()
-        source_builder.build_snapshot(None, entries, revision_id='rev-1')
+        source_builder.build_snapshot(None, entries, revision_id=b'rev-1')
         # Now change a few of them, so we get a few new pages for the second
         # revision
-        source_builder.build_snapshot(['rev-1'], [
-            ('modify', ('aa-id', 'new content for aa-id\n')),
-            ('modify', ('cc-id', 'new content for cc-id\n')),
-            ('modify', ('zz-id', 'new content for zz-id\n')),
-            ], revision_id='rev-2')
+        source_builder.build_snapshot([b'rev-1'], [
+            ('modify', (b'aa-id', 'new content for aa-id\n')),
+            ('modify', (b'cc-id', 'new content for cc-id\n')),
+            ('modify', (b'zz-id', 'new content for zz-id\n')),
+            ], revision_id=b'rev-2')
         source_builder.finish_series()
         source_branch = source_builder.get_branch()
         source_branch.lock_read()
@@ -719,8 +719,8 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
-        search = vf_search.SearchResult({'rev-2'}, {'rev-1'}, 1,
-                                    {'rev-2'})
+        search = vf_search.SearchResult({b'rev-2'}, {b'rev-1'}, 1,
+                                    {b'rev-2'})
         simple_chk_records = []
         for vf_name, substream in source.get_stream(search):
             if vf_name == 'chk_bytes':
@@ -1719,18 +1719,18 @@ class TestFeatures(tests.TestCaseWithTransport):
     def test_open_with_present_feature(self):
         self.addCleanup(
             bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-            "makes-cheese-sandwich")
+            b"makes-cheese-sandwich")
         bzrrepository.RepositoryFormatMetaDir.register_feature(
-            "makes-cheese-sandwich")
+            b"makes-cheese-sandwich")
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.features[b"makes-cheese-sandwich"] = b"required"
         repo._format.check_support_status(False)
         repo.unlock()
 
     def test_open_with_missing_required_feature(self):
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.features[b"makes-cheese-sandwich"] = b"required"
         self.assertRaises(bzrdir.MissingFeature,
             repo._format.check_support_status, False)

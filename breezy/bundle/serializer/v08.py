@@ -281,7 +281,7 @@ class BundleSerializerV08(BundleSerializer):
 
         def finish_action(action, file_id, kind, meta_modified, text_modified,
                           old_path, new_path):
-            entry = new_tree.root_inventory[file_id]
+            entry = new_tree.root_inventory.get_entry(file_id)
             if entry.revision != default_revision_id:
                 action.add_utf8_property('last-changed', entry.revision)
             if meta_modified:

@@ -16,9 +16,11 @@
 
 """Tests for the test trees used by the per_tree tests."""
 
+from breezy import errors
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
+    TestSkipped,
     features,
     )
 
@@ -138,7 +140,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        self.assertEqual([], list(tree.unknowns()))
+        if tree.has_versioned_directories():
+            self.assertEqual([], list(tree.unknowns()))
+        else:
+            self.assertEqual(['b'], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         expected_paths = (
                 ['', 'a'] +
@@ -163,25 +168,45 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        self.assertEqual([], list(tree.unknowns()))
+        if tree.has_versioned_directories():
+            self.assertEqual([], list(tree.unknowns()))
+        else:
+            self.assertEqual(['1top-dir/1dir-in-1topdir'], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
-        self.assertEqual(
-            {tree.path2id(p) for p in [
-                '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
-                '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
-            set(tree.all_file_ids()))
-        # note that the order of the paths and fileids is deliberately
-        # mismatched to ensure that the result order is path based.
-        self.assertEqual(
-            [('', 'directory'),
-             ('0file', 'file'),
-             ('1top-dir', 'directory'),
-             (u'2utf\u1234file', 'file'),
-             ('symlink', 'symlink'),
-             ('1top-dir/0file-in-1topdir', 'file'),
-             ('1top-dir/1dir-in-1topdir', 'directory')],
-            [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
+        if tree.has_versioned_directories():
+            self.assertEqual(
+                {tree.path2id(p) for p in [
+                    '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
+                    '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
+                set(tree.all_file_ids()))
+            # note that the order of the paths and fileids is deliberately
+            # mismatched to ensure that the result order is path based.
+            self.assertEqual(
+                [('', 'directory'),
+                 ('0file', 'file'),
+                 ('1top-dir', 'directory'),
+                 (u'2utf\u1234file', 'file'),
+                 ('symlink', 'symlink'),
+                 ('1top-dir/0file-in-1topdir', 'file'),
+                 ('1top-dir/1dir-in-1topdir', 'directory')],
+                [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                {tree.path2id(p) for p in [
+                    '', '0file', '1top-dir', 
+                    '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
+                set(tree.all_file_ids()))
+            # note that the order of the paths and fileids is deliberately
+            # mismatched to ensure that the result order is path based.
+            self.assertEqual(
+                [('', 'directory'),
+                 ('0file', 'file'),
+                 ('1top-dir', 'directory'),
+                 (u'2utf\u1234file', 'file'),
+                 ('symlink', 'symlink'),
+                 ('1top-dir/0file-in-1topdir', 'file')],
+                [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
 
     def test_tree_with_subdirs_and_all_content_types_wo_symlinks(self):
         # currently this test tree requires unicode. It might be good
@@ -192,30 +217,90 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        self.assertEqual([], list(tree.unknowns()))
+        if tree.has_versioned_directories():
+            self.assertEqual([], list(tree.unknowns()))
+        else:
+            self.assertEqual(['1top-dir/1dir-in-1topdir'], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
-        self.assertEqual(
-            {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
-             '1top-dir/1dir-in-1topdir', u'2utf\u1234file'},
-            set(tree.all_versioned_paths()))
-        # note that the order of the paths and fileids is deliberately
-        # mismatched to ensure that the result order is path based.
-        self.assertEqual(
-            [('', 'directory'),
-             ('0file', 'file'),
-             ('1top-dir', 'directory'),
-             (u'2utf\u1234file', 'file'),
-             ('1top-dir/0file-in-1topdir', 'file'),
-             ('1top-dir/1dir-in-1topdir', 'directory')],
-            [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
+        if tree.has_versioned_directories():
+            self.assertEqual(
+                {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
+                 '1top-dir/1dir-in-1topdir', u'2utf\u1234file'},
+                set(tree.all_versioned_paths()))
+            # note that the order of the paths and fileids is deliberately
+            # mismatched to ensure that the result order is path based.
+            self.assertEqual(
+                [('', 'directory'),
+                 ('0file', 'file'),
+                 ('1top-dir', 'directory'),
+                 (u'2utf\u1234file', 'file'),
+                 ('1top-dir/0file-in-1topdir', 'file'),
+                 ('1top-dir/1dir-in-1topdir', 'directory')],
+                [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
+                 u'2utf\u1234file'},
+                set(tree.all_versioned_paths()))
+            # note that the order of the paths and fileids is deliberately
+            # mismatched to ensure that the result order is path based.
+            self.assertEqual(
+                [('', 'directory'),
+                 ('0file', 'file'),
+                 ('1top-dir', 'directory'),
+                 (u'2utf\u1234file', 'file'),
+                 ('1top-dir/0file-in-1topdir', 'file')],
+                [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
+
+    def _create_tree_with_utf8(self, tree):
+        self.requireFeature(features.UnicodeFilenameFeature)
+
+        # We avoid combining characters in file names here, normalization
+        # checks (as performed by some file systems (OSX) are outside the scope
+        # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
+        # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
+        paths = [u'',
+                 u'fo\N{Euro Sign}o',
+                 u'ba\N{Euro Sign}r/',
+                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+                ]
+        # bzr itself does not create unicode file ids, but we want them for
+        # testing.
+        file_ids = ['TREE_ROOT',
+                    'fo\xe2\x82\xaco-id',
+                    'ba\xe2\x82\xacr-id',
+                    'ba\xe2\x82\xacz-id',
+                   ]
+        self.build_tree(paths[1:])
+        if tree.get_root_id() is None:
+            # Some trees do not have a root yet.
+            tree.add(paths, file_ids)
+        else:
+            # Some trees will already have a root
+            if tree.supports_setting_file_ids():
+                tree.set_root_id(file_ids[0])
+                tree.add(paths[1:], file_ids[1:])
+            else:
+                tree.add(paths[1:])
+        if tree.branch.repository._format.supports_setting_revision_ids:
+            try:
+                tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
+            except errors.NonAsciiRevisionId:
+                raise TestSkipped('non-ascii revision ids not supported')
+        else:
+            tree.commit(u'in\xedtial')
+
+        return tree
 
     def test_tree_with_utf8(self):
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
             raise TestNotApplicable(
                 'format does not support custom file ids')
-        tree = self.get_tree_with_utf8(tree)
+        self._create_tree_with_utf8(tree)
+
+        tree = self.workingtree_to_test_tree(tree)
 
         revision_id = u'r\xe9v-1'.encode('utf8')
         root_id = 'TREE_ROOT'
@@ -228,11 +313,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                         (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id),
                        ]
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
-        finally:
-            tree.unlock()
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path) # Paths should match
@@ -258,8 +340,31 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             self.assertIsInstance(last_revision(), str)
 
     def test_tree_with_merged_utf8(self):
-        tree = self.make_branch_and_tree('.')
-        tree = self.get_tree_with_merged_utf8(tree)
+        wt = self.make_branch_and_tree('.')
+
+        self._create_tree_with_utf8(wt)
+
+        tree2 = wt.controldir.sprout('tree2').open_workingtree()
+        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        if wt.supports_setting_file_ids():
+            tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
+                      [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
+        else:
+            tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        if wt.branch.repository._format.supports_setting_revision_ids:
+            tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
+        else:
+            tree2.commit(u'to m\xe9rge')
+
+        self.assertTrue(tree2.is_versioned(u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+        wt.merge_from_branch(tree2.branch)
+        self.assertTrue(wt.is_versioned(u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+
+        if wt.branch.repository._format.supports_setting_revision_ids:
+            wt.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
+        else:
+            wt.commit(u'm\xe9rge')
+        tree = self.workingtree_to_test_tree(wt)
 
         revision_id_1 = u'r\xe9v-1'.encode('utf8')
         revision_id_2 = u'r\xe9v-2'.encode('utf8')
@@ -276,33 +381,26 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                         (u'ba\N{Euro Sign}r/qu\N{Euro Sign}x',
                          qux_id, bar_id, revision_id_2),
                        ]
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
-        finally:
-            tree.unlock()
 
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path) # Paths should match
             self.assertIsInstance(path, unicode)
-            self.assertEqual(efid, ie.file_id)
-            self.assertIsInstance(ie.file_id, str)
-            self.assertEqual(eparent, ie.parent_id)
+            self.assertIsInstance(ie.file_id, bytes)
+            if wt.supports_setting_file_ids():
+                self.assertEqual(efid, ie.file_id)
+                self.assertEqual(eparent, ie.parent_id)
             if eparent is not None:
-                self.assertIsInstance(ie.parent_id, str)
-            # WorkingTree's return None for the last modified revision
-            if ie.revision is not None:
-                self.assertIsInstance(ie.revision, str)
-                if epath == '':
-                    # Some trees will preserve the revision id of the tree root,
-                    # but not all will
-                    continue
-                self.assertEqual(erev, ie.revision)
-        self.assertEqual(len(path_and_ids), len(path_entries))
+                self.assertIsInstance(ie.parent_id, bytes)
+        self.assertEqual(len(path_and_ids), len(path_entries),
+                         "%r vs %r" % (
+                             [p for (p, f, pf, r) in path_and_ids],
+                             [p for (p, e) in path_entries]))
         get_revision_id = getattr(tree, 'get_revision_id', None)
         if get_revision_id is not None:
-            self.assertIsInstance(get_revision_id(), str)
+            self.assertIsInstance(get_revision_id(), bytes)
         last_revision = getattr(tree, 'last_revision', None)
         if last_revision is not None:
-            self.assertIsInstance(last_revision(), str)
+            self.assertIsInstance(last_revision(), bytes)

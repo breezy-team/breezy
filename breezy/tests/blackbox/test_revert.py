@@ -197,7 +197,7 @@ class TestRevert(TestCaseWithTransport):
         self.run_bzr(['revert', '--forget-merges'])
         self.build_tree(['file'])
         first_rev_id = tree.commit('initial commit')
-        self.build_tree_contents([('file', 'new content')])
+        self.build_tree_contents([('file', b'new content')])
         existing_parents = tree.get_parent_ids()
         self.assertEqual([first_rev_id], existing_parents)
         merged_parents = existing_parents + ['merged-in-rev']

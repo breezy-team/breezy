@@ -100,10 +100,10 @@ class TestInvoke(tests.TestCaseInTempDir):
         self._exe = None
         self._args = None
         self.build_tree_contents((
-            ('test.txt', 'stuff'),
-            ('test.txt.BASE', 'base stuff'),
-            ('test.txt.THIS', 'this stuff'),
-            ('test.txt.OTHER', 'other stuff'),
+            ('test.txt', b'stuff'),
+            ('test.txt.BASE', b'base stuff'),
+            ('test.txt.THIS', b'this stuff'),
+            ('test.txt.OTHER', b'other stuff'),
         ))
 
     def test_invoke_expands_exe_path(self):

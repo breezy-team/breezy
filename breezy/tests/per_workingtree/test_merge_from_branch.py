@@ -38,8 +38,8 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         self.tree_from = self.make_branch_and_tree('from')
         self.first_rev = self.tree_from.commit('first post')
         self.tree_to = self.tree_from.controldir.sprout('to').open_workingtree()
-        self.second_rev = self.tree_from.commit('second rev', allow_pointless=True)
-        self.to_second_rev = self.tree_to.commit('second rev', allow_pointless=True)
+        self.second_rev = self.tree_from.commit('second rev on from', allow_pointless=True)
+        self.to_second_rev = self.tree_to.commit('second rev on to', allow_pointless=True)
 
     def test_smoking_merge(self):
         """Smoke test of merge_from_branch."""
@@ -59,13 +59,13 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_compare_after_merge(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        self.build_tree_contents([('tree_a/file', 'text-a')])
+        self.build_tree_contents([('tree_a/file', b'text-a')])
         tree_a.add('file')
         tree_a.commit('added file')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')
         tree_a.commit('deleted file')
-        self.build_tree_contents([('tree_b/file', 'text-b')])
+        self.build_tree_contents([('tree_b/file', b'text-b')])
         tree_b.commit('changed file')
         tree_a.merge_from_branch(tree_b.branch)
         tree_a.lock_read()
@@ -74,7 +74,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_merge_empty(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        self.build_tree_contents([('tree_a/file', 'text-a')])
+        self.build_tree_contents([('tree_a/file', b'text-a')])
         tree_a.add('file')
         tree_a.commit('added file')
         tree_b = self.make_branch_and_tree('treeb')
@@ -84,13 +84,13 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_merge_base(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        self.build_tree_contents([('tree_a/file', 'text-a')])
+        self.build_tree_contents([('tree_a/file', b'text-a')])
         tree_a.add('file')
         rev1 = tree_a.commit('added file')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')
         tree_a.commit('deleted file')
-        self.build_tree_contents([('tree_b/file', 'text-b')])
+        self.build_tree_contents([('tree_b/file', b'text-b')])
         tree_b.commit('changed file')
         self.assertRaises(errors.PointlessMerge, tree_a.merge_from_branch,
             tree_b.branch, from_revision=tree_b.branch.last_revision())
@@ -102,16 +102,16 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_merge_type(self):
         this = self.make_branch_and_tree('this')
-        self.build_tree_contents([('this/foo', 'foo')])
+        self.build_tree_contents([('this/foo', b'foo')])
         this.add('foo')
         this.commit('added foo')
         other = this.controldir.sprout('other').open_workingtree()
-        self.build_tree_contents([('other/foo', 'bar')])
+        self.build_tree_contents([('other/foo', b'bar')])
         other.commit('content -> bar')
-        self.build_tree_contents([('this/foo', 'baz')])
+        self.build_tree_contents([('this/foo', b'baz')])
         this.commit('content -> baz')
         class QuxMerge(merge.Merge3Merger):
-            def text_merge(self, file_id, trans_id):
+            def text_merge(self, trans_id, paths, file_id):
                 self.tt.create_file('qux', trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
         self.assertEqual('qux', this.get_file_text('foo'))
@@ -157,15 +157,15 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def make_outer_tree(self):
         outer = self.make_branch_and_tree('outer')
-        self.build_tree_contents([('outer/foo', 'foo')])
+        self.build_tree_contents([('outer/foo', b'foo')])
         outer.add('foo')
         outer.commit('added foo')
         inner, revs = self.make_inner_branch()
-        outer.merge_from_branch(inner, to_revision=revs[0], from_revision='null:')
+        outer.merge_from_branch(inner, to_revision=revs[0], from_revision=b'null:')
         #retain original root id.
         outer.set_root_id(outer.basis_tree().get_root_id())
         outer.commit('merge inner branch')
-        outer.mkdir('dir-outer', 'dir-outer-id')
+        outer.mkdir('dir-outer', b'dir-outer-id')
         outer.move(['dir', 'file3'], to_dir='dir-outer')
         outer.commit('rename imported dir and file3 to dir-outer')
         return outer, inner, revs

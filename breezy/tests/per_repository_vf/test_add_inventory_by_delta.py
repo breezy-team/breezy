@@ -73,9 +73,9 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         for file_id in deletes:
             delta.append((old.id2path(file_id), None, file_id, None))
         for file_id in adds:
-            delta.append((None, new.id2path(file_id), file_id, new[file_id]))
+            delta.append((None, new.id2path(file_id), file_id, new.get_entry(file_id)))
         for file_id in common:
-            if old[file_id] != new[file_id]:
+            if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
                     file_id, new[file_id]))
         return delta

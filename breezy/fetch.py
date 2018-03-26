@@ -76,8 +76,8 @@ class RepoFetcher(object):
         self.find_ghosts = find_ghosts
         self.from_repository.lock_read()
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.from_repository, self.from_repository._format,
-               self.to_repository, self.to_repository._format)
+               str(self.from_repository), str(self.from_repository._format),
+               str(self.to_repository), str(self.to_repository._format))
         try:
             self.__fetch()
         finally:
@@ -317,7 +317,7 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.get_file_revision(u'', root_id))
+                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id), root_id))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

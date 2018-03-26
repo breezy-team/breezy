@@ -27,7 +27,7 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         source.add('foo')
-        source.commit('added file', rev_id='rev1')
+        source.commit('added file', rev_id=b'rev1')
         bundle = open('bundle', 'wb')
         try:
             source.branch.repository.create_bundle('rev1', 'null:', bundle,
@@ -45,7 +45,7 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         target = self.make_branch('target')
         md = merge_directive.MergeDirective2.from_objects(
             source.branch.repository, 'rev1', 0, 0, 'target',
-            base_revision_id='null:')
+            base_revision_id=b'null:')
         directive = open('directive', 'wb')
         try:
             directive.writelines(md.to_lines())

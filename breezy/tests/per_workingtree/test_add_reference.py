@@ -73,9 +73,9 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.skipTest('format does not support setting file ids')
         self.build_tree(['tree/file1'])
         tree.add('file1')
-        tree.set_root_id('root-id')
+        tree.set_root_id(b'root-id')
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
-        sub_tree.set_root_id('root-id')
+        sub_tree.set_root_id(b'root-id')
         try:
             self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sub_tree)

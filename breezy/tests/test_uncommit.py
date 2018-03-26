@@ -113,7 +113,7 @@ class TestUncommit(tests.TestCaseWithTransport):
     def test_uncommit_remove_tags_keeps_pending_merges(self):
         tree, history = self.make_linear_tree()
         copy = tree.controldir.sprout('copyoftree').open_workingtree()
-        copy.commit(message='merged', rev_id='merged')
+        copy.commit(message='merged', rev_id=b'merged')
         tree.merge_from_branch(copy.branch)
         tree.branch.tags.set_tag('pointsatmerged', 'merged')
         history.append(tree.commit('merge'))

@@ -887,7 +887,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         with self.lock_write():
-            signature = gpg_strategy.sign(plaintext)
+            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
             self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
@@ -1104,11 +1104,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return gpg.SIGNATURE_NOT_SIGNED, None
             signature = self.get_signature_text(revision_id)
 
-            testament = _mod_testament.Testament.from_revision(
-                    self, revision_id)
-            plaintext = testament.as_short_text()
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
 
-            return gpg_strategy.verify(signature, plaintext)
+            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
+            if testament.as_short_text() != signed_plaintext:
+                return gpg.SIGNATURE_NOT_VALID, None
+            return (status, key)
 
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.
@@ -1176,7 +1177,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # weave repositories refuse to store revisionids that are non-ascii.
         if revision_id is not None:
             # weaves require ascii revision ids.
-            if isinstance(revision_id, unicode):
+            if isinstance(revision_id, text_type):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
@@ -1391,19 +1392,19 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 # the repository is not separately opened are similar.
 
 format_registry.register_lazy(
-    'Bazaar-NG Knit Repository Format 1',
+    b'Bazaar-NG Knit Repository Format 1',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit1',
     )
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
+    b'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit3',
     )
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
+    b'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit4',
     )
@@ -1412,47 +1413,47 @@ format_registry.register_lazy(
 # post-subtrees to allow ease of testing.
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 (needs bzr 0.92)\n',
+    b'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
+    b'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
+    b'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
+    b'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    b'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    b'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
-    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
     'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2a',
     )
@@ -1460,13 +1461,13 @@ format_registry.register_lazy(
 # Development formats.
 # Check their docstrings to see if/when they are obsolete.
 format_registry.register_lazy(
-    ("Bazaar development format 2 with subtree support "
-        "(needs bzr.dev from before 1.8)\n"),
+    (b"Bazaar development format 2 with subtree support "
+        b"(needs bzr.dev from before 1.8)\n"),
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(
-    'Bazaar development format 8\n',
+    b'Bazaar development format 8\n',
     'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2aSubtree',
     )

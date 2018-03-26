@@ -45,7 +45,7 @@ def create_bundle_file(test_case):
     wt = branch.controldir.create_workingtree()
 
     wt.add(['a', 'subdir/'])
-    wt.commit('new project', rev_id='commit-1')
+    wt.commit('new project', rev_id=b'commit-1')
 
     out = BytesIO()
     rev_ids = write_bundle(wt.branch.repository,

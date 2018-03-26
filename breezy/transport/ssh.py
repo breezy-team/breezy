@@ -639,12 +639,11 @@ def save_host_keys():
     config.ensure_config_dir_exists()
 
     try:
-        f = open(bzr_hostkey_path, 'w')
-        f.write('# SSH host keys collected by bzr\n')
-        for hostname, keys in BRZ_HOSTKEYS.items():
-            for keytype, key in keys.items():
-                f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
-        f.close()
+        with open(bzr_hostkey_path, 'w') as f:
+            f.write('# SSH host keys collected by bzr\n')
+            for hostname, keys in BRZ_HOSTKEYS.items():
+                for keytype, key in keys.items():
+                    f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
     except IOError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 
