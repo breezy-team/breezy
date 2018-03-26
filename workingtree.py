@@ -50,6 +50,7 @@ from dulwich.objects import (
     Tree,
     S_IFGITLINK,
     S_ISGITLINK,
+    ZERO_SHA,
     )
 from dulwich.repo import Repo
 import os
@@ -1207,26 +1208,32 @@ tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
-        want_unchanged=False, update_index=False,
-        want_unversioned=False):
+        want_unchanged=False, want_unversioned=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    missing = set()
-    blobs = []
+    extras = set()
+    blobs = {}
+    # Report dirified directories to commit_tree first, so that they can be
+    # replaced with non-empty directories if they have contents.
+    dirified = []
     target_root_path = target.abspath('.').encode(sys.getfilesystemencoding())
     for path, index_entry in target.index.iteritems():
         try:
             live_entry = index_entry_from_path(
                     target.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
         except EnvironmentError as e:
-            if e.errno in (errno.ENOENT, errno.EISDIR):
-                missing.add(path)
-                # TODO blobs.append((path, index_entry.sha, index_entry.mode))
+            if e.errno == errno.ENOENT:
+                # Entry was removed; keep it listed, but mark it as gone.
+                blobs[path] = (ZERO_SHA, 0)
+            elif e.errno == errno.EISDIR:
+                # Entry was turned into a directory
+                dirified.append((path, Tree().id, stat.S_IFDIR))
+                store.add_object(Tree())
             else:
                 raise
         else:
-            blobs.append((path, live_entry.sha, cleanup_mode(live_entry.mode)))
+            blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for e in target.extras():
             ap = target.abspath(e)
@@ -1242,11 +1249,9 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                 blob = blob_from_path_and_stat(ap.encode('utf-8'), st)
             store.add_object(blob)
             np = np.encode('utf-8')
-            blobs.append((np, blob.id, st.st_mode))
-    for p in missing:
-        del target.index[p]
-    to_tree_sha = commit_tree(store, blobs)
-    return (store.tree_changes(
+            blobs[np] = (blob.id, st.st_mode)
+            extras.add(np)
+    to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.iteritems()])
+    return store.tree_changes(
         from_tree_sha, to_tree_sha, include_trees=True,
-        want_unchanged=want_unchanged, change_type_same=True),
-        missing)
+        want_unchanged=want_unchanged, change_type_same=True), extras

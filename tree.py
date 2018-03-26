@@ -560,14 +560,14 @@ def tree_delta_from_git_changes(changes, mapping,
 
 
 def changes_from_git_changes(changes, mapping, specific_files=None, include_unchanged=False,
-                             target_missing=None):
+                             target_extras=None):
     """Create a iter_changes-like generator from a git stream.
 
     source and target are iterators over tuples with:
         (filename, sha, mode)
     """
-    if target_missing is None:
-        target_missing = set()
+    if target_extras is None:
+        target_extras = set()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if not (specific_files is None or
                 (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
@@ -584,7 +584,9 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldkind = None
             oldname = None
             oldparent = None
+            oldversioned = False
         else:
+            oldversioned = True
             oldpath = oldpath.decode("utf-8")
             if oldmode is None:
                 raise ValueError
@@ -602,14 +604,16 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             newkind = None
             newname = None
             newparent = None
+            newversioned = False
         else:
-            newpath = newpath.decode("utf-8")
-            if newmode is not None and newpath not in target_missing:
+            newversioned = (newpath not in target_extras)
+            if newmode:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
             else:
                 newexe = False
                 newkind = None
+            newpath = newpath.decode("utf-8")
             if newpath == u'':
                 newparent = None
                 newname = u''
@@ -621,7 +625,7 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldpath == newpath):
             continue
         yield (fileid, (oldpath, newpath), (oldsha != newsha),
-             (oldpath is not None, newpath is not None or newpath in target_missing),
+             (oldversioned, newversioned),
              (oldparent, newparent), (oldname, newname),
              (oldkind, newkind), (oldexe, newexe))
 
@@ -642,7 +646,7 @@ class InterGitTrees(_mod_tree.InterTree):
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
         with self.lock_read():
-            changes, target_missing = self._iter_git_changes(
+            changes, target_extras = self._iter_git_changes(
                     want_unchanged=want_unchanged,
                     require_versioned=require_versioned,
                     specific_files=specific_files,
@@ -658,7 +662,7 @@ class InterGitTrees(_mod_tree.InterTree):
                      pb=None, extra_trees=[], require_versioned=True,
                      want_unversioned=False):
         with self.lock_read():
-            changes, target_missing = self._iter_git_changes(
+            changes, target_extras = self._iter_git_changes(
                     want_unchanged=include_unchanged,
                     require_versioned=require_versioned,
                     specific_files=specific_files,
@@ -668,7 +672,7 @@ class InterGitTrees(_mod_tree.InterTree):
                     changes, self.target.mapping,
                     specific_files=specific_files,
                     include_unchanged=include_unchanged,
-                    target_missing=target_missing)
+                    target_extras=target_extras)
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
             require_versioned=False, extra_trees=None,
