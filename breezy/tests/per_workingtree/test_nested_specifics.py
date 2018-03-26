@@ -18,6 +18,7 @@
 
 from breezy.bzr import (
     inventory,
+    inventorytree,
     )
 from breezy.tests import TestNotApplicable
 from breezy.transform import TreeTransform
@@ -32,9 +33,11 @@ class TestNestedSupport(TestCaseWithWorkingTree):
             raise TestNotApplicable('Tree references not supported')
         return tree
 
-    def test_set_get_tree_reference(self):
+    def test_set_get_inventory_tree_reference(self):
         """This tests that setting a tree reference is persistent."""
         tree = self.make_branch_and_tree('.')
+        if not isinstance(tree, inventorytree.InventoryTree):
+            raise TestNotApplicable('not an inventory tree')
         transform = TreeTransform(tree)
         trans_id = transform.new_directory('reference', transform.root,
             b'subtree-id')
