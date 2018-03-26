@@ -845,7 +845,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         # TODO(jelmer): Look in other indexes
         return self.index, encoded_path
 
-    def _index_add_entry(self, path, kind, flags=0):
+    def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
         if not isinstance(path, basestring):
             raise TypeError(path)
         if kind == "directory":
@@ -881,7 +881,12 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 self.store.add_object(blob)
             hexsha = blob.id
         elif kind == "tree-reference":
-            hexsha = self._read_submodule_head(path)
+            if reference_revision is not None:
+                hexsha = self.branch.lookup_bzr_revision_id(reference_revision)[0]
+            else:
+                hexsha = self._read_submodule_head(path)
+                if hexsha is None:
+                    raise errors.NoCommits(path)
             try:
                 stat_val = self._lstat(path)
             except EnvironmentError:

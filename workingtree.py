@@ -1018,7 +1018,12 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 else:
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
-                self._index_add_entry(new_path, ie.kind)
+                if ie.kind == 'tree-reference':
+                    self._index_add_entry(
+                            new_path, ie.kind,
+                            reference_revision=ie.reference_revision)
+                else:
+                    self._index_add_entry(new_path, ie.kind)
         self.flush()
 
     def annotate_iter(self, path, file_id=None,
@@ -1158,6 +1163,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def get_reference_revision(self, path, file_id=None):
         hexsha = self._read_submodule_head(path)
+        if hexsha is None:
+            return _mod_revision.NULL_REVISION
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path, file_id=None):
