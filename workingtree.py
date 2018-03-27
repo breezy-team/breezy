@@ -1249,7 +1249,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                 blob = blob_from_path_and_stat(ap.encode('utf-8'), st)
             store.add_object(blob)
             np = np.encode('utf-8')
-            blobs[np] = (blob.id, st.st_mode)
+            blobs[np] = (blob.id, cleanup_mode(st.st_mode))
             extras.add(np)
     to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.iteritems()])
     return store.tree_changes(
