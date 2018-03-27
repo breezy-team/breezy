@@ -593,14 +593,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev3 = self._rename_in_tree(tree2, name, 'rev3')
         tree1.merge_from_branch(tree2.branch)
         rev4 = self.mini_commit_record_iter_changes(tree1, 'new_' + name, 'new_' + name,
-            expect_fs_hash=expect_fs_hash)
+            expect_fs_hash=expect_fs_hash,
+            delta_against_basis=tree1.supports_rename_tracking())
         tree3, = self._get_revtrees(tree1, [rev4])
-        self.assertEqual(rev4, tree3.get_file_revision('new_' + name))
         expected_graph = {}
-        expected_graph[(file_id, rev1)] = ()
-        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
-        expected_graph[(file_id, rev3)] = ((file_id, rev1),)
-        expected_graph[(file_id, rev4)] = ((file_id, rev2), (file_id, rev3),)
+        if tree1.supports_rename_tracking():
+            self.assertEqual(rev4, tree3.get_file_revision('new_' + name))
+            expected_graph[(file_id, rev1)] = ()
+            expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+            expected_graph[(file_id, rev3)] = ((file_id, rev1),)
+            expected_graph[(file_id, rev4)] = ((file_id, rev2), (file_id, rev3),)
+        else:
+            self.assertEqual(rev2, tree3.get_file_revision('new_' + name))
+            expected_graph[(file_id, rev4)] = ()
         self.assertFileGraph(expected_graph, tree1, (file_id, rev4))
 
     def test_last_modified_revision_after_merge_dir_changes(self):
