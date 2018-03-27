@@ -50,31 +50,31 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             ('add', ('file', 'f-id', 'file', 'initial content\n')),
             ], revision_id='A')
         builder.build_snapshot(['A'], [
-            ('modify', ('f-id', 'initial content\n'
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n')),
             ], revision_id='B')
         builder.build_snapshot(['A'], [
-            ('modify', ('f-id', 'initial content\n'
+            ('modify', ('file', 'initial content\n'
                                 'and C content\n')),
             ], revision_id='C')
         builder.build_snapshot(['B', 'C'], [
-            ('modify', ('f-id', 'initial content\n'
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n'
                                 'and C content\n')),
             ], revision_id='D')
         builder.build_snapshot(['C'], [
-            ('modify', ('f-id', 'initial content\n'
+            ('modify', ('file', 'initial content\n'
                                 'and C content\n'
                                 'and E content\n')),
             ], revision_id='E')
         builder.build_snapshot(['D'], [
-            ('modify', ('f-id', 'initial content\n'
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n'
                                 'and C content\n'
                                 'and F content\n')),
             ], revision_id='F')
         builder.build_snapshot(['E', 'D'], [
-            ('modify', ('f-id', 'initial content\n'
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n'
                                 'and C content\n'
                                 'and E content\n')),

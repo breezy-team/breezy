@@ -579,9 +579,9 @@ class TestPush(tests.TestCaseWithTransport):
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('filename', 'f-id', 'file', 'content\n'))],
             revision_id=b'rev-1')
-        builder.build_snapshot(['rev-1'], [], revision_id=b'rev-2')
-        builder.build_snapshot(['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))],
+        builder.build_snapshot([b'rev-1'], [], revision_id=b'rev-2')
+        builder.build_snapshot([b'rev-2'],
+            [('modify', ('filename', b'new-content\n'))],
             revision_id=b'rev-3')
         builder.finish_series()
         branch = builder.get_branch()

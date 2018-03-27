@@ -95,7 +95,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         builder = self.make_branch_builder('test')
         builder.start_series()
         orig_content = INITIAL_NEWS_CONTENT
-        mod_content = """----------------------------
+        mod_content = b"""----------------------------
 commitfromnews release notes
 ----------------------------
 
@@ -118,7 +118,7 @@ IMPROVEMENTS
              ('add', ('NEWS', b'foo-id', 'file', orig_content)),
              ], revision_id=b'BASE-id')
         builder.build_snapshot(None,
-            [('modify', (b'foo-id', mod_content)),
+            [('modify', ('NEWS', mod_content)),
              ],
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()
@@ -130,7 +130,7 @@ IMPROVEMENTS
         builder = self.make_branch_builder('test')
         builder.start_series()
         orig_content = INITIAL_NEWS_CONTENT
-        mod_content = """----------------------------
+        mod_content = b"""----------------------------
 commitfromnews release notes
 ----------------------------
 
@@ -155,7 +155,7 @@ IMPROVEMENTS
              ('add', ('NEWS', b'foo-id', 'file', orig_content)),
              ], revision_id=b'BASE-id')
         builder.build_snapshot(None,
-            [('modify', (b'foo-id', mod_content)),
+            [('modify', ('NEWS', mod_content)),
              ],
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()

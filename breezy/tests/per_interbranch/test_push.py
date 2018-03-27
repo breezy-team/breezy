@@ -266,11 +266,11 @@ class TestPush(TestCaseWithInterBranch):
                 'BranchBuilder can not initialize some formats')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+            ('add', ('', None, 'directory', '')),
+            ('add', ('filename', None, 'file', 'content\n'))])
         revid2 = builder.build_snapshot([revid1], [])
         revid3 = builder.build_snapshot([revid2],
-            [('modify', ('f-id', 'new-content\n'))])
+            [('modify', ('filename', 'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
@@ -304,7 +304,7 @@ class TestPush(TestCaseWithInterBranch):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
         first = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+            ('add', ('', None, 'directory', ''))])
         second = builder.build_snapshot([first], [])
         third = builder.build_snapshot([second], [])
         fourth = builder.build_snapshot([third], [])

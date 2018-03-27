@@ -1109,18 +1109,18 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         # mainline
         revids['1'] = builder.build_snapshot(
             None,
-            [('add', ('', 'root-id', 'directory', '')),
-             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))])
+            [('add', ('', None, 'directory', '')),
+             ('add', ('file1', None, 'file', 'file1 content\n'))])
         # branch
         revids['2'] = builder.build_snapshot([revids['1']], [])
         revids['4'] = builder.build_snapshot(
             [revids['1']],
-            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))])
+            [('add', ('file4', None, 'file', 'file4 content\n'))])
         # master
         revids['3'] = builder.build_snapshot([revids['1']], [])
         revids['5'] = builder.build_snapshot(
             [revids['3']],
-            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))])
+            [('add', ('file5', None, 'file', 'file5 content\n'))])
         builder.finish_series()
         return (builder, builder._branch.last_revision(), revids)
 
