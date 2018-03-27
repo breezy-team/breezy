@@ -506,6 +506,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 raise errors.PathsNotVersionedError(unversioned)
         return filter(self.is_versioned, paths)
 
+    def _iter_tree_contents(self, include_trees=False):
+        if self.tree is None:
+            return iter([])
+        return self.store.iter_tree_contents(
+                self.tree, include_trees=include_trees)
+
 
 def tree_delta_from_git_changes(changes, mapping,
         (old_fileid_map, new_fileid_map), specific_files=None,
