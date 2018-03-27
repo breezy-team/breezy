@@ -27,7 +27,7 @@ from breezy import (
     tests,
     )
 from breezy.bzr import (
-    inventory,
+    inventorytree,
     )
 from breezy.tests import per_repository
 from breezy.tests import (
@@ -491,16 +491,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     changes))
                 file_id = tree.path2id(new_name)
                 self.assertIsNot(None, file_id)
-                if expect_fs_hash:
-                    tree_file_stat = tree.get_file_with_stat(new_name)
-                    tree_file_stat[0].close()
-                    self.assertLength(1, result)
-                    result = result[0]
-                    self.assertEqual(result[:2], (file_id, new_name))
-                    self.assertEqual(result[2][0], tree.get_file_sha1(new_name))
-                    self.assertEqualStat(result[2][1], tree_file_stat[1])
-                else:
-                    self.assertEqual([], result)
+                if isinstance(tree, inventorytree.InventoryTree):
+                    # TODO(jelmer): record_iter_changes shouldn't yield
+                    # data that is WorkingTree-format-specific and uses file ids.
+                    if expect_fs_hash:
+                        tree_file_stat = tree.get_file_with_stat(new_name)
+                        tree_file_stat[0].close()
+                        self.assertLength(1, result)
+                        result = result[0]
+                        self.assertEqual(result[:2], (file_id, new_name))
+                        self.assertEqual(result[2][0], tree.get_file_sha1(new_name))
+                        self.assertEqualStat(result[2][1], tree_file_stat[1])
+                    else:
+                        self.assertEqual([], result)
                 builder.finish_inventory()
                 if tree.branch.repository._format.supports_full_versioned_files:
                     inv_key = (builder._new_revision_id,)
@@ -513,13 +516,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 raise
             delta = builder.get_basis_delta()
             delta_dict = dict((change[2], change) for change in delta)
-            version_recorded = (file_id in delta_dict and
-                delta_dict[file_id][3] is not None and
-                delta_dict[file_id][3].revision == rev2)
-            if records_version:
-                self.assertTrue(version_recorded)
-            else:
-                self.assertFalse(version_recorded)
+            if tree.branch.repository._format.records_per_file_revision:
+                version_recorded = (file_id in delta_dict and
+                    delta_dict[file_id][3] is not None and
+                    delta_dict[file_id][3].revision == rev2)
+                if records_version:
+                    self.assertTrue(version_recorded)
+                else:
+                    self.assertFalse(version_recorded)
 
             revtree = builder.revision_tree()
             new_entry = revtree.iter_entries_by_dir(specific_files=[new_name]).next()[1]
@@ -532,7 +536,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqual(expected_delta, delta_dict[file_id])
             else:
                 expected_delta = None
-                self.assertFalse(version_recorded)
+                if tree.branch.repository._format.records_per_file_revision:
+                    self.assertFalse(version_recorded)
             tree.set_parent_ids([rev2])
         return rev2
 
