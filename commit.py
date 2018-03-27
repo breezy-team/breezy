@@ -155,26 +155,10 @@ class GitCommitBuilder(CommitBuilder):
                 basis_revid = self.parents[0]
             basis_tree = self.repository.revision_tree(basis_revid)
         # Fill in entries that were not changed
-        for path, entry in basis_tree.iter_entries_by_dir():
-            if type(path) is not unicode:
-                raise TypeError(path)
-            if entry.kind == 'directory':
+        for entry in basis_tree._iter_tree_contents(include_trees=False):
+            if entry.path in self._blobs:
                 continue
-            encoded_path = path.encode('utf-8')
-            if encoded_path not in self._blobs:
-                if entry.kind == "symlink":
-                    blob = Blob()
-                    blob.data = basis_tree.get_symlink_target(path, entry.file_id).encode('utf-8')
-                    self._blobs[encoded_path] = (entry_mode(entry), blob.id)
-                elif entry.kind == "file":
-                    blob = Blob()
-                    blob.data = basis_tree.get_file_text(path, entry.file_id)
-                    self._blobs[encoded_path] = (entry_mode(entry), blob.id)
-                elif entry.kind == "tree-reference":
-                    self._blobs[encoded_path] = (
-                        entry_mode(entry), read_submodule_head(workingtree.abspath(path)))
-                else:
-                    raise NotImplementedError
+            self._blobs[entry.path] = (entry.mode, entry.sha)
         if not self._lossy:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
