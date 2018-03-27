@@ -509,12 +509,15 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
 def tree_delta_from_git_changes(changes, mapping,
         (old_fileid_map, new_fileid_map), specific_files=None,
-        require_versioned=False, include_root=False):
+        require_versioned=False, include_root=False,
+        target_extras=None):
     """Create a TreeDelta from two git trees.
 
     source and target are iterators over tuples with:
         (filename, sha, mode)
     """
+    if target_extras is None:
+        target_extras = set()
     ret = delta.TreeDelta()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if newpath == u'' and not include_root:
@@ -530,8 +533,12 @@ def tree_delta_from_git_changes(changes, mapping,
         if oldpath is None and newpath is None:
             continue
         if oldpath is None:
-            file_id = new_fileid_map.lookup_file_id(newpath)
-            ret.added.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
+            if newpath in target_extras:
+                ret.unversioned.append(
+                    (osutils.normalized_filename(newpath)[0], None, mode_kind(newmode)))
+            else:
+                file_id = new_fileid_map.lookup_file_id(newpath)
+                ret.added.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
         elif newpath is None:
             file_id = old_fileid_map.lookup_file_id(oldpath)
             ret.removed.append((oldpath.decode('utf-8'), file_id, mode_kind(oldmode)))
@@ -556,6 +563,7 @@ def tree_delta_from_git_changes(changes, mapping,
         else:
             file_id = new_fileid_map.lookup_file_id(newpath)
             ret.unchanged.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
+
     return ret
 
 
@@ -658,7 +666,8 @@ class InterGitTrees(_mod_tree.InterTree):
             target_fileid_map = self.target._fileid_map
             return tree_delta_from_git_changes(changes, self.target.mapping,
                 (source_fileid_map, target_fileid_map),
-                specific_files=specific_files, include_root=include_root)
+                specific_files=specific_files, include_root=include_root,
+                target_extras=target_extras)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
                      pb=None, extra_trees=[], require_versioned=True,
