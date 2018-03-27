@@ -109,8 +109,9 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
         expected_dirblocks = [
             (('', tree.path2id('')),
-             ([dirblocks[1].as_tuple(), dirblocks[3].as_tuple()]
-                 if (tree.has_versioned_directories() or file_status != self.missing) else []) +
+             [dirblocks[1].as_tuple()] +
+             (dirblocks[3].as_tuple()]
+                 if (tree.has_versioned_directories() or file_status == self.unknown) else []) +
              [dirblocks[0].as_tuple()]
             ),
             (dirblocks[1].as_dir_tuple(),
