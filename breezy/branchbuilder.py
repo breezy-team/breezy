@@ -224,8 +224,7 @@ class BranchBuilder(object):
             tree = self._tree
         else:
             tree = self._branch.create_memorytree()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             if parent_ids is not None:
                 tree.set_parent_ids(parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -262,8 +261,6 @@ class BranchBuilder(object):
             return self._do_commit(tree, message=message, rev_id=revision_id,
                 timestamp=timestamp, timezone=timezone, committer=committer,
                 message_callback=message_callback)
-        finally:
-            tree.unlock()
 
     def _flush_pending(self, tree, pending):
         """Flush the pending actions in 'pending', i.e. apply them to 'tree'."""

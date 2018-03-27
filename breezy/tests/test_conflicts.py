@@ -478,7 +478,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         return [('modify', ('file', 'trunk content\nmore content\n'))]
 
     def do_modify_and_rename_file(self):
-        return [('modify', ('file', 'trunk content\nmore content\n')),
+        return [('modify', ('new-file', 'trunk content\nmore content\n')),
                 ('rename', ('file', 'new-file'))]
 
     def check_file_has_more_content(self):
