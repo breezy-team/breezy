@@ -419,6 +419,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_reparent_dir_changes(self):
         # reparenting a dir changes the last modified.
         tree = self.make_branch_and_tree('.')
+        if not tree.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self.build_tree(['dir/'])
         self._add_commit_reparent_check_changed(tree, 'dir')
 
