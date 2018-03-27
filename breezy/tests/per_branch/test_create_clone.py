@@ -115,10 +115,10 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
         rev1 = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+            ('add', ('', None, 'directory', ''))])
         rev2 = builder.build_snapshot([rev1], [])
         other = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+            ('add', ('', None, 'directory', ''))])
         rev3 = builder.build_snapshot([rev2, other], [])
         builder.finish_series()
         local = builder.get_branch()

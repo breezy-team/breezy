@@ -38,7 +38,7 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
     def make_snapshot(self, builder, parents, revid_name):
         self.assertNotIn(revid_name, self.revids)
         if parents is None:
-            files = [('add', ('', 'TREE_ROOT', 'directory', '')),]
+            files = [('add', ('', None, 'directory', '')),]
         else:
             parents = [self.revids[name] for name in parents]
             files = []
@@ -168,7 +168,7 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
     def make_snapshot(self, builder, parents, revid_name):
         self.assertNotIn(revid_name, self.revids)
         if parents is None:
-            files = [('add', ('', 'TREE_ROOT', 'directory', '')),]
+            files = [('add', ('', None, 'directory', '')),]
         else:
             parents = [self.revids[name] for name in parents]
             files = []

@@ -24,8 +24,8 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def make_single_rev_tree(self):
         builder = self.make_branch_builder('branch')
         revid = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', 'initial content\n')),
             ])
         b = builder.get_branch()
         tree = b.create_checkout('tree', lightweight=True)
@@ -52,8 +52,8 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', b'TREE_ROOT', 'directory', None)),
-            ('add', ('file', b'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
             ('modify', ('file', b'initial content\ncontent in 2\n')),
@@ -81,10 +81,10 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', b'TREE_ROOT', 'directory', None)),
+            ('add', ('', None, 'directory', None)),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('add', ('file', b'file-id', 'file', 'initial content\n')),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid3 = builder.build_snapshot([revid1], [])
         builder.finish_series()
@@ -104,13 +104,13 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', b'TREE_ROOT', 'directory', None)),
+            ('add', ('', None, 'directory', None)),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('add', ('file', b'file-id', 'file', 'initial content\n')),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid3 = builder.build_snapshot([revid1], [
-            ('add', ('a_dir', b'file-id', 'directory', None)),
+            ('add', ('a_dir', None, 'directory', None)),
             ])
         builder.finish_series()
         b = builder.get_branch()
@@ -129,8 +129,8 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', b'TREE_ROOT', 'directory', None)),
-            ('add', ('file', b'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
             ])
@@ -154,8 +154,8 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', 'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
             ('modify', ('file', 'initial content\nnew content\n')),
