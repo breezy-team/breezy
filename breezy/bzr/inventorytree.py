@@ -222,7 +222,7 @@ class InventoryTree(Tree):
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
 
-    def _path2inv_file_id(self, path, file_id=None):
+    def _path2inv_file_id(self, path):
         """Lookup a inventory and inventory file id by path.
 
         :param path: Path to look up
@@ -295,7 +295,7 @@ class InventoryTree(Tree):
 
     def iter_child_entries(self, path, file_id=None):
         with self.lock_read():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
+            inv, inv_file_id = self._path2inv_file_id(path)
             try:
                 ie = inv.get_entry(inv_file_id)
             except errors.NoSuchId:
@@ -802,7 +802,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         self._inventory = inv
 
     def get_file_mtime(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         try:
             ie = inv.get_entry(inv_file_id)
         except errors.NoSuchId:
@@ -814,18 +814,18 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return revision.timestamp
 
     def get_file_size(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).text_size
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         ie = inv.get_entry(inv_file_id)
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         try:
             ie = inv.get_entry(inv_file_id)
         except errors.NoSuchId:
@@ -833,7 +833,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return ie.revision
 
     def is_executable(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False
@@ -860,13 +860,13 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         ie = inv.get_entry(inv_file_id)
         # Inventories store symlink targets in unicode
         return ie.symlink_target
 
     def get_reference_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).reference_revision
 
     def get_root_id(self):
@@ -874,7 +874,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             return self.root_inventory.root.file_id
 
     def kind(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         try:
             return inv.get_entry(inv_file_id).kind
         except errors.NoSuchId:

@@ -2734,7 +2734,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('a-id', False,
-                           ((u'a', [u'c', u'c']), u'c', u'b'),
+                           ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((False, [False, False]), False, False)),
@@ -2854,7 +2854,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('sub-tree-root', False,
-                           ((u'sub', [u'alt_sub', u'alt_sub']), u'alt_sub', u'sub'),
+                           ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((False, [False, False]), False, False)),
@@ -2899,7 +2899,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
         self.assertEqual([('sub-tree-root', False,
-                           ((u'sub', [u'alt_sub', u'alt_sub']), u'alt_sub', u'sub'),
+                           ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((False, [False, False]), False, False)),
