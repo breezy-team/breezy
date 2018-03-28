@@ -232,10 +232,6 @@ class InventoryTree(Tree):
         # FIXME: Support nested trees
         inv = self.root_inventory
         inv_file_id = self.root_inventory.path2id(path)
-        if file_id is not None:
-            alt_inv, alt_inv_file_id = self._unpack_file_id(file_id)
-            if alt_inv_file_id != inv_file_id:
-                raise AssertionError("%r (%s) != %r (%s)" % (alt_inv_file_id, self.id2path(alt_inv_file_id), inv_file_id, path))
         return inv, inv_file_id
 
     def id2path(self, file_id):
