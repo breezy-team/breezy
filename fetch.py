@@ -33,10 +33,12 @@ from dulwich.object_store import (
     ObjectStoreGraphWalker,
     tree_lookup_path,
     )
+from dulwich.protocol import CAPABILITY_THIN_PACK
 from dulwich.walk import Walker
 from itertools import (
     imap,
     )
+from io import BytesIO
 import posixpath
 import re
 import stat
@@ -847,7 +849,20 @@ class InterGitGitRepository(InterFromGitRepository):
               isinstance(self.target, LocalGitRepository)):
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                f, commit, abort = self.target._git.object_store.add_pack()
+                if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
+                    # TODO(jelmer): Avoid reading entire file into memory and
+                    # only processing it after the whole file has been fetched.
+                    f = BytesIO()
+
+                    def commit():
+                        if f.tell():
+                            f.seek(0)
+                            self.target._git.object_store.move_in_thin_pack(f)
+
+                    def abort():
+                        pass
+                else:
+                    f, commit, abort = self.target._git.object_store.add_pack()
                 try:
                     refs = self.source.controldir.fetch_pack(
                         determine_wants, graphwalker, f.write,
