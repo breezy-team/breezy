@@ -202,8 +202,10 @@ def _export_iter_entries(tree, subdir, skip_special=True):
     if subdir is not None:
         subdir = subdir.rstrip('/')
     entries = tree.iter_entries_by_dir()
-    next(entries)  # skip root
     for path, entry in entries:
+        if path == '':
+            continue
+
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
         if skip_special and path.startswith(".bzr"):
