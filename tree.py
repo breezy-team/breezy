@@ -265,16 +265,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def all_versioned_paths(self):
         ret = set()
-        todo = set([('', self.tree)])
+        todo = set([(store, '', self.tree)])
         while todo:
-            (path, tree_id) = todo.pop()
+            (store, path, tree_id) = todo.pop()
             if tree_id is None:
                 continue
-            tree = self.store[tree_id]
+            tree = store[tree_id]
             for name, mode, hexsha in tree.items():
                 subpath = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
-                    todo.add((subpath, hexsha))
+                    todo.add((store, subpath, hexsha))
                 else:
                     ret.add(subpath)
         return ret
