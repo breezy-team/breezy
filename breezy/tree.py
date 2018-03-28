@@ -213,7 +213,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -237,10 +237,6 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_files that have been requested. This has no
-            impact if specific_files is None.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
