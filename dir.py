@@ -391,7 +391,7 @@ class LocalGitDir(GitDir):
 
     @property
     def control_transport(self):
-        return self.transport
+        return self._git._controltransport
 
     def __init__(self, transport, gitrepo, format):
         self._format = format

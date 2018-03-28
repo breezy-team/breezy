@@ -50,11 +50,13 @@ from dulwich.repo import (
     RefsContainer,
     BASE_DIRECTORIES,
     COMMONDIR,
+    CONTROLDIR,
     INDEX_FILENAME,
     OBJECTDIR,
     REFSDIR,
     SYMREF,
     check_ref_format,
+    read_gitfile,
     read_packed_refs_with_peeled,
     read_packed_refs,
     write_packed_refs,
@@ -68,6 +70,7 @@ from ...errors import (
     FileExists,
     LockError,
     NoSuchFile,
+    ReadError,
     TransportNotPossible,
     )
 
@@ -349,10 +352,16 @@ class TransportRepo(BaseRepo):
     def __init__(self, transport, bare, refs_text=None):
         self.transport = transport
         self.bare = bare
-        if self.bare:
-            self._controltransport = self.transport
+        try:
+            with transport.get(CONTROLDIR) as f:
+                path = read_gitfile(f)
+        except (ReadError, NoSuchFile):
+            if self.bare:
+                self._controltransport = self.transport
+            else:
+                self._controltransport = self.transport.clone('.git')
         else:
-            self._controltransport = self.transport.clone('.git')
+            self._controltransport = self.transport.clone(path)
         commondir = self.get_named_file(COMMONDIR)
         if commondir is not None:
             with commondir:

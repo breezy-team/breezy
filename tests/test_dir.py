@@ -67,6 +67,14 @@ class TestGitDir(tests.TestCaseInTempDir):
         gd = controldir.ControlDir.open('.')
         self.assertRaises(errors.NoWorkingTree, gd.open_workingtree)
 
+    def test_git_file(self):
+        gitrepo = GitRepo.init("blah", mkdir=True)
+        self.build_tree_contents([('foo/', ), ('foo/.git', 'gitdir: ../blah/.git\n')])
+
+        gd = controldir.ControlDir.open('foo')
+        self.assertEqual(gd.control_url.rstrip('/'),
+                         urlutils.local_path_to_url(os.path.abspath(gitrepo.controldir())))
+
 
 class TestGitDirFormat(tests.TestCase):
 
