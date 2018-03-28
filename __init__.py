@@ -136,14 +136,14 @@ class LocalGitProber(Prober):
         from ... import urlutils
         if urlutils.split(transport.base)[1] == ".git":
             raise bzr_errors.NotBranchError(path=transport.base)
-        if not transport.has_any(['objects', '.git/objects']):
+        if not transport.has_any(['objects', '.git/objects', '.git']):
             raise bzr_errors.NotBranchError(path=transport.base)
         lazy_check_versions()
         from .dir import (
             BareLocalGitControlDirFormat,
             LocalGitControlDirFormat,
             )
-        if transport.has_any(['.git/objects']):
+        if transport.has_any(['.git/objects', '.git']):
             return LocalGitControlDirFormat()
         if transport.has('info') and transport.has('objects'):
             return BareLocalGitControlDirFormat()
