@@ -633,6 +633,12 @@ class TransportObjectStore(PackBasedObjectStore):
             write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
         finally:
             idxfile.close()
+        idxfile = self.pack_transport.get(basename + ".idx")
+        idx = load_pack_index_file(basename+".idx", idxfile)
+        final_pack = Pack.from_objects(p, idx)
+        final_pack._basename = basename
+        self._add_known_pack(basename, final_pack)
+        return final_pack
 
     def move_in_thin_pack(self, f):
         """Move a specific file containing a pack into the pack directory.
