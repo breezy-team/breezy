@@ -300,16 +300,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def all_versioned_paths(self):
         ret = set()
-        todo = set([('', self.tree)])
+        todo = set([(store, '', self.tree)])
         while todo:
-            (path, tree_id) = todo.pop()
+            (store, path, tree_id) = todo.pop()
             if tree_id is None:
                 continue
-            tree = self.store[tree_id]
+            tree = store[tree_id]
             for name, mode, hexsha in tree.items():
                 subpath = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
-                    todo.add((subpath, hexsha))
+                    todo.add((store, subpath, hexsha))
                 else:
                     ret.add(subpath)
         return ret
@@ -337,20 +337,22 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if self.tree is None:
             raise errors.NoSuchFile(path)
         try:
-            return tree_lookup_path(self.store.__getitem__, self.tree,
+            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
                 path.encode('utf-8'))
         except KeyError:
             raise errors.NoSuchFile(self, path)
+        else:
+            return (self.store, mode, hexsha)
 
     def is_executable(self, path, file_id=None):
-        (mode, hexsha) = self._lookup_path(path)
+        (store, mode, hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return False
         return mode_is_executable(mode)
 
     def kind(self, path, file_id=None):
-        (mode, hexsha) = self._lookup_path(path)
+        (store, mode, hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return "directory"
@@ -369,7 +371,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return
         if from_dir is None:
             from_dir = u""
-        (mode, hexsha) = self._lookup_path(from_dir)
+        (store, mode, hexsha) = self._lookup_path(from_dir)
         if mode is None: # Root
             root_ie = self._get_dir_ie(b"", None)
         else:
@@ -378,16 +380,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
             if mode_kind(mode) == 'directory':
                 root_ie = self._get_dir_ie(from_dir.encode("utf-8"), parent_id)
             else:
-                root_ie = self._get_file_ie(from_dir.encode("utf-8"),
+                root_ie = self._get_file_ie(store, from_dir.encode("utf-8"),
                     posixpath.basename(from_dir), mode, hexsha)
         if from_dir != "" or include_root:
             yield (from_dir, "V", root_ie.kind, root_ie.file_id, root_ie)
         todo = set()
         if root_ie.kind == 'directory':
-            todo.add((from_dir.encode("utf-8"), hexsha, root_ie.file_id))
+            todo.add((store, from_dir.encode("utf-8"), hexsha, root_ie.file_id))
         while todo:
-            (path, hexsha, parent_id) = todo.pop()
-            tree = self.store[hexsha]
+            (store, path, hexsha, parent_id) = todo.pop()
+            tree = store[hexsha]
             for name, mode, hexsha in tree.iteritems():
                 if self.mapping.is_special_file(name):
                     continue
@@ -395,12 +397,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if stat.S_ISDIR(mode):
                     ie = self._get_dir_ie(child_path, parent_id)
                     if recursive:
-                        todo.add((child_path, hexsha, ie.file_id))
+                        todo.add((store, child_path, hexsha, ie.file_id))
                 else:
-                    ie = self._get_file_ie(child_path, name, mode, hexsha, parent_id)
+                    ie = self._get_file_ie(store, child_path, name, mode, hexsha, parent_id)
                 yield child_path.decode('utf-8'), "V", ie.kind, ie.file_id, ie
 
-    def _get_file_ie(self, path, name, mode, hexsha, parent_id):
+    def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
         if type(path) is not bytes:
             raise TypeError(path)
         if type(name) is not bytes:
@@ -409,11 +411,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
         file_id = self._fileid_map.lookup_file_id(path)
         ie = entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
         if kind == 'symlink':
-            ie.symlink_target = self.store[hexsha].data.decode('utf-8')
+            ie.symlink_target = store[hexsha].data.decode('utf-8')
         elif kind == 'tree-reference':
             ie.reference_revision = self.mapping.revision_id_foreign_to_bzr(hexsha)
         else:
-            data = self.store[hexsha].data
+            data = store[hexsha].data
             ie.text_sha1 = osutils.sha_string(data)
             ie.text_size = len(data)
             ie.executable = mode_is_executable(mode)
@@ -425,14 +427,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
             posixpath.basename(path).decode("utf-8"), parent_id)
 
     def iter_child_entries(self, path, file_id=None):
-        (mode, tree_sha) = self._lookup_path(path)
+        (store, mode, tree_sha) = self._lookup_path(path)
 
         if not stat.S_ISDIR(mode):
             return
 
         encoded_path = path.encode('utf-8')
         file_id = self.path2id(path)
-        tree = self.store[tree_sha]
+        tree = store[tree_sha]
         for name, mode, hexsha in tree.iteritems():
             if self.mapping.is_special_file(name):
                 continue
@@ -440,7 +442,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             if stat.S_ISDIR(mode):
                 yield self._get_dir_ie(child_path, file_id)
             else:
-                yield self._get_file_ie(child_path, name, mode, hexsha,
+                yield self._get_file_ie(store, child_path, name, mode, hexsha,
                                         file_id)
 
     def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
@@ -454,13 +456,13 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 specific_files = None
             else:
                 specific_files = set([p.encode('utf-8') for p in specific_files])
-        todo = set([("", self.tree, None)])
+        todo = set([(self.store, "", self.tree, None)])
         while todo:
-            path, tree_sha, parent_id = todo.pop()
+            store, path, tree_sha, parent_id = todo.pop()
             ie = self._get_dir_ie(path, parent_id)
             if specific_files is None or path in specific_files:
                 yield path.decode("utf-8"), ie
-            tree = self.store[tree_sha]
+            tree = store[tree_sha]
             for name, mode, hexsha in tree.iteritems():
                 if self.mapping.is_special_file(name):
                     continue
@@ -468,10 +470,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if stat.S_ISDIR(mode):
                     if (specific_files is None or
                         any(filter(lambda p: p.startswith(child_path), specific_files))):
-                        todo.add((child_path, hexsha, ie.file_id))
+                        todo.add((store, child_path, hexsha, ie.file_id))
                 elif specific_files is None or child_path in specific_files:
                     yield (child_path.decode("utf-8"),
-                            self._get_file_ie(child_path, name, mode, hexsha,
+                            self._get_file_ie(store, child_path, name, mode, hexsha,
                            ie.file_id))
 
     def get_revision_id(self):
@@ -484,22 +486,22 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return osutils.sha_string(self.get_file_text(path, file_id))
 
     def get_file_verifier(self, path, file_id=None, stat_value=None):
-        (mode, hexsha) = self._lookup_path(path)
+        (store, mode, hexsha) = self._lookup_path(path)
         return ("GIT", hexsha)
 
     def get_file_text(self, path, file_id=None):
         """See RevisionTree.get_file_text."""
-        (mode, hexsha) = self._lookup_path(path)
+        (store, mode, hexsha) = self._lookup_path(path)
         if stat.S_ISREG(mode):
-            return self.store[hexsha].data
+            return store[hexsha].data
         else:
             return b""
 
     def get_symlink_target(self, path, file_id=None):
         """See RevisionTree.get_symlink_target."""
-        (mode, hexsha) = self._lookup_path(path)
+        (store, mode, hexsha) = self._lookup_path(path)
         if stat.S_ISLNK(mode):
-            return self.store[hexsha].data.decode('utf-8')
+            return store[hexsha].data.decode('utf-8')
         else:
             return None
 
@@ -519,16 +521,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         try:
-            (mode, hexsha) = self._lookup_path(path)
+            (store, mode, hexsha) = self._lookup_path(path)
         except errors.NoSuchFile:
             return ('missing', None, None, None)
         kind = mode_kind(mode)
         if kind == 'file':
             executable = mode_is_executable(mode)
-            contents = self.store[hexsha].data
+            contents = store[hexsha].data
             return (kind, len(contents), executable, osutils.sha_string(contents))
         elif kind == 'symlink':
-            return (kind, None, None, self.store[hexsha].data)
+            return (kind, None, None, store[hexsha].data)
         elif kind == 'tree-reference':
             return (kind, None, None,
                     self._repository.lookup_foreign_revision_id(hexsha))

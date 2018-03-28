@@ -41,7 +41,7 @@ from dulwich.pack import (
     Pack,
     iter_sha1,
     load_pack_index_file,
-    write_pack_data,
+    write_pack_objects,
     write_pack_index_v2,
     )
 from dulwich.repo import (
@@ -50,11 +50,13 @@ from dulwich.repo import (
     RefsContainer,
     BASE_DIRECTORIES,
     COMMONDIR,
+    CONTROLDIR,
     INDEX_FILENAME,
     OBJECTDIR,
     REFSDIR,
     SYMREF,
     check_ref_format,
+    read_gitfile,
     read_packed_refs_with_peeled,
     read_packed_refs,
     write_packed_refs,
@@ -68,6 +70,7 @@ from ...errors import (
     FileExists,
     LockError,
     NoSuchFile,
+    ReadError,
     TransportNotPossible,
     )
 
@@ -349,10 +352,16 @@ class TransportRepo(BaseRepo):
     def __init__(self, transport, bare, refs_text=None):
         self.transport = transport
         self.bare = bare
-        if self.bare:
-            self._controltransport = self.transport
+        try:
+            with transport.get(CONTROLDIR) as f:
+                path = read_gitfile(f)
+        except (ReadError, NoSuchFile):
+            if self.bare:
+                self._controltransport = self.transport
+            else:
+                self._controltransport = self.transport.clone('.git')
         else:
-            self._controltransport = self.transport.clone('.git')
+            self._controltransport = self.transport.clone(path)
         commondir = self.get_named_file(COMMONDIR)
         if commondir is not None:
             with commondir:
@@ -640,21 +649,6 @@ class TransportObjectStore(PackBasedObjectStore):
         self._add_known_pack(basename, final_pack)
         return final_pack
 
-    def add_thin_pack(self):
-        """Add a new thin pack to this object store.
-
-        Thin packs are packs that contain deltas with parents that exist
-        in a different pack.
-        """
-        from cStringIO import StringIO
-        f = StringIO()
-        def commit():
-            if len(f.getvalue()) > 0:
-                return self.move_in_thin_pack(f)
-            else:
-                return None
-        return f, commit
-
     def move_in_thin_pack(self, f):
         """Move a specific file containing a pack into the pack directory.
 
@@ -664,29 +658,26 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        data = PackData.from_file(self.get_raw, f, len(f.getvalue()))
-        idx = MemoryPackIndex(data.sorted_entries(), data.get_stored_checksum())
-        p = Pack.from_objects(data, idx)
+        p = Pack('', resolve_ext_ref=self.get_raw)
+        p._data = PackData.from_file(f, len(f.getvalue()))
+        p._data.pack = p
+        p._idx_load = lambda: MemoryPackIndex(p.data.sorted_entries(), p.data.get_stored_checksum())
 
-        pack_sha = idx.objects_sha1()
+        pack_sha = p.index.objects_sha1()
 
         datafile = self.pack_transport.open_write_stream(
                 "pack-%s.pack" % pack_sha)
         try:
-            entries, data_sum = write_pack_data(datafile, p.pack_tuples())
+            entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
         finally:
             datafile.close()
-        entries.sort()
+        entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         idxfile = self.pack_transport.open_write_stream(
             "pack-%s.idx" % pack_sha)
         try:
-            write_pack_index_v2(idxfile, data.sorted_entries(), data_sum)
+            write_pack_index_v2(idxfile, entries, data_sum)
         finally:
             idxfile.close()
-        basename = "pack-%s" % pack_sha
-        final_pack = Pack(basename)
-        self._add_known_pack(basename, final_pack)
-        return final_pack
 
     def add_pack(self):
         """Add a new pack to this object store.
