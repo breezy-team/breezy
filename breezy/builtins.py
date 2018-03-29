@@ -2144,7 +2144,7 @@ class cmd_init(Command):
                 'See "help formats".',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
-                value_switches=False,
+                value_switches=True,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
