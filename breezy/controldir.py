@@ -1304,7 +1304,7 @@ class ControlDirFormatRegistry(registry.Registry):
         return frozenset(self._aliases)
 
     def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False, experimental=False, alias=False):
+                 hidden=False, experimental=False):
         """Register a ControlDirFormat factory.
 
         The factory must be a callable that takes one parameter: the key.
@@ -1315,12 +1315,19 @@ class ControlDirFormatRegistry(registry.Registry):
         """
         registry.Registry.register(self, key, factory, help,
             ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
+    def register_alias(self, key, target):
+        def helper():
+            return registry.get(target)
+        info = self.get_info(target)
+        self.register(key, helper, help=self.get_help(target), native=info.native,
+                deprecated=info.deprecated, hidden=info.hidden,
+                experimental=info.experimental)
+        self._aliases.add(key)
+
     def register_lazy(self, key, module_name, member_name, help, native=True,
-        deprecated=False, hidden=False, experimental=False, alias=False):
+        deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
             help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:

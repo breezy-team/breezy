@@ -394,7 +394,7 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in self.registry.keys():
                 option_strings = ['--%s' % key]
-                if self.is_hidden(key):
+                if self.is_hidden(key) or self.is_alias(key):
                     help = optparse.SUPPRESS_HELP
                 else:
                     help = self.registry.get_help(key)
@@ -430,6 +430,11 @@ class RegistryOption(Option):
         if name == self.name:
             return Option.is_hidden(self, name)
         return getattr(self.registry.get_info(name), 'hidden', False)
+
+    def is_alias(self, name):
+        if name == self.name:
+            return False
+        return getattr(self.registry.get_info(name), 'alias', False)
 
 
 class OptionParser(optparse.OptionParser):
