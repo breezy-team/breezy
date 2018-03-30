@@ -650,6 +650,11 @@ class Tree(object):
         searcher = default_searcher
         return searcher
 
+    @classmethod
+    def versionable_kind(cls, kind):
+        """Check if this tree support versioning a specific file kind."""
+        return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
+
 
 class InterTree(InterObject):
     """This class represents operations taking place between two Trees.
