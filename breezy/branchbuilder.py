@@ -194,8 +194,8 @@ class BranchBuilder(object):
             It can be None, which indicates to use the last commit.
         :param actions: A list of actions to perform. Supported actions are:
             ('add', ('path', 'file-id', 'kind', 'content' or None))
-            ('modify', ('file-id', 'new-content'))
-            ('unversion', 'file-id')
+            ('modify', ('path', 'new-content'))
+            ('unversion', 'path')
             ('rename', ('orig-path', 'new-path'))
             ('flush', None)
         :param message: An optional commit message, if not supplied, a default
@@ -224,8 +224,7 @@ class BranchBuilder(object):
             tree = self._tree
         else:
             tree = self._branch.create_memorytree()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             if parent_ids is not None:
                 tree.set_parent_ids(parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -244,12 +243,12 @@ class BranchBuilder(object):
                         pending.to_add_file_ids.append(file_id)
                         pending.to_add_kinds.append(kind)
                         if content is not None:
-                            pending.new_contents[file_id] = content
+                            pending.new_contents[path] = content
                 elif action == 'modify':
-                    file_id, content = info
-                    pending.new_contents[file_id] = content
+                    path, content = info
+                    pending.new_contents[path] = content
                 elif action == 'unversion':
-                    pending.to_unversion_ids.add(info)
+                    pending.to_unversion_paths.add(info)
                 elif action == 'rename':
                     from_relpath, to_relpath = info
                     pending.to_rename.append((from_relpath, to_relpath))
@@ -262,30 +261,25 @@ class BranchBuilder(object):
             return self._do_commit(tree, message=message, rev_id=revision_id,
                 timestamp=timestamp, timezone=timezone, committer=committer,
                 message_callback=message_callback)
-        finally:
-            tree.unlock()
 
     def _flush_pending(self, tree, pending):
         """Flush the pending actions in 'pending', i.e. apply them to 'tree'."""
         for path, file_id in pending.to_add_directories:
             if path == '':
-                old_id = tree.path2id(path)
-                if old_id is not None and old_id in pending.to_unversion_ids:
+                if tree.has_filename(path) and path in pending.to_unversion_paths:
                     # We're overwriting this path, no need to unversion
-                    pending.to_unversion_ids.discard(old_id)
+                    pending.to_unversion_paths.discard(path)
                 # Special case, because the path already exists
                 tree.add([path], [file_id], ['directory'])
             else:
                 tree.mkdir(path, file_id)
         for from_relpath, to_relpath in pending.to_rename:
             tree.rename_one(from_relpath, to_relpath)
-        if pending.to_unversion_ids:
-            tree.unversion([tree.id2path(fid) for fid in pending.to_unversion_ids])
+        if pending.to_unversion_paths:
+            tree.unversion(pending.to_unversion_paths)
         tree.add(pending.to_add_files, pending.to_add_file_ids, pending.to_add_kinds)
-        for file_id, content in viewitems(pending.new_contents):
-            tree.put_file_bytes_non_atomic(
-                    tree.id2path(file_id), content,
-                    file_id=file_id)
+        for path, content in viewitems(pending.new_contents):
+            tree.put_file_bytes_non_atomic(path, content)
 
     def get_branch(self):
         """Return the branch created by the builder."""
@@ -305,6 +299,6 @@ class _PendingActions(object):
         self.to_add_file_ids = []
         self.to_add_kinds = []
         self.new_contents = {}
-        self.to_unversion_ids = set()
+        self.to_unversion_paths = set()
         self.to_rename = []
 
