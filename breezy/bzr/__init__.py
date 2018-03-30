@@ -323,11 +323,7 @@ register_metadir(controldir.format_registry, 'development-colo',
 # Finally, the current format.
 register_metadir(controldir.format_registry, '2a',
     'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
-    help='Format for the bzr 2.0 series.\n'
-        'Uses group-compress storage.\n'
-        'Provides rich roots which are a one-way transition.\n',
-        # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
-        # 'rich roots. Supported by bzr 1.16 and later.',
+    help='Format for the bzr 2.0 series.\n',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=False,
@@ -336,7 +332,7 @@ register_metadir(controldir.format_registry, '2a',
 # The following format should be an alias for the rich root equivalent
 # of the default format
 
-controldir.format_registry.register_alias('default-rich-root', '2a')
+controldir.format_registry.register_alias('default-rich-root', '2a', hidden=True)
 
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get('default_format')

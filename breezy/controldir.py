@@ -49,6 +49,9 @@ from . import (
     errors,
     registry,
     )
+from .sixish import (
+    viewitems,
+    )
 
 
 class MustHaveWorkingTree(errors.BzrError):
@@ -1301,7 +1304,7 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def aliases(self):
         """Return a set of the format names which are aliases."""
-        return frozenset(self._aliases)
+        return dict(viewitems(self._aliases))
 
     def register(self, key, factory, help, native=True, deprecated=False,
                  hidden=False, experimental=False):
@@ -1317,13 +1320,15 @@ class ControlDirFormatRegistry(registry.Registry):
             ControlDirFormatInfo(native, deprecated, hidden, experimental))
         self._registration_order.append(key)
 
-    def register_alias(self, key, target):
-        def helper():
-            return registry.get(target)
+    def register_alias(self, key, target, hidden=False):
+        def factory():
+            return self.get(target)
         info = self.get_info(target)
-        registry.Registry.register(self,
-                key, helper, help=self.get_help(target),
-                info=self.get_info(target))
+        registry.Registry.register(
+                self, key, factory, self.get_help(target),
+                ControlDirFormatInfo(
+                    native=info.native, deprecated=info.deprecated,
+                    hidden=hidden, experimental=info.experimental))
         self._aliases[key] = target
 
     def register_lazy(self, key, module_name, member_name, help, native=True,

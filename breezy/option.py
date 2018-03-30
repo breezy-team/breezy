@@ -394,10 +394,7 @@ class RegistryOption(Option):
             Option.add_option(self, parser, short_name)
         if self.value_switches:
             for key in self.registry.keys():
-                if self.is_alias(key):
-                    continue
-                option_strings = [
-                    ('--%s' % name) for name in [key] + self.get_aliases(key)]
+                option_strings = ['--%s' % key]
                 if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
@@ -430,22 +427,60 @@ class RegistryOption(Option):
             for key in sorted(self.registry.keys()):
                 yield key, None, None, self.registry.get_help(key)
 
+
+class FormatRegistryOption(RegistryOption):
+    """Option based on a format registry
+
+    The values for the options correspond to entries in the registry.  Input
+    must be a registry key.  After validation, it is converted into an object
+    using Registry.get or a caller-provided converter.
+    """
+
+    def is_alias(self, name):
+        """Check whether a particular format is an alias."""
+        if name == self.name:
+            return False
+        return name in self.registry.aliases()
+
+    def get_aliases(self, name):
+        """Get the aliases for a particular format.
+        """
+        ret = []
+        for alias, target in viewitems(self.registry.aliases()):
+            if target == name and not self.is_hidden(alias):
+                ret.append(alias)
+        return ret
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        if self.value_switches:
+            parser = parser.add_option_group(self.title)
+        if self.enum_switch:
+            Option.add_option(self, parser, short_name)
+        if self.value_switches:
+            for key in self.registry.keys():
+                if self.is_alias(key):
+                    continue
+                option_strings = [
+                    ('--%s' % name) for name in [key] + self.get_aliases(key)]
+                if self.is_hidden(key):
+                    help = optparse.SUPPRESS_HELP
+                else:
+                    help = self.registry.get_help(key)
+                if (self.short_value_switches and
+                    key in self.short_value_switches):
+                    option_strings.append('-%s' %
+                                          self.short_value_switches[key])
+                parser.add_option(action='callback',
+                              callback=self._optparse_value_callback(key),
+                                  help=help,
+                                  *option_strings)
+
     def is_hidden(self, name):
         if name == self.name:
             return Option.is_hidden(self, name)
-        return getattr(self.registry.get_info(name), 'hidden', False)
+        return self.registry.get_info(name).hidden
 
-    def is_alias(self, name):
-        if name == self.name:
-            return False
-        return name in self.registry._aliases
-
-    def get_aliases(self, name):
-        ret = []
-        for alias, target in viewitems(self.registry._aliases):
-            if target == name:
-                ret.append(alias)
-        return ret
 
 
 class OptionParser(optparse.OptionParser):

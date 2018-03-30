@@ -78,6 +78,7 @@ from .commands import (
 from .option import (
     ListOption,
     Option,
+    FormatRegistryOption,
     RegistryOption,
     custom_help,
     _parse_revision_str,
@@ -2139,7 +2140,7 @@ class cmd_init(Command):
         Option('create-prefix',
                help='Create the path leading up to the branch '
                     'if it does not already exist.'),
-         RegistryOption('format',
+         FormatRegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats" for a full list.',
                 lazy_registry=('breezy.controldir', 'format_registry'),
@@ -2258,12 +2259,12 @@ class cmd_init_repository(Command):
 
     _see_also = ['init', 'branch', 'checkout', 'repositories']
     takes_args = ["location"]
-    takes_options = [RegistryOption('format',
+    takes_options = [FormatRegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=False, title='Repository format'),
+                            value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
@@ -3870,7 +3871,7 @@ class cmd_upgrade(Command):
     _see_also = ['check', 'reconcile', 'formats']
     takes_args = ['url?']
     takes_options = [
-        RegistryOption('format',
+        FormatRegistryOption('format',
             help='Upgrade to a specific format.  See "brz help'
                  ' formats" for details.',
             lazy_registry=('breezy.controldir', 'format_registry'),
