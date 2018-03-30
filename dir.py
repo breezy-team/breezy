@@ -41,6 +41,9 @@ from ...controldir import (
     format_registry,
     RepositoryAcquisitionPolicy,
     )
+from .object_store import (
+    get_object_store,
+    )
 
 from .transportgit import (
     OBJECTDIR,
