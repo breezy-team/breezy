@@ -399,7 +399,9 @@ class RegistryOption(Option):
                     continue
                 option_strings = [
                     ('--%s' % name)
-                    for name in [key] + alias_map.get(key, [])]
+                    for name in [key] +
+                    [alias for alias in alias_map.get(key, [])
+                        if not self.is_hidden(alias)]]
                 if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
