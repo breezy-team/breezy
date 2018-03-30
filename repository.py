@@ -118,7 +118,8 @@ def lazy_load_optimisers():
                       interrepo.InterLocalGitLocalGitRepository,
                       interrepo.InterRemoteGitLocalGitRepository,
                       interrepo.InterToLocalGitRepository,
-                      interrepo.InterToRemoteGitRepository]:
+                      interrepo.InterToRemoteGitRepository,
+                      ]:
         repository.InterRepository.register_optimiser(optimiser)
     _optimisers_loaded = True
 

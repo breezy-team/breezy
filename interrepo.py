@@ -132,7 +132,9 @@ class InterToGitRepository(InterRepository):
                 git_sha = self.source_store._lookup_revision_sha1(revid)
                 git_shas.append(git_sha)
             walker = Walker(self.source_store,
-                include=git_shas, exclude=[sha for sha in self.target.controldir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
+                include=git_shas, exclude=[
+                    sha for sha in self.target.controldir.get_refs_container().as_dict().values()
+                    if sha != ZERO_SHA])
             missing_revids = set()
             for entry in walker:
                 for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
@@ -394,19 +396,20 @@ class InterFromGitRepository(InterRepository):
             todo.extend(revision_ids)
         if if_present_ids:
             todo.extend(revision_ids)
-        for revid in revision_ids:
-            if revid == NULL_REVISION:
-                continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-            git_shas.append(git_sha)
-        walker = Walker(self.source._git.object_store,
-            include=git_shas, exclude=[
-                sha for sha in self.target.controldir.get_refs_container().as_dict().values()
-                if sha != ZERO_SHA])
-        missing_revids = set()
-        for entry in walker:
-            missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
-        return self.source.revision_ids_to_search_result(missing_revids)
+        with self.lock_read():
+            for revid in revision_ids:
+                if revid == NULL_REVISION:
+                    continue
+                git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+                git_shas.append(git_sha)
+            walker = Walker(self.source._git.object_store,
+                include=git_shas, exclude=[
+                    sha for sha in self.target.controldir.get_refs_container().as_dict().values()
+                    if sha != ZERO_SHA])
+            missing_revids = set()
+            for entry in walker:
+                missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
+            return self.source.revision_ids_to_search_result(missing_revids)
 
 
 class InterGitNonGitRepository(InterFromGitRepository):
@@ -593,7 +596,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 class InterGitGitRepository(InterFromGitRepository):
     """InterRepository that copies between Git repositories."""
 
-    def fetch_refs(self, update_refs, lossy=False):
+    def fetch_refs(self, update_refs, lossy):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         old_refs = self.target.controldir.get_refs_container()
