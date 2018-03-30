@@ -40,6 +40,7 @@ from breezy import (
     config as _mod_config,
     errors,
     globbing,
+    gpg,
     hooks,
     lazy_regex,
     log,
@@ -49,7 +50,6 @@ from breezy import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
-    static_tuple,
     symbol_versioning,
     timestamp,
     transport,
@@ -57,7 +57,6 @@ from breezy import (
     ui,
     urlutils,
     views,
-    gpg,
     )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
@@ -5213,7 +5212,6 @@ class cmd_re_sign(Command):
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
-        from . import gpg
         gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
