@@ -594,7 +594,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         builder = self.make_branch_builder('.')
         builder.start_series()
         rev_a = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))])
+            ('add', ('', None, 'directory', None))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()
