@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr6928-2) UNRELEASED; urgency=medium
+
+  * Install the bash completion script.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 30 Mar 2018 15:48:07 +0100
+
 breezy (3.0.0~bzr6928-1) unstable; urgency=medium
 
   * New upstream snapshot.

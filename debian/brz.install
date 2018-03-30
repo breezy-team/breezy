@@ -1,2 +1,3 @@
 debian/tmp/usr/bin/brz	usr/bin
 debian/tmp/usr/man/man1/brz.1	usr/share/man/man1/
+contrib/bash/brz	/usr/share/bash-completion/completions
