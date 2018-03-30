@@ -175,6 +175,8 @@ class Registry(object):
             raise KeyError('Key %r already registered and not an alias' % key)
         self._dict[key] = self._dict[target]
         self._aliases[key] = target
+        if info is None:
+            info = self._info_dict[target]
         self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
     def _add_help_and_info(self, key, help=None, info=None):
