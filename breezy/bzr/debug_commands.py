@@ -16,9 +16,18 @@
 
 """Debug commands for the bzr formats."""
 
-
 from __future__ import absolute_import
 
+from io import BytesIO
+
+from .. import (
+    errors,
+    osutils,
+    static_tuple,
+    transport,
+    )
+from ..commands import Command
+from ..option import Option
 from . import (
     btree_index,
     )
