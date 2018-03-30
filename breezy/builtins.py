@@ -59,9 +59,6 @@ from breezy import (
     views,
     gpg,
     )
-from breezy.bzr import (
-    btree_index,
-    )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
 from breezy.transport import memory
@@ -480,90 +477,6 @@ class cmd_cat_revision(Command):
                             gettext('You cannot specify a NULL revision.'))
                     rev_id = rev.as_revision_id(b)
                     self.print_revision(revisions, rev_id)
-
-
-class cmd_dump_btree(Command):
-    __doc__ = """Dump the contents of a btree index file to stdout.
-
-    PATH is a btree index file, it can be any URL. This includes things like
-    .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
-
-    By default, the tuples stored in the index file will be displayed. With
-    --raw, we will uncompress the pages, but otherwise display the raw bytes
-    stored in the index.
-    """
-
-    # TODO: Do we want to dump the internal nodes as well?
-    # TODO: It would be nice to be able to dump the un-parsed information,
-    #       rather than only going through iter_all_entries. However, this is
-    #       good enough for a start
-    hidden = True
-    encoding_type = 'exact'
-    takes_args = ['path']
-    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
-                                        ' rather than the parsed tuples.'),
-                    ]
-
-    def run(self, path, raw=False):
-        dirname, basename = osutils.split(path)
-        t = transport.get_transport(dirname)
-        if raw:
-            self._dump_raw_bytes(t, basename)
-        else:
-            self._dump_entries(t, basename)
-
-    def _get_index_and_bytes(self, trans, basename):
-        """Create a BTreeGraphIndex and raw bytes."""
-        bt = btree_index.BTreeGraphIndex(trans, basename, None)
-        bytes = trans.get_bytes(basename)
-        bt._file = BytesIO(bytes)
-        bt._size = len(bytes)
-        return bt, bytes
-
-    def _dump_raw_bytes(self, trans, basename):
-        import zlib
-
-        # We need to parse at least the root node.
-        # This is because the first page of every row starts with an
-        # uncompressed header.
-        bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(range(0, len(bytes),
-                                                    btree_index._PAGE_SIZE)):
-            page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
-            page_bytes = bytes[page_start:page_end]
-            if page_idx == 0:
-                self.outf.write('Root node:\n')
-                header_end, data = bt._parse_header_from_bytes(page_bytes)
-                self.outf.write(page_bytes[:header_end])
-                page_bytes = data
-            self.outf.write('\nPage %d\n' % (page_idx,))
-            if len(page_bytes) == 0:
-                self.outf.write('(empty)\n');
-            else:
-                decomp_bytes = zlib.decompress(page_bytes)
-                self.outf.write(decomp_bytes)
-                self.outf.write('\n')
-
-    def _dump_entries(self, trans, basename):
-        try:
-            st = trans.stat(basename)
-        except errors.TransportNotPossible:
-            # We can't stat, so we'll fake it because we have to do the 'get()'
-            # anyway.
-            bt, _ = self._get_index_and_bytes(trans, basename)
-        else:
-            bt = btree_index.BTreeGraphIndex(trans, basename, st.st_size)
-        for node in bt.iter_all_entries():
-            # Node is made up of:
-            # (index, key, value, [references])
-            try:
-                refs = node[3]
-            except IndexError:
-                refs_as_tuples = None
-            else:
-                refs_as_tuples = static_tuple.as_tuples(refs)
-            as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
-            self.outf.write('%s\n' % (as_tuple,))
 
 
 class cmd_remove_tree(Command):
@@ -6862,6 +6775,7 @@ def _register_lazy_builtins():
         ('cmd_bisect', [], 'breezy.bisect'),
         ('cmd_bundle_info', [], 'breezy.bundle.commands'),
         ('cmd_config', [], 'breezy.config'),
+        ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
         ('cmd_dpush', [], 'breezy.foreign'),
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
