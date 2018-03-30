@@ -29,6 +29,7 @@ from . import (
     )
 from .sixish import (
     text_type,
+    viewitems,
     )
 
 
@@ -393,8 +394,11 @@ class RegistryOption(Option):
             Option.add_option(self, parser, short_name)
         if self.value_switches:
             for key in self.registry.keys():
-                option_strings = ['--%s' % key]
-                if self.is_hidden(key) or self.is_alias(key):
+                if self.is_alias(key):
+                    continue
+                option_strings = [
+                    ('--%s' % name) for name in [key] + self.get_aliases(key)]
+                if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
                     help = self.registry.get_help(key)
@@ -434,7 +438,14 @@ class RegistryOption(Option):
     def is_alias(self, name):
         if name == self.name:
             return False
-        return getattr(self.registry.get_info(name), 'alias', False)
+        return name in self.registry._aliases
+
+    def get_aliases(self, name):
+        ret = []
+        for alias, target in viewitems(self.registry._aliases):
+            if target == name:
+                ret.append(alias)
+        return ret
 
 
 class OptionParser(optparse.OptionParser):

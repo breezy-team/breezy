@@ -2141,7 +2141,7 @@ class cmd_init(Command):
                     'if it does not already exist.'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
-                'See "help formats".',
+                'See "help formats" for a full list.',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
                 value_switches=True,

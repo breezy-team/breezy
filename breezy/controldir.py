@@ -1295,7 +1295,7 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._aliases = set()
+        self._aliases = {}
         self._registration_order = list()
         super(ControlDirFormatRegistry, self).__init__()
 
@@ -1321,17 +1321,15 @@ class ControlDirFormatRegistry(registry.Registry):
         def helper():
             return registry.get(target)
         info = self.get_info(target)
-        self.register(key, helper, help=self.get_help(target), native=info.native,
-                deprecated=info.deprecated, hidden=info.hidden,
-                experimental=info.experimental)
-        self._aliases.add(key)
+        registry.Registry.register(self,
+                key, helper, help=self.get_help(target),
+                info=self.get_info(target))
+        self._aliases[key] = target
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
         deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
             help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
     def set_default(self, key):
@@ -1339,9 +1337,7 @@ class ControlDirFormatRegistry(registry.Registry):
 
         This method must be called once and only once.
         """
-        registry.Registry.register(self, 'default', self.get(key),
-            self.get_help(key), info=self.get_info(key))
-        self._aliases.add('default')
+        self.register_alias('default', key)
 
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.
