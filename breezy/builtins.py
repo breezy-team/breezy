@@ -4200,7 +4200,11 @@ class cmd_selftest(Command):
             # disallowing it currently leads to failures in many places.
             lazy_import.disallow_proxying()
 
-        from . import tests
+        try:
+            from . import tests
+        except ImportError:
+            raise errors.BzrCommandError("tests not available. Install the "
+                "breezy tests to run the breezy testsuite.")
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
