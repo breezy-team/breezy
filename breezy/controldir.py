@@ -1298,13 +1298,8 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._aliases = {}
         self._registration_order = list()
         super(ControlDirFormatRegistry, self).__init__()
-
-    def aliases(self):
-        """Return a set of the format names which are aliases."""
-        return dict(viewitems(self._aliases))
 
     def register(self, key, factory, help, native=True, deprecated=False,
                  hidden=False, experimental=False):
@@ -1321,15 +1316,17 @@ class ControlDirFormatRegistry(registry.Registry):
         self._registration_order.append(key)
 
     def register_alias(self, key, target, hidden=False):
-        def factory():
-            return self.get(target)
+        """Register a format alias.
+
+        :param key: Alias name
+        :param target: Target format
+        :param hidden: Whether the alias is hidden
+        """
         info = self.get_info(target)
-        registry.Registry.register(
-                self, key, factory, self.get_help(target),
+        registry.Registry.register_alias(self, key, target,
                 ControlDirFormatInfo(
                     native=info.native, deprecated=info.deprecated,
                     hidden=hidden, experimental=info.experimental))
-        self._aliases[key] = target
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
         deprecated=False, hidden=False, experimental=False):
