@@ -1,0 +1,8 @@
+*.pyc
+*~
+./.project
+./.pydevproject
+build
+.plugins
+./_lib
+.testrepository

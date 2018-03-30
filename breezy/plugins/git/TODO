@@ -1,0 +1,6 @@
+- Fix tests
+ + Rename detection
+ + Check for diverged branches
+ + Inventory deltas
+ + Remaining CommitBuilder tests
+ + Commit slowness
