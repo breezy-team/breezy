@@ -27,7 +27,7 @@ from ... import lru_cache, trace
 from . import (
     branch_mapper,
     )
-from .reftracker import (
+from fastimport.reftracker import (
     RefTracker,
     )
 from .helpers import (

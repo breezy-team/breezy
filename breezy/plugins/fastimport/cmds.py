@@ -324,7 +324,7 @@ class cmd_fast_import(Command):
         from fastimport import parser
         from fastimport.errors import ParsingError
         from ...errors import BzrCommandError
-        from .processors import info_processor
+        from fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:

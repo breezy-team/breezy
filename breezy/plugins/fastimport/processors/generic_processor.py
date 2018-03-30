@@ -47,6 +47,9 @@ from fastimport import (
     errors as plugin_errors,
     processor,
     )
+from fastimport.helpers import (
+    invert_dictset,
+    )
 
 
 # How many commits before automatically reporting progress
@@ -342,7 +345,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the branches
         self.note("Updating branch information ...")
         updater = branch_updater.BranchUpdater(self.repo, self.branch,
-            self.cache_mgr, helpers.invert_dictset(
+            self.cache_mgr, invert_dictset(
                 self.cache_mgr.reftracker.heads),
             self.cache_mgr.reftracker.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
