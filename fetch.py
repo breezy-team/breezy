@@ -828,55 +828,7 @@ class InterGitGitRepository(InterFromGitRepository):
         return None, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
-        if lossy:
-            raise errors.LossyPushToSameVCS(self.source, self.target)
-        if limit is not None:
-            raise errors.FetchLimitUnsupported(self)
-        graphwalker = self.target._git.get_graph_walker()
-        if (isinstance(self.source, LocalGitRepository) and
-            isinstance(self.target, LocalGitRepository)):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                refs = self.source._git.fetch(self.target._git, determine_wants,
-                    lambda text: report_git_progress(pb, text))
-            finally:
-                pb.finished()
-            return (None, None, refs)
-        elif (isinstance(self.source, LocalGitRepository) and
-              isinstance(self.target, RemoteGitRepository)):
-            raise NotImplementedError
-        elif (isinstance(self.source, RemoteGitRepository) and
-              isinstance(self.target, LocalGitRepository)):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
-                    # TODO(jelmer): Avoid reading entire file into memory and
-                    # only processing it after the whole file has been fetched.
-                    f = BytesIO()
-
-                    def commit():
-                        if f.tell():
-                            f.seek(0)
-                            self.target._git.object_store.move_in_thin_pack(f)
-
-                    def abort():
-                        pass
-                else:
-                    f, commit, abort = self.target._git.object_store.add_pack()
-                try:
-                    refs = self.source.controldir.fetch_pack(
-                        determine_wants, graphwalker, f.write,
-                        lambda text: report_git_progress(pb, text))
-                    commit()
-                    return (None, None, refs)
-                except BaseException:
-                    abort()
-                    raise
-            finally:
-                pb.finished()
-        else:
-            raise AssertionError("fetching between %r and %r not supported" %
-                    (self.source, self.target))
+        raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
         return set([sha for sha in shas if sha in self.target._git.object_store])
@@ -885,7 +837,6 @@ class InterGitGitRepository(InterFromGitRepository):
               mapping=None, fetch_spec=None, branches=None, limit=None, include_tags=False):
         if mapping is None:
             mapping = self.source.get_mapping()
-        r = self.target._git
         if revision_id is not None:
             args = [revision_id]
         elif fetch_spec is not None:
@@ -914,16 +865,10 @@ class InterGitGitRepository(InterFromGitRepository):
         self.fetch_objects(wants_recorder, mapping, limit=limit)
         return wants_recorder.remote_refs
 
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with GitRepository."""
-        return (isinstance(source, GitRepository) and
-                isinstance(target, GitRepository))
-
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
         for revid in set(revids):
-            if self.target.has_revision(revid):
+            if revid == NULL_REVISION:
                 continue
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
@@ -932,3 +877,68 @@ class InterGitGitRepository(InterFromGitRepository):
     def determine_wants_all(self, refs):
         potential = set([v for v in refs.values() if not v == ZERO_SHA])
         return list(potential - self._target_has_shas(potential))
+
+
+class InterLocalGitLocalGitRepository(InterGitGitRepository):
+
+    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
+        if limit is not None:
+            raise errors.FetchLimitUnsupported(self)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            refs = self.source._git.fetch(self.target._git, determine_wants,
+                lambda text: report_git_progress(pb, text))
+        finally:
+            pb.finished()
+        return (None, None, refs)
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with GitRepository."""
+        return (isinstance(source, LocalGitRepository) and
+                isinstance(target, LocalGitRepository))
+
+
+class InterRemoteGitLocalGitRepository(InterGitGitRepository):
+
+    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
+        if limit is not None:
+            raise errors.FetchLimitUnsupported(self)
+        graphwalker = self.target._git.get_graph_walker()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
+                # TODO(jelmer): Avoid reading entire file into memory and
+                # only processing it after the whole file has been fetched.
+                f = BytesIO()
+
+                def commit():
+                    if f.tell():
+                        f.seek(0)
+                        self.target._git.object_store.move_in_thin_pack(f)
+
+                def abort():
+                    pass
+            else:
+                f, commit, abort = self.target._git.object_store.add_pack()
+            try:
+                refs = self.source.controldir.fetch_pack(
+                    determine_wants, graphwalker, f.write,
+                    lambda text: report_git_progress(pb, text))
+                commit()
+                return (None, None, refs)
+            except BaseException:
+                abort()
+                raise
+        finally:
+            pb.finished()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with GitRepository."""
+        return (isinstance(source, RemoteGitRepository) and
+                isinstance(target, LocalGitRepository))

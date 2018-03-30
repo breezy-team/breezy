@@ -115,7 +115,8 @@ def lazy_load_optimisers():
     from . import fetch, push
     for optimiser in [fetch.InterRemoteGitNonGitRepository,
                       fetch.InterLocalGitNonGitRepository,
-                      fetch.InterGitGitRepository,
+                      fetch.InterLocalGitLocalGitRepository,
+                      fetch.InterRemoteGitLocalGitRepository,
                       push.InterToLocalGitRepository,
                       push.InterToRemoteGitRepository]:
         repository.InterRepository.register_optimiser(optimiser)
