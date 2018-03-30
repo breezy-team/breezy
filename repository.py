@@ -112,12 +112,14 @@ def lazy_load_optimisers():
     global _optimisers_loaded
     if _optimisers_loaded:
         return
-    from . import fetch, push
-    for optimiser in [fetch.InterRemoteGitNonGitRepository,
-                      fetch.InterLocalGitNonGitRepository,
-                      fetch.InterGitGitRepository,
-                      push.InterToLocalGitRepository,
-                      push.InterToRemoteGitRepository]:
+    from . import interrepo
+    for optimiser in [interrepo.InterRemoteGitNonGitRepository,
+                      interrepo.InterLocalGitNonGitRepository,
+                      interrepo.InterLocalGitLocalGitRepository,
+                      interrepo.InterRemoteGitLocalGitRepository,
+                      interrepo.InterToLocalGitRepository,
+                      interrepo.InterToRemoteGitRepository,
+                      ]:
         repository.InterRepository.register_optimiser(optimiser)
     _optimisers_loaded = True
 
