@@ -124,36 +124,33 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         bld_inner.start_series()
         rev1 = bld_inner.build_snapshot(
             None,
-            [('add', ('', 'inner-root-id', 'directory', '')),
-             ('add', ('dir', 'dir-id', 'directory', '')),
-             ('add', ('dir/file1', 'file1-id', 'file', 'file1 content\n')),
-             ('add', ('file3', 'file3-id', 'file', 'file3 content\n')),
+            [('add', ('', None, 'directory', '')),
+             ('add', ('dir', None, 'directory', '')),
+             ('add', ('dir/file1', None, 'file', 'file1 content\n')),
+             ('add', ('file3', None, 'file', 'file3 content\n')),
              ])
         rev4 = bld_inner.build_snapshot(
             [rev1],
-            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))
+            [('add', ('file4', None, 'file', 'file4 content\n'))
              ])
         rev5 = bld_inner.build_snapshot(
             [rev4], [('rename', ('file4', 'dir/file4'))])
         rev3 = bld_inner.build_snapshot(
-            [rev1], [('modify', ('file3-id', 'new file3 contents\n')),])
+            [rev1], [('modify', ('file3', 'new file3 contents\n')),])
         rev2 = bld_inner.build_snapshot(
             [rev1],
-            [('add', ('dir/file2', 'file2-id', 'file', 'file2 content\n')),
-             ], revision_id='2')
+            [('add', ('dir/file2', None, 'file', 'file2 content\n')),
+             ])
         bld_inner.finish_series()
         br = bld_inner.get_branch()
         return br, [rev1, rev2, rev3, rev4, rev5]
 
     def assertTreeLayout(self, expected, tree):
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             actual = [e[0] for e in tree.list_files()]
             # list_files doesn't guarantee order
             actual = sorted(actual)
             self.assertEqual(expected, actual)
-        finally:
-            tree.unlock()
 
     def make_outer_tree(self):
         outer = self.make_branch_and_tree('outer')

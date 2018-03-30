@@ -1190,15 +1190,16 @@ class Merge3Merger(object):
         # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
-    def merge_names(self, file_id):
-        def get_entry(tree):
+    def merge_names(self, paths):
+        def get_entry(tree, path):
             try:
-                return tree.root_inventory.get_entry(file_id)
-            except errors.NoSuchId:
+                return next(tree.iter_entries_by_dir(specific_files=[path]))[1]
+            except StopIteration:
                 return None
-        this_entry = get_entry(self.this_tree)
-        other_entry = get_entry(self.other_tree)
-        base_entry = get_entry(self.base_tree)
+        used_base_path, other_path, this_path = paths
+        this_entry = get_entry(self.this_tree, this_path)
+        other_entry = get_entry(self.other_tree, other_path)
+        base_entry = get_entry(self.base_tree, base_path)
         entries = (base_entry, other_entry, this_entry)
         names = []
         parents = []

@@ -554,10 +554,10 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
-            revision_id=b'1')
-        builder.build_snapshot(['1'], [
-            ('modify', (b'file-id', 'content-2\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
+            revision_id='1')
+        builder.build_snapshot([b'1'], [
+            ('modify', ('file', b'content-2\n'))],
             revision_id=b'2')
         builder.finish_series()
         source = builder.get_branch()
@@ -566,9 +566,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
-            [(b'file-id', '1',), (b'file-id', '2',)])
-        file_1_details = details[(b'file-id', '1')]
-        file_2_details = details[(b'file-id', '2')]
+            [(b'file-id', b'1',), (b'file-id', b'2',)])
+        file_1_details = details[(b'file-id', b'1')]
+        file_2_details = details[(b'file-id', b'2')]
         # The index, and what to read off disk, should be the same for both
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
@@ -581,7 +581,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             ('add', ('file', b'file-id', 'file', 'content\n'))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [
-            ('modify', (b'file-id', 'content-2\n'))],
+            ('modify', ('file', b'content-2\n'))],
             revision_id=b'2')
         builder.finish_series()
         source = builder.get_branch()
@@ -590,9 +590,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
-            [(b'file-id', '1',), (b'file-id', '2',)])
-        file_1_details = details[(b'file-id', '1')]
-        file_2_details = details[(b'file-id', '2')]
+            [(b'file-id', b'1',), (b'file-id', b'2',)])
+        file_1_details = details[(b'file-id', b'1')]
+        file_2_details = details[(b'file-id', b'2')]
         # The index, and what to read off disk, should be the same for both
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
@@ -605,7 +605,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             ('add', ('file', b'file-id', 'file', 'content\n'))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [
-            ('modify', (b'file-id', 'content-2\n'))],
+            ('modify', ('file', b'content-2\n'))],
             revision_id=b'2')
         builder.finish_series()
         source = builder.get_branch()
@@ -614,9 +614,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
-            [(b'file-id', '1',), (b'file-id', '2',)])
-        file_1_details = details[(b'file-id', '1')]
-        file_2_details = details[(b'file-id', '2')]
+            [(b'file-id', b'1',), (b'file-id', b'2',)])
+        file_1_details = details[(b'file-id', b'1')]
+        file_2_details = details[(b'file-id', b'2')]
         # The index, and what to read off disk, should be the same for both
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
@@ -705,9 +705,9 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # Now change a few of them, so we get a few new pages for the second
         # revision
         source_builder.build_snapshot([b'rev-1'], [
-            ('modify', (b'aa-id', 'new content for aa-id\n')),
-            ('modify', (b'cc-id', 'new content for cc-id\n')),
-            ('modify', (b'zz-id', 'new content for zz-id\n')),
+            ('modify', ('aa', b'new content for aa-id\n')),
+            ('modify', ('cc', b'new content for cc-id\n')),
+            ('modify', ('zz', b'new content for zz-id\n')),
             ], revision_id=b'rev-2')
         source_builder.finish_series()
         source_branch = source_builder.get_branch()
@@ -1477,13 +1477,13 @@ class TestPacker(TestCaseWithTransport):
             ('add', ('f', 'f-id', 'file', 'content\n'))],
             revision_id='A')
         builder.build_snapshot(['A'],
-            [('modify', ('f-id', 'new-content\n'))],
+            [('modify', ('f', 'new-content\n'))],
             revision_id='B')
         builder.build_snapshot(['B'],
-            [('modify', ('f-id', 'third-content\n'))],
+            [('modify', ('f', 'third-content\n'))],
             revision_id='C')
         builder.build_snapshot(['C'],
-            [('modify', ('f-id', 'fourth-content\n'))],
+            [('modify', ('f', 'fourth-content\n'))],
             revision_id='D')
         b = builder.get_branch()
         b.lock_read()
@@ -1537,7 +1537,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
             ('add', ('dir', 'dir-id', 'directory', None))],
             revision_id='B')
         builder.build_snapshot(['B'], [
-            ('modify', ('file-id', 'new content\n'))],
+            ('modify', ('file', 'new content\n'))],
             revision_id='C')
         builder.finish_series()
         return builder.get_branch()

@@ -285,7 +285,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             ('add', ('a', 'a-id', 'file', 'content\n'))],
             revision_id='A')
         builder.build_snapshot(['A'], [
-            ('modify', ('a-id', 'new content\nfor a\n')),
+            ('modify', ('a', 'new content\nfor a\n')),
             ('add', ('b', 'b-id', 'file', 'b-content\n'))],
             revision_id='B')
         tree = self.make_workingtree('tree')
@@ -323,7 +323,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             ('add', ('a', 'a-id', 'file', 'content\n'))],
             revision_id='A')
         builder.build_snapshot(['A'], [
-            ('modify', ('a-id', 'new content\nfor a\n')),
+            ('modify', ('a', 'new content\nfor a\n')),
             ('add', ('b', 'b-id', 'file', 'b-content\n'))],
             revision_id='B')
         builder.build_snapshot(['A'], [
