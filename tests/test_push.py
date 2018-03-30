@@ -34,7 +34,7 @@ from ..mapping import (
     BzrGitMappingv1,
     )
 from ..errors import NoPushSupport
-from ..push import (
+from ..interrepo import (
     InterToGitRepository,
     )
 
