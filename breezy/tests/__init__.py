@@ -4021,6 +4021,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_sftp_transport',
         'breezy.tests.test_shelf',
         'breezy.tests.test_shelf_ui',
+        'breezy.tests.test_shellcomplete',
         'breezy.tests.test_smart',
         'breezy.tests.test_smart_add',
         'breezy.tests.test_smart_request',
