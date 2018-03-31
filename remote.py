@@ -447,6 +447,7 @@ class RemoteGitDir(GitDir):
                 self._refs = remote_refs_dict_to_container(refs)
                 ret = dict(refs)
                 # TODO(jelmer): Unpeel if necessary
+                push_result.new_original_revid = revision_id
                 if lossy:
                     new_sha = source_store._lookup_revision_sha1(revision_id)
                 else:
@@ -479,6 +480,7 @@ class RemoteGitDir(GitDir):
             push_result.branch_push_result.master_branch = push_result.target_branch
             push_result.branch_push_result.old_revid = push_result.old_revid
             push_result.branch_push_result.new_revid = push_result.new_revid
+            push_result.branch_push_result.new_original_revid = push_result.new_original_revid
         if source.get_push_location() is None or remember:
             source.set_push_location(push_result.target_branch.base)
         return push_result
