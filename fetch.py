@@ -182,7 +182,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
 
 class SubmodulesRequireSubtrees(BzrError):
     _fmt = ("The repository you are fetching from contains submodules, "
-            "which are not yet supported.")
+            "which require a Bazaar format that supports tree references.")
     internal = False
 
 
