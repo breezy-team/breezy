@@ -364,7 +364,8 @@ class ControlDir(ControlComponent):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True,
+               lossy=False):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -390,7 +391,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.sprout)
 
-    def push_branch(self, source, revision_id=None, overwrite=False, 
+    def push_branch(self, source, revision_id=None, overwrite=False,
         remember=False, create_prefix=False, lossy=False):
         """Push the source branch into this ControlDir."""
         br_to = None
@@ -415,7 +416,7 @@ class ControlDir(ControlComponent):
                 # revision
                 revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
-            br_to = source.sprout(self, revision_id=revision_id)
+            br_to = source.sprout(self, revision_id=revision_id, lossy=lossy)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
