@@ -392,6 +392,9 @@ class TransportRepo(BaseRepo):
     def controldir(self):
         return self._controltransport.local_abspath('.')
 
+    def commondir(self):
+        return self._commontransport.local_abspath('.')
+
     @property
     def path(self):
         return self.transport.local_abspath('.')
