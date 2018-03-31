@@ -57,6 +57,7 @@ from .branch import (
     GitBranchFormat,
     GitBranchPushResult,
     GitTags,
+    _quick_lookup_revno,
     )
 from .dir import (
     GitControlDirFormat,
@@ -114,8 +115,11 @@ from dulwich.pack import load_pack_index
 class GitPushResult(PushResult):
 
     def _lookup_revno(self, revid):
-        return _quick_lookup_revno(self.source_branch, self.target_branch,
-            revid)
+        try:
+            return _quick_lookup_revno(self.source_branch, self.target_branch,
+                revid)
+        except GitSmartRemoteNotSupported:
+            return None
 
     @property
     def old_revno(self):
@@ -466,7 +470,6 @@ class RemoteGitDir(GitDir):
             old_remote = ZERO_SHA
         push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
         self._refs = remote_refs_dict_to_container(new_refs)
-        push_result.old_revno = None
         push_result.target_branch = self.open_branch(name)
         if old_remote != ZERO_SHA:
             push_result.branch_push_result = GitBranchPushResult()

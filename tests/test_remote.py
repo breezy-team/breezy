@@ -211,9 +211,15 @@ class PushToRemoteBase(object):
         revid = wt.commit('blah')
 
         if self._from_format == 'git':
-            remote.push_branch(wt.branch, name='newbranch')
+            result = remote.push_branch(wt.branch, name='newbranch')
         else:
-            remote.push_branch(wt.branch, lossy=True, name='newbranch')
+            result = remote.push_branch(wt.branch, lossy=True, name='newbranch')
+
+        self.assertEqual(0, result.old_revno)
+        if self._from_format == 'git':
+            self.assertEqual(1, result.new_revno)
+        else:
+            self.assertIs(None, result.new_revno)
 
         self.assertEqual(
                 {'refs/heads/newbranch': self.remote_real.refs['refs/heads/newbranch'],
@@ -237,9 +243,12 @@ class PushToRemoteBase(object):
         wt.branch.get_config_stack().set('branch.fetch_tags', True)
 
         if self._from_format == 'git':
-            wt.branch.push(remote.create_branch('newbranch'))
+            result = wt.branch.push(remote.create_branch('newbranch'))
         else:
-            wt.branch.push(remote.create_branch('newbranch'), lossy=True)
+            result = wt.branch.push(remote.create_branch('newbranch'), lossy=True)
+
+        self.assertEqual(0, result.old_revno)
+        self.assertEqual(2, result.new_revno)
 
         self.assertEqual(
                 {'refs/heads/master': self.remote_real.head(),
