@@ -56,7 +56,6 @@ from .errors import (
     )
 from .fetch import (
     import_git_objects,
-    report_git_progress,
     DetermineWantsRecorder,
     )
 from .mapping import (
@@ -535,8 +534,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 objects_iter = self.source.fetch_objects(
-                    wants_recorder, graph_walker, store.get_raw,
-                    progress=lambda text: report_git_progress(pb, text),)
+                    wants_recorder, graph_walker, store.get_raw)
                 trace.mutter("Importing %d new revisions",
                              len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target,
@@ -676,12 +674,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
             raise FetchLimitUnsupported(self)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            refs = self.source._git.fetch(self.target._git, determine_wants,
-                lambda text: report_git_progress(pb, text))
-        finally:
-            pb.finished()
+        refs = self.source._git.fetch(self.target._git, determine_wants)
         return (None, None, refs)
 
     @staticmethod
@@ -699,33 +692,28 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()
-        pb = ui.ui_factory.nested_progress_bar()
+        if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
+            # TODO(jelmer): Avoid reading entire file into memory and
+            # only processing it after the whole file has been fetched.
+            f = BytesIO()
+
+            def commit():
+                if f.tell():
+                    f.seek(0)
+                    self.target._git.object_store.move_in_thin_pack(f)
+
+            def abort():
+                pass
+        else:
+            f, commit, abort = self.target._git.object_store.add_pack()
         try:
-            if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
-                # TODO(jelmer): Avoid reading entire file into memory and
-                # only processing it after the whole file has been fetched.
-                f = BytesIO()
-
-                def commit():
-                    if f.tell():
-                        f.seek(0)
-                        self.target._git.object_store.move_in_thin_pack(f)
-
-                def abort():
-                    pass
-            else:
-                f, commit, abort = self.target._git.object_store.add_pack()
-            try:
-                refs = self.source.controldir.fetch_pack(
-                    determine_wants, graphwalker, f.write,
-                    lambda text: report_git_progress(pb, text))
-                commit()
-                return (None, None, refs)
-            except BaseException:
-                abort()
-                raise
-        finally:
-            pb.finished()
+            refs = self.source.controldir.fetch_pack(
+                determine_wants, graphwalker, f.write)
+            commit()
+            return (None, None, refs)
+        except BaseException:
+            abort()
+            raise
 
     @staticmethod
     def is_compatible(source, target):

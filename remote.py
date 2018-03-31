@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+import re
+
 from ... import (
     config,
     debug,
@@ -287,11 +289,25 @@ class RemoteGitBranchFormat(GitBranchFormat):
         raise UninitializableFormat(self)
 
 
-def default_report_progress(text):
+_GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
+_GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
+def default_report_progress(pb, text):
+    text = text.rstrip("\r\n")
     if text.startswith('error: '):
         trace.show_error('git: %s', text[len('error: '):])
     else:
-        trace.mutter("git: %s" % text)
+        trace.mutter("git: %s", text)
+        g = _GIT_PROGRESS_PARTIAL_RE.match(text)
+        if g is not None:
+            (text, pct, current, total) = g.groups()
+            pb.update(text, int(current), int(total))
+        else:
+            g = _GIT_PROGRESS_TOTAL_RE.match(text)
+            if g is not None:
+                (text, total) = g.groups()
+                pb.update(text, None, int(total))
+            else:
+                pb.update(text, None, None)
 
 
 class RemoteGitDir(GitDir):
@@ -312,7 +328,10 @@ class RemoteGitDir(GitDir):
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
-            progress = default_report_progress
+            progress = lambda text: default_report_progress(pb, text)
+            pb = ui.ui_factory.nested_progress_bar()
+        else:
+            pb = None
         try:
             result = self._client.fetch_pack(self._client_path, determine_wants,
                 graph_walker, pack_data, progress)
@@ -322,16 +341,24 @@ class RemoteGitDir(GitDir):
             return result
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
+        finally:
+            if pb is not None:
+                pb.finished()
 
     def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
         if progress is None:
-            progress = default_report_progress
-
+            progress = lambda text: default_report_progress(pb, text)
+            pb = ui.ui_factory.nested_progress_bar()
+        else:
+            pb = None
         try:
             return self._client.send_pack(self._client_path, get_changed_refs,
                 generate_pack_data, progress)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
+        finally:
+            if pb is not None:
+                pb.finished()
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None, ref=None):
