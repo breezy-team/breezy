@@ -355,7 +355,7 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _update_sha_map(self, stop_revision=None):
         if not self.is_locked():
-            raise AssertionError()
+            raise errors.LockNotHeld(self)
         if self._map_updated:
             return
         if (stop_revision is not None and
