@@ -92,7 +92,7 @@ def ref_to_branch_name(ref):
 
 
 def ref_to_tag_name(ref):
-    if not ref.startswith(LOCAL_TAG_PREFIX):
+    if ref.startswith(LOCAL_TAG_PREFIX):
         return ref[len(LOCAL_TAG_PREFIX):].decode("utf-8")
     raise ValueError("unable to map ref %s back to tag name" % ref)
 
