@@ -33,6 +33,7 @@ from dulwich.protocol import (
 from dulwich.walk import Walker
 
 from ...errors import (
+    DivergedBranches,
     FetchLimitUnsupported,
     InvalidRevisionId,
     LossyPushToSameVCS,
@@ -67,6 +68,7 @@ from .object_store import (
     )
 from .push import (
     MissingObjectsIterator,
+    remote_divergence,
     )
 from .refs import (
     is_tag,
@@ -102,7 +104,7 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         """Fetch possibly roundtripped revisions into the target repository
         and update refs.
 
@@ -244,7 +246,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             bzr_refs[k] = (v, revid)
         return bzr_refs
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         self._warn_slow()
         with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
@@ -321,7 +323,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 class InterToRemoteGitRepository(InterToGitRepository):
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         """Import the gist of the ancestry of a particular revision."""
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport(self.source, self.target, self.mapping)
@@ -334,9 +336,11 @@ class InterToRemoteGitRepository(InterToGitRepository):
             for name, (gitid, revid) in self.new_refs.iteritems():
                 if gitid is None:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
-                    ret[name] = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
-                else:
-                    ret[name] = gitid
+                    gitid = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
+                if not overwrite:
+                    if remote_divergence(old_refs.get(name), gitid, self.source_store):
+                        raise DivergedBranches(self.source, self.target)
+                ret[name] = gitid
             return ret
         self._warn_slow()
         with self.source_store.lock_read():
@@ -597,7 +601,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 class InterGitGitRepository(InterFromGitRepository):
     """InterRepository that copies between Git repositories."""
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         old_refs = self.target.controldir.get_refs_container()

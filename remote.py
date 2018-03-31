@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from ... import (
     config,
     debug,
+    errors,
     trace,
     ui,
     urlutils,
@@ -31,6 +32,7 @@ from ...push import (
 from ...errors import (
     AlreadyBranchError,
     BzrError,
+    DivergedBranches,
     InProcessTransport,
     InvalidRevisionId,
     NoSuchFile,
@@ -70,6 +72,9 @@ from .mapping import (
     )
 from .object_store import (
     get_object_store,
+    )
+from .push import (
+    remote_divergence,
     )
 from .repository import (
     GitRepository,
@@ -424,9 +429,14 @@ class RemoteGitDir(GitDir):
                 ret = dict(refs)
                 # TODO(jelmer): Unpeel if necessary
                 if lossy:
-                    ret[refname] = source_store._lookup_revision_sha1(revision_id)
+                    new_sha = source_store._lookup_revision_sha1(revision_id)
                 else:
-                    ret[refname] = repo.lookup_bzr_revision_id(revision_id)[0]
+                    new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+                if not overwrite:
+                    if remote_divergence(ret.get(refname), new_sha, source_store):
+                        raise DivergedBranches(
+                                source, self.open_branch(name, nascent_ok=True))
+                ret[refname] = new_sha
                 return ret
             if lossy:
                 generate_pack_data = source_store.generate_lossy_pack_data

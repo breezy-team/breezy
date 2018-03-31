@@ -24,6 +24,7 @@ import time
 from ....controldir import ControlDir
 from ....errors import (
     BzrError,
+    DivergedBranches,
     NotBranchError,
     NoSuchTag,
     )
@@ -247,6 +248,36 @@ class PushToRemoteBase(object):
                  'refs/tags/sometag': self.remote_real.refs['refs/heads/newbranch'],
                 },
                 self.remote_real.get_refs())
+
+    def test_push_diverged(self):
+        c1 = self.remote_real.do_commit(
+                message='message',
+                committer='committer <committer@example.com>',
+                author='author <author@example.com>',
+                ref='refs/heads/newbranch')
+
+        remote = ControlDir.open(self.remote_url)
+        wt = self.make_branch_and_tree('local', format=self._from_format)
+        self.build_tree(['local/blah'])
+        wt.add(['blah'])
+        revid = wt.commit('blah')
+
+        newbranch = remote.open_branch('newbranch')
+        if self._from_format == 'git':
+            self.assertRaises(DivergedBranches, wt.branch.push, newbranch)
+        else:
+            self.assertRaises(DivergedBranches, wt.branch.push, newbranch, lossy=True)
+
+        self.assertEqual(
+                {'refs/heads/newbranch': c1 },
+                self.remote_real.get_refs())
+
+        if self._from_format == 'git':
+            wt.branch.push(newbranch, overwrite=True)
+        else:
+            wt.branch.push(newbranch, lossy=True, overwrite=True)
+
+        self.assertNotEqual(c1, self.remote_real.refs['refs/heads/newbranch'])
 
 
 class PushToRemoteFromBzrTests(PushToRemoteBase,TestCaseWithTransport):

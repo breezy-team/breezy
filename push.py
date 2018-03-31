@@ -68,3 +68,34 @@ class MissingObjectsIterator(object):
 
     def __iter__(self):
         return iter(self._pending)
+
+
+class ObjectStoreParentsProvider(object):
+
+    def __init__(self, store):
+        self._store = store
+
+    def get_parent_map(self, shas):
+        ret = {}
+        for sha in shas:
+            if sha is None:
+                parents = []
+            else:
+                try:
+                    parents = self._store[sha].parents
+                except KeyError:
+                    parents = None
+            ret[sha] = parents
+        return ret
+
+
+def remote_divergence(old_sha, new_sha, store):
+    if old_sha is None:
+        return False
+    if not isinstance(old_sha, bytes):
+        raise TypeError(old_sha)
+    if not isinstance(new_sha, bytes):
+        raise TypeError(new_sha)
+    from breezy.graph import Graph
+    graph = Graph(ObjectStoreParentsProvider(store))
+    return not graph.is_ancestor(old_sha, new_sha)
