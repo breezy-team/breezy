@@ -58,6 +58,9 @@ from .errors import (
     NoPushSupport,
     NoSuchRef,
     )
+from .push import (
+    remote_divergence,
+    )
 from .refs import (
     is_tag,
     ref_to_branch_name,
@@ -943,17 +946,22 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite, stop_revision):
-        # TODO(jelmer): Support overwrite
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         if stop_revision is None:
             stop_revision = self.source.last_revision()
-        # TODO(jelmer): Check for diverged branches
         def get_changed_refs(old_refs):
-            old_ref = old_refs.get(self.target.ref, ZERO_SHA)
-            result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
-            refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
+            old_ref = old_refs.get(self.target.ref, None)
+            if old_ref is None:
+                result.old_revid = revision.NULL_REVISION
+            else:
+                result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
+            new_ref = self.source.repository.lookup_bzr_revision_id(stop_revision)[0]
+            if not overwrite:
+                if remote_divergence(old_ref, new_ref, self.source.repository._git.object_store):
+                    raise errors.DivergedBranches(self.source, self.target)
+            refs = { self.target.ref: new_ref }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
                 refs[tag_name_to_ref(name)] = sha
@@ -1219,7 +1227,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                    update_refs, lossy=lossy)
+                    update_refs, lossy=lossy, overwrite=overwrite)
             except NoPushSupport:
                 raise errors.NoRoundtrippingSupport(self.source, self.target)
             (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
