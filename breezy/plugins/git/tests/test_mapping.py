@@ -40,6 +40,7 @@ from ..mapping import (
     BzrGitMappingv1,
     directory_to_tree,
     escape_file_id,
+    fix_person_identifier,
     unescape_file_id,
     )
 
@@ -390,3 +391,20 @@ class DirectoryToTreeTests(tests.TestCase):
         t2 = Tree()
         t2.add("bar", 0100644, b.id)
         self.assertEquals(t1, t2)
+
+
+class FixPersonIdentifierTests(tests.TestCase):
+
+    def test_valid(self):
+        self.assertEqual("foo <bar@blah.nl>",
+                         fix_person_identifier("foo <bar@blah.nl>"))
+        self.assertEqual("bar@blah.nl <bar@blah.nl>",
+                         fix_person_identifier("bar@blah.nl"))
+
+    def test_fix(self):
+        self.assertEqual("person <bar@blah.nl>",
+                         fix_person_identifier("somebody <person <bar@blah.nl>>"))
+        self.assertEqual("person <bar@blah.nl>",
+                         fix_person_identifier("person<bar@blah.nl>"))
+        self.assertRaises(ValueError,
+                         fix_person_identifier, "person >bar@blah.nl<")

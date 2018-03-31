@@ -25,6 +25,9 @@ from ... import (
     ui,
     urlutils,
     )
+from ...controldir import (
+    PushResult,
+    )
 from ...errors import (
     AlreadyBranchError,
     BzrError,
@@ -35,6 +38,7 @@ from ...errors import (
     NoSuchTag,
     NotBranchError,
     NotLocalUrl,
+    NoWorkingTree,
     UninitializableFormat,
     )
 from ...transport import (
@@ -62,6 +66,9 @@ from .errors import (
     )
 from .mapping import (
     mapping_registry,
+    )
+from .object_store import (
+    get_object_store,
     )
 from .repository import (
     GitRepository,
@@ -390,6 +397,45 @@ class RemoteGitDir(GitDir):
         self._refs = remote_refs_dict_to_container(
                 result.refs, result.symrefs)
         return self._refs
+
+    def push_branch(self, source, revision_id=None, overwrite=False,
+                    remember=False, create_prefix=False, lossy=False,
+                    name=None):
+        """Push the source branch into this ControlDir."""
+        if revision_id is None:
+            # No revision supplied by the user, default to the branch
+            # revision
+            revision_id = source.last_revision()
+
+        push_result = PushResult()
+        push_result.workingtree_updated = None
+        push_result.master_branch = None
+        push_result.source_branch = source
+        push_result.stacked_on = None
+        push_result.branch_push_result = None
+        repo = self.find_repository()
+        refname = self._get_selected_ref(name)
+        def get_changed_refs(refs):
+            self._refs = dict(refs)
+            ret = dict(refs)
+            ret[refname] = repo.lookup_bzr_revision_id(revision_id)[0]
+            return ret
+        source_store = get_object_store(source.repository)
+        if lossy:
+            generate_pack_data = source_store.generate_lossy_pack_data
+        else:
+            generate_pack_data = source_store.generate_pack_data
+        new_refs = self.send_pack(get_changed_refs, generate_pack_data)
+        push_result.new_revid = repo.lookup_foreign_revision_id(
+                new_refs[refname])
+        self._refs.update(new_refs)
+        push_result.old_revid = repo.lookup_foreign_revision_id(
+                self._refs.get(refname, ZERO_SHA))
+        push_result.old_revno = None
+        push_result.target_branch = self.open_branch(name)
+        if source.get_push_location() is None or remember:
+            source.set_push_location(push_result.target_branch.base)
+        return push_result
 
 
 class EmptyObjectStoreIterator(dict):

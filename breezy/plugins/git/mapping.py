@@ -93,11 +93,17 @@ def unescape_file_id(file_id):
 
 
 def fix_person_identifier(text):
-    if "<" in text and ">" in text:
-        if not " <" in text and text.count("<") == 1:
-            text = text.replace("<", " <")
-        return text
-    return "%s <%s>" % (text, text)
+    if not "<" in text and not ">" in text:
+        username = text
+        email = text
+    else:
+        if text.rindex(">") < text.rindex("<"):
+            raise ValueError(text)
+        username, email = text.split("<", 2)[-2:]
+        email = email.split(">", 1)[0]
+        if username.endswith(" "):
+            username = username[:-1]
+    return "%s <%s>" % (username, email)
 
 
 def warn_escaped(commit, num_escaped):
