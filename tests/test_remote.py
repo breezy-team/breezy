@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+from StringIO import StringIO
+
 import os
 import time
 
@@ -221,6 +223,8 @@ class PushToRemoteBase(object):
         else:
             self.assertIs(None, result.new_revno)
 
+        result.report(StringIO())
+
         self.assertEqual(
                 {'refs/heads/newbranch': self.remote_real.refs['refs/heads/newbranch'],
                 },
@@ -249,6 +253,8 @@ class PushToRemoteBase(object):
 
         self.assertEqual(0, result.old_revno)
         self.assertEqual(2, result.new_revno)
+
+        result.report(StringIO())
 
         self.assertEqual(
                 {'refs/heads/master': self.remote_real.head(),
