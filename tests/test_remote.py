@@ -202,6 +202,23 @@ class PushToRemoteBase(object):
         self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
         self.permit_url(self.remote_url)
 
+    def test_push_branch_new(self):
+        remote = ControlDir.open(self.remote_url)
+        wt = self.make_branch_and_tree('local', format=self._from_format)
+        self.build_tree(['local/blah'])
+        wt.add(['blah'])
+        revid = wt.commit('blah')
+
+        if self._from_format == 'git':
+            remote.push_branch(wt.branch, name='newbranch')
+        else:
+            remote.push_branch(wt.branch, lossy=True, name='newbranch')
+
+        self.assertEqual(
+                {'refs/heads/newbranch': self.remote_real.refs['refs/heads/newbranch'],
+                },
+                self.remote_real.get_refs())
+
     def test_push(self):
         c1 = self.remote_real.do_commit(
                 message='message',

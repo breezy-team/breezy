@@ -25,7 +25,7 @@ from ... import (
     ui,
     urlutils,
     )
-from ...controldir import (
+from ...push import (
     PushResult,
     )
 from ...errors import (
@@ -53,6 +53,7 @@ lazy_check_versions()
 from .branch import (
     GitBranch,
     GitBranchFormat,
+    GitBranchPushResult,
     GitTags,
     )
 from .dir import (
@@ -89,6 +90,7 @@ from dulwich.pack import (
     Pack,
     pack_objects_to_data,
     )
+from dulwich.protocol import ZERO_SHA
 from dulwich.refs import SYMREF
 from dulwich.repo import DictRefsContainer
 import os
@@ -415,24 +417,40 @@ class RemoteGitDir(GitDir):
         push_result.branch_push_result = None
         repo = self.find_repository()
         refname = self._get_selected_ref(name)
-        def get_changed_refs(refs):
-            self._refs = dict(refs)
-            ret = dict(refs)
-            ret[refname] = repo.lookup_bzr_revision_id(revision_id)[0]
-            return ret
         source_store = get_object_store(source.repository)
-        if lossy:
-            generate_pack_data = source_store.generate_lossy_pack_data
-        else:
-            generate_pack_data = source_store.generate_pack_data
-        new_refs = self.send_pack(get_changed_refs, generate_pack_data)
+        with source_store.lock_read():
+            def get_changed_refs(refs):
+                self._refs = remote_refs_dict_to_container(refs)
+                ret = dict(refs)
+                # TODO(jelmer): Unpeel if necessary
+                if lossy:
+                    ret[refname] = source_store._lookup_revision_sha1(revision_id)
+                else:
+                    ret[refname] = repo.lookup_bzr_revision_id(revision_id)[0]
+                return ret
+            if lossy:
+                generate_pack_data = source_store.generate_lossy_pack_data
+            else:
+                generate_pack_data = source_store.generate_pack_data
+            new_refs = self.send_pack(get_changed_refs, generate_pack_data)
         push_result.new_revid = repo.lookup_foreign_revision_id(
                 new_refs[refname])
-        self._refs.update(new_refs)
-        push_result.old_revid = repo.lookup_foreign_revision_id(
-                self._refs.get(refname, ZERO_SHA))
+        try:
+            old_remote = self._refs[refname]
+        except KeyError:
+            old_remote = ZERO_SHA
+        push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
+        self._refs = remote_refs_dict_to_container(new_refs)
         push_result.old_revno = None
         push_result.target_branch = self.open_branch(name)
+        if old_remote != ZERO_SHA:
+            push_result.branch_push_result = GitBranchPushResult()
+            push_result.branch_push_result.source_branch = source
+            push_result.branch_push_result.target_branch = push_result.target_branch
+            push_result.branch_push_result.local_branch = None
+            push_result.branch_push_result.master_branch = push_result.target_branch
+            push_result.branch_push_result.old_revid = push_result.old_revid
+            push_result.branch_push_result.new_revid = push_result.new_revid
         if source.get_push_location() is None or remember:
             source.set_push_location(push_result.target_branch.base)
         return push_result
