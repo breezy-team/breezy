@@ -28,7 +28,10 @@ install:
 script:
   - export PYTHONPATH=${PYTHONPATH}:$(python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
   - echo ${PYTHONPATH}
-  - make check-nodocs3
+  - make check-nodocs3 | tee selftest.log | subunit-filter | subunit2pyunit
+  - echo `date` ": selftest ends" 1>&2
+  - if [ ! -s selftest.log ] ; then exit 1 ; fi
+  - subunit-stats < selftest.log
 
 after_success:
   - python -m coverage combine
