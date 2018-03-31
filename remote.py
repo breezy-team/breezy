@@ -59,6 +59,7 @@ from .branch import (
     GitBranchFormat,
     GitBranchPushResult,
     GitTags,
+    _quick_lookup_revno,
     )
 from .dir import (
     GitControlDirFormat,
@@ -111,6 +112,24 @@ import urlparse
 urlparse.uses_netloc.extend(['git', 'git+ssh'])
 
 from dulwich.pack import load_pack_index
+
+
+class GitPushResult(PushResult):
+
+    def _lookup_revno(self, revid):
+        try:
+            return _quick_lookup_revno(self.source_branch, self.target_branch,
+                revid)
+        except GitSmartRemoteNotSupported:
+            return None
+
+    @property
+    def old_revno(self):
+        return self._lookup_revno(self.old_revid)
+
+    @property
+    def new_revno(self):
+        return self._lookup_revno(self.new_revid)
 
 
 # Don't run any tests on GitSmartTransport as it is not intended to be
@@ -441,7 +460,7 @@ class RemoteGitDir(GitDir):
             # revision
             revision_id = source.last_revision()
 
-        push_result = PushResult()
+        push_result = GitPushResult()
         push_result.workingtree_updated = None
         push_result.master_branch = None
         push_result.source_branch = source
@@ -455,6 +474,7 @@ class RemoteGitDir(GitDir):
                 self._refs = remote_refs_dict_to_container(refs)
                 ret = dict(refs)
                 # TODO(jelmer): Unpeel if necessary
+                push_result.new_original_revid = revision_id
                 if lossy:
                     new_sha = source_store._lookup_revision_sha1(revision_id)
                 else:
@@ -478,7 +498,6 @@ class RemoteGitDir(GitDir):
             old_remote = ZERO_SHA
         push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
         self._refs = remote_refs_dict_to_container(new_refs)
-        push_result.old_revno = None
         push_result.target_branch = self.open_branch(name)
         if old_remote != ZERO_SHA:
             push_result.branch_push_result = GitBranchPushResult()
@@ -488,6 +507,7 @@ class RemoteGitDir(GitDir):
             push_result.branch_push_result.master_branch = push_result.target_branch
             push_result.branch_push_result.old_revid = push_result.old_revid
             push_result.branch_push_result.new_revid = push_result.new_revid
+            push_result.branch_push_result.new_original_revid = push_result.new_original_revid
         if source.get_push_location() is None or remember:
             source.set_push_location(push_result.target_branch.base)
         return push_result
