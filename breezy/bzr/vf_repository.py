@@ -27,7 +27,6 @@ from breezy import (
     check,
     config as _mod_config,
     debug,
-    fetch as _mod_fetch,
     fifo_cache,
     gpg,
     graph,
@@ -40,6 +39,7 @@ from breezy import (
     ui,
     )
 from breezy.bzr import (
+    fetch as _mod_fetch,
     inventory_delta,
     inventorytree,
     versionedfile,
