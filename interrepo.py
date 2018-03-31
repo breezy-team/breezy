@@ -245,6 +245,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         return bzr_refs
 
     def fetch_refs(self, update_refs, lossy):
+        self._warn_slow()
         with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
