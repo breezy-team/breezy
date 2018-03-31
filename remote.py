@@ -111,6 +111,21 @@ urlparse.uses_netloc.extend(['git', 'git+ssh'])
 from dulwich.pack import load_pack_index
 
 
+class GitPushResult(PushResult):
+
+    def _lookup_revno(self, revid):
+        return _quick_lookup_revno(self.source_branch, self.target_branch,
+            revid)
+
+    @property
+    def old_revno(self):
+        return self._lookup_revno(self.old_revid)
+
+    @property
+    def new_revno(self):
+        return self._lookup_revno(self.new_revid)
+
+
 # Don't run any tests on GitSmartTransport as it is not intended to be
 # a full implementation of Transport
 def get_test_permutations():
@@ -414,7 +429,7 @@ class RemoteGitDir(GitDir):
             # revision
             revision_id = source.last_revision()
 
-        push_result = PushResult()
+        push_result = GitPushResult()
         push_result.workingtree_updated = None
         push_result.master_branch = None
         push_result.source_branch = source
