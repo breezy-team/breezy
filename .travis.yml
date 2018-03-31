@@ -1,0 +1,35 @@
+language: python
+sudo: false
+cache: pip
+
+python:
+  - 3.3
+  - 3.4
+  - 3.5
+  - 3.5-dev
+  - 3.6
+  - 3.6-dev
+  - pypy3.3-5.2-alpha1
+
+env:
+  - PYTHONHASHSEED=random
+
+matrix:
+  include:
+    - python: 2.7
+      script:
+        - make check-nodocs2
+
+install:
+  - sudo apt install python-all-dev python3-all-dev subunit
+  - travis_retry pip install -U setuptools
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six python-subunit $TEST_REQUIRE
+
+script:
+  - export PYTHONPATH=${PYTHONPATH}:$(python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
+  - echo ${PYTHONPATH}
+  - make check-nodocs3
+
+after_success:
+  - python -m coverage combine
+  - codecov
