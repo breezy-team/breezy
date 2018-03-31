@@ -34,7 +34,6 @@ from itertools import (
     imap,
     )
 import posixpath
-import re
 import stat
 
 from ... import (
@@ -530,18 +529,6 @@ def import_git_objects(repo, mapping, object_iter,
         else:
             target_git_object_retriever.commit_write_group()
     return pack_hints, last_imported
-
-
-_GIT_PROGRESS_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
-def report_git_progress(pb, text):
-    text = text.rstrip("\r\n")
-    trace.mutter('git: %s', text)
-    g = _GIT_PROGRESS_RE.match(text)
-    if g is not None:
-        (text, pct, current, total) = g.groups()
-        pb.update(text, int(current), int(total))
-    else:
-        pb.update(text, 0, 0)
 
 
 class DetermineWantsRecorder(object):
