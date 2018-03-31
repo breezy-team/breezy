@@ -1401,6 +1401,8 @@ class cmd_push(Command):
                " that support it."),
         Option('overwrite-tags',
               help="Overwrite tags only."),
+        Option('lossy', help="Allow lossy push, i.e. dropping metadata "
+                             "that can't be represented in the target.")
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1409,7 +1411,7 @@ class cmd_push(Command):
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
         stacked=False, strict=None, no_tree=False,
-        overwrite_tags=False):
+        overwrite_tags=False, lossy=False):
         from .push import _show_push_branch
 
         if overwrite:
@@ -1476,7 +1478,8 @@ class cmd_push(Command):
         _show_push_branch(br_from, revision_id, location, self.outf,
             verbose=verbose, overwrite=overwrite, remember=remember,
             stacked_on=stacked_on, create_prefix=create_prefix,
-            use_existing_dir=use_existing_dir, no_tree=no_tree)
+            use_existing_dir=use_existing_dir, no_tree=no_tree,
+            lossy=lossy)
 
 
 class cmd_branch(Command):

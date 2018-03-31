@@ -391,7 +391,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.sprout)
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False, create_prefix=False):
+        remember=False, create_prefix=False, lossy=False):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -435,20 +435,18 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(br_to, 
-                    overwrite, stop_revision=revision_id)
+                    overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(br_to,
-                    overwrite, stop_revision=revision_id)
+                    overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = None # Not applicable
             else:
-                tree_to.lock_write()
-                try:
+                with tree_to.lock_write():
                     push_result.branch_push_result = source.push(
-                        tree_to.branch, overwrite, stop_revision=revision_id)
+                        tree_to.branch, overwrite, stop_revision=revision_id,
+                        lossy=lossy)
                     tree_to.update()
-                finally:
-                    tree_to.unlock()
                 push_result.workingtree_updated = True
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid

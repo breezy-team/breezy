@@ -61,7 +61,7 @@ class PushResult(object):
 
 def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     overwrite=False, remember=False, stacked_on=None, create_prefix=False,
-    use_existing_dir=False, no_tree=False):
+    use_existing_dir=False, no_tree=False, lossy=False):
     """Push a branch to a location.
 
     :param br_from: the source branch
@@ -79,6 +79,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         at the destination if they don't already exist
     :param use_existing_dir: if True, proceed even if the destination
         directory exists without a current control directory in it
+    :param lossy: Allow lossy push
     """
     to_transport = transport.get_transport(location)
     try:
@@ -143,8 +144,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             warning("Ignoring request for a stacked branch as repository "
                     "already exists at the destination location.")
         try:
-            push_result = dir_to.push_branch(br_from, revision_id, overwrite, 
-                remember, create_prefix)
+            push_result = dir_to.push_branch(br_from, revision_id, overwrite,
+                remember, create_prefix, lossy=lossy)
         except errors.DivergedBranches:
             raise errors.BzrCommandError(gettext('These branches have diverged.'
                                     '  See "brz help diverged-branches"'
