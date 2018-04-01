@@ -308,25 +308,31 @@ class RemoteGitBranchFormat(GitBranchFormat):
         raise UninitializableFormat(self)
 
 
-_GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
-_GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
-def default_report_progress(pb, text):
-    text = text.rstrip("\r\n")
-    if text.startswith('error: '):
-        trace.show_error('git: %s', text[len('error: '):])
-    else:
-        trace.mutter("git: %s", text)
-        g = _GIT_PROGRESS_PARTIAL_RE.match(text)
-        if g is not None:
-            (text, pct, current, total) = g.groups()
-            pb.update(text, int(current), int(total))
+class DefaultProgressReporter(object):
+
+    _GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
+    _GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
+
+    def __init__(self, pb):
+        self.pb = pb
+
+    def progress(self, text):
+        text = text.rstrip("\r\n")
+        if text.startswith('error: '):
+            trace.show_error('git: %s', text[len('error: '):])
         else:
-            g = _GIT_PROGRESS_TOTAL_RE.match(text)
+            trace.mutter("git: %s", text)
+            g = self._GIT_PROGRESS_PARTIAL_RE.match(text)
             if g is not None:
-                (text, total) = g.groups()
-                pb.update(text, None, int(total))
+                (text, pct, current, total) = g.groups()
+                self.pb.update(text, int(current), int(total))
             else:
-                pb.update(text, None, None)
+                g = self._GIT_PROGRESS_TOTAL_RE.match(text)
+                if g is not None:
+                    (text, total) = g.groups()
+                    self.pb.update(text, None, int(total))
+                else:
+                    trace.note("%s", text)
 
 
 class RemoteGitDir(GitDir):
@@ -347,8 +353,8 @@ class RemoteGitDir(GitDir):
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
-            progress = lambda text: default_report_progress(pb, text)
             pb = ui.ui_factory.nested_progress_bar()
+            progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
         try:
@@ -366,8 +372,8 @@ class RemoteGitDir(GitDir):
 
     def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
         if progress is None:
-            progress = lambda text: default_report_progress(pb, text)
             pb = ui.ui_factory.nested_progress_bar()
+            progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
         try:
@@ -468,6 +474,8 @@ class RemoteGitDir(GitDir):
         push_result.branch_push_result = None
         repo = self.find_repository()
         refname = self._get_selected_ref(name)
+        if isinstance(source, GitBranch) and lossy:
+            raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
         with source_store.lock_read():
             def get_changed_refs(refs):
