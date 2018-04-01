@@ -23,7 +23,7 @@ import breezy
 
 def get_long_description():
     dirname = os.path.dirname(__file__)
-    readme = os.path.join(dirname, 'README')
+    readme = os.path.join(dirname, 'README.rst')
     with open(readme, 'rb') as f:
         return f.read()
 
