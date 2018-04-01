@@ -18,7 +18,10 @@ matrix:
   include:
     - python: 2.7
       script:
-        - make check-nodocs2
+        - make check-ci | tee selftest.log | subunit-filter | subunit2pyunit
+        - echo `date` ": selftest ends" 1>&2
+        - if [ ! -s selftest.log ] ; then exit 1 ; fi
+        - subunit-stats < selftest.log
 
 install:
   - sudo apt install python-all-dev python3-all-dev subunit
@@ -26,9 +29,7 @@ install:
   - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six python-subunit $TEST_REQUIRE
 
 script:
-  - export PYTHONPATH=${PYTHONPATH}:$(python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
-  - echo ${PYTHONPATH}
-  - make check-nodocs3 | tee selftest.log | subunit-filter | subunit2pyunit
+  - make check-ci | tee selftest.log | subunit-filter | subunit2pyunit
   - echo `date` ": selftest ends" 1>&2
   - if [ ! -s selftest.log ] ; then exit 1 ; fi
   - subunit-stats < selftest.log
