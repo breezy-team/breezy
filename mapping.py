@@ -387,6 +387,8 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
             rev.properties['git-gpg-signature'] = commit.gpgsig.decode('ascii')
+        if commit.mergetag:
+            raise AssertionError('unable to import mergetag')
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
