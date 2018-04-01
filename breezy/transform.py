@@ -657,7 +657,7 @@ class TreeTransformBase(object):
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
-            if not inventory.InventoryEntry.versionable_kind(kind):
+            if not self._tree.versionable_kind(kind):
                 conflicts.append(('versioning bad kind', trans_id, kind))
         return conflicts
 

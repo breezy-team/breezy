@@ -34,9 +34,6 @@ from breezy import (
     rules,
     trace,
     )
-from breezy.bzr import (
-    inventory,
-    )
 from breezy.i18n import gettext
 """)
 
@@ -653,6 +650,11 @@ class Tree(object):
         searcher = default_searcher
         return searcher
 
+    @classmethod
+    def versionable_kind(cls, kind):
+        """Check if this tree support versioning a specific file kind."""
+        return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
+
 
 class InterTree(InterObject):
     """This class represents operations taking place between two Trees.
@@ -859,7 +861,7 @@ class InterTree(InterObject):
         # the unversioned path lookup only occurs on real trees - where there
         # can be extras. So the fake_entry is solely used to look up
         # executable it values when execute is not supported.
-        fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
+        fake_entry = TreeFile()
         for target_path, target_entry in to_entries_by_dir:
             while (all_unversioned and
                 all_unversioned[0][0] < target_path.split('/')):
