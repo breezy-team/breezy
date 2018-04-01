@@ -26,7 +26,7 @@ matrix:
 install:
   - sudo apt install python-all-dev python3-all-dev subunit
   - travis_retry pip install -U setuptools
-  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six python-subunit $TEST_REQUIRE
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six python-subunit docutils $TEST_REQUIRE
 
 script:
   - make check-ci | tee selftest.log | subunit-filter | subunit2pyunit
