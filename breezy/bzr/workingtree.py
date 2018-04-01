@@ -743,7 +743,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
+            inv, inv_file_id = self._path2inv_file_id(path)
             return inv.get_entry(inv_file_id).executable
         else:
             mode = os.lstat(self.abspath(path)).st_mode
@@ -1452,7 +1452,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         if inv_file_id is None:
             raise errors.NoSuchFile(self, path)
         return inv.get_entry(inv_file_id).kind
