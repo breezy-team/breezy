@@ -64,14 +64,14 @@ class HttpTransport(ConnectedTransport):
 
     _opener_class = Opener
 
-    def __init__(self, base, _from_transport=None):
+    def __init__(self, base, _from_transport=None, ca_certs=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
         self._unqualified_scheme = proto_match.group(1)
-        super(HttpTransportBase, self).__init__(base,
-                                                _from_transport=_from_transport)
+        super(HttpTransport, self).__init__(
+                base, _from_transport=_from_transport)
         self._medium = None
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
@@ -161,11 +161,11 @@ class HttpTransport(ConnectedTransport):
         code, response_file = self._get(relpath, None)
         return response_file
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, offsets, tail_amount=0):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
-        :param ranges: None to get the whole file;
+        :param offsets: None to get the whole file;
             or  a list of _CoalescedOffset to fetch parts of a file.
         :param tail_amount: The amount to get from the end of the file.
 
@@ -473,11 +473,11 @@ class HttpTransport(ConnectedTransport):
         # At this point HttpTransport might be able to check and see if
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
-        if isinstance(other, HttpTransportBase):
+        if isinstance(other, HttpTransport):
             raise errors.TransportNotPossible(
                 'http cannot be the target of copy_to()')
         else:
-            return super(HttpTransportBase, self).\
+            return super(HttpTransport, self).\
                     copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
