@@ -90,7 +90,7 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
                 ('add', ('file', 'file-id', 'file', 'trunk content\n')),],
                 revision_id='2')
         builder.build_snapshot(['2'], [
-                ('unversion', 'dir-id'),],
+                ('unversion', 'dir'),],
                 revision_id='3')
         builder.finish_series()
         return builder.get_branch()

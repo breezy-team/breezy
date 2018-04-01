@@ -266,17 +266,13 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
         The order that they are yielded is:
 
         See Tree.iter_entries_by_dir for details.
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_files that have been requested. This has no
-            impact if specific_files is None.
         """
         with self.lock_read():
             if specific_files is not None:
@@ -291,7 +287,7 @@ class InventoryTree(Tree):
                 inventory_file_ids = None
             # FIXME: Handle nested trees
             return self.root_inventory.iter_entries_by_dir(
-                specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+                specific_file_ids=inventory_file_ids)
 
     def iter_child_entries(self, path, file_id=None):
         with self.lock_read():
