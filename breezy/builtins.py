@@ -2279,12 +2279,17 @@ class cmd_init_repository(Command):
 
         to_transport = transport.get_transport(location)
 
+        if format.fixed_components:
+            repo_format_name = None
+        else:
+            repo_format_name = format.repository_format.get_format_string()
+
         (repo, newdir, require_stacking, repository_policy) = (
             format.initialize_on_transport_ex(to_transport,
             create_prefix=True, make_working_trees=not no_trees,
             shared_repo=True, force_new_repo=True,
             use_existing_dir=True,
-            repo_format_name=format.repository_format.get_format_string()))
+            repo_format_name=repo_format_name))
         if not is_quiet():
             from .info import show_bzrdir_info
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
