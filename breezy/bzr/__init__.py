@@ -346,6 +346,15 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     help='Same as 2a.')
 
 
+# The following format should is just an alias for the default bzr format.
+register_metadir(controldir.format_registry, 'bzr',
+    'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
+    branch_format='breezy.bzr.branch.BzrBranchFormat7',
+    tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
+    alias=True,
+    hidden=True,
+    help='Default format for bzr. (currently 2a)')
+
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get('default_format')
 controldir.format_registry.set_default(format_name)
