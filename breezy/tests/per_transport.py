@@ -154,17 +154,9 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has('a'))
         self.assertEqual(False, t.has('c'))
         self.assertEqual(True, t.has(urlutils.escape('%')))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd',
-                                           'e', 'f', 'g', 'h'])),
-                         [True, True, False, False,
-                          True, False, True, False])
         self.assertEqual(True, t.has_any(['a', 'b', 'c']))
         self.assertEqual(False, t.has_any(['c', 'd', 'f',
                                            urlutils.escape('%%')]))
-        self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd',
-                                                'e', 'f', 'g', 'h']))),
-                         [True, True, False, False,
-                          True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
@@ -181,25 +173,12 @@ class TransportTests(TestTransportImplementation):
     def test_get(self):
         t = self.get_transport()
 
-        files = ['a', 'b', 'e', 'g']
-        contents = ['contents of a\n',
-                    'contents of b\n',
-                    'contents of e\n',
-                    'contents of g\n',
-                    ]
-        self.build_tree(files, transport=t, line_endings='binary')
+        files = ['a']
+        content = 'contents of a\n'
+        self.build_tree(['a'], transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
-        content_f = t.get_multi(files)
-        # Must use iter zip() from future not old version which will fully
-        # evaluate its inputs, the transport requests should be issued and
-        # handled sequentially (we don't want to force transport to buffer).
-        for content, f in zip(contents, content_f):
-            self.assertEqual(content, f.read())
-
-        content_f = t.get_multi(iter(files))
-        # Again this zip() must come from the future
-        for content, f in zip(contents, content_f):
-            self.assertEqual(content, f.read())
+        f = t.get('a')
+        self.assertEqual(content, f.read())
 
     def test_get_unknown_file(self):
         t = self.get_transport()
@@ -216,10 +195,6 @@ class TransportTests(TestTransportImplementation):
                 # consume before we close the handle.
                 content = f.read()
                 f.close()
-        self.assertRaises(NoSuchFile, iterate_and_close,
-                          t.get_multi, ['a', 'b', 'c'])
-        self.assertRaises(NoSuchFile, iterate_and_close,
-                          t.get_multi, iter(['a', 'b', 'c']))
 
     def test_get_directory_read_gives_ReadError(self):
         """consistent errors for read() on a file returned by get()."""
@@ -535,7 +510,6 @@ class TransportTests(TestTransportImplementation):
             # defined for the transport interface.
             self.assertRaises(TransportNotPossible, t.mkdir, '.')
             self.assertRaises(TransportNotPossible, t.mkdir, 'new_dir')
-            self.assertRaises(TransportNotPossible, t.mkdir_multi, ['new_dir'])
             self.assertRaises(TransportNotPossible, t.mkdir, 'path/doesnt/exist')
             return
         # Test mkdir
@@ -546,14 +520,9 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('dir_b')
         self.assertEqual(t.has('dir_b'), True)
 
-        t.mkdir_multi(['dir_c', 'dir_d'])
-
-        t.mkdir_multi(iter(['dir_e', 'dir_f']))
-        self.assertEqual(list(t.has_multi(
-            ['dir_a', 'dir_b', 'dir_c', 'dir_q',
-             'dir_d', 'dir_e', 'dir_f', 'dir_b'])),
-            [True, True, True, False,
-             True, True, True, True])
+        self.assertEqual([t.has(n) for n in
+            ['dir_a', 'dir_b', 'dir_q', 'dir_b']],
+            [True, True, False, True])
 
         # we were testing that a local mkdir followed by a transport
         # mkdir failed thusly, but given that we * in one process * do not
@@ -588,7 +557,7 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'dmode777', 0o777)
         t.mkdir('dmode700', mode=0o700)
         self.assertTransportMode(t, 'dmode700', 0o700)
-        t.mkdir_multi(['mdmode755'], mode=0o755)
+        t.mkdir('mdmode755', mode=0o755)
         self.assertTransportMode(t, 'mdmode755', 0o755)
 
         # Default mode should be based on umask
@@ -737,57 +706,6 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                           t.append_bytes, 'missing/path', 'content')
 
-    def test_append_multi(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        t.put_bytes('a', b'diff\ncontents for\na\n'
-                         b'add\nsome\nmore\ncontents\n')
-        t.put_bytes('b', b'contents\nfor b\n')
-
-        self.assertEqual((43, 15),
-            t.append_multi([('a', BytesIO(b'and\nthen\nsome\nmore\n')),
-                            ('b', BytesIO(b'some\nmore\nfor\nb\n'))]))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\n'
-            'add\nsome\nmore\ncontents\n'
-            'and\nthen\nsome\nmore\n',
-            t, 'a')
-        self.check_transport_contents(
-                'contents\nfor b\n'
-                'some\nmore\nfor\nb\n',
-                t, 'b')
-
-        self.assertEqual((62, 31),
-            t.append_multi(iter([('a', BytesIO(b'a little bit more\n')),
-                                 ('b', BytesIO(b'from an iterator\n'))])))
-        self.check_transport_contents(
-            'diff\ncontents for\na\n'
-            'add\nsome\nmore\ncontents\n'
-            'and\nthen\nsome\nmore\n'
-            'a little bit more\n',
-            t, 'a')
-        self.check_transport_contents(
-                'contents\nfor b\n'
-                'some\nmore\nfor\nb\n'
-                'from an iterator\n',
-                t, 'b')
-
-        self.assertEqual((80, 0),
-            t.append_multi([('a', BytesIO(b'some text in a\n')),
-                            ('d', BytesIO(b'missing file r\n'))]))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\n'
-            'add\nsome\nmore\ncontents\n'
-            'and\nthen\nsome\nmore\n'
-            'a little bit more\n'
-            'some text in a\n',
-            t, 'a')
-        self.check_transport_contents('missing file r\n', t, 'd')
-
     def test_append_file_mode(self):
         """Check that append accepts a mode parameter"""
         # check append accepts a mode
@@ -827,23 +745,17 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('b', b'b text\n')
         t.put_bytes('c', b'c text\n')
         self.assertEqual([True, True, True],
-                list(t.has_multi(['a', 'b', 'c'])))
-        t.delete_multi(['a', 'c'])
+                [t.has(n) for n in ['a', 'b', 'c']])
+        t.delete('a')
+        t.delete('c')
         self.assertEqual([False, True, False],
-                list(t.has_multi(['a', 'b', 'c'])))
+                [t.has(n) for n in ['a', 'b', 'c']])
         self.assertFalse(t.has('a'))
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('c'))
 
-        self.assertRaises(NoSuchFile,
-                t.delete_multi, ['a', 'b', 'c'])
-
-        self.assertRaises(NoSuchFile,
-                t.delete_multi, iter(['a', 'b', 'c']))
-
-        t.put_bytes('a', b'another a text\n')
-        t.put_bytes('c', b'another c text\n')
-        t.delete_multi(iter(['a', 'b', 'c']))
+        for name in ['a', 'c', 'd']:
+            self.assertRaises(NoSuchFile, t.delete, name)
 
         # We should have deleted everything
         # SftpServer creates control files in the
@@ -990,14 +902,14 @@ class TransportTests(TestTransportImplementation):
         # perhaps all of this could be done in a subdirectory
 
         t.put_bytes('a', b'a first file\n')
-        self.assertEqual([True, False], list(t.has_multi(['a', 'b'])))
+        self.assertEqual([True, False], [t.has(n) for n in ['a', 'b']])
 
         t.move('a', 'b')
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('a'))
 
         self.check_transport_contents('a first file\n', t, 'b')
-        self.assertEqual([False, True], list(t.has_multi(['a', 'b'])))
+        self.assertEqual([False, True], [t.has(n) for n in ['a', 'b']])
 
         # Overwrite a file
         t.put_bytes('c', b'c this file\n')
@@ -1007,7 +919,6 @@ class TransportTests(TestTransportImplementation):
 
         # TODO: Try to write a test for atomicity
         # TODO: Test moving into a non-existent subdirectory
-        # TODO: Test Transport.move_multi
 
     def test_copy(self):
         t = self.get_transport()
@@ -1027,8 +938,6 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('d', b'text in d\n')
         t.copy('d', 'b')
         self.check_transport_contents('text in d\n', t, 'b')
-
-        # TODO: test copy_multi
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
@@ -1068,14 +977,9 @@ class TransportTests(TestTransportImplementation):
                 self.assertTrue(S_ISREG(st.st_mode))
                 self.assertEqual(size, st.st_size)
 
-        remote_stats = list(t.stat_multi(paths))
-        remote_iter_stats = list(t.stat_multi(iter(paths)))
-
         self.assertRaises(NoSuchFile, t.stat, 'q')
         self.assertRaises(NoSuchFile, t.stat, 'b/a')
 
-        self.assertListRaises(NoSuchFile, t.stat_multi, ['a', 'c', 'd'])
-        self.assertListRaises(NoSuchFile, t.stat_multi, iter(['a', 'c', 'd']))
         self.build_tree(['subdir/', 'subdir/file'], transport=t)
         subdir = t.clone('subdir')
         st = subdir.stat('./file')

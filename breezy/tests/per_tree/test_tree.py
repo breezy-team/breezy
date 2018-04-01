@@ -367,3 +367,16 @@ class TestSupportsRenameTracking(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
         self.assertSubset([tree.supports_rename_tracking()], (True, False))
+
+
+class TestSupportsVersionableKind(TestCaseWithTree):
+
+    def test_file(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertTrue(tree.versionable_kind('file'))
+
+    def test_unknown(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertFalse(tree.versionable_kind('unknown'))
