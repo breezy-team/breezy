@@ -156,10 +156,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self._lock_mode = 'w'
             self._lock_count = 1
             try:
-                f = GitFile(self.control_transport.local_abspath('index'), 'wb')
+                self._index_file = GitFile(self.control_transport.local_abspath('index'), 'wb')
             except FileLocked:
                 raise errors.LockContention('index')
-            self._index_file = SHA1Writer(f)
             self._read_index()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
@@ -211,8 +210,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     self._flush(self._index_file)
                     self._index_file.close()
                 else:
-                    # Somebody else already wrote the index file.
-                    self._index_file.f.abort()
+                    # Somebody else already wrote the index file
+                    # by calling .flush()
+                    self._index_file.abort()
                 self._index_file = None
             self._lock_mode = None
             self.index = None
@@ -419,7 +419,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 if message is not None:
                     trace.note(message)
             self._versioned_dirs = None
-            self.flush()
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         if not file_list:
@@ -509,8 +508,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         if save:
                             self._index_add_entry(subp, kind)
                         added.append(subp)
-            if added and save:
-                self.flush()
             return added, ignored
 
     def has_filename(self, filename):
@@ -556,6 +553,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def flush(self):
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
+        # TODO(jelmer): This shouldn't be writing in-place, but index.lock is
+        # already in use and GitFile doesn't allow overriding the lock file name :(
         f = open(self.control_transport.local_abspath('index'), 'wb')
         # Note that _flush will close the file
         self._flush(f)
@@ -858,7 +857,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         with self.lock_tree_write():
             for path in self.index:
                 self._set_conflicted(path, path in by_path)
-            self.flush()
 
     def _set_conflicted(self, path, conflicted):
         trace.mutter('change conflict: %r -> %r', path, conflicted)
@@ -879,7 +877,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         raise errors.UnsupportedOperation(self.add_conflicts, self)
                 else:
                     raise errors.UnsupportedOperation(self.add_conflicts, self)
-            self.flush()
 
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
@@ -1051,7 +1048,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
-        self.flush()
 
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -1147,7 +1143,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                                   0, 0, len(obj.as_raw_string()), 0,
                                   0, 0))
                     self.index[entry.path] = index_entry_from_stat(st, entry.sha, 0)
-            self.flush()
 
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
