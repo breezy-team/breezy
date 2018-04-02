@@ -741,6 +741,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._lock_mode = None
         self._lock_count = 0
         self._versioned_dirs = None
+        self._index_dirty = False
 
     def is_versioned(self, path):
         with self.lock_read():
@@ -813,6 +814,10 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 raise errors.InvalidNormalization(path)
             self._index_add_entry(path, kind)
 
+    def _index_del_entry(self, path):
+        del self.index[path]
+        self._index_dirty = True
+
     def _index_add_entry(self, path, kind, flags=0):
         if not isinstance(path, basestring):
             raise TypeError(path)
@@ -852,6 +857,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             # TODO(jelmer): Why do we need to do this?
             trace.mutter('ignoring path with invalid newline in it: %r', path)
             return
+        self._index_dirty = True
         self.index[encoded_path] = index_entry_from_stat(
             stat_val, blob.id, flags)
         if self._versioned_dirs is not None:
@@ -948,13 +954,13 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         encoded_path = path.encode("utf-8")
         count = 0
         try:
-            del self.index[encoded_path]
+            self._index_del_entry(encoded_path)
         except KeyError:
             # A directory, perhaps?
             for p in list(self.index):
                 if p.startswith(encoded_path+b"/"):
                     count += 1
-                    del self.index[p]
+                    self._index_del_entry(p)
         else:
             count = 1
         self._versioned_dirs = None
@@ -975,7 +981,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         # TODO(jelmer): This shouldn't be called, it's inventory specific.
         for (old_path, new_path, file_id, ie) in delta:
             if old_path is not None and old_path.encode('utf-8') in self.index:
-                del self.index[old_path.encode('utf-8')]
+                self._index_del_entry(old_path.encode('utf-8'))
                 self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
@@ -1059,15 +1065,16 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     raise
             if kind != 'directory':
                 try:
-                    del self.index[from_path]
+                    self._index_del_entry(from_path)
                 except KeyError:
                     pass
                 self._index_add_entry(to_rel, kind)
             else:
                 todo = [p for p in self.index if p.startswith(from_path+'/')]
                 for p in todo:
+                    self._index_dirty = True
                     self.index[posixpath.join(to_path, posixpath.relpath(p, from_path))] = self.index[p]
-                    del self.index[p]
+                    self._index_del_entry(p)
 
             self._versioned_dirs = None
             self.flush()

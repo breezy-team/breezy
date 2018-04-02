@@ -137,6 +137,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self._lock_mode = 'r'
             self._lock_count = 1
             self.index.read()
+            self._index_dirty = False
         else:
             self._lock_count += 1
         self.branch.lock_read()
@@ -525,10 +526,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     yield p
 
     def flush(self):
-        # TODO: Maybe this should only write on dirty ?
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        self.index.write()
+        if self._index_dirty:
+            self.index.write()
+            self._index_dirty = False
 
     def has_or_had_id(self, file_id):
         if self.has_id(file_id):
@@ -823,6 +825,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def _set_conflicted(self, path, conflicted):
         trace.mutter('change conflict: %r -> %r', path, conflicted)
         value = self.index[path]
+        self._index_dirty = True
         if conflicted:
             self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
         else:
@@ -1003,7 +1006,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         for (old_path, new_path, file_id, ie) in changes:
             if old_path is not None:
                 try:
-                    del self.index[old_path.encode('utf-8')]
+                    self._index_del_entry(old_path.encode('utf-8'))
                 except KeyError:
                     pass
                 else:
@@ -1087,6 +1090,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             if revision_ids is not None:
                 self.set_parent_ids(revision_ids)
             self.index.clear()
+            self._index_dirty = True
             if self.branch.head is not None:
                 for entry in self.store.iter_tree_contents(self.store[self.branch.head].tree):
                     if not validate_path(entry.path):
@@ -1161,7 +1165,7 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_controldir)
-        index = Index(a_controldir.root_transport.local_abspath(".git/index"))
+        index = Index(a_controldir.control_transport.local_abspath("index"))
         index.write()
         branch = a_controldir.open_branch(nascent_ok=True)
         if revision_id is not None:
