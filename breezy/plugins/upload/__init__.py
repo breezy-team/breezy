@@ -107,7 +107,7 @@ Upload from Remote Location
 It is possible to upload to a remote location from another remote location by
 specifying it with the --directory option:
 
-    brz upload ftp://public.example.com --directory sftp://private.example.com 
+    brz upload sftp://public.example.com --directory sftp://private.example.com 
 
 This, together with --auto, can be used to upload when you push to your
 central branch, rather than when you commit to your local branch.

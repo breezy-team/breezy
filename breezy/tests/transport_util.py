@@ -16,20 +16,13 @@
 
 from . import features
 
-# SFTPTransport offers better performances but relies on paramiko, if paramiko
-# is not available, we fallback to FtpTransport
+# SFTPTransport offers better performances but relies on paramiko.
 if features.paramiko.available():
     from . import test_sftp_transport
     from ..transport import sftp, Transport
     _backing_scheme = 'sftp'
     _backing_transport_class = sftp.SFTPTransport
     _backing_test_class = test_sftp_transport.TestCaseWithSFTPServer
-else:
-    from ..transport import ftp, Transport
-    from . import test_ftp_transport
-    _backing_scheme = 'ftp'
-    _backing_transport_class = ftp.FtpTransport
-    _backing_test_class = test_ftp_transport.TestCaseWithFTPServer
 
 
 class TestCaseWithConnectionHookedTransport(_backing_test_class):

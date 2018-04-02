@@ -34,9 +34,6 @@ from ....tests import (
     per_branch,
     per_transport,
     )
-from ....transport import (
-    ftp,
-    )
 from .. import (
     cmds,
     )
@@ -46,7 +43,7 @@ def get_transport_scenarios():
     result = []
     basis = per_transport.transport_test_permutations()
     # Keep only the interesting ones for upload
-    usable_classes = {ftp.FtpTransport}
+    usable_classes = {}
     if features.paramiko.available():
         from ....transport import sftp
         usable_classes.add(sftp.SFTPTransport)
@@ -54,27 +51,6 @@ def get_transport_scenarios():
         t_class = d['transport_class']
         if t_class in usable_classes:
             result.append((name, d))
-    try:
-        import breezy.plugins.local_test_server
-        from breezy.plugins.local_test_server import test_server
-        if False:
-            # XXX: Disable since we can't get chmod working for anonymous
-            # user
-            scenario = ('vsftpd',
-                        {'transport_class': test_server.FtpTransport,
-                         'transport_server': test_server.Vsftpd,
-                         })
-            result.append(scenario)
-        from test_server import ProftpdFeature
-        if ProftpdFeature().available():
-            scenario = ('proftpd',
-                        {'transport_class': test_server.FtpTransport,
-                         'transport_server': test_server.Proftpd,
-                         })
-            result.append(scenario)
-        # XXX: add support for pyftpdlib
-    except ImportError:
-        pass
     return result
 
 

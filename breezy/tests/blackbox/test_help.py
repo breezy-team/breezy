@@ -66,11 +66,9 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_urlspec(self):
         """Smoke test for 'brz help urlspec'"""
         out, err = self.run_bzr('help urlspec')
-        self.assertContainsRe(out, 'aftp://')
         self.assertContainsRe(out, 'bzr://')
         self.assertContainsRe(out, 'bzr\+ssh://')
         self.assertContainsRe(out, 'file://')
-        self.assertContainsRe(out, 'ftp://')
         self.assertContainsRe(out, 'http://')
         self.assertContainsRe(out, 'https://')
         self.assertContainsRe(out, 'sftp://')

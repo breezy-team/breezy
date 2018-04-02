@@ -179,11 +179,6 @@ isolated_environ = {
     'NO_PROXY': None,
     'all_proxy': None,
     'ALL_PROXY': None,
-    # Nobody cares about ftp_proxy, FTP_PROXY AFAIK. So far at
-    # least. If you do (care), please update this comment
-    # -- vila 20080401
-    'ftp_proxy': None,
-    'FTP_PROXY': None,
     'BZR_REMOTE_PATH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
@@ -3942,7 +3937,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_fifo_cache',
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
-        'breezy.tests.test_ftp_transport',
         'breezy.tests.test_foreign',
         'breezy.tests.test_generate_docs',
         'breezy.tests.test_generate_ids',

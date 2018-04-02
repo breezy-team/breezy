@@ -1686,32 +1686,9 @@ register_lazy_transport('http://', 'breezy.transport.http._urllib',
 register_lazy_transport('https://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
 
-register_transport_proto('ftp://', help="Access using passive FTP.")
-register_lazy_transport('ftp://', 'breezy.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://', help="Access using active FTP.")
-register_lazy_transport('aftp://', 'breezy.transport.ftp', 'FtpTransport')
 register_transport_proto('gio+', help="Access using any GIO supported protocols.")
 register_lazy_transport('gio+', 'breezy.transport.gio_transport', 'GioTransport')
 
-
-# Default to trying GSSAPI authentication (if the kerberos module is
-# available)
-register_transport_proto('ftp+gssapi://', register_netloc=True)
-register_transport_proto('aftp+gssapi://', register_netloc=True)
-register_transport_proto('ftp+nogssapi://', register_netloc=True)
-register_transport_proto('aftp+nogssapi://', register_netloc=True)
-register_lazy_transport('ftp+gssapi://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp+gssapi://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp+nogssapi://', 'breezy.transport.ftp',
-                        'FtpTransport')
-register_lazy_transport('aftp+nogssapi://', 'breezy.transport.ftp',
-                        'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'breezy.transport.memory',
