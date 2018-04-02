@@ -71,6 +71,7 @@ from .refs import (
 from .unpeel_map import (
     UnpeelMap,
     )
+from .urls import git_url_to_bzr_url
 
 from ...foreign import ForeignBranch
 
@@ -443,9 +444,11 @@ class GitBranch(ForeignBranch):
         # FIXME: Set "origin" url from .git/config ?
         cs = self.repository._git.get_config_stack()
         try:
-            return cs.get((b"remote", b'origin'), b"url").decode("utf-8")
+            location = cs.get((b"remote", b'origin'), b"url")
         except KeyError:
             return None
+        else:
+            return git_url_to_bzr_url(location)
 
     def set_parent(self, location):
         # FIXME: Set "origin" url in .git/config ?
