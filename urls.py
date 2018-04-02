@@ -28,14 +28,11 @@ KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp']
 
 def git_url_to_bzr_url(location):
     url = URL.from_string(location)
-    if url.scheme not in KNOWN_GIT_SCHEMES:
+    if url.scheme not in KNOWN_GIT_SCHEMES and not url.scheme.startswith('chroot-'):
         try:
             (username, host, path) = parse_rsync_url(location)
         except ValueError:
-            url = URL(
-                scheme='file', quoted_user=None, quoted_password=None,
-                quoted_host='', port=None,
-                quoted_path=quote(location, safe="/~"))
+            return location
         else:
             url = URL(
                     scheme='git+ssh',

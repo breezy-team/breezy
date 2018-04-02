@@ -45,4 +45,4 @@ class TestConvertURL(TestCase):
         self.assertEqual(
                 git_url_to_bzr_url(
                     '/bar/path'),
-                ('file:///bar/path'))
+                ('/bar/path'))

@@ -62,6 +62,7 @@ from .push import (
     remote_divergence,
     )
 from .refs import (
+    branch_name_to_ref,
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
@@ -447,14 +448,38 @@ class GitBranch(ForeignBranch):
             location = cs.get((b"remote", b'origin'), b"url")
         except KeyError:
             return None
+
+        params = {}
+        try:
+            ref = cs.get((b"remote", b"origin"), b"merge")
+        except KeyError:
+            pass
         else:
-            return git_url_to_bzr_url(location)
+            if ref != 'HEAD':
+                try:
+                    params['branch'] = ref_to_branch_name(ref).encode('utf-8')
+                except ValueError:
+                    params['ref'] = ref.encode('utf-8')
+
+        url = git_url_to_bzr_url(location)
+        return urlutils.join_segment_parameters(url, params)
 
     def set_parent(self, location):
         # FIXME: Set "origin" url in .git/config ?
         cs = self.repository._git.get_config()
-        location = urlutils.relative_url(self.base, location)
+        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        target_url, target_params = urlutils.split_segment_parameters(location)
+        location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", b"origin"), b"url", location)
+        if 'branch' in target_params:
+            cs.set((b"remote", b"origin"), b"merge",
+                   branch_name_to_ref(target_params['branch']))
+        elif 'ref' in target_params:
+            cs.set((b"remote", b"origin"), b"merge",
+                   target_params['ref'])
+        else:
+            # TODO(jelmer): Maybe unset rather than setting to HEAD?
+            cs.set((b"remote", b"origin"), b"merge", 'HEAD')
         f = StringIO()
         cs.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
