@@ -844,8 +844,8 @@ class CommonInventory(object):
             descend(self.root, u'')
         return accum
 
-    def path2id(self, relpath):
-        """Walk down through directories to return entry of last component.
+    def get_entry_by_path(self, relpath):
+        """Return an inventory entry by path.
 
         :param relpath: may be either a list of path components, or a single
             string, in which case it is automatically split.
@@ -877,8 +877,23 @@ class CommonInventory(object):
             except KeyError:
                 # or raise an error?
                 return None
+        return parent
 
-        return parent.file_id
+    def path2id(self, relpath):
+        """Walk down through directories to return entry of last component.
+
+        :param relpath: may be either a list of path components, or a single
+            string, in which case it is automatically split.
+
+        This returns the entry of the last component in the path,
+        which may be either a file or a directory.
+
+        Returns None IFF the path is not found.
+        """
+        ie = self.get_entry_by_path(relpath)
+        if ie is None:
+            return None
+        return ie.file_id
 
     def filter(self, specific_fileids):
         """Get an inventory view filtered against a set of file-ids.
