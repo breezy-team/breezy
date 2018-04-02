@@ -695,6 +695,8 @@ class TransportObjectStore(PackBasedObjectStore):
             write_pack_index_v2(idxfile, entries, data_sum)
         finally:
             idxfile.close()
+        # TODO(jelmer): Just add new pack to the cache
+        self._flush_pack_cache()
 
     def add_pack(self):
         """Add a new pack to this object store.
