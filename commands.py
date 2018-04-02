@@ -147,7 +147,7 @@ class cmd_git_import(Command):
                 source_branch.tags.merge_to(head_branch.tags)
                 if not head_branch.get_parent():
                     url = urlutils.join_segment_parameters(
-                        source_branch.base, {"ref": urllib.quote(name, '')})
+                        source_branch.base, {"branch": urllib.quote(branch_name.encode('utf-8'), '')})
                     head_branch.set_parent(url)
         finally:
             pb.finished()
