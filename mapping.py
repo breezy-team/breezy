@@ -263,7 +263,7 @@ class BzrGitMapping(foreign.VcsMapping):
         :param verifiers: Verifiers info
         :return dulwich.objects.Commit represent the revision:
         """
-        from dulwich.objects import Commit
+        from dulwich.objects import Commit, Tag
         commit = Commit()
         commit.tree = tree_sha
         if not lossy:
@@ -335,6 +335,12 @@ class BzrGitMapping(foreign.VcsMapping):
                 raise NoPushSupport()
         if type(commit.message) is not str:
             raise TypeError(commit.message)
+        i = 0
+        propname = 'git-mergetag-0'
+        while propname in rev.properties:
+            commit.mergetag.append(Tag.from_raw_string(rev.properties[propname]))
+            i += 1
+            propname = 'git-mergetag-%d' % i
         if 'git-extra' in rev.properties:
             commit.extra.extend([l.split(' ', 1) for l in rev.properties['git-extra'].splitlines()])
         return commit
@@ -388,7 +394,8 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit.gpgsig:
             rev.properties['git-gpg-signature'] = commit.gpgsig.decode('ascii')
         if commit.mergetag:
-            raise AssertionError('unable to import mergetag')
+            for i, tag in enumerate(commit.mergetag):
+                rev.properties['git-mergetag-%d' % i] = tag.as_raw_string()
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
