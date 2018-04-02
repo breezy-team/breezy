@@ -54,6 +54,14 @@ class TestInit(TestCaseWithTransport):
             out)
         self.assertEqual('', err)
 
+    def test_init_format_bzr(self):
+        """Smoke test for constructing a format with the 'bzr' alias."""
+        out, err = self.run_bzr('init --format=bzr')
+        self.assertEqual(
+            "Created a standalone tree (format: %s)\n" % self._default_label,
+            out)
+        self.assertEqual('', err)
+
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
         out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
