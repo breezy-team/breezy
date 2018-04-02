@@ -730,12 +730,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-        inv, file_id = self._path2inv_file_id(path)
-        if file_id is None:
+        try:
+            return self._path2ie(path).executable
+        except errors.NoSuchFile:
             # For unversioned files on win32, we just assume they are not
             # executable
             return False
-        return inv.get_entry(file_id).executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
@@ -743,8 +743,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            inv, inv_file_id = self._path2inv_file_id(path)
-            return inv.get_entry(inv_file_id).executable
+            ie = self._path2ie(path)
+            return ie.executable
         else:
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -1452,10 +1452,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        inv, inv_file_id = self._path2inv_file_id(path)
-        if inv_file_id is None:
-            raise errors.NoSuchFile(self, path)
-        return inv.get_entry(inv_file_id).kind
+        return self._path2ie(path).kind
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
