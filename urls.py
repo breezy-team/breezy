@@ -38,18 +38,27 @@ def parse_git_url(location):
         else:
             user = None
             host = user_host
+    else:
+        raise ValueError('missing : in location')
     return (user, host, path)
 
 
 def git_url_to_bzr_url(location):
-    (username, host, path) = parse_git_url(location)
     url = URL.from_string(location)
     if url.scheme not in KNOWN_GIT_SCHEMES:
-        url = URL(
-                scheme='git+ssh',
-                quoted_user=(quote(username) if username else None),
-                quoted_password=None,
-                quoted_host=quote(host),
-                port=None,
-                quoted_path=quote(path, safe="/~"))
+        try:
+            (username, host, path) = parse_git_url(location)
+        except ValueError:
+            url = URL(
+                scheme='file', quoted_user=None, quoted_password=None,
+                quoted_host='', port=None,
+                quoted_path=quote(location, safe="/~"))
+        else:
+            url = URL(
+                    scheme='git+ssh',
+                    quoted_user=(quote(username) if username else None),
+                    quoted_password=None,
+                    quoted_host=quote(host),
+                    port=None,
+                    quoted_path=quote(path, safe="/~"))
     return str(url)

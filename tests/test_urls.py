@@ -34,6 +34,7 @@ class TestParseGitURL(TestCase):
         self.assertEqual(
                 parse_git_url('user@foo:bar/path'),
                 ('user', 'foo', 'bar/path'))
+        self.assertRaises(ValueError, parse_git_url, '/path')
 
 
 class TestConvertURL(TestCase):
@@ -52,3 +53,9 @@ class TestConvertURL(TestCase):
                 git_url_to_bzr_url(
                     'git+ssh://user@foo/bar/path'),
                 ('git+ssh://user@foo/bar/path'))
+
+    def test_path(self):
+        self.assertEqual(
+                git_url_to_bzr_url(
+                    '/bar/path'),
+                ('file:///bar/path'))
