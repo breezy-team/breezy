@@ -1,5 +1,5 @@
 =================================
-Bazaar Developer Document Catalog
+Breezy Developer Document Catalog
 =================================
 
 
@@ -12,13 +12,12 @@ Introduction
    contribution-quickstart
 
 
-Working on Bazaar
+Working on Breezy
 =================
 
 .. toctree::
    :maxdepth: 1
 
-   cycle
    profiling
    bug-handling
    HACKING
@@ -27,7 +26,7 @@ Working on Bazaar
    code-style
    documenting-changes
 
-* `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
+* `Contributing to Breezy Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
 
 
 Architecture overviews
@@ -61,9 +60,9 @@ Developing using bzrlib
    overview
    integration
 
-* `Writing plugins for Bazaar <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ (web link)
+* `Writing plugins for Breezy <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ (web link)
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_
+* `bzrlib API reference <http://people.canonical.com/~mwh/bzrlibapi/>`_
   (web link)
 
 
@@ -83,8 +82,8 @@ Other documents
 Licence
 ============
 
-Copyright 2005-2011 Canonical Ltd. Bazaar is free software, and you
-may use, modify and redistribute both Bazaar and this document under
+Copyright 2005-2011 Canonical Ltd. Breezy is free software, and you
+may use, modify and redistribute both Breezy and this document under
 the terms of the GNU General Public License version 2 or later.  See
 <http://www.gnu.org/licenses/>.
 

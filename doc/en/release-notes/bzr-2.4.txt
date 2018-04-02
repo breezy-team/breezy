@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4.0
+bzr 2.4.3
 #########
 
-:2.4.0: NOT RELEASED YET
+:2.4.3: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -31,6 +31,287 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Cope with Unix filesystems, such as smbfs, where chmod gives 'permission
+  denied'.  (Martin Pool, #606537)
+
+* During merges, when two entries end up using the same path for two
+  different file-ids (the same file being 'bzr added' in two different
+  branches) , 'duplicate' conflicts are created instead of 'content'
+  ones. This was previously leading to a 'Malformed tramsform' exception.
+  (Vincent Ladeuil, #880701)
+
+* Fix a traceback when trying to checkout a tree that also has an entry
+  with file-id `TREE_ROOT` somewhere other than at the root directory.
+  (John Arbash Meinel, #830947)
+
+* Handle when an uncommit/update tries to add a file to an otherwise empty
+  directory. The ``Dirstate.update_basis_by_delta`` would end up
+  incorrectly flagging the delta as invalid. (Brian de Alwis, #855155)
+
+* 'Malformed transform' exceptions are now recognized as internal errors
+  instead of user errors and report a traceback. This will reduce user
+  confusion as there is generally nothing users can do about them.
+  (Vincent Ladeuil, #880701)
+
+* Prevent a traceback being printed to stderr when logging has problems and
+  accept utf-8 byte string without breaking. (Martin Packman, #714449)
+
+* Some filesystems give ``EOPNOTSUPP`` when trying to call ``fdatasync``.
+  This shouldn't be treated as a fatal error.
+  (John Arbash Meinel, #1075108)
+
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. This is a backport of the functionality in bzr-2.5.
+  (John Arbash Meinel, #819604)
+
+* Use ``encoding_type='exact'`` for ``bzr testament`` so that on Windows
+  the sha hash of the long testament matches the sha hash in the short
+  form. (John Arbash Meinel, #1010339)
+
+* When the ``limbo`` or ``pending-deletion`` directories exist, typically
+  because of an interrupted tree update, but are empty, bzr no longer
+  errors out, because there is nothing for the user to clean up.  Also,
+  errors in creation of these directories are no longer squelched.
+  (Martin Pool, #427773)
+
+* _Win32Stat object provides members st_uid and st_gid, those are present
+  in Python's os.stat object. These members required for external tools like
+  bzr-git and dulwich. (Alexander Belchenko, #967060)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* Account for slightly improved compression with newer versions of zlib in
+  ``bt.test_btree_index`` tests. (Martin Packman, #940453)
+
+
+bzr 2.4.2
+#########
+
+:2.4.2: 2011-10-27
+
+This is a bugfix release. Most of the bugs dealt with portability
+issues. Upgrading is recommended for all users of earlier 2.4 releases.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
+Bug Fixes
+*********
+
+* Fixed an infinite loop when creating a repo at the root of the filesystem,
+  i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into
+  one, thus respecting the POSIX standard, but making relpath() loop infinitely.
+  (Florian Vichot, #861008)
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
+  pyrex code with new Cython versions. (Denys Duchier, #837221)
+
+* Prevent several kinds of OverflowError and other fallout from failing to fit
+  stat fields into four bytes in dirstate pack_stat implementations.
+  (Martin Packman, #683191 #706957)
+
+* Return early from create_delta_index_from_delta given tiny inputs. This
+  avoids raising a spurious MemoryError on certain platforms such as AIX.
+  (John Arbash Meinel, #856731)
+  
+Documentation
+*************
+
+* Corrected documentation for ``bzr serve`` in the Admin Guide.
+  (Morten Bøgeskov, Martin Pool, #832576)
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+No changes.
+
+Testing
+*******
+
+* Accept both old and new style testtools output in selftest tests.
+  (Jelmer Vernooij, Martin Packman, #815423)
+
+* Fix the race for TestingThreadingTCPServer in
+  test_server_crash_while_responding. (Vincent Ladeuil, #869366)
+
+* Really corrupt the pack file without depending on a special length or value.
+  (Vincent Ladeuil, #807032)
+
+
+bzr 2.4.1
+#########
+
+:2.4.1: 2011-09-08
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.4 releases.
+
+It includes fixes from previous stable releases and address some issues with
+the test suite.
+
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* ``config.LocationMatcher`` properly excludes unrelated sections.
+  (Vincent Ladeuil, #829237)
+
+* ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
+  disabled. (Vincent Ladeuil, #824513)
+
+* Disable ``os.fsync`` and ``os.fdatasync`` by default when running
+  ``bzr selftest``. You can use ``--sync`` to re-enable them.
+  (John Arbash Meinel, #837293)
+
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
+* Avoid UnicodeDecode error when reporting EINVAL from transports.
+  (IWATA Hidetaka, #829237)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+* Corrected documentation for BZR_PROGRESS_BAR. 
+  (Dennis Benzinger, #735417)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* The test suite should now be able to run under weird environments where
+  ``/etc/passwd`` doesn't contain the ``uid`` for the user running selftest
+  or where ``fakeroot`` is used but ``/root`` is inacessible.
+  (Vincent Ladeuil, #825027)
+
+bzr 2.4.0
+#########
+
+:2.4.0: 2011-08-11
+
+This release marks the start of a new long-term-stable series. From here, we
+will only make bugfix releases on the 2.4 series (2.4.1, etc, and support it
+until February 2013), while 2.5 will become our new development series.
+
+This is a bugfix and polish release over the 2.3 series, with a large number
+of bugs fixed (>150 for the 2.4 series alone), and some performance
+improvements. Support for python 2.4 and 2.5 has been dropped, many large
+working tree operations have been optimized as well as some stacked branches
+operations.
+
+Only bugfixes from other stables series have been included since 2.4b5 so
+all known fixed bugs are included here.
+
+Users are encouraged to upgrade from the other stable series.
+
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* A call to CHKInventory's filter-method will not result in a
+  DuplicateFileId error, if you move a subfolder and change a file in
+  that subfolder.
+  (Bastian Bowe, #809901)
 
 * Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
   checks to see if the most recent published source package version for
@@ -56,12 +337,21 @@ Bug Fixes
 
   (John Arbash Meinel, #609187, #812928)
 
+* Cope with not all Python versions having a ``clear`` method on
+  ``TestCase._type_equality_funcs``.
+  (Martin [gz], Jelmer Vernooij, #809048)
+
+* Fetching tags when fetching the tip revision of a branch is now
+  controlled by the config setting ``branch.fetch_tags``. The behavior has
+  been reverted to 2.3's not-fetching tagged revisions by default.
+  (John Arbash Meinel, #771184)
 
 * The fix for bug #513709 caused us to open a new connection when
   switching a lightweight checkout that was pointing at a bound branch.
   This isn't necessary because we know the master URL without opening it,
   avoiding an extra SSH connection, etc.
   (John Arbash Meinel, #812285)
+
 
 Documentation
 *************
@@ -107,7 +397,7 @@ bzr 2.4b5
 :2.4b5: 2011-07-07
 
 This is the fifth (and last) beta of the 2.4 series leading to
-2.4.0 release in Auguest 2011. Beta releases are suitable for
+2.4.0 release in August 2011. Beta releases are suitable for
 everyday use but may cause some incompatibilities with plugins.
 
 This release includes all bug fixed in previous series known at
@@ -292,7 +582,7 @@ Bug Fixes
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
-* Reports a non-existant file error when trying to merge in a file
+* Reports a non-existent file error when trying to merge in a file
   that does not exist. (Jonathan Riddell, #330063)
 
 * ``UIFactory.prompt``, ``UIFactory.get_username``,
@@ -374,7 +664,7 @@ Testing
   (Vincent Ladeuil, #787942)
 
 * Re-target ``bb.test_merge.TestMerge.test_merge_reversed_revision_range``
-  and rewrite it as a parameterized test to avoid unrelated failures.
+  and rewrite it as a parametrized test to avoid unrelated failures.
   (Vincent Ladeuil, #795456)
 
 * Show log file contents from subprocesses started by
@@ -382,7 +672,7 @@ Testing
   strange hangs and failures involving subprocesses.  (Andrew Bennetts)
 
 * Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
-  monkeypatch to textwrap.TextWrapper.wordsep_re.
+  monkey-patch to textwrap.TextWrapper.wordsep_re.
   (Vincent Ladeuil, #785098)
 
 * Multiple ``selftest --exclude`` options are now combined instead of
@@ -1071,7 +1361,7 @@ Internals
   by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
-* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+* Correctly propagate malloc failures from diff-delta.c code as MemoryError
   so OOM conditions during groupcompress are clearly reported. This entailed a
   change to several function signatures. (Martin [gz], #633336)
 

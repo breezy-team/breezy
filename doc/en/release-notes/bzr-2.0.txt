@@ -32,6 +32,9 @@ Bug Fixes
 * Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
   path on windows from symlink support addition. (Martin [gz], #686611)
 
+* Fix activity reporting for pycurl when using https with some
+  implementations of curl. (Vincent Ladeuil, #614713)
+
 Improvements
 ************
 

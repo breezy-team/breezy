@@ -1,20 +1,20 @@
-# Specify startup options for bzr --serve
+# Specify startup options for brz --serve
 
 # WARNING
-# When bazaar runs in serve mode there is no authentication. You will
+# When Breezy runs in serve mode there is no authentication. You will
 # be publishing your tree as readable or potentially writeable to everyone
 
 # You need to uncomment the line below to enable this service
 #ENABLED=1
 
 # Specify a user and group to run as
-#USER=bzr
-#GROUP=bzr
+#USER=brz
+#GROUP=brz
 
 # Specify the path to the repository
-#REPO=/srv/bzr
+#REPO=/srv/brz
 
 # Other arguments
 # Add --allow-writes for RW access
-# Example config listens on localhost
-DAEMON_ARGS="--port=127.0.0.1:4155"
+# Example config listens on localhost and default port
+DAEMON_ARGS="--listen=127.0.0.1"

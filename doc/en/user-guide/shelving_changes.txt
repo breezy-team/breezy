@@ -3,13 +3,13 @@ Shelving Changes
 
 Sometimes you will want to temporarily remove changes from your working
 tree and restore them later, For instance to commit a small bug-fix you
-found while working on something. Bazaar allows you to put changes on
+found while working on something. Breezy allows you to put changes on
 a ``shelf`` to achieve this. When you want to restore the changes later
 you can use ``unshelve`` to apply them to your working tree again.
 
 For example, consider a working tree with one or more changes made ... ::
 
-  $ bzr diff
+  $ brz diff
   === modified file 'description.txt'
   --- description.txt
   +++ description.txt
@@ -34,7 +34,7 @@ For example, consider a working tree with one or more changes made ... ::
 The ``shelve`` command interactively asks which changes
 you want to retain in the working tree::
 
-  $ bzr shelve
+  $ brz shelve
   --- description.txt
   +++ description.txt
   @@ -2,7 +2,7 @@
@@ -71,7 +71,7 @@ and you will only be asked about changes in those files.
 After shelving changes, it's a good idea to use ``diff``
 to confirm the tree has just the changes you expect::
 
-  $ bzr diff
+  $ brz diff
   === modified file 'description.txt'
   --- description.txt
   +++ description.txt
@@ -87,12 +87,12 @@ to confirm the tree has just the changes you expect::
 
 Great - you're ready to commit::
 
-  $ bzr commit -m "improve first sentence"
+  $ brz commit -m "improve first sentence"
 
 At some later time, you can bring the shelved changes back into the
 working tree using ``unshelve``::
 
-  $ bzr unshelve
+  $ brz unshelve
   Unshelving changes with id "1".
    M  description.txt
   All changes applied successfully.
@@ -103,7 +103,7 @@ shelved changes will be reinstated. However, you can also
 unshelve changes in a different order by explicitly
 specifying which changes to unshelve.
 
-Bazaar merges the changes in to your working tree, so they
+Breezy merges the changes in to your working tree, so they
 will apply even if you have edited the files since you shelved
 them, though they may conflict, in which case you will have to
 resolve the conflicts in the same way you do after a conflicted

@@ -28,6 +28,10 @@ you should set it to "In Progress" and if you wish assign it to yourself.
 You might like to start with a bug tagged `easy
 <https://bugs.launchpad.net/bzr/+bugs?field.tag=easy>`_.
 
+If you are wondering if your understanding of the bug is correct, or if the 
+approach you have in mind is likely to work, feel to ask about it on the bug,
+in ``#bzr`` or on the mailing list.
+
 Making a branch
 ---------------
 
@@ -84,9 +88,9 @@ right place to put your test.  Don't hesitate to ask, or to propose a
 merge that does not yet have tests.
 
 Normally for command-line code you should look in
-``bzrlib.tests.blackbox`` and for library code in ``bzrlib.tests``.  For
+``breezy.tests.blackbox`` and for library code in ``breezy.tests``.  For
 functions on an interface for which there are multiple implementations,
-like `Transport`, look in ``bzrlib.tests.per_transport``.
+like `Transport`, look in ``breezy.tests.per_transport``.
 
 It's a good idea to search the tests for something related to the thing
 you're changing and you may find a test you can modify or adapt.

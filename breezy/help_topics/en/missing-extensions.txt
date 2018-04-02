@@ -1,0 +1,26 @@
+Missing Extensions
+==================
+
+Breezy gives a warning if it failed to load some compiled extensions. (See
+http://bazaarvcs.wordpress.com/2009/09/17/extension-warnings/ for background.)
+
+This may indicate either that there's been a problem installing or packaging
+Breezy, or it may just be a case where you don't want to use the compiled
+extensions.
+
+1. If you installed Breezy from an official binary package or a distribution
+and you're seeing this warning, please report a bug.
+
+2. If you're running Breezy from a source tree or tarball, please run 'make' in
+that directory to compile the extensions. You should do this every time you
+update the tree. To do this you will need some build dependencies installed
+including make, a C compiler, and the Python header files.
+
+3. If you can't or don't want to build the extensions, add this line to
+breezy.conf (whose location is shown by 'brz --version')::
+
+  suppress_warnings=missing_extensions
+
+Breezy will work normally but some operations may be slower.
+
+The specific modules that failed, and why, are listed in .brz.log.

@@ -47,7 +47,7 @@ We use a slightly different algorithm for scalars.
 Resolution Algorithm
 --------------------
 
-(This can be seen as ``bzrlib.merge.Merge3Merger._lca_multi_way```
+(This can be seen as ``breezy.merge.Merge3Merger._lca_multi_way```
 
 1. If ``THIS`` and ``OTHER`` have the same value, use it. There is no need to
    inspect any other values in this case. Either nothing was changed (all

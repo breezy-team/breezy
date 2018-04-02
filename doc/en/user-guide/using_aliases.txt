@@ -11,7 +11,7 @@ Defining aliases
 ----------------
 
 Command aliases can be defined in the ``[ALIASES]`` section of your
-``bazaar.conf`` file. Aliases start with the alias name, then an
+``breezy.conf`` file. Aliases start with the alias name, then an
 equal sign, then a command fragment.  Here's an example ALIASES section::
 
     [ALIASES]
@@ -34,10 +34,10 @@ Using the aliases
 
 The aliases defined above would be used like so: ::
 
-   % bzr recentlog
-   % bzr ll
-   % bzr commit
-   % bzr diff
+   % brz recentlog
+   % brz ll
+   % brz commit
+   % brz diff
 
 Rules for aliases
 -----------------
@@ -57,7 +57,7 @@ Rules for aliases
    ``lastlog`` alias and referring to it with a ``ll`` alias will not work.
    This includes aliases that override standard commands.
 
- * Giving the ``--no-aliases`` option to the bzr command will tell it to ignore aliases
-   for that run. For example, running ``bzr --no-aliases commit`` will perform a
+ * Giving the ``--no-aliases`` option to the brz command will tell it to ignore aliases
+   for that run. For example, running ``brz --no-aliases commit`` will perform a
    standard commit instead, not do a ``commit --strict``.
 

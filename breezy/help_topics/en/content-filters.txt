@@ -1,0 +1,93 @@
+Content Filters
+===============
+
+Content formats
+---------------
+
+Bazaar's content filtering allows you to store files in a different
+format from the copy in your working tree.  This lets you, or your
+co-developers, use Windows development tools that expect CRLF files
+on projects that use other line-ending conventions. Among other things,
+content filters also let Unix developers more easily work on projects
+using Windows line-ending conventions, keyword expansion/compression,
+and trailing spaces on lines in text files to be implicitly stripped
+when committed.
+
+To generalize, there are two content formats supported by Bazaar:
+
+* a canonical format - how files are stored internally
+* a convenience format - how files are created in a working tree.
+
+
+Format conversion
+-----------------
+
+The conversion between these formats is done by content filters.
+A content filter has two parts:
+
+* a read converter - converts from convenience to canonical format
+* a write converter - converts from canonical to convenience format.
+
+Many of these converters will provide *round-trip* conversion,
+i.e. applying the read converter followed by the write converter
+gives back the original content. However, others may provide an
+asymmetric conversion. For example, a read converter might strip
+trailing whitespace off lines in source code while the matching
+write converter might pass content through unchanged.
+
+
+Enabling content filters
+------------------------
+
+Content filters are typically provided by plugins, so the first step
+in using them is to install the relevant plugins and read their
+documentation. Some plugins may be very specific about which files
+they filter, e.g. only files ending in ``.java`` or ``.php``.
+In other cases, the plugin may leave it in the user's hands to
+define which files are to be filtered. This is typically done
+using rule-based preferences. See ``brz help rules`` for general
+information about defining these.
+
+
+Impact on commands
+------------------
+
+Read converters are only applied to commands that read content from
+a working tree, e.g. status, diff and commit. For example, ``brz diff``
+will apply read converters to files in the working tree, then compare
+the results to the content last committed.
+
+Write converters are only applied by commands that **create files in a
+working tree**, e.g. branch, checkout, update. If you wish to see the
+canonical format of a file or tree, use ``brz cat`` or ``brz export``
+respectively.
+
+Note: ``brz commit`` does not implicitly apply write converters after
+comitting files. If this makes sense for a given plugin providing
+a content filter, the plugin can usually achieve this effect by using a
+``start_commit`` or ``post_commit`` hook say. See :doc:`hooks-help`
+for more information on hooks.
+
+
+Refreshing your working tree
+----------------------------
+
+For performance reasons, Bazaar caches the timestamps of files in
+a working tree, and assumes files are unchanged if their timestamps
+match the cached values. As a consequence, there are times when
+you may need to explicitly ask for content filtering to be reapplied
+in one or both directions, e.g. after installing or reconfiguring
+plugins providing it.
+
+Here are some general guidelines for doing this:
+
+ * To reapply read converters, ``touch`` files, i.e. update their
+   timestamp. Operations like ``brz status`` should then reapply the
+   relevant read converters and compare the end result with the
+   canonical format.
+
+ * To reapply write converters, ensure there are no local changes,
+   delete the relevant files and run ``brz revert`` on those files.
+
+Note: In the future, it is likely that additional options will be added
+to commands to make this refreshing process faster and safer.

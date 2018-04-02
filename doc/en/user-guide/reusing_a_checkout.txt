@@ -12,7 +12,7 @@ for this include:
  * developing in a fixed location.
 
 In many cases, working tree disk usage swamps the size of the
-``.bzr`` directory. If you want to work on multiple branches
+``.brz`` directory. If you want to work on multiple branches
 but can't afford the overhead of a full working tree for each,
 reusing a checkout across multiples branches is the way to go.
 
@@ -61,24 +61,24 @@ One possible setup is to use a lightweight checkout in combination
 with a local tree-less repository. This lets you switch what you
 are working on with ease. For example::
 
-  bzr init-repo --no-trees PROJECT
+  brz init-repo --no-trees PROJECT
   cd PROJECT
-  bzr branch bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
-  bzr checkout --lightweight trunk my-sandbox
+  brz branch bzr+ssh://centralhost/srv/brz/PROJECT/trunk
+  brz checkout --lightweight trunk my-sandbox
   cd my-sandbox
   (hack away)
 
-Note that trunk in this example will have a ``.bzr`` directory within it
+Note that trunk in this example will have a ``.brz`` directory within it
 but there will be no working tree there as the branch was created in
 a tree-less repository. You can grab or create as many branches as you
 need there and switch between them as required. For example::
 
   (assuming in my-sandbox)
-  bzr branch bzr+ssh://centralhost/srv/bzr/PROJECT/PROJECT-1.0 ../PROJECT-1.0
-  bzr switch ../PROJECT-1.0
+  brz branch bzr+ssh://centralhost/srv/brz/PROJECT/PROJECT-1.0 ../PROJECT-1.0
+  brz switch ../PROJECT-1.0
   (fix bug in 1.0)
-  bzr commit -m "blah, blah blah"
-  bzr switch ../trunk
+  brz commit -m "blah, blah blah"
+  brz switch ../trunk
   (go back to working on the trunk)
 
 Note: The branches may be local only or they may be bound to

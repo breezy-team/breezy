@@ -1,14 +1,14 @@
 ======================
-Bazaar Developer Guide
+Breezy Developer Guide
 ======================
 
-This document describes the Bazaar internals and the development process.
-It's meant for people interested in developing Bazaar, and some parts will
-also be useful to people developing Bazaar plugins.
+This document describes the Breezy internals and the development process.
+It's meant for people interested in developing Breezy, and some parts will
+also be useful to people developing Breezy plugins.
 
 If you have any questions or something seems to be incorrect, unclear or
 missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
-the Bazaar mailing list.  To propose a correction or addition to this
+the Breezy mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The latest developer documentation can be found online at
@@ -17,7 +17,7 @@ http://doc.bazaar.canonical.com/developers/.
 Getting Started
 ###############
 
-Exploring the Bazaar Platform
+Exploring the Breezy Platform
 =============================
 
 Before making changes, it's a good idea to explore the work already
@@ -26,13 +26,13 @@ for is available in another plug-in already? If you find a bug,
 perhaps someone else has already fixed it?
 
 To answer these questions and more, take a moment to explore the
-overall Bazaar Platform. Here are some links to browse:
+overall Breezy Platform. Here are some links to browse:
 
 * The Plugins page on the Wiki - http://wiki.bazaar.canonical.com/BzrPlugins
 
-* The Bazaar product family on Launchpad - https://launchpad.net/bazaar
+* The Breezy product family on Launchpad - https://launchpad.net/breezy
 
-* Bug Tracker for the core product - https://bugs.launchpad.net/bzr/
+* Bug Tracker for the core product - https://bugs.launchpad.net/brz/
 
 If nothing else, perhaps you'll find inspiration in how other developers
 have solved their challenges.
@@ -41,17 +41,17 @@ Finding Something To Do
 =======================
 
 Ad-hoc performance work can also be done. One useful tool is the 'evil' debug
-flag. For instance running ``bzr -Devil commit -m "test"`` will log a backtrace
-to the bzr log file for every method call which triggers a slow or non-scalable
-part of the bzr library. So checking that a given command with ``-Devil`` has
+flag. For instance running ``brz -Devil commit -m "test"`` will log a backtrace
+to the Breezy log file for every method call which triggers a slow or non-scalable
+part of the breezy library. So checking that a given command with ``-Devil`` has
 no backtraces logged to the log file is a good way to find problem function
 calls that might be nested deep in the code base.
 
 Planning and Discussing Changes
 ===============================
 
-There is a very active community around Bazaar. Mostly we meet on IRC
-(#bzr on irc.freenode.net) and on the mailing list. To join the Bazaar
+There is a very active community around Breezy. Mostly we meet on IRC
+(#bzr on irc.freenode.net) and on the mailing list. To join the Breezy
 community, see http://wiki.bazaar.canonical.com/BzrSupport.
 
 If you are planning to make a change, it's a very good idea to mention it
@@ -70,15 +70,15 @@ total effort required to get your changes merged. The community is
 friendly, helpful and always keen to welcome newcomers.
 
 
-Bazaar Development in a Nutshell
+Breezy Development in a Nutshell
 ================================
 
 .. was from http://wiki.bazaar.canonical.com/BzrGivingBack
 
-One of the fun things about working on a version control system like Bazaar is
+One of the fun things about working on a version control system like Breezy is
 that the users have a high level of proficiency in contributing back into
 the tool.  Consider the following very brief introduction to contributing back
-to Bazaar.  More detailed instructions are in the following sections.
+to Breezy.  More detailed instructions are in the following sections.
 
 Making the change
 -----------------
@@ -87,20 +87,20 @@ First, get a local copy of the development mainline (See `Why make a local
 copy of bzr.dev?`_.)
 ::
 
- $ bzr init-repo ~/bzr
+ $ brz init-repo ~/bzr
  $ cd ~/bzr
- $ bzr branch lp:bzr bzr.dev
+ $ brz branch lp:brz bzr.dev
 
 Now make your own branch::
 
- $ bzr branch bzr.dev 123456-my-bugfix
+ $ brz branch bzr.dev 123456-my-bugfix
 
 This will give you a branch called "123456-my-bugfix" that you can work on
 and commit in. Here, you can study the code, make a fix or a new feature.
 Feel free to commit early and often (after all, it's your branch!).
 
 Documentation improvements are an easy place to get started giving back to the
-Bazaar project.  The documentation is in the `doc/` subdirectory of the Bazaar
+Breezy project.  The documentation is in the `doc/` subdirectory of the Breezy
 source tree.
 
 When you are done, make sure that you commit your last set of changes as well!
@@ -110,20 +110,20 @@ below.
 Making a Merge Proposal
 -----------------------
 
-The Bazaar developers use Launchpad to further enable a truly distributed
-style of development.  Anyone can propose a branch for merging into the Bazaar
+The Breezy developers use Launchpad to further enable a truly distributed
+style of development.  Anyone can propose a branch for merging into the Breezy
 trunk.  To start this process, you need to push your branch to Launchpad.  To
 do this, you will need a Launchpad account and user name, e.g.
 `your_lp_username`.  You can push your branch to Launchpad directly from
-Bazaar::
+Breezy::
 
-  $ bzr push lp:~<your_lp_username>/bzr/meaningful_name_here
+  $ brz push lp:~<your_lp_username>/bzr/meaningful_name_here
 
 After you have pushed your branch, you will need to propose it for merging to
-the Bazaar trunk.  Go to
+the Breezy trunk.  Go to
 <https://launchpad.net/~<your_lp_username>/bzr/meaningful_name_here> and choose
 "Propose for merging into another branch".  Select "lp:bzr" to hand
-your changes off to the Bazaar developers for review and merging.
+your changes off to the Breezy developers for review and merging.
 
 Alternatively, after pushing you can use the ``lp-propose`` command to 
 create the merge proposal.
@@ -164,19 +164,19 @@ Why make a local copy of bzr.dev?
 
 Making a local mirror of bzr.dev is not strictly necessary, but it means
 
-- You can use that copy of bzr.dev as your main bzr executable, and keep it
-  up-to-date using ``bzr pull``.
+- You can use that copy of bzr.dev as your main brz executable, and keep it
+  up-to-date using ``brz pull``.
 - Certain operations are faster, and can be done when offline.  For example:
 
-  - ``bzr bundle``
-  - ``bzr diff -r ancestor:...``
-  - ``bzr merge``
+  - ``brz bundle``
+  - ``brz diff -r ancestor:...``
+  - ``brz merge``
 
 - When it's time to create your next branch, it's more convenient.  When you
   have further contributions to make, you should do them in their own branch::
 
     $ cd ~/bzr
-    $ bzr branch bzr.dev additional_fixes
+    $ brz branch bzr.dev additional_fixes
     $ cd additional_fixes # hack, hack, hack
 
 
@@ -201,7 +201,7 @@ The key tools we use to enable these practices are:
 
 * Launchpad - https://launchpad.net/
 
-* Bazaar - http://bazaar.canonical.com/
+* Breezy - https://www.breezy-vcs.org/
 
 * Patch Queue Manager - https://launchpad.net/pqm/
 
@@ -210,10 +210,10 @@ For further information, see <http://wiki.bazaar.canonical.com/BzrDevelopment>.
 
 
 
-Preparing a Sandbox for Making Changes to Bazaar
+Preparing a Sandbox for Making Changes to Breezy
 ================================================
 
-Bazaar supports many ways of organising your work. See
+Breezy supports many ways of organising your work. See
 http://wiki.bazaar.canonical.com/SharedRepositoryLayouts for a summary of the
 popular alternatives.
 
@@ -224,10 +224,10 @@ As a starting suggestion though:
 * create a local copy of the main development branch (bzr.dev) by using
   this command::
 
-    bzr branch lp:bzr bzr.dev
+    brz branch lp:brz bzr.dev
 
 * keep your copy of bzr.dev pristine (by not developing in it) and keep
-  it up to date (by using bzr pull)
+  it up to date (by using brz pull)
 
 * create a new branch off your local bzr.dev copy for each issue
   (bug or feature) you are working on.
@@ -247,17 +247,17 @@ Navigating the Code Base
 Some of the key files in this directory are:
 
 bzr
-    The command you run to start Bazaar itself.  This script is pretty
+    The command you run to start Breezy itself.  This script is pretty
     short and just does some checks then jumps into bzrlib.
 
-README
-    This file covers a brief introduction to Bazaar and lists some of its
+README.rst
+    This file covers a brief introduction to Breezy and lists some of its
     key features.
 
 setup.py
-    Installs Bazaar system-wide or to your home directory.  To perform
-    development work on Bazaar it is not required to run this file - you
-    can simply run the bzr command from the top level directory of your
+    Installs Breezy system-wide or to your home directory.  To perform
+    development work on Breezy it is not required to run this file - you
+    can simply run the Breezy command from the top level directory of your
     development copy. Note: That if you run setup.py this will create a
     'build' directory in your development branch. There's nothing wrong
     with this but don't be confused by it. The build process puts a copy
@@ -268,35 +268,35 @@ setup.py
 bzrlib
     Possibly the most exciting folder of all, bzrlib holds the main code
     base. This is where you will go to edit python files and contribute to
-    Bazaar.
+    Breezy.
 
 doc
-    Holds documentation on a whole range of things on Bazaar from the
-    origination of ideas within the project to information on Bazaar
+    Holds documentation on a whole range of things on Breezy from the
+    origination of ideas within the project to information on Breezy
     features and use cases.  Within this directory there is a subdirectory
     for each translation into a human language.  All the documentation
     is in the ReStructuredText markup language.
 
 doc/developers
-    Documentation specifically targeted at Bazaar and plugin developers.
+    Documentation specifically targeted at Breezy and plugin developers.
     (Including this document.)
 
 doc/en/release-notes/
 
-    Detailed changes in each Bazaar release (there is one file by series:
+    Detailed changes in each Breezy release (there is one file by series:
     bzr-2.3.txt, bzr-2.4.txt, etc) that can affect users or plugin
     developers.
 
 doc/en/whats-new/
 
-    High-level summaries of changes in each Bazaar release (there is one
+    High-level summaries of changes in each Breezy release (there is one
     file by series: whats-new-in-2.3.txt, whats-new-in-2.4.txt, etc).
 
 
 Automatically-generated API reference information is available at
-<http://starship.python.net/crew/mwh/bzrlibapi/>.
+<http://people.canonical.com/~mwh/bzrlibapi/>.
 
-See also the `Bazaar Architectural Overview
+See also the `Breezy Architectural Overview
 <http://doc.bazaar.canonical.com/developers/overview.html>`_.
 
 
@@ -307,7 +307,7 @@ Evolving Interfaces
 ===================
 
 We don't change APIs in stable branches: any supported symbol in a stable
-release of bzr must not be altered in any way that would result in
+release of Breezy must not be altered in any way that would result in
 breaking existing code that uses it. That means that method names,
 parameter ordering, parameter names, variable and attribute names etc must
 not be changed without leaving a 'deprecated forwarder' behind. This even
@@ -368,79 +368,39 @@ can't fix.
 General Guidelines
 ==================
 
-Copyright
----------
-
-The copyright policy for bzr was recently made clear in this email (edited
-for grammatical correctness)::
-
-    The attached patch cleans up the copyright and license statements in
-    the bzr source. It also adds tests to help us remember to add them
-    with the correct text.
-
-    We had the problem that lots of our files were "Copyright Canonical
-    Development Ltd" which is not a real company, and some other variations
-    on this theme. Also, some files were missing the GPL statements.
-
-    I want to be clear about the intent of this patch, since copyright can
-    be a little controversial.
-
-    1) The big motivation for this is not to shut out the community, but
-    just to clean up all of the invalid copyright statements.
-
-    2) It has been the general policy for bzr that we want a single
-    copyright holder for all of the core code. This is following the model
-    set by the FSF, which makes it easier to update the code to a new
-    license in case problems are encountered. (For example, if we want to
-    upgrade the project universally to GPL v3 it is much simpler if there is
-    a single copyright holder). It also makes it clearer if copyright is
-    ever debated, there is a single holder, which makes it easier to defend
-    in court, etc. (I think the FSF position is that if you assign them
-    copyright, they can defend it in court rather than you needing to, and
-    I'm sure Canonical would do the same).
-    As such, Canonical has requested copyright assignments from all of the
-    major contributers.
-
-    3) If someone wants to add code and not attribute it to Canonical, there
-    is a specific list of files that are excluded from this check. And the
-    test failure indicates where that is, and how to update it.
-
-    4) If anyone feels that I changed a copyright statement incorrectly, just
-    let me know, and I'll be happy to correct it. Whenever you have large
-    mechanical changes like this, it is possible to make some mistakes.
-
-    Just to reiterate, this is a community project, and it is meant to stay
-    that way. Core bzr code is copyright Canonical for legal reasons, and
-    the tests are just there to help us maintain that.
-
-
 Miscellaneous Topics
 ####################
 
 Debugging
 =========
 
-Bazaar has a few facilities to help debug problems by going into pdb_, the
+Breezy has a few facilities to help debug problems by going into pdb_, the
 Python debugger.
 
 .. _pdb: http://docs.python.org/lib/debugger-commands.html
 
 If the ``BZR_PDB`` environment variable is set
-then bzr will go into pdb post-mortem mode when an unhandled exception
+then brz will go into pdb post-mortem mode when an unhandled exception
 occurs.
 
-If you send a SIGQUIT or SIGBREAK signal to bzr then it will drop into the
+If you send a SIGQUIT or SIGBREAK signal to brz then it will drop into the
 debugger immediately. SIGQUIT can be generated by pressing Ctrl-\\ on
 Unix.  SIGBREAK is generated with Ctrl-Pause on Windows (some laptops have
 this as Fn-Pause).  You can continue execution by typing ``c``.  This can
 be disabled if necessary by setting the environment variable
 ``BZR_SIGQUIT_PDB=0``.
 
+All tests inheriting from bzrlib.tests.TestCase can use ``self.debug()``
+instead of the longer ``import pdb; pdb.set_trace()``. The former also works
+when ``stdin/stdout`` are redirected (by using the original ``stdin/stdout``
+file handles at the start of the ``bzr`` script) while the later doesn't.
+``bzrlib.debug.set_trace()`` also uses the original ``stdin/stdout`` file
+handles.
 
 Debug Flags
 ===========
 
-Bazaar accepts some global options starting with ``-D`` such as
+Breezy accepts some global options starting with ``-D`` such as
 ``-Dhpss``.  These set a value in `bzrlib.debug.debug_flags`, and
 typically cause more information to be written to the trace file.  Most
 `mutter` calls should be guarded by a check of those flags so that we
@@ -448,13 +408,14 @@ don't write out too much information if it's not needed.
 
 Debug flags may have effects other than just emitting trace messages.
 
-Run ``bzr help global-options`` to see them all.
+Run ``brz help global-options`` to see them all.
 
 These flags may also be set as a comma-separated list in the
-``debug_flags`` option in e.g.  ``~/.bazaar/bazaar.conf``.  (Note that it
-must be in this global file, not in the branch or location configuration,
-because it's currently only loaded at startup time.)  For instance you may
-want to always record hpss traces and to see full error tracebacks::
+``debug_flags`` option in e.g.  ``~/.config/breezy/breezy.conf``.  (Note
+that it must be in this global file, not in the branch or location
+configuration, because it's currently only loaded at startup time.)  For
+instance you may want to always record hpss traces and to see full error
+tracebacks::
 
     debug_flags = hpss, error
 
@@ -471,7 +432,7 @@ revno
 Unicode and Encoding Support
 ============================
 
-This section discusses various techniques that Bazaar uses to handle
+This section discusses various techniques that Breezy uses to handle
 characters that are outside the ASCII set.
 
 ``Command.outf``
@@ -491,15 +452,15 @@ handled.  This parameter can take one of 3 values:
     marker (typically '?'), and no exception will be raised. This is for
     any command which generates text for the user to review, rather than
     for automated processing.
-    For example: ``bzr log`` should not fail if one of the entries has text
+    For example: ``brz log`` should not fail if one of the entries has text
     that cannot be displayed.
 
   strict
     Attempting to print an unprintable character will cause a UnicodeError.
     This is for commands that are intended more as scripting support, rather
     than plain user review.
-    For example: ``bzr ls`` is designed to be used with shell scripting. One
-    use would be ``bzr ls --null --unknowns | xargs -0 rm``.  If ``bzr``
+    For example: ``brz ls`` is designed to be used with shell scripting. One
+    use would be ``brz ls --null --unknowns | xargs -0 rm``.  If ``bzr``
     printed a filename with a '?', the wrong file could be deleted. (At the
     very least, the correct file would not be deleted). An error is used to
     indicate that the requested action could not be performed.
@@ -507,7 +468,7 @@ handled.  This parameter can take one of 3 values:
   exact
     Do not attempt to automatically convert Unicode strings. This is used
     for commands that must handle conversion themselves.
-    For example: ``bzr diff`` needs to translate Unicode paths, but should
+    For example: ``brz diff`` needs to translate Unicode paths, but should
     not change the exact text of the contents of the files.
 
 
@@ -526,41 +487,30 @@ valid characters are generated where possible.
 C Extension Modules
 ===================
 
-We write some extensions in C using pyrex. We design these to work in
+We write some extensions in C using Cython. We design these to work in
 three scenarios:
 
  * User with no C compiler
  * User with C compiler
  * Developers
 
-The recommended way to install bzr is to have a C compiler so that the
+The recommended way to install Breezy is to have a C compiler so that the
 extensions can be built, but if no C compiler is present, the pure python
 versions we supply will work, though more slowly.
 
-For developers we recommend that pyrex be installed, so that the C
+For developers we recommend that Cython be installed, so that the C
 extensions can be changed if needed.
 
 For the C extensions, the extension module should always match the
 original python one in all respects (modulo speed). This should be
 maintained over time.
 
-To create an extension, add rules to setup.py for building it with pyrex,
+To create an extension, add rules to setup.py for building it with Cython ,
 and with distutils. Now start with an empty .pyx file. At the top add
 "include 'yourmodule.py'". This will import the contents of foo.py into this
 file at build time - remember that only one module will be loaded at
 runtime. Now you can subclass classes, or replace functions, and only your
 changes need to be present in the .pyx file.
-
-Note that pyrex does not support all 2.4 programming idioms, so some
-syntax changes may be required. I.e.
-
- - 'from foo import (bar, gam)' needs to change to not use the brackets.
- - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar'
-
-If the changes are too dramatic, consider
-maintaining the python code twice - once in the .pyx, and once in the .py,
-and no longer including the .py file.
-
 
 Making Installers for OS Windows
 ================================
@@ -576,14 +526,14 @@ Overview
 What is a Core Developer?
 -------------------------
 
-While everyone in the Bazaar community is welcome and encouraged to
+While everyone in the Breezy community is welcome and encouraged to
 propose and submit changes, a smaller team is reponsible for pulling those
 changes together into a cohesive whole. In addition to the general developer
 stuff covered above, "core" developers have responsibility for:
 
 * reviewing changes
 * planning releases
-* managing releases (see `Releasing Bazaar <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
+* managing releases (see `Releasing Breezy <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
@@ -610,7 +560,7 @@ and reviewed, you can keep others informed of where you're spending your
 energy by emailing the **bazaar-commits** list implicitly. To do this,
 install and configure the Email plugin. One way to do this is add these
 configuration settings to your central configuration file (e.g.
-``~/.bazaar/bazaar.conf``)::
+``~/.config/breezy/breezy.conf``)::
 
   [DEFAULT]
   email = Joe Smith <joe.smith@internode.on.net>

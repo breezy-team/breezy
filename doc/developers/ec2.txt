@@ -1,5 +1,5 @@
 =========================
-Bazaar Windows EC2 Server
+Breezy Windows EC2 Server
 =========================
 
 We have an Amazon EC2 virtual machine called Desolation_ for
@@ -10,7 +10,7 @@ March.
 
 See also:
 
-* `Bazaar Developer Documentation Catalog <index.html>`_.
+* `Breezy Developer Documentation Catalog <index.html>`_.
 
 
 .. _Desolation: http://en.wikipedia.org/wiki/Desolation_Island
@@ -31,7 +31,7 @@ Goals
 * We keep snapshot of the OS and tool chain so that we can roll back if
   we need to.
 
-* bzr branches and similar information are kept on stable storage that
+* branches and similar information are kept on stable storage that
   survives rollbacks of the OS state, and that can be backed up.
 
 Later on we may try automated Windows testing in a similar setup.
@@ -92,7 +92,7 @@ Procedures
 Preparation
 -----------
 
-* Be in the bzr core team.  If you are interested in helping with
+* Be in the brz core team.  If you are interested in helping with
   Windows packaging, testing or development just ask.
 
 * Install the

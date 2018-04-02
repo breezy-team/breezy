@@ -63,7 +63,7 @@ try:
     import rubber.cmdline
     import rubber.cmd_pipe
 except ImportError:
-    print "Cannot find the rubber modules, rubber not installed correctly."
+    print("Cannot find the rubber modules, rubber not installed correctly.")
     sys.exit(1)
 
 # Generate the latex file
@@ -157,9 +157,8 @@ tex_processor(rubber_argv)
 # Rename output to _destination or print to stdout::
 
 if destination is None:
-    pdffile = file(pdfpath)
-    print  pdffile.read()
-    pdffile.close()
+    with file(pdfpath) as pdffile:
+        print(pdffile.read())
 else:
     os.rename(pdfpath, destination)
 

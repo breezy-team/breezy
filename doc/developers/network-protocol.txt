@@ -11,7 +11,7 @@ Network Protocol
 Overview
 ========
 
-The smart protocol provides a way to send a requests and corresponding
+The smart protocol provides a way to send requests and corresponding
 responses to communicate with a remote bzr process.
 
 Layering
@@ -70,7 +70,7 @@ Sketch::
           machine until the request can be satisfied,
           sends structured data to the protocol.
 
-Request handlers are registered in the `bzrlib.smart.request` module.
+Request handlers are registered in the `breezy.smart.request` module.
 
 
 Client-side
@@ -103,7 +103,7 @@ Sketch::
 The domain logic is in `bzrlib.remote`: `RemoteBzrDir`, `RemoteBranch`,
 and so on.
 
-There is also an plain file-level transport that calls remote methods to
+There is also a plain file-level transport that calls remote methods to
 manipulate files on the server in `bzrlib.transport.remote`.
 
 Protocol description

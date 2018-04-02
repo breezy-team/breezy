@@ -19,10 +19,10 @@
 """Generate doc/en/release-notes/index.txt from the per-series NEWS files.
 
 NEWS files are kept in doc/en/release-notes/, one file per series, e.g.
-doc/en/release-notes/bzr-2.3.txt
+doc/en/release-notes/brz-2.3.txt
 """
 
-# XXX: add test_source test that latest doc/en/release-notes/bzr-*.txt has the
+# XXX: add test_source test that latest doc/en/release-notes/brz-*.txt has the
 # NEWS file-id (so that merges of new work will tend to always land new NEWS
 # entries in the latest series).
 
@@ -61,7 +61,7 @@ def natural_sort_key(file_name):
     
     e.g. 1.10b1 will sort as greater than 1.2::
 
-        >>> natural_sort_key('bzr-1.10b1.txt') > natural_sort_key('bzr-1.2.txt')
+        >>> natural_sort_key('brz-1.10b1.txt') > natural_sort_key('brz-1.2.txt')
         True
     """
     file_name = os.path.basename(file_name)
@@ -86,12 +86,9 @@ def output_news_file_sphinx(out_file, news_file_name):
 
 
 def output_news_file_plain(out_file, news_file_name):
-    f = open(news_file_name, 'rb')
-    try:
+    with open(news_file_name, 'rb') as f:
         lines = f.readlines()
-    finally:
-        f.close()
-    title = os.path.basename(news_file_name)[len('bzr-'):-len('.txt')]
+    title = os.path.basename(news_file_name)[len('brz-'):-len('.txt')]
     for line in lines:
         if line == '####################\n':
             line = '#' * len(title) + '\n'
@@ -124,13 +121,10 @@ def main(argv):
         preamble = preamble_plain
         output_news_file = output_news_file_plain
 
-    out_file = open(out_file_name, 'w')
-    try:
+    with open(out_file_name, 'w') as out_file:
         out_file.write(preamble)
         for news_file_name in news_file_names:
             output_news_file(out_file, news_file_name)
-    finally:
-        out_file.close()
 
 
 if __name__ == '__main__':

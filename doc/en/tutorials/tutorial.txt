@@ -2,13 +2,8 @@
 .. into HTML or text.  In the future we plan to extract the example commands
 .. and automatically test them.
 
-.. This text was previously on the wiki at
-.. http://bazaar.canonical.com/IntroductionToBzr
-.. but has been moved into the source tree so it can be kept in sync with
-.. the source and possibly automatically checked.
-
 ===============
-Bazaar Tutorial
+Breezy Tutorial
 ===============
 
 
@@ -16,7 +11,7 @@ Introduction
 ============
 
 If you are already familiar with decentralized version control, then
-please feel free to skip ahead to "Introducing Yourself to Bazaar". If,
+please feel free to skip ahead to "Introducing Yourself to Breezy". If,
 on the other hand, you are familiar with version control but not
 decentralized version control, then please start at "How DVCS is
 different." Otherwise, get some coffee or tea, get comfortable and get
@@ -32,10 +27,10 @@ you have made some sort of mistake that you deeply regretted. Perhaps you
 deleted the configuration file for your mailserver or perhaps mauled the
 source code for a pet project. Whatever happened, you have just deleted
 important information that you would desperately like to get back. If this
-has ever happened to you, then you are probably ready for Bazaar.
+has ever happened to you, then you are probably ready for Breezy.
 
 Version control systems (which I'll henceforth call VCS) such as
-Bazaar give you the ability to track changes for a directory by turning
+Breezy give you the ability to track changes for a directory by turning
 it into something slightly more complicated than a directory that we call
 a **branch**. The branch not only stores how the directory looks right
 now, but also how it looked at various points in the past. Then, when you
@@ -73,7 +68,7 @@ internet but the server is missing!
 
 Decentralized Version Control Systems (which I'll call DVCS after this
 point) deal with this problem by keeping branches on the same machine as
-the client. In Bazaar's case, the branch is kept in the same place as
+the client. In Breezy's case, the branch is kept in the same place as
 the code that is being version controlled. This allows the user to save
 his changes (**commit**) whenever he wants -- even if he is offline. The
 user only needs internet access when he wants to access the changes in
@@ -84,49 +79,49 @@ A common requirement that many people have is the need to keep track of
 the changes for a directory such as file and subdirectory changes.
 Performing this tracking by hand is a awkward process that over time
 becomes unwieldy. That is, until one considers version control tools such
-as Bazaar. These tools automate the process of storing data by creating
+as Breezy. These tools automate the process of storing data by creating
 a **revision** of the directory tree whenever the user asks.
 
-Version control software such as Bazaar can do much more than just
-storage and performing undo.  For example, with Bazaar a developer can
+Version control software such as Breezy can do much more than just
+storage and performing undo.  For example, with Breezy a developer can
 take the modifications in one branch of software and apply them to a
 related branch -- even if those changes exist in a branch owned by
 somebody else. This allows developers to cooperate without giving
 write access to the repository.
 
-Bazaar remembers the ''ancestry'' of a revision: the previous revisions
+Breezy remembers the ''ancestry'' of a revision: the previous revisions
 that it is based upon.  A single revision may have more than one direct
 descendant, each with different changes, representing a divergence in the
-evolution of the tree. By branching, Bazaar allows multiple people to
+evolution of the tree. By branching, Breezy allows multiple people to
 cooperate on the evolution of a project, without all needing to work in
 strict lock-step.  Branching can be useful even for a single developer.
 
-Introducing yourself to Bazaar
+Introducing yourself to Breezy
 ==============================
 
-Bazaar installs a single new command, **bzr**.  Everything else is a
-subcommand of this.  You can get some help with ``bzr help``. Some arguments
-are grouped in topics: ``bzr help topics`` to see which topics are available.
+Breezy installs a single new command, **brz**.  Everything else is a
+subcommand of this.  You can get some help with ``brz help``. Some arguments
+are grouped in topics: ``brz help topics`` to see which topics are available.
 
 One function of a version control system is to keep track of who changed
 what.  In a decentralized system, that requires an identifier for each
 author that is globally unique.  Most people already have one of these: an
-email address. Bazaar is smart enough to automatically generate an email
+email address. Breezy is smart enough to automatically generate an email
 address by looking up your username and hostname. If you don't like the
-guess that Bazaar makes, then three options exist:
+guess that Breezy makes, then three options exist:
 
-1. Set an email address via ``bzr whoami``.  This is the simplest way.
+1. Set an email address via ``brz whoami``.  This is the simplest way.
 
    To set a global identity, use::
 
-   % bzr whoami "Your Name <email@example.com>"
+   % brz whoami "Your Name <email@example.com>"
 
    If you'd like to use a different address for a specific branch, enter
    the branch folder and use::
 
-   % bzr whoami --branch "Your Name <email@example.com>"
+   % brz whoami --branch "Your Name <email@example.com>"
 
-#. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
+#. Setting the email address in the ``~/.config/breezy/breezy.conf`` [1]_ by
    adding the following lines.  Please note that  ``[DEFAULT]`` is case
    sensitive::
 
@@ -134,7 +129,7 @@ guess that Bazaar makes, then three options exist:
        email=Your Name <email@isp.com>
 
    As above, you can override this settings on a branch by branch basis
-   by creating a branch section in ``~/.bazaar/locations.conf`` and
+   by creating a branch section in ``~/.config/breezy/locations.conf`` and
    adding the following lines::
 
        [/the/path/to/the/branch]
@@ -142,13 +137,13 @@ guess that Bazaar makes, then three options exist:
 
 
 #. Overriding the two previous options by setting the global environment
-   variable ``$BZR_EMAIL`` or ``$EMAIL`` (``$BZR_EMAIL`` will take
+   variable ``$brz_EMAIL`` or ``$EMAIL`` (``$brz_EMAIL`` will take
    precedence) to your full email address.
 
 .. [1] On Windows, the users configuration files can be found in the
-   application data directory. So instead of ``~/.bazaar/branch.conf``
+   application data directory. So instead of ``~/.config/breezy/breezy.conf``
    the configuration file can be found as:
-   ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\branch.conf``.
+   ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\breezy.conf``.
    The same is true for ``locations.conf``, ``ignore``, and the
    ``plugins`` directory.
 
@@ -156,19 +151,19 @@ Creating a branch
 =================
 
 History is by default stored in the .bzr directory of the branch. In a
-future version of Bazaar, there will be a facility to store it in a
+future version of Breezy, there will be a facility to store it in a
 separate repository, which may be remote.
 
-We create a new branch by running ``bzr init`` in an existing directory::
+We create a new branch by running ``brz init`` in an existing directory::
 
     % mkdir tutorial
     % cd tutorial
     % ls -a
     ./  ../
     % pwd
-    /home/mbp/work/bzr.test/tutorial
+    /home/mbp/work/brz.test/tutorial
     %
-    % bzr init
+    % brz init
     % ls -aF
     ./  ../  .bzr/
     %
@@ -178,24 +173,24 @@ versioned.  The **add** command makes a file versioned: that is, changes
 to it will be recorded by the system::
 
     % echo 'hello world' > hello.txt
-    % bzr status
+    % brz status
     unknown:
       hello.txt
-    % bzr add hello.txt
+    % brz add hello.txt
     added hello.txt
-    % bzr status
+    % brz status
     added:
       hello.txt
 
 
-If you add the wrong file, simply use ``bzr remove`` to make it
+If you add the wrong file, simply use ``brz remove`` to make it
 unversioned again.  This does not delete the working copy in this case,
 though it may in others [2]_.
 
-.. [2] ``bzr remove`` will remove the working copy if it is currently
+.. [2] ``brz remove`` will remove the working copy if it is currently
    versioned, but has no changes from the last committed version.  You
    can force the file to always be kept with the ``--keep`` option to
-   ``bzr remove``, or force it to always be deleted with ``--force``.
+   ``brz remove``, or force it to always be deleted with ``--force``.
 
 Branch locations
 ================
@@ -203,19 +198,19 @@ Branch locations
 All history is stored in a branch, which is just an on-disk directory
 containing control files.  By default there is no separate repository or
 database as used in svn or svk. You can choose to create a repository if
-you want to (see the ``bzr init-repo`` command). You may wish to do this
+you want to (see the ``brz init-repo`` command). You may wish to do this
 if you have very large branches, or many branches of a moderately sized
 project.
 
 You'll usually refer to branches on your computer's filesystem just by
-giving the name of the directory containing the branch.  bzr also supports
+giving the name of the directory containing the branch.  brz also supports
 accessing branches over SSH, HTTP and SFTP, amongst other things::
 
-    % bzr log bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
-    % bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
-    % bzr log sftp://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
+    % brz log brz+ssh://code.launchpad.net/~brz/brz/brz.dev/
+    % brz log http://code.launchpad.net/~brz/brz/brz.dev/
+    % brz log sftp://code.launchpad.net/~brz/brz/brz.dev/
 
-By installing bzr plugins you can also access branches using the rsync
+By installing brz plugins you can also access branches using the rsync
 protocol.
 
 See the `Publishing your branch`_ section for more about how to put your
@@ -233,30 +228,30 @@ known-good state.  You can also review your changes, to make sure you're
 committing what you intend to, and as a chance to rethink your work before
 you permanently record it.
 
-Two bzr commands are particularly useful here: **status** and **diff**.
+Two brz commands are particularly useful here: **status** and **diff**.
 
-bzr status
+brz status
 ----------
 
 The **status** command tells you what changes have been made to the
 working directory since the last revision::
 
-    % bzr status
+    % brz status
     modified:
        foo
 
-``bzr status`` hides "boring" files that are either unchanged or ignored.
+``brz status`` hides "boring" files that are either unchanged or ignored.
 The status command can optionally be given the name of some files or
 directories to check.
 
-bzr diff
+brz diff
 --------
 
 The **diff** command shows the full text of changes to all files as a
 standard unified diff.  This can be piped through many programs such as
 ''patch'', ''diffstat'', ''filterdiff'' and ''colordiff''::
 
-    % bzr diff
+    % brz diff
     === added file 'hello.txt'
     --- hello.txt   1970-01-01 00:00:00 +0000
     +++ hello.txt   2005-10-18 14:23:29 +0000
@@ -267,18 +262,18 @@ standard unified diff.  This can be piped through many programs such as
 With the ``-r`` option, the tree is compared to an earlier revision, or
 the differences between two versions are shown::
 
-    % bzr diff -r 1000..          # everything since r1000
-    % bzr diff -r 1000..1100      # changes from 1000 to 1100
+    % brz diff -r 1000..          # everything since r1000
+    % brz diff -r 1000..1100      # changes from 1000 to 1100
 
-The ``--diff-options`` option causes bzr to run the external diff program,
+The ``--diff-options`` option causes brz to run the external diff program,
 passing options.  For example::
 
-    % bzr diff --diff-options --side-by-side foo
+    % brz diff --diff-options --side-by-side foo
 
 Some projects prefer patches to show a prefix at the start of the path
 for old and new files.  The ``--prefix`` option can be used to provide
 such a prefix.
-As a shortcut, ``bzr diff -p1`` produces a form that works with the
+As a shortcut, ``brz diff -p1`` produces a form that works with the
 command ``patch -p1``.
 
 
@@ -288,7 +283,7 @@ Committing changes
 When the working tree state is satisfactory, it can be **committed** to
 the branch, creating a new revision holding a snapshot of that state.
 
-bzr commit
+brz commit
 ----------
 
 The **commit** command takes a message describing the changes in the
@@ -300,7 +295,7 @@ at the end of the line.
 
 ::
 
-    % bzr commit -m "added my first file"
+    % brz commit -m "added my first file"
 
 You can also use the ``-F`` option to take the message from a file.  Some
 people like to make notes for a commit message while they work, then
@@ -310,11 +305,11 @@ can also be useful when you pick up your work after a break.)
 Message from an editor
 ----------------------
 
-If you use neither the ``-m`` nor the ``-F`` option then bzr will open an
+If you use neither the ``-m`` nor the ``-F`` option then brz will open an
 editor for you to enter a message.  The editor to run is controlled by
 your ``$VISUAL`` or ``$EDITOR`` environment variable, which can be overridden
-by the ``editor`` setting in ``~/.bazaar/bazaar.conf``; ``$BZR_EDITOR`` will
-override either of the above mentioned editor options.  If you quit the
+by the ``editor`` setting in ``~/.config/breezy/breezy.conf``; ``$BRZ_EDITOR``
+will override either of the above mentioned editor options.  If you quit the
 editor without making any changes, the commit will be cancelled.
 
 The file that is opened in the editor contains a horizontal line. The part
@@ -334,21 +329,21 @@ included in the message you can copy and paste them above the separator.
 Marking bugs as fixed
 ---------------------
 
-Many changes to a project are as a result of fixing bugs. Bazaar can keep
+Many changes to a project are as a result of fixing bugs. Breezy can keep
 metadata about bugs you fixed when you commit them. To do this you use the
 ``--fixes`` option. This option takes an argument that looks like this::
 
-    % bzr commit --fixes <tracker>:<id>
+    % brz commit --fixes <tracker>:<id>
 
 Where ``<tracker>`` is an identifier for a bug tracker and ``<id>`` is an
 identifier for a bug that is tracked in that bug tracker. ``<id>`` is usually
-a number. Bazaar already knows about a few popular bug trackers. They are 
+a number. Breezy already knows about a few popular bug trackers. They are 
 bugs.launchpad.net, bugs.debian.org, and bugzilla.gnome.org. These trackers
 have their own identifiers: lp, deb, and gnome respectively. For example,
 if you made a change to fix the bug #1234 on bugs.launchpad.net, you would
 use the following command to commit your fix::
 
-    % bzr commit -m "fixed my first bug" --fixes lp:1234
+    % brz commit -m "fixed my first bug" --fixes lp:1234
 
 For more information on this topic or for information on how to configure
 other bug trackers please read `Bug Tracker Settings`_.
@@ -361,12 +356,12 @@ Selective commit
 If you give file or directory names on the commit command line then only
 the changes to those files will be committed.  For example::
 
-    % bzr commit -m "documentation fix" commit.py
+    % brz commit -m "documentation fix" commit.py
 
-By default bzr always commits all changes to the tree, even if run from a
+By default brz always commits all changes to the tree, even if run from a
 subdirectory.  To commit from only the current directory down, use::
 
-    % bzr commit .
+    % brz commit .
 
 
 Removing uncommitted changes
@@ -374,9 +369,9 @@ Removing uncommitted changes
 
 If you've made some changes and don't want to keep them, use the
 **revert** command to go back to the previous head version.  It's a good
-idea to use ``bzr diff`` first to see what will be removed. By default the
+idea to use ``brz diff`` first to see what will be removed. By default the
 revert command reverts the whole tree; if file or directory names are
-given then only those ones will be affected. ``bzr revert`` also clears the
+given then only those ones will be affected. ``brz revert`` also clears the
 list of pending merges revisions.
 
 
@@ -389,7 +384,7 @@ The .bzrignore file
 Many source trees contain some files that do not need to be versioned,
 such as editor backups, object or bytecode files, and built programs.  You
 can simply not add them, but then they'll always crop up as unknown files.
-You can also tell bzr to ignore these files by adding them to a file
+You can also tell brz to ignore these files by adding them to a file
 called ``.bzrignore`` at the top of the tree.
 
 This file contains a list of file wildcards (or "globs"), one per line.
@@ -410,9 +405,9 @@ and HTML files in ``doc/``::
     doc/*.html
 
 To get a list of which files are ignored and what pattern they matched,
-use ``bzr ignored``::
+use ``brz ignored``::
 
-    % bzr ignored
+    % brz ignored
     config.h                 ./config.h
     configure.in~            *~
 
@@ -424,28 +419,28 @@ ignored.
 The ``.bzrignore`` file should normally be versioned, so that new copies
 of the branch see the same patterns::
 
-    % bzr add .bzrignore
-    % bzr commit -m "Add ignore patterns"
+    % brz add .bzrignore
+    % brz commit -m "Add ignore patterns"
 
 
-bzr ignore
+brz ignore
 ----------
 
 As an alternative to editing the ``.bzrignore`` file, you can use the
-``bzr ignore`` command. The ``bzr ignore`` command takes filenames and/or
+``brz ignore`` command. The ``brz ignore`` command takes filenames and/or
 patterns as arguments and then adds them to the ``.bzrignore`` file. If a
-``.bzrignore`` file does not exist the ``bzr ignore`` command will
+``.bzrignore`` file does not exist the ``brz ignore`` command will
 automatically create one for you, and implicitly add it to be versioned::
 
-    % bzr ignore tags
-    % bzr status
+    % brz ignore tags
+    % brz status
     added:
       .bzrignore
 
 Just like when editing the ``.bzrignore`` file on your own, you should
 commit the automatically created ``.bzrignore`` file::
 
-    % bzr commit -m "Added tags to ignore file"
+    % brz commit -m "Added tags to ignore file"
 
 
 Global ignores
@@ -453,48 +448,48 @@ Global ignores
 
 There are some ignored files which are not project specific, but more user
 specific. Things like editor temporary files, or personal temporary files.
-Rather than add these ignores to every project, bzr supports a global
-ignore file in ``~/.bazaar/ignore`` [1]_. It has the same syntax as the
+Rather than add these ignores to every project, brz supports a global
+ignore file in ``~/.config/breezy/ignore`` [1]_. It has the same syntax as the
 per-project ignore file.
 
 
 Examining history
 =================
 
-bzr log
+brz log
 -------
 
-The ``bzr log`` command shows a list of previous revisions. The ``bzr log
+The ``brz log`` command shows a list of previous revisions. The ``brz log
 --forward`` command does the same in chronological order to get most
 recent revisions printed at last.
 
-As with ``bzr diff``, ``bzr log`` supports the ``-r`` argument::
+As with ``brz diff``, ``brz log`` supports the ``-r`` argument::
 
-    % bzr log -r 1000..          # Revision 1000 and everything after it
-    % bzr log -r ..1000          # Everything up to and including r1000
-    % bzr log -r 1000..1100      # changes from 1000 to 1100
-    % bzr log -r 1000            # The changes in only revision 1000
+    % brz log -r 1000..          # Revision 1000 and everything after it
+    % brz log -r ..1000          # Everything up to and including r1000
+    % brz log -r 1000..1100      # changes from 1000 to 1100
+    % brz log -r 1000            # The changes in only revision 1000
 
 
 Branch statistics
 =================
 
-The ``bzr info`` command shows some summary information about the working
+The ``brz info`` command shows some summary information about the working
 tree and the branch history.
 
 
 Versioning directories
 ======================
 
-bzr versions files and directories in a way that can keep track of renames
+brz versions files and directories in a way that can keep track of renames
 and intelligently merge them::
 
     % mkdir src
     % echo 'int main() {}' > src/simple.c
-    % bzr add src
+    % brz add src
     added src
     added src/simple.c
-    % bzr status
+    % brz status
     added:
       src/
       src/simple.c
@@ -507,16 +502,16 @@ You can delete files or directories by just deleting them from the working
 directory.  This is a bit different to CVS, which requires that you also
 do ``cvs remove``.
 
-``bzr remove`` makes the file un-versioned, but may or may not delete the
+``brz remove`` makes the file un-versioned, but may or may not delete the
 working copy [2]_.  This is useful when you add the wrong file, or decide that
 a file should actually not be versioned.
 
 ::
 
     % rm -r src
-    % bzr remove -v hello.txt
+    % brz remove -v hello.txt
     ?       hello.txt
-    % bzr status
+    % brz status
     removed:
       hello.txt
       src/
@@ -524,7 +519,7 @@ a file should actually not be versioned.
     unknown:
       hello.txt
 
-If you remove the wrong file by accident, you can use ``bzr revert`` to
+If you remove the wrong file by accident, you can use ``brz revert`` to
 restore it.
 
 
@@ -536,8 +531,8 @@ change to an existing project.  To do this, you'll need to get a copy of
 the existing branch.  Because this new copy is potentially a new branch,
 the command is called **branch**::
 
-    % bzr branch lp:bzr bzr.dev
-    % cd bzr.dev
+    % brz branch lp:brz brz.dev
+    % cd brz.dev
 
 This copies down the complete history of this branch, so we can do all
 operations on it locally: log, annotate, making and merging branches.
@@ -552,7 +547,7 @@ Following upstream changes
 You can stay up-to-date with the parent branch by "pulling" in their
 changes::
 
-    % bzr pull
+    % brz pull
 
 After this change, the local directory will be a mirror of the source. This
 includes the ''revision-history'' - which is a list of the commits done in
@@ -566,14 +561,14 @@ branch.
 Merging from related branches
 =============================
 
-If two branches have diverged (both have unique changes) then ``bzr
+If two branches have diverged (both have unique changes) then ``brz
 merge`` is the appropriate command to use. Merge will automatically
 calculate the changes that exist in the branch you're merging from that
 are not in your branch and attempt to apply them in your branch.
 
 ::
 
-  % bzr merge URL
+  % brz merge URL
 
 
 If there is a conflict during a merge, 3 files with the same basename
@@ -592,7 +587,7 @@ report an error.
 
   % kdiff3 file.BASE file.OTHER file.THIS
   % mv file.THIS file
-  % bzr resolve file
+  % brz resolve file
 
 [**TODO**: explain conflict markers within files]
 
@@ -600,21 +595,21 @@ report an error.
 Publishing your branch
 ======================
 
-You don't need a special server to publish a bzr branch, just a normal web
+You don't need a special server to publish a brz branch, just a normal web
 server.  Just mirror the files to your server, including the .bzr
 directory.  One can push a branch (or the changes for a branch) by one of
 the following three methods:
 
-* The best method is to use bzr itself to do it.
+* The best method is to use brz itself to do it.
 
   ::
 
-    % bzr push bzr+ssh://servername.com/path/to/directory
+    % brz push brz+ssh://servername.com/path/to/directory
 
   (The destination directory must already exist unless the
   ``--create-prefix`` option is used.)
 
-* Another option is the ``rspush`` plugin that comes with BzrTools, which
+* Another option is the ``rspush`` plugin that comes with brzTools, which
   uses rsync to push the changes to the revision history and the working
   tree.
 
@@ -636,11 +631,11 @@ To move your changes from one tree to another, use
 ::
 
   % cd NEWDIR
-  % bzr merge --uncommitted OLDDIR
+  % brz merge --uncommitted OLDDIR
 
 This will apply all of the uncommitted changes you made in OLDDIR to NEWDIR.
 It will not apply committed changes, even if they could be applied to NEWDIR
-with a regular merge.  The changes will remain in OLDDIR, but you can use ``bzr
+with a regular merge.  The changes will remain in OLDDIR, but you can use ``brz
 revert OLDDIR`` to remove them, once you're satisfied with NEWDIR.
 
 NEWDIR does not have to be a copy of OLDDIR, but they should be related.

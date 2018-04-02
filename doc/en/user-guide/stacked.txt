@@ -41,7 +41,7 @@ Creating a stacked branch
 To create a stacked branch, use the ``stacked`` option of the branch command.
 For example::
 
-  bzr branch --stacked source-url my-dir
+  brz branch --stacked source-url my-dir
 
 This will create ``my-dir`` as a stacked branch with no local revisions.
 If it is defined, the public branch associated with ``source-url`` will be
@@ -69,7 +69,7 @@ Most changes on most projects build on an existing branch such as the
 branch stacked on one of these is easy to do using the ``push``
 command like this::
 
-  bzr push --stacked-on reference-url my-url
+  brz push --stacked-on reference-url my-url
 
 This creates a new branch at ``my-url`` that is stacked on ``reference-url``
 and only contains the revisions in the current branch that are not already
@@ -78,7 +78,7 @@ in the branch at ``reference-url``. In particular, ``my-url`` and
 can be used additionally to inform ``push`` to reference the
 revisions in ``reference-url``. For example::
 
-  bzr push --stacked-on bzr+ssh://host/project bzr+ssh://host/user/stacked-branch
+  brz push --stacked-on bzr+ssh://host/project bzr+ssh://host/user/stacked-branch
 
 This usage fits the scenario described in the Motivation section.
 
@@ -87,20 +87,20 @@ This will automatically set the *stacked-on* location to the parent branch of
 the branch you are pushing (or its ``public_location`` if configured).  For
 example::
 
-  bzr branch source-url my-dir
+  brz branch source-url my-dir
   cd my-dir
   (hack, hack, hack)
-  bzr commit -m "fix bug"
-  bzr push --stacked
+  brz commit -m "fix bug"
+  brz push --stacked
 
-You can combine ``bzr branch --stacked`` and ``bzr push --stacked`` to work on a
+You can combine ``brz branch --stacked`` and ``brz push --stacked`` to work on a
 branch without downloading or uploading the whole history::
 
-  bzr branch --stacked source-url my-dir
+  brz branch --stacked source-url my-dir
   cd my-dir
   (hack, hack, hack)
-  bzr commit -m "fix bug"
-  bzr push --stacked
+  brz commit -m "fix bug"
+  brz push --stacked
 
 
 Limitations of stacked branches
@@ -115,7 +115,7 @@ anyone except the user that originally pushed it.  It's a good idea to configure
 ``public_location`` to help prevent that.
 
 Similarly, because most of the history is stored in the stacked-on repository,
-operations like ``bzr log`` can be slower when the stacked-on repository is
+operations like ``brz log`` can be slower when the stacked-on repository is
 accessed via a network.
 
 If a stacked branch is in a format older than 2a, you cannot commit to it due to
@@ -127,9 +127,9 @@ If a stacked branch is in a format older than 2a, you cannot commit to it due to
 Changing branch stacking
 ------------------------
 
-Stacking of existing branches can be changed using the ``bzr reconfigure``
+Stacking of existing branches can be changed using the ``brz reconfigure``
 command to either stack on an existing branch, or to turn off stacking.
-Be aware that when ``bzr reconfigure --unstacked`` is used, bzr will
+Be aware that when ``brz reconfigure --unstacked`` is used, brz will
 copy all the referenced data from the stacked-on repository into the
 previously stacked repository.  For large repositories this may take
 considerable time and may substantially increase the size of the

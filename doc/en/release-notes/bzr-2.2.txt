@@ -5,11 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.2.5
+bzr 2.2.6
 #########
 
-:Codename: Suggestions welcome
-:2.2.5: NOT RELEASED YET
+:2.2.6: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
@@ -19,13 +18,6 @@ New Features
 
 Bug Fixes
 *********
-
-* Correctly handle ``bzr log`` and `get_known_graph_ancestry` on a
-  doubly-stacked branch.
-  (James Westby, Martin Pool, #715000)
-
-* Don't crash while merging and encountering obscure path conflicts
-  involving different root-ids. (Vincent Ladeuil, #805809)
 
 Improvements
 ************
@@ -39,12 +31,46 @@ API Changes
 Internals
 *********
 
+Testing
+*******
+
+
+bzr 2.2.5
+#########
+
+:2.2.5: 2011-09-01
+
+This is a bugfix release. One regression introduced in 2.2b1 has been fixed
+for some rare conflict resolutions. Also a warning is now emmitted when
+branching an out-of-date ubuntu packaging branch. Upgrading is recommended
+for all users on earlier 2.2 releases.
+
+Compatibility Breaks
+********************
+
+None.
+
+New Features
+************
+
+None.
+
+Bug Fixes
+*********
+
+* Correctly handle ``bzr log`` and `get_known_graph_ancestry` on a
+  doubly-stacked branch.
+  (James Westby, Martin Pool, #715000)
+
+* Don't crash while merging and encountering obscure path conflicts
+  involving different root-ids. (Vincent Ladeuil, #805809)
+
+Internals
+*********
+
 * Fixed bug in the bundled copy of ConfigObj with quoting of triple quotes
   in the value string. Fix suggested by ConfigObj's author Michael Foord.
   (Alexander Belchenko, #710410)
-
-Testing
-*******
 
 
 bzr 2.2.4

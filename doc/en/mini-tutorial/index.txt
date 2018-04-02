@@ -1,11 +1,11 @@
 ======================
-Bazaar in five minutes
+Breezy in five minutes
 ======================
 
 Introduction
 ============
 
-Bazaar is a distributed version control system that makes it easier for
+Breezy is a distributed version control system that makes it easier for
 people to work together on software projects.
 
 Over the next five minutes, you'll learn how to put your files under
@@ -16,10 +16,10 @@ it and send your work for merger into a project's trunk.
 Installation
 ============
 
-This guide doesn't describe how to install Bazaar but it's usually very
+This guide doesn't describe how to install Breezy but it's usually very
 easy. You can find installation instructions at:
 
-- **GNU/Linux:** Bazaar is probably in your GNU/Linux distribution already.
+- **GNU/Linux:** Breezy is probably in your GNU/Linux distribution already.
 - **Windows:** `installation instructions for Windows`_.
 - **Mac OS X:** `installation instructions for Mac OS X`_.
 
@@ -35,26 +35,26 @@ and Installation_ pages.
 Introducing yourself
 ====================
 
-Bazaar records changes to source code, and it records who made the change.
+Breezy records changes to source code, and it records who made the change.
 The person is identified by their name and email address.  (If you're
 concerned about spam, you don't need to use a real address that you
 actually read, but the convention is that it looks like an email address.)
 
-Before you start working, let's tell Bazaar who you are.  Using your name
+Before you start working, let's tell Breezy who you are.  Using your name
 and email address, instead of John Doe's, type::
 
-  $ bzr whoami "John Doe <john.doe@gmail.com>"
+  $ brz whoami "John Doe <john.doe@gmail.com>"
 
-You can check what identity is stored in Bazaar's configuration::
+You can check what identity is stored in Breezy's configuration::
 
-  $ bzr whoami
+  $ brz whoami
   John Doe <john.doe@gmail.com>
 
 
 Starting a new project
 ======================
 
-Let's suppose we want to store a new project under Bazaar.  First, we'll
+Let's suppose we want to store a new project under Breezy.  First, we'll
 make a *repository directory* to hold all our work related to this
 project, where developers can create branches to test development of
 specific features or, more generally, modifications to the working file
@@ -65,10 +65,13 @@ project's main trunk branch.
 
 ::
 
-  bzr init-repo sample
-  cd sample
-  bzr init trunk
-  cd trunk
+  $ brz init-repo sample
+  Shared repository with trees (format: 2a)
+  Location:
+    shared repository: sample
+  $ brz init sample/trunk
+  Created a repository tree (format: 2a)                                         
+  Using shared repository: /home/john/sample/
 
 
 Adding files
@@ -77,14 +80,19 @@ Adding files
 Now that we have the trunk, we need to move to that directory and
 create some example files for the first version of that project.  Create
 a file ``test1.txt`` using a text editor (like emacs, nano, or notepad),
-and save it.  Then we'll "add" the file, which tells bzr we want it to
+and save it.  Then we'll "add" the file, which tells brz we want it to
 track changes::
 
-  bzr add test1.txt
+  $ cd sample/trunk
+  # create the file test1.txt now
+  $ brz add test1.txt
+  adding test1.txt
 
 and then commit, which saves a snapshot of all versioned files::
 
-  bzr commit -m "Added first line of text"
+  $ brz commit -m "Added first line of text"
+  added test1.txt
+  Committed revision 1.
 
 
 Making changes to your files
@@ -93,38 +101,39 @@ Making changes to your files
 
 Let's change a file and commit that change to your branch.
 
-Edit ``test1.txt`` in your favourite editor, then check what have you done::
+Edit ``test1.txt`` in your favourite editor, then use ``brz add`` to tell brz
+to track changes to this file ::
 
- $ bzr diff
+  $ echo test test test > test1.txt 
+  $ brz add test1.txt
+  adding test1.txt
+
+`brz diff` shows the changes between the last revision in this branch, and your
+current tree (or, with the ``-r`` option, between any two trees). ::
+
+ $ brz diff
  === modified file 'test1.txt'
  --- test1.txt   2007-10-08 17:56:14 +0000
  +++ test1.txt   2007-10-08 17:46:22 +0000
  @@ -0,0 +1,1 @@
  +test test test
 
-Commit your work to the Bazaar branch::
+Commit your work to the Breezy branch::
 
-  $ bzr commit -m "Added first line of text"
-  Committed revision 2.
-
+  $ brz commit -m "Added first line of text"
+  Committing to: /home/john/sample/trunk/                             
+  added test1.txt
+  Committed revision 1.
 
 Viewing the revision log
 ========================
 
 You can see the history of your branch by browsing its log::
 
-  $ bzr log
-  ------------------------------------------------------------
-  revno: 2
-  committer: John Doe <john.doe@gmail.com>
-  branch nick: myproject
-  timestamp: Mon 2007-10-08 17:56:14 +0000
-  message:
-    Added first line of text
-  ------------------------------------------------------------
+  $ brz log
   revno: 1
   committer: John Doe <john.doe@gmail.com>
-  branch nick: myproject
+  branch nick: trunk
   timestamp: Mon 2006-10-08 17:46:22 +0000
   message:
     Initial import
@@ -137,45 +146,63 @@ Launchpad is a suite of development and hosting tools for
 software projects. You can use it to publish your branch.  (You can 
 also publish branches onto your own server or other hosting services.)
 
-If you don't have a Launchpad account, follow the `account signup guide`_
-and `register an SSH key`_ in your new Launchpad account.
+The steps to publishing branches on Launchpad are:
 
-.. _account signup guide: https://help.launchpad.net/CreatingYourLaunchpadAccount
-.. _register an SSH key: https://launchpad.net/people/+me/+editsshkeys
+1. Create a Launchpad account: visit the `Launchpad login page`_ and choose to create a new account.
+    
+.. _Launchpad login page: https://launchpad.net/+login
+    
+2. Breezy uses the SSH encryption and authentication protocol to connect
+   to Launchpad.  You need to first `create an SSH key`_ on your own computer,
+   by running the command::
+    
+       $ ssh-keygen
 
-Replacing ``john.doe`` with your own Launchpad username, type::
+.. _create an SSH key: https://help.launchpad.net/YourAccount/CreatingAnSSHKeyPair    
+       
+3. `Upload your SSH public key to Launchpad`_.
+ 
+.. _Upload your SSH public key to Launchpad: https://launchpad.net/~/+editsshkeys
+    
+4. `Make a team for your project`_.  Even if you're starting as the only
+   developer on this project, creating a new one now will let you more
+   easily add other people later.
+ 
+.. _Make a team for your project: https://help.launchpad.net/Teams/CreatingAndRunning
+      
+5. `Create a project`_.
+  
+.. _Create a project: https://help.launchpad.net/Projects/Registering
 
- $ bzr push lp:~john.doe/+junk/myproject
+6. Tell Breezy your Launchpad account name.  If your account is john.doe, type ::
+  
+      $ brz launchpad-login john.doe
 
-**Note**: ``+junk`` is a place to store experimental branches not
-associated with any particular project.  Normally, you should push a
-project into an existing project, or register a new project through the
-web interface.
-
-Now, anyone can create their own copy of your branch by typing::
-
- $ bzr branch lp:~john.doe/+junk/myproject
-
-You can also see information about your branch, including its revision
-history, at https://code.launchpad.net/people/+me/+junk/myproject
-
+7. `Push the branch for your project`_.  Once you've committed your changes 
+   locally, you can publish them as the trunk of your new project by saying
+    
+       $ brz push lp:~sample-developers/sample/trunk
+       
+   (Of course, using the team and project names you just chose.)
+ 
+.. _Push the branch for your project: https://help.launchpad.net/Code/UploadingABranch
 
 Creating your own copy of another branch
 ========================================
 
 To work with someone else's code, you can make your own copy of their
-branch. Let's take a real-world example, Bazaar's GTK interface::
+branch. Let's take a real-world example, Breezy's GTK interface::
 
-  $ bzr init-repo ~/bzr-gtk
-  $ bzr branch lp:~bzr/bzr-gtk/trunk ~/bzr-gtk/john
+  $ brz init-repo ~/brz-gtk
+  $ brz branch lp:~brz/brz-gtk/trunk ~/brz-gtk/john
   Branched 292 revision(s).
 
-Bazaar will download all the files and complete revision history from the
-bzr-gtk project's trunk branch and create a copy called ``john``.
+Breezy will download all the files and complete revision history from the
+brz-gtk project's trunk branch and create a copy called ``john``.
 
 Now, you have your own copy of the branch and can commit changes with
 or without a net connection. You can share your branch at any time by
-publishing it and, if the  bzr-gtk team want to use your work, Bazaar
+publishing it and, if the  brz-gtk team want to use your work, Breezy
 makes it easy for them to merge your branch back into their trunk branch.
 
 
@@ -188,46 +215,46 @@ also continue to commit code to the parent branch.
 To make sure your branch stays up to date, you should merge changes from
 the parent into your personal branch::
 
-  $ bzr merge
-  Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+  $ brz merge
+  Merging from saved parent location: http://bazaar.launchpad.net/~brz/brz-gtk/trunk
   All changes applied successfully.
 
 Check what has changed::
 
-  $ bzr diff
+  $ brz diff
 
 If different branches have made changes to the same areas of the same
 files, then merging them may generate conflicts.  When this happens,
-Bazaar puts text markers like ``<<<<<<<`` into the files, and records them
+Breezy puts text markers like ``<<<<<<<`` into the files, and records them
 in a list of conflicted files.  You should edit the files to reflect the
-way you want to resolve the conflicts, use ``bzr diff`` to check the
-changes, and then ``bzr resolve`` to mark them as resolved.
+way you want to resolve the conflicts, use ``brz diff`` to check the
+changes, and then ``brz resolve`` to mark them as resolved.
 
 If you're happy with the changes, you can commit them to your personal
 branch::
 
-  $ bzr commit -m "Merge from main branch"
+  $ brz commit -m "Merge from main branch"
   Committed revision 295.
 
 
 Learning more
 =============
 
-You can find out more about Bazaar in the
-`Bazaar User Guide <../user-guide/index.html>`_.
+You can find out more about Breezy in the
+`Breezy User Guide <../user-guide/index.html>`_.
 
-To learn about Bazaar on the command-line::
+To learn about Breezy on the command-line::
 
-  $ bzr help
+  $ brz help
 
 To learn about the ''foo'' topic or command::
 
-  $ bzr help foo
+  $ brz help foo
 
 Licence
 =======
 
-Copyright 2007-2011 Canonical Ltd. Bazaar is free software, and you
-may use, modify and redistribute both Bazaar and this document under
+Copyright 2007-2011 Canonical Ltd. Breezy is free software, and you
+may use, modify and redistribute both Breezy and this document under
 the terms of the GNU General Public License version 2 or later. See
 <http://www.gnu.org/licenses/>.

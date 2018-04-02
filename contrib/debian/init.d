@@ -1,28 +1,28 @@
 #! /bin/sh
 ### BEGIN INIT INFO
-# Provides:          bzr
+# Provides:          brz
 # Required-Start:    $local_fs $remote_fs
 # Required-Stop:     $local_fs $remote_fs
 # Default-Start:     2 3 4 5
 # Default-Stop:      S 0 1 6
-# Short-Description: bazaar Smart Server
-# Description:       bazaar Smart Server
+# Short-Description: Breezy Smart Server
+# Description:       Breezy Smart Server
 ### END INIT INFO
 
 # Author: John Ferlito <johnf@inodes.org>
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
-DESC="Bazaar Smart Server"
-NAME=bzr
+DESC="Breezy Smart Server"
+NAME=brz
 DAEMON=/usr/bin/$NAME
 DAEMON_ARGS=""
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
-USER=bzr
-GROUP=bzr
-REPO=/srv/bzr
+USER=brz
+GROUP=brz
+REPO=/srv/brz
 ENABLED=0
 
 # Exit if the package is not installed

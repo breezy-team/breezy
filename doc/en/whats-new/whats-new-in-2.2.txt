@@ -38,6 +38,9 @@ server and python-2.7 compatibility.
 Bazaar 2.2.4 fixed a regression for some interactions with the launchpad
 server.
 
+Bazaar 2.2.5 fixed a regression in some rare conflict resolutions and warns
+when branching an out-of-date ubuntu packaging branch.
+
 See the :doc:`../release-notes/index` for details.
 
 Bazaar 2.2 is fully compatible both locally and on the network with 2.0

@@ -6,6 +6,6 @@ Tutorials
 
    ../mini-tutorial/index
    tutorial
-   using_bazaar_with_launchpad
+   using_breezy_with_launchpad
    centralized_workflow
    licence
