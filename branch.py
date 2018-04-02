@@ -604,6 +604,9 @@ class LocalGitBranch(GitBranch):
     def _unlock_ref(self):
         self._ref_lock.unlock()
 
+    def break_lock(self):
+        self.repository._git.refs.unlock_ref(self.ref)
+
     def fetch(self, from_branch, last_revision=None, limit=None):
         return branch.InterBranch.get(from_branch, self).fetch(
             stop_revision=last_revision, limit=limit)
