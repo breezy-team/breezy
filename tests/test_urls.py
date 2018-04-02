@@ -21,20 +21,7 @@ from __future__ import absolute_import
 from ....tests import TestCase
 from ..urls import (
     git_url_to_bzr_url,
-    parse_git_url,
     )
-
-
-class TestParseGitURL(TestCase):
-
-    def test_simple(self):
-        self.assertEqual(
-                parse_git_url('foo:bar/path'),
-                (None, 'foo', 'bar/path'))
-        self.assertEqual(
-                parse_git_url('user@foo:bar/path'),
-                ('user', 'foo', 'bar/path'))
-        self.assertRaises(ValueError, parse_git_url, '/path')
 
 
 class TestConvertURL(TestCase):

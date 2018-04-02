@@ -20,34 +20,17 @@ from __future__ import absolute_import
 
 from breezy.urlutils import URL, quote
 
+from dulwich.client import parse_rsync_url
+
 
 KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp']
-
-
-def parse_git_url(location):
-    """Parse a rsync-style URL."""
-    if ':' in location and '@' not in location:
-        # SSH with no user@, zero or one leading slash.
-        (host, path) = location.split(':', 1)
-        user = None
-    elif ':' in location:
-        # SSH with user@host:foo.
-        user_host, path = location.split(':', 1)
-        if '@' in user_host:
-            user, host = user_host.rsplit('@', 1)
-        else:
-            user = None
-            host = user_host
-    else:
-        raise ValueError('missing : in location')
-    return (user, host, path)
 
 
 def git_url_to_bzr_url(location):
     url = URL.from_string(location)
     if url.scheme not in KNOWN_GIT_SCHEMES:
         try:
-            (username, host, path) = parse_git_url(location)
+            (username, host, path) = parse_rsync_url(location)
         except ValueError:
             url = URL(
                 scheme='file', quoted_user=None, quoted_password=None,
