@@ -51,6 +51,7 @@ from ...transport import (
 
 from . import (
     lazy_check_versions,
+    user_agent_for_github,
     )
 lazy_check_versions()
 
@@ -99,8 +100,13 @@ from dulwich.pack import (
     pack_objects_to_data,
     )
 from dulwich.protocol import ZERO_SHA
-from dulwich.refs import SYMREF
-from dulwich.repo import DictRefsContainer
+from dulwich.refs import (
+    DictRefsContainer,
+    SYMREF,
+    )
+from dulwich.repo import (
+    NotGitRepository,
+    )
 import os
 import select
 import tempfile
@@ -520,6 +526,10 @@ class RemoteGitDir(GitDir):
             source.set_push_location(push_result.target_branch.base)
         return push_result
 
+    def _find_commondir(self):
+        # There is no way to find the commondir, if there is any.
+        return self
+
 
 class EmptyObjectStoreIterator(dict):
 
@@ -560,14 +570,63 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
         super(BzrGitHttpClient, self).__init__(transport.external_url(), *args, **kwargs)
-        import urllib2
-        self._http_perform = getattr(self.transport, "_perform", urllib2.urlopen)
 
-    def _perform(self, req):
-        req.accepted_errors = (200, 404)
-        req.follow_redirections = True
-        req.redirected_to = None
-        return self._http_perform(req)
+    def _http_request(self, url, headers=None, data=None,
+                      allow_compression=False):
+        """Perform HTTP request.
+
+        :param url: Request URL.
+        :param headers: Optional custom headers to override defaults.
+        :param data: Request data.
+        :param allow_compression: Allow GZipped communication.
+        :return: Tuple (`response`, `read`), where response is an `urllib3`
+            response object with additional `content_type` and
+            `redirect_location` properties, and `read` is a consumable read
+            method for the response data.
+        """
+        from breezy.transport.http._urllib2_wrappers import Request
+        headers['User-agent'] = user_agent_for_github()
+        headers["Pragma"] = "no-cache"
+        if allow_compression:
+            headers["Accept-Encoding"] = "gzip"
+        else:
+            headers["Accept-Encoding"] = "identity"
+
+        request = Request(
+            ('GET' if data is None else 'POST'),
+            url, data, headers,
+            accepted_errors=[200, 404])
+
+        response = self.transport._perform(request)
+
+        if response.code == 404:
+            raise NotGitRepository()
+        elif response.code != 200:
+            raise GitProtocolError("unexpected http resp %d for %s" %
+                                   (response.code, url))
+
+        # TODO: Optimization available by adding `preload_content=False` to the
+        # request and just passing the `read` method on instead of going via
+        # `BytesIO`, if we can guarantee that the entire response is consumed
+        # before issuing the next to still allow for connection reuse from the
+        # pool.
+        if response.getheader("Content-Encoding") == "gzip":
+            read = gzip.GzipFile(fileobj=response).read
+        else:
+            read = response.read
+
+        class WrapResponse(object):
+
+            def __init__(self, response):
+                self._response = response
+                self.status = response.code
+                self.content_type = response.getheader("Content-Type")
+                self.redirect_location = response.geturl()
+
+            def close(self):
+                self._response.close()
+
+        return WrapResponse(response), read
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):
