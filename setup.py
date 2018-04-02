@@ -23,23 +23,19 @@ import breezy
 
 def get_long_description():
     dirname = os.path.dirname(__file__)
-    readme = os.path.join(dirname, 'README')
-    f = open(readme, 'rb')
-    try:
+    readme = os.path.join(dirname, 'README.rst')
+    with open(readme, 'rb') as f:
         return f.read()
-    finally:
-        f.close()
 
 
 ##
 # META INFORMATION FOR SETUP
 # see http://docs.python.org/dist/meta-data.html
 META_INFO = {
-    'name':         'brz',
+    'name':         'breezy',
     'version':      breezy.__version__,
-    'author':       'Canonical Ltd',
-    'author_email': 'bazaar@lists.canonical.com',
     'maintainer':   'Breezy Developers',
+    'maintainer_email':   'team@breezy-vcs.org',
     'url':          'https://www.breezy-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
@@ -58,11 +54,17 @@ META_INFO = {
         'Programming Language :: C',
         'Topic :: Software Development :: Version Control',
         ],
-    }
+    'install_requires': [
+        'six>=1.9.0',
+        ],
+    'extras_require': {
+        'fastimport': ['fastimport'],
+        },
+}
 
 # The list of packages is automatically generated later. Add other things
-# that are part of BZRLIB here.
-BZRLIB = {}
+# that are part of BREEZY here.
+BREEZY = {}
 
 PKG_DATA = {# install files from selftest suite
             'package_data': {'breezy': ['doc/api/*.txt',
@@ -101,7 +103,7 @@ def get_breezy_packages():
     return sorted(packages)
 
 
-BZRLIB['packages'] = get_breezy_packages()
+BREEZY['packages'] = get_breezy_packages()
 
 
 from distutils import log
@@ -131,9 +133,8 @@ class my_install_scripts(install_scripts):
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
-                f = file(batch_path, "w")
-                f.write(batch_str)
-                f.close()
+                with file(batch_path, "w") as f:
+                    f.write(batch_str)
                 print(("Created: %s" % batch_path))
             except Exception:
                 e = sys.exc_info()[1]
@@ -496,7 +497,7 @@ if 'bdist_wininst' in sys.argv:
            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     PKG_DATA['package_data']['breezy'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
@@ -562,7 +563,7 @@ elif 'py2exe' in sys.argv:
     gui_target = copy.copy(target)
     gui_target.dest_base = "bzrw"
 
-    packages = BZRLIB['packages']
+    packages = BREEZY['packages']
     packages.remove('breezy')
     packages = [i for i in packages if not i.startswith('breezy.plugins')]
     includes = []
@@ -744,7 +745,7 @@ else:
            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':

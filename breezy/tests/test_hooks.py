@@ -179,7 +179,7 @@ class TestHooks(tests.TestCase):
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
         # hook points which allow lazy registration.
-        for key, callbacks in _mod_hooks._lazy_hooks.iteritems():
+        for key, callbacks in _mod_hooks._lazy_hooks.items():
             (module_name, member_name, hook_name) = key
             obj = pyutils.get_named_object(module_name, member_name)
             self.assertEqual(obj._module, module_name)

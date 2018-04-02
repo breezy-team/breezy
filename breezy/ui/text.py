@@ -65,13 +65,14 @@ class _ChooseUI(object):
         variable is set to 'line-based', or if there is no controlling
         terminal.
         """
-        if os.environ.get('BRZ_TEXTUI_INPUT') != 'line-based' and \
-           self.ui.stdin == sys.stdin and self.ui.stdin.isatty():
+        is_tty = self.ui.raw_stdin.isatty()
+        if (os.environ.get('BRZ_TEXTUI_INPUT') != 'line-based' and
+                self.ui.raw_stdin == sys.stdin and is_tty):
             self.line_based = False
             self.echo_back = True
         else:
             self.line_based = True
-            self.echo_back = not self.ui.stdin.isatty()
+            self.echo_back = not is_tty
 
     def _build_alternatives(self, msg, choices, default):
         """Parse choices string.
@@ -126,7 +127,9 @@ class _ChooseUI(object):
             raise KeyboardInterrupt
         if char == chr(4): # EOF (^d, C-d)
             raise EOFError
-        return char.decode("ascii", "replace")
+        if isinstance(char, bytes):
+            return char.decode('ascii', 'replace')
+        return char
 
     def interact(self):
         """Keep asking the user until a valid choice is made.
@@ -173,8 +176,22 @@ class TextUIFactory(UIFactory):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
+        self._progress_view = NullProgressView()
+
+    def __enter__(self):
+        # Choose default encoding and handle py2/3 differences
+        self._setup_streams()
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
+        return self
+
+    def _setup_streams(self):
+        self.raw_stdin = _unwrap_stream(self.stdin)
+        self.stdin = _wrap_in_stream(self.raw_stdin)
+        self.raw_stdout = _unwrap_stream(self.stdout)
+        self.stdout = _wrap_out_stream(self.raw_stdout)
+        self.raw_stderr = _unwrap_stream(self.stderr)
+        self.stderr = _wrap_out_stream(self.raw_stderr)
 
     def choose(self, msg, choices, default=None):
         """Prompt the user for a list of alternatives.
@@ -642,7 +659,7 @@ def _get_stream_encoding(stream):
 def _unwrap_stream(stream):
     inner = getattr(stream, "buffer", None)
     if inner is None:
-        inner = getattr(stream, "stream", None)
+        inner = getattr(stream, "stream", stream)
     return inner
 
 

@@ -53,6 +53,7 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
 from .sixish import (
     string_types,
+    text_type,
     )
 
 
@@ -186,7 +187,7 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    return cmd[4:].replace('_','-')
+    return cmd[4:].replace('_', '-')
 
 
 def _register_builtin_commands():
@@ -280,7 +281,7 @@ def guess_command(cmd_name):
                 distance -= 0.1 * (l2-l1)
         costs[name] = distance
     costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
-    costs = sorted((value, key) for key, value in costs.iteritems())
+    costs = sorted((costs[key], key) for key in costs)
     if not costs:
         return
     if costs[0][0] > 4:
@@ -558,7 +559,7 @@ class Command(object):
             doc = gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
-        purpose,sections,order = self._get_help_parts(doc)
+        purpose, sections, order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
         if 'Usage' in sections:
@@ -669,14 +670,14 @@ class Command(object):
         summary = lines.pop(0)
         sections = {}
         order = []
-        label,section = None,''
+        label, section = None, ''
         for line in lines:
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, order, label, section)
-                label,section = line[1:-1],''
+                label, section = line[1:-1], ''
             elif (label is not None) and len(line) > 1 and not line[0].isspace():
                 save_section(sections, order, label, section)
-                label,section = None,line
+                label, section = None, line
             else:
                 if len(section) > 0:
                     section += '\n' + line
@@ -955,11 +956,9 @@ def _match_argform(cmd, takes_args, args):
 
     return argdict
 
-def apply_coveraged(dirname, the_callable, *args, **kwargs):
-    # Cannot use "import trace", as that would import breezy.trace instead of
-    # the standard library's trace.
-    trace = __import__('trace')
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    import trace
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
     threading.settrace(tracer.globaltrace)
@@ -1140,12 +1139,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             argv_copy.append(a)
         i += 1
 
-    if breezy.global_state is None:
-        # FIXME: Workaround for users that imported breezy but didn't call
-        # breezy.initialize -- vila 2012-01-19
-        cmdline_overrides = config.CommandLineStore()
-    else:
-        cmdline_overrides = breezy.global_state.cmdline_overrides
+    cmdline_overrides = breezy.get_global_state().cmdline_overrides
     cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
@@ -1252,18 +1246,19 @@ def _specified_or_unicode_argv(argv):
     # the process arguments in a unicode-safe way.
     if argv is None:
         return osutils.get_unicode_argv()
-    else:
-        new_argv = []
-        try:
-            # ensure all arguments are unicode strings
-            for a in argv:
-                if isinstance(a, unicode):
-                    new_argv.append(a)
-                else:
-                    new_argv.append(a.decode('ascii'))
-        except UnicodeDecodeError:
-            raise errors.BzrError("argv should be list of unicode strings.")
-        return new_argv
+    new_argv = []
+    try:
+        # ensure all arguments are unicode strings
+        for a in argv:
+            if not isinstance(a, string_types):
+                raise ValueError('not native str or unicode: %r' % (a,))
+            if isinstance(a, bytes):
+                # For Python 2 only allow ascii native strings
+                a = a.decode('ascii')
+            new_argv.append(a)
+    except (ValueError, UnicodeDecodeError):
+        raise errors.BzrError("argv should be list of unicode strings.")
+    return new_argv
 
 
 def main(argv=None):

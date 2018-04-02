@@ -46,7 +46,7 @@ class TestCommit(TestCaseWithTransport):
         # If forced, it should succeed, but this is not tested here.
         self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
-        out,err = self.run_bzr('commit -m empty', retcode=3)
+        out, err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
         # Two ugly bits here.
         # 1) We really don't want 'aborting commit write group' anymore.
@@ -92,10 +92,10 @@ brz: ERROR: No changes to commit.\
         self.run_bzr(['commit', '-m', 'first commit', 'a'])
 
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a_file', 'changes in b')])
+        self.build_tree_contents([('b/a_file', b'changes in b')])
         self.run_bzr(['commit', '-m', 'first commit in b', 'b'])
 
-        self.build_tree_contents([('a/a_file', 'new contents')])
+        self.build_tree_contents([('a/a_file', b'new contents')])
         self.run_bzr(['commit', '-m', 'change in a', 'a'])
 
         b_tree.merge_from_branch(a_tree.branch)
@@ -108,7 +108,7 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
         tree.add("hello.txt")
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello.txt\n'
@@ -126,12 +126,12 @@ brz: ERROR: No changes to commit.\
     def test_verbose_commit_modified(self):
         # Verbose commit of modified file should say so
         wt = self.prepare_simple_history()
-        self.build_tree_contents([('hello.txt', 'new contents')])
+        self.build_tree_contents([('hello.txt', b'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'modified hello\.txt\n'
-                              'Committed revision 2\.\n$')
+                              'modified hello\\.txt\n'
+                              'Committed revision 2\\.\n$')
 
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
@@ -203,8 +203,8 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'renamed hello\.txt => gutentag\.txt\n'
-                              'Committed revision 2\.$\n')
+                              'renamed hello\\.txt => gutentag\\.txt\n'
+                              'Committed revision 2\\.$\n')
 
     def test_verbose_commit_moved(self):
         # Verbose commit of file moved to new directory should say so
@@ -228,11 +228,11 @@ brz: ERROR: No changes to commit.\
         wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added hello\.txt\n'
-                              'Committed revision 1\.\n$')
+                              'added hello\\.txt\n'
+                              'Committed revision 1\\.\n$')
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
@@ -241,11 +241,11 @@ brz: ERROR: No changes to commit.\
         tree.add('unchanged.txt')
         self.run_bzr('commit -m unchanged unchanged.txt')
         tree.add("hello.txt")
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
         self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added hello\.txt\n'
-                              'Committed revision 2\.$\n')
+                              'added hello\\.txt\n'
+                              'Committed revision 2\\.$\n')
 
     def test_verbose_commit_includes_master_location(self):
         """Location of master is displayed when committing to bound branch"""
@@ -320,8 +320,8 @@ brz: ERROR: No changes to commit.\
             other_tree.remove(['dirtoremove', 'filetoremove'])
             self.build_tree_contents([
                 ('other/newdir/',),
-                ('other/filetomodify', 'new content'),
-                ('other/newfile', 'new file content')])
+                ('other/filetomodify', b'new content'),
+                ('other/newfile', b'new file content')])
             other_tree.add('newfile')
             other_tree.add('newdir/')
             other_tree.commit('modify all sample files and dirs.')
@@ -347,7 +347,7 @@ brz: ERROR: No changes to commit.\
 
     def test_empty_commit_message(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('foo.c', 'int main() {}')])
+        self.build_tree_contents([('foo.c', b'int main() {}')])
         tree.add('foo.c')
         self.run_bzr('commit -m ""')
 
@@ -357,8 +357,8 @@ brz: ERROR: No changes to commit.\
         outer_tree = self.make_branch_and_tree('.')
         inner_tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([
-            ('branch/foo.c', 'int main() {}'),
-            ('branch/bar.c', 'int main() {}')])
+            ('branch/foo.c', b'int main() {}'),
+            ('branch/bar.c', b'int main() {}')])
         inner_tree.add(['foo.c', 'bar.c'])
         # can't commit files in different trees; sane error
         self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
@@ -403,16 +403,16 @@ brz: ERROR: No changes to commit.\
         trunk = self.make_branch_and_tree('trunk')
 
         u1 = trunk.branch.create_checkout('u1')
-        self.build_tree_contents([('u1/hosts', 'initial contents\n')])
+        self.build_tree_contents([('u1/hosts', b'initial contents\n')])
         u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
         u2 = trunk.branch.create_checkout('u2')
-        self.build_tree_contents([('u2/hosts', 'altered in u2\n')])
+        self.build_tree_contents([('u2/hosts', b'altered in u2\n')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
         # make an offline commits
-        self.build_tree_contents([('u1/hosts', 'first offline change in u1\n')])
+        self.build_tree_contents([('u1/hosts', b'first offline change in u1\n')])
         self.run_bzr('commit -m checkin-offline --local u1')
 
         # now try to pull in online work from u2, and then commit our offline
@@ -432,7 +432,7 @@ altered in u2
         # add a text change here to represent resolving the merge conflicts in
         # favour of a new version of the file not identical to either the u1
         # version or the u2 version.
-        self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
+        self.build_tree_contents([('u1/hosts', b'merge resolution\n')])
         self.run_bzr('commit -m checkin-merge-of-the-offline-work-from-u1 u1')
 
     def test_commit_exclude_excludes_modified_files(self):
@@ -530,8 +530,21 @@ altered in u2
             'commit -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
         self.assertContainsRe(err, 'Committing to: .*\n'
-                              'added hello\.txt\n'
-                              'Committed revision 1\.\n')
+                              'added hello\\.txt\n'
+                              'Committed revision 1\\.\n')
+
+    def test_fixes_bug_unicode(self):
+        """commit --fixes=lp:unicode succeeds without output."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        output, err = self.run_bzr(
+            ['commit', '-m', 'hello',
+             u'--fixes=generic:\u20ac', 'tree/hello.txt'],
+            encoding='utf-8', retcode=3)
+        self.assertEqual(b'', output)
+        self.assertContainsRe(err,
+            b'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
@@ -541,7 +554,7 @@ altered in u2
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.run_bzr( 'commit -m hello tree/hello.txt')
+        self.run_bzr('commit -m hello tree/hello.txt')
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
@@ -713,40 +726,7 @@ altered in u2
         self.assertEqual(
             'Sat 2009-10-10 08:00:00 +0100',
             osutils.format_date(last_rev.timestamp, last_rev.timezone))
-
-    def test_commit_time_negative_windows(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/hello.txt'])
-        tree.add('hello.txt')
-        out, err = self.run_bzr("commit -m hello "
-            "--commit-time='1969-10-10 00:00:00 +0000' tree/hello.txt")
-        last_rev = tree.branch.repository.get_revision(tree.last_revision())
-        self.assertEqual(
-            'Fri 1969-10-10 00:00:00 +0000',
-            osutils.format_date(last_rev.timestamp, last_rev.timezone))
-
-    def test_commit_time_negative_32bit(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/hello.txt'])
-        tree.add('hello.txt')
-        out, err = self.run_bzr("commit -m hello "
-            "--commit-time='1900-01-01 00:00:00 +0000' tree/hello.txt")
-        last_rev = tree.branch.repository.get_revision(tree.last_revision())
-        self.assertEqual(
-            'Mon 1900-01-01 00:00:00 +0000',
-            osutils.format_date(last_rev.timestamp, last_rev.timezone))
-
-    def test_commit_time_positive_32bit(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/hello.txt'])
-        tree.add('hello.txt')
-        out, err = self.run_bzr("commit -m hello "
-            "--commit-time='2039-01-01 00:00:00 +0000' tree/hello.txt")
-        last_rev = tree.branch.repository.get_revision(tree.last_revision())
-        self.assertEqual(
-            'Sat 2039-01-01 00:00:00 +0000',
-            osutils.format_date(last_rev.timestamp, last_rev.timezone))
-
+        
     def test_commit_time_bad_time(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
@@ -779,7 +759,7 @@ altered in u2
         # then during partial commit we have error
         # parent_id {dir-XXX} not in inventory
         t.rename_one('dir/a', 'a')
-        self.build_tree_contents([('test', 'changes in test')])
+        self.build_tree_contents([('test', b'changes in test')])
         # partial commit
         out, err = self.run_bzr('commit test -m "partial commit"')
         self.assertEqual('', out)
@@ -897,7 +877,7 @@ altered in u2
         tree.add([u'abc\xa7/', u'abc\xa7/foo'])
         tree.commit('checkin')
 
-        tree.rename_one(u'abc\xa7','abc')
+        tree.rename_one(u'abc\xa7', 'abc')
 
         self.run_bzr('ci -m "non-ascii mv"')
 

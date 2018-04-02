@@ -432,8 +432,8 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             ld1.unlock()
         self.assertEqual(info_list['user'], u'jrandom@example.com')
-        self.assertContainsRe(info_list['pid'], '^\d+$')
-        self.assertContainsRe(info_list['time_ago'], r'^\d+ seconds? ago$')
+        self.assertContainsRe(info_list['pid'], '^\\d+$')
+        self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
     def test_lock_without_email(self):
         global_config = config.GlobalStack()

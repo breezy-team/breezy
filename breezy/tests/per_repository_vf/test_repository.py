@@ -173,7 +173,7 @@ class TestRepository(TestCaseWithRepository):
 
     def test_install_revisions(self):
         wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
+        wt.commit('A', allow_pointless=True, rev_id=b'A')
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
@@ -217,7 +217,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
         tree.add('foo', 'file1')
-        tree.commit('message', rev_id='rev_id')
+        tree.commit('message', rev_id=b'rev_id')
         repo = tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
@@ -271,7 +271,7 @@ class TestRepository(TestCaseWithRepository):
         try:
             self.assertEqual(set(), set(repo.texts.keys()))
             tree.add(['foo'], [file_id], ['file'])
-            tree.put_file_bytes_non_atomic(file_id, 'content\n')
+            tree.put_file_bytes_non_atomic('foo', 'content\n', file_id=file_id)
             try:
                 rev_key = (tree.commit("foo"),)
             except errors.IllegalPath:
@@ -294,16 +294,16 @@ class TestRepository(TestCaseWithRepository):
             tree.unlock()
         tree2 = self.make_branch_and_tree('tree2')
         tree2.pull(tree.branch)
-        tree2.put_file_bytes_non_atomic('Foo:Bar', 'right\n')
+        tree2.put_file_bytes_non_atomic('foo', 'right\n', file_id='Foo:Bar')
         right_key = (tree2.commit('right'),)
         keys.add(file_key + right_key)
         parents[file_key + right_key] = (file_key + rev_key,)
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'left\n')
+        tree.put_file_bytes_non_atomic('foo', 'left\n', file_id='Foo:Bar')
         left_key = (tree.commit('left'),)
         keys.add(file_key + left_key)
         parents[file_key + left_key] = (file_key + rev_key,)
         tree.merge_from_branch(tree2.branch)
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'merged\n')
+        tree.put_file_bytes_non_atomic('foo', 'merged\n', file_id='Foo:Bar')
         try:
             tree.auto_resolve()
         except errors.UnsupportedOperation:
@@ -342,20 +342,20 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         finally:
             tree_a.unlock()
         # add a real revision 'rev1'
-        tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
+        tree_a.commit('rev1', rev_id=b'rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
-        tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
+        tree_a.commit('rev2', rev_id=b'rev2', allow_pointless=True)
         # add a reference to a ghost
         tree_a.add_parent_tree_id('ghost1')
         try:
-            tree_a.commit('rev3', rev_id='rev3', allow_pointless=True)
+            tree_a.commit('rev3', rev_id=b'rev3', allow_pointless=True)
         except errors.RevisionNotPresent:
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format.")
         # add another reference to a ghost, and a second ghost.
         tree_a.add_parent_tree_id('ghost1')
         tree_a.add_parent_tree_id('ghost2')
-        tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
+        tree_a.commit('rev4', rev_id=b'rev4', allow_pointless=True)
 
     def test_revision_trees(self):
         revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']

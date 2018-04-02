@@ -22,7 +22,11 @@ find_ids_across_trees.
 """
 
 from breezy import errors
-from breezy.tests import features
+from breezy.bzr.inventorytree import InventoryTree
+from breezy.tests import (
+    features,
+    TestNotApplicable,
+    )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -59,16 +63,30 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def test_paths_none_result_none(self):
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
         tree.lock_read()
         self.assertEqual(None, tree.paths2ids(None))
         tree.unlock()
 
     def test_find_single_root(self):
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
+
         self.assertExpectedIds([tree.path2id('')], tree, [''])
 
     def test_find_tree_and_clone_roots(self):
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
+
         clone = tree.controldir.clone('clone').open_workingtree()
         clone.lock_tree_write()
         clone_root_id = 'new-id'
@@ -79,6 +97,9 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def test_find_tree_basis_roots(self):
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_setting_file_ids():
+            raise TestNotApplicable('tree does not support setting file ids')
+
         tree.commit('basis')
         basis = tree.basis_tree()
         basis_root_id = basis.path2id('')
@@ -130,6 +151,11 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
           new-child because its under dir in new.
         """
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
+
         self.build_tree(
             ['tree/dir/', 'tree/dir/child-moves', 'tree/dir/child-stays',
              'tree/dir/child-goes'])
@@ -137,7 +163,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
                  ['dir', 'child-moves', 'child-stays', 'child-goes'])
         tree.commit('create basis')
         basis = tree.basis_tree()
-        tree.unversion(['child-goes'])
+        tree.unversion(['dir/child-goes'])
         tree.rename_one('dir/child-moves', 'child-moves')
         self.build_tree(['tree/newdir/'])
         tree.add(['newdir'], ['newdir'])
@@ -155,6 +181,11 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def test_unversioned_one_tree(self):
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
+
         self.build_tree(['tree/unversioned'])
         self.assertExpectedIds([], tree, ['unversioned'], require_versioned=False)
         tree.lock_read()
@@ -166,6 +197,12 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         # should not raise an error: it must be unversioned in *all* trees to
         # error.
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
+        if not tree.supports_setting_file_ids():
+            raise TestNotApplicable('tree does not support setting file ids')
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.build_tree(['tree/in-one'])
@@ -177,6 +214,10 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         # should not raise an error: it must be unversioned in *all* trees to
         # error.
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.assertExpectedIds([], tree, ['unversioned'], [basis],
@@ -193,6 +234,10 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
     def test_unversioned_non_ascii_one_tree(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable(
+                "test not applicable on non-inventory tests")
+
         self.build_tree([u"\xa7"])
         self.assertExpectedIds([], tree, [u"\xa7"], require_versioned=False)
         self.addCleanup(tree.lock_read().unlock)

@@ -53,7 +53,7 @@ class IdentifiableTestBranchFormat(breezy.branch.BranchFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
@@ -67,7 +67,7 @@ class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
@@ -81,7 +81,7 @@ class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
     """An identifable branch format (has a format string)"""
 
     def get_format_string(self):
-        return "I have an identity"
+        return b"I have an identity"
 
 
 class TestBzrDir(TestCaseWithBzrDir):
@@ -138,54 +138,47 @@ class TestBzrDir(TestCaseWithBzrDir):
         # aspect of format management and the Remote protocols...
         # self.assertEqual(left_repo._format.__class__,
         #     right_repo._format.__class__)
-        left_repo.lock_read()
-        try:
-            right_repo.lock_read()
-            try:
-                # revs
-                all_revs = left_repo.all_revision_ids()
-                self.assertEqual(left_repo.all_revision_ids(),
-                    right_repo.all_revision_ids())
-                for rev_id in left_repo.all_revision_ids():
-                    self.assertEqual(left_repo.get_revision(rev_id),
-                        right_repo.get_revision(rev_id))
-                # Assert the revision trees (and thus the inventories) are equal
-                sort_key = lambda rev_tree: rev_tree.get_revision_id()
-                rev_trees_a = sorted(
-                    left_repo.revision_trees(all_revs), key=sort_key)
-                rev_trees_b = sorted(
-                    right_repo.revision_trees(all_revs), key=sort_key)
-                for tree_a, tree_b in zip(rev_trees_a, rev_trees_b):
-                    self.assertEqual([], list(tree_a.iter_changes(tree_b)))
-                # texts
-                text_index = left_repo._generate_text_key_index()
-                self.assertEqual(text_index,
-                    right_repo._generate_text_key_index())
-                desired_files = []
-                for file_id, revision_id in text_index:
-                    desired_files.append(
-                        (file_id, revision_id, (file_id, revision_id)))
-                left_texts = [(identifier, "".join(bytes_iterator)) for
-                        (identifier, bytes_iterator) in
-                        left_repo.iter_files_bytes(desired_files)]
-                right_texts = [(identifier, "".join(bytes_iterator)) for
-                        (identifier, bytes_iterator) in
-                        right_repo.iter_files_bytes(desired_files)]
-                left_texts.sort()
-                right_texts.sort()
-                self.assertEqual(left_texts, right_texts)
-                # signatures
-                for rev_id in all_revs:
-                    try:
-                        left_text = left_repo.get_signature_text(rev_id)
-                    except errors.NoSuchRevision:
-                        continue
-                    right_text = right_repo.get_signature_text(rev_id)
-                    self.assertEqual(left_text, right_text)
-            finally:
-                right_repo.unlock()
-        finally:
-            left_repo.unlock()
+        with left_repo.lock_read(), right_repo.lock_read():
+            # revs
+            all_revs = left_repo.all_revision_ids()
+            self.assertEqual(left_repo.all_revision_ids(),
+                right_repo.all_revision_ids())
+            for rev_id in left_repo.all_revision_ids():
+                self.assertEqual(left_repo.get_revision(rev_id),
+                    right_repo.get_revision(rev_id))
+            # Assert the revision trees (and thus the inventories) are equal
+            sort_key = lambda rev_tree: rev_tree.get_revision_id()
+            rev_trees_a = sorted(
+                left_repo.revision_trees(all_revs), key=sort_key)
+            rev_trees_b = sorted(
+                right_repo.revision_trees(all_revs), key=sort_key)
+            for tree_a, tree_b in zip(rev_trees_a, rev_trees_b):
+                self.assertEqual([], list(tree_a.iter_changes(tree_b)))
+            # texts
+            text_index = left_repo._generate_text_key_index()
+            self.assertEqual(text_index,
+                right_repo._generate_text_key_index())
+            desired_files = []
+            for file_id, revision_id in text_index:
+                desired_files.append(
+                    (file_id, revision_id, (file_id, revision_id)))
+            left_texts = [(identifier, "".join(bytes_iterator)) for
+                    (identifier, bytes_iterator) in
+                    left_repo.iter_files_bytes(desired_files)]
+            right_texts = [(identifier, "".join(bytes_iterator)) for
+                    (identifier, bytes_iterator) in
+                    right_repo.iter_files_bytes(desired_files)]
+            left_texts.sort()
+            right_texts.sort()
+            self.assertEqual(left_texts, right_texts)
+            # signatures
+            for rev_id in all_revs:
+                try:
+                    left_text = left_repo.get_signature_text(rev_id)
+                except errors.NoSuchRevision:
+                    continue
+                right_text = right_repo.get_signature_text(rev_id)
+                self.assertEqual(left_text, right_text)
 
     def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
                      force_new_repo=False, accelerator_tree=None,
@@ -239,7 +232,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
@@ -305,7 +298,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
@@ -433,7 +426,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)

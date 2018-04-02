@@ -279,6 +279,9 @@ Improvements
 Bug Fixes
 *********
 
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
 * Fix ``bzr config`` display for ``RegistryOption`` values.
   (Vincent Ladeuil, #930182)
 

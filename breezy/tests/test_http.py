@@ -23,9 +23,13 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: Should be renamed to breezy.transport.http.tests?
 # TODO: What about renaming to breezy.tests.transport.http ?
 
-import httplib
+try:
+    from http.client import UnknownProtocol
+    from http.server import SimpleHTTPRequestHandler
+except ImportError:  # python < 3
+    from httplib import UnknownProtocol
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
 import io
-import SimpleHTTPServer
 import socket
 import sys
 import threading
@@ -282,7 +286,7 @@ class TestHTTPRangeParsing(tests.TestCase):
                           self.req_handler._parse_ranges(header, file_size))
 
     def test_simple_range(self):
-        self.assertRanges([(0,2)], 'bytes=0-2', 12)
+        self.assertRanges([(0, 2)], 'bytes=0-2', 12)
 
     def test_tail(self):
         self.assertRanges([(8, 11)], 'bytes=-4', 12)
@@ -307,11 +311,11 @@ class TestHTTPServer(tests.TestCase):
 
             protocol_version = 'HTTP/0.1'
 
-        self.assertRaises(httplib.UnknownProtocol,
+        self.assertRaises(UnknownProtocol,
                           http_server.HttpServer, BogusRequestHandler)
 
     def test_force_invalid_protocol(self):
-        self.assertRaises(httplib.UnknownProtocol,
+        self.assertRaises(UnknownProtocol,
                           http_server.HttpServer, protocol_version='HTTP/0.1')
 
     def test_server_start_and_stop(self):
@@ -423,14 +427,14 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertEqual(t.has('foo/bar'), True)
         self.assertEqual(len(server.logs), 1)
         self.assertContainsRe(server.logs[0],
-            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "bzr/')
+            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "Breezy/')
 
     def test_http_has_not_found(self):
         server = self.get_readonly_server()
         t = self.get_readonly_transport()
         self.assertEqual(t.has('not-found'), False)
         self.assertContainsRe(server.logs[1],
-            r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
+            r'"HEAD /not-found HTTP/1.." 404 - "-" "Breezy/')
 
     def test_http_get(self):
         server = self.get_readonly_server()
@@ -441,7 +445,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(server.logs[0].find(
-            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/%s'
             % breezy.__version__) > -1)
 
     def test_has_on_bogus_host(self):
@@ -509,8 +513,8 @@ class TestRangeHeader(tests.TestCase):
         self.assertEqual(value, range_header(coalesced, tail))
 
     def test_range_header_single(self):
-        self.check_header('0-9', ranges=[(0,9)])
-        self.check_header('100-109', ranges=[(100,109)])
+        self.check_header('0-9', ranges=[(0, 9)])
+        self.check_header('100-109', ranges=[(100, 109)])
 
     def test_range_header_tail(self):
         self.check_header('-10', tail=10)
@@ -518,11 +522,11 @@ class TestRangeHeader(tests.TestCase):
 
     def test_range_header_multi(self):
         self.check_header('0-9,100-200,300-5000',
-                          ranges=[(0,9), (100, 200), (300,5000)])
+                          ranges=[(0, 9), (100, 200), (300, 5000)])
 
     def test_range_header_mixed(self):
         self.check_header('0-9,300-5000,-50',
-                          ranges=[(0,9), (300,5000)],
+                          ranges=[(0, 9), (300, 5000)],
                           tail=50)
 
 
@@ -731,7 +735,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
 
     def setUp(self):
         super(TestRangeRequestServer, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def test_readv(self):
         t = self.get_readonly_transport()
@@ -755,12 +759,12 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
         self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
-                              t.readv, 'a', [(1,1), (8,10)])
+                              t.readv, 'a', [(1, 1), (8, 10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
         self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
-                              t.readv, 'a', [(12,2)])
+                              t.readv, 'a', [(12, 2)])
 
     def test_readv_multiple_get_requests(self):
         server = self.get_readonly_server()
@@ -863,7 +867,7 @@ class NoRangeRequestHandler(http_server.TestingHTTPRequestHandler):
         # Update the statistics
         self.server.test_case_server.GET_request_nb += 1
         # Just bypass the range handling done by TestingHTTPRequestHandler
-        return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+        return SimpleHTTPRequestHandler.do_GET(self)
 
 
 class TestNoRangeRequestServer(TestRangeRequestServer):
@@ -881,7 +885,7 @@ class MultipleRangeWithoutContentLengthRequestHandler(
         self.send_header('Accept-Ranges', 'bytes')
         # XXX: this is strange; the 'random' name below seems undefined and
         # yet the tests pass -- mbp 2010-10-11 bug 658773
-        boundary = "%d" % random.randint(0,0x7FFFFFFF)
+        boundary = "%d" % random.randint(0, 0x7FFFFFFF)
         self.send_header("Content-Type",
                          "multipart/byteranges; boundary=%s" % boundary)
         self.end_headers()
@@ -958,7 +962,7 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
 
     def setUp(self):
         super(TestTruncatedMultipleRangeServer, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def test_readv_with_short_reads(self):
         server = self.get_readonly_server()
@@ -1032,7 +1036,7 @@ class TestTruncatedBeforeBoundary(TestSpecificRequestHandler):
 
     def setUp(self):
         super(TestTruncatedBeforeBoundary, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def test_readv_with_short_reads(self):
         server = self.get_readonly_server()
@@ -1091,8 +1095,8 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         super(TestLimitedRangeRequestServer, self).setUp()
         # We need to manipulate ranges that correspond to real chunks in the
         # response, so we build a content appropriately.
-        filler = ''.join(['abcdefghij' for x in range(102)])
-        content = ''.join(['%04d' % v + filler for v in range(16)])
+        filler = b''.join([b'abcdefghij' for x in range(102)])
+        content = b''.join([b'%04d' % v + filler for v in range(16)])
         self.build_tree_contents([('a', content)],)
 
     def test_few_ranges(self):
@@ -1188,8 +1192,8 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     def setUp(self):
         super(TestProxyHttpServer, self).setUp()
         self.transport_secondary_server = http_utils.ProxyServer
-        self.build_tree_contents([('foo', 'contents of foo\n'),
-                                  ('foo-proxied', 'proxied contents of foo\n')])
+        self.build_tree_contents([('foo', b'contents of foo\n'),
+                                  ('foo-proxied', b'proxied contents of foo\n')])
         # Let's setup some attributes for tests
         server = self.get_readonly_server()
         self.server_host_port = '%s:%d' % (server.host, server.port)
@@ -1256,7 +1260,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def setUp(self):
         super(TestRanges, self).setUp()
-        self.build_tree_contents([('a', '0123456789')],)
+        self.build_tree_contents([('a', b'0123456789')],)
 
     def create_transport_readonly_server(self):
         return http_server.HttpServer(protocol_version=self._protocol_version)
@@ -1267,7 +1271,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
         coalesce = t._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
         code, data = t._get(relpath, coalesced)
-        self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+        self.assertTrue(code in (200, 206), '_get returns: %d' % code)
         for start, end in ranges:
             data.seek(start)
             yield data.read(end - start + 1)
@@ -1275,14 +1279,14 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     def _file_tail(self, relpath, tail_amount):
         t = self.get_readonly_transport()
         code, data = t._get(relpath, [], tail_amount)
-        self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+        self.assertTrue(code in (200, 206), '_get returns: %d' % code)
         data.seek(-tail_amount, 2)
         return data.read(tail_amount)
 
     def test_range_header(self):
         # Valid ranges
         self.assertEqual(
-            ['0', '234'], list(self._file_contents('a', [(0,0), (2,4)])))
+            ['0', '234'], list(self._file_contents('a', [(0, 0), (2, 4)])))
 
     def test_range_header_tail(self):
         self.assertEqual('789', self._file_tail('a', 3))
@@ -1306,9 +1310,9 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestHTTPRedirections, self).setUp()
-        self.build_tree_contents([('a', '0123456789'),
+        self.build_tree_contents([('a', b'0123456789'),
                                   ('bundle',
-                                  '# Bazaar revision bundle v0.9\n#\n')
+                                  b'# Bazaar revision bundle v0.9\n#\n')
                                   ],)
 
     def test_redirected(self):
@@ -1376,17 +1380,17 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         super(TestHTTPSilentRedirections, self).setUp()
         install_redirected_request(self)
         cleanup_http_redirection_connections(self)
-        self.build_tree_contents([('a','a'),
+        self.build_tree_contents([('a', b'a'),
                                   ('1/',),
-                                  ('1/a', 'redirected once'),
+                                  ('1/a', b'redirected once'),
                                   ('2/',),
-                                  ('2/a', 'redirected twice'),
+                                  ('2/a', b'redirected twice'),
                                   ('3/',),
-                                  ('3/a', 'redirected thrice'),
+                                  ('3/a', b'redirected thrice'),
                                   ('4/',),
-                                  ('4/a', 'redirected 4 times'),
+                                  ('4/a', b'redirected 4 times'),
                                   ('5/',),
-                                  ('5/a', 'redirected 5 times'),
+                                  ('5/a', b'redirected 5 times'),
                                   ],)
 
     def test_one_redirection(self):
@@ -1425,7 +1429,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
-        self.build_tree_contents([('a', '0123456789'),],)
+        self.build_tree_contents([('a', b'0123456789'),],)
         cleanup_http_redirection_connections(self)
 
         self.old_transport = self.get_old_transport()
@@ -1508,8 +1512,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def setUp(self):
         super(TestAuth, self).setUp()
         self.server = self.get_readonly_server()
-        self.build_tree_contents([('a', 'contents of a\n'),
-                                  ('b', 'contents of b\n'),])
+        self.build_tree_contents([('a', b'contents of a\n'),
+                                  ('b', b'contents of b\n'),])
 
     def create_transport_readonly_server(self):
         server = self._auth_server(protocol_version=self._protocol_version)
@@ -1575,7 +1579,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         t = self.get_user_transport(None, None)
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
-        self.assertEqual('contents of a\n',t.get('a').read())
+        self.assertEqual('contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         stderr.seek(0)
@@ -1598,10 +1602,10 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual('', stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
-        self.assertEqual('contents of b\n',t.get('b').read())
+        self.assertEqual('contents of b\n', t.get('b').read())
         t2 = t.clone()
         # And neither against a clone
-        self.assertEqual('contents of b\n',t2.get('b').read())
+        self.assertEqual('contents of b\n', t2.get('b').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1630,7 +1634,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         _setup_authentication_config(scheme='http', port=self.server.port,
                                      user=user, password=password)
         # Issue a request to the server to connect
-        self.assertEqual('contents of a\n',t.get('a').read())
+        self.assertEqual('contents of a\n', t.get('a').read())
         # stdin should have  been left untouched
         self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
         # Only one 'Authentication Required' error should occur
@@ -1709,10 +1713,10 @@ class TestProxyAuth(TestAuth):
     def setUp(self):
         super(TestProxyAuth, self).setUp()
         # Override the contents to avoid false positives
-        self.build_tree_contents([('a', 'not proxied contents of a\n'),
-                                  ('b', 'not proxied contents of b\n'),
-                                  ('a-proxied', 'contents of a\n'),
-                                  ('b-proxied', 'contents of b\n'),
+        self.build_tree_contents([('a', b'not proxied contents of a\n'),
+                                  ('b', b'not proxied contents of b\n'),
+                                  ('a-proxied', b'contents of a\n'),
+                                  ('b-proxied', b'contents of b\n'),
                                   ])
 
     def get_user_transport(self, user, password):
@@ -1788,7 +1792,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         remote_transport = remote.RemoteTransport('bzr://fake_host/',
                                                   medium=medium)
         self.assertEqual(
-            [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
+            [(0, "c")], list(remote_transport.readv("data-file", [(0, 1)])))
 
     def test_http_send_smart_request(self):
 
@@ -2159,9 +2163,9 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestAuthOnRedirected, self).setUp()
-        self.build_tree_contents([('a','a'),
+        self.build_tree_contents([('a', b'a'),
                                   ('1/',),
-                                  ('1/a', 'redirected once'),
+                                  ('1/a', b'redirected once'),
                                   ],)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)

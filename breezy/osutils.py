@@ -27,7 +27,6 @@ import codecs
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-from datetime import timedelta
 import getpass
 import locale
 import ntpath
@@ -593,7 +592,7 @@ def normalizepath(f):
         F = realpath
     else:
         F = abspath
-    [p,e] = os.path.split(f)
+    [p, e] = os.path.split(f)
     if e == "" or e == "." or e == "..":
         return F(f)
     else:
@@ -736,6 +735,16 @@ def file_iterator(input_file, readsize=32768):
         yield b
 
 
+# GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
+# used as bytes through most interfaces so encode with this wrapper.
+if PY3:
+    def _hexdigest(hashobj):
+        return hashobj.hexdigest().encode()
+else:
+    def _hexdigest(hashobj):
+        return hashobj.hexdigest()
+
+
 def sha_file(f):
     """Calculate the hexdigest of an open file.
 
@@ -748,7 +757,7 @@ def sha_file(f):
         if not b:
             break
         s.update(b)
-    return s.hexdigest()
+    return _hexdigest(s)
 
 
 def size_sha_file(f):
@@ -766,7 +775,7 @@ def size_sha_file(f):
             break
         size += len(b)
         s.update(b)
-    return size, s.hexdigest()
+    return size, _hexdigest(s)
 
 
 def sha_file_by_name(fname):
@@ -777,7 +786,7 @@ def sha_file_by_name(fname):
         while True:
             b = os.read(f, 1<<16)
             if not b:
-                return s.hexdigest()
+                return _hexdigest(s)
             s.update(b)
     finally:
         os.close(f)
@@ -788,17 +797,18 @@ def sha_strings(strings, _factory=sha):
     s = _factory()
     for string in strings:
         s.update(string)
-    return s.hexdigest()
+    return _hexdigest(s)
 
 
 def sha_string(f, _factory=sha):
-    return _factory(f).hexdigest()
+    # GZ 2017-09-16: Dodgy if factory is ever not sha, probably shouldn't be.
+    return _hexdigest(_factory(f))
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha(b).hexdigest()}
+            'sha1': _hexdigest(sha(b))}
 
 
 def compare_files(a, b):
@@ -811,16 +821,6 @@ def compare_files(a, b):
             return False
         if ai == '':
             return True
-
-
-def gmtime(seconds=None):
-    """Convert seconds since the Epoch to a time tuple expressing UTC (a.k.a.
-    GMT). When 'seconds' is not passed in, convert the current time instead.
-    Handy replacement for time.gmtime() buggy on Windows and 32-bit platforms.
-    """
-    if seconds is None:
-        seconds = time.time()
-    return (datetime(1970, 1, 1) + timedelta(seconds=seconds)).timetuple()
 
 
 def local_time_offset(t=None):
@@ -868,7 +868,7 @@ def format_date_with_offset_in_original_timezone(t, offset=0,
     """
     if offset is None:
         offset = 0
-    tt = gmtime(t + offset)
+    tt = time.gmtime(t + offset)
     date_fmt = _default_format_by_weekday_num[tt[6]]
     date_str = time.strftime(date_fmt, tt)
     offset_str = _cache.get(offset, None)
@@ -900,12 +900,12 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
-        tt = gmtime(t)
+        tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
         if offset is None:
             offset = 0
-        tt = gmtime(t + offset)
+        tt = time.gmtime(t + offset)
     elif timezone == 'local':
         tt = time.localtime(t)
         offset = local_time_offset(t)
@@ -921,7 +921,7 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
 
 
 def compact_date(when):
-    return time.strftime('%Y%m%d%H%M%S', gmtime(when))
+    return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
 
 
 def format_delta(delta):
@@ -1937,9 +1937,9 @@ def copy_tree(from_path, to_path, handlers={}):
         link_to = os.readlink(source)
         os.symlink(link_to, dest)
 
-    real_handlers = {'file':shutil.copy2,
-                     'symlink':copy_link,
-                     'directory':copy_dir,
+    real_handlers = {'file': shutil.copy2,
+                     'symlink': copy_link,
+                     'directory': copy_dir,
                     }
     real_handlers.update(handlers)
 
@@ -1981,7 +1981,7 @@ def path_prefix_key(path):
 
     This can be used to sort paths in the same way that walkdirs does.
     """
-    return (dirname(path) , path)
+    return (dirname(path), path)
 
 
 def compare_paths_prefix_order(path_a, path_b):

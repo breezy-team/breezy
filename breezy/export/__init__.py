@@ -136,14 +136,11 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
         # We don't want things re-filtered by the specific exporter.
         filtered = False
 
-    tree.lock_read()
-    try:
+    with tree.lock_read():
         for _ in _exporters[format](
             tree, dest, root, subdir,
             force_mtime=force_mtime, fileobj=fileobj):
             yield
-    finally:
-        tree.unlock()
 
 
 def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
@@ -205,8 +202,10 @@ def _export_iter_entries(tree, subdir, skip_special=True):
     if subdir is not None:
         subdir = subdir.rstrip('/')
     entries = tree.iter_entries_by_dir()
-    next(entries)  # skip root
     for path, entry in entries:
+        if path == '':
+            continue
+
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
         if skip_special and path.startswith(".bzr"):

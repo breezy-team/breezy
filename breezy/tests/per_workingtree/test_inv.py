@@ -30,14 +30,14 @@ class TestRevert(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('b1')
         wt.lock_tree_write()
         self.addCleanup(wt.unlock)
-        self.assertEqual(len(wt.all_file_ids()), 1)
+        self.assertEqual(len(list(wt.all_versioned_paths())), 1)
         with open('b1/a', 'wb') as f: f.write('a test\n')
         wt.add('a')
-        self.assertEqual(len(wt.all_file_ids()), 2)
+        self.assertEqual(len(list(wt.all_versioned_paths())), 2)
         wt.flush() # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
         wt.revert()
-        self.assertEqual(len(wt.all_file_ids()), 1)
+        self.assertEqual(len(list(wt.all_versioned_paths())), 1)
 
 
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):
@@ -53,22 +53,22 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         root_id = wt.get_root_id()
-        wt.apply_inventory_delta([(None, 'bar/foo', 'foo-id',
-            inventory.InventoryFile('foo-id', 'foo', parent_id='bar-id')),
-            (None, 'bar', 'bar-id', inventory.InventoryDirectory('bar-id',
+        wt.apply_inventory_delta([(None, 'bar/foo', b'foo-id',
+            inventory.InventoryFile(b'foo-id', 'foo', parent_id=b'bar-id')),
+            (None, 'bar', b'bar-id', inventory.InventoryDirectory(b'bar-id',
             'bar', parent_id=root_id))])
-        self.assertEqual('bar/foo', wt.id2path('foo-id'))
-        self.assertEqual('bar', wt.id2path('bar-id'))
+        self.assertEqual('bar/foo', wt.id2path(b'foo-id'))
+        self.assertEqual('bar', wt.id2path(b'bar-id'))
 
     def test_remove(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar'])
-        wt.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
-        wt.apply_inventory_delta([('foo', None, 'foo-id', None),
-                                  ('foo/bar', None, 'bar-id', None)])
-        self.assertIs(None, wt.path2id('foo'))
+        wt.add(['foo', 'foo/bar'], [b'foo-id', b'bar-id'])
+        wt.apply_inventory_delta([('foo', None, b'foo-id', None),
+                                  ('foo/bar', None, b'bar-id', None)])
+        self.assertFalse(wt.is_versioned('foo'))
 
     def test_rename_dir_with_children(self):
         wt = self.make_branch_and_tree('.')
@@ -77,12 +77,12 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar'])
         wt.add(['foo', 'foo/bar'],
-               ['foo-id', 'bar-id'])
-        wt.apply_inventory_delta([('foo', 'baz', 'foo-id',
-            inventory.InventoryDirectory('foo-id', 'baz', root_id))])
+               [b'foo-id', b'bar-id'])
+        wt.apply_inventory_delta([('foo', 'baz', b'foo-id',
+            inventory.InventoryDirectory(b'foo-id', 'baz', root_id))])
         # foo/bar should have been followed the rename of its parent to baz/bar
-        self.assertEqual('baz', wt.id2path('foo-id'))
-        self.assertEqual('baz/bar', wt.id2path('bar-id'))
+        self.assertEqual('baz', wt.id2path(b'foo-id'))
+        self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
 
     def test_rename_dir_with_children_with_children(self):
         wt = self.make_branch_and_tree('.')
@@ -91,12 +91,12 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar/', 'foo/bar/baz'])
         wt.add(['foo', 'foo/bar', 'foo/bar/baz'],
-               ['foo-id', 'bar-id', 'baz-id'])
-        wt.apply_inventory_delta([('foo', 'quux', 'foo-id',
-            inventory.InventoryDirectory('foo-id', 'quux', root_id))])
+               [b'foo-id', b'bar-id', b'baz-id'])
+        wt.apply_inventory_delta([('foo', 'quux', b'foo-id',
+            inventory.InventoryDirectory(b'foo-id', 'quux', root_id))])
         # foo/bar/baz should have been followed the rename of its parent's
         # parent to quux/bar/baz
-        self.assertEqual('quux/bar/baz', wt.id2path('baz-id'))
+        self.assertEqual('quux/bar/baz', wt.id2path(b'baz-id'))
 
     def test_rename_file(self):
         wt = self.make_branch_and_tree('.')
@@ -104,10 +104,10 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/'])
         wt.add(['foo', 'foo/bar', 'baz'],
-               ['foo-id', 'bar-id', 'baz-id'])
-        wt.apply_inventory_delta([('foo/bar', 'baz/bar', 'bar-id',
-            inventory.InventoryFile('bar-id', 'bar', 'baz-id'))])
-        self.assertEqual('baz/bar', wt.id2path('bar-id'))
+               [b'foo-id', b'bar-id', b'baz-id'])
+        wt.apply_inventory_delta([('foo/bar', 'baz/bar', b'bar-id',
+            inventory.InventoryFile(b'bar-id', 'bar', b'baz-id'))])
+        self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
 
     def test_rename_swap(self):
         """Test the swap-names edge case.
@@ -121,13 +121,13 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/', 'baz/qux'])
         wt.add(['foo', 'foo/bar', 'baz', 'baz/qux'],
-               ['foo-id', 'bar-id', 'baz-id', 'qux-id'])
-        wt.apply_inventory_delta([('foo', 'baz', 'foo-id',
-            inventory.InventoryDirectory('foo-id', 'baz', root_id)),
-            ('baz', 'foo', 'baz-id',
-            inventory.InventoryDirectory('baz-id', 'foo', root_id))])
-        self.assertEqual('baz/bar', wt.id2path('bar-id'))
-        self.assertEqual('foo/qux', wt.id2path('qux-id'))
+               [b'foo-id', b'bar-id', b'baz-id', b'qux-id'])
+        wt.apply_inventory_delta([('foo', 'baz', b'foo-id',
+            inventory.InventoryDirectory(b'foo-id', 'baz', root_id)),
+            ('baz', 'foo', b'baz-id',
+            inventory.InventoryDirectory(b'baz-id', 'foo', root_id))])
+        self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
+        self.assertEqual('foo/qux', wt.id2path(b'qux-id'))
 
     def test_child_rename_ordering(self):
         """Test the rename-parent, move child edge case.
@@ -139,15 +139,15 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         root_id = wt.get_root_id()
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
-               ['dir-id', 'child-id', 'other-id'])
+               [b'dir-id', b'child-id', b'other-id'])
         # this delta moves dir-id to dir2 and reparents
         # child-id to a parent of other-id
-        wt.apply_inventory_delta([('dir', 'dir2', 'dir-id',
-            inventory.InventoryDirectory('dir-id', 'dir2', root_id)),
-            ('dir/child', 'other/child', 'child-id',
-             inventory.InventoryFile('child-id', 'child', 'other-id'))])
-        self.assertEqual('dir2', wt.id2path('dir-id'))
-        self.assertEqual('other/child', wt.id2path('child-id'))
+        wt.apply_inventory_delta([('dir', 'dir2', b'dir-id',
+            inventory.InventoryDirectory(b'dir-id', 'dir2', root_id)),
+            ('dir/child', 'other/child', b'child-id',
+             inventory.InventoryFile(b'child-id', 'child', b'other-id'))])
+        self.assertEqual('dir2', wt.id2path(b'dir-id'))
+        self.assertEqual('other/child', wt.id2path(b'child-id'))
 
     def test_replace_root(self):
         wt = self.make_branch_and_tree('.')
@@ -170,14 +170,14 @@ class TestTreeReference(TestCaseWithWorkingTree):
         if not base.supports_tree_reference():
             raise tests.TestNotApplicable("wt doesn't support nested trees")
         # We add it as a directory, but it becomes a tree-reference
-        base.add(['subdir'], ['subdir-id'], ['directory'])
+        base.add(['subdir'], [b'subdir-id'], ['directory'])
         subdir = self.make_branch_and_tree('base/subdir')
         self.addCleanup(base.lock_read().unlock)
         # Note: we aren't strict about ie.kind being 'directory' here, what we
         # are strict about is that wt.inventory should match
         # wt.current_dirstate()'s idea about what files are where.
-        ie = base.inventory['subdir-id']
+        ie = base.inventory[b'subdir-id']
         self.assertEqual('directory', ie.kind)
-        path, ie = next(base.iter_entries_by_dir(['subdir-id']))
+        path, ie = next(base.iter_entries_by_dir(specific_files=['subdir']))
         self.assertEqual('subdir', path)
         self.assertEqual('tree-reference', ie.kind)

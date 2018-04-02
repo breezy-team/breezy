@@ -290,9 +290,8 @@ def _show_working_stats(working, outfile):
     outfile.write('  %8d ignored\n' % ignore_cnt)
 
     dir_cnt = 0
-    root_id = working.get_root_id()
     for path, entry in working.iter_entries_by_dir():
-        if entry.kind == 'directory' and entry.file_id != root_id:
+        if entry.kind == 'directory' and path != '':
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
         plural(dir_cnt, 'subdirectory', 'subdirectories')))
@@ -469,8 +468,8 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
-            if (tree is not None and tree.user_url !=
-                branch.user_url):
+            if (tree is not None and tree.controldir.control_url !=
+                branch.controldir.control_url):
                 independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:

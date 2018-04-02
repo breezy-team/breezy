@@ -331,15 +331,12 @@ class BundleWriteOperation(object):
         """Write all data to the bundle"""
         trace.note(ngettext('Bundling %d revision.', 'Bundling %d revisions.',
                             len(self.revision_ids)), len(self.revision_ids))
-        self.repository.lock_read()
-        try:
+        with self.repository.lock_read():
             self.bundle.begin()
             self.write_info()
             self.write_files()
             self.write_revisions()
             self.bundle.end()
-        finally:
-            self.repository.unlock()
         return self.revision_ids
 
     def write_info(self):
@@ -678,8 +675,7 @@ class RevisionInstaller(object):
         # inventory deltas to apply rather than calling add_inventory from
         # scratch each time.
         inventory_cache = lru_cache.LRUCache(10)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             num_records = len(records)
             for idx, (key, metadata, bytes) in enumerate(records):
                 pb.update('installing inventory', idx, num_records)
@@ -720,8 +716,6 @@ class RevisionInstaller(object):
                 except errors.UnsupportedInventoryKind:
                     raise errors.IncompatibleRevision(repr(self._repository))
                 inventory_cache[revision_id] = target_inv
-        finally:
-            pb.finished()
 
     def _handle_root(self, target_inv, parent_ids):
         revision_id = target_inv.revision_id

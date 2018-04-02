@@ -24,6 +24,7 @@ from breezy import (
     config,
     delta as _mod_delta,
     errors,
+    lock,
     merge,
     osutils,
     urlutils,
@@ -33,6 +34,7 @@ from breezy import (
     revision,
     shelf,
     tests,
+    tree as _mod_tree,
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
@@ -52,72 +54,74 @@ class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
 
     def test_branch_format_matches_bzrdir_branch_format(self):
         bzrdir_branch_format = self.bzrdir_format.get_branch_format()
-        self.assertIs(self.branch_format.__class__,
-                      bzrdir_branch_format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                bzrdir_branch_format.__class__)
 
     def test_make_branch_gets_expected_format(self):
         branch = self.make_branch('.')
-        self.assertIs(self.branch_format.__class__,
-            branch._format.__class__)
+        self.assertIs(
+                self.branch_format.__class__,
+                branch._format.__class__)
 
 
 class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({'rev-1':('null:',),
-                          'rev-2':('rev-1', ),
-                          'rev-1.1.1':('rev-1', ),
-                          'rev-3':('rev-2', 'rev-1.1.1', ),
-                         }, ancestry_graph)
+        self.assertEqual({revmap['1']: ('null:',),
+                          revmap['2']: (revmap['1'], ),
+                          revmap['1.1.1']: (revmap['1'], ),
+                          revmap['3']: (revmap['2'], revmap['1.1.1'], ),
+                          }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
         wt = self.make_branch_and_tree('tree')
-        wt.commit('f', rev_id='rev1')
-        wt.commit('f', rev_id='rev2')
-        wt.commit('f', rev_id='rev3')
+        rev1 = wt.commit('f')
+        rev2 = wt.commit('f')
+        rev3 = wt.commit('f')
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.generate_revision_history('rev3')
-        for revision_id in ['rev3', 'rev2', 'rev1']:
+        br.generate_revision_history(rev3)
+        for revision_id in [rev3, rev2, rev1]:
             self.assertIsInstance(revision_id, str)
         last = br.last_revision()
-        self.assertEqual('rev3', last)
+        self.assertEqual(rev3, last)
         self.assertIsInstance(last, str)
         revno, last = br.last_revision_info()
         self.assertEqual(3, revno)
-        self.assertEqual('rev3', last)
+        self.assertEqual(rev3, last)
         self.assertIsInstance(last, str)
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
-        self.build_tree_contents([('b1/foo', 'hello')])
+        self.build_tree_contents([('b1/foo', b'hello')])
         wt.add(['foo'])
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_branch('b2')
         b2.fetch(b1)
 
-        rev = b2.repository.get_revision('revision-1')
-        tree = b2.repository.revision_tree('revision-1')
+        rev = b2.repository.get_revision(rev1)
+        tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text(tree.path2id('foo')), 'hello')
+        self.assertEqual(tree.get_file_text('foo'), 'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/b', 'b')])
+        self.build_tree_contents([('a/b', b'b')])
         tree_a.add('b')
-        tree_a.commit("silly commit", rev_id='A')
+        tree_a.commit("silly commit")
 
         tree_b = self.make_branch_and_tree('b')
         return tree_a, tree_b
@@ -136,10 +140,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
         self.build_tree(['a/two'])
         wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
+        wt_a.commit('commit two')
         # Now make a copy of the repository.
         repo_b = self.make_repository('b')
         wt_a.branch.repository.copy_content_into(repo_b)
@@ -149,17 +153,17 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch = wt_a.branch.controldir.open_branch()
         # Then make a branch where the new repository is, but specify a revision
         # ID.  The new branch's history will stop at the specified revision.
-        br_b = branch.clone(repo_b.controldir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
+        br_b = branch.clone(repo_b.controldir, revision_id=rev1)
+        self.assertEqual(rev1, br_b.last_revision())
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
 
-        branch_b = wt_a.branch.controldir.sprout('b', revision_id='1').open_branch()
-        self.assertEqual(wt_a.branch.base, branch_b.get_parent())
+        branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
+        self.assertEqual(wt_a.branch.user_url, branch_b.get_parent())
         return branch_b
 
     def test_clone_branch_nickname(self):
@@ -300,8 +304,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"],
-                         "My happy branch")
+        if branch.repository._format.supports_storing_branch_nick:
+            self.assertEqual(committed.properties["branch-nick"],
+                             "My happy branch")
+        else:
+            self.assertNotIn("branch-nick", committed.properties)
 
     def test_create_colocated(self):
         try:
@@ -417,21 +424,26 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
-        self.assertEqual('null:', checkout_b.last_revision())
-        checkout_b.commit('rev1', rev_id='rev1')
-        self.assertEqual('rev1', branch_a.last_revision())
+        self.assertEqual(b'null:', checkout_b.last_revision())
+        try:
+            rev1 = checkout_b.commit('rev1')
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                    'roundtripping between %r and %r not supported' %
+                    (checkout_b.branch, checkout_b.branch.get_master_branch()))
+        self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
         checkout_c = branch_a.create_checkout('c', lightweight=True)
-        self.assertEqual('rev1', checkout_c.last_revision())
-        checkout_c.commit('rev2', rev_id='rev2')
-        self.assertEqual('rev2', branch_a.last_revision())
+        self.assertEqual(rev1, checkout_c.last_revision())
+        rev2 = checkout_c.commit('rev2')
+        self.assertEqual(rev2, branch_a.last_revision())
         self.assertEqual(checkout_c.branch.base, branch_a.base)
 
         checkout_d = branch_a.create_checkout('d', lightweight=True)
-        self.assertEqual('rev2', checkout_d.last_revision())
+        self.assertEqual(rev2, checkout_d.last_revision())
         checkout_e = branch_a.create_checkout('e')
-        self.assertEqual('rev2', checkout_e.last_revision())
+        self.assertEqual(rev2, checkout_e.last_revision())
 
     def test_create_anonymous_lightweight_checkout(self):
         """A lightweight checkout from a readonly branch should succeed."""
@@ -473,10 +485,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # (In native formats, this is the tip + tags, but other formats may
         # have other revs needed)
         tree = self.make_branch_and_tree('a')
-        tree.commit('first commit', rev_id='rev1')
-        tree.commit('second commit', rev_id='rev2')
+        tree.commit('first commit')
+        rev2 = tree.commit('second commit')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertTrue('rev2' in must_fetch)
+        self.assertTrue(rev2 in must_fetch)
 
     def test_heads_to_fetch_not_null_revision(self):
         # NULL_REVISION does not appear in the result of heads_to_fetch, even
@@ -485,6 +497,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
         self.assertFalse(revision.NULL_REVISION in must_fetch)
         self.assertFalse(revision.NULL_REVISION in should_fetch)
+
+    def test_create_memorytree(self):
+        tree = self.make_branch_and_tree('a')
+        self.assertIsInstance(tree.branch.create_memorytree(), _mod_tree.Tree)
 
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):
@@ -563,51 +579,22 @@ class TestDecorator(object):
 
     def lock_read(self):
         self._calls.append('lr')
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         self._calls.append('lw')
+        return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
         self._calls.append('ul')
 
-    @_mod_branch.needs_read_lock
     def do_with_read(self):
-        return 1
+        with self.lock_read():
+            return 1
 
-    @_mod_branch.needs_read_lock
     def except_with_read(self):
-        raise RuntimeError
-
-    @_mod_branch.needs_write_lock
-    def do_with_write(self):
-        return 2
-
-    @_mod_branch.needs_write_lock
-    def except_with_write(self):
-        raise RuntimeError
-
-
-class TestDecorators(tests.TestCase):
-
-    def test_needs_read_lock(self):
-        branch = TestDecorator()
-        self.assertEqual(1, branch.do_with_read())
-        self.assertEqual(['lr', 'ul'], branch._calls)
-
-    def test_excepts_in_read_lock(self):
-        branch = TestDecorator()
-        self.assertRaises(RuntimeError, branch.except_with_read)
-        self.assertEqual(['lr', 'ul'], branch._calls)
-
-    def test_needs_write_lock(self):
-        branch = TestDecorator()
-        self.assertEqual(2, branch.do_with_write())
-        self.assertEqual(['lw', 'ul'], branch._calls)
-
-    def test_excepts_in_write_lock(self):
-        branch = TestDecorator()
-        self.assertRaises(RuntimeError, branch.except_with_write)
-        self.assertEqual(['lw', 'ul'], branch._calls)
+        with self.lock_read():
+            raise RuntimeError
 
 
 class TestBranchPushLocations(per_branch.TestCaseWithBranch):
@@ -651,9 +638,22 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        made_branch = self.make_branch('.')
+        made_controldir = self.make_controldir('.')
+        made_controldir.create_repository()
+        if made_controldir._format.colocated_branches:
+            # Formats that support colocated branches sometimes have a default
+            # branch that is a reference branch (such as Git). Cope with
+            # those by creating a different colocated branch.
+            name = 'foo'
+        else:
+            name = None
+        try:
+            made_branch = made_controldir.create_branch(name)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('Uninitializable branch format')
+
         self.assertEqual(None,
-            made_branch._format.get_reference(made_branch.controldir))
+            made_branch._format.get_reference(made_branch.controldir, name))
 
     def test_set_reference(self):
         """set_reference on all regular branches should be callable."""
@@ -667,12 +667,12 @@ class TestFormat(per_branch.TestCaseWithBranch):
         try:
             this_branch._format.set_reference(this_branch.controldir, None,
                 other_branch)
-        except NotImplementedError:
+        except (NotImplementedError, errors.IncompatibleFormat):
             # that's ok
             pass
         else:
             ref = this_branch._format.get_reference(this_branch.controldir)
-            self.assertEqual(ref, other_branch.base)
+            self.assertEqual(ref, other_branch.user_url)
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -845,25 +845,26 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_reference_parent(self):
         tree = self.make_branch_and_tree('tree')
         subtree = self.make_branch_and_tree('tree/subtree')
-        subtree.set_root_id('subtree-id')
+        subtree_id = subtree.get_root_id()
         try:
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent(
-            'subtree-id',
+            subtree_id,
             urlutils.relative_url(tree.branch.user_url, subtree.branch.user_url))
         self.assertEqual(subtree.branch.base, reference_parent.base)
 
     def test_reference_parent_accepts_possible_transports(self):
         tree = self.make_branch_and_tree('tree')
         subtree = self.make_branch_and_tree('tree/subtree')
-        subtree.set_root_id('subtree-id')
+        subtree_id = subtree.get_root_id()
         try:
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
-        reference_parent = tree.branch.reference_parent('subtree-id',
+        reference_parent = tree.branch.reference_parent(
+            subtree_id,
             urlutils.relative_url(
                 tree.branch.user_url, subtree.branch.user_url),
             possible_transports=[subtree.controldir.root_transport])
@@ -1044,9 +1045,6 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)
         self.assertEqual(br.user_url, br.user_transport.base)
-        # for all current bzrdir implementations the user dir must be 
-        # above the control dir but we might need to relax that?
-        self.assertEqual(br.control_url.find(br.user_url), 0)
         self.assertEqual(br.control_url, br.control_transport.base)
 
 
@@ -1071,6 +1069,12 @@ def skip_if_storing_uncommitted_unsupported():
 
 
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
+
+    def setUp(self):
+        super(TestUncommittedChanges, self).setUp()
+        if not self.branch_format.supports_store_uncommitted():
+            raise tests.TestNotApplicable(
+                    'Branch format does not support store_uncommitted')
 
     def bind(self, branch, master):
         try:
@@ -1115,7 +1119,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def test_get_unshelver(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('')
-        self.build_tree_contents([('tree/file', 'contents1')])
+        self.build_tree_contents([('tree/file', b'contents1')])
         tree.add('file')
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()
@@ -1125,7 +1129,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def test_get_unshelver_bound(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('')
-        self.build_tree_contents([('tree/file', 'contents1')])
+        self.build_tree_contents([('tree/file', b'contents1')])
         tree.add('file')
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()

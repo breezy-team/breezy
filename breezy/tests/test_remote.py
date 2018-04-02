@@ -23,6 +23,7 @@ the object given a transport that supports smartserver rpc operations.
 These tests correspond to tests.test_smart, which exercises the server side.
 """
 
+import base64
 import bz2
 import zlib
 
@@ -1441,8 +1442,9 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
         builder.start_series()
-        builder.build_snapshot('tip', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='tip')
         builder.finish_series()
         branch = builder.get_branch()
         # Add two tags to that branch
@@ -2362,7 +2364,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
         result = repo.gather_stats(None)
         self.assertEqual(
             [('call_expecting_body', 'Repository.gather_stats',
-             ('quack/','','no'))],
+             ('quack/', '', 'no'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18}, result)
 
@@ -2647,8 +2649,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
         builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', ''))],
+            revision_id='first')
         builder.finish_series()
         branch = builder.get_branch()
         repo = branch.repository
@@ -2741,7 +2744,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
         graph = tree.branch.repository.get_graph()
         # This provides an opportunity for the missing rev-id to be cached.
         self.assertEqual({}, graph.get_parent_map(['rev1']))
-        tree.commit('message', rev_id='rev1')
+        tree.commit('message', rev_id=b'rev1')
         graph = tree.branch.repository.get_graph()
         self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
 
@@ -2899,7 +2902,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         # Then it should ask the fallback, using revno/revid from the
         # history-incomplete response as the known revno/revid.
         client.add_expected_call(
-            'Repository.get_rev_id_for_revno',('fallback/', 1, (2, 'rev-two')),
+            'Repository.get_rev_id_for_revno', ('fallback/', 1, (2, 'rev-two')),
             'success', ('ok', 'rev-one'))
         result = repo.get_rev_id_for_revno(1, (42, 'rev-foo'))
         self.assertEqual((True, 'rev-one'), result)
@@ -3471,7 +3474,7 @@ class TestRepositoryInsertStream_1_19(TestRepositoryInsertStreamBase):
 class TestRepositoryTarball(TestRemoteRepository):
 
     # This is a canned tarball reponse we can validate against
-    tarball_content = (
+    tarball_content = base64.b64decode(
         'QlpoOTFBWSZTWdGkj3wAAWF/k8aQACBIB//A9+8cIX/v33AACEAYABAECEACNz'
         'JqsgJJFPTSnk1A3qh6mTQAAAANPUHkagkSTEkaA09QaNAAAGgAAAcwCYCZGAEY'
         'mJhMJghpiaYBUkKammSHqNMZQ0NABkNAeo0AGneAevnlwQoGzEzNVzaYxp/1Uk'
@@ -3484,7 +3487,7 @@ class TestRepositoryTarball(TestRemoteRepository):
         'QplPKp2nqBWAfwBGaOwVrz3y1T+UZZNismXHsb2Jq18T+VaD9k4P8DqE3g70qV'
         'JLurpnDI6VS5oqDDPVbtVjMxMxMg4rzQVipn2Bv1fVNK0iq3Gl0hhnnHKm/egy'
         'nWQ7QH/F3JFOFCQ0aSPfA='
-        ).decode('base64')
+        )
 
     def test_repository_tarball(self):
         # Test that Repository.tarball generates the right operations
@@ -3885,9 +3888,9 @@ class TestStacking(tests.TestCaseWithTransport):
         base_transport = self.get_transport()
         base_builder = self.make_branch_builder('base', format='1.9')
         base_builder.start_series()
-        base_revid = base_builder.build_snapshot('rev-id', None,
+        base_revid = base_builder.build_snapshot(None,
             [('add', ('', None, 'directory', None))],
-            'message')
+            'message', revision_id='rev-id')
         base_builder.finish_series()
         stacked_branch = self.make_branch('stacked', format='1.9')
         stacked_branch.set_stacked_on_url('../base')
@@ -3918,7 +3921,7 @@ class TestStacking(tests.TestCaseWithTransport):
         """Get stacked_upon and stacked branches with content in each."""
         self.setup_smart_server_with_call_log()
         tree1 = self.make_branch_and_tree('tree1', format='1.9')
-        tree1.commit('rev1', rev_id='rev1')
+        tree1.commit('rev1', rev_id=b'rev1')
         tree2 = tree1.branch.controldir.sprout('tree2', stacked=True
             ).open_workingtree()
         local_tree = tree2.branch.create_checkout('local')
@@ -3971,7 +3974,7 @@ class TestStacking(tests.TestCaseWithTransport):
         tip = stacked.last_revision()
         stacked.repository._ensure_real()
         graph = stacked.repository.get_graph()
-        revs = [r for (r,ps) in graph.iter_ancestry([tip])
+        revs = [r for (r, ps) in graph.iter_ancestry([tip])
                 if r != NULL_REVISION]
         revs.reverse()
         search = vf_search.PendingAncestryResult([tip], stacked.repository)

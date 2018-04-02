@@ -42,6 +42,7 @@ from . import (
     option,
     registry,
     )
+from .sixish import text_type
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
@@ -76,7 +77,7 @@ class cmd_conflicts(commands.Command):
                     continue
                 self.outf.write(conflict.path + '\n')
             else:
-                self.outf.write(unicode(conflict) + '\n')
+                self.outf.write(text_type(conflict) + '\n')
 
 
 resolve_action_registry = registry.Registry()
@@ -154,7 +155,7 @@ class cmd_resolve(commands.Command):
                         len(resolved))
                     trace.note(gettext('Remaining conflicts:'))
                     for conflict in un_resolved:
-                        trace.note(unicode(conflict))
+                        trace.note(text_type(conflict))
                     return 1
                 else:
                     trace.note(gettext('All conflicts resolved.'))
@@ -186,9 +187,8 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
         paths do not have conflicts.
     :param action: How the conflict should be resolved,
     """
-    tree.lock_tree_write()
     nb_conflicts_after = None
-    try:
+    with tree.lock_tree_write():
         tree_conflicts = tree.conflicts()
         nb_conflicts_before = len(tree_conflicts)
         if paths is None:
@@ -208,8 +208,6 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
             pass
-    finally:
-        tree.unlock()
     if nb_conflicts_after is None:
         nb_conflicts_after = nb_conflicts_before
     return nb_conflicts_before, nb_conflicts_after
@@ -298,7 +296,7 @@ class ConflictList(object):
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
-            yield unicode(conflict)
+            yield text_type(conflict)
 
     def remove_files(self, tree):
         """Remove the THIS, BASE and OTHER files for listed conflicts"""
@@ -371,7 +369,7 @@ class Conflict(object):
         self.path = path
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
-        if isinstance(file_id, unicode):
+        if isinstance(file_id, text_type):
             file_id = cache_utf8.encode(file_id)
         self.file_id = osutils.safe_file_id(file_id)
 
@@ -515,8 +513,9 @@ class PathConflict(Conflict):
             raise AssertionError('bad winner: %r' % (winner,))
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
+            tree = self._revision_tree(tt._tree, revid)
             transform.create_from_tree(
-                tt, tid, self._revision_tree(tt._tree, revid), file_id)
+                tt, tid, tree, tree.id2path(file_id), file_id=file_id)
             tt.version_file(file_id, tid)
         else:
             tid = tt.trans_id_file_id(file_id)
@@ -716,7 +715,7 @@ class HandledPathConflict(HandledConflict):
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
         # so they can be unicode.
-        if isinstance(conflict_file_id, unicode):
+        if isinstance(conflict_file_id, text_type):
             conflict_file_id = cache_utf8.encode(conflict_file_id)
         self.conflict_file_id = osutils.safe_file_id(conflict_file_id)
 

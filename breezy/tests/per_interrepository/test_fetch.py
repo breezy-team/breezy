@@ -61,7 +61,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
+        tree_a.commit('rev1', rev_id=b'rev1')
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
@@ -77,10 +77,10 @@ class TestInterRepository(TestCaseWithInterRepository):
             tree = repo.revision_tree('rev1')
             tree.lock_read()
             self.addCleanup(tree.unlock)
-            tree.get_file_text('file1')
-            for file_id in tree.all_file_ids():
-                if tree.kind(file_id) == "file":
-                    tree.get_file(file_id).read()
+            tree.get_file_text('foo')
+            for path in tree.all_versioned_paths():
+                if tree.kind(path) == "file":
+                    tree.get_file(path).read()
 
         # makes a target version repo
         repo_b = self.make_to_repository('b')
@@ -121,7 +121,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                            committer="Foo Bar <foo@example.com>",
                            message="Message",
                            inventory_sha1=inv_sha1,
-                           revision_id='new',
+                           revision_id=b'new',
                            parent_ids=[revid])
             source.add_revision(rev.revision_id, rev)
         except:
@@ -151,13 +151,16 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the source.")
         builder = self.make_branch_builder('full-branch')
         builder.start_series()
-        builder.build_snapshot('first', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('second', ['first'], [
-            ('modify', ('file-id', 'second content\n'))])
-        builder.build_snapshot('third', ['second'], [
-            ('modify', ('file-id', 'third content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id=b'first')
+        builder.build_snapshot(['first'], [
+            ('modify', ('file', b'second content\n'))],
+            revision_id=b'second')
+        builder.build_snapshot([b'second'], [
+            ('modify', ('file', b'third content\n'))],
+            revision_id=b'third')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_repository('stacking-base')
@@ -202,15 +205,19 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('left', ['base'], [
-            ('modify', ('file-id', 'left content\n'))])
-        builder.build_snapshot('right', ['base'], [
-            ('modify', ('file-id', 'right content\n'))])
-        builder.build_snapshot('merge', ['left', 'right'], [
-            ('modify', ('file-id', 'left and right content\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            revision_id=b'base')
+        builder.build_snapshot([b'base'], [
+            ('modify', ('file', b'left content\n'))],
+            revision_id=b'left')
+        builder.build_snapshot([b'base'], [
+            ('modify', ('file', b'right content\n'))],
+            revision_id=b'right')
+        builder.build_snapshot([b'left', b'right'], [
+            ('modify', ('file', b'left and right content\n'))],
+            revision_id=b'merge')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
@@ -272,13 +279,16 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('second', ['base'], [
-            ('modify', ('file-id', 'second content\n'))])
-        builder.build_snapshot('third', ['second', 'ghost'], [
-            ('modify', ('file-id', 'third content\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
+            revision_id=b'base')
+        builder.build_snapshot([b'base'], [
+            ('modify', ('file', b'second content\n'))],
+            revision_id=b'second')
+        builder.build_snapshot([b'second', b'ghost'], [
+            ('modify', ('file', b'third content\n'))],
+            revision_id=b'third')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
@@ -333,15 +343,19 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('left', ['base'], [
-            ('modify', ('file-id', 'left content\n'))])
-        builder.build_snapshot('right', ['base'], [
-            ('modify', ('file-id', 'right content\n'))])
-        builder.build_snapshot('merge', ['left', 'right'], [
-            ('modify', ('file-id', 'left and right content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id=b'base')
+        builder.build_snapshot([b'base'], [
+            ('modify', ('file', b'left content\n'))],
+            revision_id=b'left')
+        builder.build_snapshot([b'base'], [
+            ('modify', ('file', b'right content\n'))],
+            revision_id=b'right')
+        builder.build_snapshot([b'left', b'right'], [
+            ('modify', ('file', b'left and right content\n'))],
+            revision_id=b'merge')
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_repository('old-trunk')
@@ -407,10 +421,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         """If fetching a delta, we should die if a basis is not present."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='rev-one')
-        self.build_tree_contents([('tree/a', 'new contents\n')])
-        tree.commit('two', rev_id='rev-two')
+        tree.add(['a'])
+        tree.commit('one', rev_id=b'rev-one')
+        self.build_tree_contents([('tree/a', b'new contents\n')])
+        tree.commit('two', rev_id=b'rev-two')
 
         to_repo = self.make_to_repository('to_repo')
         # We build a broken revision so that we can test the fetch code dies
@@ -451,7 +465,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             try:
                 rt = to_repo.revision_tree('rev-two')
                 self.assertEqual('new contents\n',
-                                 rt.get_file_text('a-id'))
+                                 rt.get_file_text('a'))
             finally:
                 to_repo.unlock()
 
@@ -459,7 +473,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.fetch, repo_a, revision_id='XXX')
+            repo_b.fetch, repo_a, revision_id=b'XXX')
 
     def test_fetch_same_location_trivial_works(self):
         repo_a = self.make_repository('.')
@@ -475,7 +489,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
         source_tree.add(['id'], ['id'])
-        source_tree.commit('a', rev_id='a')
+        source_tree.commit('a', rev_id=b'a')
         # now we manually insert a revision with an inventory referencing
         # file 'id' at revision 'b', but we do not insert revision b.
         # this should ensure that the new versions of files are being checked
@@ -484,7 +498,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.lock_write()
         self.addCleanup(source.unlock)
         source.start_write_group()
-        inv['id'].revision = 'b'
+        inv.get_entry('id').revision = 'b'
         inv.revision_id = 'b'
         sha1 = source.add_inventory('b', inv, ['a'])
         rev = Revision(timestamp=0,
@@ -492,7 +506,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
-                       revision_id='b')
+                       revision_id=b'b')
         rev.parent_ids = ['a']
         source.add_revision('b', rev)
         self.disable_commit_write_group_paranoia(source)
@@ -514,7 +528,7 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_revision_hash(self):
         """Ensure that inventory hashes are updated by fetch"""
         from_tree = self.make_branch_and_tree('tree')
-        from_tree.commit('foo', rev_id='foo-id')
+        from_tree.commit('foo', rev_id=b'foo-id')
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
         recorded_inv_sha1 = to_repo.get_revision('foo-id').inventory_sha1

@@ -24,13 +24,13 @@ from breezy.tests.per_branch import TestCaseWithBranch
 class TestRevisionIdToDottedRevno(TestCaseWithBranch):
 
     def test_lookup_dotted_revno(self):
-        tree = self.create_tree_with_merge()
+        tree, revmap = self.create_tree_with_merge()
         the_branch = tree.branch
         self.assertEqual((0,), the_branch.revision_id_to_dotted_revno('null:'))
-        self.assertEqual((1,), the_branch.revision_id_to_dotted_revno('rev-1'))
-        self.assertEqual((2,), the_branch.revision_id_to_dotted_revno('rev-2'))
-        self.assertEqual((3,), the_branch.revision_id_to_dotted_revno('rev-3'))
-        self.assertEqual((1,1,1), the_branch.revision_id_to_dotted_revno(
-            'rev-1.1.1'))
+        self.assertEqual((1,), the_branch.revision_id_to_dotted_revno(revmap['1']))
+        self.assertEqual((2,), the_branch.revision_id_to_dotted_revno(revmap['2']))
+        self.assertEqual((3,), the_branch.revision_id_to_dotted_revno(revmap['3']))
+        self.assertEqual((1, 1, 1), the_branch.revision_id_to_dotted_revno(
+            revmap['1.1.1']))
         self.assertRaises(errors.NoSuchRevision,
                           the_branch.revision_id_to_dotted_revno, 'rev-1.0.2')

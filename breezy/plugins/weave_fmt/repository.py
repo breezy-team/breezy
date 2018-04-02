@@ -52,7 +52,6 @@ from ...bzr import (
     weave,
     weavefile,
     )
-from ...decorators import needs_read_lock, needs_write_lock
 from ...repository import (
     InterRepository,
     )
@@ -121,15 +120,14 @@ class AllInOneRepository(VersionedFileRepository):
             self._text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_controldir, a_controldir._control_files)
 
-    @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(
                 3, "_all_possible_ids scales with size of history.")
-        return [key[-1] for key in self.inventories.keys()]
+        with self.lock_read():
+            return [key[-1] for key in self.inventories.keys()]
 
-    @needs_read_lock
     def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository.
 
@@ -137,7 +135,8 @@ class AllInOneRepository(VersionedFileRepository):
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
-        return [key[-1] for key in self.revisions.keys()]
+        with self.lock_read():
+            return [key[-1] for key in self.revisions.keys()]
 
     def _activate_new_inventory(self):
         """Put a replacement inventory.new into use as inventories."""
@@ -181,7 +180,6 @@ class AllInOneRepository(VersionedFileRepository):
         """AllInOne repositories cannot be shared."""
         return False
 
-    @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
 
@@ -202,18 +200,18 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     def __init__(self, _format, a_controldir, control_files):
-        super(WeaveMetaDirRepository, self).__init__(_format, a_controldir, control_files)
+        super(WeaveMetaDirRepository, self).__init__(
+                _format, a_controldir, control_files)
         self._serializer = _format._serializer
 
-    @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(
                 3, "_all_possible_ids scales with size of history.")
-        return [key[-1] for key in self.inventories.keys()]
+        with self.lock_read():
+            return [key[-1] for key in self.inventories.keys()]
 
-    @needs_read_lock
     def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository.
 
@@ -221,7 +219,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
-        return [key[-1] for key in self.revisions.keys()]
+        with self.lock_read():
+            return [key[-1] for key in self.revisions.keys()]
 
     def _activate_new_inventory(self):
         """Put a replacement inventory.new into use as inventories."""
@@ -250,11 +249,10 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         self.start_write_group()
         return result
 
-    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        r = self.get_revision_reconcile(revision_id)
-        return r
+        with self.lock_read():
+            return self.get_revision_reconcile(revision_id)
 
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):
@@ -281,6 +279,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
     _fetch_reconcile = True
     fast_deltas = False
     supports_leaving_lock = False
+    supports_overriding_transport = False
     # XXX: This is an old format that we don't support full checking on, so
     # just claim that checking for this inconsistency is not required.
     revision_graph_can_have_wrong_parents = False
@@ -309,8 +308,9 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
         control_files.lock_write()
         transport = a_controldir.transport
         try:
-            transport.mkdir_multi(['revision-store', 'weaves'],
-                mode=a_controldir._get_dir_mode())
+            transport.mkdir('revision-store',
+                            mode=a_controldir._get_dir_mode())
+            transport.mkdir('weaves', mode=a_controldir._get_dir_mode())
             transport.put_bytes_non_atomic('inventory.weave', empty_weave,
                 mode=a_controldir._get_file_mode())
         finally:
@@ -352,7 +352,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = weave_bzrdir.BzrDirFormat4()
+    _matchingcontroldir = weave_bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -400,7 +400,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = weave_bzrdir.BzrDirFormat5()
+    _matchingcontroldir = weave_bzrdir.BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -413,7 +413,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
+        return self._matchingcontroldir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -447,7 +447,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = weave_bzrdir.BzrDirFormat6()
+    _matchingcontroldir = weave_bzrdir.BzrDirFormat6()
     supports_funky_characters = False
     @property
     def _serializer(self):
@@ -459,7 +459,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
+        return self._matchingcontroldir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -511,7 +511,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Repository format 7"
+        return b"Bazaar-NG Repository format 7"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -609,11 +609,13 @@ class TextVersionedFiles(VersionedFiles):
             raise errors.ReadOnlyError(self)
         if '/' in key[-1]:
             raise ValueError('bad idea to put / in %r' % (key,))
-        text = ''.join(lines)
+        chunks = lines
         if self._compressed:
-            text = tuned_gzip.bytes_to_gzip(text)
+            chunks = tuned_gzip.chunks_to_gzip(chunks)
         path = self._map(key)
-        self._transport.put_bytes_non_atomic(path, text, create_parent_dir=True)
+        self._transport.put_file_non_atomic(
+                path, BytesIO(b''.join(chunks)),
+                create_parent_dir=True)
 
     def insert_record_stream(self, stream):
         adapters = {}
@@ -789,80 +791,81 @@ class InterWeaveRepo(InterSameDataRepository):
         except AttributeError:
             return False
 
-    @needs_write_lock
     def copy_content(self, revision_id=None):
         """See InterRepository.copy_content()."""
-        # weave specific optimised path:
-        try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
-        except (errors.RepositoryUpgradeRequired, NotImplemented):
-            pass
-        # FIXME do not peek!
-        if self.source._transport.listable():
-            pb = ui.ui_factory.nested_progress_bar()
+        with self.lock_write():
+            # weave specific optimised path:
             try:
-                self.target.texts.insert_record_stream(
-                    self.source.texts.get_record_stream(
-                        self.source.texts.keys(), 'topological', False))
-                pb.update('Copying inventory', 0, 1)
-                self.target.inventories.insert_record_stream(
-                    self.source.inventories.get_record_stream(
-                        self.source.inventories.keys(), 'topological', False))
-                self.target.signatures.insert_record_stream(
-                    self.source.signatures.get_record_stream(
-                        self.source.signatures.keys(),
-                        'unordered', True))
-                self.target.revisions.insert_record_stream(
-                    self.source.revisions.get_record_stream(
-                        self.source.revisions.keys(),
-                        'topological', True))
-            finally:
-                pb.finished()
-        else:
-            self.target.fetch(self.source, revision_id=revision_id)
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except (errors.RepositoryUpgradeRequired, NotImplementedError):
+                pass
+            # FIXME do not peek!
+            if self.source._transport.listable():
+                with ui.ui_factory.nested_progress_bar() as pb:
+                    self.target.texts.insert_record_stream(
+                        self.source.texts.get_record_stream(
+                            self.source.texts.keys(), 'topological', False))
+                    pb.update('Copying inventory', 0, 1)
+                    self.target.inventories.insert_record_stream(
+                        self.source.inventories.get_record_stream(
+                            self.source.inventories.keys(), 'topological', False))
+                    self.target.signatures.insert_record_stream(
+                        self.source.signatures.get_record_stream(
+                            self.source.signatures.keys(),
+                            'unordered', True))
+                    self.target.revisions.insert_record_stream(
+                        self.source.revisions.get_record_stream(
+                            self.source.revisions.keys(),
+                            'topological', True))
+            else:
+                self.target.fetch(self.source, revision_id=revision_id)
 
-    @needs_read_lock
-    def search_missing_revision_ids(self,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
+    def search_missing_revision_ids(self, find_ghosts=True, revision_ids=None,
+                                    if_present_ids=None, limit=None):
         """See InterRepository.search_missing_revision_ids()."""
-        # we want all revisions to satisfy revision_id in source.
-        # but we don't want to stat every file here and there.
-        # we want then, all revisions other needs to satisfy revision_id
-        # checked, but not those that we have locally.
-        # so the first thing is to get a subset of the revisions to
-        # satisfy revision_id in source, and then eliminate those that
-        # we do already have.
-        # this is slow on high latency connection to self, but as this
-        # disk format scales terribly for push anyway due to rewriting
-        # inventory.weave, this is considered acceptable.
-        # - RBC 20060209
-        source_ids_set = self._present_source_revisions_for(
-            revision_ids, if_present_ids)
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target._all_possible_ids())
-        possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(
-            self.target._eliminate_revisions_not_present(possibly_present_revisions))
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_ids is not None:
-            # we used get_ancestry to determine source_ids then we are assured all
-            # revisions referenced are present as they are installed in topological order.
-            # and the tip revision was validated by get_ancestry.
-            result_set = required_revisions
-        else:
-            # if we just grabbed the possibly available ids, then
-            # we only have an estimate of whats available and need to validate
-            # that against the revision records.
-            result_set = set(
-                self.source._eliminate_revisions_not_present(required_revisions))
-        if limit is not None:
-            topo_ordered = self.get_graph().iter_topo_order(result_set)
-            result_set = set(itertools.islice(topo_ordered, limit))
-        return self.source.revision_ids_to_search_result(result_set)
+        with self.lock_read():
+            # we want all revisions to satisfy revision_id in source.
+            # but we don't want to stat every file here and there.
+            # we want then, all revisions other needs to satisfy revision_id
+            # checked, but not those that we have locally.
+            # so the first thing is to get a subset of the revisions to
+            # satisfy revision_id in source, and then eliminate those that
+            # we do already have.
+            # this is slow on high latency connection to self, but as this
+            # disk format scales terribly for push anyway due to rewriting
+            # inventory.weave, this is considered acceptable.
+            # - RBC 20060209
+            source_ids_set = self._present_source_revisions_for(
+                revision_ids, if_present_ids)
+            # source_ids is the worst possible case we may need to pull.
+            # now we want to filter source_ids against what we actually
+            # have in target, but don't try to check for existence where we
+            # know we do not have a revision as that would be pointless.
+            target_ids = set(self.target._all_possible_ids())
+            possibly_present_revisions = target_ids.intersection(
+                    source_ids_set)
+            actually_present_revisions = set(
+                self.target._eliminate_revisions_not_present(
+                    possibly_present_revisions))
+            required_revisions = source_ids_set.difference(
+                    actually_present_revisions)
+            if revision_ids is not None:
+                # we used get_ancestry to determine source_ids then we are
+                # assured all revisions referenced are present as they are
+                # installed in topological order. and the tip revision was
+                # validated by get_ancestry.
+                result_set = required_revisions
+            else:
+                # if we just grabbed the possibly available ids, then
+                # we only have an estimate of whats available and need to
+                # validate that against the revision records.
+                result_set = set(
+                    self.source._eliminate_revisions_not_present(
+                        required_revisions))
+            if limit is not None:
+                topo_ordered = self.get_graph().iter_topo_order(result_set)
+                result_set = set(itertools.islice(topo_ordered, limit))
+            return self.source.revision_ids_to_search_result(result_set)
 
 
 InterRepository.register_optimiser(InterWeaveRepo)

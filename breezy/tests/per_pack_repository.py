@@ -317,12 +317,15 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         builder = self.make_branch_builder('source', format=format)
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        builder.build_snapshot('B-id', None, [
-            ('add', ('file', 'file-id', 'file', 'B content\n'))])
-        builder.build_snapshot('C-id', None, [
-            ('modify', ('file-id', 'C content\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id=b'A-id')
+        builder.build_snapshot(None, [
+            ('add', ('file', 'file-id', 'file', 'B content\n'))],
+            revision_id=b'B-id')
+        builder.build_snapshot(None, [
+            ('modify', ('file', b'C content\n'))],
+            revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()
@@ -330,7 +333,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', shared=True, format=format)
         repo.lock_write()
         self.addCleanup(repo.unlock)
-        repo.fetch(b.repository, revision_id='B-id')
+        repo.fetch(b.repository, revision_id=b'B-id')
         inv = next(b.repository.iter_inventories(['C-id']))
         repo.start_write_group()
         repo.add_inventory('C-id', inv, ['B-id'])
@@ -349,8 +352,8 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.controldir.get_repository_transport(None)
-        tree.commit('start', rev_id='1')
-        tree.commit('more work', rev_id='2')
+        tree.commit('start', rev_id=b'1')
+        tree.commit('more work', rev_id=b'2')
         tree.branch.repository.pack()
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -1008,9 +1011,12 @@ class TestKeyDependencies(TestCaseWithTransport):
     def create_source_and_target(self):
         builder = self.make_branch_builder('source', format=self.get_format())
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', 'root-id', 'directory', None))],
+            revision_id=b'A-id')
+        builder.build_snapshot(
+                ['A-id', 'ghost-id'], [],
+                revision_id=b'B-id', )
         builder.finish_series()
         repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()

@@ -54,8 +54,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
                dry_run=False, no_prompt=False):
     """Remove files in the specified classes from the tree"""
     tree = WorkingTree.open_containing(directory)[0]
-    tree.lock_read()
-    try:
+    with tree.lock_read():
         deletables = list(iter_deletables(tree, unknown=unknown,
             ignored=ignored, detritus=detritus))
         deletables = _filter_out_nested_controldirs(deletables)
@@ -70,8 +69,6 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
                 ui.ui_factory.note(gettext('Canceled'))
                 return 0
         delete_items(deletables, dry_run=dry_run)
-    finally:
-        tree.unlock()
 
 
 def _filter_out_nested_controldirs(deletables):
@@ -86,12 +83,12 @@ def _filter_out_nested_controldirs(deletables):
             try:
                 controldir.ControlDir.open(path)
             except errors.NotBranchError:
-                result.append((path,subp))
+                result.append((path, subp))
             else:
                 # TODO may be we need to notify user about skipped directories?
                 pass
         else:
-            result.append((path,subp))
+            result.append((path, subp))
     return result
 
 

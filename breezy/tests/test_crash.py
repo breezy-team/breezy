@@ -44,7 +44,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
         self.assertEqual(crash_dir, config.crash_dir())
 
         self.overrideAttr(
-            breezy.global_state,
+            breezy.get_global_state(),
             'plugin_warnings',
             {'example': ['Failed to load plugin foo']})
 
@@ -86,7 +86,7 @@ class TestNonApportReporting(tests.TestCase):
         fake = plugin.PlugIn('fake_plugin', plugin)
         fake.version_info = lambda: (1, 2, 3)
         fake_plugins = {"fake_plugin": fake}
-        self.overrideAttr(breezy.global_state, 'plugins', fake_plugins)
+        self.overrideAttr(breezy.get_global_state(), 'plugins', fake_plugins)
 
     def test_report_bug_legacy(self):
         self.setup_fake_plugins()

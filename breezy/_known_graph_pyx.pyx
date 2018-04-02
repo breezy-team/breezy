@@ -53,7 +53,7 @@ cdef extern from "Python.h":
 
     void Py_INCREF(object)
 
-from collections import deque
+import collections
 import gc
 
 from . import errors, revision
@@ -400,7 +400,7 @@ cdef class KnownGraph:
         # We use a deque rather than a simple list stack, to go for BFD rather
         # than DFD. So that if a longer path is possible, we walk it before we
         # get to the final child
-        pending = deque([node])
+        pending = collections.deque([node])
         pending_popleft = pending.popleft
         pending_append = pending.append
         while pending:

@@ -19,6 +19,8 @@
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
+from breezy.workingtree import SettingFileIdUnsupported
+
 
 class TestMkdir(TestCaseWithWorkingTree):
 
@@ -27,12 +29,17 @@ class TestMkdir(TestCaseWithWorkingTree):
         t.lock_write()
         self.addCleanup(t.unlock)
         file_id = t.mkdir('path')
-        self.assertEqual('directory', t.kind(file_id))
+        self.assertEqual('directory', t.kind('path', file_id))
 
     def test_mkdir_with_id(self):
         t = self.make_branch_and_tree('t1')
         t.lock_write()
         self.addCleanup(t.unlock)
-        file_id = t.mkdir('path', 'my-id')
-        self.assertEqual('my-id', file_id)
-        self.assertEqual('directory', t.kind(file_id))
+        if not t.supports_setting_file_ids():
+            self.assertRaises(
+                SettingFileIdUnsupported,
+                t.mkdir, 'path', 'my-id')
+        else:
+            file_id = t.mkdir('path', 'my-id')
+            self.assertEqual('my-id', file_id)
+            self.assertEqual('directory', t.kind('path', file_id))

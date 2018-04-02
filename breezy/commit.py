@@ -70,7 +70,6 @@ from .osutils import (get_user_encoding,
                       splitpath,
                       )
 from .trace import mutter, note, is_quiet
-from .bzr.inventory import Inventory, InventoryEntry, make_entry
 from .urlutils import unescape_for_display
 from .i18n import gettext
 
@@ -88,15 +87,6 @@ class CannotCommitSelectedFileMerge(BzrError):
     def __init__(self, files):
         files_str = ', '.join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
-
-
-class ExcludesUnsupported(BzrError):
-
-    _fmt = ('Excluding paths during commit is not supported by '
-            'repository at %(repository)r.')
-
-    def __init__(self, repository):
-        BzrError.__init__(self, repository=repository)
 
 
 def filter_excluded(iter_changes, exclude):
@@ -221,7 +211,8 @@ class Commit(object):
             revprops = {}
         if possible_master_transports is None:
             possible_master_transports = []
-        if not 'branch-nick' in revprops:
+        if (not 'branch-nick' in revprops and
+                branch.repository._format.supports_storing_branch_nick):
             revprops['branch-nick'] = branch._get_nick(
                 local,
                 possible_master_transports)
@@ -468,7 +459,7 @@ class Commit(object):
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such
         # as updating its basis and unversioning paths that were missing.
-        self.work_tree.unversion(self.deleted_ids)
+        self.work_tree.unversion(self.deleted_paths)
         self._set_progress_stage("Updating the working tree")
         self.work_tree.update_basis_by_delta(self.rev_id,
              self.builder.get_basis_delta())
@@ -700,7 +691,7 @@ class Commit(object):
         """
         reporter = self.reporter
         report_changes = reporter.is_verbose()
-        deleted_ids = []
+        deleted_paths = []
         for change in iter_changes:
             if report_changes:
                 old_path = change[1][0]
@@ -712,7 +703,7 @@ class Commit(object):
                 # 'missing' path
                 if report_changes:
                     reporter.missing(new_path)
-                deleted_ids.append(change[0])
+                deleted_paths.append(change[1][1])
                 # Reset the new path (None) and new versioned flag (False)
                 change = (change[0], (change[1][0], None), change[2],
                     (change[3][0], False)) + change[4:]
@@ -737,8 +728,8 @@ class Commit(object):
                             # repositories.
                             reporter.snapshot_change(gettext('modified'), new_path)
             self._next_progress_entry()
-        # Unversion IDs that were found to be deleted
-        self.deleted_ids = deleted_ids
+        # Unversion files that were found to be deleted
+        self.deleted_paths = deleted_paths
 
     def _check_strict(self):
         # XXX: when we use iter_changes this would likely be faster if
@@ -751,7 +742,7 @@ class Commit(object):
 
     def _commit_nested_tree(self, file_id, path):
         "Commit a nested tree."
-        sub_tree = self.work_tree.get_nested_tree(file_id, path)
+        sub_tree = self.work_tree.get_nested_tree(path, file_id)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,
         # but when both are bound to a different repository,
@@ -772,7 +763,7 @@ class Commit(object):
                 strict=self.strict, verbose=self.verbose,
                 local=self.local, reporter=self.reporter)
         except PointlessCommit:
-            return self.work_tree.get_reference_revision(file_id)
+            return self.work_tree.get_reference_revision(path, file_id)
 
     def _set_progress_stage(self, name, counter=False):
         """Set the progress stage and emit an update to the progress bar."""

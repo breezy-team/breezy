@@ -91,7 +91,7 @@ class DummyForeignVcs(foreign.ForeignVcs):
         return "%s|%s|%s" % foreign_revid
 
 
-class DummyForeignVcsBranch(bzrbranch.BzrBranch6,foreign.ForeignBranch):
+class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
     @property
@@ -125,13 +125,14 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6,foreign.ForeignBranch):
 
 class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
 
-    def _generate_revision_if_needed(self):
+    def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
                 (str(self._timestamp), str(self._timezone), "UNKNOWN"))
             self.random_revid = False
-        elif self._new_revision_id is not None:
+        elif revid is not None:
+            self._new_revision_id = revid
             self.random_revid = False
         else:
             self._new_revision_id = self._gen_revision_id()
@@ -150,7 +151,7 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
 
     @classmethod
     def get_format_string(cls):
-        return "Dummy Foreign Vcs Repository"
+        return b"Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
         return "Dummy Foreign Vcs Repository"
@@ -192,8 +193,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
             for revid in todo:
                 rev = self.source.repository.get_revision(revid)
                 tree = self.source.repository.revision_tree(revid)
-                def get_file_with_stat(file_id, path=None):
-                    return (tree.get_file(file_id), None)
+                def get_file_with_stat(path, file_id=None):
+                    return (tree.get_file(path, file_id), None)
                 tree.get_file_with_stat = get_file_with_stat
                 new_revid = self.target.mapping.revision_id_foreign_to_bzr(
                     (str(rev.timestamp), str(rev.timezone),
@@ -233,10 +234,10 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
 
     @classmethod
     def get_format_string(cls):
-        return "Branch for Testing"
+        return b"Branch for Testing"
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         return DummyForeignVcsDirFormat()
 
     def open(self, a_controldir, name=None, _found=False, ignore_fallbacks=False,
@@ -265,7 +266,7 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
 
     @classmethod
     def get_format_string(cls):
-        return "A Dummy VCS Dir"
+        return b"A Dummy VCS Dir"
 
     @classmethod
     def get_format_description(cls):
@@ -417,12 +418,12 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
 
     def test_update_workingtree(self):
         wt = self.make_branch_and_tree('br1')
-        self.build_tree_contents([('br1/bla', 'original contents\n')])
+        self.build_tree_contents([('br1/bla', b'original contents\n')])
         wt.add('bla', 'bla-a')
         wt.commit('bla-a')
         root_id = wt.get_root_id()
         target = wt.controldir.sprout('br2').open_workingtree()
-        target.unversion(['bla-a'])
+        target.unversion(['bla'])
         target.add('bla', 'bla-b')
         target.commit('bla-b')
         target_basis = target.basis_tree()
@@ -431,7 +432,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEqual({root_id, "bla-b"}, set(wt.all_file_ids()))
+            self.assertEqual({'', "bla"}, set(wt.all_versioned_paths()))
         finally:
             wt.unlock()
 

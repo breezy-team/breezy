@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from ..sixish import StringIO
 import os
 import shutil
 
@@ -115,7 +115,7 @@ class BisectHarnessTests(BisectTestCase):
         repo = self.tree.branch.repository
         top_revtree = repo.revision_tree(self.tree.last_revision())
         top_revtree.lock_read()
-        top_file = top_revtree.get_file(top_revtree.path2id("test_file"))
+        top_file = top_revtree.get_file("test_file")
         test_content = top_file.read().strip()
         top_file.close()
         top_revtree.unlock()
@@ -126,7 +126,7 @@ class BisectHarnessTests(BisectTestCase):
         repo = self.tree.branch.repository
         sub_revtree = repo.revision_tree(self.subtree_rev)
         sub_revtree.lock_read()
-        sub_file = sub_revtree.get_file(sub_revtree.path2id("test_file"))
+        sub_file = sub_revtree.get_file("test_file")
         test_content = sub_file.read().strip()
         sub_file.close()
         sub_revtree.unlock()
@@ -141,14 +141,14 @@ class BisectCurrentUnitTests(BisectTestCase):
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
         sio = StringIO()
-        bisect.BisectCurrent(self.tree.controldir).show_rev_log(out=sio)
+        bisect.BisectCurrent(self.tree.controldir).show_rev_log(outf=sio)
 
     def testShowLogSubtree(self):
         """Test that a subtree's log can be shown."""
         current = bisect.BisectCurrent(self.tree.controldir)
         current.switch(self.subtree_rev)
         sio = StringIO()
-        current.show_rev_log(out=sio)
+        current.show_rev_log(outf=sio)
 
     def testSwitchVersions(self):
         """Test switching versions."""

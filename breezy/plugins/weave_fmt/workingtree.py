@@ -18,9 +18,12 @@
 
 from __future__ import absolute_import
 
+import breezy
+
 from ... import (
     conflicts as _mod_conflicts,
     errors,
+    lock,
     osutils,
     revision as _mod_revision,
     transform,
@@ -29,7 +32,6 @@ from ...bzr import (
     inventory,
     xml5,
     )
-from ...decorators import needs_read_lock
 from ...mutabletree import MutableTree
 from ...sixish import (
     BytesIO,
@@ -64,6 +66,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     missing_parent_conflicts = False
 
     supports_versioned_directories = True
+
+    ignore_filename = '.bzrignore'
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -124,7 +128,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     def __init__(self):
         super(WorkingTreeFormat2, self).__init__()
         from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
-        self._matchingbzrdir = BzrDirFormat6()
+        self._matchingcontroldir = BzrDirFormat6()
 
     def open(self, a_controldir, _found=False):
         """Return the WorkingTree object for a_controldir
@@ -180,8 +184,8 @@ class WorkingTree2(PreDirStateWorkingTree):
         """
         self.branch.lock_write()
         try:
-            self._control_files.lock_write()
-            return self
+            token = self._control_files.lock_write()
+            return lock.LogicalLockResult(self.unlock, token)
         except:
             self.branch.unlock()
             raise
@@ -213,31 +217,31 @@ class WorkingTree2(PreDirStateWorkingTree):
                 conflicted.add(stem)
                 yield stem
 
-    @needs_read_lock
     def conflicts(self):
-        conflicts = _mod_conflicts.ConflictList()
-        for conflicted in self._iter_conflicts():
-            text = True
-            try:
-                if osutils.file_kind(self.abspath(conflicted)) != "file":
-                    text = False
-            except errors.NoSuchFile:
-                text = False
-            if text is True:
-                for suffix in ('.THIS', '.OTHER'):
-                    try:
-                        kind = osutils.file_kind(self.abspath(conflicted+suffix))
-                        if kind != "file":
-                            text = False
-                    except errors.NoSuchFile:
+        with self.lock_read():
+            conflicts = _mod_conflicts.ConflictList()
+            for conflicted in self._iter_conflicts():
+                text = True
+                try:
+                    if osutils.file_kind(self.abspath(conflicted)) != "file":
                         text = False
-                    if text == False:
-                        break
-            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
-            conflicts.append(_mod_conflicts.Conflict.factory(ctype,
-                             path=conflicted,
-                             file_id=self.path2id(conflicted)))
-        return conflicts
+                except errors.NoSuchFile:
+                    text = False
+                if text is True:
+                    for suffix in ('.THIS', '.OTHER'):
+                        try:
+                            kind = osutils.file_kind(self.abspath(conflicted+suffix))
+                            if kind != "file":
+                                text = False
+                        except errors.NoSuchFile:
+                            text = False
+                        if text == False:
+                            break
+                ctype = {True: 'text conflict', False: 'contents conflict'}[text]
+                conflicts.append(_mod_conflicts.Conflict.factory(ctype,
+                                 path=conflicted,
+                                 file_id=self.path2id(conflicted)))
+            return conflicts
 
     def set_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.set_conflicts, self)

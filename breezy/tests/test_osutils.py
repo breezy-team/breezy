@@ -47,20 +47,18 @@ from . import (
 from .scenarios import load_tests_apply_scenarios
 
 
-class _UTF8DirReaderFeature(features.Feature):
+class _UTF8DirReaderFeature(features.ModuleAvailableFeature):
 
     def _probe(self):
         try:
             from .. import _readdir_pyx
+            self._module = _readdir_pyx
             self.reader = _readdir_pyx.UTF8DirReader
             return True
         except ImportError:
             return False
 
-    def feature_name(self):
-        return 'breezy._readdir_pyx'
-
-UTF8DirReaderFeature = features.ModuleAvailableFeature('breezy._readdir_pyx')
+UTF8DirReaderFeature = _UTF8DirReaderFeature('breezy._readdir_pyx')
 
 term_ios_feature = features.ModuleAvailableFeature('termios')
 
@@ -1185,7 +1183,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual('./test-unreadable', e.filename)
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
-        self.assertContainsRe(str(e), "\./test-unreadable")
+        self.assertContainsRe(str(e), "\\./test-unreadable")
 
 
     def test_walkdirs_encoding_error(self):
@@ -1670,9 +1668,9 @@ class TestCopyTree(tests.TestCaseInTempDir):
             processed_files.append(('d', from_path, to_path))
         def link_handler(from_path, to_path):
             processed_links.append((from_path, to_path))
-        handlers = {'file':file_handler,
-                    'directory':dir_handler,
-                    'symlink':link_handler,
+        handlers = {'file': file_handler,
+                    'directory': dir_handler,
+                    'symlink': link_handler,
                    }
 
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
@@ -1743,7 +1741,7 @@ class TestSetUnsetEnv(tests.TestCase):
 class TestSizeShaFile(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
-        self.build_tree_contents([('foo', '')])
+        self.build_tree_contents([('foo', b'')])
         expected_sha = osutils.sha_string('')
         f = open('foo')
         self.addCleanup(f.close)
@@ -1752,7 +1750,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
         self.assertEqual(expected_sha, sha)
 
     def test_sha_mixed_endings(self):
-        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        text = b'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         f = open('foo', 'rb')
@@ -1765,12 +1763,12 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
 class TestShaFileByName(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
-        self.build_tree_contents([('foo', '')])
+        self.build_tree_contents([('foo', b'')])
         expected_sha = osutils.sha_string('')
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
     def test_sha_mixed_endings(self):
-        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        text = b'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))

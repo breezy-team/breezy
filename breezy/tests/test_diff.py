@@ -150,9 +150,9 @@ class TestDiff(tests.TestCase):
     def test_binary_lines(self):
         empty = []
         uni_lines = [1023 * 'a' + '\x00']
-        self.assertRaises(errors.BinaryFile, udiff_lines, uni_lines , empty)
+        self.assertRaises(errors.BinaryFile, udiff_lines, uni_lines, empty)
         self.assertRaises(errors.BinaryFile, udiff_lines, empty, uni_lines)
-        udiff_lines(uni_lines , empty, allow_binary=True)
+        udiff_lines(uni_lines, empty, allow_binary=True)
         udiff_lines(empty, uni_lines, allow_binary=True)
 
     def test_external_diff(self):
@@ -254,10 +254,10 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_default_context(self):
         output = BytesIO()
-        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','old_text\n'],
-                           'new', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','new_text\n'], output)
+        diff.internal_diff('old', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'old_text\n'],
+                           'new', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'new_text\n'], output)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
         self.assertEqual(['--- old\n',
@@ -274,10 +274,10 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_no_context(self):
         output = BytesIO()
-        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','old_text\n'],
-                           'new', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','new_text\n'], output,
+        diff.internal_diff('old', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'old_text\n'],
+                           'new', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'new_text\n'], output,
                            context_lines=0)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
@@ -292,10 +292,10 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_more_context(self):
         output = BytesIO()
-        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','old_text\n'],
-                           'new', ['same_text\n','same_text\n','same_text\n',
-                           'same_text\n','same_text\n','new_text\n'], output,
+        diff.internal_diff('old', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'old_text\n'],
+                           'new', ['same_text\n', 'same_text\n', 'same_text\n',
+                           'same_text\n', 'same_text\n', 'new_text\n'], output,
                            context_lines=4)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
@@ -320,6 +320,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
 
     def test_external_diff_binary(self):
         """The output when using external diff should use diff's i18n error"""
+        for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
+            self.overrideEnv(lang, 'C')
         # Make sure external_diff doesn't fail in the current LANG
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
@@ -353,35 +355,35 @@ class TestDiffDates(tests.TestCaseWithTransport):
         self.wt = self.make_branch_and_tree('.')
         self.b = self.wt.branch
         self.build_tree_contents([
-            ('file1', 'file1 contents at rev 1\n'),
-            ('file2', 'file2 contents at rev 1\n')
+            ('file1', b'file1 contents at rev 1\n'),
+            ('file2', b'file2 contents at rev 1\n')
             ])
         self.wt.add(['file1', 'file2'])
         self.wt.commit(
             message='Revision 1',
             timestamp=1143849600, # 2006-04-01 00:00:00 UTC
             timezone=0,
-            rev_id='rev-1')
-        self.build_tree_contents([('file1', 'file1 contents at rev 2\n')])
+            rev_id=b'rev-1')
+        self.build_tree_contents([('file1', b'file1 contents at rev 2\n')])
         self.wt.commit(
             message='Revision 2',
             timestamp=1143936000, # 2006-04-02 00:00:00 UTC
             timezone=28800,
-            rev_id='rev-2')
-        self.build_tree_contents([('file2', 'file2 contents at rev 3\n')])
+            rev_id=b'rev-2')
+        self.build_tree_contents([('file2', b'file2 contents at rev 3\n')])
         self.wt.commit(
             message='Revision 3',
             timestamp=1144022400, # 2006-04-03 00:00:00 UTC
             timezone=-3600,
-            rev_id='rev-3')
+            rev_id=b'rev-3')
         self.wt.remove(['file2'])
         self.wt.commit(
             message='Revision 4',
             timestamp=1144108800, # 2006-04-04 00:00:00 UTC
             timezone=0,
-            rev_id='rev-4')
+            rev_id=b'rev-4')
         self.build_tree_contents([
-            ('file1', 'file1 contents in working tree\n')
+            ('file1', b'file1 contents in working tree\n')
             ])
         # set the date stamps for files in the working tree to known values
         os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
@@ -481,11 +483,11 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_modified_file(self):
         """Test when a file is modified."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'contents\n')])
-        tree.add(['file'], ['file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/file', b'contents\n')])
+        tree.add(['file'], [b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
-        self.build_tree_contents([('tree/file', 'new contents\n')])
+        self.build_tree_contents([('tree/file', b'new contents\n')])
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== modified file 'file'\n")
         self.assertContainsRe(d, '--- old/file\t')
@@ -497,12 +499,12 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """Test when a file is modified in a renamed directory."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/'])
-        self.build_tree_contents([('tree/dir/file', 'contents\n')])
-        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/dir/file', b'contents\n')])
+        tree.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('dir', 'other')
-        self.build_tree_contents([('tree/other/file', 'new contents\n')])
+        self.build_tree_contents([('tree/other/file', b'new contents\n')])
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed directory 'dir' => 'other'\n")
         self.assertContainsRe(d, "=== modified file 'other/file'\n")
@@ -517,9 +519,9 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """Test when only a directory is only renamed."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/'])
-        self.build_tree_contents([('tree/dir/file', 'contents\n')])
-        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/dir/file', b'contents\n')])
+        tree.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('dir', 'newdir')
         d = get_diff_as_string(tree.basis_tree(), tree)
@@ -530,9 +532,9 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_renamed_file(self):
         """Test when a file is only renamed."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'contents\n')])
-        tree.add(['file'], ['file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/file', b'contents\n')])
+        tree.add(['file'], [b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('file', 'newname')
         d = get_diff_as_string(tree.basis_tree(), tree)
@@ -544,12 +546,12 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_renamed_and_modified_file(self):
         """Test when a file is only renamed."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'contents\n')])
-        tree.add(['file'], ['file-id'])
-        tree.commit('one', rev_id='rev-1')
+        self.build_tree_contents([('tree/file', b'contents\n')])
+        tree.add(['file'], [b'file-id'])
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('file', 'newname')
-        self.build_tree_contents([('tree/newname', 'new contents\n')])
+        self.build_tree_contents([('tree/newname', b'new contents\n')])
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed file 'file' => 'newname'\n")
         self.assertContainsRe(d, '--- old/file\t')
@@ -569,7 +571,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tt.new_file('e', tt.root, 'contents\n', 'control-e-id', True)
         tt.new_file('f', tt.root, 'contents\n', 'control-f-id', False)
         tt.apply()
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
 
         tt = transform.TreeTransform(tree)
         tt.set_executability(False, tt.trans_id_file_id('a-id'))
@@ -583,13 +585,13 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         d = get_diff_as_string(tree.basis_tree(), tree)
 
         self.assertContainsRe(d, r"file 'a'.*\(properties changed:"
-                                  ".*\+x to -x.*\)")
+                                 r".*\+x to -x.*\)")
         self.assertContainsRe(d, r"file 'b'.*\(properties changed:"
-                                  ".*-x to \+x.*\)")
+                                 r".*-x to \+x.*\)")
         self.assertContainsRe(d, r"file 'c'.*\(properties changed:"
-                                  ".*\+x to -x.*\)")
+                                 r".*\+x to -x.*\)")
         self.assertContainsRe(d, r"file 'd'.*\(properties changed:"
-                                  ".*-x to \+x.*\)")
+                                 r".*-x to \+x.*\)")
         self.assertNotContainsRe(d, r"file 'e'")
         self.assertNotContainsRe(d, r"file 'f'")
 
@@ -607,8 +609,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
             [('tree/' + alpha, chr(0)),
              ('tree/' + omega,
               ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
-        tree.add([alpha], ['file-id'])
-        tree.add([omega], ['file-id-2'])
+        tree.add([alpha], [b'file-id'])
+        tree.add([omega], [b'file-id-2'])
         diff_content = StubO()
         diff.show_diff_trees(tree.basis_tree(), tree, diff_content)
         diff_content.check_types(self, bytes)
@@ -628,20 +630,20 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
 
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/ren_'+alpha, 'contents\n')])
-        tree.add(['ren_'+alpha], ['file-id-2'])
-        self.build_tree_contents([('tree/del_'+alpha, 'contents\n')])
-        tree.add(['del_'+alpha], ['file-id-3'])
-        self.build_tree_contents([('tree/mod_'+alpha, 'contents\n')])
-        tree.add(['mod_'+alpha], ['file-id-4'])
+        self.build_tree_contents([('tree/ren_'+alpha, b'contents\n')])
+        tree.add(['ren_'+alpha], [b'file-id-2'])
+        self.build_tree_contents([('tree/del_'+alpha, b'contents\n')])
+        tree.add(['del_'+alpha], [b'file-id-3'])
+        self.build_tree_contents([('tree/mod_'+alpha, b'contents\n')])
+        tree.add(['mod_'+alpha], [b'file-id-4'])
 
-        tree.commit('one', rev_id='rev-1')
+        tree.commit('one', rev_id=b'rev-1')
 
         tree.rename_one('ren_'+alpha, 'ren_'+omega)
         tree.remove('del_'+alpha)
-        self.build_tree_contents([('tree/add_'+alpha, 'contents\n')])
-        tree.add(['add_'+alpha], ['file-id'])
-        self.build_tree_contents([('tree/mod_'+alpha, 'contents_mod\n')])
+        self.build_tree_contents([('tree/add_'+alpha, b'contents\n')])
+        tree.add(['add_'+alpha], [b'file-id'])
+        self.build_tree_contents([('tree/mod_'+alpha, b'contents_mod\n')])
 
         d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d,
@@ -663,8 +665,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
 
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            (test_txt, 'foo\n'),
-            (u1234, 'foo\n'),
+            (test_txt, b'foo\n'),
+            (u1234, b'foo\n'),
             (directory, None),
             ])
         tree.add([test_txt, u1234, directory])
@@ -698,10 +700,9 @@ class DiffWasIs(diff.DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         self.to_file.write('was: ')
-        self.to_file.write(self.old_tree.get_file(file_id).read())
+        self.to_file.write(self.old_tree.get_file(old_path).read())
         self.to_file.write('is: ')
-        self.to_file.write(self.new_tree.get_file(file_id).read())
-        pass
+        self.to_file.write(self.new_tree.get_file(new_path).read())
 
 
 class TestDiffTree(tests.TestCaseWithTransport):
@@ -718,46 +719,49 @@ class TestDiffTree(tests.TestCaseWithTransport):
 
     def test_diff_text(self):
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree_contents([('new-tree/newdir/',),
-                                  ('new-tree/newdir/newfile', 'new\n')])
+                                  ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
         differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
-        differ.diff_text('file-id', None, 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', None, 'old label',
+                         'new label', b'file-id', None)
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text(None, 'file-id', 'old label', 'new label')
+        differ.diff_text(None, 'newdir/newfile',
+                         'old label', 'new label', None, b'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -0,0 +1,1 @@\n+new\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
-        differ.diff_text('file-id', 'file-id', 'old label', 'new label')
+        differ.diff_text('olddir/oldfile', 'newdir/newfile',
+                         'old label', 'new label', b'file-id', b'file-id')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())
 
     def test_diff_deletion(self):
-        self.build_tree_contents([('old-tree/file', 'contents'),
-                                  ('new-tree/file', 'contents')])
-        self.old_tree.add('file', 'file-id')
-        self.new_tree.add('file', 'file-id')
+        self.build_tree_contents([('old-tree/file', b'contents'),
+                                  ('new-tree/file', b'contents')])
+        self.old_tree.add('file', b'file-id')
+        self.new_tree.add('file', b'file-id')
         os.unlink('new-tree/file')
         self.differ.show_diff(None)
         self.assertContainsRe(self.differ.to_file.getvalue(), '-contents')
 
     def test_diff_creation(self):
-        self.build_tree_contents([('old-tree/file', 'contents'),
-                                  ('new-tree/file', 'contents')])
-        self.old_tree.add('file', 'file-id')
-        self.new_tree.add('file', 'file-id')
+        self.build_tree_contents([('old-tree/file', b'contents'),
+                                  ('new-tree/file', b'contents')])
+        self.old_tree.add('file', b'file-id')
+        self.new_tree.add('file', b'file-id')
         os.unlink('old-tree/file')
         self.differ.show_diff(None)
-        self.assertContainsRe(self.differ.to_file.getvalue(), '\+contents')
+        self.assertContainsRe(self.differ.to_file.getvalue(), r'\+contents')
 
     def test_diff_symlink(self):
         differ = diff.DiffSymlink(self.old_tree, self.new_tree, BytesIO())
@@ -777,52 +781,52 @@ class TestDiffTree(tests.TestCaseWithTransport):
 
     def test_diff(self):
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree_contents([('new-tree/newdir/',),
-                                  ('new-tree/newdir/newfile', 'new\n')])
+                                  ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
         self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
-             ' \@\@\n-old\n\+new\n\n')
+            r' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
         self.requireFeature(features.SymlinkFeature)
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree(['new-tree/newdir/'])
         os.symlink('new', 'new-tree/newdir/newfile')
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
         self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
-             ' \@\@\n-old\n\n')
+            r' \@\@\n-old\n\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               "=== target is u'new'\n")
 
     def test_diff_directory(self):
         self.build_tree(['new-tree/new-dir/'])
-        self.new_tree.add('new-dir', 'new-dir-id')
-        self.differ.diff('new-dir-id', None, 'new-dir')
+        self.new_tree.add('new-dir', b'new-dir-id')
+        self.differ.diff(b'new-dir-id', None, 'new-dir')
         self.assertEqual(self.differ.to_file.getvalue(), '')
 
     def create_old_new(self):
         self.build_tree_contents([('old-tree/olddir/',),
-                                  ('old-tree/olddir/oldfile', 'old\n')])
+                                  ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
-        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.old_tree.add('olddir/oldfile', b'file-id')
         self.build_tree_contents([('new-tree/newdir/',),
-                                  ('new-tree/newdir/newfile', 'new\n')])
+                                  ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
-        self.new_tree.add('newdir/newfile', 'file-id')
+        self.new_tree.add('newdir/newfile', b'file-id')
 
     def test_register_diff(self):
         self.create_old_new()
@@ -837,7 +841,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
-             ' \@\@\n-old\n\+new\n\n')
+            r' \@\@\n-old\n\+new\n\n')
         self.assertContainsRe(differ.to_file.getvalue(),
                               'was: old\nis: new\n')
 
@@ -849,7 +853,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
-             ' \@\@\n-old\n\+new\n\n')
+            r' \@\@\n-old\n\+new\n\n')
         self.assertContainsRe(differ.to_file.getvalue(),
                               'was: old\nis: new\n')
 
@@ -884,14 +888,14 @@ class TestPatienceDiffLib(tests.TestCase):
         self.assertEqual(unique_lcs('', ''), [])
         self.assertEqual(unique_lcs('', 'a'), [])
         self.assertEqual(unique_lcs('a', ''), [])
-        self.assertEqual(unique_lcs('a', 'a'), [(0,0)])
+        self.assertEqual(unique_lcs('a', 'a'), [(0, 0)])
         self.assertEqual(unique_lcs('a', 'b'), [])
-        self.assertEqual(unique_lcs('ab', 'ab'), [(0,0), (1,1)])
-        self.assertEqual(unique_lcs('abcde', 'cdeab'), [(2,0), (3,1), (4,2)])
-        self.assertEqual(unique_lcs('cdeab', 'abcde'), [(0,2), (1,3), (2,4)])
-        self.assertEqual(unique_lcs('abXde', 'abYde'), [(0,0), (1,1),
-                                                         (3,3), (4,4)])
-        self.assertEqual(unique_lcs('acbac', 'abc'), [(2,1)])
+        self.assertEqual(unique_lcs('ab', 'ab'), [(0, 0), (1, 1)])
+        self.assertEqual(unique_lcs('abcde', 'cdeab'), [(2, 0), (3, 1), (4, 2)])
+        self.assertEqual(unique_lcs('cdeab', 'abcde'), [(0, 2), (1, 3), (2, 4)])
+        self.assertEqual(unique_lcs('abXde', 'abYde'), [(0, 0), (1, 1),
+                                                         (3, 3), (4, 4)])
+        self.assertEqual(unique_lcs('acbac', 'abc'), [(2, 1)])
 
     def test_recurse_matches(self):
         def test_one(a, b, matches):
@@ -907,7 +911,7 @@ class TestPatienceDiffLib(tests.TestCase):
         # Even though 'bc' is not unique globally, and is surrounded by
         # non-matching lines, we should still match, because they are locally
         # unique
-        test_one('abcdbce', 'afbcgdbce', [(0,0), (1, 2), (2, 3), (3, 5),
+        test_one('abcdbce', 'afbcgdbce', [(0, 0), (1, 2), (2, 3), (3, 5),
                                           (4, 6), (5, 7), (6, 8)])
 
         # recurse_matches doesn't match non-unique
@@ -918,7 +922,7 @@ class TestPatienceDiffLib(tests.TestCase):
         #test_one('aBccDe', 'abccde', [(0,0), (2,2), (3,3), (5,5)])
 
         # This is what it currently gives:
-        test_one('aBccDe', 'abccde', [(0,0), (5,5)])
+        test_one('aBccDe', 'abccde', [(0, 0), (5, 5)])
 
     def assertDiffBlocks(self, a, b, expected_blocks):
         """Check that the sequence matcher returns the correct blocks.
@@ -966,19 +970,19 @@ class TestPatienceDiffLib(tests.TestCase):
 
         # non unique lines surrounded by non-matching lines
         # won't be found
-        self.assertDiffBlocks('aBccDe', 'abccde', [(0,0,1), (5,5,1)])
+        self.assertDiffBlocks('aBccDe', 'abccde', [(0, 0, 1), (5, 5, 1)])
 
         # But they only need to be locally unique
-        self.assertDiffBlocks('aBcDec', 'abcdec', [(0,0,1), (2,2,1), (4,4,2)])
+        self.assertDiffBlocks('aBcDec', 'abcdec', [(0, 0, 1), (2, 2, 1), (4, 4, 2)])
 
         # non unique blocks won't be matched
-        self.assertDiffBlocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (8,8,1)])
+        self.assertDiffBlocks('aBcdEcdFg', 'abcdecdfg', [(0, 0, 1), (8, 8, 1)])
 
         # but locally unique ones will
-        self.assertDiffBlocks('aBcdEeXcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
-                                              (5,4,1), (7,5,2), (10,8,1)])
+        self.assertDiffBlocks('aBcdEeXcdFg', 'abcdecdfg', [(0, 0, 1), (2, 2, 2),
+                                              (5, 4, 1), (7, 5, 2), (10, 8, 1)])
 
-        self.assertDiffBlocks('abbabbXd', 'cabbabxd', [(7,7,1)])
+        self.assertDiffBlocks('abbabbXd', 'cabbabxd', [(7, 7, 1)])
         self.assertDiffBlocks('abbabbbb', 'cabbabbc', [])
         self.assertDiffBlocks('bbbbbbbb', 'cbbbbbbc', [])
 
@@ -1013,35 +1017,35 @@ class TestPatienceDiffLib(tests.TestCase):
 
         chk_ops('', '', [])
         chk_ops([], [], [])
-        chk_ops('abc', '', [('delete', 0,3, 0,0)])
-        chk_ops('', 'abc', [('insert', 0,0, 0,3)])
-        chk_ops('abcd', 'abcd', [('equal',    0,4, 0,4)])
-        chk_ops('abcd', 'abce', [('equal',   0,3, 0,3),
-                                 ('replace', 3,4, 3,4)
+        chk_ops('abc', '', [('delete', 0, 3, 0, 0)])
+        chk_ops('', 'abc', [('insert', 0, 0, 0, 3)])
+        chk_ops('abcd', 'abcd', [('equal',    0, 4, 0, 4)])
+        chk_ops('abcd', 'abce', [('equal',   0, 3, 0, 3),
+                                 ('replace', 3, 4, 3, 4)
                                 ])
-        chk_ops('eabc', 'abce', [('delete', 0,1, 0,0),
-                                 ('equal',  1,4, 0,3),
-                                 ('insert', 4,4, 3,4)
+        chk_ops('eabc', 'abce', [('delete', 0, 1, 0, 0),
+                                 ('equal',  1, 4, 0, 3),
+                                 ('insert', 4, 4, 3, 4)
                                 ])
-        chk_ops('eabce', 'abce', [('delete', 0,1, 0,0),
-                                  ('equal',  1,5, 0,4)
+        chk_ops('eabce', 'abce', [('delete', 0, 1, 0, 0),
+                                  ('equal',  1, 5, 0, 4)
                                  ])
-        chk_ops('abcde', 'abXde', [('equal',   0,2, 0,2),
-                                   ('replace', 2,3, 2,3),
-                                   ('equal',   3,5, 3,5)
+        chk_ops('abcde', 'abXde', [('equal',   0, 2, 0, 2),
+                                   ('replace', 2, 3, 2, 3),
+                                   ('equal',   3, 5, 3, 5)
                                   ])
-        chk_ops('abcde', 'abXYZde', [('equal',   0,2, 0,2),
-                                     ('replace', 2,3, 2,5),
-                                     ('equal',   3,5, 5,7)
+        chk_ops('abcde', 'abXYZde', [('equal',   0, 2, 0, 2),
+                                     ('replace', 2, 3, 2, 5),
+                                     ('equal',   3, 5, 5, 7)
                                     ])
-        chk_ops('abde', 'abXYZde', [('equal',  0,2, 0,2),
-                                    ('insert', 2,2, 2,5),
-                                    ('equal',  2,4, 5,7)
+        chk_ops('abde', 'abXYZde', [('equal',  0, 2, 0, 2),
+                                    ('insert', 2, 2, 2, 5),
+                                    ('equal',  2, 4, 5, 7)
                                    ])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [('equal',  0,6,  0,6),
-                 ('insert', 6,6,  6,11),
-                 ('equal',  6,16, 11,21)
+                [('equal',  0, 6,  0, 6),
+                 ('insert', 6, 6,  6, 11),
+                 ('equal',  6, 16, 11, 21)
                 ])
         chk_ops(
                 [ 'hello there\n'
@@ -1049,37 +1053,37 @@ class TestPatienceDiffLib(tests.TestCase):
                 , 'how are you today?\n'],
                 [ 'hello there\n'
                 , 'how are you today?\n'],
-                [('equal',  0,1, 0,1),
-                 ('delete', 1,2, 1,1),
-                 ('equal',  2,3, 1,2),
+                [('equal',  0, 1, 0, 1),
+                 ('delete', 1, 2, 1, 1),
+                 ('equal',  2, 3, 1, 2),
                 ])
         chk_ops('aBccDe', 'abccde',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,5, 1,5),
-                 ('equal',   5,6, 5,6),
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 5, 1, 5),
+                 ('equal',   5, 6, 5, 6),
                 ])
         chk_ops('aBcDec', 'abcdec',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,2, 1,2),
-                 ('equal',   2,3, 2,3),
-                 ('replace', 3,4, 3,4),
-                 ('equal',   4,6, 4,6),
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 2, 1, 2),
+                 ('equal',   2, 3, 2, 3),
+                 ('replace', 3, 4, 3, 4),
+                 ('equal',   4, 6, 4, 6),
                 ])
         chk_ops('aBcdEcdFg', 'abcdecdfg',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,8, 1,8),
-                 ('equal',   8,9, 8,9)
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 8, 1, 8),
+                 ('equal',   8, 9, 8, 9)
                 ])
         chk_ops('aBcdEeXcdFg', 'abcdecdfg',
-                [('equal',   0,1, 0,1),
-                 ('replace', 1,2, 1,2),
-                 ('equal',   2,4, 2,4),
-                 ('delete', 4,5, 4,4),
-                 ('equal',   5,6, 4,5),
-                 ('delete', 6,7, 5,5),
-                 ('equal',   7,9, 5,7),
-                 ('replace', 9,10, 7,8),
-                 ('equal',   10,11, 8,9)
+                [('equal',   0, 1, 0, 1),
+                 ('replace', 1, 2, 1, 2),
+                 ('equal',   2, 4, 2, 4),
+                 ('delete', 4, 5, 4, 4),
+                 ('equal',   5, 6, 4, 5),
+                 ('delete', 6, 7, 5, 5),
+                 ('equal',   7, 9, 5, 7),
+                 ('replace', 9, 10, 7, 8),
+                 ('equal',   10, 11, 8, 9)
                 ])
 
     def test_grouped_opcodes(self):
@@ -1089,33 +1093,33 @@ class TestPatienceDiffLib(tests.TestCase):
 
         chk_ops('', '', [])
         chk_ops([], [], [])
-        chk_ops('abc', '', [[('delete', 0,3, 0,0)]])
-        chk_ops('', 'abc', [[('insert', 0,0, 0,3)]])
+        chk_ops('abc', '', [[('delete', 0, 3, 0, 0)]])
+        chk_ops('', 'abc', [[('insert', 0, 0, 0, 3)]])
         chk_ops('abcd', 'abcd', [])
-        chk_ops('abcd', 'abce', [[('equal',   0,3, 0,3),
-                                  ('replace', 3,4, 3,4)
+        chk_ops('abcd', 'abce', [[('equal',   0, 3, 0, 3),
+                                  ('replace', 3, 4, 3, 4)
                                  ]])
-        chk_ops('eabc', 'abce', [[('delete', 0,1, 0,0),
-                                 ('equal',  1,4, 0,3),
-                                 ('insert', 4,4, 3,4)
+        chk_ops('eabc', 'abce', [[('delete', 0, 1, 0, 0),
+                                 ('equal',  1, 4, 0, 3),
+                                 ('insert', 4, 4, 3, 4)
                                 ]])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [[('equal',  3,6, 3,6),
-                  ('insert', 6,6, 6,11),
-                  ('equal',  6,9, 11,14)
+                [[('equal',  3, 6, 3, 6),
+                  ('insert', 6, 6, 6, 11),
+                  ('equal',  6, 9, 11, 14)
                   ]])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [[('equal',  2,6, 2,6),
-                  ('insert', 6,6, 6,11),
-                  ('equal',  6,10, 11,15)
+                [[('equal',  2, 6, 2, 6),
+                  ('insert', 6, 6, 6, 11),
+                  ('equal',  6, 10, 11, 15)
                   ]], 4)
         chk_ops('Xabcdef', 'abcdef',
-                [[('delete', 0,1, 0,0),
-                  ('equal',  1,4, 0,3)
+                [[('delete', 0, 1, 0, 0),
+                  ('equal',  1, 4, 0, 3)
                   ]])
         chk_ops('abcdef', 'abcdefX',
-                [[('equal',  3,6, 3,6),
-                  ('insert', 6,6, 6,7)
+                [[('equal',  3, 6, 3, 6),
+                  ('insert', 6, 6, 6, 7)
                   ]])
 
 
@@ -1128,7 +1132,7 @@ class TestPatienceDiffLib(tests.TestCase):
 
         self.assertDiffBlocks('ABCd efghIjk  L',
                               'AxyzBCn mo pqrstuvwI1 2  L',
-                              [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
+                              [(0, 0, 1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
         # These are rot13 code snippets.
         self.assertDiffBlocks('''\
@@ -1175,7 +1179,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True)
-, [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
+, [(0, 0, 1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
     def test_patience_unified_diff(self):
         txt_a = ['hello there\n',
@@ -1441,8 +1445,8 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.requireFeature(features.AttribFeature)
         output = BytesIO()
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'content')])
-        tree.add('file', 'file-id')
+        self.build_tree_contents([('tree/file', b'content')])
+        tree.add('file', b'file-id')
         tree.commit('old tree')
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -1452,7 +1456,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj = diff.DiffFromTool(['python', '-c',
                                       'print "@old_path @new_path"'],
                                      basis_tree, tree, output)
-        diff_obj._prepare_files('file-id', 'file', 'file')
+        diff_obj._prepare_files('file', 'file', file_id=b'file-id')
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, 'old\\file',
                                     r'R.*old\\file$')
@@ -1470,16 +1474,16 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
     def test_prepare_files(self):
         output = BytesIO()
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/oldname', 'oldcontent')])
-        self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
-        tree.add('oldname', 'file-id')
-        tree.add('oldname2', 'file2-id')
+        self.build_tree_contents([('tree/oldname', b'oldcontent')])
+        self.build_tree_contents([('tree/oldname2', b'oldcontent2')])
+        tree.add('oldname', b'file-id')
+        tree.add('oldname2', b'file2-id')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         tree.commit('old tree', timestamp=315532800)
         tree.rename_one('oldname', 'newname')
         tree.rename_one('oldname2', 'newname2')
-        self.build_tree_contents([('tree/newname', 'newcontent')])
-        self.build_tree_contents([('tree/newname2', 'newcontent2')])
+        self.build_tree_contents([('tree/newname', b'newcontent')])
+        self.build_tree_contents([('tree/newname2', b'newcontent2')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
@@ -1490,8 +1494,8 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
-        old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
-                                                     'newname')
+        old_path, new_path = diff_obj._prepare_files(
+                'oldname', 'newname', file_id='file-id')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
@@ -1500,7 +1504,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+        diff_obj._prepare_files('oldname2', 'newname2', file_id='file2-id')
 
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
@@ -1568,10 +1572,10 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def test_with_rev_specs(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'oldcontent')])
-        tree.add('file', 'file-id')
-        tree.commit('old tree', timestamp=0, rev_id="old-id")
-        self.build_tree_contents([('tree/file', 'newcontent')])
+        self.build_tree_contents([('tree/file', b'oldcontent')])
+        tree.add('file', b'file-id')
+        tree.commit('old tree', timestamp=0, rev_id=b"old-id")
+        self.build_tree_contents([('tree/file', b'newcontent')])
         tree.commit('new tree', timestamp=0, rev_id="new-id")
 
         revisions = [revisionspec.RevisionSpec.from_string('1'),

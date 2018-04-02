@@ -345,7 +345,7 @@ class BadInsert(TestBase):
         k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
-                frozenset([0,1,2]),
+                frozenset([0, 1, 2]),
                 ]
         k._weave = [('{', 0),
                 'foo {',
@@ -378,7 +378,7 @@ class InsertNested(TestBase):
         k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
-                frozenset([0,1,2]),
+                frozenset([0, 1, 2]),
                 ]
         k._weave = [('{', 0),
                 'foo {',
@@ -764,8 +764,5 @@ class TestNeedsReweave(TestCase):
 class TestWeaveFile(TestCaseInTempDir):
 
     def test_empty_file(self):
-        f = open('empty.weave', 'wb+')
-        try:
+        with open('empty.weave', 'wb+') as f:
             self.assertRaises(WeaveFormatError, read_weave, f)
-        finally:
-            f.close()

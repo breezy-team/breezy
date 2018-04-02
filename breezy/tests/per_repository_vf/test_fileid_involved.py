@@ -43,14 +43,15 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
 
     def create_branch_with_ghost_text(self):
         builder = self.make_branch_builder('ghost')
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-file-id', 'file', 'some content\n'))])
+            ('add', ('a', 'a-file-id', 'file', 'some content\n'))],
+            revision_id='A-id')
         b = builder.get_branch()
         old_rt = b.repository.revision_tree('A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = 'B-id'
-        new_inv['a-file-id'].revision = 'ghost-id'
+        new_inv.get_entry('a-file-id').revision = 'ghost-id'
         new_rev = _mod_revision.Revision('B-id',
             timestamp=time.time(),
             timezone=0,
@@ -94,13 +95,16 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format does not support stacking')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'contents\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [
-            ('modify', ('file-id', 'new-content\n'))])
-        builder.build_snapshot('C-id', ['B-id'], [
-            ('modify', ('file-id', 'yet more content\n'))])
+            ('add', ('file', 'file-id', 'file', 'contents\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [
+            ('modify', ('file', 'new-content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(['B-id'], [
+            ('modify', ('file', 'yet more content\n'))],
+            revision_id='C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()
@@ -165,7 +169,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["main/a", "main/b", "main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
@@ -211,7 +215,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end C -----------
 
-        bt1.rename_one("d","e")
+        bt1.rename_one("d", "e")
         bt1.commit("branch1, commit two", rev_id="rev-F")
 
         #-------- end F -----------
@@ -237,12 +241,12 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def test_fileids_altered_between_two_revs(self):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
+        self.branch.repository.fileids_altered_by_revision_ids(["rev-J", "rev-K"])
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':{'rev-J'},
              'c-funky<file-id>quiji%bo':{'rev-K'}
              },
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
+            self.branch.repository.fileids_altered_by_revision_ids(["rev-J", "rev-K"]))
 
         self.assertEqual(
             {'b-file-id-2006-01-01-defg': {'rev-<D>'},
@@ -281,7 +285,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd':{'rev-A'},
+            {'a-file-id-2006-01-01-abcd': {'rev-A'},
              'b-file-id-2006-01-01-defg': {'rev-A'},
              'c-funky<file-id>quiji%bo': {'rev-A'},
              },
@@ -312,9 +316,9 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         if len(history) < 2:
             return
 
-        for start in range(0,len(history)-1):
+        for start in range(0, len(history)-1):
             start_id = history[start]
-            for end in range(start+1,len(history)):
+            for end in range(start+1, len(history)):
                 end_id = history[end]
                 unique_revs = graph.find_unique_ancestors(end_id, [start_id])
                 l1 = self.branch.repository.fileids_altered_by_revision_ids(
@@ -365,7 +369,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["main/a", "main/b", "main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
@@ -425,10 +429,9 @@ def set_executability(wt, path, executable=True):
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.
     """
-    file_id = wt.path2id(path)
     tt = transform.TreeTransform(wt)
     try:
-        tt.set_executability(executable, tt.trans_id_tree_file_id(file_id))
+        tt.set_executability(executable, tt.trans_id_tree_path(path))
         tt.apply()
     finally:
         tt.finalize()

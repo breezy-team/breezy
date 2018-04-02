@@ -70,15 +70,20 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         # cached, so we force this by setting a basis that is a ghost and
         # thus cannot be cached.
         tree = self.make_branch_and_tree('.')
+        if not tree.branch.repository._format.supports_ghosts:
+            self.skipTest('format does not support ghosts')
         tree.set_parent_ids(['a-ghost'], allow_leftmost_as_ghost=True)
         self.assertRaises(errors.NoSuchRevision, tree.revision_tree, 'a-ghost')
 
     def test_revision_tree_different_root_id(self):
         """A revision tree might have a very different root."""
         tree = self.make_branch_and_tree('tree1')
-        tree.set_root_id('one')
+        if not tree.supports_setting_file_ids():
+            raise tests.TestNotApplicable(
+                'tree does not support setting file ids')
+        tree.set_root_id(b'one')
         rev1 = tree.commit('first post')
-        tree.set_root_id('two')
+        tree.set_root_id(b'two')
         try:
             cached_revision_tree = tree.revision_tree(rev1)
         except errors.NoSuchRevision:
@@ -95,33 +100,32 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
-        tree.set_root_id('root-id')
-        tree.add(files, ['a-id', 'b-id', 'c-id'])
-        tree.commit('a, b and b/c', rev_id='base')
+        tree.add(files)
+        base_revid = tree.commit('a, b and b/c')
         tree2 = tree.controldir.sprout(relpath + '2').open_workingtree()
         # Delete 'a' in tree
         tree.remove('a', keep_files=False)
-        tree.commit('remove a', rev_id='this')
+        this_revid = tree.commit('remove a')
         # Delete 'c' in tree2
         tree2.remove('b/c', keep_files=False)
         tree2.remove('b', keep_files=False)
-        tree2.commit('remove b/c', rev_id='other')
+        other_revid = tree2.commit('remove b/c')
         # Merge tree2 into tree
         tree.merge_from_branch(tree2.branch)
-        return tree
+        return tree, [base_revid, this_revid, other_revid]
 
     def test_kind_parent_tree(self):
-        tree = self.make_branch_with_merged_deletions()
+        tree, [base_revid, this_revid, other_revid] = self.make_branch_with_merged_deletions()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         parents = tree.get_parent_ids()
-        self.assertEqual(['this', 'other'], parents)
+        self.assertEqual([this_revid, other_revid], parents)
         basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertRaises(errors.NoSuchId, basis.kind, 'a-id')
+        self.assertRaises(errors.NoSuchFile, basis.kind, 'a')
         self.assertEqual(['directory', 'file'],
-                         [basis.kind('b-id'), basis.kind('c-id')])
+                         [basis.kind('b'), basis.kind('b/c')])
         try:
             other = tree.revision_tree(parents[1])
         except errors.NoSuchRevisionInTree:
@@ -130,6 +134,6 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
                 % type(tree))
         other.lock_read()
         self.addCleanup(other.unlock)
-        self.assertRaises(errors.NoSuchId, other.kind, 'b-id')
-        self.assertRaises(errors.NoSuchId, other.kind, 'c-id')
-        self.assertEqual('file', other.kind('a-id'))
+        self.assertRaises(errors.NoSuchFile, other.kind, 'b')
+        self.assertRaises(errors.NoSuchFile, other.kind, 'c')
+        self.assertEqual('file', other.kind('a'))

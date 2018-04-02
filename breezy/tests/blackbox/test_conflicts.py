@@ -26,8 +26,8 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
         prefix='my'):
     this_tree = test.make_branch_and_tree(this_path)
     test.build_tree_contents([
-        ('%s/%sfile' % (this_path, prefix), 'this content\n'),
-        ('%s/%s_other_file' % (this_path, prefix), 'this content\n'),
+        ('%s/%sfile' % (this_path, prefix), b'this content\n'),
+        ('%s/%s_other_file' % (this_path, prefix), b'this content\n'),
         ('%s/%sdir/' % (this_path, prefix),),
         ])
     this_tree.add(prefix+'file')
@@ -36,14 +36,14 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
     this_tree.commit(message="new")
     other_tree = this_tree.controldir.sprout(other_path).open_workingtree()
     test.build_tree_contents([
-        ('%s/%sfile' % (other_path, prefix), 'contentsb\n'),
-        ('%s/%s_other_file' % (other_path, prefix), 'contentsb\n'),
+        ('%s/%sfile' % (other_path, prefix), b'contentsb\n'),
+        ('%s/%s_other_file' % (other_path, prefix), b'contentsb\n'),
         ])
     other_tree.rename_one(prefix+'dir', prefix+'dir2')
     other_tree.commit(message="change")
     test.build_tree_contents([
-        ('%s/%sfile' % (this_path, prefix), 'contentsa2\n'),
-        ('%s/%s_other_file' % (this_path, prefix), 'contentsa2\n'),
+        ('%s/%sfile' % (this_path, prefix), b'contentsa2\n'),
+        ('%s/%s_other_file' % (this_path, prefix), b'contentsa2\n'),
         ])
     this_tree.rename_one(prefix+'dir', prefix+'dir3')
     this_tree.commit(message='change')

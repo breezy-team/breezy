@@ -16,7 +16,6 @@
 
 """Tests for version_info"""
 
-import imp
 import os
 import sys
 
@@ -47,14 +46,14 @@ class VersionInfoTestCase(TestCaseWithTransport):
 
         self.build_tree(['branch/a'])
         wt.add('a')
-        wt.commit('a', rev_id='r1')
+        wt.commit('a', rev_id=b'r1')
 
         self.build_tree(['branch/b'])
         wt.add('b')
-        wt.commit('b', rev_id='r2')
+        wt.commit('b', rev_id=b'r2')
 
-        self.build_tree_contents([('branch/a', 'new contents\n')])
-        wt.commit(u'\xe52', rev_id='r3')
+        self.build_tree_contents([('branch/a', b'new contents\n')])
+        wt.commit(u'\xe52', rev_id=b'r3')
 
         return wt
 
@@ -62,16 +61,16 @@ class VersionInfoTestCase(TestCaseWithTransport):
         wt = self.make_branch_and_tree('branch')
         self.build_tree(['branch/a'])
         wt.add('a')
-        wt.commit('a', rev_id='r1')
+        wt.commit('a', rev_id=b'r1')
 
         other = wt.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/b.a'])
         other.add(['b.a'])
-        other.commit('b.a', rev_id='o2')
+        other.commit('b.a', rev_id=b'o2')
 
         os.chdir('branch')
         self.run_bzr('merge ../other')
-        wt.commit('merge', rev_id='merge')
+        wt.commit('merge', rev_id=b'merge')
 
         wt.update(revision='o2')
 
@@ -214,7 +213,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         wt.add('c')
         wt.rename_one('b', 'd')
 
-        wt.commit('modified', rev_id='r4')
+        wt.commit('modified', rev_id=b'r4')
 
         wt.remove(['c', 'd'])
         os.remove('branch/d')
@@ -262,13 +261,11 @@ class PythonVersionInfoTests(VersionInfoTestCase):
 
     def regen(self, wt, **kwargs):
         """Create a test module, import and return it"""
-        outf = open('test_version_information.py', 'wb')
-        try:
+        with open('test_version_information.py', 'wb') as outf:
             builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
                                                **kwargs)
             builder.generate(outf)
-        finally:
-            outf.close()
+        import imp
         module_info = imp.find_module('test_version_information',
                                       [self.test_dir])
         tvi = imp.load_module('tvi', *module_info)
@@ -325,7 +322,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         self.assertEqual('new', tvi.file_revisions['c'])
         self.assertEqual('renamed from b', tvi.file_revisions['d'])
 
-        wt.commit('modified', rev_id='r4')
+        wt.commit('modified', rev_id=b'r4')
         wt.remove(['c', 'd'])
         os.remove('branch/d')
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)

@@ -33,29 +33,33 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
         # Make sure the basis file is created by a commit
         t = self.make_branch_and_tree('.')
+        if getattr(t, 'root_inventory', None) is None:
+            raise TestNotApplicable("not applicable to %r"
+                % (self.workingtree_format,))
+
         b = t.branch
         with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
-        t.commit('a', rev_id='r1')
+        r1 = t.commit('a')
 
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv = t.basis_tree().root_inventory
-        self.assertEqual('r1', basis_inv.revision_id)
+        self.assertEqual(r1, basis_inv.revision_id)
 
-        store_inv = b.repository.get_inventory('r1')
+        store_inv = b.repository.get_inventory(r1)
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
         with open('b', 'wb') as f: f.write('b\n')
         t.add('b')
-        t.commit('b', rev_id='r2')
+        r2 = t.commit('b')
 
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = breezy.bzr.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
-        self.assertEqual('r2', basis_inv.revision_id)
-        store_inv = b.repository.get_inventory('r2')
+        self.assertEqual(r2, basis_inv.revision_id)
+        store_inv = b.repository.get_inventory(r2)
 
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
@@ -68,10 +72,15 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')
+        if getattr(t, 'root_inventory', None) is None:
+            raise TestNotApplicable("not applicable to %r"
+                % (self.workingtree_format,))
+
+
         b = t.branch
         with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
-        t.commit('a', rev_id='r1')
+        t.commit('a')
         t._transport.put_bytes('basis-inventory-cache', 'booga')
         t.basis_tree()
         t._transport.put_bytes('basis-inventory-cache', '<xml/>')

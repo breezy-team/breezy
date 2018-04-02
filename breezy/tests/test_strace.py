@@ -80,7 +80,7 @@ class TestStrace(tests.TestCaseWithTransport):
 
         def function():
             return "foo"
-        result, strace_result = self.strace_detailed_or_skip(function,[], {},
+        result, strace_result = self.strace_detailed_or_skip(function, [], {},
                                                 follow_children=False)
         self.assertEqual("foo", result)
         self.assertIsInstance(strace_result, StraceResult)

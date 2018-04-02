@@ -28,18 +28,20 @@ from . import (
     )
 from . import errors as errors
 from .trace import mutter, warning
+from .workingtree import ShelvingUnsupported
+
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
 
 
-def report_changes(to_file, old, new, specific_files, 
-                   show_short_reporter, show_long_callback, 
-                   short=False, want_unchanged=False, 
+def report_changes(to_file, old, new, specific_files,
+                   show_short_reporter, show_long_callback,
+                   short=False, want_unchanged=False,
                    want_unversioned=False, show_ids=False, classify=True):
     """Display summary of changes.
 
-    This compares two trees with regards to a list of files, and delegates 
+    This compares two trees with regards to a list of files, and delegates
     the display to underlying elements.
 
     For short output, it creates an iterator on all changes, and lets a given
@@ -68,7 +70,6 @@ def report_changes(to_file, old, new, specific_files,
         changes = new.iter_changes(old, want_unchanged, specific_files,
             require_versioned=False, want_unversioned=want_unversioned)
         _mod_delta.report_changes(changes, show_short_reporter)
-        
     else:
         delta = new.changes_from(old, want_unchanged=want_unchanged,
                               specific_files=specific_files,
@@ -77,13 +78,13 @@ def report_changes(to_file, old, new, specific_files,
         # this
         delta.unversioned = [unversioned for unversioned in
             delta.unversioned if not new.is_ignored(unversioned[0])]
-        show_long_callback(to_file, delta, 
+        show_long_callback(to_file, delta,
                            show_ids=show_ids,
                            show_unchanged=want_unchanged,
                            classify=classify)
 
 
-def show_tree_status(wt, show_unchanged=None,
+def show_tree_status(wt,
                      specific_files=None,
                      show_ids=False,
                      to_file=None,
@@ -106,8 +107,6 @@ def show_tree_status(wt, show_unchanged=None,
     If showing the status of a working tree, extra information is included
     about unknown files, conflicts, and pending merges.
 
-    :param show_unchanged: Deprecated parameter. If set, includes unchanged
-        files.
     :param specific_files: If set, a list of filenames whose status should be
         shown.  It is an error to give a filename that is not in the working
         tree, or in the working inventory or in the basis inventory.
@@ -123,13 +122,9 @@ def show_tree_status(wt, show_unchanged=None,
         the merge tips
     :param versioned: If True, only shows versioned files.
     :param classify: Add special symbols to indicate file kind.
-    :param show_long_callback: A callback: message = show_long_callback(to_file, delta, 
+    :param show_long_callback: A callback: message = show_long_callback(to_file, delta,
         show_ids, show_unchanged, indent, filter), only used with the long output
     """
-    if show_unchanged is not None:
-        warn("show_tree_status with show_unchanged has been deprecated "
-             "since breezy 0.9", DeprecationWarning, stacklevel=2)
-
     if to_file is None:
         to_file = sys.stdout
 
@@ -168,14 +163,13 @@ def show_tree_status(wt, show_unchanged=None,
             # Reporter used for short outputs
             reporter = _mod_delta._ChangeReporter(output_file=to_file,
                 unversioned_filter=new.is_ignored, classify=classify)
-            report_changes(to_file, old, new, specific_files, 
-                           reporter, show_long_callback, 
-                           short=short, want_unchanged=show_unchanged, 
-                           want_unversioned=want_unversioned, show_ids=show_ids,
-                           classify=classify)
+            report_changes(to_file, old, new, specific_files,
+                           reporter, show_long_callback,
+                           short=short, want_unversioned=want_unversioned,
+                           show_ids=show_ids, classify=classify)
 
             # show the ignored files among specific files (i.e. show the files
-            # identified from input that we choose to ignore). 
+            # identified from input that we choose to ignore).
             if specific_files is not None:
                 # Ignored files is sorted because specific_files is already sorted
                 ignored_files = [specific for specific in
@@ -450,17 +444,21 @@ def _show_shelve_summary(params):
     get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
     if get_shelf_manager is None:
         return
-    manager = get_shelf_manager()
-    shelves = manager.active_shelves()
-    if shelves:
-        singular = '%d shelf exists. '
-        plural = '%d shelves exist. '
-        if len(shelves) == 1:
-            fmt = singular
-        else:
-            fmt = plural
-        params.to_file.write(fmt % len(shelves))
-        params.to_file.write('See "brz shelve --list" for details.\n')
+    try:
+        manager = get_shelf_manager()
+    except ShelvingUnsupported:
+        mutter('shelving not supported by tree, not displaying shelves.')
+    else:
+        shelves = manager.active_shelves()
+        if shelves:
+            singular = '%d shelf exists. '
+            plural = '%d shelves exist. '
+            if len(shelves) == 1:
+                fmt = singular
+            else:
+                fmt = plural
+            params.to_file.write(fmt % len(shelves))
+            params.to_file.write('See "brz shelve --list" for details.\n')
 
 
 hooks = StatusHooks()

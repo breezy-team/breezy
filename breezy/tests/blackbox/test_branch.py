@@ -49,10 +49,10 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def example_branch(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
-        self.build_tree_contents([(path + '/hello', 'foo')])
+        self.build_tree_contents([(path + '/hello', b'foo')])
         tree.add('hello')
         tree.commit(message='setup')
-        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        self.build_tree_contents([(path + '/goodbye', b'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
         return tree
@@ -81,7 +81,7 @@ class TestBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr(
             'init --format=development-colo file:b,branch=orig')
         self.assertEqual(
-            """Created a lightweight checkout (format: development-colo)\n""",
+            """Created a standalone tree (format: development-colo)\n""",
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr(
@@ -91,7 +91,7 @@ class TestBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr('branches b')
         self.assertEqual("  orig\n  thiswasa\n", out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
+        out, err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)
         self.assertEqual(
             'brz: ERROR: Already a branch: "file:b,branch=orig".\n', err)
@@ -216,16 +216,16 @@ class TestBranch(tests.TestCaseWithTransport):
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
-        tree_a.commit('commit a-1', rev_id='a-1')
+        tree_a.commit('commit a-1', rev_id=b'a-1')
         f = open('repo/a/file', 'ab')
         f.write('more stuff\n')
         f.close()
-        tree_a.commit('commit a-2', rev_id='a-2')
+        tree_a.commit('commit a-2', rev_id=b'a-2')
 
         tree_b = make_shared_tree('b')
         self.build_tree(['repo/b/file'])
         tree_b.add('file')
-        tree_b.commit('commit b-1', rev_id='b-1')
+        tree_b.commit('commit b-1', rev_id=b'b-1')
 
         self.assertTrue(shared_repo.has_revision('a-1'))
         self.assertTrue(shared_repo.has_revision('a-2'))
@@ -293,10 +293,10 @@ class TestBranch(tests.TestCaseWithTransport):
         self.example_branch('a')
         # existing dir with similar files but no .brz dir
         self.build_tree_contents([('b/',)])
-        self.build_tree_contents([('b/hello', 'bar')])  # different content
-        self.build_tree_contents([('b/goodbye', 'baz')])# same content
+        self.build_tree_contents([('b/hello', b'bar')])  # different content
+        self.build_tree_contents([('b/goodbye', b'baz')])# same content
         # fails without --use-existing-dir
-        out,err = self.run_bzr('branch a b', retcode=3)
+        out, err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Target directory "b" already exists.\n',
             err)
@@ -306,7 +306,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathExists('b/hello.moved')
         self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
-        out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
+        out, err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Already a branch: "b".\n', err)
 
@@ -349,15 +349,15 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_fetches_all_tags(self):
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.tags.set_tag('tag-a', 'rev-2')
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', rev2)
         source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
-        new_branch.repository.get_revision('rev-2')
+        self.assertEqual(rev2, new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision(rev2)
 
 
 class TestBranchStacked(tests.TestCaseWithTransport):
@@ -551,9 +551,9 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
-        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-a', rev2)
         source.tags.set_tag('tag-missing', 'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.reset_smart_call_log()
@@ -595,7 +595,7 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
     def setUp(self):
         super(TestRemoteBranch, self).setUp()
         tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/file', 'file content\n')])
+        self.build_tree_contents([('branch/file', b'file content\n')])
         tree.add('file')
         tree.commit('file created')
 

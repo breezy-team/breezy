@@ -41,9 +41,8 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
                 "non-inventory working trees")
         # prepare for a series of changes that will modify the
         # inventory
-        tree.lock_write()
-        try:
-            tree.set_root_id('new-root')
+        with tree.lock_write():
+            tree.set_root_id(b'new-root')
             # having dirtied the inventory, we can now expect an
             # InventoryModified exception when doing a read_working_inventory()
             # OR, the call can be ignored and the changes preserved
@@ -53,5 +52,3 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
                 pass
             else:
                 self.assertEqual('new-root', tree.path2id(''))
-        finally:
-            tree.unlock()

@@ -68,24 +68,24 @@ class TestCommands(TestCaseWithTransport):
         ignores._set_user_ignores(['*.tmp'])
 
         self.build_tree_contents(
-            [('foo.tmp', '.tmp files are ignored by default')])
+            [('foo.tmp', b'.tmp files are ignored by default')])
         self.assertEqual(list(tree.unknowns()), [])
 
-        self.build_tree_contents([('foo.c', 'int main() {}')])
+        self.build_tree_contents([('foo.c', b'int main() {}')])
         self.assertEqual(list(tree.unknowns()), ['foo.c'])
 
         tree.add('foo.c')
         self.assertEqual(list(tree.unknowns()), [])
 
         # 'ignore' works when creating the .bzrignore file
-        self.build_tree_contents([('foo.blah', 'blah')])
+        self.build_tree_contents([('foo.blah', b'blah')])
         self.assertEqual(list(tree.unknowns()), ['foo.blah'])
         self.run_bzr('ignore *.blah')
         self.assertEqual(list(tree.unknowns()), [])
         self.check_file_contents('.bzrignore', '*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
-        self.build_tree_contents([('garh', 'garh')])
+        self.build_tree_contents([('garh', b'garh')])
         self.assertEqual(list(tree.unknowns()), ['garh'])
         self.run_bzr('ignore garh')
         self.assertEqual(list(tree.unknowns()), [])
@@ -94,7 +94,7 @@ class TestCommands(TestCaseWithTransport):
     def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['a','b','c','d'])
+        self.build_tree(['a', 'b', 'c', 'd'])
         self.assertEqual(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
         self.run_bzr('ignore a b c')
         self.assertEqual(list(tree.unknowns()), ['d'])
@@ -116,7 +116,7 @@ class TestCommands(TestCaseWithTransport):
 
     def test_ignore_versioned_file(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['a','b'])
+        self.build_tree(['a', 'b'])
         tree.add('a')
 
         # test a single versioned file
@@ -172,7 +172,7 @@ class TestCommands(TestCaseWithTransport):
         out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
-            'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
+            r'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
         self.assertNotContainsRe(err, 'foo', re.DOTALL)
         self.assertFalse(os.path.isfile('.bzrignore'))
 

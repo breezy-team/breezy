@@ -118,8 +118,8 @@ else:
                 return asbytes()
         return s
 
-    _bad.func_code = _b_for_broken_paramiko.func_code
-    _bad_asbytes.func_code = _asbytes_for_broken_paramiko.func_code
+    _bad.__code__ = _b_for_broken_paramiko.__code__
+    _bad_asbytes.__code__ = _asbytes_for_broken_paramiko.__code__
 
 
 class SFTPLock(object):
@@ -454,13 +454,10 @@ class SFTPTransport(ConnectedTransport):
 
     def get_bytes(self, relpath):
         # reimplement this here so that we can report how many bytes came back
-        f = self.get(relpath)
-        try:
+        with self.get(relpath) as f:
             bytes = f.read()
             self._report_activity(len(bytes), 'read')
             return bytes
-        finally:
-            f.close()
 
     def _readv(self, relpath, offsets):
         """See Transport.readv()"""
@@ -514,7 +511,7 @@ class SFTPTransport(ConnectedTransport):
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code"""
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
-                        os.getpid(), random.randint(0,0x7FFFFFFF))
+                        os.getpid(), random.randint(0, 0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
         closed = False
         try:
@@ -874,6 +871,10 @@ class SFTPTransport(ConnectedTransport):
             def __init__(self, path):
                 self.path = path
             def unlock(self):
+                pass
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                return False
+            def __enter__(self):
                 pass
         return BogusLock(relpath)
 

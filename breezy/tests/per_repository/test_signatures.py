@@ -41,18 +41,18 @@ class TestSignatures(per_repository.TestCaseWithRepository):
 
     def test_sign_existing_revision(self):
         wt = self.make_branch_and_tree('.')
-        wt.commit("base", allow_pointless=True, rev_id='A')
+        a = wt.commit("base", allow_pointless=True)
         strategy = gpg.LoopbackGPGStrategy(None)
         repo = wt.branch.repository
         self.addCleanup(repo.lock_write().unlock)
         repo.start_write_group()
-        repo.sign_revision('A', strategy)
+        repo.sign_revision(a, strategy)
         repo.commit_write_group()
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
                          Testament.from_revision(repo,
-                         'A').as_short_text() +
+                         a).as_short_text() +
                          '-----END PSEUDO-SIGNED CONTENT-----\n',
-                         repo.get_signature_text('A'))
+                         repo.get_signature_text(a))
 
     def test_store_signature(self):
         wt = self.make_branch_and_tree('.')
@@ -79,72 +79,71 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
-                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
-                         branch.repository.get_signature_text('A'))
+        if wt.branch.repository._format.supports_setting_revision_ids:
+            wt.commit("base", rev_id=b'A', allow_pointless=True)
+            self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                             'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
+                             branch.repository.get_signature_text('A'))
 
     def test_clone_preserves_signatures(self):
         wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
+        a = wt.commit('A', allow_pointless=True)
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
         d2 = repo.controldir.clone(urlutils.local_path_to_url('target'))
-        self.assertEqual(repo.get_signature_text('A'),
-                         d2.open_repository().get_signature_text('A'))
+        self.assertEqual(repo.get_signature_text(a),
+                         d2.open_repository().get_signature_text(a))
 
     def test_verify_revision_signature_not_signed(self):
         wt = self.make_branch_and_tree('.')
-        wt.commit("base", allow_pointless=True, rev_id='A')
+        a = wt.commit("base", allow_pointless=True)
         strategy = gpg.LoopbackGPGStrategy(None)
         self.assertEqual(
             (gpg.SIGNATURE_NOT_SIGNED, None),
-            wt.branch.repository.verify_revision_signature('A', strategy))
+            wt.branch.repository.verify_revision_signature(a, strategy))
 
     def test_verify_revision_signature(self):
         wt = self.make_branch_and_tree('.')
-        wt.commit("base", allow_pointless=True, rev_id='A')
+        a = wt.commit("base", allow_pointless=True)
         strategy = gpg.LoopbackGPGStrategy(None)
         repo = wt.branch.repository
         self.addCleanup(repo.lock_write().unlock)
         repo.start_write_group()
-        repo.sign_revision('A', strategy)
+        repo.sign_revision(a, strategy)
         repo.commit_write_group()
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo,
-                         'A').as_short_text() +
+                         Testament.from_revision(repo, a).as_short_text() +
                          '-----END PSEUDO-SIGNED CONTENT-----\n',
-                         repo.get_signature_text('A'))
+                         repo.get_signature_text(a))
         self.assertEqual(
-            (gpg.SIGNATURE_VALID, None, ),
-            repo.verify_revision_signature('A', strategy))
+            (gpg.SIGNATURE_VALID, None),
+            repo.verify_revision_signature(a, strategy))
 
     def test_verify_revision_signatures(self):
         wt = self.make_branch_and_tree('.')
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        wt.commit("second", allow_pointless=True, rev_id='B')
+        a = wt.commit("base", allow_pointless=True)
+        b = wt.commit("second", allow_pointless=True)
         strategy = gpg.LoopbackGPGStrategy(None)
         repo = wt.branch.repository
         self.addCleanup(repo.lock_write().unlock)
         repo.start_write_group()
-        repo.sign_revision('A', strategy)
+        repo.sign_revision(a, strategy)
         repo.commit_write_group()
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo,
-                         'A').as_short_text() +
+                         Testament.from_revision(repo, a).as_short_text() +
                          '-----END PSEUDO-SIGNED CONTENT-----\n',
-                         repo.get_signature_text('A'))
+                         repo.get_signature_text(a))
         self.assertEqual(
-            [('A', gpg.SIGNATURE_VALID, None),
-             ('B', gpg.SIGNATURE_NOT_SIGNED, None)],
-            list(repo.verify_revision_signatures(['A', 'B'], strategy)))
+            [(a, gpg.SIGNATURE_VALID, None),
+             (b, gpg.SIGNATURE_NOT_SIGNED, None)],
+            list(repo.verify_revision_signatures([a, b], strategy)))
 
 
 class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
@@ -154,10 +153,10 @@ class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "repository supports signing revisions")
         wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
+        a = wt.commit('A', allow_pointless=True)
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
         self.assertRaises(errors.UnsupportedOperation,
-            repo.sign_revision, 'A', gpg.LoopbackGPGStrategy(None))
+            repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()

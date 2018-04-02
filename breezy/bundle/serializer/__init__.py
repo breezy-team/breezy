@@ -36,11 +36,11 @@ from ...timestamp import unpack_highres_date, format_highres_date
 
 
 # New bundles should try to use this header format
-BUNDLE_HEADER = '# Bazaar revision bundle v'
+BUNDLE_HEADER = b'# Bazaar revision bundle v'
 BUNDLE_HEADER_RE = re.compile(
-    r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+    br'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 CHANGESET_OLD_HEADER_RE = re.compile(
-    r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+    br'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 
 
 _serializers = {}
@@ -106,12 +106,9 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param version: [optional] target serialization version
     """
 
-    source.lock_read()
-    try:
+    with source.lock_read():
         return get_serializer(version).write(source, revision_ids,
                                              forced_bases, f)
-    finally:
-        source.unlock()
 
 
 def write_bundle(repository, revision_id, base_revision_id, out, format=None):
@@ -123,12 +120,9 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
          applying the bundle.
     :param out: Output file.
     """
-    repository.lock_read()
-    try:
+    with repository.lock_read():
         return get_serializer(format).write_bundle(repository, revision_id,
                                                    base_revision_id, out)
-    finally:
-        repository.unlock()
 
 
 class BundleSerializer(object):

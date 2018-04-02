@@ -118,18 +118,18 @@ class TestHasLayout(TestCaseWithTransport):
     def test_match(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
         self.assertThat(t, HasLayout(
             [('', t.get_root_id()),
-             ('a', 'a-id'),
-             ('b/', 'b-id'),
-             ('b/c', 'c-id')]))
+             ('a', b'a-id'),
+             ('b/', b'b-id'),
+             ('b/c', b'c-id')]))
 
     def test_mismatch(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
@@ -141,7 +141,7 @@ class TestHasLayout(TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         t.has_versioned_directories = lambda: False
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
@@ -149,6 +149,31 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertEqual(
             set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
             set(mismatch.describe().split(" != ")))
+
+
+class TestHasPathRelations(TestCaseWithTransport):
+
+    def test__str__(self):
+        t = self.make_branch_and_tree('.')
+        matcher = HasPathRelations(t, [("a", "b")])
+        self.assertEqual("HasPathRelations(%r, [('a', 'b')])" % t, str(matcher))
+
+    def test_match(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'])
+        self.assertThat(t, HasPathRelations(t,
+            [('', ''),
+             ('a', 'a'),
+             ('b/', 'b/'),
+             ('b/c', 'b/c')]))
+
+    def test_mismatch(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'])
+        mismatch = HasPathRelations(t, [('a', 'a')]).match(t)
+        self.assertIsNot(None, mismatch)
 
 
 class TestContainsNoVfsCalls(TestCase):
@@ -189,15 +214,15 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
 
     def test_matches(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('msg1', rev_id='a')
-        tree.commit('msg2', rev_id='b')
+        tree.commit('msg1', rev_id=b'a')
+        tree.commit('msg2', rev_id=b'b')
         matcher = RevisionHistoryMatches(['a', 'b'])
         self.assertIs(None, matcher.match(tree.branch))
 
     def test_mismatch(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('msg1', rev_id='a')
-        tree.commit('msg2', rev_id='b')
+        tree.commit('msg1', rev_id=b'a')
+        tree.commit('msg2', rev_id=b'b')
         matcher = RevisionHistoryMatches(['a', 'b', 'c'])
         self.assertEqual(
             set(("['a', 'b']", "['a', 'b', 'c']")),

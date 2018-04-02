@@ -38,11 +38,12 @@ def get_filename(options):
 
 def infogen(options, outfile):
     """Create manual in RSTX format"""
-    tt = breezy.osutils.gmtime()
+    t = time.time()
+    tt = time.gmtime(t)
     params = \
            { "brzcmd": options.brz_name,
-             "datestamp": time.strftime("%Y-%m-%d",tt),
-             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
+             "datestamp": time.strftime("%Y-%m-%d", tt),
+             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000", tt),
              "version": breezy.__version__,
              }
     nominated_filename = getattr(options, 'filename', None)
@@ -129,9 +130,8 @@ def _dump_text(output_dir, topic, text):
     """Dump text for a topic to a file."""
     topic_id = "%s-%s" % (topic, "help")
     filename = breezy.osutils.pathjoin(output_dir, topic_id + ".txt")
-    f =  open(filename, "w")
-    f.write(text.encode('utf-8'))
-    f.close()
+    with open(filename, "w") as f:
+        f.write(text.encode('utf-8'))
     return topic_id
 
 

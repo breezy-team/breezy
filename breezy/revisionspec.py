@@ -701,18 +701,15 @@ class RevisionSpec_date(RevisionSpec):
                     else:
                         second = 0
                 else:
-                    hour, minute, second = 0,0,0
+                    hour, minute, second = 0, 0, 0
             except ValueError:
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, 'invalid date')
 
             dt = datetime.datetime(year=year, month=month, day=day,
                     hour=hour, minute=minute, second=second)
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
-        finally:
-            branch.unlock()
         if rev == branch.revno():
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, rev)
@@ -758,30 +755,22 @@ class RevisionSpec_ancestor(RevisionSpec):
     def _find_revision_id(branch, other_location):
         from .branch import Branch
 
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             revision_a = revision.ensure_null(branch.last_revision())
             if revision_a == revision.NULL_REVISION:
                 raise errors.NoCommits(branch)
             if other_location == '':
                 other_location = branch.get_parent()
             other_branch = Branch.open(other_location)
-            other_branch.lock_read()
-            try:
+            with other_branch.lock_read():
                 revision_b = revision.ensure_null(other_branch.last_revision())
                 if revision_b == revision.NULL_REVISION:
                     raise errors.NoCommits(other_branch)
                 graph = branch.repository.get_graph(other_branch.repository)
                 rev_id = graph.find_unique_lca(revision_a, revision_b)
-            finally:
-                other_branch.unlock()
             if rev_id == revision.NULL_REVISION:
                 raise errors.NoCommonAncestor(revision_a, revision_b)
             return rev_id
-        finally:
-            branch.unlock()
-
-
 
 
 class RevisionSpec_branch(RevisionSpec):
@@ -907,16 +896,12 @@ class RevisionSpec_annotate(RevisionIDSpec):
         except ValueError:
             self._raise_invalid(numstring, context_branch)
         tree, file_path = workingtree.WorkingTree.open_containing(path)
-        tree.lock_read()
-        try:
-            file_id = tree.path2id(file_path)
-            if file_id is None:
+        with tree.lock_read():
+            if not tree.has_filename(file_path):
                 raise errors.InvalidRevisionSpec(self.user_spec,
                     context_branch, "File '%s' is not versioned." %
                     file_path)
-            revision_ids = [r for (r, l) in tree.annotate_iter(file_id)]
-        finally:
-            tree.unlock()
+            revision_ids = [r for (r, l) in tree.annotate_iter(file_path)]
         try:
             revision_id = revision_ids[index]
         except IndexError:

@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from .errors import BzrError
+from .lock import LogicalLockResult
 
 
 class NoCompatibleInter(BzrError):
@@ -45,8 +46,7 @@ class InterObject(object):
 
     If the source and target objects implement the locking protocol -
     lock_read, lock_write, unlock, then the InterObject's lock_read,
-    lock_write and unlock methods may be used (optionally in conjunction with
-    the needs_read_lock and needs_write_lock decorators.)
+    lock_write and unlock methods may be used.
 
     When looking for an inter, the most recently registered types are tested
     first.  So typically the most generic and slowest InterObjects should be
@@ -104,6 +104,7 @@ class InterObject(object):
         a read lock and the target a read lock.
         """
         self._double_lock(self.source.lock_read, self.target.lock_read)
+        return LogicalLockResult(self.unlock)
 
     def lock_write(self):
         """Take out a logical write lock.
@@ -112,6 +113,7 @@ class InterObject(object):
         a read lock and the target a write lock.
         """
         self._double_lock(self.source.lock_read, self.target.lock_write)
+        return LogicalLockResult(self.unlock)
 
     @classmethod
     def register_optimiser(klass, optimiser):

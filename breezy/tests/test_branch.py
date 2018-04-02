@@ -132,7 +132,7 @@ class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
-        return "Sample branch format."
+        return b"Sample branch format."
 
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
@@ -151,7 +151,7 @@ class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
 
 # Demonstrating how lazy loading is often implemented:
 # A constant string is created.
-SampleSupportedBranchFormatString = "Sample supported branch format."
+SampleSupportedBranchFormatString = b"Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
 class SampleSupportedBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
@@ -200,7 +200,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            dir = format._matchingbzrdir.initialize(url)
+            dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(dir)
@@ -209,10 +209,10 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_from_string(self):
         self.assertIsInstance(
-            SampleBranchFormat.from_string("Sample branch format."),
+            SampleBranchFormat.from_string(b"Sample branch format."),
             SampleBranchFormat)
         self.assertRaises(AssertionError,
-            SampleBranchFormat.from_string, "Different branch format.")
+            SampleBranchFormat.from_string, b"Different branch format.")
 
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -229,11 +229,11 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.update_feature_flags({"name": "optional"})
+        tree.branch.update_feature_flags({b"name": b"optional"})
         found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.controldir)
         self.assertIsInstance(found_format, _mod_bzrbranch.BranchFormatMetadir)
-        self.assertEqual(found_format.features.get("name"), "optional")
-        tree.branch.update_feature_flags({"name": None})
+        self.assertEqual(found_format.features.get(b"name"), b"optional")
+        tree.branch.update_feature_flags({b"name": None})
         branch = _mod_branch.Branch.open('.')
         self.assertEqual(branch._format.features, {})
 
@@ -254,10 +254,10 @@ class TestBranchFormatRegistry(tests.TestCase):
         format = SampleBranchFormat()
         self.registry.register(format)
         self.assertEqual(format,
-            self.registry.get("Sample branch format."))
+            self.registry.get(b"Sample branch format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
-            "Sample branch format.")
+            b"Sample branch format.")
 
     def test_get_all(self):
         format = SampleBranchFormat()

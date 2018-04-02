@@ -118,12 +118,12 @@ def build_branch_with_non_ancestral_rev(branch_builder):
     :returns: the new branch
     """
     # Make a sequence of two commits
-    branch_builder.build_commit(message="Rev 1", rev_id='rev-1')
-    branch_builder.build_commit(message="Rev 2", rev_id='rev-2')
+    rev1 = branch_builder.build_commit(message="Rev 1")
+    rev2 = branch_builder.build_commit(message="Rev 2")
     # Move the branch tip back to the first commit
     source = branch_builder.get_branch()
-    source.set_last_revision_info(1, 'rev-1')
-    return source
+    source.set_last_revision_info(1, rev1)
+    return source, rev1, rev2
 
 
 def make_branch_and_populated_tree(testcase):
@@ -135,8 +135,8 @@ def make_branch_and_populated_tree(testcase):
     # doesn't need to be bound to the particular files created? -- mbp
     # 20110705
     tree = testcase.make_branch_and_tree('t')
-    testcase.build_tree_contents([('t/hello', 'hello world')])
-    tree.add(['hello'], ['hello-id'])
+    testcase.build_tree_contents([('t/hello', b'hello world')])
+    tree.add(['hello'], [b'hello-id'])
     return tree
 
 

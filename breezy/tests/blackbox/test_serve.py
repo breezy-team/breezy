@@ -153,13 +153,10 @@ class TestBzrServe(TestBzrServeBase):
 
     def make_read_requests(self, branch):
         """Do some read only requests."""
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             branch.repository.all_revision_ids()
             self.assertEqual(_mod_revision.NULL_REVISION,
                              _mod_revision.ensure_null(branch.last_revision()))
-        finally:
-            branch.unlock()
 
     def start_server_inet(self, extra_options=()):
         """Start a brz server subprocess using the --inet option.
@@ -278,7 +275,7 @@ class TestBzrServe(TestBzrServeBase):
         # Save the config as the subprocess will use it
         gs.store.save()
         process, url = self.start_server_port()
-        self.build_tree_contents([('a_file', 'contents\n')])
+        self.build_tree_contents([('a_file', b'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
         self.assertEqual('contents\n', t.get_bytes('a_file'))
@@ -295,7 +292,7 @@ class TestBzrServe(TestBzrServeBase):
 
     def test_bzr_serve_supports_client_timeout(self):
         process, url = self.start_server_port(['--client-timeout=0.1'])
-        self.build_tree_contents([('a_file', 'contents\n')])
+        self.build_tree_contents([('a_file', b'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
         self.assertEqual('contents\n', t.get_bytes('a_file'))
@@ -314,7 +311,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_graceful_shutdown(self):
-        big_contents = 'a'*64*1024
+        big_contents = b'a'*64*1024
         self.build_tree_contents([('bigfile', big_contents)])
         process, url = self.start_server_port(['--client-timeout=1.0'])
         t = transport.get_transport_from_url(url)
@@ -401,7 +398,8 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         bzr_server = BzrServerFactory(
             self.fake_expanduser, lambda t: base_path)
         mem_transport = self.get_transport()
-        mem_transport.mkdir_multi(['home', 'home/user'])
+        mem_transport.mkdir('home')
+        mem_transport.mkdir('home/user')
         bzr_server.set_up(mem_transport, None, None, inet=True, timeout=4.0)
         self.addCleanup(bzr_server.tear_down)
         return bzr_server

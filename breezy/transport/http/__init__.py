@@ -226,7 +226,7 @@ class HttpTransportBase(ConnectedTransport):
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange, errors.HttpBoundaryMissing) as e:
-                mutter('Exception %r: %s during http._readv',e, e)
+                mutter('Exception %r: %s during http._readv', e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):
                     # We don't degrade the range hint for ShortReadvError since
@@ -584,7 +584,7 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
 
     def __init__(self, client_medium):
         medium.SmartClientMediumRequest.__init__(self, client_medium)
-        self._buffer = ''
+        self._buffer = b''
 
     def _accept_bytes(self, bytes):
         self._buffer += bytes
@@ -599,7 +599,7 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
 
     def _read_line(self):
         line, excess = medium._get_line(self._response_body.read)
-        if excess != '':
+        if excess != b'':
             raise AssertionError(
                 '_get_line returned excess bytes, but this mediumrequest '
                 'cannot handle excess. (%r)' % (excess,))

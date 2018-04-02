@@ -57,12 +57,12 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     for dp, tp, ie in _export_iter_entries(tree, subdir):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
-            to_fetch.append((ie.file_id, (dp, tp, ie.file_id)))
+            to_fetch.append((tp, (dp, tp, ie.file_id)))
         elif ie.kind == "directory":
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                symlink_target = tree.get_symlink_target(ie.file_id, tp)
+                symlink_target = tree.get_symlink_target(tp, ie.file_id)
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
@@ -70,7 +70,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
                     % (fullpath, symlink_target, e))
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
-               (ie.file_id, ie.kind))
+               (tp, ie.kind))
 
         yield
     # The data returned here can be in any order, but we've already created all
@@ -80,17 +80,14 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666
-        if tree.is_executable(file_id, treepath):
+        if tree.is_executable(treepath, file_id):
             mode = 0o777
-        out = os.fdopen(os.open(fullpath, flags, mode), 'wb')
-        try:
+        with os.fdopen(os.open(fullpath, flags, mode), 'wb') as out:
             out.writelines(chunks)
-        finally:
-            out.close()
         if force_mtime is not None:
             mtime = force_mtime
         else:
-            mtime = tree.get_file_mtime(file_id, treepath)
+            mtime = tree.get_file_mtime(treepath, file_id)
         os.utime(fullpath, (mtime, mtime))
 
         yield

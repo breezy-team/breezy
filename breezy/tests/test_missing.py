@@ -40,13 +40,13 @@ class TestMissing(TestCaseWithTransport):
         merger_tree = self.make_branch_and_tree('merger')
         merger = merger_tree.branch
         self.assertUnmerged(([], []), original, puller)
-        original_tree.commit('a', rev_id='a')
+        original_tree.commit('a', rev_id=b'a')
         self.assertUnmerged(([('1', 'a', 0)], []), original, puller)
         puller_tree.pull(original)
         self.assertUnmerged(([], []), original, puller)
         merger_tree.pull(original)
-        original_tree.commit('b', rev_id='b')
-        original_tree.commit('c', rev_id='c')
+        original_tree.commit('b', rev_id=b'b')
+        original_tree.commit('c', rev_id=b'c')
         self.assertUnmerged(([('2', 'b', 0), ('3', 'c', 0)], []),
                             original, puller)
         self.assertUnmerged(([('3', 'c', 0), ('2', 'b', 0)], []),
@@ -59,29 +59,29 @@ class TestMissing(TestCaseWithTransport):
         merger_tree.merge_from_branch(original)
         self.assertUnmerged(([('2', 'b', 0), ('3', 'c', 0)], []),
                             original, merger)
-        merger_tree.commit('d', rev_id='d')
+        merger_tree.commit('d', rev_id=b'd')
         self.assertUnmerged(([], [('2', 'd', 0)]), original, merger)
 
     def test_iter_log_revisions(self):
         base_tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a'])
-        base_tree.add(['a'], ['a-id'])
-        base_tree.commit('add a', rev_id='b-1')
+        base_tree.add(['a'], [b'a-id'])
+        base_tree.commit('add a', rev_id=b'b-1')
 
         child_tree = base_tree.controldir.sprout('child').open_workingtree()
 
         self.build_tree(['child/b'])
-        child_tree.add(['b'], ['b-id'])
-        child_tree.commit('adding b', rev_id='c-2')
+        child_tree.add(['b'], [b'b-id'])
+        child_tree.commit('adding b', rev_id=b'c-2')
 
         child_tree.remove(['a'])
-        child_tree.commit('removing a', rev_id='c-3')
+        child_tree.commit('removing a', rev_id=b'c-3')
 
-        self.build_tree_contents([('child/b', 'new contents for b\n')])
-        child_tree.commit('modifying b', rev_id='c-4')
+        self.build_tree_contents([('child/b', b'new contents for b\n')])
+        child_tree.commit('modifying b', rev_id=b'c-4')
 
         child_tree.rename_one('b', 'c')
-        child_tree.commit('rename b=>c', rev_id='c-5')
+        child_tree.commit('rename b=>c', rev_id=b'c-5')
 
         base_extra, child_extra = missing.find_unmerged(base_tree.branch,
                                                         child_tree.branch)
@@ -95,7 +95,7 @@ class TestMissing(TestCaseWithTransport):
                             verbose=True))
         self.assertEqual(4, len(results))
 
-        r0,r1,r2,r3 = results
+        r0, r1, r2, r3 = results
 
         self.assertEqual([('2', 'c-2'), ('3', 'c-3'),
                           ('4', 'c-4'), ('5', 'c-5'),],
@@ -189,18 +189,18 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
 
     def test_include_merged(self):
         tree = self.make_branch_and_tree('tree')
-        rev1 = tree.commit('one', rev_id='rev1')
+        rev1 = tree.commit('one', rev_id=b'rev1')
 
         tree2 = tree.controldir.sprout('tree2').open_workingtree()
-        rev2 = tree2.commit('two', rev_id='rev2')
-        rev3 = tree2.commit('three', rev_id='rev3')
+        rev2 = tree2.commit('two', rev_id=b'rev2')
+        rev3 = tree2.commit('three', rev_id=b'rev3')
 
         tree3 = tree2.controldir.sprout('tree3').open_workingtree()
-        rev4 = tree3.commit('four', rev_id='rev4')
-        rev5 = tree3.commit('five', rev_id='rev5')
+        rev4 = tree3.commit('four', rev_id=b'rev4')
+        rev5 = tree3.commit('five', rev_id=b'rev5')
 
         tree2.merge_from_branch(tree3.branch)
-        rev6 = tree2.commit('six', rev_id='rev6')
+        rev6 = tree2.commit('six', rev_id=b'rev6')
 
         self.assertUnmerged([], [('2', 'rev2', 0), ('3', 'rev3', 0),
                                  ('4', 'rev6', 0),

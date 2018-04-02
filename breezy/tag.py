@@ -167,8 +167,7 @@ class BasicTags(_Tags):
             raise errors.NoSuchTag(tag_name)
 
     def get_tag_dict(self):
-        self.branch.lock_read()
-        try:
+        with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
             except errors.NoSuchFile as e:
@@ -179,8 +178,6 @@ class BasicTags(_Tags):
                      % (self.branch, ))
                 return {}
             return self._deserialize_tag_dict(tag_content)
-        finally:
-            self.branch.unlock()
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys
@@ -362,8 +359,8 @@ def sort_natural(branch, tags):
     :param tags: List of tuples with tag name and revision id.
     """
     def natural_sort_key(tag):
-        return [f(s) for f,s in
-                zip(itertools.cycle((unicode.lower,int)),
+        return [f(s) for f, s in
+                zip(itertools.cycle((unicode.lower, int)),
                                     re.split('([0-9]+)', tag[0]))]
     tags.sort(key=natural_sort_key)
 

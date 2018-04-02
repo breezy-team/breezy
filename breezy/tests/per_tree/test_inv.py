@@ -33,8 +33,8 @@ from breezy.tests import (
     )
 
 
-def get_entry(tree, file_id):
-    return tree.iter_entries_by_dir([file_id]).next()[1]
+def get_entry(tree, path):
+    return tree.iter_entries_by_dir(specific_files=[path]).next()[1]
 
 
 class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
@@ -52,7 +52,7 @@ class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
             raise TestSkipped(
                 'symlinks not accurately represented in working trees and'
                 ' preview trees')
-        entry = get_entry(self.tree, self.tree.path2id('symlink'))
+        entry = get_entry(self.tree, 'symlink')
         self.assertEqual(entry.symlink_target, 'link-target')
 
     def test_symlink_target_tree(self):
@@ -64,7 +64,7 @@ class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
         self.assertIs(None, self.tree.get_file_size('symlink'))
 
     def test_symlink(self):
-        entry = get_entry(self.tree, self.tree.path2id('symlink'))
+        entry = get_entry(self.tree, 'symlink')
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
 
@@ -76,6 +76,9 @@ class TestInventory(per_tree.TestCaseWithTree):
         self.build_tree(['tree/dir/', 'tree/dir/file'])
         work_tree.add(['dir', 'dir/file'])
         tree = self._convert_tree(work_tree)
+        if not isinstance(tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual({tree.path2id('dir'), tree.path2id('dir/file')},
@@ -88,6 +91,9 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree.commit('commit old state')
         work_tree.remove('file')
         tree = self._convert_tree(work_tree)
+        if not isinstance(tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(set([]), tree.paths2ids(['file'],

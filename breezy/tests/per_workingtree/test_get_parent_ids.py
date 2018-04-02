@@ -17,6 +17,7 @@
 
 """Tests for interface conformance of 'workingtree.get_parent_ids'"""
 
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -39,6 +40,10 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         """Test the correspondence between set pending merges and get_parent_ids."""
         wt = self.make_branch_and_tree('.')
         self.assertEqual([], wt.get_parent_ids())
+        if not wt._format. supports_righthand_parent_id_as_ghost:
+            raise TestNotApplicable(
+                    'format does not support right hand side parents '
+                    'that are ghosts')
         # the first pending merge replaces the 'last revision' because
         # 'last revision' is shorthand for 'left most parent'
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')

@@ -53,8 +53,8 @@ _dir = os.path.dirname
 our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
 sys.path.insert(0, our_bzr)
 
-from ... import osutils
-from .. import ssl_certs
+from breezy import osutils
+from breezy.tests import ssl_certs
 
 
 def error(s):

@@ -165,12 +165,12 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
+        return b"Bazaar pack repository format 1 (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -206,12 +206,12 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
+        return b"Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -245,13 +245,13 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar pack repository format 1 with rich root"
-                " (needs bzr 1.0)\n")
+        return (b"Bazaar pack repository format 1 with rich root"
+                b" (needs bzr 1.0)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -284,12 +284,12 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n"
+        return b"Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -325,12 +325,12 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
+        return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
 
     def get_format_description(self):
         return "Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)"
@@ -372,12 +372,12 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
+        return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
         return ("Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
@@ -411,12 +411,12 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n"
+        return b"Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -449,12 +449,12 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
+        return b"Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
 
     def get_format_description(self):
         return "Packs 6 rich-root (uses btree indexes, requires bzr 1.9)"
@@ -490,13 +490,13 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 2 with subtree support "
-            "(needs bzr.dev from before 1.8)\n")
+        return (b"Bazaar development format 2 with subtree support "
+                b"(needs bzr.dev from before 1.8)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -620,12 +620,9 @@ class KnitPacker(Packer):
 
         :param output_lines: Output full texts of copied items.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             return self._do_copy_nodes(nodes, index_map, writer,
                 write_index, pb, output_lines=output_lines)
-        finally:
-            pb.finished()
 
     def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb,
         output_lines=None):
@@ -685,13 +682,10 @@ class KnitPacker(Packer):
         :param output_lines: Return lines present in the copied data as
             an iterator of line,version_id.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for result in self._do_copy_nodes_graph(index_map, writer,
                 write_index, output_lines, pb, readv_group_iter, total_items):
                 yield result
-        finally:
-            pb.finished()
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
         output_lines, pb, readv_group_iter, total_items):

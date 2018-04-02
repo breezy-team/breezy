@@ -161,7 +161,7 @@ def _get_locale_dir(base):
 
 
 def _check_win32_locale():
-    for i in ('LANGUAGE','LC_ALL','LC_MESSAGES','LANG'):
+    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
         if os.environ.get(i):
             break
     else:
@@ -196,7 +196,7 @@ def _get_current_locale():
             return lang
     if sys.platform == 'win32':
         _check_win32_locale()
-    for i in ('LANGUAGE','LC_ALL','LC_MESSAGES','LANG'):
+    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
         lang = os.environ.get(i)
         if lang:
             return lang

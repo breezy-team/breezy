@@ -90,7 +90,7 @@ Generation during conversion
 ----------------------------
 
 Accessing a foreign branch requires synthesizing this information.
-If last_modified is removed from a future bzr version, we will also need
+If last_modified is removed from a future Breezy version, we will also need
 to synthesize it to pull back to earlier formats.
 
 Because last_modified is not natively stored in the foreign branches, we

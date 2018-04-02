@@ -62,7 +62,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
             raise tests.TestNotApplicable('cannot represent unversioned files')
 
     def not_applicable_if_missing_in(self, relpath, tree):
-        if not tree.path2id(relpath):
+        if not tree.is_versioned(relpath):
             # The locked test trees conversion could not preserve the missing
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
@@ -72,7 +72,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
         made_control = self.make_controldir(relpath,
-            format=self.workingtree_format_to._matchingbzrdir)
+            format=self.workingtree_format_to._matchingcontroldir)
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format_to.initialize(made_control)
@@ -95,13 +95,13 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
         scenario = (label, {
             "transport_server": transport_server,
             "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format":workingtree_format._matchingbzrdir,
-            "workingtree_format":workingtree_format,
-            "intertree_class":intertree_class,
-            "workingtree_format_to":workingtree_format_to,
+            "bzrdir_format": workingtree_format._matchingcontroldir,
+            "workingtree_format": workingtree_format,
+            "intertree_class": intertree_class,
+            "workingtree_format_to": workingtree_format_to,
             # mutable_trees_to_test_trees takes two trees and converts them to,
             # whatever relationship the optimiser under test requires.,
-            "mutable_trees_to_test_trees":mutable_trees_to_test_trees,
+            "mutable_trees_to_test_trees": mutable_trees_to_test_trees,
             # workingtree_to_test_tree is set to disable changing individual,
             # trees: instead the mutable_trees_to_test_trees helper is used.,
             "_workingtree_to_test_tree": return_parameter,
@@ -137,7 +137,7 @@ def load_tests(loader, standard_tests, pattern):
             # XXX: we shouldn't use an Intertree object to detect inventories
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
-            chk_tree_format._get_matchingbzrdir = \
+            chk_tree_format._get_matchingcontroldir = \
                 lambda:breezy.controldir.format_registry.make_controldir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",

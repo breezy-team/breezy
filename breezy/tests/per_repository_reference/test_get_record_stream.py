@@ -45,40 +45,40 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # These can be split up among the different repos as desired
         #
 
-        builder.build_snapshot('A', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'f-id', 'file', 'initial content\n')),
-            ])
-        builder.build_snapshot('B', ['A'], [
-            ('modify', ('f-id', 'initial content\n'
+            ], revision_id='A')
+        builder.build_snapshot(['A'], [
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n')),
-            ])
-        builder.build_snapshot('C', ['A'], [
-            ('modify', ('f-id', 'initial content\n'
+            ], revision_id='B')
+        builder.build_snapshot(['A'], [
+            ('modify', ('file', 'initial content\n'
                                 'and C content\n')),
-            ])
-        builder.build_snapshot('D', ['B', 'C'], [
-            ('modify', ('f-id', 'initial content\n'
+            ], revision_id='C')
+        builder.build_snapshot(['B', 'C'], [
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n'
                                 'and C content\n')),
-            ])
-        builder.build_snapshot('E', ['C'], [
-            ('modify', ('f-id', 'initial content\n'
+            ], revision_id='D')
+        builder.build_snapshot(['C'], [
+            ('modify', ('file', 'initial content\n'
                                 'and C content\n'
                                 'and E content\n')),
-            ])
-        builder.build_snapshot('F', ['D'], [
-            ('modify', ('f-id', 'initial content\n'
+            ], revision_id='E')
+        builder.build_snapshot(['D'], [
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n'
                                 'and C content\n'
                                 'and F content\n')),
-            ])
-        builder.build_snapshot('G', ['E', 'D'], [
-            ('modify', ('f-id', 'initial content\n'
+            ], revision_id='F')
+        builder.build_snapshot(['E', 'D'], [
+            ('modify', ('file', 'initial content\n'
                                 'and B content\n'
                                 'and C content\n'
                                 'and E content\n')),
-            ])
+            ], revision_id='G')
         builder.finish_series()
         self.all_repo = builder.get_branch().repository
         self.all_repo.lock_read()

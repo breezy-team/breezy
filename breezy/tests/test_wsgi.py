@@ -43,7 +43,7 @@ class WSGITestMixin(object):
             'SERVER_PROTOCOL': 'HTTP/1.0',
 
             # Required WSGI variables
-            'wsgi.version': (1,0),
+            'wsgi.version': (1, 0),
             'wsgi.url_scheme': 'http',
             'wsgi.input': BytesIO(b''),
             'wsgi.errors': BytesIO(),
@@ -110,7 +110,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         })
         iterable = wsgi_app(environ, self.start_response)
         response = self.read_response(iterable)
-        self.assertEqual([('clone', 'foo/bar/')] , transport.calls)
+        self.assertEqual([('clone', 'foo/bar/')], transport.calls)
 
     def test_smart_wsgi_app_request_and_response(self):
         # SmartWSGIApp reads the smart request from the 'wsgi.input' file-like

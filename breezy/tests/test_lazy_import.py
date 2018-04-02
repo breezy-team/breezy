@@ -293,8 +293,8 @@ class TestScopeReplacer(TestCase):
         val = test_func1(1, 2, c='3')
         self.assertIs(test_func1, func)
 
-        self.assertEqual((1,2,'3'), val)
-        self.assertEqual([('__call__', (1,2), {'c':'3'}),
+        self.assertEqual((1, 2, '3'), val)
+        self.assertEqual([('__call__', (1, 2), {'c':'3'}),
                           'factory',
                           'func',
                          ], actions)
@@ -501,37 +501,22 @@ class ImportReplacerHelper(TestCaseInTempDir):
         root_path = osutils.pathjoin('base', root_name)
         os.mkdir(root_path)
         root_init = osutils.pathjoin(root_path, '__init__.py')
-        f = open(osutils.pathjoin(root_path, '__init__.py'), 'wb')
-        try:
+        with open(osutils.pathjoin(root_path, '__init__.py'), 'w') as f:
             f.write('var1 = 1\ndef func1(a):\n  return a\n')
-        finally:
-            f.close()
         mod_path = osutils.pathjoin(root_path, mod_name + '.py')
-        f = open(mod_path, 'wb')
-        try:
+        with open(mod_path, 'w') as f:
             f.write('var2 = 2\ndef func2(a):\n  return a\n')
-        finally:
-            f.close()
 
         sub_path = osutils.pathjoin(root_path, sub_name)
         os.mkdir(sub_path)
-        f = open(osutils.pathjoin(sub_path, '__init__.py'), 'wb')
-        try:
+        with open(osutils.pathjoin(sub_path, '__init__.py'), 'w') as f:
             f.write('var3 = 3\ndef func3(a):\n  return a\n')
-        finally:
-            f.close()
         submoda_path = osutils.pathjoin(sub_path, submoda_name + '.py')
-        f = open(submoda_path, 'wb')
-        try:
+        with open(submoda_path, 'w') as f:
             f.write('var4 = 4\ndef func4(a):\n  return a\n')
-        finally:
-            f.close()
         submodb_path = osutils.pathjoin(sub_path, submodb_name + '.py')
-        f = open(submodb_path, 'wb')
-        try:
+        with open(submodb_path, 'w') as f:
             f.write('var5 = 5\ndef func5(a):\n  return a\n')
-        finally:
-            f.close()
         self.root_name = root_name
         self.mod_name = mod_name
         self.sub_name = sub_name
@@ -730,8 +715,8 @@ class TestImportReplacer(ImportReplacerHelper):
 
         InstrumentedImportReplacer(scope=globals(),
             name='root5', module_path=[self.root_name], member=None,
-            children={'mod5':([self.root_name, self.mod_name], None, {}),
-                      'sub5':([self.root_name, self.sub_name], None,
+            children={'mod5': ([self.root_name, self.mod_name], None, {}),
+                      'sub5': ([self.root_name, self.sub_name], None,
                             {'submoda5':([self.root_name, self.sub_name,
                                          self.submoda_name], None, {}),
                              'submodb5':([self.root_name, self.sub_name,
@@ -799,12 +784,12 @@ class TestConvertImportToMap(TestCase):
                                         proc.imports))
 
     def test_import_one(self):
-        self.check({'one':(['one'], None, {}),
+        self.check({'one': (['one'], None, {}),
                    }, ['import one'])
 
     def test_import_one_two(self):
-        one_two_map = {'one':(['one'], None,
-                              {'two':(['one', 'two'], None, {}),
+        one_two_map = {'one': (['one'], None,
+                              {'two': (['one', 'two'], None, {}),
                               }),
                       }
         self.check(one_two_map, ['import one.two'])
@@ -814,9 +799,9 @@ class TestConvertImportToMap(TestCase):
 
     def test_import_one_two_three(self):
         one_two_three_map = {
-            'one':(['one'], None,
-                   {'two':(['one', 'two'], None,
-                           {'three':(['one', 'two', 'three'], None, {}),
+            'one': (['one'], None,
+                   {'two': (['one', 'two'], None,
+                           {'three': (['one', 'two', 'three'], None, {}),
                            }),
                    }),
         }
@@ -828,17 +813,17 @@ class TestConvertImportToMap(TestCase):
                                               'import one'])
 
     def test_import_one_as_x(self):
-        self.check({'x':(['one'], None, {}),
+        self.check({'x': (['one'], None, {}),
                           }, ['import one as x'])
 
     def test_import_one_two_as_x(self):
-        self.check({'x':(['one', 'two'], None, {}),
+        self.check({'x': (['one', 'two'], None, {}),
                    }, ['import one.two as x'])
 
     def test_import_mixed(self):
-        mixed = {'x':(['one', 'two'], None, {}),
-                 'one':(['one'], None,
-                       {'two':(['one', 'two'], None, {}),
+        mixed = {'x': (['one', 'two'], None, {}),
+                 'one': (['one'], None,
+                       {'two': (['one', 'two'], None, {}),
                        }),
                 }
         self.check(mixed, ['import one.two as x, one.two'])
@@ -869,8 +854,8 @@ class TestFromToMap(TestCase):
                           ['from one import two as three'])
 
     def test_from_one_import_two_three(self):
-        two_three_map = {'two':(['one'], 'two', {}),
-                         'three':(['one'], 'three', {}),
+        two_three_map = {'two': (['one'], 'two', {}),
+                         'three': (['one'], 'three', {}),
                         }
         self.check_result(two_three_map,
                           ['from one import two, three'])
@@ -953,8 +938,8 @@ class TestImportProcessor(TestCase):
         self.check(exp, '\nimport one\n')
 
     def test_import_one_two(self):
-        exp = {'one':(['one'], None,
-                      {'two':(['one', 'two'], None, {}),
+        exp = {'one': (['one'], None,
+                      {'two': (['one', 'two'], None, {}),
                       }),
               }
         self.check(exp, 'import one.two')
@@ -966,13 +951,13 @@ class TestImportProcessor(TestCase):
         self.check(exp, 'import one as two')
 
     def test_import_many(self):
-        exp = {'one':(['one'], None,
-                      {'two':(['one', 'two'], None,
-                              {'three':(['one', 'two', 'three'], None, {}),
+        exp = {'one': (['one'], None,
+                      {'two': (['one', 'two'], None,
+                              {'three': (['one', 'two', 'three'], None, {}),
                               }),
-                       'four':(['one', 'four'], None, {}),
+                       'four': (['one', 'four'], None, {}),
                       }),
-               'five':(['one', 'five'], None, {}),
+               'five': (['one', 'five'], None, {}),
               }
         self.check(exp, 'import one.two.three, one.four, one.five as five')
         self.check(exp, 'import one.five as five\n'
@@ -998,9 +983,9 @@ class TestImportProcessor(TestCase):
                         '    )\n')
 
     def test_from_many(self):
-        exp = {'two':(['one'], 'two', {}),
-               'three':(['one', 'two'], 'three', {}),
-               'five':(['one', 'two'], 'four', {}),
+        exp = {'two': (['one'], 'two', {}),
+               'three': (['one', 'two'], 'three', {}),
+               'five': (['one', 'two'], 'four', {}),
               }
         self.check(exp, 'from one import two\n'
                         'from one.two import three, four as five\n')
@@ -1011,11 +996,11 @@ class TestImportProcessor(TestCase):
                         '    )\n')
 
     def test_mixed(self):
-        exp = {'two':(['one'], 'two', {}),
-               'three':(['one', 'two'], 'three', {}),
-               'five':(['one', 'two'], 'four', {}),
-               'one':(['one'], None,
-                      {'two':(['one', 'two'], None, {}),
+        exp = {'two': (['one'], 'two', {}),
+               'three': (['one', 'two'], 'three', {}),
+               'five': (['one', 'two'], 'four', {}),
+               'one': (['one'], None,
+                      {'two': (['one', 'two'], None, {}),
                       }),
               }
         self.check(exp, 'from one import two\n'

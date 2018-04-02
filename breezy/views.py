@@ -207,8 +207,7 @@ class PathBasedViews(_Views):
     def _load_view_info(self):
         """Load the current view and dictionary of view definitions."""
         if not self._loaded:
-            self.tree.lock_read()
-            try:
+            with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes('views')
                 except errors.NoSuchFile as e:
@@ -217,15 +216,13 @@ class PathBasedViews(_Views):
                     keywords, self._views = \
                         self._deserialize_view_content(view_content)
                     self._current = keywords.get('current')
-            finally:
-                self.tree.unlock()
             self._loaded = True
 
     def _serialize_view_content(self, keywords, view_dict):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "%s=%s\n" % (key,keywords[key])
+            line = "%s=%s\n" % (key, keywords[key])
             lines.append(line.encode('utf-8'))
         if view_dict:
             lines.append("views:\n".encode('utf-8'))

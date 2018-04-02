@@ -53,19 +53,20 @@ from .revision import (
     )
 
 
-def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
-    show_ids=False, branch=None):
+def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
+    show_ids=False, branch=None, file_id=None):
     """Annotate file_id in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
 
     :param tree: The tree to look for revision numbers and history from.
-    :param file_id: The file_id to annotate.
+    :param path: The path to annotate
     :param to_file: The file to output the annotation to.
     :param verbose: Show all details rather than truncating to ensure
         reasonable text width.
     :param full: XXXX Not sure what this does.
     :param show_ids: Show revision ids in the annotation output.
+    :param file_id: The file_id to annotate (must match file path)
     :param branch: Branch to use for revision revno lookups
     """
     if branch is None:
@@ -74,7 +75,7 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         to_file = sys.stdout
 
     # Handle the show_ids case
-    annotations = list(tree.annotate_iter(file_id))
+    annotations = list(tree.annotate_iter(path, file_id))
     if show_ids:
         return _show_id_annotations(annotations, to_file, full)
 
@@ -199,18 +200,18 @@ def _expand_annotations(annotations, branch, current_rev=None):
     for origin, text in annotations:
         text = text.rstrip('\r\n')
         if origin == last_origin:
-            (revno_str, author, date_str) = ('','','')
+            (revno_str, author, date_str) = ('', '', '')
         else:
             last_origin = origin
             if origin not in revisions:
-                (revno_str, author, date_str) = ('?','?','?')
+                (revno_str, author, date_str) = ('?', '?', '?')
             else:
                 revno_str = '.'.join(str(i) for i in
                                             revision_id_to_revno[origin])
             rev = revisions[origin]
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d',
-                                     osutils.gmtime(rev.timestamp + tz))
+                                     time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
             author = rev.get_apparent_authors()[0]
@@ -343,7 +344,7 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
     output_extend = output_lines.extend
     output_append = output_lines.append
     # We need to see if any of the unannotated lines match
-    plain_right_subset = [l for a,l in right_lines[start_right:end_right]]
+    plain_right_subset = [l for a, l in right_lines[start_right:end_right]]
     plain_child_subset = plain_child_lines[start_child:end_child]
     match_blocks = _get_matching_blocks(plain_right_subset, plain_child_subset)
 

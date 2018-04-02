@@ -168,9 +168,10 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         """
         repo = self.make_repository('damaged-repo')
         builder = self.make_branch_builder('simple-branch')
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -202,7 +203,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         """commit_write_group fails with BzrCheckError when the chk root record
         for a new inventory is missing, even if the parent inventory is present
         and has identical content (i.e. the same chk root).
-        
+
         A stacked repository containing only a revision with an identical
         inventory to its parent will still have the chk root records for those
         inventories.
@@ -214,11 +215,12 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Make a branch where the last two revisions have identical
         # inventories.
         builder = self.make_branch_builder('simple-branch')
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', None, [])
-        builder.build_snapshot('C-id', None, [])
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(None, [], revision_id='B-id')
+        builder.build_snapshot(None, [], revision_id='C-id')
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -349,14 +351,15 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                 ('add', ('file-' + name, 'file-%s-id' % name, 'file',
                          'content %s\n' % name)))
             file_modifies.append(
-                ('modify', ('file-%s-id' % name, 'new content %s\n' % name)))
-        builder.build_snapshot('A-id', None, [
+                ('modify', ('file-' + name, 'new content %s\n' % name)))
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None))] +
-            file_adds)
-        builder.build_snapshot('B-id', None, [])
-        builder.build_snapshot('C-id', None, file_modifies)
+            file_adds,
+            revision_id='A-id')
+        builder.build_snapshot(None, [], revision_id='B-id')
+        builder.build_snapshot(None, file_modifies, revision_id='C-id')
         return builder.get_branch()
-        
+
     def test_missing_text_record(self):
         """commit_write_group fails with BzrCheckError when a text is missing.
         """

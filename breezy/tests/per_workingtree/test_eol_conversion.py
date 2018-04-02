@@ -28,10 +28,10 @@ from ...workingtree import WorkingTree
 
 
 # Sample files
-_sample_text         = """hello\nworld\r\n"""
-_sample_text_on_win  = """hello\r\nworld\r\n"""
-_sample_text_on_unix = """hello\nworld\n"""
-_sample_binary       = """hello\nworld\r\n\x00"""
+_sample_text         = b"""hello\nworld\r\n"""
+_sample_text_on_win  = b"""hello\r\nworld\r\n"""
+_sample_text_on_unix = b"""hello\nworld\n"""
+_sample_binary       = b"""hello\nworld\r\n\x00"""
 _sample_clean_lf     = _sample_text_on_unix
 _sample_clean_crlf   = _sample_text_on_win
 
@@ -74,7 +74,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.patch_rules_searcher(eol)
         t = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file1', content)])
-        t.add('file1', 'file1-id')
+        t.add('file1', b'file1-id')
         t.commit("add file1")
         basis = t.basis_tree()
         basis.lock_read()
@@ -92,7 +92,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.patch_rules_searcher(eol)
         wt2 = wt.controldir.sprout('tree-%s' % eol).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
-        content = wt2.get_file('file1-id', filtered=False).read()
+        content = wt2.get_file('file1', filtered=False).read()
         if sys.platform == 'win32':
             self.assertEqual(expected_win, content)
         else:
@@ -110,7 +110,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         :param roundtrip_to: the set of formats (excluding exact) we
           can round-trip to or None for all
         """
-        basis_content = basis.get_file('file1-id').read()
+        basis_content = basis.get_file('file1').read()
         self.assertEqual(expected_raw, basis_content)
 
         # No setting and exact should always roundtrip

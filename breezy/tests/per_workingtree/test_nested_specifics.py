@@ -44,40 +44,40 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual('subtree-revision',
-            tree.root_inventory['subtree-id'].reference_revision)
+            tree.root_inventory.get_entry('subtree-id').reference_revision)
 
     def test_extract_while_locked(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['subtree/'])
-        tree.add(['subtree'], ['subtree-id'])
-        subtree = tree.extract('subtree-id')
+        tree.add(['subtree'])
+        subtree = tree.extract('subtree')
 
     def prepare_with_subtree(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         subtree = self.make_branch_and_tree('subtree')
-        tree.add(['subtree'], ['subtree-id'])
+        tree.add(['subtree'], [b'subtree-id'])
         return tree
 
     def test_kind_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        self.assertEqual('directory', tree.kind('subtree-id'))
+        self.assertEqual('directory', tree.kind('subtree', b'subtree-id'))
 
     def test_comparison_data_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        ie = inventory.InventoryDirectory('subtree-id', 'subtree',
+        ie = inventory.InventoryDirectory(b'subtree-id', 'subtree',
                                           tree.path2id(''))
         self.assertEqual('directory',
                          tree._comparison_data(ie, 'subtree')[0])
 
     def test_inventory_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        self.assertEqual('directory', tree.kind('subtree-id'))
+        self.assertEqual('directory', tree.kind('subtree', 'subtree-id'))
 
     def test_iter_entries_by_dir_autodetects_subtree(self):
         tree = self.prepare_with_subtree()
-        path, ie = next(tree.iter_entries_by_dir(['subtree-id']))
+        path, ie = next(tree.iter_entries_by_dir(specific_files=['subtree']))
         self.assertEqual('tree-reference', ie.kind)

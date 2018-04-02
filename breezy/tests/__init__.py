@@ -141,6 +141,7 @@ TestLoader = TestUtil.TestLoader
 isolated_environ = {
     'BRZ_HOME': None,
     'HOME': None,
+    'GNUPGHOME': None,
     'XDG_CONFIG_HOME': None,
     # brz now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
@@ -194,7 +195,7 @@ isolated_environ = {
 
 def override_os_environ(test, env=None):
     """Modify os.environ keeping a copy.
-    
+
     :param test: A test instance
 
     :param env: A dict containing variable definitions to be installed
@@ -896,6 +897,7 @@ TestUIFactory = ui_testing.TestUIFactory
 
 def isolated_doctest_setUp(test):
     override_os_environ(test)
+    osutils.set_or_unset_env('BRZ_HOME', '/nonexistent')
     test._orig_ui_factory = ui.ui_factory
     ui.ui_factory = ui.SilentUIFactory()
 
@@ -964,9 +966,8 @@ class TestCase(testtools.TestCase):
             self.requireFeature(feature)
         self._cleanEnvironment()
 
-        if breezy.global_state is not None:
-            self.overrideAttr(breezy.global_state, 'cmdline_overrides',
-                              config.CommandLineStore())
+        self.overrideAttr(breezy.get_global_state(), 'cmdline_overrides',
+                          config.CommandLineStore())
 
         self._silenceUI()
         self._startLogFile()
@@ -1452,7 +1453,7 @@ class TestCase(testtools.TestCase):
         except excClass as e:
             return e
         else:
-            if getattr(excClass,'__name__', None) is not None:
+            if getattr(excClass, '__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
@@ -1473,7 +1474,7 @@ class TestCase(testtools.TestCase):
         except excClass as e:
             return e
         else:
-            if getattr(excClass,'__name__', None) is not None:
+            if getattr(excClass, '__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 # probably a tuple
@@ -1817,7 +1818,7 @@ class TestCase(testtools.TestCase):
         if not callable(addSkip):
             result.addSuccess(result)
         else:
-            addSkip(self, reason)
+            addSkip(self, str(reason))
 
     @staticmethod
     def _do_known_failure(self, result, e):
@@ -1958,11 +1959,12 @@ class TestCase(testtools.TestCase):
             os.chdir(working_dir)
 
         try:
-            result = self.apply_redirected(
-                ui.ui_factory.stdin,
-                stdout, stderr,
-                _mod_commands.run_bzr_catch_user_errors,
-                args)
+            with ui.ui_factory:
+                result = self.apply_redirected(
+                    ui.ui_factory.stdin,
+                    stdout, stderr,
+                    _mod_commands.run_bzr_catch_user_errors,
+                    args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -2692,7 +2694,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
         b = self.make_branch(relpath, format=format)
-        return memorytree.MemoryTree.create_on_branch(b)
+        return b.create_memorytree()
 
     def make_branch_builder(self, relpath, format=None):
         branch = self.make_branch(relpath, format=format)
@@ -2704,6 +2706,7 @@ class TestCaseWithMemoryTransport(TestCase):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BRZ_HOME', test_home_dir)
+        self.overrideEnv('GNUPGHOME', os.path.join(test_home_dir, '.gnupg'))
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
@@ -2863,7 +2866,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
-            self.assertIsNot(tree.path2id(path), None,
+            self.assertTrue(tree.is_versioned(path),
                 path+' not in working tree.')
 
     def assertNotInWorkingTree(self, path, root_path='.', tree=None):
@@ -2872,9 +2875,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, (str, text_type)):
             for p in path:
-                self.assertNotInWorkingTree(p,tree=tree)
+                self.assertNotInWorkingTree(p, tree=tree)
         else:
-            self.assertIs(tree.path2id(path), None, path+' in working tree.')
+            self.assertFalse(tree.is_versioned(path), path+' in working tree.')
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -3264,8 +3267,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         # to take effect, though that is of marginal benefit.
         if verbosity >= 2:
             stream.write("Listing tests only ...\n")
-        for t in iter_suite_tests(suite):
-            stream.write("%s\n" % (t.id()))
+        if getattr(runner, 'list', None) is not None:
+            runner.list(suite)
+        else:
+            for t in iter_suite_tests(suite):
+                stream.write("%s\n" % (t.id()))
         return True
     result = runner.run(suite)
     if strict:
@@ -3488,7 +3494,7 @@ def fork_for_tests(suite):
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 subunit_result = AutoTimingTestResultDecorator(
-                    SubUnitBzrProtocolClient(stream))
+                    SubUnitBzrProtocolClientv1(stream))
                 process_suite.run(subunit_result)
             except:
                 # Try and report traceback on stream, but exit with error even
@@ -3659,6 +3665,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         if starting_with:
             starting_with = [test_prefix_alias_registry.resolve_alias(start)
                              for start in starting_with]
+            # Always consider 'unittest' an interesting name so that failed
+            # suites wrapped as test cases appear in the output.
+            starting_with.append('unittest')
         if test_suite_factory is None:
             # Reduce loading time by loading modules based on the starting_with
             # patterns.
@@ -4418,10 +4427,11 @@ def probe_bad_non_ascii(encoding):
 try:
     from subunit import TestProtocolClient
     from subunit.test_results import AutoTimingTestResultDecorator
-    class SubUnitBzrProtocolClient(TestProtocolClient):
+
+    class SubUnitBzrProtocolClientv1(TestProtocolClient):
 
         def stopTest(self, test):
-            super(SubUnitBzrProtocolClient, self).stopTest(test)
+            super(SubUnitBzrProtocolClientv1, self).stopTest(test)
             _clear__type_equality_funcs(test)
 
         def addSuccess(self, test, details=None):
@@ -4429,14 +4439,35 @@ try:
             # stream, but we don't want to include it in ours.
             if details is not None and 'log' in details:
                 del details['log']
-            return super(SubUnitBzrProtocolClient, self).addSuccess(
+            return super(SubUnitBzrProtocolClientv1, self).addSuccess(
                 test, details)
 
-    class SubUnitBzrRunner(TextTestRunner):
+    class SubUnitBzrRunnerv1(TextTestRunner):
+
         def run(self, test):
             result = AutoTimingTestResultDecorator(
-                SubUnitBzrProtocolClient(self.stream))
+                SubUnitBzrProtocolClientv1(self.stream))
             test.run(result)
             return result
+except ImportError:
+    pass
+
+
+try:
+    from subunit.run import SubunitTestRunner
+
+    class SubUnitBzrRunnerv2(TextTestRunner, SubunitTestRunner):
+
+        def __init__(self, stream=sys.stderr, descriptions=0, verbosity=1,
+                     bench_history=None, strict=False, result_decorators=None):
+            TextTestRunner.__init__(
+                    self, stream=stream,
+                    descriptions=descriptions, verbosity=verbosity,
+                    bench_history=bench_history, strict=strict,
+                    result_decorators=result_decorators)
+            SubunitTestRunner.__init__(self, verbosity=verbosity,
+                                       stream=stream)
+
+        run = SubunitTestRunner.run
 except ImportError:
     pass

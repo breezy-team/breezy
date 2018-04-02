@@ -245,15 +245,6 @@ class NoSuchId(BzrError):
         self.tree = tree
 
 
-class NoSuchIdInRepository(NoSuchId):
-
-    _fmt = ('The file id "%(file_id)s" is not present in the repository'
-            ' %(repository)r')
-
-    def __init__(self, repository, file_id):
-        BzrError.__init__(self, repository=repository, file_id=file_id)
-
-
 class NotStacked(BranchError):
 
     _fmt = "The branch '%(branch)s' is not stacked."
@@ -1867,8 +1858,12 @@ class UnsupportedOperation(BzrError):
         self.tname = type(method_self).__name__
 
 
-class CannotSetRevisionId(UnsupportedOperation):
-    """Raised when a commit is attempting to set a revision id but cant."""
+class FetchLimitUnsupported(UnsupportedOperation):
+
+    fmt = ("InterBranch %(interbranch)r does not support fetching limits.")
+
+    def __init__(self, interbranch):
+        BzrError.__init__(self, interbranch=interbranch)
 
 
 class NonAsciiRevisionId(UnsupportedOperation):
@@ -2136,17 +2131,6 @@ class SubsumeTargetNeedsUpgrade(BzrError):
 
     def __init__(self, other_tree):
         self.other_tree = other_tree
-
-
-class BadReferenceTarget(InternalBzrError):
-
-    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." \
-           "%(reason)s"
-
-    def __init__(self, tree, other_tree, reason):
-        self.tree = tree
-        self.other_tree = other_tree
-        self.reason = reason
 
 
 class NoSuchTag(BzrError):

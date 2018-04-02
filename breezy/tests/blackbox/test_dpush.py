@@ -44,9 +44,10 @@ class TestDpush(tests.TestCaseWithTransport):
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
-        builder.build_snapshot('revid', None,
+        builder.build_snapshot(None,
             [('add', ('', 'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', 'fooid', 'file', 'bar'))])
+             ('add', ('foo', 'fooid', 'file', 'bar'))],
+            revision_id=b'revid')
         return builder
 
     def test_dpush_native(self):
@@ -77,7 +78,7 @@ class TestDpush(tests.TestCaseWithTransport):
         b = self.make_dummy_builder('d').get_branch()
 
         dc = b.controldir.sprout('dc', force_new_repo=True)
-        self.build_tree_contents([("dc/foofile", "blaaaa")])
+        self.build_tree_contents([("dc/foofile", b"blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
         dc_tree.commit("msg")
@@ -96,12 +97,12 @@ class TestDpush(tests.TestCaseWithTransport):
         b = self.make_dummy_builder('d').get_branch()
 
         dc = b.controldir.sprout('dc', force_new_repo=True)
-        self.build_tree_contents([("dc/foofile", "blaaaa")])
+        self.build_tree_contents([("dc/foofile", b"blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
         newrevid = dc_tree.commit('msg')
 
-        self.build_tree_contents([("dc/foofile", "blaaaal")])
+        self.build_tree_contents([("dc/foofile", b"blaaaal")])
         script.run_script(self, '''
             $ brz dpush -d dc d --no-strict
             2>Doing on-the-fly conversion from DummyForeignVcsRepositoryFormat() to RepositoryFormat2a().
@@ -125,11 +126,11 @@ class TestDpush(tests.TestCaseWithTransport):
         dc = b.controldir.sprout('dc', force_new_repo=True)
         dc_tree = dc.open_workingtree()
 
-        self.build_tree_contents([("dc/foo", "bar")])
+        self.build_tree_contents([("dc/foo", b"bar")])
         dc_tree.commit('msg1')
 
-        builder.build_snapshot('revid2', None,
-          [('modify', ('fooid', 'blie'))])
+        builder.build_snapshot(None,
+          [('modify', ('foo', b'blie'))], revision_id=b'revid2')
 
         output, error = self.run_bzr("dpush -d dc d", retcode=3)
         self.assertEqual(output, "")

@@ -27,7 +27,7 @@ from .. import (
     lockable_files,
     revision as _mod_revision,
     )
-from ..decorators import needs_read_lock, needs_write_lock, only_raises
+from ..decorators import only_raises
 from ..repository import (
     format_registry,
     Repository,
@@ -53,7 +53,6 @@ class MetaDirRepository(Repository):
         """Return True if this repository is flagged as a shared repository."""
         return self._transport.has('shared-storage')
 
-    @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
 
@@ -63,28 +62,30 @@ class MetaDirRepository(Repository):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        if new_value:
-            try:
-                self._transport.delete('no-working-trees')
-            except errors.NoSuchFile:
-                pass
-        else:
-            self._transport.put_bytes('no-working-trees', '',
-                mode=self.controldir._get_file_mode())
+        with self.lock_write():
+            if new_value:
+                try:
+                    self._transport.delete('no-working-trees')
+                except errors.NoSuchFile:
+                    pass
+            else:
+                self._transport.put_bytes(
+                        'no-working-trees', '',
+                        mode=self.controldir._get_file_mode())
 
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return not self._transport.has('no-working-trees')
 
-    @needs_write_lock
     def update_feature_flags(self, updated_flags):
         """Update the feature flags for this branch.
 
         :param updated_flags: Dictionary mapping feature names to necessities
             A necessity can be None to indicate the feature should be removed
         """
-        self._format._update_feature_flags(updated_flags)
-        self.control_transport.put_bytes('format', self._format.as_string())
+        with self.lock_write():
+            self._format._update_feature_flags(updated_flags)
+            self.control_transport.put_bytes('format', self._format.as_string())
 
     def _find_parent_ids_of_revisions(self, revision_ids):
         """Find all parent ids that are mentioned in the revision graph.
@@ -109,7 +110,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
     supports_nesting_repositories = True
 
     @property
-    def _matchingbzrdir(self):
+    def _matchingcontroldir(self):
         matching = bzrdir.BzrDirMetaFormat1()
         matching.repository_format = self
         return matching
@@ -136,7 +137,8 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         if shared == True:
             utf8_files += [('shared-storage', b'')]
         try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            for dir in dirs:
+                transport.mkdir(dir, mode=a_bzrdir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
                     mode=a_bzrdir._get_file_mode())
@@ -157,11 +159,9 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-            # GZ 2017-06-17: Where should format strings get decoded...
-            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
-        return klass._find_format(format_registry, 'repository', format_text)
+        return klass._find_format(format_registry, 'repository', format_string)
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):

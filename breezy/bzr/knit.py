@@ -990,25 +990,10 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
-        line_bytes = ''.join(lines)
+        line_bytes = b''.join(lines)
         return self._add(key, lines, parents,
             parent_texts, left_matching_blocks, nostore_sha, random_id,
             line_bytes=line_bytes)
-
-    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
-        """See VersionedFiles._add_text()."""
-        self._index._check_write_ok()
-        self._check_add(key, None, random_id, check_content=False)
-        if text.__class__ is not str:
-            raise errors.BzrBadParameterUnicode("text")
-        if parents is None:
-            # The caller might pass None if there is no graph data, but kndx
-            # indexes can't directly store that, so we give them
-            # an empty tuple instead.
-            parents = ()
-        return self._add(key, None, parents,
-            None, None, nostore_sha, random_id,
-            line_bytes=text)
 
     def _add(self, key, lines, parents, parent_texts,
         left_matching_blocks, nostore_sha, random_id,
@@ -1059,7 +1044,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # Note: line_bytes is not modified to add a newline, that is tracked
         #       via the no_eol flag. 'lines' *is* modified, because that is the
         #       general values needed by the Content code.
-        if line_bytes and line_bytes[-1] != '\n':
+        if line_bytes and not line_bytes.endswith(b'\n'):
             options.append('no-eol')
             no_eol = True
             # Copy the existing list, or create a new one
@@ -1068,16 +1053,16 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             else:
                 lines = lines[:]
             # Replace the last line with one that ends in a final newline
-            lines[-1] = lines[-1] + '\n'
+            lines[-1] = lines[-1] + b'\n'
         if lines is None:
             lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
-            if not isinstance(element, str):
+            if not isinstance(element, bytes):
                 raise TypeError("key contains non-strings: %r" % (key,))
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + digest,)
-        elif not isinstance(key[-1], str):
+        elif not isinstance(key[-1], bytes):
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -1095,7 +1080,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         if delta:
             options.append('line-delta')
             store_lines = self._factory.lower_line_delta(delta_hunks)
-            size, bytes = self._record_to_data(key, digest,
+            size, data = self._record_to_data(key, digest,
                 store_lines)
         else:
             options.append('fulltext')
@@ -1105,17 +1090,17 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # _record_to_data.
                 dense_lines = [line_bytes]
                 if no_eol:
-                    dense_lines.append('\n')
-                size, bytes = self._record_to_data(key, digest,
+                    dense_lines.append(b'\n')
+                size, data = self._record_to_data(key, digest,
                     lines, dense_lines)
             else:
                 # get mixed annotation + content and feed it into the
                 # serialiser.
                 store_lines = self._factory.lower_fulltext(content)
-                size, bytes = self._record_to_data(key, digest,
+                size, data = self._record_to_data(key, digest,
                     store_lines)
 
-        access_memo = self._access.add_raw_records([(key, size)], bytes)[0]
+        access_memo = self._access.add_raw_records([(key, size)], data)[0]
         self._index.add_records(
             ((key, options, access_memo, parents),),
             random_id=random_id)
@@ -1961,26 +1946,25 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = gzip.GzipFile(mode='rb', fileobj=BytesIO(data))
-        try:
-            record_contents = df.readlines()
-        except Exception as e:
-            raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
-                (data, e.__class__.__name__, str(e)))
-        header = record_contents.pop(0)
-        rec = self._split_header(header)
-        last_line = record_contents.pop()
-        if len(record_contents) != int(rec[2]):
-            raise KnitCorrupt(self,
-                              'incorrect number of lines %s != %s'
-                              ' for version {%s} %s'
-                              % (len(record_contents), int(rec[2]),
-                                 rec[1], record_contents))
-        if last_line != 'end %s\n' % rec[1]:
-            raise KnitCorrupt(self,
-                              'unexpected version end line %r, wanted %r'
-                              % (last_line, rec[1]))
-        df.close()
+        with gzip.GzipFile(mode='rb', fileobj=BytesIO(data)) as df:
+            try:
+                record_contents = df.readlines()
+            except Exception as e:
+                raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
+                    (data, e.__class__.__name__, str(e)))
+            header = record_contents.pop(0)
+            rec = self._split_header(header)
+            last_line = record_contents.pop()
+            if len(record_contents) != int(rec[2]):
+                raise KnitCorrupt(self,
+                                  'incorrect number of lines %s != %s'
+                                  ' for version {%s} %s'
+                                  % (len(record_contents), int(rec[2]),
+                                     rec[1], record_contents))
+            if last_line != b'end %s\n' % rec[1]:
+                raise KnitCorrupt(self,
+                                  'unexpected version end line %r, wanted %r'
+                                  % (last_line, rec[1]))
         return rec, record_contents
 
     def _read_records_iter(self, records):
@@ -2059,16 +2043,16 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             this function spends less time resizing the final string.
         :return: (len, a BytesIO instance with the raw data ready to read.)
         """
-        chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
+        chunks = [b"version %s %d %s\n" % (key[-1], len(lines), digest)]
         chunks.extend(dense_lines or lines)
-        chunks.append("end %s\n" % key[-1])
+        chunks.append(b"end " + key[-1] + b"\n")
         for chunk in chunks:
-            if not isinstance(chunk, str):
+            if not isinstance(chunk, bytes):
                 raise AssertionError(
                     'data must be plain bytes was %s' % type(chunk))
-        if lines and lines[-1][-1] != '\n':
+        if lines and not lines[-1].endswith(b'\n'):
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = tuned_gzip.chunks_to_gzip(chunks)
+        compressed_bytes = b''.join(tuned_gzip.chunks_to_gzip(chunks))
         return len(compressed_bytes), compressed_bytes
 
     def _split_header(self, line):
@@ -2462,7 +2446,7 @@ class _KndxIndex(object):
         ABI change with the C extension that reads .kndx files.
     """
 
-    HEADER = "# bzr knit index 8\n"
+    HEADER = b"# bzr knit index 8\n"
 
     def __init__(self, transport, mapper, get_scope, allow_writes, is_locked):
         """Create a _KndxIndex on transport using mapper."""
@@ -3230,7 +3214,7 @@ class _KnitKeyAccess(object):
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
-        if not isinstance(raw_data, str):
+        if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []

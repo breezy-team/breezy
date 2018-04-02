@@ -29,13 +29,10 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         # manually corrupt. If we change the way to get at that dirstate file,
         # then we can update how this is done
         self.assertIsNot(None, getattr(tree, 'current_dirstate', None))
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             dirstate = tree.current_dirstate()
             dirstate_path = dirstate._filename
             self.assertPathExists(dirstate_path)
-        finally:
-            tree.unlock()
         # We have to have the tree unlocked at this point, so we can safely
         # mutate the state file on all platforms.
         if completely:
@@ -68,10 +65,10 @@ class TestRepairWorkingTree(TestCaseWithTransport):
     def test_repair_forced(self):
         tree = self.make_initial_tree()
         tree.rename_one('dir', 'alt_dir')
-        self.assertIsNot(None, tree.path2id('alt_dir'))
+        self.assertTrue(tree.is_versioned('alt_dir'))
         self.run_bzr('repair-workingtree -d tree --force')
         # This requires the tree has reloaded the working state
-        self.assertIs(None, tree.path2id('alt_dir'))
+        self.assertFalse(tree.is_versioned('alt_dir'))
         self.assertPathExists('tree/alt_dir')
 
     def test_repair_corrupted_dirstate(self):

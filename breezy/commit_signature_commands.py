@@ -28,6 +28,7 @@ from . import (
 from .commands import Command
 from .option import Option
 from .i18n import gettext, ngettext
+from .sixish import text_type
 
 
 class cmd_sign_my_commits(Command):
@@ -110,7 +111,7 @@ class cmd_verify_signatures(Command):
                    help='Comma separated list of GPG key patterns which are'
                         ' acceptable for verification.',
                    short_name='k',
-                   type=str,),
+                   type=text_type,),
             'revision',
             'verbose',
           ]

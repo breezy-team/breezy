@@ -191,7 +191,7 @@ class LocalTransport(transport.Transport):
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                'raw_bytes must be bytes, not %s' % type(raw_bytes))
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -233,7 +233,7 @@ class LocalTransport(transport.Transport):
             # We couldn't create the file, maybe we need to create
             # the parent directory, and try again
             if (not create_parent_dir
-                or e.errno not in (errno.ENOENT,errno.ENOTDIR)):
+                or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
                 self._translate_error(e, relpath)
             parent_dir = os.path.dirname(abspath)
             if not parent_dir:

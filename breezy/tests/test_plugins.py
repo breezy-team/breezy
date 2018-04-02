@@ -16,7 +16,10 @@
 
 """Tests for plugins"""
 
-import imp
+try:
+    from importlib.util import module_from_spec
+except ImportError:  # python < 3
+    from imp import new_module as module_from_spec
 import importlib
 import logging
 import os
@@ -49,7 +52,7 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
         super(BaseTestPlugins, self).setUp()
         self.module_name = "breezy.testingplugins"
         self.module_prefix = self.module_name + "."
-        self.module = imp.new_module(self.module_name)
+        self.module = module_from_spec(self.module_name)
 
         self.overrideAttr(plugin, "_MODULE_PREFIX", self.module_prefix)
         self.overrideAttr(breezy, "testingplugins", self.module)
@@ -315,7 +318,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         self.assertContainsRe(log,
             r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
             "because the file path isn't a valid module name; try renaming "
-            "it to 'bad_plugin_name_'\.")
+            "it to 'bad_plugin_name_'\\.")
 
 
 class TestPlugins(BaseTestPlugins):
@@ -327,6 +330,20 @@ class TestPlugins(BaseTestPlugins):
         # write a plugin that _cannot_ fail to load.
         with open('plugin.py', 'w') as f: f.write(source + '\n')
         self.load_with_paths(['.'])
+
+    def test_plugin_loaded(self):
+        self.assertPluginUnknown('plugin')
+        self.assertIs(None, breezy.plugin.get_loaded_plugin('plugin'))
+        self.setup_plugin()
+        p = breezy.plugin.get_loaded_plugin('plugin')
+        self.assertIsInstance(p, breezy.plugin.PlugIn)
+        self.assertIs(p.module, sys.modules[self.module_prefix + 'plugin'])
+
+    def test_plugin_loaded_disabled(self):
+        self.assertPluginUnknown('plugin')
+        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'plugin')
+        self.setup_plugin()
+        self.assertIs(None, breezy.plugin.get_loaded_plugin('plugin'))
 
     def test_plugin_appears_in_plugins(self):
         self.setup_plugin()
@@ -519,7 +536,7 @@ class TestPluginHelp(BaseTestPlugins):
         help = self.run_bzr('help myplug')[0]
         self.assertContainsRe(help, 'plugin "myplug"')
         help = self.split_help_commands()['myplug']
-        self.assertContainsRe(help, '\[myplug\]')
+        self.assertContainsRe(help, '\\[myplug\\]')
 
 
 class TestHelpIndex(tests.TestCase):

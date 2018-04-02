@@ -84,7 +84,7 @@ class TestBisectMultiBytes(TestCase):
         # steps in the worst case there.
         self.assertEqual([],
             list(bisect_multi_bytes(
-                missing_first_content,268435456 - 1 , ['foo', 'bar'])))
+                missing_first_content, 268435456 - 1, ['foo', 'bar'])))
         self.assertEqual([
             [(134217727, 'foo'), (134217727, 'bar')],
             [(67108864, 'foo'), (67108864, 'bar')],
@@ -177,7 +177,7 @@ class TestBisectMultiBytes(TestCase):
         # assertion.
         self.assertEqual([],
             list(bisect_multi_bytes(
-                missing_last_content,268435456 - 1 , ['foo', 'bar'])))
+                missing_last_content, 268435456 - 1, ['foo', 'bar'])))
         self.assertEqual([
             [(134217727, 'foo'), (134217727, 'bar')],
             [(201326590, 'foo'), (201326590, 'bar')],

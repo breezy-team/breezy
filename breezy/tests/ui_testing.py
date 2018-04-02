@@ -62,6 +62,11 @@ class TextUIFactory(ui_text.TextUIFactory):
             stderr = StringIOWithEncoding()
         super(TextUIFactory, self).__init__(stdin, stdout, stderr)
 
+    def _setup_streams(self):
+        self.raw_stdin = self.stdin
+        self.raw_stdout = self.stdout
+        self.raw_stderr = self.stderr
+
 
 class TestUIFactory(TextUIFactory):
     """A UI Factory for testing.

@@ -28,24 +28,27 @@ class TestWalkdirs(TestCaseWithTree):
     def get_all_subdirs_expected(self, tree, symlinks):
         dirblocks = [
             (('', tree.path2id('')),
-             [('0file', '0file', 'file', None, '2file', 'file'),
+             [('0file', '0file', 'file', None, tree.path2id('0file'), 'file'),
               ('1top-dir', '1top-dir', 'directory', None,
-               '1top-dir', 'directory'),
+               tree.path2id('1top-dir'), 'directory'),
               (u'2utf\u1234file', u'2utf\u1234file', 'file', None,
-               u'0utf\u1234file'.encode('utf8'), 'file'),
+               tree.path2id(u'2utf\u1234file'), 'file'),
               ]),
-            (('1top-dir', '1top-dir'),
+            (('1top-dir', tree.path2id('1top-dir')),
              [('1top-dir/0file-in-1topdir', '0file-in-1topdir',
-               'file', None, '1file-in-1topdir', 'file'),
+               'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file'),
               ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir',
-               'directory', None, '0dir-in-1topdir', 'directory'),
-              ]),
-            (('1top-dir/1dir-in-1topdir', '0dir-in-1topdir'),
+               'directory',
+               None if tree.has_versioned_directories() else os.stat(tree.abspath('1top-dir/1dir-in-1topdir')),
+               tree.path2id('1top-dir/1dir-in-1topdir'),
+               'directory' if tree.has_versioned_directories() else None,
+              )]),
+            (('1top-dir/1dir-in-1topdir', tree.path2id('1top-dir/1dir-in-1topdir')),
              []),
             ]
         if symlinks:
             dirblocks[0][1].append(('symlink', 'symlink', 'symlink', None,
-                                    'symlink', 'symlink'))
+                                    tree.path2id('symlink'), 'symlink'))
         return dirblocks
 
     def test_walkdir_root(self):
@@ -70,11 +73,13 @@ class TestWalkdirs(TestCaseWithTree):
         self.assertEqual(len(expected_dirblocks), len(result))
 
     def test_walkdir_subtree(self):
-        tree = self.get_tree_with_subdirs_and_all_supported_content_types(has_symlinks())
+        tree = self.get_tree_with_subdirs_and_all_supported_content_types(
+                has_symlinks())
         # test that its iterable by iterating
         result = []
         tree.lock_read()
-        expected_dirblocks = self.get_all_subdirs_expected(tree, has_symlinks())[1:]
+        expected_dirblocks = self.get_all_subdirs_expected(
+                tree, has_symlinks())[1:]
         for dirinfo, block in tree.walkdirs('1top-dir'):
             newblock = []
             for row in block:
@@ -91,9 +96,10 @@ class TestWalkdirs(TestCaseWithTree):
 
     def test_walkdir_versioned_kind(self):
         work_tree = self.make_branch_and_tree('tree')
-        work_tree.set_root_id('tree-root')
         self.build_tree(['tree/file', 'tree/dir/'])
-        work_tree.add(['file', 'dir'], ['file-id', 'dir-id'])
+        work_tree.add(['file', 'dir'])
+        file_id = work_tree.path2id('file')
+        dir_id = work_tree.path2id('dir')
         os.unlink('tree/file')
         os.rmdir('tree/dir')
         tree = self._convert_tree(work_tree)
@@ -102,8 +108,10 @@ class TestWalkdirs(TestCaseWithTree):
         if tree.path2id('file') is None:
             raise tests.TestNotApplicable(
                 'Tree type cannot represent dangling ids.')
-        expected = [(('', 'tree-root'), [
-            ('dir', 'dir', 'unknown', None, 'dir-id', 'directory'),
-            ('file', 'file', 'unknown', None, 'file-id', 'file')]),
-            (('dir', 'dir-id'), [])]
+        expected = [(('', work_tree.path2id('')), ([
+            ('dir', 'dir', 'unknown', None, dir_id, 'directory')]
+            if tree.has_versioned_directories() else []) +
+            [('file', 'file', 'unknown', None, file_id, 'file')])]
+        if tree.has_versioned_directories():
+            expected.append((('dir', dir_id), []))
         self.assertEqual(expected, list(tree.walkdirs()))

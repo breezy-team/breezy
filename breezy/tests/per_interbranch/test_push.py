@@ -57,16 +57,26 @@ class TestPush(TestCaseWithInterBranch):
         # when revisions are pushed, the left-most accessible parents must
         # become the revision-history.
         mine = self.make_from_branch_and_tree('mine')
-        mine.commit('1st post', rev_id='P1', allow_pointless=True)
-        other = self.sprout_to(mine.controldir, 'other').open_workingtree()
-        other.commit('my change', rev_id='M1', allow_pointless=True)
-        mine.merge_from_branch(other.branch)
-        mine.commit('merge my change', rev_id='P2')
+        mine.commit('1st post', allow_pointless=True)
+        try:
+            other = self.sprout_to(mine.controldir, 'other').open_workingtree()
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+        m1 = other.commit('my change', allow_pointless=True)
+        try:
+            mine.merge_from_branch(other.branch)
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+        p2 = mine.commit('merge my change')
         result = mine.branch.push(other.branch)
-        self.assertEqual('P2', other.branch.last_revision())
+        self.assertEqual(p2, other.branch.last_revision())
         # result object contains some structured data
-        self.assertEqual(result.old_revid, 'M1')
-        self.assertEqual(result.new_revid, 'P2')
+        self.assertEqual(result.old_revid, m1)
+        self.assertEqual(result.new_revid, p2)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -74,16 +84,26 @@ class TestPush(TestCaseWithInterBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         mine = self.make_from_branch_and_tree('mine')
-        mine.commit('1st post', rev_id='P1', allow_pointless=True)
-        target = self.sprout_to(mine.controldir, 'target').open_workingtree()
-        target.commit('my change', rev_id='M1', allow_pointless=True)
+        p1 = mine.commit('1st post', allow_pointless=True)
+        try:
+            target = self.sprout_to(mine.controldir, 'target').open_workingtree()
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+        m1 = target.commit('my change', allow_pointless=True)
         other = self.sprout_to(mine.controldir, 'other').open_workingtree()
         other.merge_from_branch(target.branch)
-        other.commit('merge my change', rev_id='O2')
-        mine.merge_from_branch(other.branch)
-        mine.commit('merge other', rev_id='P2')
+        o2 = other.commit('merge my change')
+        try:
+            mine.merge_from_branch(other.branch)
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+        p2 = mine.commit('merge other')
         mine.branch.push(target.branch)
-        self.assertEqual('P2', target.branch.last_revision())
+        self.assertEqual(p2, target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
         """Pushing into a checkout updates the checkout and the master branch"""
@@ -96,7 +116,12 @@ class TestPush(TestCaseWithInterBranch):
             return
         rev1 = checkout.commit('master')
 
-        other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
+        try:
+            other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
         other = other_bzrdir.open_workingtree()
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
@@ -130,15 +155,29 @@ class TestPush(TestCaseWithInterBranch):
         source.add(['a'])
         source.commit('a')
 
-        source.branch.lock_read()
         try:
-            target.lock_write()
-            try:
+            with source.branch.lock_read(), target.lock_write():
                 source.branch.push(target, stop_revision=source.last_revision())
-            finally:
-                target.unlock()
-        finally:
-            source.branch.unlock()
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+
+    def test_push_uses_read_lock_lossy(self):
+        """Push should only need a read lock on the source side."""
+        source = self.make_from_branch_and_tree('source')
+        target = self.make_to_branch('target')
+
+        self.build_tree(['source/a'])
+        source.add(['a'])
+        source.commit('a')
+
+        try:
+            with source.branch.lock_read(), target.lock_write():
+                source.branch.push(target, stop_revision=source.last_revision(), lossy=True)
+        except errors.LossyPushToSameVCS:
+            raise tests.TestNotApplicable(
+                'push between branches of same format')
 
     def test_push_within_repository(self):
         """Push from one branch to another inside the same repository."""
@@ -172,10 +211,13 @@ class TestPush(TestCaseWithInterBranch):
         tree.commit('a')
 
         to_branch = self.make_to_branch('repo/branch')
-        tree.branch.push(to_branch)
-
-        self.assertEqual(tree.branch.last_revision(),
-                         to_branch.last_revision())
+        try:
+            tree.branch.push(to_branch)
+        except errors.NoRoundtrippingSupport:
+            tree.branch.push(to_branch, lossy=True)
+        else:
+            self.assertEqual(tree.branch.last_revision(),
+                             to_branch.last_revision())
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
@@ -186,12 +228,17 @@ class TestPush(TestCaseWithInterBranch):
         target = self.make_to_branch('target')
 
         source.commit('1st commit')
-        source.branch.push(target)
-        source.commit('2nd commit', rev_id='rev-2')
+        try:
+            source.branch.push(target)
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+        rev2 = source.commit('2nd commit')
         source.commit('3rd commit')
 
-        source.branch.push(target, stop_revision='rev-2', overwrite=True)
-        self.assertEqual('rev-2', target.last_revision())
+        source.branch.push(target, stop_revision=rev2, overwrite=True)
+        self.assertEqual(rev2, target.last_revision())
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -212,24 +259,28 @@ class TestPush(TestCaseWithInterBranch):
         #   - rev-2, no changes
         #   - rev-3, modifies the file.
         repo = self.make_repository('repo', shared=True, format='1.6')
-        builder = self.make_from_branch_builder('repo/local')
+        try:
+            builder = self.make_from_branch_builder('repo/local')
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'BranchBuilder can not initialize some formats')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
-        builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))])
+        revid1 = builder.build_snapshot(None, [
+            ('add', ('', None, 'directory', '')),
+            ('add', ('filename', None, 'file', 'content\n'))])
+        revid2 = builder.build_snapshot([revid1], [])
+        revid3 = builder.build_snapshot([revid2],
+            [('modify', ('filename', 'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id=revid1)
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
         self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
-        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
+        push._show_push_branch(trunk, revid2, self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = Branch.open(self.get_url('remote'))
@@ -252,24 +303,27 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('second', ['first'], [])
-        builder.build_snapshot('third', ['second'], [])
-        builder.build_snapshot('fourth', ['third'], [])
+        first = builder.build_snapshot(None, [
+            ('add', ('', None, 'directory', ''))])
+        second = builder.build_snapshot([first], [])
+        third = builder.build_snapshot([second], [])
+        fourth = builder.build_snapshot([third], [])
         builder.finish_series()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
         remote_bzrdir = local.controldir.sprout(
-            self.get_url('remote'), revision_id='third')
+            self.get_url('remote'), revision_id=third)
         remote = remote_bzrdir.open_branch()
+        if not remote.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                'remote is not a VersionedFile repository')
         # Push fourth revision
         self.reset_smart_call_log()
         self.disableOptimisticGetParentMap()
         self.assertFalse(local.is_locked())
         local.push(remote)
         hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
+        self.assertIn('Repository.insert_stream_1.19', hpss_call_names)
         insert_stream_idx = hpss_call_names.index(
             'Repository.insert_stream_1.19')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]

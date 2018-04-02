@@ -246,6 +246,7 @@ from .. import (
     )
 from ..sixish import (
     range,
+    text_type,
     viewitems,
     viewvalues,
     )
@@ -300,12 +301,9 @@ class DefaultSHA1Provider(SHA1Provider):
 
     def stat_and_sha1(self, abspath):
         """Return the stat and sha1 of a file given its absolute path."""
-        file_obj = file(abspath, 'rb')
-        try:
+        with file(abspath, 'rb') as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             sha1 = osutils.sha_file(file_obj)
-        finally:
-            file_obj.close()
         return statvalue, sha1
 
 
@@ -337,14 +335,14 @@ class DirState(object):
             b'a': 'absent',
             b'f': 'file',
             b'd': 'directory',
-            b'l':'symlink',
+            b'l': 'symlink',
             b'r': 'relocated',
             b't': 'tree-reference',
         }
     _stat_to_minikind = {
-        stat.S_IFDIR:b'd',
-        stat.S_IFREG:b'f',
-        stat.S_IFLNK:b'l',
+        stat.S_IFDIR: b'd',
+        stat.S_IFREG: b'f',
+        stat.S_IFLNK: b'l',
     }
     _to_yesno = {True: b'y', False: b'n'} # TODO profile the performance gain
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
@@ -1299,21 +1297,20 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
             sha1_provider=sha1_provider)
         try:
-            tree.lock_read()
-            try:
-                parent_ids = tree.get_parent_ids()
-                num_parents = len(parent_ids)
-                parent_trees = []
-                for parent_id in parent_ids:
-                    parent_tree = tree.branch.repository.revision_tree(parent_id)
-                    parent_trees.append((parent_id, parent_tree))
-                    parent_tree.lock_read()
-                result.set_parent_trees(parent_trees, [])
-                result.set_state_from_inventory(tree.root_inventory)
-            finally:
-                for revid, parent_tree in parent_trees:
-                    parent_tree.unlock()
-                tree.unlock()
+            with tree.lock_read():
+                try:
+                    parent_ids = tree.get_parent_ids()
+                    num_parents = len(parent_ids)
+                    parent_trees = []
+                    for parent_id in parent_ids:
+                        parent_tree = tree.branch.repository.revision_tree(parent_id)
+                        parent_trees.append((parent_id, parent_tree))
+                        parent_tree.lock_read()
+                    result.set_parent_trees(parent_trees, [])
+                    result.set_state_from_inventory(tree.root_inventory)
+                finally:
+                    for revid, parent_tree in parent_trees:
+                        parent_tree.unlock()
         except:
             # The caller won't have a chance to unlock this, so make sure we
             # cleanup ourselves
@@ -1947,7 +1944,7 @@ class DirState(object):
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
         fs_encoding = osutils._fs_enc
-        if isinstance(abspath, unicode):
+        if isinstance(abspath, text_type):
             # abspath is defined as the path to pass to lstat. readlink is
             # buggy in python < 2.6 (it doesn't encode unicode path into FS
             # encoding), so we need to encode ourselves knowing that unicode
@@ -3358,6 +3355,7 @@ class DirState(object):
         self._lock_state = 'r'
         self._state_file = self._lock_token.f
         self._wipe_state()
+        return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
         """Acquire a write lock on the dirstate."""
@@ -3371,6 +3369,7 @@ class DirState(object):
         self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()
+        return lock.LogicalLockResult(self.unlock, self._lock_token)
 
     def unlock(self):
         """Drop any locks held on the dirstate."""
@@ -3393,7 +3392,7 @@ class DirState(object):
 
 
 def py_update_entry(state, entry, abspath, stat_value,
-                 _stat_to_minikind=DirState._stat_to_minikind):
+                    _stat_to_minikind=DirState._stat_to_minikind):
     """Update the entry based on what is actually on disk.
 
     This function only calculates the sha if it needs to - if the entry is
@@ -3820,7 +3819,7 @@ class ProcessEntryPython(object):
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
-                osutils.parent_directories(new_path.encode('utf8')))
+                p.encode('utf8') for p in osutils.parent_directories(new_path))
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add(b'')

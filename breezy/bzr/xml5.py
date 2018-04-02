@@ -99,18 +99,18 @@ class Serializer_v5(xml6.Serializer_v6):
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.root.file_id not in (None, inventory.ROOT_ID):
-            fileid1 = ' file_id="'
+            fileid1 = b' file_id="'
             fileid2 = encode_and_escape(inv.root.file_id)
         else:
-            fileid1 = ""
-            fileid2 = ""
+            fileid1 = b""
+            fileid2 = b""
         if inv.revision_id is not None:
-            revid1 = ' revision_id="'
+            revid1 = b' revision_id="'
             revid2 = encode_and_escape(inv.revision_id)
         else:
-            revid1 = ""
-            revid2 = ""
-        append('<inventory%s%s format="5"%s%s>\n' % (
+            revid1 = b""
+            revid2 = b""
+        append(b'<inventory%s%s format="5"%s%s>\n' % (
             fileid1, fileid2, revid1, revid2))
 
 

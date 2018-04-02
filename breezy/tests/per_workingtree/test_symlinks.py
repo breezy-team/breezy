@@ -39,13 +39,12 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
     def test_smart_add_symlink(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
-            ('tree/link@', 'target'),
+            ('tree/link@', b'target'),
             ])
         tree.smart_add(['tree/link'])
-        self.assertIsNot(None, tree.path2id('link'))
-        self.assertIs(None, tree.path2id('target'))
-        self.assertEqual('symlink',
-            tree.kind(tree.path2id('link')))
+        self.assertTrue(tree.is_versioned('link'))
+        self.assertFalse(tree.is_versioned('target'))
+        self.assertEqual('symlink', tree.kind('link'))
 
     def test_smart_add_symlink_pointing_outside(self):
         tree = self.make_branch_and_tree('tree')
@@ -53,29 +52,34 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ('tree/link@', '../../../../target'),
             ])
         tree.smart_add(['tree/link'])
-        self.assertIsNot(None, tree.path2id('link'))
-        self.assertIs(None, tree.path2id('target'))
-        self.assertEqual('symlink',
-            tree.kind(tree.path2id('link')))
+        self.assertTrue(tree.is_versioned('link'))
+        self.assertFalse(tree.is_versioned('target'))
+        self.assertEqual('symlink', tree.kind('link'))
 
     def test_add_file_under_symlink(self):
-        # similar to 
+        # similar to
         # https://bugs.launchpad.net/bzr/+bug/192859/comments/3
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/link@', 'dir'),
             ('tree/dir/',),
-            ('tree/dir/file', 'content'),
+            ('tree/dir/file', b'content'),
             ])
-        self.assertEqual(
-            tree.smart_add(['tree/link/file']),
-            ([u'dir', u'dir/file'], {}))
+        if tree.has_versioned_directories():
+            self.assertEqual(
+                tree.smart_add(['tree/link/file']),
+                ([u'dir', u'dir/file'], {}))
+        else:
+            self.assertEqual(
+                tree.smart_add(['tree/link/file']),
+                ([u'dir/file'], {}))
+
         # should add the actual parent directory, not the apparent parent
         # (which is actually a symlink)
-        self.assertTrue(tree.path2id('dir/file'))
-        self.assertTrue(tree.path2id('dir'))
-        self.assertIs(None, tree.path2id('link'))
-        self.assertIs(None, tree.path2id('link/file'))
+        self.assertTrue(tree.is_versioned('dir/file'))
+        self.assertTrue(tree.is_versioned('dir'))
+        self.assertFalse(tree.is_versioned('link'))
+        self.assertFalse(tree.is_versioned('link/file'))
 
 
 class TestKindChanges(TestCaseWithWorkingTree):
@@ -97,18 +101,15 @@ class TestKindChanges(TestCaseWithWorkingTree):
         os.unlink('tree/a')
         self.build_tree_contents([
             ('tree/a/',),
-            ('tree/a/f', 'content'),
+            ('tree/a/f', b'content'),
             ])
         tree.smart_add(['tree/a/f'])
         tree.commit('change to dir')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([], list(tree.iter_changes(tree.basis_tree())))
-        if tree._format.supports_versioned_directories:
-            self.assertEqual(
-                ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
-        else:
-            self.assertEqual([], list(tree.list_files()))
+        self.assertEqual(
+            ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
@@ -120,7 +121,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/a/',),
-            ('tree/a/file', 'content'),
+            ('tree/a/file', b'content'),
             ])
         tree.smart_add(['tree/a'])
         tree.commit('add dir')
@@ -173,8 +174,8 @@ class TestOpenTree(TestCaseWithWorkingTree):
         self.build_tree_contents([
             ('link@', 'tree'),
             ('tree/outerlink@', '/not/there'),
-            ('tree/content', 'hello'),
+            ('tree/content', b'hello'),
             ('tree/sublink@', 'subdir'),
             ('tree/subdir/',),
-            ('tree/subdir/subcontent', 'subcontent stuff')
+            ('tree/subdir/subcontent', b'subcontent stuff')
             ])

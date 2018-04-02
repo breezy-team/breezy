@@ -10,7 +10,7 @@ Using KnitPack repositories
 Motivation
 ----------
 
-KnitPack is a new repository format for Bazaar, which is expected to be
+KnitPack is a new repository format for Breezy, which is expected to be
 faster both locally and over the network, is usually more compact, and
 will work with more FTP servers.
 
@@ -145,7 +145,7 @@ Technical notes
 ===============
 
 Bazaar 0.92 adds a new format (experimental at first) implemented in
-``bzrlib.repofmt.pack_repo.py``.
+``breezy.repofmt.pack_repo.py``.
 
 This format provides a knit-like interface which is quite compatible
 with knit format repositories: you can get a VersionedFile for a
@@ -186,7 +186,7 @@ extn     Purpose    Key                      References
                                              compression base
 ======== ========== ======================== ==========================
 
-Indices are accessed through the ``bzrlib.index.GraphIndex`` class.
+Indices are accessed through the ``breezy.index.GraphIndex`` class.
 Indices are stored as sorted files on disk.  Each line is one record,
 and contains:
 

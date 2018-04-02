@@ -17,6 +17,7 @@
 import os
 
 from breezy import errors, tests, workingtree
+from breezy.mutabletree import BadReferenceTarget
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -24,12 +25,10 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def make_trees(self):
         tree = self.make_branch_and_tree('tree')
-        tree.set_root_id('root-id')
         self.build_tree(['tree/file1'])
-        tree.add('file1', 'file1-id')
+        tree.add('file1')
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
-        sub_tree.set_root_id('sub-tree-root-id')
-        sub_tree.commit('commit', rev_id='sub_1')
+        sub_tree.commit('commit')
         return tree, sub_tree
 
     def _references_unsupported(self, tree):
@@ -49,19 +48,20 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         return tree, sub_tree
 
     def test_add_reference(self):
-        self.make_nested_trees()
-        tree = workingtree.WorkingTree.open('tree')
+        tree, sub_tree = self.make_nested_trees()
+        sub_tree_root_id = sub_tree.get_root_id()
         tree.lock_write()
         try:
-            self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
-            self.assertEqual(tree.kind('sub-tree-root-id'), 'tree-reference')
+            self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
+            self.assertEqual(tree.kind('sub-tree'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()
             basis.lock_read()
             try:
-                sub_tree = tree.get_nested_tree('sub-tree-root-id')
-                self.assertEqual(sub_tree.last_revision(),
-                    tree.get_reference_revision('sub-tree-root-id'))
+                sub_tree = tree.get_nested_tree('sub-tree', sub_tree_root_id)
+                self.assertEqual(
+                        sub_tree.last_revision(),
+                        tree.get_reference_revision('sub-tree', sub_tree_root_id))
             finally:
                 basis.unlock()
         finally:
@@ -69,13 +69,15 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_setting_file_ids():
+            self.skipTest('format does not support setting file ids')
         self.build_tree(['tree/file1'])
         tree.add('file1')
-        tree.set_root_id('root-id')
+        tree.set_root_id(b'root-id')
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
-        sub_tree.set_root_id('root-id')
+        sub_tree.set_root_id(b'root-id')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
+            self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sub_tree)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
@@ -83,9 +85,11 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_root_present(self):
         """Subtree root is present, though not the working tree root"""
         tree, sub_tree = self.make_trees()
-        sub_tree.set_root_id('file1-id')
+        if not tree.supports_setting_file_ids():
+            self.skipTest('format does not support setting file ids')
+        sub_tree.set_root_id(tree.path2id('file1'))
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
+            self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sub_tree)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
@@ -95,17 +99,19 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         os.rename('tree/sub-tree', 'sibling')
         sibling = workingtree.WorkingTree.open('sibling')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
+            self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sibling)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
 
     def test_get_nested_tree(self):
         tree, sub_tree = self.make_nested_trees()
+        sub_tree_root_id = sub_tree.get_root_id()
         tree.lock_read()
         try:
-            sub_tree2 = tree.get_nested_tree('sub-tree-root-id')
+            sub_tree2 = tree.get_nested_tree('sub-tree', sub_tree_root_id)
             self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
-            sub_tree2 = tree.get_nested_tree('sub-tree-root-id', 'sub-tree')
+            sub_tree2 = tree.get_nested_tree('sub-tree')
+            self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
         finally:
             tree.unlock()

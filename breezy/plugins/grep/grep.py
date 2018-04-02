@@ -25,11 +25,6 @@ from fnmatch import fnmatch
 
 from breezy._termcolor import color_string, FG
 
-from breezy.revisionspec import (
-    RevisionSpec,
-    RevisionSpec_revid,
-    RevisionSpec_revno,
-    )
 from breezy import (
     controldir,
     diff,
@@ -41,6 +36,11 @@ from breezy import (
 from breezy import (
     osutils,
     trace,
+    )
+from breezy.revisionspec import (
+    RevisionSpec,
+    RevisionSpec_revid,
+    RevisionSpec_revno,
     )
 from breezy.sixish import (
     BytesIO,
@@ -152,7 +152,7 @@ class _GrepDiffOutputter(object):
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
         else:
@@ -216,8 +216,7 @@ class _GrepDiffOutputter(object):
 def grep_diff(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
         else:
@@ -301,15 +300,12 @@ def grep_diff(opts):
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
                     writeline("    %s" % (line,))
-    finally:
-        branch.unlock()
 
 
 def versioned_grep(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
         if start_revid is None:
@@ -360,9 +356,8 @@ def versioned_grep(opts):
             rev = RevisionSpec_revid.from_string("revid:"+revid)
             tree = rev.as_tree(branch)
             for path in opts.path_list:
-                path_for_id = osutils.pathjoin(relpath, path)
-                id = tree.path2id(path_for_id)
-                if not id:
+                tree_path = osutils.pathjoin(relpath, path)
+                if not tree.has_filename(tree_path):
                     trace.warning("Skipped unknown file '%s'." % path)
                     continue
 
@@ -370,9 +365,7 @@ def versioned_grep(opts):
                     path_prefix = path
                     dir_grep(tree, path, relpath, opts, revno, path_prefix)
                 else:
-                    versioned_file_grep(tree, id, '.', path, opts, revno)
-    finally:
-        branch.unlock()
+                    versioned_file_grep(tree, tree_path, '.', path, opts, revno)
 
 
 def workingtree_grep(opts):
@@ -388,16 +381,13 @@ def workingtree_grep(opts):
     # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
     opts.outputter = _Outputter(opts)
 
-    tree.lock_read()
-    try:
+    with tree.lock_read():
         for path in opts.path_list:
             if osutils.isdir(path):
                 path_prefix = path
                 dir_grep(tree, path, relpath, opts, revno, path_prefix)
             else:
                 _file_grep(open(path).read(), path, opts, revno)
-    finally:
-        tree.unlock()
 
 
 def _skip_file(include, exclude, path):
@@ -412,13 +402,13 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
-        rpath = osutils.pathjoin('..',relpath)
+        rpath = osutils.pathjoin('..', relpath)
 
     from_dir = osutils.pathjoin(relpath, path)
     if opts.from_root:
         # start searching recursively from root
-        from_dir=None
-        recursive=True
+        from_dir = None
+        recursive = True
 
     to_grep = []
     to_grep_append = to_grep.append
@@ -433,18 +423,19 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
             continue
 
         if fc == 'V' and fkind == 'file':
-            if revno != None:
+            tree_path = osutils.pathjoin(from_dir if from_dir else '', fp)
+            if revno is not None:
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_id = tree.get_file_revision(fid)
+                cache_id = tree.get_file_revision(tree_path, fid)
                 if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,
                     #                but it's what the old code seemed to do
                     outputter.write_cached_lines(cache_id, revno)
                 else:
-                    to_grep_append((fid, (fp, fid)))
+                    to_grep_append((tree_path, (fp, tree_path)))
             else:
                 # we are grepping working tree.
                 if from_dir is None:
@@ -460,11 +451,11 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                     file_text = open(path_for_file, 'r').read()
                     _file_grep(file_text, fp, opts, revno, path_prefix)
 
-    if revno != None: # grep versioned files
-        for (path, fid), chunks in tree.iter_files_bytes(to_grep):
+    if revno is not None: # grep versioned files
+        for (path, tree_path), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            _file_grep(chunks[0], path, opts, revno, path_prefix,
-                tree.get_file_revision(fid, path))
+            _file_grep(''.join(chunks), path, opts, revno, path_prefix,
+                tree.get_file_revision(tree_path))
 
 
 def _make_display_path(relpath, path):
@@ -482,12 +473,12 @@ def _make_display_path(relpath, path):
     return path
 
 
-def versioned_file_grep(tree, id, relpath, path, opts, revno, path_prefix = None):
+def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix = None):
     """Create a file object for the specified id and pass it on to _file_grep.
     """
 
     path = _make_display_path(relpath, path)
-    file_text = tree.get_file_text(id)
+    file_text = tree.get_file_text(tree_path)
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
@@ -557,7 +548,7 @@ class _Outputter(object):
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
             path_start = FG.MAGENTA

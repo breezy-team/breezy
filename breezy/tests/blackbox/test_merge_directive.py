@@ -43,14 +43,14 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def prepare_merge_directive(self):
         self.tree1 = self.make_branch_and_tree('tree1')
-        self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
+        self.build_tree_contents([('tree1/file', b'a\nb\nc\nd\n')])
         self.tree1.branch.get_config_stack().set(
             'email', 'J. Random Hacker <jrandom@example.com>')
         self.tree1.add('file')
-        self.tree1.commit('foo', rev_id='foo-id')
+        self.tree1.commit('foo', rev_id=b'foo-id')
         self.tree2 = self.tree1.controldir.sprout('tree2').open_workingtree()
-        self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
-        self.tree1.commit('bar', rev_id='bar-id')
+        self.build_tree_contents([('tree1/file', b'a\nb\nc\nd\ne\n')])
+        self.tree1.commit('bar', rev_id=b'bar-id')
         os.chdir('tree1')
         return self.tree1, self.tree2
 
@@ -155,7 +155,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_pull_raw(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 '-r', '2', self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -167,7 +167,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def test_pull_user_r(self):
         """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -178,7 +178,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_pull_bundle(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 '-r', '2', '/dev/null', '--bundle'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -189,7 +189,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_merge_raw(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 '-r', '2', self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -201,7 +201,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def test_merge_user_r(self):
         """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -212,7 +212,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_merge_bundle(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                '-r', '2', '/dev/null', '--bundle'])[0]
         self.build_tree_contents([('../directive', md_text)])

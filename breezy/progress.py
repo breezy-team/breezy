@@ -164,6 +164,13 @@ class ProgressTask(object):
         else:
             self.ui_factory.clear_term()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.finished()
+        return False
+
 
 class DummyProgress(object):
     """Progress-bar standin that does nothing.

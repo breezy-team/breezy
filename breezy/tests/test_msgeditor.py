@@ -37,9 +37,9 @@ from . import (
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
-    TestSkipped,
     multiply_tests,
     probe_bad_non_ascii,
+    probe_unicode_in_user_encoding,
     split_suite_by_re,
     )
 from .EncodingAdapter import encoding_scenarios
@@ -61,9 +61,9 @@ class MsgEditorTest(TestCaseWithTransport):
         b = working_tree.branch
         filename = u'hell\u00d8'
         try:
-            self.build_tree_contents([(filename, 'contents of hello')])
+            self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
+            self.skipTest("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
@@ -204,7 +204,7 @@ if len(sys.argv) == 2:
             os.chmod('fed.py', 0o755)
             self.overrideEnv('BRZ_EDITOR', './fed.py')
 
-    def test_edit_commit_message(self):
+    def test_edit_commit_message_without_infotext(self):
         working_tree = self.make_uncommitted_tree()
         self.make_fake_editor()
 
@@ -212,13 +212,27 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(''))
 
+    def test_edit_commit_message_with_ascii_infotext(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message with ascii string infotext')
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message('spam'))
 
+    def test_edit_commit_message_with_unicode_infotext(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message with unicode infotext')
+        uni_val, ue_val = probe_unicode_in_user_encoding()
+        if ue_val is None:
+            self.skipTest(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+
         self.assertEqual('test message from fed\n',
-                         msgeditor.edit_commit_message(u'\u1234'))
+                         msgeditor.edit_commit_message(uni_val))
 
         tmpl = edit_commit_message_encoded(u'\u1234'.encode("utf8"))
         self.assertEqual('test message from fed\n', tmpl)
@@ -295,7 +309,7 @@ if len(sys.argv) == 2:
         # check that commit template written properly
         # and has platform native line-endings (CRLF on win32)
         create_file = msgeditor._create_temp_file_with_commit_template
-        msgfilename, hasinfo = create_file('infotext','----','start message')
+        msgfilename, hasinfo = create_file('infotext', '----', 'start message')
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
         expected = os.linesep.join(['start message',
@@ -333,7 +347,7 @@ if len(sys.argv) == 2:
         # in default user encoding
         char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
-            raise TestSkipped('Cannot find suitable non-ascii character '
+            self.skipTest('Cannot find suitable non-ascii character '
                 'for user_encoding (%s)' % osutils.get_user_encoding())
 
         self.make_fake_editor(message=char)

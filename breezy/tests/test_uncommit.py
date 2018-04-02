@@ -51,7 +51,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         # The file should not be removed
         self.assertPathExists('tree/two')
         # And it should still be listed as added
-        self.assertIsNot(None, tree.path2id('two'))
+        self.assertTrue(tree.is_versioned('two'))
 
     def test_uncommit_bound(self):
         tree, history = self.make_linear_tree()
@@ -113,7 +113,7 @@ class TestUncommit(tests.TestCaseWithTransport):
     def test_uncommit_remove_tags_keeps_pending_merges(self):
         tree, history = self.make_linear_tree()
         copy = tree.controldir.sprout('copyoftree').open_workingtree()
-        copy.commit(message='merged', rev_id='merged')
+        copy.commit(message='merged', rev_id=b'merged')
         tree.merge_from_branch(copy.branch)
         tree.branch.tags.set_tag('pointsatmerged', 'merged')
         history.append(tree.commit('merge'))

@@ -34,13 +34,16 @@ class TestUnlock(TestCaseWithExternalReferenceRepository):
         repo = builder.get_branch().repository
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format does not support stacking')
-        builder.build_snapshot('A-id', None, [
+        builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'contents\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [
-            ('modify', ('file-id', 'new-content\n'))])
-        builder.build_snapshot('C-id', ['B-id'], [
-            ('modify', ('file-id', 'yet more content\n'))])
+            ('add', ('file', 'file-id', 'file', 'contents\n'))],
+            revision_id='A-id')
+        builder.build_snapshot(['A-id'], [
+            ('modify', ('file', 'new-content\n'))],
+            revision_id='B-id')
+        builder.build_snapshot(['B-id'], [
+            ('modify', ('file', 'yet more content\n'))],
+            revision_id='C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

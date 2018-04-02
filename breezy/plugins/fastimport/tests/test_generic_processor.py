@@ -173,26 +173,20 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                     str(expected_kind_changed_entry), kind_changed_files))
 
     def assertContent(self, branch, tree, path, content):
-        file_id = tree.path2id(path)
-        branch.lock_read()
-        self.addCleanup(branch.unlock)
-        self.assertEqual(tree.get_file_text(file_id), content)
+        with branch.lock_read():
+            self.assertEqual(tree.get_file_text(path), content)
 
     def assertSymlinkTarget(self, branch, tree, path, target):
-        file_id = tree.path2id(path)
-        branch.lock_read()
-        self.addCleanup(branch.unlock)
-        self.assertEqual(tree.get_symlink_target(file_id), target)
+        with branch.lock_read():
+            self.assertEqual(tree.get_symlink_target(path), target)
 
     def assertExecutable(self, branch, tree, path, executable):
-        file_id = tree.path2id(path)
-        branch.lock_read()
-        self.addCleanup(branch.unlock)
-        self.assertEqual(tree.is_executable(file_id), executable)
+        with branch.lock_read():
+            self.assertEqual(tree.is_executable(path), executable)
 
     def assertRevisionRoot(self, revtree, path):
         self.assertEqual(revtree.get_revision_id(),
-                         revtree.get_file_revision(revtree.path2id(path)))
+                         revtree.get_file_revision(path))
 
 
 class TestImportToPackTag(TestCaseForGenericProcessor):
@@ -233,6 +227,16 @@ class TestImportToPackTag(TestCaseForGenericProcessor):
         raise tests.KnownFailure("non-mark committish not yet supported"
                                  "- bug #410249")
         handler.process(self.file_command_iter(path))
+
+
+class TestImportZeroMarker(TestCaseForGenericProcessor):
+
+    def test_tag(self):
+        handler, branch = self.get_handler()
+        def command_list():
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            yield commands.TagCommand('tag1', ':0', committer, "tag 1")
+        handler.process(command_list)
 
 
 class TestImportToPackModify(TestCaseForGenericProcessor):
@@ -1946,11 +1950,10 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
         rev_b = branch.repository.get_parent_map([rev_c])[rev_c][0]
         rtree_a, rtree_b, rtree_c, rtree_d = branch.repository.revision_trees([
             rev_a, rev_b, rev_c, rev_d])
-        foo_id = rtree_a.path2id('foo')
-        self.assertEqual(rev_a, rtree_a.get_file_revision(foo_id))
-        self.assertEqual(rev_b, rtree_b.get_file_revision(foo_id))
-        self.assertEqual(rev_c, rtree_c.get_file_revision(foo_id))
-        self.assertEqual(rev_c, rtree_d.get_file_revision(foo_id))
+        self.assertEqual(rev_a, rtree_a.get_file_revision('foo'))
+        self.assertEqual(rev_b, rtree_b.get_file_revision('foo'))
+        self.assertEqual(rev_c, rtree_c.get_file_revision('foo'))
+        self.assertEqual(rev_c, rtree_d.get_file_revision('foo'))
 
 
 class TestCommitCommands(TestCaseForGenericProcessor):
@@ -1990,5 +1993,4 @@ class TestAddNonUtf8InBranch(TestCaseForGenericProcessor):
         self.addCleanup(branch.unlock)
         rev_a = branch.last_revision()
         rtree_a = branch.repository.revision_tree(rev_a)
-        foo_id = rtree_a.path2id(u'foo\ufffd')
-        self.assertEqual(rev_a, rtree_a.get_file_revision(foo_id))
+        self.assertEqual(rev_a, rtree_a.get_file_revision(u'foo\ufffd'))

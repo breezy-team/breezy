@@ -64,19 +64,19 @@ from breezy import (
     config,
     controldir,
     diff,
-    errors,
     foreign,
     repository as _mod_repository,
     revision as _mod_revision,
-    revisionspec,
     tsort,
     )
 from breezy.i18n import gettext, ngettext
 """)
 
 from . import (
+    errors,
     lazy_regex,
     registry,
+    revisionspec,
     )
 from .osutils import (
     format_date,
@@ -85,14 +85,15 @@ from .osutils import (
     get_terminal_encoding,
     terminal_width,
     )
-from breezy.sixish import (
+from .sixish import (
     BytesIO,
     range,
     zip,
     )
+from .tree import find_previous_path
 
 
-def find_touching_revisions(branch, file_id):
+def find_touching_revisions(repository, last_revision, last_tree, last_path):
     """Yield a description of revisions which affect the file_id.
 
     Each returned element is (revno, revision_id, description)
@@ -103,40 +104,35 @@ def find_touching_revisions(branch, file_id):
     TODO: Perhaps some way to limit this to only particular revisions,
     or to traverse a non-mainline set of revisions?
     """
-    last_ie = None
-    last_path = None
-    revno = 1
-    graph = branch.repository.get_graph()
-    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
-        [_mod_revision.NULL_REVISION]))
-    for revision_id in reversed(history):
-        this_inv = branch.repository.get_inventory(revision_id)
-        if this_inv.has_id(file_id):
-            this_ie = this_inv[file_id]
-            this_path = this_inv.id2path(file_id)
-        else:
-            this_ie = this_path = None
+    last_verifier = last_tree.get_file_verifier(last_path)
+    graph = repository.get_graph()
+    history = list(graph.iter_lefthand_ancestry(last_revision, []))
+    revno = len(history)
+    for revision_id in history:
+        this_tree = repository.revision_tree(revision_id)
+        this_path = find_previous_path(last_tree, this_tree, last_path)
 
         # now we know how it was last time, and how it is in this revision.
         # are those two states effectively the same or not?
-
-        if not this_ie and not last_ie:
-            # not present in either
-            pass
-        elif this_ie and not last_ie:
-            yield revno, revision_id, "added " + this_path
-        elif not this_ie and last_ie:
-            # deleted here
-            yield revno, revision_id, "deleted " + last_path
+        if this_path is not None and last_path is None:
+            yield revno, revision_id, "deleted " + this_path
+            this_verifier = this_tree.get_file_verifier(this_path)
+        elif this_path is None and last_path is not None:
+            yield revno, revision_id, "added " + last_path
         elif this_path != last_path:
-            yield revno, revision_id, ("renamed %s => %s" % (last_path, this_path))
-        elif (this_ie.text_size != last_ie.text_size
-              or this_ie.text_sha1 != last_ie.text_sha1):
-            yield revno, revision_id, "modified " + this_path
+            yield revno, revision_id, ("renamed %s => %s" % (this_path, last_path))
+            this_verifier = this_tree.get_file_verifier(this_path)
+        else:
+            this_verifier = this_tree.get_file_verifier(this_path)
+            if (this_verifier != last_verifier):
+                yield revno, revision_id, "modified " + this_path
 
-        last_ie = this_ie
+        last_verifier = this_verifier
         last_path = this_path
-        revno += 1
+        last_tree = this_tree
+        if last_path is None:
+            return
+        revno -= 1
 
 
 def show_log(branch,
@@ -323,17 +319,17 @@ def _apply_log_request_defaults(rqst):
     return result
 
 
-def format_signature_validity(rev_id, repo):
+def format_signature_validity(rev_id, branch):
     """get the signature validity
 
     :param rev_id: revision id to validate
-    :param repo: repository of revision
+    :param branch: branch of revision
     :return: human readable string to print to log
     """
     from breezy import gpg
 
-    gpg_strategy = gpg.GPGStrategy(None)
-    result = repo.verify_revision_signature(rev_id, gpg_strategy)
+    gpg_strategy = gpg.GPGStrategy(branch.get_config_stack())
+    result = branch.repository.verify_revision_signature(rev_id, gpg_strategy)
     if result[0] == gpg.SIGNATURE_VALID:
         return u"valid signature from {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_KEY_MISSING:
@@ -467,8 +463,7 @@ class _DefaultLogGenerator(LogGenerator):
                 else:
                     diff = self._format_diff(rev, rev_id, diff_type)
                 if show_signature:
-                    signature = format_signature_validity(rev_id,
-                                                self.branch.repository)
+                    signature = format_signature_validity(rev_id, self.branch)
                 else:
                     signature = None
                 yield LogRevision(rev, revno, merge_depth, delta,
@@ -826,9 +821,9 @@ def _rebase_merge_depth(view_revisions):
     """Adjust depths upwards so the top level is 0."""
     # If either the first or last revision have a merge_depth of 0, we're done
     if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
-        min_depth = min([d for r,n,d in view_revisions])
+        min_depth = min([d for r, n, d in view_revisions])
         if min_depth != 0:
-            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+            view_revisions = [(r, n, d-min_depth) for r, n, d in view_revisions]
     return view_revisions
 
 
@@ -907,7 +902,7 @@ def _match_filter(searchRE, rev):
                }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
-    for (k,v) in searchRE:
+    for (k, v) in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
             return False
     return True
@@ -1770,16 +1765,16 @@ class GnuChangelogLogFormatter(LogFormatter):
                                show_offset=False)
         committer_str = self.authors(revision.rev, 'first', sep=', ')
         committer_str = committer_str.replace(' <', '  <')
-        to_file.write('%s  %s\n\n' % (date_str,committer_str))
+        to_file.write('%s  %s\n\n' % (date_str, committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
                 path, = c[:1]
                 to_file.write('\t* %s:\n' % (path,))
             for c in revision.delta.renamed:
-                oldpath,newpath = c[:2]
+                oldpath, newpath = c[:2]
                 # For renamed files, show both the old and the new path
-                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath,newpath))
+                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath, newpath))
             to_file.write('\n')
 
         if not revision.rev.message:
@@ -2063,7 +2058,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
         tree1 = None
         for fp in relpaths:
             file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, file_id)
+            kind = _get_kind_for_file_id(tree, fp, file_id)
             if file_id is None:
                 # go back to when time began
                 if tree1 is None:
@@ -2077,7 +2072,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
                         tree1 = b.repository.revision_tree(rev1)
                 if tree1:
                     file_id = tree1.path2id(fp)
-                    kind = _get_kind_for_file_id(tree1, file_id)
+                    kind = _get_kind_for_file_id(tree1, fp, file_id)
             info_list.append((fp, file_id, kind))
 
     elif start_rev_info == end_rev_info:
@@ -2085,7 +2080,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
         tree = b.repository.revision_tree(end_rev_info.rev_id)
         for fp in relpaths:
             file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, file_id)
+            kind = _get_kind_for_file_id(tree, fp, file_id)
             info_list.append((fp, file_id, kind))
 
     else:
@@ -2099,7 +2094,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
         tree1 = None
         for fp in relpaths:
             file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, file_id)
+            kind = _get_kind_for_file_id(tree, fp, file_id)
             if file_id is None:
                 if tree1 is None:
                     rev_id = start_rev_info.rev_id
@@ -2109,15 +2104,15 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
                     else:
                         tree1 = b.repository.revision_tree(rev_id)
                 file_id = tree1.path2id(fp)
-                kind = _get_kind_for_file_id(tree1, file_id)
+                kind = _get_kind_for_file_id(tree1, fp, file_id)
             info_list.append((fp, file_id, kind))
     return b, info_list, start_rev_info, end_rev_info
 
 
-def _get_kind_for_file_id(tree, file_id):
+def _get_kind_for_file_id(tree, path, file_id):
     """Return the kind of a file-id or None if it doesn't exist."""
     if file_id is not None:
-        return tree.kind(file_id)
+        return tree.kind(path, file_id)
     else:
         return None
 

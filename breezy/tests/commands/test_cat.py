@@ -27,7 +27,7 @@ class TestCat(TestCaseWithConnectionHookedTransport):
 
     def test_cat(self):
         wt1 = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'foo')])
+        self.build_tree_contents([('branch/foo', b'foo')])
         wt1.add('foo')
         wt1.commit('add foo')
 

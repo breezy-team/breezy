@@ -31,14 +31,14 @@ class TestWorkingTree(tests.TestCaseWithTransport):
                          'tree/subtree/',
                          'tree/subtree/file2'])
         base_tree = self.make_branch_and_tree('tree', format=format)
-        base_tree.add('file', 'file-id')
-        base_tree.commit('first commit', rev_id='tree-1')
+        base_tree.add('file', b'file-id')
+        base_tree.commit('first commit', rev_id=b'tree-1')
         sub_tree = self.make_branch_and_tree('tree/subtree',
             format='development-subtree')
         if same_root is True:
             sub_tree.set_root_id(base_tree.get_root_id())
-        sub_tree.add('file2', 'file2-id')
-        sub_tree.commit('first commit', rev_id='subtree-1')
+        sub_tree.add('file2', b'file2-id')
+        sub_tree.commit('first commit', rev_id=b'subtree-1')
         return base_tree, sub_tree
 
     def test_old_knit1_failure(self):
@@ -78,22 +78,22 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         finally:
             file2.close()
         base_tree = workingtree.WorkingTree.open('tree')
-        base_tree.commit('combined', rev_id='combined-1')
-        self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
-        self.assertEqual('subtree/file2', base_tree.id2path('file2-id'))
+        base_tree.commit('combined', rev_id=b'combined-1')
+        self.assertEqual(b'file2-id', base_tree.path2id('subtree/file2'))
+        self.assertEqual('subtree/file2', base_tree.id2path(b'file2-id'))
         self.assertEqualDiff(file2_contents,
-                             base_tree.get_file_text('file2-id'))
+                             base_tree.get_file_text('subtree/file2'))
         basis_tree = base_tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
         self.assertEqualDiff(file2_contents,
-                             base_tree.get_file_text('file2-id'))
+                             base_tree.get_file_text('subtree/file2'))
         self.assertEqualDiff(file2_contents,
-                             basis_tree.get_file_text('file2-id'))
+                             basis_tree.get_file_text('subtree/file2'))
         self.assertEqual('subtree-1',
-                         basis_tree.get_file_revision('file2-id'))
+                         basis_tree.get_file_revision('subtree/file2'))
         self.assertEqual('combined-1',
-                         basis_tree.get_file_revision(sub_root_id))
+                         basis_tree.get_file_revision('subtree', sub_root_id))
 
     def test_subsume_failure(self):
         base_tree, sub_tree = self.make_trees()

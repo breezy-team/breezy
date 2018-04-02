@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from StringIO import StringIO
+from ..sixish import StringIO
 from shutil import rmtree, copy2, copytree
 import tarfile
 import tempfile
@@ -142,14 +142,12 @@ class TestImport(TestCaseInTempDir):
             os.mkdir(prefix + 'junk')
             archive_file.add(prefix + 'junk')
 
-            f = file(prefix + 'README', 'wb')
-            f.write('Now?')
-            f.close()
+            with file(prefix + 'README', 'wb') as f:
+                f.write('Now?')
             archive_file.add(prefix + 'README')
 
-            f = file(prefix + 'README', 'wb')
-            f.write('Wow?')
-            f.close()
+            with file(prefix + 'README', 'wb') as f:
+                f.write('Wow?')
             # Add a second entry for README with different contents.
             archive_file.add(prefix + 'README')
             archive_file.close()
@@ -162,18 +160,16 @@ class TestImport(TestCaseInTempDir):
 
     def make_messed_tar(self):
         result = StringIO()
-        tar_file = tarfile.open('project-0.1.tar', 'w', result)
-        os.mkdir('project-0.1')
-        tar_file.add('project-0.1')
+        with tarfile.open('project-0.1.tar', 'w', result) as tar_file:
+            os.mkdir('project-0.1')
+            tar_file.add('project-0.1')
 
-        os.mkdir('project-0.2')
-        tar_file.add('project-0.2')
+            os.mkdir('project-0.2')
+            tar_file.add('project-0.2')
 
-        f = file('project-0.1/README', 'wb')
-        f.write('What?')
-        f.close()
-        tar_file.add('project-0.1/README')
-        tar_file.close()
+            with file('project-0.1/README', 'wb') as f:
+                f.write('What?')
+            tar_file.add('project-0.1/README')
         rmtree('project-0.1')
         result.seek(0)
         return result
@@ -185,12 +181,11 @@ class TestImport(TestCaseInTempDir):
 
     def make_tar_with_bzrdir(self):
         result = StringIO()
-        tar_file = tarfile.open('tar-with-bzrdir.tar', 'w', result)
-        os.mkdir('toplevel-dir')
-        tar_file.add('toplevel-dir')
-        os.mkdir('toplevel-dir/.bzr')
-        tar_file.add('toplevel-dir/.bzr')
-        tar_file.close()
+        with tarfile.open('tar-with-bzrdir.tar', 'w', result) as tar_file:
+            os.mkdir('toplevel-dir')
+            tar_file.add('toplevel-dir')
+            os.mkdir('toplevel-dir/.bzr')
+            tar_file.add('toplevel-dir/.bzr')
         rmtree('toplevel-dir')
         result.seek(0)
         return result
@@ -233,25 +228,21 @@ class TestImport(TestCaseInTempDir):
         tree.lock_write()
         try:
             importer(tree, archive_file)
-            self.assertTrue(tree.path2id('README') is not None)
-            self.assertTrue(tree.path2id('FEEDME') is not None)
+            self.assertTrue(tree.is_versioned('README'))
+            self.assertTrue(tree.is_versioned('FEEDME'))
             self.assertTrue(os.path.isfile(tree.abspath('README')))
-            self.assertEqual(tree.stored_kind(tree.path2id('README')),
-                'file')
-            self.assertEqual(tree.stored_kind(tree.path2id('FEEDME')),
-                'file')
-            f = file(tree.abspath('junk/food'), 'wb')
-            f.write('I like food\n')
-            f.close()
+            self.assertEqual(tree.stored_kind('README'), 'file')
+            self.assertEqual(tree.stored_kind('FEEDME'), 'file')
+            with file(tree.abspath('junk/food'), 'wb') as f:
+                f.write('I like food\n')
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 archive_file = self.make_archive2(builder, subdir)
                 importer(tree, archive_file)
-            self.assertTrue(tree.path2id('README') is not None)
+            self.assertTrue(tree.is_versioned('README'))
             # Ensure the second version of the file is used.
-            self.assertEqual(tree.get_file_text(tree.path2id('README')),
-                             'Wow?')
+            self.assertEqual(tree.get_file_text('README'), 'Wow?')
             self.assertTrue(not os.path.exists(tree.abspath('FEEDME')))
         finally:
             tree.unlock()
@@ -261,13 +252,13 @@ class TestImport(TestCaseInTempDir):
         tar_file = self.make_messed_tar()
         tree = BzrDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
-        self.assertTrue(tree.path2id('project-0.1/README') is not None)
+        self.assertTrue(tree.is_versioned('project-0.1/README'))
 
     def test_untar_gzip(self):
         tar_file = self.make_tar(mode='w:gz')
         tree = BzrDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
-        self.assertTrue(tree.path2id('README') is not None)
+        self.assertTrue(tree.is_versioned('README'))
 
     def test_no_crash_with_bzrdir(self):
         tar_file = self.make_tar_with_bzrdir()

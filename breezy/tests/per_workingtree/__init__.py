@@ -64,7 +64,7 @@ def make_scenario(transport_server, transport_readonly_server,
     return {
         "transport_server": transport_server,
         "transport_readonly_server": transport_readonly_server,
-        "bzrdir_format": workingtree_format._matchingbzrdir,
+        "bzrdir_format": workingtree_format._matchingcontroldir,
         "workingtree_format": workingtree_format,
         }
 
@@ -151,6 +151,7 @@ def load_tests(loader, standard_tests, pattern):
         'rename_one',
         'revision_tree',
         'set_root_id',
+        'shelf_manager',
         'smart_add',
         'symlinks',
         'uncommit',

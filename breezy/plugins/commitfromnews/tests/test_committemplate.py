@@ -65,11 +65,12 @@ class TestCommitTemplate(TestCaseWithTransport):
         self.enable_commitfromnews()
         builder = self.make_branch_builder('test')
         builder.start_series()
-        builder.build_snapshot('BASE-id', None,
+        builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ],
-            message_callback=msgeditor.generate_commit_message_template)
+            message_callback=msgeditor.generate_commit_message_template,
+            revision_id=b'BASE-id')
         builder.finish_series()
         self.assertEqual([None], self.messages)
 
@@ -79,11 +80,12 @@ class TestCommitTemplate(TestCaseWithTransport):
         builder = self.make_branch_builder('test')
         builder.start_series()
         content = INITIAL_NEWS_CONTENT
-        builder.build_snapshot('BASE-id', None,
+        builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('NEWS', 'foo-id', 'file', content)),
+             ('add', ('NEWS', b'foo-id', 'file', content)),
              ],
-            message_callback=msgeditor.generate_commit_message_template)
+            message_callback=msgeditor.generate_commit_message_template,
+            revision_id=b'BASE-id')
         builder.finish_series()
         self.assertEqual([content], self.messages)
 
@@ -93,7 +95,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         builder = self.make_branch_builder('test')
         builder.start_series()
         orig_content = INITIAL_NEWS_CONTENT
-        mod_content = """----------------------------
+        mod_content = b"""----------------------------
 commitfromnews release notes
 ----------------------------
 
@@ -111,12 +113,12 @@ IMPROVEMENTS
         change_content = """* Added a new change to the system.
 
 """
-        builder.build_snapshot('BASE-id', None,
+        builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('NEWS', 'foo-id', 'file', orig_content)),
-             ])
-        builder.build_snapshot(None, None,
-            [('modify', ('foo-id', mod_content)),
+             ('add', ('NEWS', b'foo-id', 'file', orig_content)),
+             ], revision_id=b'BASE-id')
+        builder.build_snapshot(None,
+            [('modify', ('NEWS', mod_content)),
              ],
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()
@@ -128,7 +130,7 @@ IMPROVEMENTS
         builder = self.make_branch_builder('test')
         builder.start_series()
         orig_content = INITIAL_NEWS_CONTENT
-        mod_content = """----------------------------
+        mod_content = b"""----------------------------
 commitfromnews release notes
 ----------------------------
 
@@ -148,12 +150,12 @@ IMPROVEMENTS
 * Fixed a horrible bug. (lp:523423)
 
 """
-        builder.build_snapshot('BASE-id', None,
+        builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('NEWS', 'foo-id', 'file', orig_content)),
-             ])
-        builder.build_snapshot(None, None,
-            [('modify', ('foo-id', mod_content)),
+             ('add', ('NEWS', b'foo-id', 'file', orig_content)),
+             ], revision_id=b'BASE-id')
+        builder.build_snapshot(None,
+            [('modify', ('NEWS', mod_content)),
              ],
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()

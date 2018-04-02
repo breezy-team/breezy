@@ -35,6 +35,9 @@ from ...option import (
     Option,
     ListOption,
     )
+from ...sixish import (
+    text_type,
+    )
 
 
 class cmd_launchpad_open(Command):
@@ -140,6 +143,30 @@ class cmd_launchpad_login(Command):
                                                                         (name,))
 
 
+class cmd_launchpad_logout(Command):
+    __doc__ = """Unset the Launchpad user ID.
+
+    When communicating with Launchpad, some commands need to know your
+    Launchpad user ID.  This command will log you out from Launchpad.
+    This means that communication with Launchpad will happen over
+    HTTPS, and will not require one of your SSH keys to be available.
+    """
+    aliases = ['lp-logout']
+    takes_options = ['verbose']
+
+    def run(self, verbose=False):
+        from . import account
+        old_username = account.get_lp_login()
+        if old_username is None:
+            self.outf.write(gettext('Not logged into Launchpad.\n'))
+            return 1
+        account.set_lp_login(None)
+        if verbose:
+            self.outf.write(gettext(
+                "Launchpad user ID %s logged out.\n") %
+                old_username)
+
+
 # XXX: cmd_launchpad_mirror is untested
 class cmd_launchpad_mirror(Command):
     __doc__ = """Ask Launchpad to mirror a branch now."""
@@ -181,13 +208,13 @@ class cmd_lp_propose_merge(Command):
 
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
-                     Option('message', short_name='m', type=unicode,
+                     Option('message', short_name='m', type=text_type,
                             help='Commit message.'),
                      Option('approve',
                             help=('Mark the proposal as approved immediately, '
                                   'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
-                     ListOption('review', short_name='R', type=unicode,
+                     ListOption('review', short_name='R', type=text_type,
                             help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']
@@ -244,9 +271,7 @@ class cmd_lp_find_proposal(Command):
         from . import lp_api
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
-        pb = ui.ui_factory.nested_progress_bar()
-        b.lock_read()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
             if revision is None:
                 revision_id = b.last_revision()
             else:
@@ -257,9 +282,6 @@ class cmd_lp_find_proposal(Command):
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
                 webbrowser.open(lp_api.canonical_url(mp))
-        finally:
-            b.unlock()
-            pb.finished()
 
     def _find_proposals(self, revision_id, pb):
         from . import (lp_api, lp_registration)

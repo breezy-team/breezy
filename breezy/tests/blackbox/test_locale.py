@@ -35,7 +35,7 @@ class TestLocale(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         tree.add('a')
-        tree.commit(u'Unicode \xb5 commit', rev_id='r1',
+        tree.commit(u'Unicode \xb5 commit', rev_id=b'r1',
                     committer=u'\u062c\u0648\u062c\u0648'
                               u' Meinel <juju@info.com>',
                     timestamp=1156451297.96, timezone=0)

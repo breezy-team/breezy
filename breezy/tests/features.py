@@ -19,11 +19,13 @@
 
 from __future__ import absolute_import
 
+import importlib
 import os
 import subprocess
 import stat
 import sys
 import tempfile
+import warnings
 
 from .. import (
     osutils,
@@ -163,19 +165,25 @@ class ModuleAvailableFeature(Feature):
     :ivar module: The module if it is available, else None.
     """
 
-    def __init__(self, module_name):
+    def __init__(self, module_name, ignore_warnings=None):
         super(ModuleAvailableFeature, self).__init__()
         self.module_name = module_name
+        if ignore_warnings is None:
+            ignore_warnings = ()
+        self.ignore_warnings = ignore_warnings
 
     def _probe(self):
         sentinel = object()
         module = sys.modules.get(self.module_name, sentinel)
         if module is sentinel:
-            try:
-                self._module = __import__(self.module_name, {}, {}, [''])
+            with warnings.catch_warnings():
+                for warning_category in self.ignore_warnings:
+                    warnings.simplefilter('ignore', warning_category)
+                try:
+                    self._module = importlib.import_module(self.module_name)
+                except ImportError:
+                    return False
                 return True
-            except ImportError:
-                return False
         else:
             self._module = module
             return True
@@ -205,13 +213,13 @@ class PluginLoadedFeature(Feature):
         self.plugin_name = plugin_name
 
     def _probe(self):
-        import breezy
-        return self.plugin_name in breezy.global_state.plugins
+        from breezy.plugin import get_loaded_plugin
+        return (get_loaded_plugin(self.plugin_name) is not None)
 
     @property
     def plugin(self):
-        import breezy
-        return breezy.global_state.plugins.get(self.plugin_name)
+        from breezy.plugin import get_loaded_plugin
+        return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
         return '%s plugin' % self.plugin_name
@@ -374,7 +382,10 @@ class _NotRunningAsRoot(Feature):
 
 not_running_as_root = _NotRunningAsRoot()
 
-apport = ModuleAvailableFeature('apport')
+# Apport uses deprecated imp module on python3.
+apport = ModuleAvailableFeature(
+    'apport.report',
+    ignore_warnings=[DeprecationWarning, PendingDeprecationWarning])
 gpg = ModuleAvailableFeature('gpg')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae.scanner')
@@ -520,6 +531,29 @@ class Win32Feature(Feature):
 
 
 win32_feature = Win32Feature()
+
+
+class _BackslashFilenameFeature(Feature):
+    """Does the filesystem support backslashes in filenames?"""
+
+    def _probe(self):
+
+        try:
+            fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
+        except (IOError, OSError):
+            return False
+        else:
+            try:
+                os.stat(name)
+            except (IOError, OSError):
+                # mkstemp succeeded but the file wasn't actually created
+                return False
+            os.close(fileno)
+            os.remove(name)
+            return True
+
+
+BackslashFilenameFeature = _BackslashFilenameFeature()
 
 
 class _ColorFeature(Feature):

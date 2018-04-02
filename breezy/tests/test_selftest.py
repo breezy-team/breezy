@@ -106,7 +106,7 @@ class TestTreeShape(tests.TestCaseInTempDir):
         self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
-        self.build_tree_contents([(filename, 'contents of hello')])
+        self.build_tree_contents([(filename, b'contents of hello')])
         self.assertPathExists(filename)
 
 
@@ -139,7 +139,7 @@ class TestTransportScenarios(tests.TestCase):
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
-        sample_permutation = [(1,2), (3,4)]
+        sample_permutation = [(1, 2), (3, 4)]
         from .per_transport import get_transport_test_permutations
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
@@ -235,7 +235,7 @@ class TestRepositoryScenarios(tests.TestCase):
         from .per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
-                    'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
+                    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
@@ -347,22 +347,22 @@ class TestWorkingTreeScenarios(tests.TestCase):
             remote_backing_server='e')
         self.assertEqual([
             ('WorkingTreeFormat4',
-             {'bzrdir_format': formats[0]._matchingbzrdir,
+             {'bzrdir_format': formats[0]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[0]}),
             ('WorkingTreeFormat3',
-             {'bzrdir_format': formats[1]._matchingbzrdir,
+             {'bzrdir_format': formats[1]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[1]}),
             ('WorkingTreeFormat6',
-             {'bzrdir_format': formats[2]._matchingbzrdir,
+             {'bzrdir_format': formats[2]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[2]}),
             ('WorkingTreeFormat6,remote',
-             {'bzrdir_format': formats[2]._matchingbzrdir,
+             {'bzrdir_format': formats[2]._matchingcontroldir,
               'repo_is_remote': True,
               'transport_readonly_server': 'd',
               'transport_server': 'c',
@@ -406,21 +406,21 @@ class TestTreeScenarios(tests.TestCase):
         wt6_format = workingtree_4.WorkingTreeFormat6()
         expected_scenarios = [
             ('WorkingTreeFormat4',
-             {'bzrdir_format': formats[0]._matchingbzrdir,
+             {'bzrdir_format': formats[0]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[0],
               '_workingtree_to_test_tree': return_parameter,
               }),
             ('WorkingTreeFormat3',
-             {'bzrdir_format': formats[1]._matchingbzrdir,
+             {'bzrdir_format': formats[1]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[1],
               '_workingtree_to_test_tree': return_parameter,
              }),
             ('WorkingTreeFormat6,remote',
-             {'bzrdir_format': wt6_format._matchingbzrdir,
+             {'bzrdir_format': wt6_format._matchingcontroldir,
               'repo_is_remote': True,
               'transport_readonly_server': smart_readonly_server,
               'transport_server': smart_server,
@@ -430,34 +430,34 @@ class TestTreeScenarios(tests.TestCase):
              }),
             ('RevisionTree',
              {'_workingtree_to_test_tree': revision_tree_from_workingtree,
-              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'bzrdir_format': default_wt_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format,
              }),
             ('DirStateRevisionTree,WT4',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
-              'bzrdir_format': wt4_format._matchingbzrdir,
+              'bzrdir_format': wt4_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': wt4_format,
              }),
             ('DirStateRevisionTree,WT5',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
-              'bzrdir_format': wt5_format._matchingbzrdir,
+              'bzrdir_format': wt5_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': wt5_format,
              }),
             ('PreviewTree',
              {'_workingtree_to_test_tree': preview_tree_pre,
-              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'bzrdir_format': default_wt_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format}),
             ('PreviewTreePost',
              {'_workingtree_to_test_tree': preview_tree_post,
-              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'bzrdir_format': default_wt_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format}),
@@ -498,7 +498,7 @@ class TestInterTreeScenarios(tests.TestCase):
         self.assertEqual(2, len(scenarios))
         expected_scenarios = [
             ("1", {
-                "bzrdir_format": format1._matchingbzrdir,
+                "bzrdir_format": format1._matchingcontroldir,
                 "intertree_class": formats[0][1],
                 "workingtree_format": formats[0][2],
                 "workingtree_format_to": formats[0][3],
@@ -508,7 +508,7 @@ class TestInterTreeScenarios(tests.TestCase):
                 "transport_readonly_server": server2,
                 }),
             ("2", {
-                "bzrdir_format": format2._matchingbzrdir,
+                "bzrdir_format": format2._matchingcontroldir,
                 "intertree_class": formats[1][1],
                 "workingtree_format": formats[1][2],
                 "workingtree_format_to": formats[1][3],
@@ -635,7 +635,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         dir_format = controldir.format_registry.make_controldir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
-        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+        self.assertEqual(b'Bazaar-NG Knit Repository Format 1',
                          self.get_transport().get_bytes(
                             'dir/.bzr/repository/format'))
 
@@ -1081,7 +1081,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
             "=+\n"
-            "FAIL: \\S+\.test_truth\n"
+            "FAIL: \\S+\\.test_truth\n"
             "-+\n"
             "(?:.*\n)*"
             "\\s*(?:Text attachment: )?reason"
@@ -1260,7 +1260,7 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(out.getvalue(),
             "(?:Text attachment: )?log"
             "(?:\n-+\n|: {{{)"
-            "\d+\.\d+  \\\\u2606"
+            "\\d+\\.\\d+  \\\\u2606"
             "(?:\n-+\n|}}}\n)")
 
 
@@ -1813,8 +1813,8 @@ class TestTestCaseLogDetails(tests.TestCase):
         # considered as a skip
         result = self._run_test('test_missing_feature')
         reasons = _get_skip_reasons(result)
-        self.assertEqual({missing_feature}, set(reasons))
-        skips = reasons[missing_feature]
+        self.assertEqual({str(missing_feature)}, set(reasons))
+        skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
         test = skips[0]
         self.assertFalse('log' in test.getDetails())
@@ -2122,7 +2122,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def test_runner_class(self):
         self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=self.factory)
         test = ProtocolTestCase(stream)
         result = unittest.TestResult()
@@ -2171,7 +2172,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
 
     def test_load_list(self):
         # Provide a list with one test - this test.
-        test_id_line = '%s\n' % self.id()
+        test_id_line = b'%s\n' % self.id()
         self.build_tree_contents([('test.list', test_id_line)])
         # And generate a list of the tests in  the suite.
         stream = self.run_selftest(load_list='test.list', list_only=True)
@@ -2192,7 +2193,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         from subunit import ProtocolTestCase
         def factory():
             return TestUtil.TestSuite([_get_test(test_name)])
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=factory)
         test = ProtocolTestCase(stream)
         result = testtools.TestResult()
@@ -3425,7 +3427,7 @@ class TestParallelFork(_ForkedSelftest, tests.TestCase):
             "(?:.*\n)*"
             ".+ in fork_for_tests\n"
             "(?:.*\n)*"
-            "\s*workaround_zealous_crypto_random\(\)\n"
+            "\\s*workaround_zealous_crypto_random\\(\\)\n"
             "(?:.*\n)*"
             "TypeError:")
 
@@ -3499,8 +3501,8 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
     _test_needs_features = [features.subunit]
 
     def _run_selftest_with_suite(self, **kwargs):
-        return TestUncollectedWarnings._run_selftest_with_suite(self,
-            runner_class=tests.SubUnitBzrRunner, **kwargs)
+        return TestUncollectedWarnings._run_selftest_with_suite(
+            self, runner_class=tests.SubUnitBzrRunnerv1, **kwargs)
 
 
 class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):
@@ -3696,7 +3698,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
             def setUp(self):
                 super(Test, self).setUp()
                 self.hooks = hooks.Hooks()
-                self.hooks.add_hook('myhook', 'Foo bar blah', (2,4))
+                self.hooks.add_hook('myhook', 'Foo bar blah', (2, 4))
                 self.install_counter_hook(self.hooks, 'myhook')
 
             def no_hook(self):

@@ -184,7 +184,7 @@ class TestGlobster(TestCase):
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'*bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
+             [u'bar', u'foobar', u'foo\\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -222,7 +222,7 @@ class TestGlobster(TestCase):
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'**bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
+             [u'bar', u'foobar', u'foo\\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -307,10 +307,10 @@ class TestGlobster(TestCase):
         patterns = [u'*.%03d' % i for i in range(300)]
         globster = Globster(patterns)
         # test the fence posts
-        for x in (0,98,99,197,198,296,297,299):
+        for x in (0, 98, 99, 197, 198, 296, 297, 299):
             filename = u'foo.%03d' % x
-            self.assertEqual(patterns[x],globster.match(filename))
-        self.assertEqual(None,globster.match('foobar.300'))
+            self.assertEqual(patterns[x], globster.match(filename))
+        self.assertEqual(None, globster.match('foobar.300'))
 
     def test_bad_pattern(self):
         """Ensure that globster handles bad patterns cleanly."""
@@ -318,14 +318,14 @@ class TestGlobster(TestCase):
         g = Globster(patterns)
         e = self.assertRaises(lazy_regex.InvalidPattern, g.match, 'filename')
         self.assertContainsRe(e.msg,
-            "File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
+            r"File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
 
 
 class TestExceptionGlobster(TestCase):
 
     def test_exclusion_patterns(self):
         """test that exception patterns are not matched"""
-        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*',u'!!./.zcompdump' ]
+        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\\.z.*', u'!!./.zcompdump' ]
         globster = ExceptionGlobster(patterns)
         self.assertEqual(u'*', globster.match('tmp/foo.txt'))
         self.assertEqual(None, globster.match('local'))

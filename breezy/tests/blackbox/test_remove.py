@@ -106,7 +106,7 @@ class TestRemove(TestCaseWithTransport):
         tree.commit('save foo and bar')
         os.unlink('bar')
         self.run_bzr(['rm'])
-        self.assertEqual(None, tree.path2id('bar'))
+        self.assertFalse(tree.is_versioned('bar'))
         # Running rm with a deleted file does not error.
         out, err = self.run_bzr(['rm'])
         self.assertEqual('', out)
@@ -266,7 +266,7 @@ class TestRemove(TestCaseWithTransport):
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
         self.assertEqual(tree.path2id(a), a + _id)
-        self.assertFilesUnversioned([b,c])
+        self.assertFilesUnversioned([b, c])
 
     def test_remove_with_new_in_dir2(self):
         tree = self._make_tree_and_add(files)

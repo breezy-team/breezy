@@ -92,27 +92,27 @@ def make_adduser_branch(test, relpath):
     """
     builder = test.make_branch_builder(relpath)
     builder.start_series()
-    builder.build_snapshot('base', None,
-                           [('add', ('', 'root-id', 'directory', '')),
+    builder.build_snapshot(None,
+                           [('add', ('', b'root-id', 'directory', '')),
                             # Create empty files
-                            ('add', ('po', 'dir-id', 'directory', None),),
-                            ('add', ('po/adduser.pot', 'pot-id', 'file',
+                            ('add', ('po', b'dir-id', 'directory', None),),
+                            ('add', ('po/adduser.pot', b'pot-id', 'file',
                                      _Adduser['base_pot'])),
-                            ('add', ('po/fr.po', 'po-id', 'file',
+                            ('add', ('po/fr.po', b'po-id', 'file',
                                      _Adduser['base_po'])),
-            ])
+            ], revision_id=b'base')
     # The 'other' branch
-    builder.build_snapshot('other', ['base'],
-                           [('modify', ('pot-id',
+    builder.build_snapshot(['base'],
+                           [('modify', ('po/adduser.pot',
                                         _Adduser['other_pot'])),
-                            ('modify', ('po-id',
+                            ('modify', ('po/fr.po',
                                         _Adduser['other_po'])),
-                            ])
+                            ], revision_id=b'other')
     # The 'this' branch
-    builder.build_snapshot('this', ['base'],
-                           [('modify', ('pot-id', _Adduser['this_pot'])),
-                            ('modify', ('po-id', _Adduser['this_po'])),
-                            ])
+    builder.build_snapshot(['base'],
+                           [('modify', ('po/adduser.pot', _Adduser['this_pot'])),
+                            ('modify', ('po/fr.po', _Adduser['this_po'])),
+                            ], revision_id=b'this')
     # builder.get_branch() tip is now 'this'
     builder.finish_series()
     return builder

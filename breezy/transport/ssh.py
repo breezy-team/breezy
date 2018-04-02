@@ -46,6 +46,10 @@ else:
     from paramiko.sftp_client import SFTPClient
 
 
+class StrangeHostname(errors.BzrError):
+    _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
+
+
 SYSTEM_HOSTKEYS = {}
 BRZ_HOSTKEYS = {}
 
@@ -360,6 +364,11 @@ class SubprocessVendor(SSHVendor):
     # tests, but beware of using PIPE which may hang due to not being read.
     _stderr_target = None
 
+    @staticmethod
+    def _check_hostname(arg):
+        if arg.startswith('-'):
+            raise StrangeHostname(hostname=arg)
+
     def _connect(self, argv):
         # Attempt to make a socketpair to use as stdin/stdout for the SSH
         # subprocess.  We prefer sockets to pipes because they support
@@ -424,9 +433,9 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
         if username is not None:
             args.extend(['-l', username])
         if subsystem is not None:
-            args.extend(['-s', host, subsystem])
+            args.extend(['-s', '--', host, subsystem])
         else:
-            args.extend([host] + command)
+            args.extend(['--', host] + command)
         return args
 
 register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
@@ -439,6 +448,7 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
+        self._check_hostname(host)
         args = [self.executable_path, '-x']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -460,6 +470,7 @@ class LSHSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
+        self._check_hostname(host)
         args = [self.executable_path]
         if port is not None:
             args.extend(['-p', str(port)])
@@ -481,6 +492,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
+        self._check_hostname(host)
         args = [self.executable_path, '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
@@ -627,12 +639,11 @@ def save_host_keys():
     config.ensure_config_dir_exists()
 
     try:
-        f = open(bzr_hostkey_path, 'w')
-        f.write('# SSH host keys collected by bzr\n')
-        for hostname, keys in BRZ_HOSTKEYS.items():
-            for keytype, key in keys.items():
-                f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
-        f.close()
+        with open(bzr_hostkey_path, 'w') as f:
+            f.write('# SSH host keys collected by bzr\n')
+            for hostname, keys in BRZ_HOSTKEYS.items():
+                for keytype, key in keys.items():
+                    f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
     except IOError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 

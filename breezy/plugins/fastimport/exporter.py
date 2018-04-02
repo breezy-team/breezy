@@ -47,7 +47,10 @@ from __future__ import absolute_import
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-from email.Utils import parseaddr
+try:
+    from email.utils import parseaddr
+except ImportError:  # python < 3
+    from email.Utils import parseaddr
 import sys, time, re
 
 import breezy.branch
@@ -101,7 +104,7 @@ def check_ref_format(refname):
     if '..' in refname:
         return False
     for c in refname:
-        if ord(c) < 040 or c in '\177 ~^:?*[':
+        if ord(c) < 0o40 or c in '\177 ~^:?*[':
             return False
     if refname[-1] in '/.':
         return False
@@ -131,7 +134,7 @@ def sanitize_ref_name_for_git(refname):
         # '..' in refname
         r"|\.\."
         # ord(c) < 040
-        r"|[" + "".join([chr(x) for x in range(040)]) + r"]"
+        r"|[" + "".join([chr(x) for x in range(0o40)]) + r"]"
         # c in '\177 ~^:?*['
         r"|[\177 ~^:?*[]"
         # last char in "/."
@@ -228,8 +231,7 @@ class BzrFastExporter(object):
 
     def run(self):
         # Export the data
-        self.branch.repository.lock_read()
-        try:
+        with self.branch.repository.lock_read():
             interesting = self.interesting_history()
             self._commit_total = len(interesting)
             self.note("Starting export of %d revisions ..." %
@@ -242,8 +244,6 @@ class BzrFastExporter(object):
                 self.emit_commit(revid, self.ref)
             if self.branch.supports_tags() and not self.no_tags:
                 self.emit_tags()
-        finally:
-            self.branch.repository.unlock()
 
         # Save the marks if requested
         self._save_marks()
@@ -294,14 +294,13 @@ class BzrFastExporter(object):
             marks_file.export_marks(self.export_marks_file, revision_ids)
 
     def is_empty_dir(self, tree, path):
-        path_id = tree.path2id(path)
-        if path_id is None:
+        # Continue if path is not a directory
+        try:
+            if tree.kind(path) != 'directory':
+                return False
+        except bazErrors.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                 (path,))
-            return False
-
-        # Continue if path is not a directory
-        if tree.kind(path_id) != 'directory':
             return False
 
         # Use treewalk to find the contents of our directory
@@ -487,19 +486,21 @@ class BzrFastExporter(object):
         # Record modifications
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
-                text = tree_new.get_file_text(id_)
+                text = tree_new.get_file_text(path, id_)
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
-                    helpers.kind_to_mode('file', tree_new.is_executable(id_)),
+                    helpers.kind_to_mode(
+                        'file', tree_new.is_executable(path, id_)),
                     None, text))
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(id_)))
+                    None, tree_new.get_symlink_target(path, id_)))
             elif kind == 'directory':
                 if not self.plain_format:
-                    file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
-                        helpers.kind_to_mode('directory', False),
-                        None, None))
+                    file_cmds.append(
+                            commands.FileModifyCommand(path.encode("utf-8"),
+                                helpers.kind_to_mode('directory', False), None,
+                                None))
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                     (path, kind))
@@ -557,7 +558,7 @@ class BzrFastExporter(object):
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if kind == 'directory' and tree_old.kind(id_) == 'directory':
+            if kind == 'directory' and tree_old.kind(oldpath, id_) == 'directory':
                 for p, e in tree_old.inventory.iter_entries_by_dir(from_dir=id_):
                     if e.kind == 'directory' and self.plain_format:
                         continue

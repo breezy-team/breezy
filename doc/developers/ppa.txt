@@ -1,13 +1,13 @@
-Managing the Bazaar PPA
+Managing the Breezy PPA
 =======================
 
-See also: `Bazaar Developer Document Catalog <index.html>`_.
+See also: `Breezy Developer Document Catalog <index.html>`_.
 
 
 Background
 ----------
 
-We build Ubuntu ``.deb`` packages for Bazaar as an important part of the
+We build Ubuntu ``.deb`` packages for Breezy as an important part of the
 release process.  These packages are hosted in a few `Personal Package
 Archives (PPA)`__ on Launchpad.
 
@@ -48,7 +48,7 @@ Beta releases of bzr and plugins are uploaded into the beta PPA.
 
 Final release versions are first uploaded into the proposed PPA, which
 serves as a staging area to allow for new packages to be tested, and also
-so that a complete set of Bazaar core and plugin updated versions can be
+so that a complete set of Breezy core and plugin updated versions can be
 prepared together, when negotiating an API version transition.
 
 Once ready, packages can be copied from the proposed PPA to the main PPA
@@ -121,7 +121,7 @@ give a somewhat unclear error::
 .. _`bzr-builddeb`: http://launchpad.net/bzr-builddeb
 
 
-Packaging Bazaar
+Packaging Breezy
 ----------------
 
 Overview of packaging with builddeb
@@ -227,7 +227,7 @@ Long Form
 #. The ``bzr-builddeb`` step will download the original tarball if you do
    not already have it, putting it into a ``tarballs`` directory.
 
-#. For Bazaar plugins, change the ``debian/control`` file to express a
+#. For Breezy plugins, change the ``debian/control`` file to express a
    dependency on the correct version of ``bzr``.
 
    For bzrtools this is typically::

@@ -59,7 +59,7 @@ def _unescaper(match, _map=_xml_unescape_map):
         return unichr(int(code[1:])).encode('utf8')
 
 
-_unescape_re = lazy_regex.lazy_compile('\&([^;]*);')
+_unescape_re = lazy_regex.lazy_compile('\\&([^;]*);')
 
 def _unescape_xml(data):
     """Unescape predefined XML entities in a string of data."""
@@ -168,14 +168,14 @@ class Serializer_v8(XMLSerializer):
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.revision_id is not None:
-            revid1 = ' revision_id="'
+            revid1 = b' revision_id="'
             revid2 = encode_and_escape(inv.revision_id)
         else:
-            revid1 = ""
-            revid2 = ""
-        append('<inventory format="%s"%s%s>\n' % (
+            revid1 = b""
+            revid2 = b""
+        append(b'<inventory format="%s"%s%s>\n' % (
             self.format_num, revid1, revid2))
-        append('<directory file_id="%s name="%s revision="%s />\n' % (
+        append(b'<directory file_id="%s name="%s revision="%s />\n' % (
             encode_and_escape(inv.root.file_id),
             encode_and_escape(inv.root.name),
             encode_and_escape(inv.root.revision)))

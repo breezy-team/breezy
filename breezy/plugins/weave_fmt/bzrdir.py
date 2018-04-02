@@ -116,7 +116,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 5\n"
+        return b"Bazaar-NG branch, format 5\n"
 
     def get_branch_format(self):
         from .branch import BzrBranchFormat4
@@ -180,7 +180,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 6\n"
+        return b"Bazaar-NG branch, format 6\n"
 
     def get_format_description(self):
         """See ControlDirFormat.get_format_description()."""
@@ -241,15 +241,12 @@ class ConvertBzrDir4To5(Converter):
         self.controldir = to_convert
         if pb is not None:
             warnings.warn(gettext("pb parameter to convert() is deprecated"))
-        self.pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
                 self.controldir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
             return ControlDir.open(self.controldir.user_url)
-        finally:
-            self.pb.finished()
 
     def _convert_to_weaves(self):
         ui.ui_factory.note(gettext(
@@ -508,13 +505,10 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
             return ControlDir.open(self.controldir.user_url)
-        finally:
-            pb.finished()
 
     def _convert_to_prefixed(self):
         from .store import TransportStore
@@ -626,10 +620,9 @@ class ConvertBzrDir6ToMeta(Converter):
             self.step(gettext('Upgrading working tree'))
             self.controldir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
-            self.put_format(
-                'checkout', WorkingTreeFormat3())
-            self.controldir.transport.delete_multi(
-                self.garbage_inventories, self.pb)
+            self.put_format('checkout', WorkingTreeFormat3())
+            for path in self.garbage_inventories:
+                self.controldir.transport.delete(path)
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:
@@ -689,7 +682,7 @@ class BzrDirFormat4(BzrDirFormat):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 0.0.4\n"
+        return b"Bazaar-NG branch, format 0.0.4\n"
 
     def get_format_description(self):
         """See ControlDirFormat.get_format_description()."""

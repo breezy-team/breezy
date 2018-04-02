@@ -77,9 +77,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
                 return []
         tree._content_filter_stack = _content_filter_stack
         self.build_tree_contents([
-            (dir + '/file1.txt', 'Foo Txt'),
-            (dir + '/file2.bin', 'Foo Bin')])
-        tree.add(['file1.txt', 'file2.bin'])
+            (dir + '/file1.txt', b'Foo Txt'),
+            (dir + '/file2.bin', b'Foo Bin')])
+        tree.add(['file1.txt', b'file2.bin'])
         tree.commit('commit raw content')
         txt_fileid = tree.path2id('file1.txt')
         bin_fileid = tree.path2id('file2.bin')
@@ -95,9 +95,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
                 return []
         tree._content_filter_stack = _content_filter_stack
         self.build_tree_contents([
-            (dir + '/file1.txt', 'Foo Txt'),
-            (dir + '/file2.bin', 'Foo Bin'),
-            (dir + '/file3.txt', 'Bar Txt'),
+            (dir + '/file1.txt', b'Foo Txt'),
+            (dir + '/file2.bin', b'Foo Bin'),
+            (dir + '/file3.txt', b'Bar Txt'),
             ])
         tree.add(['file1.txt', 'file2.bin', 'file3.txt'])
         tree.commit('commit raw content')
@@ -108,8 +108,8 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # the change includes a modification, an addition and a deletion.
         # Renames are more complex and need a separate set of tests later.
         self.build_tree_contents([
-            (dir + '/file1.txt', 'Foo ROCKS!'),
-            (dir + '/file4.txt', 'Hello World'),
+            (dir + '/file1.txt', b'Foo ROCKS!'),
+            (dir + '/file4.txt', b'Hello World'),
             ])
         tree.add(['file4.txt'])
         tree.remove(['file3.txt'], keep_files=False)
@@ -136,7 +136,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         basis = branch.basis_tree()
         basis.lock_read()
         try:
-            self.assertEqual(expected_content, basis.get_file_text(file_id))
+            self.assertEqual(
+                    expected_content,
+                    basis.get_file_text(basis.id2path(file_id), file_id))
         finally:
             basis.unlock()
 
@@ -152,14 +154,18 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             expected = "fOO tXT"
         else:
             expected = "Foo Txt"
-        self.assertEqual(expected, basis.get_file_text(txt_fileid))
-        self.assertEqual('Foo Bin', basis.get_file_text(bin_fileid))
+        self.assertEqual(
+                expected,
+                basis.get_file_text(basis.id2path(txt_fileid)))
+        self.assertEqual(
+                'Foo Bin',
+                basis.get_file_text(basis.id2path(bin_fileid)))
         # Check that the working tree has the original content
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('Foo Txt', tree.get_file(txt_fileid,
+        self.assertEqual('Foo Txt', tree.get_file(tree.id2path(txt_fileid),
             filtered=False).read())
-        self.assertEqual('Foo Bin', tree.get_file(bin_fileid,
+        self.assertEqual('Foo Bin', tree.get_file(tree.id2path(bin_fileid),
             filtered=False).read())
 
     def test_readonly_content_filtering(self):
@@ -174,14 +180,14 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             expected = "FOO TXT"
         else:
             expected = "Foo Txt"
-        self.assertEqual(expected, basis.get_file_text(txt_fileid))
-        self.assertEqual('Foo Bin', basis.get_file_text(bin_fileid))
+        self.assertEqual(expected, basis.get_file_text(basis.id2path(txt_fileid)))
+        self.assertEqual('Foo Bin', basis.get_file_text(basis.id2path(bin_fileid)))
         # We expect the workingtree content to be unchanged (for now at least)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('Foo Txt', tree.get_file(txt_fileid,
+        self.assertEqual('Foo Txt', tree.get_file(tree.id2path(txt_fileid),
             filtered=False).read())
-        self.assertEqual('Foo Bin', tree.get_file(bin_fileid,
+        self.assertEqual('Foo Bin', tree.get_file(tree.id2path(bin_fileid),
             filtered=False).read())
 
     def test_branch_source_filtered_target_not(self):
@@ -237,9 +243,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.addCleanup(source.unlock)
 
         expected_canonical_form = 'Foo Txt\nend string\n'
-        self.assertEqual(source.get_file(txt_fileid, filtered=True).read(),
+        self.assertEqual(
+            source.get_file(source.id2path(txt_fileid), filtered=True).read(),
             expected_canonical_form)
-        self.assertEqual(source.get_file(txt_fileid, filtered=False).read(),
+        self.assertEqual(
+            source.get_file(source.id2path(txt_fileid), filtered=False).read(),
             'Foo Txt')
 
         # results are: kind, size, executable, sha1_or_link_target
@@ -364,11 +372,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
         # Now modify & rename a file, revert it and check the content
         self.build_tree_contents([
-            ('source/file1.txt', 'Foo Txt with new content')])
+            ('source/file1.txt', b'Foo Txt with new content')])
         source.rename_one('file1.txt', 'file1.bin')
         self.assertTrue(os.path.exists('source/file1.bin'))
         self.assertFalse(os.path.exists('source/file1.txt'))
-        self.assertFileEqual("Foo Txt with new content", 'source/file1.bin')
+        self.assertFileEqual(b"Foo Txt with new content", 'source/file1.bin')
         source.revert(['file1.bin'])
         self.assertFalse(os.path.exists('source/file1.bin'))
         self.assertTrue(os.path.exists('source/file1.txt'))
