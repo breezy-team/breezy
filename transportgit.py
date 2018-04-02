@@ -28,6 +28,10 @@ from dulwich.errors import (
     NotGitRepository,
     NoIndexPresent,
     )
+from dulwich.file import (
+    GitFile,
+    FileLocked,
+    )
 from dulwich.objects import (
     ShaFile,
     )
@@ -69,10 +73,14 @@ from ...errors import (
     AlreadyControlDirError,
     FileExists,
     LockError,
+    LockContention,
+    NotLocalUrl,
     NoSuchFile,
     ReadError,
     TransportNotPossible,
     )
+
+from ...lock import LogicalLockResult
 
 
 class TransportRefsContainer(RefsContainer):
@@ -335,16 +343,22 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
         self._ensure_dir_exists(name)
-        lockname = name + ".lock"
         try:
-            return transport.lock_write(lockname)
-        except TransportNotPossible:
-            # better than not locking at all, I guess?
-            if transport.has(lockname):
-                raise LockError(lockname + " exists")
-            transport.put_bytes(lockname, "Locked by brz-git")
-            from ...lock import LogicalLockResult
-            return LogicalLockResult(lambda: transport.delete(lockname))
+            local_path = self.transport.local_abspath(name)
+        except NotLocalUrl:
+            lockname = name + ".lock"
+            # This is racy, but what can we do?
+            if self.transport.has(lockname):
+                raise LockContention(name)
+            lock_result = self.transport.put_bytes(lockname, b'Locked by brz-git')
+            return LogicalLockResult(lambda: self.transport.delete(lockname))
+        else:
+            try:
+                gf = GitFile(local_path, 'wb')
+            except FileLocked as e:
+                raise LockContention(name, e)
+            else:
+                return LogicalLockResult(gf.abort)
 
 
 class TransportRepo(BaseRepo):
