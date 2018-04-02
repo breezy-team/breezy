@@ -15,14 +15,21 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from . import features
+from ..transport import Transport
 
-# SFTPTransport offers better performances but relies on paramiko.
+# SFTPTransport offers better performance but relies on paramiko.
 if features.paramiko.available():
     from . import test_sftp_transport
-    from ..transport import sftp, Transport
+    from ..transport import sftp
     _backing_scheme = 'sftp'
     _backing_transport_class = sftp.SFTPTransport
     _backing_test_class = test_sftp_transport.TestCaseWithSFTPServer
+else:
+    from . import http_utils
+    from ..transport.http._urllib import HttpTransport_urllib
+    _backing_scheme = 'http'
+    _backing_transport_class = HttpTransport_urllib
+    _backing_test_class = http_utils.TestCaseWithWebserver
 
 
 class TestCaseWithConnectionHookedTransport(_backing_test_class):
