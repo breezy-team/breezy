@@ -72,6 +72,7 @@ from ... import (
 from ...errors import (
     AlreadyControlDirError,
     FileExists,
+    LockBroken,
     LockError,
     LockContention,
     NotLocalUrl,
@@ -337,16 +338,27 @@ class TransportRefsContainer(RefsContainer):
         except KeyError:
             return default
 
+    def unlock_ref(self, name):
+        if name == b"HEAD":
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
+        lockname = name + ".lock"
+        try:
+            self.transport.delete(lockname)
+        except NoSuchFile:
+            pass
+
     def lock_ref(self, name):
         if name == b"HEAD":
             transport = self.worktree_transport
         else:
             transport = self.transport
         self._ensure_dir_exists(name)
+        lockname = name + ".lock"
         try:
             local_path = self.transport.local_abspath(name)
         except NotLocalUrl:
-            lockname = name + ".lock"
             # This is racy, but what can we do?
             if self.transport.has(lockname):
                 raise LockContention(name)
@@ -358,7 +370,14 @@ class TransportRefsContainer(RefsContainer):
             except FileLocked as e:
                 raise LockContention(name, e)
             else:
-                return LogicalLockResult(gf.abort)
+                def unlock():
+                    try:
+                        self.transport.delete(lockname)
+                    except NoSuchFile:
+                        raise LockBroken(lockname)
+                    # GitFile.abort doesn't care if the lock has already disappeared
+                    gf.abort()
+                return LogicalLockResult(unlock)
 
 
 class TransportRepo(BaseRepo):
