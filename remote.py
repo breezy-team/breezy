@@ -520,6 +520,10 @@ class RemoteGitDir(GitDir):
             source.set_push_location(push_result.target_branch.base)
         return push_result
 
+    def _find_commondir(self):
+        # There is no way to find the commondir, if there is any.
+        return self
+
 
 class EmptyObjectStoreIterator(dict):
 

@@ -224,15 +224,6 @@ class GitDir(ControlDir):
             result_dir.open_branch().set_last_revision(revision_id)
         return result_dir
 
-    def _find_commondir(self):
-        try:
-            commondir = self.control_transport.get_bytes('commondir')
-        except bzr_errors.NoSuchFile:
-            return self
-        else:
-            commondir = commondir.rstrip('/.git/')
-            return ControlDir.open_from_transport(get_transport_from_path(commondir))
-
     def find_repository(self):
         """Find the repository that should be used.
 
@@ -658,3 +649,12 @@ class LocalGitDir(GitDir):
 
     def get_peeled(self, ref):
         return self._git.get_peeled(ref)
+
+    def _find_commondir(self):
+        try:
+            commondir = self.control_transport.get_bytes('commondir')
+        except bzr_errors.NoSuchFile:
+            return self
+        else:
+            commondir = commondir.rstrip('/.git/')
+            return ControlDir.open_from_transport(get_transport_from_path(commondir))
