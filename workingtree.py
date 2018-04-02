@@ -29,8 +29,10 @@ from dulwich.errors import NotGitRepository
 from dulwich.ignore import (
     IgnoreFilterManager,
     )
+from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
+    SHA1Writer,
     build_index_from_tree,
     changes_from_tree,
     cleanup_mode,
@@ -41,6 +43,7 @@ from dulwich.index import (
     blob_from_path_and_stat,
     FLAG_STAGEMASK,
     validate_path,
+    write_index_dict,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -529,7 +532,12 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
         if self._index_dirty:
-            self.index.write()
+            f = GitFile(self.control_transport.local_abspath('index'), 'wb')
+            try:
+                shaf = SHA1Writer(f)
+                write_index_dict(shaf, self.index)
+            finally:
+                shaf.close()
             self._index_dirty = False
 
     def has_or_had_id(self, file_id):
