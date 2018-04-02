@@ -338,7 +338,7 @@ class BzrGitMapping(foreign.VcsMapping):
         i = 0
         propname = 'git-mergetag-0'
         while propname in rev.properties:
-            commit.mergetag.append(Tag.from_string(rev.properties[propname]))
+            commit.mergetag.append(Tag.from_string(rev.properties[propname].encode(encoding)))
             i += 1
             propname = 'git-mergetag-%d' % i
         if 'git-extra' in rev.properties:
