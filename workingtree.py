@@ -108,7 +108,7 @@ IGNORE_FILENAME = ".gitignore"
 class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     """A Git working tree."""
 
-    def __init__(self, controldir, repo, branch, index):
+    def __init__(self, controldir, repo, branch):
         MutableGitIndexTree.__init__(self)
         basedir = controldir.root_transport.local_abspath('.')
         self.basedir = osutils.realpath(basedir)
@@ -119,7 +119,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self._branch = branch
         self._transport = controldir.transport
         self._format = GitWorkingTreeFormat()
-        self.index = index
+        self.index = None
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
@@ -131,6 +131,10 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def supports_rename_tracking(self):
         return False
 
+    def _read_index(self):
+        self.index = Index(self.control_transport.local_abspath('index'))
+        self._index_dirty = False
+
     def lock_read(self):
         """Lock the repository for read operations.
 
@@ -139,8 +143,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
-            self.index.read()
-            self._index_dirty = False
+            self._read_index()
         else:
             self._lock_count += 1
         self.branch.lock_read()
@@ -151,7 +154,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
-            self.index.read()
+            self._read_index()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -190,7 +193,10 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self._lock_count -= 1
             if self._lock_count > 0:
                 return
+            if self._lock_mode == 'w':
+                self.flush()
             self._lock_mode = None
+            self.index = None
         finally:
             self.branch.unlock()
 
@@ -1173,13 +1179,11 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_controldir)
-        index = Index(a_controldir.control_transport.local_abspath("index"))
-        index.write()
         branch = a_controldir.open_branch(nascent_ok=True)
         if revision_id is not None:
             branch.set_last_revision(revision_id)
         wt = GitWorkingTree(
-                a_controldir, a_controldir.open_repository(), branch, index)
+                a_controldir, a_controldir.open_repository(), branch)
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt

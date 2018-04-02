@@ -537,14 +537,9 @@ class LocalGitDir(GitDir):
         if not self._git.bare:
             from dulwich.errors import NoIndexPresent
             repo = self.find_repository()
-            try:
-                index = repo._git.open_index()
-            except NoIndexPresent:
-                pass
-            else:
-                from .workingtree import GitWorkingTree
-                branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
-                return GitWorkingTree(self, repo, branch, index)
+            from .workingtree import GitWorkingTree
+            branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
+            return GitWorkingTree(self, repo, branch)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
@@ -584,15 +579,13 @@ class LocalGitDir(GitDir):
         accelerator_tree=None, hardlink=False):
         if self._git.bare:
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
-        from dulwich.index import build_index_from_tree
         if from_branch is None:
             from_branch = self.open_branch(nascent_ok=True)
         if revision_id is None:
             revision_id = from_branch.last_revision()
         repo = self.find_repository()
         from .workingtree import GitWorkingTree
-        index = self._git.open_index()
-        wt = GitWorkingTree(self, repo, from_branch, index)
+        wt = GitWorkingTree(self, repo, from_branch)
         wt.set_last_revision(revision_id)
         wt._build_checkout_with_index()
         return wt
