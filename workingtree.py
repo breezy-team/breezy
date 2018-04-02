@@ -120,6 +120,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self._transport = controldir.transport
         self._format = GitWorkingTreeFormat()
         self.index = None
+        self._index_file = None
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
@@ -154,6 +155,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
+            try:
+                f = GitFile(self.control_transport.local_abspath('index'), 'wb')
+            except FileLocked:
+                raise errors.LockContention('index')
+            self._index_file = SHA1Writer(f)
             self._read_index()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
@@ -184,6 +190,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def get_physical_lock_status(self):
         return False
 
+    def break_lock(self):
+        try:
+            self.control_transport.delete('index.lock')
+        except errors.NoSuchFile:
+            pass
+        self.branch.break_lock()
+
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_count:
@@ -193,8 +206,14 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self._lock_count -= 1
             if self._lock_count > 0:
                 return
-            if self._lock_mode == 'w':
-                self.flush()
+            if self._index_file is not None:
+                if self._index_dirty:
+                    self._flush(self._index_file)
+                    self._index_file.close()
+                else:
+                    # Somebody else already wrote the index file.
+                    self._index_file.f.abort()
+                self._index_file = None
             self._lock_mode = None
             self.index = None
         finally:
@@ -537,14 +556,19 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def flush(self):
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        if self._index_dirty:
-            f = GitFile(self.control_transport.local_abspath('index'), 'wb')
-            try:
-                shaf = SHA1Writer(f)
-                write_index_dict(shaf, self.index)
-            finally:
-                shaf.close()
-            self._index_dirty = False
+        f = open(self.control_transport.local_abspath('index'), 'wb')
+        # Note that _flush will close the file
+        self._flush(f)
+
+    def _flush(self, f):
+        try:
+            shaf = SHA1Writer(f)
+            write_index_dict(shaf, self.index)
+            shaf.close()
+        except:
+            f.abort()
+            raise
+        self._index_dirty = False
 
     def has_or_had_id(self, file_id):
         if self.has_id(file_id):
