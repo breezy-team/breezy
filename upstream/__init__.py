@@ -398,6 +398,8 @@ def gather_orig_files(package, version, path):
     if not os.path.isdir(path):
         return None
     for filename in os.listdir(path):
+        if filename.endswith('.asc'):
+            continue
         if filename.startswith(prefix):
             ret.append(os.path.join(path, filename))
     if ret:
