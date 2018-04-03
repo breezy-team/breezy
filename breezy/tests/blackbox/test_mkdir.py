@@ -29,12 +29,6 @@ class TestMkdir(tests.TestCaseWithTransport):
         self.run_bzr(['mkdir', 'somedir'])
         self.assertEqual(tree.kind('somedir'), "directory")
 
-    def test_mkdir_multi(self):
-        tree = self.make_branch_and_tree('.')
-        self.run_bzr(['mkdir', 'somedir', 'anotherdir'])
-        self.assertEqual(tree.kind('somedir'), "directory")
-        self.assertEqual(tree.kind('anotherdir'), "directory")
-
     def test_mkdir_parents(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', '-p', 'somedir/foo'])

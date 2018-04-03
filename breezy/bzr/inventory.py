@@ -726,8 +726,7 @@ class CommonInventory(object):
         """
         pass
 
-    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
-        yield_parents=False):
+    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
         """Iterate over the entries in a directory first order.
 
         This returns all entries for a directory before returning
@@ -735,9 +734,6 @@ class CommonInventory(object):
         lexicographically sorted order, and is a hybrid between
         depth-first and breadth-first.
 
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_file_ids that have been requested. This has no
-            impact if specific_file_ids is None.
         :return: This yields (path, entry) pairs
         """
         if specific_file_ids and not isinstance(specific_file_ids, set):
@@ -753,7 +749,7 @@ class CommonInventory(object):
             if self.root is None:
                 return
             # Optimize a common case
-            if (not yield_parents and specific_file_ids is not None and
+            if (specific_file_ids is not None and
                 len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
                 if file_id is not None:
@@ -765,7 +761,7 @@ class CommonInventory(object):
                         yield path, self.get_entry(file_id)
                 return
             from_dir = self.root
-            if (specific_file_ids is None or yield_parents or
+            if (specific_file_ids is None or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
         elif isinstance(from_dir, (str, text_type)):
@@ -800,8 +796,7 @@ class CommonInventory(object):
                 child_relpath = cur_relpath + child_name
 
                 if (specific_file_ids is None or
-                    child_ie.file_id in specific_file_ids or
-                    (yield_parents and child_ie.file_id in parents)):
+                    child_ie.file_id in specific_file_ids):
                     yield child_relpath, child_ie
 
                 if child_ie.kind == 'directory':
