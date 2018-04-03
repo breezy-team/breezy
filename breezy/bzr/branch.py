@@ -946,7 +946,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
     def get_reference(self, a_controldir, name=None):
         """See BranchFormat.get_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
-        return urlutils.join(a_controldir.user_url, transport.get_bytes('location'))
+        url = urlutils.split_segment_parameters(a_controldir.user_url)[0]
+        return urlutils.join(url, transport.get_bytes('location'))
 
     def _write_reference(self, a_controldir, transport, to_branch):
         to_url = to_branch.user_url
