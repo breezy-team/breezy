@@ -6871,7 +6871,6 @@ def _register_lazy_builtins():
         ('cmd_bisect', [], 'breezy.bisect'),
         ('cmd_bundle_info', [], 'breezy.bundle.commands'),
         ('cmd_config', [], 'breezy.config'),
-        ('cmd_dpush', [], 'breezy.foreign'),
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
         ('cmd_conflicts', [], 'breezy.conflicts'),
