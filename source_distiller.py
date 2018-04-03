@@ -86,17 +86,11 @@ class SourceDistiller(object):
         """Subclasses should override this to implement distill."""
         raise NotImplementedError(self._distill)
 
-    def _prepare_working_tree(self):
-        for (dp, ie) in self.tree.iter_entries_by_dir():
-            ie._read_tree_state(dp, self.tree)
-
 
 class NativeSourceDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a native package from a branch."""
 
     def _distill(self, target):
-        if self.is_working_tree:
-            self._prepare_working_tree()
         export(self.tree, target, None, None)
 
 
@@ -106,8 +100,6 @@ class FullSourceDistiller(SourceDistiller):
     def _distill(self, target):
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
-        if self.is_working_tree:
-            self._prepare_working_tree()
         export(self.tree, target)
 
 
@@ -147,8 +139,6 @@ class MergeModeDistiller(SourceDistiller):
                 export_dir = os.path.join(tempdir, 'debian')
             else:
                 export_dir = tempdir
-            if self.is_working_tree:
-                self._prepare_working_tree()
             export(self.tree, export_dir)
             # Remove any upstream debian dir, or from previous export with
             # use_existing
