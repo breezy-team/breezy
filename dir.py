@@ -29,13 +29,13 @@ from ... import (
     revision as _mod_revision,
     urlutils,
     )
-from ...controldir import RepositoryAcquisitionPolicy
 from ...transport import (
     do_catching_redirections,
     get_transport_from_path,
     )
 
 from ...controldir import (
+    BranchReferenceLoop,
     ControlDir,
     ControlDirFormat,
     format_registry,
@@ -413,6 +413,8 @@ class LocalGitDir(GitDir):
     def set_branch_reference(self, target_branch, name=None):
         ref = self._get_selected_ref(name)
         if self.control_transport.base == target_branch.controldir.control_transport.base:
+            if ref == target_branch.ref:
+                raise BranchReferenceLoop(target_branch)
             self._git.refs.set_symbolic_ref(ref, target_branch.ref)
         else:
             try:
