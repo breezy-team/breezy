@@ -397,8 +397,6 @@ class PristineTarSource(UpstreamSource):
         try:
             dest = os.path.join(tmpdir, "orig")
             with tree.lock_read():
-                for (dp, ie) in tree.iter_entries_by_dir():
-                    ie._read_tree_state(dp, tree)
                 export(tree, dest, format='dir', subdir=subdir)
             try:
                 return make_pristine_tar_delta(dest, tarball_path)
