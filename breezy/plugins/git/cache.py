@@ -52,7 +52,7 @@ def get_cache_dir():
         from ...config import config_dir
         ret = os.path.join(config_dir(), "git")
     else:
-        ret = os.path.join(xdg_cache_home, "bazaar", "git")
+        ret = os.path.join(xdg_cache_home, "breezy", "git")
     if not os.path.isdir(ret):
         os.makedirs(ret)
     return ret

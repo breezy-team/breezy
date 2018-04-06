@@ -29,8 +29,10 @@ from dulwich.errors import NotGitRepository
 from dulwich.ignore import (
     IgnoreFilterManager,
     )
+from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
+    SHA1Writer,
     build_index_from_tree,
     changes_from_tree,
     cleanup_mode,
@@ -41,6 +43,7 @@ from dulwich.index import (
     blob_from_path_and_stat,
     FLAG_STAGEMASK,
     validate_path,
+    write_index_dict,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -105,7 +108,7 @@ IGNORE_FILENAME = ".gitignore"
 class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     """A Git working tree."""
 
-    def __init__(self, controldir, repo, branch, index):
+    def __init__(self, controldir, repo, branch):
         MutableGitIndexTree.__init__(self)
         basedir = controldir.root_transport.local_abspath('.')
         self.basedir = osutils.realpath(basedir)
@@ -116,7 +119,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self._branch = branch
         self._transport = controldir.transport
         self._format = GitWorkingTreeFormat()
-        self.index = index
+        self.index = None
+        self._index_file = None
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
@@ -128,6 +132,10 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def supports_rename_tracking(self):
         return False
 
+    def _read_index(self):
+        self.index = Index(self.control_transport.local_abspath('index'))
+        self._index_dirty = False
+
     def lock_read(self):
         """Lock the repository for read operations.
 
@@ -136,7 +144,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
-            self.index.read()
+            self._read_index()
         else:
             self._lock_count += 1
         self.branch.lock_read()
@@ -147,7 +155,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
-            self.index.read()
+            try:
+                self._index_file = GitFile(self.control_transport.local_abspath('index'), 'wb')
+            except FileLocked:
+                raise errors.LockContention('index')
+            self._read_index()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -177,6 +189,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def get_physical_lock_status(self):
         return False
 
+    def break_lock(self):
+        try:
+            self.control_transport.delete('index.lock')
+        except errors.NoSuchFile:
+            pass
+        self.branch.break_lock()
+
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_count:
@@ -186,7 +205,17 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self._lock_count -= 1
             if self._lock_count > 0:
                 return
+            if self._index_file is not None:
+                if self._index_dirty:
+                    self._flush(self._index_file)
+                    self._index_file.close()
+                else:
+                    # Somebody else already wrote the index file
+                    # by calling .flush()
+                    self._index_file.abort()
+                self._index_file = None
             self._lock_mode = None
+            self.index = None
         finally:
             self.branch.unlock()
 
@@ -390,7 +419,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 if message is not None:
                     trace.note(message)
             self._versioned_dirs = None
-            self.flush()
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         if not file_list:
@@ -480,8 +508,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         if save:
                             self._index_add_entry(subp, kind)
                         added.append(subp)
-            if added and save:
-                self.flush()
             return added, ignored
 
     def has_filename(self, filename):
@@ -525,10 +551,23 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     yield p
 
     def flush(self):
-        # TODO: Maybe this should only write on dirty ?
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        self.index.write()
+        # TODO(jelmer): This shouldn't be writing in-place, but index.lock is
+        # already in use and GitFile doesn't allow overriding the lock file name :(
+        f = open(self.control_transport.local_abspath('index'), 'wb')
+        # Note that _flush will close the file
+        self._flush(f)
+
+    def _flush(self, f):
+        try:
+            shaf = SHA1Writer(f)
+            write_index_dict(shaf, self.index)
+            shaf.close()
+        except:
+            f.abort()
+            raise
+        self._index_dirty = False
 
     def has_or_had_id(self, file_id):
         if self.has_id(file_id):
@@ -818,11 +857,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         with self.lock_tree_write():
             for path in self.index:
                 self._set_conflicted(path, path in by_path)
-            self.flush()
 
     def _set_conflicted(self, path, conflicted):
         trace.mutter('change conflict: %r -> %r', path, conflicted)
         value = self.index[path]
+        self._index_dirty = True
         if conflicted:
             self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
         else:
@@ -838,7 +877,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         raise errors.UnsupportedOperation(self.add_conflicts, self)
                 else:
                     raise errors.UnsupportedOperation(self.add_conflicts, self)
-            self.flush()
 
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
@@ -1003,14 +1041,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         for (old_path, new_path, file_id, ie) in changes:
             if old_path is not None:
                 try:
-                    del self.index[old_path.encode('utf-8')]
+                    self._index_del_entry(old_path.encode('utf-8'))
                 except KeyError:
                     pass
                 else:
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
-        self.flush()
 
     def annotate_iter(self, path, file_id=None,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -1087,6 +1124,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             if revision_ids is not None:
                 self.set_parent_ids(revision_ids)
             self.index.clear()
+            self._index_dirty = True
             if self.branch.head is not None:
                 for entry in self.store.iter_tree_contents(self.store[self.branch.head].tree):
                     if not validate_path(entry.path):
@@ -1105,7 +1143,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                                   0, 0, len(obj.as_raw_string()), 0,
                                   0, 0))
                     self.index[entry.path] = index_entry_from_stat(st, entry.sha, 0)
-            self.flush()
 
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
@@ -1161,13 +1198,11 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_controldir)
-        index = Index(a_controldir.root_transport.local_abspath(".git/index"))
-        index.write()
         branch = a_controldir.open_branch(nascent_ok=True)
         if revision_id is not None:
             branch.set_last_revision(revision_id)
         wt = GitWorkingTree(
-                a_controldir, a_controldir.open_repository(), branch, index)
+                a_controldir, a_controldir.open_repository(), branch)
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt

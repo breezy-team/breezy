@@ -59,7 +59,7 @@ META_INFO = {
         ],
     'extras_require': {
         'fastimport': ['fastimport'],
-        'git': ['dulwich'],
+        'git': ['dulwich>=0.19.1'],
         },
 }
 

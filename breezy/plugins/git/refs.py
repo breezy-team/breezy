@@ -18,6 +18,11 @@
 
 from __future__ import absolute_import
 
+from dulwich.refs import (
+    ANNOTATED_TAG_SUFFIX,
+    LOCAL_BRANCH_PREFIX,
+    LOCAL_TAG_PREFIX,
+    )
 from dulwich.repo import (
     RefsContainer,
     )
@@ -28,9 +33,9 @@ from ... import (
     revision as _mod_revision,
     )
 
-is_tag = lambda x: x.startswith("refs/tags/")
-is_head = lambda x: x.startswith("refs/heads/")
-is_peeled = lambda x: x.endswith("^{}")
+is_tag = lambda x: x.startswith(LOCAL_TAG_PREFIX)
+is_head = lambda x: x.startswith(LOCAL_BRANCH_PREFIX)
+is_peeled = lambda x: x.endswith(ANNOTATED_TAG_SUFFIX)
 
 
 def gather_peeled(refs):
@@ -39,7 +44,7 @@ def gather_peeled(refs):
         if is_peeled(k):
             continue
         try:
-            peeled = refs[k+"^{}"]
+            peeled = refs[k+ANNOTATED_TAG_SUFFIX]
             unpeeled = v
         except KeyError:
             peeled = v
@@ -57,7 +62,7 @@ def branch_name_to_ref(name):
     if name == "":
         return "HEAD"
     if not name.startswith("refs/"):
-        return "refs/heads/%s" % osutils.safe_utf8(name)
+        return LOCAL_BRANCH_PREFIX + osutils.safe_utf8(name)
     else:
         return osutils.safe_utf8(name)
 
@@ -68,7 +73,7 @@ def tag_name_to_ref(name):
     :param name: Tag name
     :return: ref string
     """
-    return "refs/tags/%s" % osutils.safe_utf8(name)
+    return LOCAL_TAG_PREFIX + osutils.safe_utf8(name)
 
 
 def ref_to_branch_name(ref):
@@ -81,14 +86,14 @@ def ref_to_branch_name(ref):
         return u""
     if ref is None:
         return ref
-    if ref.startswith("refs/heads/"):
-        return osutils.safe_unicode(ref[len("refs/heads/"):])
+    if ref.startswith(LOCAL_BRANCH_PREFIX):
+        return osutils.safe_unicode(ref[len(LOCAL_BRANCH_PREFIX):])
     raise ValueError("unable to map ref %s back to branch name" % ref)
 
 
 def ref_to_tag_name(ref):
-    if ref.startswith("refs/tags/"):
-        return ref[len('refs/tags/'):].decode("utf-8")
+    if ref.startswith(LOCAL_TAG_PREFIX):
+        return ref[len(LOCAL_TAG_PREFIX):].decode("utf-8")
     raise ValueError("unable to map ref %s back to tag name" % ref)
 
 

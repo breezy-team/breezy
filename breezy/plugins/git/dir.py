@@ -29,13 +29,13 @@ from ... import (
     revision as _mod_revision,
     urlutils,
     )
-from ...controldir import RepositoryAcquisitionPolicy
 from ...transport import (
     do_catching_redirections,
     get_transport_from_path,
     )
 
 from ...controldir import (
+    BranchReferenceLoop,
     ControlDir,
     ControlDirFormat,
     format_registry,
@@ -223,15 +223,6 @@ class GitDir(ControlDir):
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
         return result_dir
-
-    def _find_commondir(self):
-        try:
-            commondir = self.control_transport.get_bytes('commondir')
-        except bzr_errors.NoSuchFile:
-            return self
-        else:
-            commondir = commondir.rstrip('/.git/')
-            return ControlDir.open_from_transport(get_transport_from_path(commondir))
 
     def find_repository(self):
         """Find the repository that should be used.
@@ -422,6 +413,8 @@ class LocalGitDir(GitDir):
     def set_branch_reference(self, target_branch, name=None):
         ref = self._get_selected_ref(name)
         if self.control_transport.base == target_branch.controldir.control_transport.base:
+            if ref == target_branch.ref:
+                raise BranchReferenceLoop(target_branch)
             self._git.refs.set_symbolic_ref(ref, target_branch.ref)
         else:
             try:
@@ -546,14 +539,9 @@ class LocalGitDir(GitDir):
         if not self._git.bare:
             from dulwich.errors import NoIndexPresent
             repo = self.find_repository()
-            try:
-                index = repo._git.open_index()
-            except NoIndexPresent:
-                pass
-            else:
-                from .workingtree import GitWorkingTree
-                branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
-                return GitWorkingTree(self, repo, branch, index)
+            from .workingtree import GitWorkingTree
+            branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
+            return GitWorkingTree(self, repo, branch)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
@@ -593,15 +581,13 @@ class LocalGitDir(GitDir):
         accelerator_tree=None, hardlink=False):
         if self._git.bare:
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
-        from dulwich.index import build_index_from_tree
         if from_branch is None:
             from_branch = self.open_branch(nascent_ok=True)
         if revision_id is None:
             revision_id = from_branch.last_revision()
         repo = self.find_repository()
         from .workingtree import GitWorkingTree
-        index = self._git.open_index()
-        wt = GitWorkingTree(self, repo, from_branch, index)
+        wt = GitWorkingTree(self, repo, from_branch)
         wt.set_last_revision(revision_id)
         wt._build_checkout_with_index()
         return wt
@@ -658,3 +644,12 @@ class LocalGitDir(GitDir):
 
     def get_peeled(self, ref):
         return self._git.get_peeled(ref)
+
+    def _find_commondir(self):
+        try:
+            commondir = self.control_transport.get_bytes('commondir')
+        except bzr_errors.NoSuchFile:
+            return self
+        else:
+            commondir = commondir.rstrip('/.git/')
+            return ControlDir.open_from_transport(get_transport_from_path(commondir))

@@ -33,6 +33,7 @@ from dulwich.protocol import (
 from dulwich.walk import Walker
 
 from ...errors import (
+    DivergedBranches,
     FetchLimitUnsupported,
     InvalidRevisionId,
     LossyPushToSameVCS,
@@ -55,7 +56,6 @@ from .errors import (
     )
 from .fetch import (
     import_git_objects,
-    report_git_progress,
     DetermineWantsRecorder,
     )
 from .mapping import (
@@ -67,6 +67,7 @@ from .object_store import (
     )
 from .push import (
     MissingObjectsIterator,
+    remote_divergence,
     )
 from .refs import (
     is_tag,
@@ -102,7 +103,7 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         """Fetch possibly roundtripped revisions into the target repository
         and update refs.
 
@@ -244,7 +245,8 @@ class InterToLocalGitRepository(InterToGitRepository):
             bzr_refs[k] = (v, revid)
         return bzr_refs
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
+        self._warn_slow()
         with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
@@ -320,7 +322,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 class InterToRemoteGitRepository(InterToGitRepository):
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         """Import the gist of the ancestry of a particular revision."""
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport(self.source, self.target, self.mapping)
@@ -333,9 +335,11 @@ class InterToRemoteGitRepository(InterToGitRepository):
             for name, (gitid, revid) in self.new_refs.iteritems():
                 if gitid is None:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
-                    ret[name] = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
-                else:
-                    ret[name] = gitid
+                    gitid = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
+                if not overwrite:
+                    if remote_divergence(old_refs.get(name), gitid, self.source_store):
+                        raise DivergedBranches(self.source, self.target)
+                ret[name] = gitid
             return ret
         self._warn_slow()
         with self.source_store.lock_read():
@@ -530,8 +534,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 objects_iter = self.source.fetch_objects(
-                    wants_recorder, graph_walker, store.get_raw,
-                    progress=lambda text: report_git_progress(pb, text),)
+                    wants_recorder, graph_walker, store.get_raw)
                 trace.mutter("Importing %d new revisions",
                              len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target,
@@ -596,7 +599,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 class InterGitGitRepository(InterFromGitRepository):
     """InterRepository that copies between Git repositories."""
 
-    def fetch_refs(self, update_refs, lossy):
+    def fetch_refs(self, update_refs, lossy, overwrite=False):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         old_refs = self.target.controldir.get_refs_container()
@@ -671,12 +674,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
             raise FetchLimitUnsupported(self)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            refs = self.source._git.fetch(self.target._git, determine_wants,
-                lambda text: report_git_progress(pb, text))
-        finally:
-            pb.finished()
+        refs = self.source._git.fetch(self.target._git, determine_wants)
         return (None, None, refs)
 
     @staticmethod
@@ -694,33 +692,28 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()
-        pb = ui.ui_factory.nested_progress_bar()
+        if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
+            # TODO(jelmer): Avoid reading entire file into memory and
+            # only processing it after the whole file has been fetched.
+            f = BytesIO()
+
+            def commit():
+                if f.tell():
+                    f.seek(0)
+                    self.target._git.object_store.move_in_thin_pack(f)
+
+            def abort():
+                pass
+        else:
+            f, commit, abort = self.target._git.object_store.add_pack()
         try:
-            if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
-                # TODO(jelmer): Avoid reading entire file into memory and
-                # only processing it after the whole file has been fetched.
-                f = BytesIO()
-
-                def commit():
-                    if f.tell():
-                        f.seek(0)
-                        self.target._git.object_store.move_in_thin_pack(f)
-
-                def abort():
-                    pass
-            else:
-                f, commit, abort = self.target._git.object_store.add_pack()
-            try:
-                refs = self.source.controldir.fetch_pack(
-                    determine_wants, graphwalker, f.write,
-                    lambda text: report_git_progress(pb, text))
-                commit()
-                return (None, None, refs)
-            except BaseException:
-                abort()
-                raise
-        finally:
-            pb.finished()
+            refs = self.source.controldir.fetch_pack(
+                determine_wants, graphwalker, f.write)
+            commit()
+            return (None, None, refs)
+        except BaseException:
+            abort()
+            raise
 
     @staticmethod
     def is_compatible(source, target):

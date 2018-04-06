@@ -52,6 +52,7 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
             self.tree.index['conflicted'] = self.tree.index['conflicted'][:9] + (FLAG_STAGEMASK, )
+            self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
 
@@ -76,9 +77,10 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
             tree_id = store[self.wt.branch.repository._git.head()].tree
         except KeyError:
             tree_id = None
-        changes, extras = changes_between_git_tree_and_working_copy(
-            store, tree_id, self.wt, want_unversioned=want_unversioned)
-        self.assertEqual(expected_changes, list(changes))
+        with self.wt.lock_read():
+            changes, extras = changes_between_git_tree_and_working_copy(
+                store, tree_id, self.wt, want_unversioned=want_unversioned)
+            self.assertEqual(expected_changes, list(changes))
         if expected_extras is None:
             expected_extras = set()
         self.assertEqual(set(expected_extras), set(extras))

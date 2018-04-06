@@ -136,6 +136,11 @@ class LocalGitProber(Prober):
         return set([BareLocalGitControlDirFormat(), LocalGitControlDirFormat()])
 
 
+def user_agent_for_github():
+    # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
+    return "git/Breezy/%s" % breezy_version
+
+
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
@@ -148,7 +153,7 @@ class RemoteGitProber(Prober):
                       headers=headers)
         if req.get_host() == "github.com":
             # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-            req.add_header("User-Agent", "git/Breezy/%s" % breezy_version)
+            req.add_header("User-Agent", user_agent_for_github())
         elif req.get_host() == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise bzr_errors.NotBranchError(transport.base)
