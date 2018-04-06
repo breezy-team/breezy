@@ -2279,12 +2279,17 @@ class cmd_init_repository(Command):
 
         to_transport = transport.get_transport(location)
 
+        if format.fixed_components:
+            repo_format_name = None
+        else:
+            repo_format_name = format.repository_format.get_format_string()
+
         (repo, newdir, require_stacking, repository_policy) = (
             format.initialize_on_transport_ex(to_transport,
             create_prefix=True, make_working_trees=not no_trees,
             shared_repo=True, force_new_repo=True,
             use_existing_dir=True,
-            repo_format_name=format.repository_format.get_format_string()))
+            repo_format_name=repo_format_name))
         if not is_quiet():
             from .info import show_bzrdir_info
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
@@ -4200,7 +4205,11 @@ class cmd_selftest(Command):
             # disallowing it currently leads to failures in many places.
             lazy_import.disallow_proxying()
 
-        from . import tests
+        try:
+            from . import tests
+        except ImportError:
+            raise errors.BzrCommandError("tests not available. Install the "
+                "breezy tests to run the breezy testsuite.")
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -6343,8 +6352,14 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision,
-                      store_uncommitted=store)
+        try:
+            switch.switch(control_dir, to_branch, force, revision_id=revision,
+                          store_uncommitted=store)
+        except controldir.BranchReferenceLoop:
+            raise errors.BzrCommandError(
+                    gettext('switching would create a branch reference loop. '
+                            'Use the "bzr up" command to switch to a '
+                            'different revision.'))
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick

@@ -620,10 +620,9 @@ class ConvertBzrDir6ToMeta(Converter):
             self.step(gettext('Upgrading working tree'))
             self.controldir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
-            self.put_format(
-                'checkout', WorkingTreeFormat3())
-            self.controldir.transport.delete_multi(
-                self.garbage_inventories, self.pb)
+            self.put_format('checkout', WorkingTreeFormat3())
+            for path in self.garbage_inventories:
+                self.controldir.transport.delete(path)
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:
