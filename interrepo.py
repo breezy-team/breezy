@@ -47,6 +47,7 @@ from ...revision import (
     NULL_REVISION,
     )
 from ... import (
+    config,
     trace,
     ui,
     )
@@ -144,9 +145,10 @@ class InterToGitRepository(InterRepository):
         return self.source.revision_ids_to_search_result(missing_revids)
 
     def _warn_slow(self):
-        trace.warning(
-            'Pushing from a Bazaar to a Git repository. '
-            'For better performance, push into a Bazaar repository.')
+        if not config.GlobalConfig().suppress_warning('slow_intervcs_push'):
+            trace.warning(
+                'Pushing from a Bazaar to a Git repository. '
+                'For better performance, push into a Bazaar repository.')
 
 
 class InterToLocalGitRepository(InterToGitRepository):
@@ -456,9 +458,10 @@ class InterGitNonGitRepository(InterFromGitRepository):
         return determine_wants
 
     def _warn_slow(self):
-        trace.warning(
-            'Fetching from Git to Bazaar repository. '
-            'For better performance, fetch into a Git repository.')
+        if not config.GlobalConfig().suppress_warning('slow_intervcs_push'):
+            trace.warning(
+                'Fetching from Git to Bazaar repository. '
+                'For better performance, fetch into a Git repository.')
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """Fetch objects from a remote server.
