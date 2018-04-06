@@ -17,6 +17,7 @@
 """Tests for bzr directories that support colocated branches."""
 
 from breezy.branch import Branch
+from breezy.controldir import BranchReferenceLoop
 from breezy import (
     branchbuilder,
     errors,
@@ -166,3 +167,15 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
                 'Control dir does not support creating branch references.')
         self.assertEqual(referenced.user_url,
                          repo.controldir.get_branch_reference('foo'))
+
+    def test_branch_reference_loop(self):
+        repo = self.make_repository('repo')
+        to_branch = self.create_branch(repo.controldir, name='somebranch')
+        try:
+            self.assertRaises(
+                BranchReferenceLoop,
+                repo.controldir.set_branch_reference,
+                to_branch, name='somebranch')
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating branch references.')
