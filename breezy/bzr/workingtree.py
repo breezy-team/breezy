@@ -743,7 +743,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
+            inv, inv_file_id = self._path2inv_file_id(path)
             return inv.get_entry(inv_file_id).executable
         else:
             mode = os.lstat(self.abspath(path)).st_mode
@@ -1452,7 +1452,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         if inv_file_id is None:
             raise errors.NoSuchFile(self, path)
         return inv.get_entry(inv_file_id).kind
@@ -1687,13 +1687,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 blocked_parent_ids.add(ie.file_id)
             yield path, ie
 
-    def iter_entries_by_dir(self, specific_files=None,
-                            yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-                specific_files=specific_files, yield_parents=yield_parents)
+                specific_files=specific_files)
         if not self.supports_tree_reference():
             return iterator
         else:

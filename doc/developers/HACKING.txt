@@ -250,7 +250,7 @@ bzr
     The command you run to start Breezy itself.  This script is pretty
     short and just does some checks then jumps into bzrlib.
 
-README
+README.rst
     This file covers a brief introduction to Breezy and lists some of its
     key features.
 

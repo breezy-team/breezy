@@ -423,18 +423,19 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
             continue
 
         if fc == 'V' and fkind == 'file':
-            if revno != None:
+            tree_path = osutils.pathjoin(from_dir if from_dir else '', fp)
+            if revno is not None:
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_id = tree.get_file_revision(fp, fid)
+                cache_id = tree.get_file_revision(tree_path, fid)
                 if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,
                     #                but it's what the old code seemed to do
                     outputter.write_cached_lines(cache_id, revno)
                 else:
-                    to_grep_append((osutils.pathjoin(from_dir if from_dir else '', fp), (fp, fid)))
+                    to_grep_append((tree_path, (fp, tree_path)))
             else:
                 # we are grepping working tree.
                 if from_dir is None:
@@ -450,11 +451,11 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                     file_text = open(path_for_file, 'r').read()
                     _file_grep(file_text, fp, opts, revno, path_prefix)
 
-    if revno != None: # grep versioned files
-        for (path, fid), chunks in tree.iter_files_bytes(to_grep):
+    if revno is not None: # grep versioned files
+        for (path, tree_path), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
             _file_grep(''.join(chunks), path, opts, revno, path_prefix,
-                tree.get_file_revision(path, fid))
+                tree.get_file_revision(tree_path))
 
 
 def _make_display_path(relpath, path):

@@ -1881,7 +1881,7 @@ class DirStateRevisionTree(InventoryTree):
 
     def get_file_revision(self, path, file_id=None):
         with self.lock_read():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
+            inv, inv_file_id = self._path2inv_file_id(path)
             return inv.get_entry(inv_file_id).revision
 
     def get_file(self, path, file_id=None):
@@ -1889,7 +1889,7 @@ class DirStateRevisionTree(InventoryTree):
 
     def get_file_size(self, path, file_id=None):
         """See Tree.get_file_size"""
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).text_size
 
     def get_file_text(self, path, file_id=None):
@@ -1907,7 +1907,7 @@ class DirStateRevisionTree(InventoryTree):
         return content
 
     def get_reference_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).reference_revision
 
     def iter_files_bytes(self, desired_files):
@@ -1983,7 +1983,7 @@ class DirStateRevisionTree(InventoryTree):
             return (kind, None, None, None)
 
     def is_executable(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
+        inv, inv_file_id = self._path2inv_file_id(path)
         ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False
