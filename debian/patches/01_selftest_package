@@ -3,17 +3,13 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not upstream, Debian-specific
 
 === modified file 'breezy/builtins.py'
---- old/breezy/builtins.py	2018-03-04 20:00:30 +0000
-+++ new/breezy/builtins.py	2018-03-04 20:00:59 +0000
-@@ -4202,7 +4202,11 @@
-             # disallowing it currently leads to failures in many places.
-             lazy_import.disallow_proxying()
- 
--        from . import tests
-+        try:
-+            from . import tests
-+        except ImportError:
-+            raise errors.BzrCommandError("tests not available. Install the "
+--- old/breezy/builtins.py	2018-04-06 23:45:25 +0000
++++ new/breezy/builtins.py	2018-04-06 23:48:13 +0000
+@@ -4209,7 +4209,7 @@
+             from . import tests
+         except ImportError:
+             raise errors.BzrCommandError("tests not available. Install the "
+-                "breezy tests to run the breezy testsuite.")
 +                "python-breezy.tests package to run the breezy testsuite.")
  
          if testspecs_list is not None:
