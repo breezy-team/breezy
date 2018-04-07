@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6940-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6940-1) unstable; urgency=medium
 
   * Install the bash completion script.
   * New upstream snapshot.
