@@ -69,6 +69,9 @@ import posixpath
 import stat
 
 
+BANNED_FILENAMES = ['.git']
+
+
 def get_object_store(repo, mapping=None):
     git = getattr(repo, "_git", None)
     if git is not None:
@@ -184,6 +187,8 @@ def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes, empty_file_
     """
     tree = Tree()
     for value in children:
+        if value.name in BANNED_FILENAMES:
+            continue
         child_path = osutils.pathjoin(path, value.name)
         try:
             mode = unusual_modes[child_path]
@@ -202,7 +207,7 @@ def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes, empty_file_
 
 
 def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
-                     dummy_file_name=None):
+                     dummy_file_name=None, add_cache_entry=None):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
@@ -244,30 +249,40 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):
         if kind[1] == "file":
-            if changed_content:
+            sha1 = tree.get_file_sha1(path[1], file_id)
+            blob_id = None
+            try:
+                (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], sha1, other_parent_trees)
+            except KeyError:
+                pass
+            else:
+                # It existed in one of the parents, with the same contents.
+                # So no need to yield any new git objects.
                 try:
-                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(path[1], file_id), other_parent_trees)
+                    blob_id = idmap.lookup_blob_id(
+                        pfile_id, prevision)
                 except KeyError:
-                    pass
-                else:
-                    try:
-                        shamap[path[1]] = idmap.lookup_blob_id(
-                            pfile_id, prevision)
-                    except KeyError:
+                    if not changed_content:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(path[1], file_id)
-                        shamap[path[1]] = blob.id
-            if not path[1] in shamap:
+                        blob_id = blob.id
+            if blob_id is None:
                 new_blobs.append((path[1], file_id))
+            else:
+                shamap[path[1]] = blob_id
+                if add_cache_entry is not None:
+                    add_cache_entry(("blob", blob_id), (file_id, tree.get_file_revision(path[1])), path[1])
         elif kind[1] == "symlink":
-            if changed_content:
-                target = tree.get_symlink_target(path[1], file_id)
-                blob = symlink_to_blob(target)
-                shamap[path[1]] = blob.id
-                try:
-                    find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
-                except KeyError:
+            target = tree.get_symlink_target(path[1], file_id)
+            blob = symlink_to_blob(target)
+            shamap[path[1]] = blob.id
+            if add_cache_entry is not None:
+                add_cache_entry(blob, (file_id, tree.get_file_revision(path[1])), path[1])
+            try:
+                find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
+            except KeyError:
+                if changed_content:
                     yield path[1], blob, (file_id, tree.get_file_revision(path[1], file_id))
         elif kind[1] is None:
             shamap[path[1]] = None
@@ -283,6 +298,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         [(path, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
+        if add_cache_entry is not None:
+            add_cache_entry(obj, (file_id, tree.get_file_revision(path)), path)
         yield path, obj, (file_id, tree.get_file_revision(path, file_id))
         shamap[path] = obj.id
 
@@ -296,6 +313,10 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             dirty_dirs.add(parent)
 
     def ie_to_hexsha(path, ie):
+        try:
+            return shamap[path]
+        except KeyError:
+            pass
         # FIXME: Should be the same as in parent
         if ie.kind in ("file", "symlink"):
             try:
@@ -304,6 +325,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 # no-change merge ?
                 blob = Blob()
                 blob.data = tree.get_file_text(path, ie.file_id)
+                if add_cache_entry is not None:
+                    add_cache_entry(blob, (ie.file_id, ie.revision), path)
                 return blob.id
         elif ie.kind == "directory":
             # Not all cache backends store the tree information,
@@ -317,28 +340,32 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             raise AssertionError
 
     for path in sorted(dirty_dirs, reverse=True):
+        if not tree.has_filename(path):
+            continue
+
         if tree.kind(path) != 'directory':
             raise AssertionError
 
         obj = Tree()
         for value in tree.iter_child_entries(path):
+            if value.name in BANNED_FILENAMES:
+                trace.warning('not exporting %s with banned filename %s',
+                              value.kind, name)
+                continue
             child_path = osutils.pathjoin(path, value.name)
             try:
                 mode = unusual_modes[child_path]
             except KeyError:
                 mode = entry_mode(value)
-            try:
-                hexsha = shamap[child_path]
-            except KeyError:
-                hexsha = ie_to_hexsha(child_path, value)
+            hexsha = ie_to_hexsha(child_path, value)
             if hexsha is not None:
                 obj.add(value.name.encode("utf-8"), mode, hexsha)
 
-        if len(obj) == 0:
-            obj = None
-
-        if obj is not None:
-            yield path, obj, (tree.path2id(path), tree.get_revision_id())
+        if len(obj) > 0:
+            file_id = tree.path2id(path)
+            if add_cache_entry is not None:
+                add_cache_entry(obj, (file_id, tree.get_revision_id()), path)
+            yield path, obj, (file_id, tree.get_revision_id())
             shamap[path] = obj.id
 
 
@@ -462,7 +489,7 @@ class BazaarObjectStore(BaseObjectStore):
                 file_ids[path] = ie.file_id
         return self.mapping.export_fileid_map(file_ids)
 
-    def _revision_to_objects(self, rev, tree, lossy):
+    def _revision_to_objects(self, rev, tree, lossy, add_cache_entry=None):
         """Convert a revision to a set of git objects.
 
         :param rev: Bazaar revision object
@@ -475,13 +502,14 @@ class BazaarObjectStore(BaseObjectStore):
             [p for p in rev.parent_ids if p in present_parents])
         root_tree = None
         for path, obj, bzr_key_data in _tree_to_objects(tree, parent_trees,
-                self._cache.idmap, unusual_modes, self.mapping.BZR_DUMMY_FILE):
+                self._cache.idmap, unusual_modes,
+                self.mapping.BZR_DUMMY_FILE, add_cache_entry):
             if path == "":
                 root_tree = obj
                 root_key_data = bzr_key_data
                 # Don't yield just yet
             else:
-                yield path, obj, bzr_key_data
+                yield path, obj
         if root_tree is None:
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
@@ -495,8 +523,10 @@ class BazaarObjectStore(BaseObjectStore):
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
                     (stat.S_IFREG | 0644), b.id)
-                yield self.mapping.BZR_FILE_IDS_FILE, b, None
-        yield "", root_tree, root_key_data
+                yield self.mapping.BZR_FILE_IDS_FILE, b
+        if add_cache_entry is not None:
+            add_cache_entry(root_tree, root_key_data, "")
+        yield "", root_tree
         if not lossy:
             testament3 = StrictTestament3(rev, tree)
             verifiers = { "testament3-sha1": testament3.as_sha1() }
@@ -511,7 +541,10 @@ class BazaarObjectStore(BaseObjectStore):
             pass
         else:
             _check_expected_sha(foreign_revid, commit_obj)
-        yield None, commit_obj, None
+        if add_cache_entry is not None:
+            add_cache_entry(commit_obj, verifiers, None)
+
+        yield None, commit_obj
 
     def _get_updater(self, rev):
         return self._cache.get_updater(rev)
@@ -521,11 +554,11 @@ class BazaarObjectStore(BaseObjectStore):
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
         # FIXME JRV 2011-12-15: Shouldn't we try both values for lossy ?
-        for path, obj, ie in self._revision_to_objects(rev, tree, lossy=(not self.mapping.roundtripping)):
+        for path, obj in self._revision_to_objects(
+                rev, tree, lossy=(not self.mapping.roundtripping),
+                add_cache_entry=updater.add_object):
             if isinstance(obj, Commit):
-                testament3 = StrictTestament3(rev, tree)
-                ie = { "testament3-sha1": testament3.as_sha1() }
-            updater.add_object(obj, ie, path)
+                commit_obj = obj
         commit_obj = updater.finish()
         return commit_obj.id
 
@@ -780,14 +813,15 @@ class BazaarObjectStore(BaseObjectStore):
         ret = PackTupleIterable(self)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, revid in enumerate(todo):
+            for i, revid in enumerate(graph.iter_topo_order(todo)):
                 pb.update("generating git objects", i, len(todo))
                 try:
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
                     continue
                 tree = self.tree_cache.revision_tree(revid)
-                for path, obj, ie in self._revision_to_objects(rev, tree, lossy=lossy):
+                for path, obj in self._revision_to_objects(
+                        rev, tree, lossy=lossy):
                     ret.add(obj.id, path)
             return ret
         finally:

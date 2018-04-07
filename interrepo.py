@@ -64,7 +64,6 @@ from .mapping import (
     )
 from .object_store import (
     get_object_store,
-    _tree_to_objects,
     )
 from .push import (
     MissingObjectsIterator,

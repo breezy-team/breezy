@@ -77,6 +77,7 @@ from .mapping import (
     )
 from .object_store import (
     LRUTreeCache,
+    _tree_to_objects,
     )
 from .refs import (
     is_tag,

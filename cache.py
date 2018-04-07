@@ -288,21 +288,26 @@ class DictCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+        else:
+            type_name = obj.type_name
+            hexsha = obj.id
+        if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
             key = self.revid
             type_data = (self.revid, self._commit.tree, bzr_key_data)
-            self.cache.idmap._by_revid[self.revid] = obj.id
-        elif obj.type_name in ("blob", "tree"):
+            self.cache.idmap._by_revid[self.revid] = hexsha
+        elif type_name in ("blob", "tree"):
             if bzr_key_data is not None:
                 key = type_data = bzr_key_data
-                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
+                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = hexsha
         else:
             raise AssertionError
-        entry = (obj.type_name, type_data)
-        self.cache.idmap._by_sha.setdefault(obj.id, {})[key] = entry
+        entry = (type_name, type_data)
+        self.cache.idmap._by_sha.setdefault(hexsha, {})[key] = entry
 
     def finish(self):
         if self._commit is None:
@@ -352,17 +357,22 @@ class SqliteCacheUpdater(CacheUpdater):
         self._blobs = []
 
     def add_object(self, obj, bzr_key_data, path):
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+        else:
+            type_name = obj.type_name
+            hexsha = obj.id
+        if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
             self._testament3_sha1 = bzr_key_data.get("testament3-sha1")
-        elif obj.type_name == "tree":
+        elif type_name == "tree":
             if bzr_key_data is not None:
-                self._trees.append((obj.id, bzr_key_data[0], bzr_key_data[1]))
-        elif obj.type_name == "blob":
+                self._trees.append((hexsha, bzr_key_data[0], bzr_key_data[1]))
+        elif type_name == "blob":
             if bzr_key_data is not None:
-                self._blobs.append((obj.id, bzr_key_data[0], bzr_key_data[1]))
+                self._blobs.append((hexsha, bzr_key_data[0], bzr_key_data[1]))
         else:
             raise AssertionError
 
@@ -516,8 +526,13 @@ class TdbCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
-        sha = obj.sha().digest()
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+            sha = hex_to_sha(hexsha)
+        else:
+            type_name = obj.type_name
+            sha = obj.sha().digest()
+        if type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
@@ -527,18 +542,18 @@ class TdbCacheUpdater(CacheUpdater):
             except KeyError:
                 pass
             self._commit = obj
-        elif obj.type_name == "blob":
+        elif type_name == "blob":
             if bzr_key_data is None:
                 return
             self.db["\0".join(("blob", bzr_key_data[0], bzr_key_data[1]))] = sha
             type_data = bzr_key_data
-        elif obj.type_name == "tree":
+        elif type_name == "tree":
             if bzr_key_data is None:
                 return
             type_data = bzr_key_data
         else:
             raise AssertionError
-        entry = "\0".join((obj.type_name, ) + type_data) + "\n"
+        entry = "\0".join((type_name, ) + type_data) + "\n"
         key = "git\0" + sha
         try:
             oldval = self.db[key]
@@ -727,21 +742,26 @@ class IndexCacheUpdater(CacheUpdater):
         self._cache_objs = set()
 
     def add_object(self, obj, bzr_key_data, path):
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+        else:
+            type_name = obj.type_name
+            hexsha = obj.id
+        if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
-            self.cache.idmap._add_git_sha(obj.id, "commit",
+            self.cache.idmap._add_git_sha(hexsha, "commit",
                 (self.revid, obj.tree, bzr_key_data))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
-                " ".join((obj.id, obj.tree)))
+                " ".join((hexsha, obj.tree)))
             self._cache_objs.add((obj, path))
-        elif obj.type_name == "blob":
-            self.cache.idmap._add_git_sha(obj.id, "blob", bzr_key_data)
+        elif type_name == "blob":
+            self.cache.idmap._add_git_sha(hexsha, "blob", bzr_key_data)
             self.cache.idmap._add_node(("blob", bzr_key_data[0],
-                bzr_key_data[1]), obj.id)
-        elif obj.type_name == "tree":
-            self.cache.idmap._add_git_sha(obj.id, "tree", bzr_key_data)
+                bzr_key_data[1]), hexsha)
+        elif type_name == "tree":
+            self.cache.idmap._add_git_sha(hexsha, "tree", bzr_key_data)
             self._cache_objs.add((obj, path))
         else:
             raise AssertionError
