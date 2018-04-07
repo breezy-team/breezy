@@ -88,7 +88,7 @@ def import_dulwich():
         from dulwich import __version__ as dulwich_version
     except ImportError:
         raise bzr_errors.DependencyNotPresent("dulwich",
-            "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
+            "bzr-git: Please install dulwich, https://www.dulwich.io/")
     else:
         if dulwich_version < dulwich_minimum_version:
             raise bzr_errors.DependencyNotPresent("dulwich",
