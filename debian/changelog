@@ -1,4 +1,4 @@
-breezy-debian (2.8.12) UNRELEASED; urgency=medium
+breezy-debian (2.8.12) unstable; urgency=medium
 
   * Skip GPG signatures when looking for tarballs.
   * Fix compatibility with newer versions of Breezy.
