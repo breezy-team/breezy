@@ -19,10 +19,6 @@
 
 from __future__ import absolute_import
 
-from ....bzr.inventory import (
-    InventoryDirectory,
-    InventoryFile,
-    )
 from ....revision import (
     Revision,
     )

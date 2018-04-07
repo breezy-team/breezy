@@ -53,6 +53,7 @@ from .cache import (
     )
 from .mapping import (
     default_mapping,
+    entry_mode,
     extract_unusual_modes,
     mapping_registry,
     symlink_to_blob,
