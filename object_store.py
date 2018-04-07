@@ -37,6 +37,7 @@ from ... import (
     errors,
     lru_cache,
     trace,
+    osutils,
     ui,
     urlutils,
     )
@@ -268,8 +269,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
         for p in parent:
-            if p and tree.has_id(p) and tree.kind(tree.id2path(p)) == "directory":
-                dirty_dirs.add(p)
+            pp = tree.id2path(p)
+            if p and tree.has_filename(pp) and tree.kind(pp) == "directory":
+                dirty_dirs.add(pp)
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
@@ -281,27 +283,18 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     for path in unusual_modes:
         parent_path = posixpath.dirname(path)
-        file_id = tree.path2id(parent_path)
-        if file_id is None:
-            raise AssertionError("Unable to find file id for %r" % parent_path)
-        dirty_dirs.add(file_id)
+        dirty_dirs.add(parent_path)
 
     try:
         inv = tree.root_inventory
     except AttributeError:
         inv = tree.inventory
 
-    trees = {}
-    while dirty_dirs:
-        new_dirs = set()
-        for file_id in dirty_dirs:
-            if file_id is None or not inv.has_id(file_id):
-                continue
-            trees[inv.id2path(file_id)] = file_id
-            ie = inv.get_entry(file_id)
-            if ie.parent_id is not None:
-                new_dirs.add(ie.parent_id)
-        dirty_dirs = new_dirs
+    for dir in list(dirty_dirs):
+        for parent in osutils.parent_directories(dir):
+            if parent in dirty_dirs:
+                break
+            dirty_dirs.add(parent)
 
     def ie_to_hexsha(ie):
         path = tree.id2path(ie.file_id)
@@ -329,9 +322,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             else:
                 raise AssertionError
 
-    for path in sorted(trees.keys(), reverse=True):
-        file_id = trees[path]
-        if tree.kind(path, file_id) != 'directory':
+    for path in sorted(dirty_dirs, reverse=True):
+        file_id = tree.path2id(path)
+        if tree.kind(path) != 'directory':
             raise AssertionError
         ie = inv.get_entry(file_id)
         obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
