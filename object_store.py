@@ -273,10 +273,10 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             shamap[path[1]] = None
         elif kind[1] != 'directory':
             raise AssertionError(kind[1])
-        for p in parent:
+        for p in path:
             if p is None:
                 continue
-            dirty_dirs.add(tree.id2path(p))
+            dirty_dirs.add(osutils.dirname(p))
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
