@@ -181,7 +181,7 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
         else:
-            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(file_modes.encode("utf-8"))])
+            return dict(bencode.bdecode(file_modes.encode("utf-8")))
 
     def _generate_git_svn_metadata(self, rev, encoding):
         try:
