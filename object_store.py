@@ -289,11 +289,6 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     for path in unusual_modes:
         dirty_dirs.add(posixpath.dirname(path))
 
-    try:
-        inv = tree.root_inventory
-    except AttributeError:
-        inv = tree.inventory
-
     for dir in list(dirty_dirs):
         for parent in osutils.parent_directories(dir):
             if parent in dirty_dirs:
@@ -586,10 +581,6 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        try:
-            inv = bzr_tree.root_inventory
-        except AttributeError:
-            inv = bzr_tree.inventory
         path = bzr_tree.id2path(fileid)
         tree = directory_to_tree(
                 path,
