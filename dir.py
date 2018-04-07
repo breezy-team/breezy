@@ -26,6 +26,7 @@ from ... import (
     errors as bzr_errors,
     trace,
     osutils,
+    repository as _mod_repository,
     revision as _mod_revision,
     urlutils,
     )
@@ -45,6 +46,9 @@ from .object_store import (
     get_object_store,
     )
 
+from .push import (
+    GitPushResult,
+    )
 from .transportgit import (
     OBJECTDIR,
     TransportObjectStore,
@@ -271,6 +275,31 @@ class GitDir(ControlDir):
 
     def list_branches(self):
         return self.get_branches().values()
+
+    def push_branch(self, source, revision_id=None, overwrite=False,
+                    remember=False, create_prefix=False, lossy=False,
+                    name=None):
+        """Push the source branch into this ControlDir."""
+        push_result = GitPushResult()
+        push_result.workingtree_updated = None
+        push_result.master_branch = None
+        push_result.source_branch = source
+        push_result.stacked_on = None
+        repo = self.find_repository()
+        refname = self._get_selected_ref(name)
+        from .branch import GitBranch
+        if isinstance(source, GitBranch) and lossy:
+            raise errors.LossyPushToSameVCS(source.controldir, self)
+        target = self.open_branch(name, nascent_ok=True)
+        push_result.branch_push_result = source.push(
+                target, overwrite=overwrite, stop_revision=revision_id,
+                lossy=lossy)
+        push_result.new_revid = push_result.branch_push_result.new_revid
+        push_result.old_revid = push_result.branch_push_result.old_revid
+        push_result.target_branch = self.open_branch(name)
+        if source.get_push_location() is None or remember:
+            source.set_push_location(push_result.target_branch.base)
+        return push_result
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):

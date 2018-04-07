@@ -382,9 +382,13 @@ class RemoteGitDir(GitDir):
             progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
+        def get_changed_refs_wrapper(refs):
+            # TODO(jelmer): This drops symref information
+            self._refs = remote_refs_dict_to_container(refs)
+            return get_changed_refs(refs)
         try:
-            return self._client.send_pack(self._client_path, get_changed_refs,
-                generate_pack_data, progress)
+            return self._client.send_pack(self._client_path,
+                    get_changed_refs_wrapper, generate_pack_data, progress)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
