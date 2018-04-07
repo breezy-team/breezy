@@ -297,11 +297,7 @@ class DictCacheUpdater(CacheUpdater):
             self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
             if bzr_key_data is not None:
-                if obj.type_name == "blob":
-                    revision = bzr_key_data[1]
-                else:
-                    revision = self.revid
-                key = type_data = (bzr_key_data[0], revision)
+                key = type_data = bzr_key_data
                 self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
         else:
             raise AssertionError
@@ -363,7 +359,7 @@ class SqliteCacheUpdater(CacheUpdater):
             self._testament3_sha1 = bzr_key_data.get("testament3-sha1")
         elif obj.type_name == "tree":
             if bzr_key_data is not None:
-                self._trees.append((obj.id, bzr_key_data[0], self.revid))
+                self._trees.append((obj.id, bzr_key_data[0], bzr_key_data[1]))
         elif obj.type_name == "blob":
             if bzr_key_data is not None:
                 self._blobs.append((obj.id, bzr_key_data[0], bzr_key_data[1]))
@@ -539,8 +535,7 @@ class TdbCacheUpdater(CacheUpdater):
         elif obj.type_name == "tree":
             if bzr_key_data is None:
                 return
-            (file_id, ) = bzr_key_data
-            type_data = (file_id, self.revid)
+            type_data = bzr_key_data
         else:
             raise AssertionError
         entry = "\0".join((obj.type_name, ) + type_data) + "\n"
@@ -746,8 +741,7 @@ class IndexCacheUpdater(CacheUpdater):
             self.cache.idmap._add_node(("blob", bzr_key_data[0],
                 bzr_key_data[1]), obj.id)
         elif obj.type_name == "tree":
-            self.cache.idmap._add_git_sha(obj.id, "tree",
-                (bzr_key_data[0], self.revid))
+            self.cache.idmap._add_git_sha(obj.id, "tree", bzr_key_data)
             self._cache_objs.add((obj, path))
         else:
             raise AssertionError

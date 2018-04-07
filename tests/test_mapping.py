@@ -19,10 +19,6 @@
 
 from __future__ import absolute_import
 
-from ....bzr.inventory import (
-    InventoryDirectory,
-    InventoryFile,
-    )
 from ....revision import (
     Revision,
     )
@@ -42,7 +38,6 @@ from .. import tests
 from ..errors import UnknownCommitExtra
 from ..mapping import (
     BzrGitMappingv1,
-    directory_to_tree,
     escape_file_id,
     fix_person_identifier,
     unescape_file_id,
@@ -396,44 +391,6 @@ class RoundtripRevisionsFromGit(tests.TestCase):
                 tag_time=423423423, tag_timezone=0)
         c.mergetag = [tag]
         self.assertRoundtripCommit(c)
-
-
-class DirectoryToTreeTests(tests.TestCase):
-
-    def test_empty(self):
-        t = directory_to_tree({}, None, {}, None, allow_empty=False)
-        self.assertEquals(None, t)
-
-    def test_empty_dir(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        children = {'bar': child_ie}
-        t = directory_to_tree(children, lambda x: None, {}, None,
-                allow_empty=False)
-        self.assertEquals(None, t)
-
-    def test_empty_dir_dummy_files(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        children = {'bar':child_ie}
-        t = directory_to_tree(children, lambda x: None, {}, ".mydummy",
-                allow_empty=False)
-        self.assertTrue(".mydummy" in t)
-
-    def test_empty_root(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        children = {'bar': child_ie}
-        t = directory_to_tree(children, lambda x: None, {}, None,
-                allow_empty=True)
-        self.assertEquals(Tree(), t)
-
-    def test_with_file(self):
-        child_ie = InventoryFile('bar', 'bar', 'bar')
-        children = {"bar": child_ie}
-        b = Blob.from_string("bla")
-        t1 = directory_to_tree(children, lambda x: b.id, {}, None,
-                allow_empty=False)
-        t2 = Tree()
-        t2.add("bar", 0100644, b.id)
-        self.assertEquals(t1, t2)
 
 
 class FixPersonIdentifierTests(tests.TestCase):

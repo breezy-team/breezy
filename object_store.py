@@ -31,12 +31,15 @@ from dulwich.object_store import (
     )
 from dulwich.pack import (
     pack_objects_to_data,
+    PackData,
+    Pack,
     )
 
 from ... import (
     errors,
     lru_cache,
     trace,
+    osutils,
     ui,
     urlutils,
     )
@@ -53,7 +56,7 @@ from .cache import (
     )
 from .mapping import (
     default_mapping,
-    directory_to_tree,
+    entry_mode,
     extract_unusual_modes,
     mapping_registry,
     symlink_to_blob,
@@ -168,6 +171,36 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
+def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes, empty_file_name,
+                      allow_empty=False):
+    """Create a Git Tree object from a Bazaar directory.
+
+    :param path: directory path
+    :param children: Children inventory entries
+    :param lookup_ie_sha1: Lookup the Git SHA1 for a inventory entry
+    :param unusual_modes: Dictionary with unusual file modes by file ids
+    :param empty_file_name: Name to use for dummy files in empty directories,
+        None to ignore empty directories.
+    """
+    tree = Tree()
+    for value in children:
+        child_path = osutils.pathjoin(path, value.name)
+        try:
+            mode = unusual_modes[child_path]
+        except KeyError:
+            mode = entry_mode(value)
+        hexsha = lookup_ie_sha1(child_path, value)
+        if hexsha is not None:
+            tree.add(value.name.encode("utf-8"), mode, hexsha)
+    if not allow_empty and len(tree) == 0:
+        # Only the root can be an empty tree
+        if empty_file_name is not None:
+            tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
+        else:
+            return None
+    return tree
+
+
 def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                      dummy_file_name=None):
     """Iterate over the objects that were introduced in a revision.
@@ -181,6 +214,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     """
     dirty_dirs = set()
     new_blobs = []
+    new_contents = {}
     shamap = {}
     try:
         base_tree = parent_trees[0]
@@ -217,29 +251,32 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     pass
                 else:
                     try:
-                        shamap[file_id] = idmap.lookup_blob_id(
+                        shamap[path[1]] = idmap.lookup_blob_id(
                             pfile_id, prevision)
                     except KeyError:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(path[1], file_id)
-                        shamap[file_id] = blob.id
-            if not file_id in shamap:
+                        shamap[path[1]] = blob.id
+            if not path[1] in shamap:
                 new_blobs.append((path[1], file_id))
         elif kind[1] == "symlink":
             if changed_content:
                 target = tree.get_symlink_target(path[1], file_id)
                 blob = symlink_to_blob(target)
-                shamap[file_id] = blob.id
+                shamap[path[1]] = blob.id
                 try:
                     find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
                     yield path[1], blob, (file_id, tree.get_file_revision(path[1], file_id))
-        elif kind[1] not in (None, "directory"):
+        elif kind[1] is None:
+            shamap[path[1]] = None
+        elif kind[1] != 'directory':
             raise AssertionError(kind[1])
-        for p in parent:
-            if p and tree.has_id(p) and tree.kind(tree.id2path(p)) == "directory":
-                dirty_dirs.add(p)
+        for p in path:
+            if p is None:
+                continue
+            dirty_dirs.add(osutils.dirname(p))
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
@@ -247,67 +284,62 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         obj = Blob()
         obj.chunked = chunks
         yield path, obj, (file_id, tree.get_file_revision(path, file_id))
-        shamap[file_id] = obj.id
+        shamap[path] = obj.id
 
     for path in unusual_modes:
-        parent_path = posixpath.dirname(path)
-        file_id = tree.path2id(parent_path)
-        if file_id is None:
-            raise AssertionError("Unable to find file id for %r" % parent_path)
-        dirty_dirs.add(file_id)
+        dirty_dirs.add(posixpath.dirname(path))
 
-    try:
-        inv = tree.root_inventory
-    except AttributeError:
-        inv = tree.inventory
+    for dir in list(dirty_dirs):
+        for parent in osutils.parent_directories(dir):
+            if parent in dirty_dirs:
+                break
+            dirty_dirs.add(parent)
 
-    trees = {}
-    while dirty_dirs:
-        new_dirs = set()
-        for file_id in dirty_dirs:
-            if file_id is None or not inv.has_id(file_id):
-                continue
-            trees[inv.id2path(file_id)] = file_id
-            ie = inv.get_entry(file_id)
-            if ie.parent_id is not None:
-                new_dirs.add(ie.parent_id)
-        dirty_dirs = new_dirs
-
-    def ie_to_hexsha(ie):
-        try:
-            return shamap[ie.file_id]
-        except KeyError:
-            # FIXME: Should be the same as in parent
-            if ie.kind in ("file", "symlink"):
-                try:
-                    return idmap.lookup_blob_id(ie.file_id, ie.revision)
-                except KeyError:
-                    # no-change merge ?
-                    blob = Blob()
-                    path = tree.id2path(ie.file_id)
-                    blob.data = tree.get_file_text(path, ie.file_id)
-                    return blob.id
-            elif ie.kind == "directory":
-                # Not all cache backends store the tree information,
-                # calculate again from scratch
-                ret = directory_to_tree(ie.children, ie_to_hexsha,
-                    unusual_modes, dummy_file_name, ie.parent_id is None)
-                if ret is None:
-                    return ret
-                return ret.id
-            else:
-                raise AssertionError
-
-    for path in sorted(trees.keys(), reverse=True):
-        file_id = trees[path]
-        if tree.kind(path, file_id) != 'directory':
+    def ie_to_hexsha(path, ie):
+        # FIXME: Should be the same as in parent
+        if ie.kind in ("file", "symlink"):
+            try:
+                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+            except KeyError:
+                # no-change merge ?
+                blob = Blob()
+                blob.data = tree.get_file_text(path, ie.file_id)
+                return blob.id
+        elif ie.kind == "directory":
+            # Not all cache backends store the tree information,
+            # calculate again from scratch
+            ret = directory_to_tree(path, ie.children.values(), ie_to_hexsha,
+                unusual_modes, dummy_file_name, ie.parent_id is None)
+            if ret is None:
+                return ret
+            return ret.id
+        else:
             raise AssertionError
-        ie = inv.get_entry(file_id)
-        obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
-            dummy_file_name, path == "")
+
+    for path in sorted(dirty_dirs, reverse=True):
+        if tree.kind(path) != 'directory':
+            raise AssertionError
+
+        obj = Tree()
+        for value in tree.iter_child_entries(path):
+            child_path = osutils.pathjoin(path, value.name)
+            try:
+                mode = unusual_modes[child_path]
+            except KeyError:
+                mode = entry_mode(value)
+            try:
+                hexsha = shamap[child_path]
+            except KeyError:
+                hexsha = ie_to_hexsha(child_path, value)
+            if hexsha is not None:
+                obj.add(value.name.encode("utf-8"), mode, hexsha)
+
+        if len(obj) == 0:
+            obj = None
+
         if obj is not None:
-            yield path, obj, (file_id, )
-            shamap[file_id] = obj.id
+            yield path, obj, (tree.path2id(path), tree.get_revision_id())
+            shamap[path] = obj.id
 
 
 class PackTupleIterable(object):
@@ -457,7 +489,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_key_data = (tree.get_root_id(), )
+            root_key_data = (tree.get_root_id(), tree.get_revision_id())
         if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree)
             if b is not None:
@@ -524,7 +556,7 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: fileid in the tree.
         :param revision: Revision of the tree.
         """
-        def get_ie_sha1(entry):
+        def get_ie_sha1(path, entry):
             if entry.kind == "directory":
                 try:
                     return self._cache.idmap.lookup_tree_id(entry.file_id,
@@ -549,11 +581,10 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        try:
-            inv = bzr_tree.root_inventory
-        except AttributeError:
-            inv = bzr_tree.inventory
-        tree = directory_to_tree(inv.get_entry(fileid).children,
+        path = bzr_tree.id2path(fileid)
+        tree = directory_to_tree(
+                path,
+                bzr_tree.iter_child_entries(path),
                 get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
                 bzr_tree.get_root_id() == fileid)
         if (bzr_tree.get_root_id() == fileid and
@@ -768,7 +799,6 @@ class BazaarObjectStore(BaseObjectStore):
         fd, path = tempfile.mkstemp(suffix=".pack")
         f = os.fdopen(fd, 'wb')
         def commit():
-            from dulwich.pack import PackData, Pack
             from .fetch import import_git_objects
             os.fsync(fd)
             f.close()

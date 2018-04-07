@@ -20,10 +20,15 @@ from __future__ import absolute_import
 
 from dulwich.objects import (
     Blob,
+    Tree,
     )
 
 from ....branchbuilder import (
     BranchBuilder,
+    )
+from ....bzr.inventory import (
+    InventoryDirectory,
+    InventoryFile,
     )
 from ....errors import (
     NoSuchRevision,
@@ -43,6 +48,7 @@ from ..cache import (
 from ..object_store import (
     BazaarObjectStore,
     LRUTreeCache,
+    directory_to_tree,
     _check_expected_sha,
     _find_missing_bzr_revids,
     _tree_to_objects,
@@ -209,3 +215,37 @@ class TreeToObjectsTests(TestCaseWithTransport):
         self.addCleanup(tree.lock_read().unlock)
         entries = list(_tree_to_objects(tree, [tree], self.idmap, {}))
         self.assertEquals([], entries)
+
+
+class DirectoryToTreeTests(TestCase):
+
+    def test_empty(self):
+        t = directory_to_tree('', [], None, {}, None, allow_empty=False)
+        self.assertEquals(None, t)
+
+    def test_empty_dir(self):
+        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
+                allow_empty=False)
+        self.assertEquals(None, t)
+
+    def test_empty_dir_dummy_files(self):
+        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        t = directory_to_tree('', [child_ie], lambda p, x: None, {}, ".mydummy",
+                allow_empty=False)
+        self.assertTrue(".mydummy" in t)
+
+    def test_empty_root(self):
+        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
+                allow_empty=True)
+        self.assertEquals(Tree(), t)
+
+    def test_with_file(self):
+        child_ie = InventoryFile('bar', 'bar', 'bar')
+        b = Blob.from_string("bla")
+        t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
+                allow_empty=False)
+        t2 = Tree()
+        t2.add("bar", 0100644, b.id)
+        self.assertEquals(t1, t2)

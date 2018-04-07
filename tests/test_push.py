@@ -111,7 +111,8 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         commit = store[gitid]
         tree = store[commit.tree]
         tree.check()
-        self.assertTrue(tree["baz"][1] in store)
+        self.assertIn("baz", tree, repr(tree.items()))
+        self.assertIn(tree["baz"][1], store)
         baz = store[tree["baz"][1]]
         baz.check()
         ircdotnet = store[baz["IrcDotNet"][1]]
