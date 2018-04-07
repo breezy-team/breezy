@@ -2,6 +2,8 @@ breezy-debian (2.8.12) UNRELEASED; urgency=medium
 
   * Skip GPG signatures when looking for tarballs.
   * Fix compatibility with newer versions of Breezy.
+  * Remove support for 'get-orig-source' debian/rules target, which was
+    removed in Debian policy 4.1.4.0.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Apr 2018 01:51:03 +0100
 

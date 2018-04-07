@@ -330,7 +330,6 @@ class cmd_builddeb(Command):
             )
         from .upstream import (
             AptSource,
-            DebianRulesSource,
             SelfSplitSource,
             UScanSource,
             UpstreamProvider,
@@ -410,7 +409,6 @@ class cmd_builddeb(Command):
             elif not native and config.upstream_branch is not None:
                 upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
             upstream_sources.extend([
-                DebianRulesSource(tree, top_level),
                 UScanSource(tree, top_level),
                 ])
             if build_type == BUILD_TYPE_SPLIT:
@@ -488,7 +486,6 @@ class cmd_get_orig_source(Command):
     def run(self, directory='.', version=None):
         from .upstream import (
             AptSource,
-            DebianRulesSource,
             UScanSource,
             UpstreamProvider,
             )
@@ -513,7 +510,6 @@ class cmd_get_orig_source(Command):
                 str(version), orig_dir,
                 [PristineTarSource(tree, tree.branch),
                  AptSource(),
-                 DebianRulesSource(tree, larstiq),
                  UScanSource(tree, larstiq) ])
 
         result = upstream_provider.provide(orig_dir)
@@ -1139,7 +1135,6 @@ class cmd_builddeb_do(Command):
             )
         from .upstream import (
             AptSource,
-            DebianRulesSource,
             UScanSource,
             UpstreamProvider,
             )
@@ -1190,7 +1185,6 @@ class cmd_builddeb_do(Command):
                 changelog.version.upstream_version, orig_dir,
                 [PristineTarSource(t, t.branch),
                  AptSource(),
-                 DebianRulesSource(t, top_level),
                  UScanSource(t, top_level) ])
 
         distiller = MergeModeDistiller(t, upstream_provider,
