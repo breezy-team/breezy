@@ -217,20 +217,20 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     pass
                 else:
                     try:
-                        shamap[file_id] = idmap.lookup_blob_id(
+                        shamap[path[1]] = idmap.lookup_blob_id(
                             pfile_id, prevision)
                     except KeyError:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(path[1], file_id)
-                        shamap[file_id] = blob.id
-            if not file_id in shamap:
+                        shamap[path[1]] = blob.id
+            if not path[1] in shamap:
                 new_blobs.append((path[1], file_id))
         elif kind[1] == "symlink":
             if changed_content:
                 target = tree.get_symlink_target(path[1], file_id)
                 blob = symlink_to_blob(target)
-                shamap[file_id] = blob.id
+                shamap[path[1]] = blob.id
                 try:
                     find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
@@ -247,7 +247,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         obj = Blob()
         obj.chunked = chunks
         yield path, obj, (file_id, tree.get_file_revision(path, file_id))
-        shamap[file_id] = obj.id
+        shamap[path] = obj.id
 
     for path in unusual_modes:
         parent_path = posixpath.dirname(path)
@@ -274,8 +274,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         dirty_dirs = new_dirs
 
     def ie_to_hexsha(ie):
+        path = tree.id2path(ie.file_id)
         try:
-            return shamap[ie.file_id]
+            return shamap[path]
         except KeyError:
             # FIXME: Should be the same as in parent
             if ie.kind in ("file", "symlink"):
@@ -307,7 +308,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             dummy_file_name, path == "")
         if obj is not None:
             yield path, obj, (file_id, )
-            shamap[file_id] = obj.id
+            shamap[path] = obj.id
 
 
 class PackTupleIterable(object):
