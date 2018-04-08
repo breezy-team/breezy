@@ -696,11 +696,6 @@ class BazaarObjectStore(BaseObjectStore):
         return self.lookup_git_shas([sha])[sha]
 
     def __getitem__(self, sha):
-        if self._cache.content_cache is not None:
-            try:
-                return self._cache.content_cache[sha]
-            except KeyError:
-                pass
         for (kind, type_data) in self.lookup_git_sha(sha):
             # convert object to git object
             if kind == "commit":
