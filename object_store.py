@@ -245,8 +245,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
          executable) in tree.iter_changes(base_tree):
         if kind[1] == "file":
             if changed_content:
+                sha = tree.get_file_sha1(path[1], file_id)
                 try:
-                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(path[1], file_id), other_parent_trees)
+                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], sha, other_parent_trees)
                 except KeyError:
                     pass
                 else:
@@ -295,6 +296,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 break
             dirty_dirs.add(parent)
 
+    if dirty_dirs:
+        dirty_dirs.add('')
+
     def ie_to_hexsha(path, ie):
         # FIXME: Should be the same as in parent
         if ie.kind in ("file", "symlink"):
@@ -317,6 +321,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             raise AssertionError
 
     for path in sorted(dirty_dirs, reverse=True):
+        if not tree.has_filename(path):
+            continue
+
         if tree.kind(path) != 'directory':
             raise AssertionError
 
@@ -334,10 +341,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             if hexsha is not None:
                 obj.add(value.name.encode("utf-8"), mode, hexsha)
 
-        if len(obj) == 0:
-            obj = None
-
-        if obj is not None:
+        if len(obj) > 0:
             yield path, obj, (tree.path2id(path), tree.get_revision_id())
             shamap[path] = obj.id
 
