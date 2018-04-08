@@ -862,12 +862,12 @@ class IndexGitShaMap(GitShaMap):
 
     def _add_node(self, key, value):
         try:
+            self._get_entry(key)
+        except KeyError:
             self._builder.add_node(key, value)
-        except _mod_index.BadIndexDuplicateKey:
-            # Multiple bzr objects can have the same contents
-            return True
-        else:
             return False
+        else:
+            return True
 
     def _get_entry(self, key):
         entries = self._index.iter_entries([key])
@@ -918,9 +918,12 @@ class IndexGitShaMap(GitShaMap):
         value = self._get_entry(("git", sha, "X"))
         data = value.split(" ", 3)
         if data[0] == "commit":
-            if data[3]:
-                verifiers = {"testament3-sha1": data[3]}
-            else:
+            try:
+                if data[3]:
+                    verifiers = {"testament3-sha1": data[3]}
+                else:
+                    verifiers = {}
+            except IndexError:
                 verifiers = {}
             yield ("commit", (data[1], data[2], verifiers))
         else:
@@ -953,13 +956,7 @@ formats.register(SqliteGitCacheFormat().get_format_string(),
 formats.register(IndexGitCacheFormat().get_format_string(),
     IndexGitCacheFormat())
 # In the future, this will become the default:
-# formats.register('default', IndexGitCacheFormat())
-try:
-    import tdb
-except ImportError:
-    formats.register('default', SqliteGitCacheFormat())
-else:
-    formats.register('default', TdbGitCacheFormat())
+formats.register('default', IndexGitCacheFormat())
 
 
 
