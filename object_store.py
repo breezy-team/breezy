@@ -312,6 +312,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 break
             dirty_dirs.add(parent)
 
+    if dirty_dirs:
+        dirty_dirs.add('')
+
     def ie_to_hexsha(path, ie):
         try:
             return shamap[path]
