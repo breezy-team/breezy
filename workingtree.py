@@ -1166,6 +1166,16 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                                 show_base=show_base)
             return count
 
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree.
+
+        The default implementation returns no refs, and is only suitable for
+        trees that have no local caching and can commit on ghosts at any time.
+
+        :seealso: breezy.check for details about check_refs.
+        """
+        return []
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
