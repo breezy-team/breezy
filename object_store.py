@@ -248,6 +248,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     # Find all the changed blobs
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):
+        if name[1] in BANNED_FILENAMES:
+            continue
         if kind[1] == "file":
             sha1 = tree.get_file_sha1(path[1], file_id)
             blob_id = None
@@ -353,7 +355,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         for value in tree.iter_child_entries(path):
             if value.name in BANNED_FILENAMES:
                 trace.warning('not exporting %s with banned filename %s',
-                              value.kind, name)
+                              value.kind, value.name)
                 continue
             child_path = osutils.pathjoin(path, value.name)
             try:

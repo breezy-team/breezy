@@ -67,12 +67,12 @@ class ExpectedShaTests(TestCase):
 
     def test_hex(self):
         _check_expected_sha(self.obj.sha().hexdigest(), self.obj)
-        self.assertRaises(AssertionError, _check_expected_sha, 
+        self.assertRaises(AssertionError, _check_expected_sha,
             "0" * 40, self.obj)
 
     def test_binary(self):
         _check_expected_sha(self.obj.sha().digest(), self.obj)
-        self.assertRaises(AssertionError, _check_expected_sha, 
+        self.assertRaises(AssertionError, _check_expected_sha,
             "x" * 20, self.obj)
 
 
@@ -216,6 +216,16 @@ class TreeToObjectsTests(TestCaseWithTransport):
         entries = list(_tree_to_objects(tree, [tree], self.idmap, {}))
         self.assertEquals([], entries)
 
+    def test_with_gitdir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['.git', 'foo'])
+        tree.add(['.git', 'foo'])
+        revid = tree.commit('commit')
+        revtree = tree.branch.repository.revision_tree(revid)
+        self.addCleanup(revtree.lock_read().unlock)
+        entries = list(_tree_to_objects(revtree, [], self.idmap, {}))
+        self.assertEquals(['foo', ''], [p[0] for p in entries])
+
 
 class DirectoryToTreeTests(TestCase):
 
@@ -245,6 +255,17 @@ class DirectoryToTreeTests(TestCase):
         child_ie = InventoryFile('bar', 'bar', 'bar')
         b = Blob.from_string("bla")
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
+                allow_empty=False)
+        t2 = Tree()
+        t2.add("bar", 0100644, b.id)
+        self.assertEquals(t1, t2)
+
+    def test_with_gitdir(self):
+        child_ie = InventoryFile('bar', 'bar', 'bar')
+        git_file_ie = InventoryFile('gitid', '.git', 'bar')
+        b = Blob.from_string("bla")
+        t1 = directory_to_tree('', [child_ie, git_file_ie],
+                lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
         t2.add("bar", 0100644, b.id)
