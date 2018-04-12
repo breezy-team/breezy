@@ -7,7 +7,6 @@ python:
   - 3.5-dev
   - 3.6
   - 3.6-dev
-  - pypy3.5
 
 env:
   - SELFTEST_OPTIONS="--load-list python3.passing"
@@ -16,9 +15,6 @@ env:
 matrix:
   include:
     - python: 2.7
-      env: SELFTEST_OPTIONS=""
-           EXTRA_MAKE_ARGS="extensions"
-    - python: pypy2.7
       env: SELFTEST_OPTIONS=""
            EXTRA_MAKE_ARGS="extensions"
 
