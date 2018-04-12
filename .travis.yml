@@ -13,14 +13,16 @@ python:
 
 env:
   - SELFTEST_OPTIONS="--load-list python3.passing"
+    EXTRA_MAKE_ARGS=""
 
 matrix:
   include:
     - python: 2.7
       env: SELFTEST_OPTIONS=""
+           EXTRA_MAKE_ARGS="extensions"
 
 script:
-  - make extensions docs
+  - make docs $EXTRA_MAKE_ARGS
   - BRZ_PLUGIN_PATH=-site:-user python ./brz selftest --parallel=fork $SELFTEST_OPTIONS
 
 install:
