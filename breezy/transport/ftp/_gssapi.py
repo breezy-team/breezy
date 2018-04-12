@@ -36,7 +36,7 @@ from ..ftp import FtpTransport
 try:
     import kerberos
 except ImportError as e:
-    mutter('failed to import kerberos lib: %s', e)
+    mutter('failed to import kerberos lib: %s', str(e))
     raise errors.DependencyNotPresent('kerberos', e)
 
 if getattr(kerberos, "authGSSClientWrap", None) is None:
