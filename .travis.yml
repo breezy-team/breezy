@@ -12,14 +12,12 @@ python:
   - pypy3.3-5.2-alpha1
 
 env:
-  - PYTHONHASHSEED=random
-    SELFTEST_OPTIONS="--load-list python3.passing"
+  - SELFTEST_OPTIONS="--load-list python3.passing"
 
 matrix:
   include:
     - python: 2.7
       env: SELFTEST_OPTIONS=""
-           PYTHONHASHSEED=random
 
 script:
   - make extensions docs
