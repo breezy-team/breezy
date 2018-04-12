@@ -18,12 +18,10 @@ matrix:
   include:
     - python: 2.7
       script:
-        - mkdir man1
         - make extensions docs
         - BRZ_PLUGIN_PATH=-site:-user python ./brz selftest --parallel=fork -q
 
 script:
-  - mkdir man1
   - make extensions docs
   - BRZ_PLUGIN_PATH=-site:-user python ./brz selftest --parallel=fork -q --load-list python3.passing
 

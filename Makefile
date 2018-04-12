@@ -156,6 +156,7 @@ MAN_DEPENDENCIES = breezy/builtins.py \
 
 MAN_PAGES = man1/brz.1
 man1/brz.1: $(MAN_DEPENDENCIES)
+	mkdir -p $(dir $@)
 	$(PYTHON) tools/generate_docs.py -o $@ man
 
 
