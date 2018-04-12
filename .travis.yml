@@ -13,17 +13,16 @@ python:
 
 env:
   - PYTHONHASHSEED=random
+    SELFTEST_OPTIONS="--load-list python3.passing"
 
 matrix:
   include:
     - python: 2.7
-      script:
-        - make extensions docs
-        - BRZ_PLUGIN_PATH=-site:-user python ./brz selftest --parallel=fork -q
+      env: SELFTEST_OPTIONS=""
 
 script:
   - make extensions docs
-  - BRZ_PLUGIN_PATH=-site:-user python ./brz selftest --parallel=fork -q --load-list python3.passing
+  - BRZ_PLUGIN_PATH=-site:-user python ./brz selftest --parallel=fork -q $SELFTEST_OPTIONS
 
 install:
   - sudo apt install python-all-dev python3-all-dev
