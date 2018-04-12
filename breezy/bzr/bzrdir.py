@@ -955,6 +955,9 @@ class BzrDirMeta1(BzrDir):
 
     def set_branch_reference(self, target_branch, name=None):
         format = _mod_bzrbranch.BranchReferenceFormat()
+        if (self.control_url == target_branch.controldir.control_url and
+            name == target_branch.name):
+            raise controldir.BranchReferenceLoop(target_branch)
         return format.initialize(self, target_branch=target_branch, name=name)
 
     def get_branch_transport(self, branch_format, name=None):

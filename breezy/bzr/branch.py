@@ -942,12 +942,22 @@ class BranchReferenceFormat(BranchFormatMetadir):
     def get_reference(self, a_controldir, name=None):
         """See BranchFormat.get_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
-        return transport.get_bytes('location')
+        url = urlutils.split_segment_parameters(a_controldir.user_url)[0]
+        return urlutils.join(url, transport.get_bytes('location'))
+
+    def _write_reference(self, a_controldir, transport, to_branch):
+        to_url = to_branch.user_url
+        if a_controldir.control_url == to_branch.controldir.control_url:
+            # Write relative paths for colocated branches, but absolute
+            # paths for everything else. This is for the benefit
+            # of older bzr versions that don't support relative paths.
+            to_url = urlutils.relative_url(a_controldir.user_url, to_branch.user_url)
+        transport.put_bytes('location', to_url)
 
     def set_reference(self, a_controldir, name, to_branch):
         """See BranchFormat.set_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
-        location = transport.put_bytes('location', to_branch.base)
+        self._write_reference(a_controldir, transport, to_branch)
 
     def initialize(self, a_controldir, name=None, target_branch=None,
             repository=None, append_revisions_only=None):
@@ -962,7 +972,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         if name is None:
             name = a_controldir._get_selected_branch()
         branch_transport = a_controldir.get_branch_transport(self, name=name)
-        branch_transport.put_bytes('location', target_branch.user_url)
+        self._write_reference(a_controldir, branch_transport, target_branch)
         branch_transport.put_bytes('format', self.as_string())
         branch = self.open(a_controldir, name, _found=True,
             possible_transports=[target_branch.controldir.root_transport])

@@ -6352,8 +6352,14 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision,
-                      store_uncommitted=store)
+        try:
+            switch.switch(control_dir, to_branch, force, revision_id=revision,
+                          store_uncommitted=store)
+        except controldir.BranchReferenceLoop:
+            raise errors.BzrCommandError(
+                    gettext('switching would create a branch reference loop. '
+                            'Use the "bzr up" command to switch to a '
+                            'different revision.'))
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
