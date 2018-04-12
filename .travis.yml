@@ -19,6 +19,7 @@ matrix:
   include:
     - python: 2.7
       env: SELFTEST_OPTIONS=""
+           PYTHONHASHSEED=random
 
 script:
   - make extensions docs
