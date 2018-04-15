@@ -339,7 +339,6 @@ register_metadir(controldir.format_registry, 'bzr',
     'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-    alias=True,
     hidden=True,
     help='Default format for bzr. (currently 2a)')
 
