@@ -114,7 +114,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
 
-        self.assertEqual('RE:dir2/.*\.wombat', tree.is_ignored('dir2/foo.wombat'))
+        self.assertEqual('RE:dir2/.*\\.wombat', tree.is_ignored('dir2/foo.wombat'))
         self.assertEqual(None, tree.is_ignored('dir2/foo'))
 
         # Blank lines and comments should be ignored

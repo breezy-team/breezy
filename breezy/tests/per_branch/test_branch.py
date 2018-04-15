@@ -733,7 +733,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch.bind(branch2)
         self.assertIs(None, branch.get_old_bound_location())
         branch.unbind()
-        self.assertContainsRe(branch.get_old_bound_location(), '\/branch2\/$')
+        self.assertContainsRe(branch.get_old_bound_location(), '\\/branch2\\/$')
 
     def test_bind_diverged(self):
         tree_a = self.make_branch_and_tree('tree_a')
