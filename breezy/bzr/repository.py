@@ -137,7 +137,8 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         if shared == True:
             utf8_files += [('shared-storage', b'')]
         try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            for dir in dirs:
+                transport.mkdir(dir, mode=a_bzrdir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
                     mode=a_bzrdir._get_file_mode())

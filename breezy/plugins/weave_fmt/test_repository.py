@@ -252,6 +252,15 @@ class TestFormat7(TestCaseWithTransport):
 
 class TestInterWeaveRepo(TestCaseWithTransport):
 
+    def test_make_repository(self):
+        out, err = self.run_bzr("init-repository --format=weave a")
+        self.assertEqual(out,
+"""Standalone tree (format: weave)
+Location:
+  branch root: a
+""")
+        self.assertEqual(err, "")
+
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
         # is a format 5/6/7 branch

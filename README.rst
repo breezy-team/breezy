@@ -1,7 +1,3 @@
-=================
-README for Breezy
-=================
-
 Breezy (``brz``) is a decentralized revision control system, designed to be
 easy for developers and end users alike.
 
@@ -44,7 +40,7 @@ For further details, see our website.
 Feedback
 ========
 
-If you encounter any problems with BReezy , need help understanding it, or would
+If you encounter any problems with Breezy, need help understanding it, or would
 like to offer suggestions or feedback, please get in touch with us:
 
 * Ask a question through our web support interface, at

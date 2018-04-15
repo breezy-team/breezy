@@ -70,7 +70,6 @@ from .osutils import (get_user_encoding,
                       splitpath,
                       )
 from .trace import mutter, note, is_quiet
-from .bzr.inventory import Inventory, InventoryEntry, make_entry
 from .urlutils import unescape_for_display
 from .i18n import gettext
 

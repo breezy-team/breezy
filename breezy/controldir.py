@@ -62,6 +62,14 @@ class MustHaveWorkingTree(errors.BzrError):
         errors.BzrError.__init__(self, format=format, url=url)
 
 
+class BranchReferenceLoop(errors.BzrError):
+
+    _fmt = "Can not create branch reference that points at branch itself."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch)
+
+
 class ControlComponent(object):
     """Abstract base class for control directory components.
 

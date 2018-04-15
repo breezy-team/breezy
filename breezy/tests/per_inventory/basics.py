@@ -278,13 +278,6 @@ class TestInventoryReads(TestInventory):
             ('src/bye.c', b'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=(b'bye-id',))])
-
-        self.assertEqual([
-            ('', b'tree-root'),
-            ('src', b'src-id'),
-            ('src/bye.c', b'bye-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=(b'bye-id',), yield_parents=True)])
  
 
 class TestInventoryFiltering(TestInventory):
