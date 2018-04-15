@@ -2981,7 +2981,7 @@ class cmd_ls(Command):
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None, directory=None):
 
-        if kind and kind not in ('file', 'directory', 'symlink'):
+        if kind and kind not in ('file', 'directory', 'symlink', 'tree-reference'):
             raise errors.BzrCommandError(gettext('invalid kind specified'))
 
         if verbose and null:
@@ -6672,22 +6672,18 @@ class cmd_reference(Command):
             info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
-            file_id = tree.path2id(path)
-            if file_id is None:
+            if not tree.is_versioned(path):
                 raise errors.NotVersionedError(path)
             if location is None:
-                info = [(file_id, branch.get_reference_info(file_id))]
+                info = [(path, branch.get_reference_info(path))]
                 self._display_reference_info(tree, branch, info)
             else:
-                branch.set_reference_info(file_id, path, location)
+                branch.set_reference_info(
+                    path, location, file_id=tree.path2id(path))
 
     def _display_reference_info(self, tree, branch, info):
         ref_list = []
-        for file_id, (path, location) in info:
-            try:
-                path = tree.id2path(file_id)
-            except errors.NoSuchId:
-                pass
+        for path, (location, file_id) in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))

@@ -437,7 +437,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def create_branch_with_reference(self):
         branch = self.make_branch('branch')
-        branch._set_all_reference_info({'file-id': ('path', 'location')})
+        branch._set_all_reference_info({'path': ('location', 'file-id')})
         return branch
 
     @staticmethod
@@ -454,16 +454,16 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_read()
         self.addCleanup(branch.unlock)
         self.instrument_branch(branch, gets)
-        branch.get_reference_info('file-id')
-        branch.get_reference_info('file-id')
+        branch.get_reference_info('path')
+        branch.get_reference_info('path')
         self.assertEqual(1, len(gets))
 
     def test_reference_info_caching_read_unlocked(self):
         gets = []
         branch = self.create_branch_with_reference()
         self.instrument_branch(branch, gets)
-        branch.get_reference_info('file-id')
-        branch.get_reference_info('file-id')
+        branch.get_reference_info('path')
+        branch.get_reference_info('path')
         self.assertEqual(2, len(gets))
 
     def test_reference_info_caching_write_locked(self):
@@ -472,21 +472,21 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_write()
         self.instrument_branch(branch, gets)
         self.addCleanup(branch.unlock)
-        branch._set_all_reference_info({'file-id': ('path2', 'location2')})
-        path, location = branch.get_reference_info('file-id')
+        branch._set_all_reference_info({'path2': ('location2', 'file-id')})
+        location, file_id = branch.get_reference_info('path2')
         self.assertEqual(0, len(gets))
-        self.assertEqual('path2', path)
+        self.assertEqual('file-id', file_id)
         self.assertEqual('location2', location)
 
     def test_reference_info_caches_cleared(self):
         branch = self.make_branch('branch')
         branch.lock_write()
-        branch.set_reference_info('file-id', 'path2', 'location2')
+        branch.set_reference_info('path2', 'location2', 'file-id')
         branch.unlock()
         doppelganger = _mod_branch.Branch.open('branch')
-        doppelganger.set_reference_info('file-id', 'path3', 'location3')
-        self.assertEqual(('path3', 'location3'),
-                         branch.get_reference_info('file-id'))
+        doppelganger.set_reference_info('path3', 'location3', 'file-id')
+        self.assertEqual(('location3', 'file-id'),
+                         branch.get_reference_info('path3'))
 
     def _recordParentMapCalls(self, repo):
         self._parent_map_calls = []
