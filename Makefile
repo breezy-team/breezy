@@ -52,7 +52,7 @@ check-nodocs3:
 	echo `date` ": selftest starts" 1>&2
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
-	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
+	  --subunit2 $(tests) | tee selftest.log | subunit2pyunit
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
 	# command above (the '|' swallow any errors since 'make'
@@ -156,6 +156,7 @@ MAN_DEPENDENCIES = breezy/builtins.py \
 
 MAN_PAGES = man1/brz.1
 man1/brz.1: $(MAN_DEPENDENCIES)
+	mkdir -p $(dir $@)
 	$(PYTHON) tools/generate_docs.py -o $@ man
 
 

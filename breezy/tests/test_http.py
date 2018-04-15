@@ -65,7 +65,7 @@ from ..transport import (
     remote,
     )
 from ..transport.http import (
-    _urllib,
+    HttpTransport,
     _urllib2_wrappers,
     )
 
@@ -76,9 +76,9 @@ load_tests = load_tests_apply_scenarios
 def vary_by_http_client_implementation():
     """Test the libraries we can use, currently just urllib."""
     transport_scenarios = [
-        ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
-                        _server=http_server.HttpServer_urllib,
-                        _url_protocol='http+urllib',)),
+        ('urllib', dict(_transport=HttpTransport,
+                        _server=http_server.HttpServer,
+                        _url_protocol='http',)),
         ]
     return transport_scenarios
 
@@ -124,7 +124,7 @@ def vary_by_http_proxy_auth_scheme():
 def vary_by_http_activity():
     activity_scenarios = [
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
-                            _transport=_urllib.HttpTransport_urllib,)),
+                            _transport=HttpTransport,)),
         ]
     if features.HTTPSServerFeature.available():
         # FIXME: Until we have a better way to handle self-signed certificates
@@ -134,16 +134,16 @@ def vary_by_http_activity():
         from . import (
             ssl_certs,
             )
-        class HTTPS_urllib_transport(_urllib.HttpTransport_urllib):
+        class HTTPS_transport(HttpTransport):
 
             def __init__(self, base, _from_transport=None):
-                super(HTTPS_urllib_transport, self).__init__(
+                super(HTTPS_transport, self).__init__(
                     base, _from_transport=_from_transport,
                     ca_certs=ssl_certs.build_path('ca.crt'))
 
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
-                                  _transport=HTTPS_urllib_transport,)),)
+                                  _transport=HTTPS_transport,)),)
     return activity_scenarios
 
 
@@ -509,7 +509,7 @@ class TestRangeHeader(tests.TestCase):
         offsets = [ (start, end - start + 1) for start, end in ranges]
         coalesce = transport.Transport._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
-        range_header = http.HttpTransportBase._range_header
+        range_header = http.HttpTransport._range_header
         self.assertEqual(value, range_header(coalesced, tail))
 
     def test_range_header_single(self):
@@ -2142,7 +2142,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     def setUp(self):
         super(TestNoReportActivity, self).setUp()
-        self._transport =_urllib.HttpTransport_urllib
+        self._transport =HttpTransport
         TestActivityMixin.setUp(self)
 
     def assertActivitiesMatch(self):
@@ -2159,7 +2159,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
     _password_prompt_prefix = ''
     _username_prompt_prefix = ''
     _auth_server = http_utils.HTTPBasicAuthServer
-    _transport = _urllib.HttpTransport_urllib
+    _transport = HttpTransport
 
     def setUp(self):
         super(TestAuthOnRedirected, self).setUp()

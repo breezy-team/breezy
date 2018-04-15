@@ -37,11 +37,6 @@ breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_get_symli
 breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_id2path_no_delta
 breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_id2path_with_delta
 breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_path2id
-breezy.plugins.grep.test_grep.TestColorGrep.test_color_option
-breezy.plugins.grep.test_grep.TestColorGrep.test_ver_basic_file
-breezy.plugins.grep.test_grep.TestColorGrep.test_ver_matching_files
-breezy.plugins.grep.test_grep.TestColorGrep.test_wtree_basic_file
-breezy.plugins.grep.test_grep.TestColorGrep.test_wtree_matching_files
 breezy.plugins.netrc_credential_store.tests.test_netrc.TestNetrcCSNoNetrc.test_home_netrc_does_not_exist
 breezy.plugins.stats.test_classify.TestClassify.test_classify_art
 breezy.plugins.stats.test_classify.TestClassify.test_classify_code

@@ -196,40 +196,6 @@ initial
 
 """
 
-class TestFastImportInfo(ExternalBase):
-
-    _test_needs_features = [FastimportFeature]
-
-    def test_simple(self):
-        self.build_tree_contents([('simple.fi', simple_fast_import_stream)])
-        output = self.run_bzr("fast-import-info simple.fi")[0]
-        self.assertEquals(output, """Command counts:
-\t0\tblob
-\t0\tcheckpoint
-\t1\tcommit
-\t0\tfeature
-\t0\tprogress
-\t0\treset
-\t0\ttag
-File command counts:
-\t0\tfilemodify
-\t0\tfiledelete
-\t0\tfilecopy
-\t0\tfilerename
-\t0\tfiledeleteall
-Parent counts:
-\t1\tparents-0
-\t0\ttotal revisions merged
-Commit analysis:
-\tno\texecutables
-\tno\tseparate authors found
-\tno\tsymlinks
-\tno\tblobs referenced by SHA
-Head analysis:
-\t[':1']\trefs/heads/master
-Merges:
-""")
-
 
 class TestFastImport(ExternalBase):
 
@@ -256,17 +222,3 @@ data 15
         self.make_branch_and_tree("br")
         self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
 
-
-class TestFastImportFilter(ExternalBase):
-
-    _test_needs_features = [FastimportFeature]
-
-    def test_empty(self):
-        self.build_tree_contents([('empty.fi', b"")])
-        self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-import-filter -")[0])
-
-    def test_default_stdin(self):
-        self.build_tree_contents([('empty.fi', b"")])
-        self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-import-filter")[0])

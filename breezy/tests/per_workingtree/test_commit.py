@@ -374,6 +374,8 @@ class TestCommit(TestCaseWithWorkingTree):
             return
         subtree = self.make_branch_and_tree('subtree')
         subsubtree = self.make_branch_and_tree('subtree/subtree')
+        subsub_revid = subsubtree.commit('subsubtree')
+        subtree.commit('subtree')
         subtree.add(['subtree'])
         tree.add(['subtree'])
         # use allow_pointless=False to ensure that the deepest tree, which
@@ -382,7 +384,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # the deepest subtree has not changed, so no commit should take place.
-        self.assertEqual('null:', subsubtree.last_revision())
+        self.assertEqual(subsub_revid, subsubtree.last_revision())
         # the intermediate tree should have committed a pointer to the current
         # subtree revision.
         sub_basis = subtree.basis_tree()
@@ -443,6 +445,7 @@ class TestCommit(TestCaseWithWorkingTree):
             # inapplicable test.
             return
         subtree = self.make_branch_and_tree('subtree')
+        subtree.commit('')
         tree.add(['subtree'])
         # record the reference.
         rev_id = tree.commit('added reference')
