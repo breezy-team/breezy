@@ -178,26 +178,3 @@ def single_plural(n, single, plural):
         return single
     else:
         return plural
-
-
-def invert_dictset(d):
-    """Invert a dictionary with keys matching a set of values, turned into lists."""
-    # Based on recipe from ASPN
-    result = {}
-    for k, c in d.items():
-        for v in c:
-            keys = result.setdefault(v, [])
-            keys.append(k)
-    return result
-
-
-def invert_dict(d):
-    """Invert a dictionary with keys matching each value turned into a list."""
-    # Based on recipe from ASPN
-    result = {}
-    for k, v in d.items():
-        keys = result.setdefault(v, [])
-        keys.append(k)
-    return result
-
-
