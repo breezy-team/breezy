@@ -80,7 +80,7 @@ check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
