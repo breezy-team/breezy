@@ -1303,6 +1303,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_overriding_transport = True
     # Does the format support setting custom revision properties?
     supports_custom_revision_properties = True
+    # Does the format record per-file revision metadata?
+    records_per_file_revision = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
