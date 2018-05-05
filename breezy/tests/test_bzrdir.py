@@ -192,10 +192,9 @@ class TestFormatRegistry(TestCase):
         a_registry.register('deprecated', DeprecatedBzrDirFormat,
             'Old format.  Slower and does not support stuff',
             deprecated=True)
-        a_registry.register('deprecatedalias', DeprecatedBzrDirFormat,
-            'Old format.  Slower and does not support stuff',
-            deprecated=True, alias=True)
-        self.assertEqual(frozenset(['deprecatedalias']), a_registry.aliases())
+        a_registry.register_alias('deprecatedalias', 'deprecated')
+        self.assertEqual({'deprecatedalias': 'deprecated'},
+                         a_registry.aliases())
 
 
 class SampleBranch(breezy.branch.Branch):

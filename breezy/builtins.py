@@ -2053,10 +2053,10 @@ class cmd_init(Command):
                     'if it does not already exist.'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
-                'See "help formats".',
+                'See "help formats" for a full list.',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
-                value_switches=False,
+                value_switches=True,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
@@ -2175,7 +2175,7 @@ class cmd_init_repository(Command):
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=False, title='Repository format'),
+                            value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
