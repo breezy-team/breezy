@@ -599,7 +599,7 @@ def object_mode(kind, executable):
 
 def entry_mode(entry):
     """Determine the git file mode for an inventory entry."""
-    return object_mode(entry.kind, entry.executable)
+    return object_mode(entry.kind, getattr(entry, 'executable', False))
 
 
 def extract_unusual_modes(rev):

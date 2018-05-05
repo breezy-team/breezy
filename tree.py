@@ -34,11 +34,14 @@ from dulwich.objects import (
     Blob,
     Tree,
     ZERO_SHA,
+    S_IFGITLINK,
+    S_ISGITLINK,
     )
 import stat
 import posixpath
 
 from ... import (
+    controldir as _mod_controldir,
     delta,
     errors,
     lock,
@@ -176,10 +179,43 @@ class GitTreeSymlink(_mod_tree.TreeLink):
                 self.symlink_target)
 
 
+class GitTreeSubmodule(_mod_tree.TreeLink):
+
+    __slots__ = ['file_id', 'name', 'parent_id', 'reference_revision']
+
+    def __init__(self, file_id, name, parent_id, reference_revision=None):
+        self.file_id = file_id
+        self.name = name
+        self.parent_id = parent_id
+        self.reference_revision = reference_revision
+
+    @property
+    def kind(self):
+        return 'tree-reference'
+
+    def __repr__(self):
+        return "%s(file_id=%r, name=%r, parent_id=%r, reference_revision=%r)" % (
+            type(self).__name__, self.file_id, self.name, self.parent_id,
+            self.reference_revision)
+
+    def __eq__(self, other):
+        return (self.kind == other.kind and
+                self.file_id == other.file_id and
+                self.name == other.name and
+                self.parent_id == other.parent_id and
+                self.reference_revision == other.reference_revision)
+
+    def copy(self):
+        return self.__class__(
+                self.file_id, self.name, self.parent_id,
+                self.reference_revision)
+
+
 entry_factory = {
     'directory': GitTreeDirectory,
     'file': GitTreeFile,
     'symlink': GitTreeSymlink,
+    'tree-reference': GitTreeSubmodule,
     }
 
 
@@ -222,6 +258,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 raise errors.NoSuchRevision(repository, revision_id)
             self.tree = commit.tree
             self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
+
+    def _get_nested_repository(self, path):
+        nested_repo_transport = self._repository.user_transport.clone(path)
+        nested_controldir = _mod_controldir.ControlDir.open_from_transport(nested_repo_transport)
+        return nested_controldir.find_repository()
 
     def supports_rename_tracking(self):
         return False
@@ -470,6 +511,15 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return None
 
+    def get_reference_revision(self, path, file_id=None):
+        """See RevisionTree.get_symlink_target."""
+        (store, mode, hexsha) = self._lookup_path(path)
+        if S_ISGITLINK(mode):
+            nested_repo = self._get_nested_repository(path)
+            return nested_repo.lookup_foreign_revision_id(hexsha)
+        else:
+            return None
+
     def _comparison_data(self, entry, path):
         if entry is None:
             return None, False, None
@@ -488,6 +538,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return (kind, len(contents), executable, osutils.sha_string(contents))
         elif kind == 'symlink':
             return (kind, None, None, store[hexsha].data)
+        elif kind == 'tree-reference':
+            nested_repo = self._get_nested_repository(path)
+            return (kind, None, None,
+                    nested_repo.lookup_foreign_revision_id(hexsha))
         else:
             return (kind, None, None, None)
 
@@ -746,7 +800,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def is_versioned(self, path):
         with self.lock_read():
             path = path.rstrip('/').encode('utf-8')
-            return (path in self.index or self._has_dir(path))
+            (index, subpath) = self._lookup_index(path)
+            return (subpath in index or self._has_dir(path))
 
     def _has_dir(self, path):
         if path == "":
@@ -759,7 +814,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._lock_mode is None:
             raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
-        for p in self.index:
+        # TODO(jelmer): Browse over all indexes
+        for p, i in self._recurse_index_entries():
             self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _ensure_versioned_dir(self, dirname):
@@ -814,11 +870,21 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 raise errors.InvalidNormalization(path)
             self._index_add_entry(path, kind)
 
-    def _index_del_entry(self, path):
-        del self.index[path]
+    def _read_submodule_head(self, path):
+        raise NotImplementedError(self._read_submodule_head)
+
+    def _lookup_index(self, encoded_path):
+        if not isinstance(encoded_path, bytes):
+            raise TypeError(encoded_path)
+        # TODO(jelmer): Look in other indexes
+        return self.index, encoded_path
+
+    def _index_del_entry(self, index, path):
+        del index[path]
+        # TODO(jelmer): Keep track of dirty per index
         self._index_dirty = True
 
-    def _index_add_entry(self, path, kind, flags=0):
+    def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
         if not isinstance(path, basestring):
             raise TypeError(path)
         if kind == "directory":
@@ -834,22 +900,40 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 stat_val = os.stat_result(
                     (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(file.read())
+            # Add object to the repository if it didn't exist yet
+            if not blob.id in self.store:
+                self.store.add_object(blob)
+            hexsha = blob.id
         elif kind == "symlink":
             blob = Blob()
             try:
                 stat_val = self._lstat(path)
-            except (errors.NoSuchFile, OSError):
+            except EnvironmentError:
                 # TODO: Rather than come up with something here, use the
                 # old index
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(
                 self.get_symlink_target(path).encode("utf-8"))
+            # Add object to the repository if it didn't exist yet
+            if not blob.id in self.store:
+                self.store.add_object(blob)
+            hexsha = blob.id
+        elif kind == "tree-reference":
+            if reference_revision is not None:
+                hexsha = self.branch.lookup_bzr_revision_id(reference_revision)[0]
+            else:
+                hexsha = self._read_submodule_head(path)
+                if hexsha is None:
+                    raise errors.NoCommits(path)
+            try:
+                stat_val = self._lstat(path)
+            except EnvironmentError:
+                stat_val = os.stat_result(
+                    (S_IFGITLINK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            stat_val = os.stat_result((S_IFGITLINK, ) + stat_val[1:])
         else:
             raise AssertionError("unknown kind '%s'" % kind)
-        # Add object to the repository if it didn't exist yet
-        if not blob.id in self.store:
-            self.store.add_object(blob)
         # Add an entry to the index or update the existing entry
         ensure_normalized_path(path)
         encoded_path = path.encode("utf-8")
@@ -857,11 +941,23 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             # TODO(jelmer): Why do we need to do this?
             trace.mutter('ignoring path with invalid newline in it: %r', path)
             return
+        (index, index_path) = self._lookup_index(encoded_path)
+        index[index_path] = index_entry_from_stat(stat_val, hexsha, flags)
         self._index_dirty = True
-        self.index[encoded_path] = index_entry_from_stat(
-            stat_val, blob.id, flags)
         if self._versioned_dirs is not None:
-            self._ensure_versioned_dir(encoded_path)
+            self._ensure_versioned_dir(index_path)
+
+    def _recurse_index_entries(self, index=None, basepath=""):
+        # Iterate over all index entries
+        with self.lock_read():
+            if index is None:
+                index = self.index
+            for path, value in index.iteritems():
+                yield (posixpath.join(basepath, path), value)
+                (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
+                if S_ISGITLINK(mode):
+                    pass # TODO(jelmer): dive into submodule
+
 
     def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         if yield_parents:
@@ -876,7 +972,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if specific_files is None or u"" in specific_files:
                 ret[(None, u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
-            for path, value in self.index.iteritems():
+            for path, value in self._recurse_index_entries():
                 if self.mapping.is_special_file(path):
                     continue
                 path = path.decode("utf-8")
@@ -895,6 +991,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 ret[(posixpath.dirname(path), path)] = file_ie
             return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
+    def iter_references(self):
+        # TODO(jelmer): Implement a more efficient version of this
+        for path, entry in self.iter_entries_by_dir():
+            if entry.kind == 'tree-reference':
+                yield path, self.mapping.generate_file_id(b'')
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
@@ -916,6 +1017,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path, file_id)
+        elif kind == 'tree-reference':
+            ie.reference_revision = self.get_reference_revision(path, file_id)
         else:
             try:
                 data = self.get_file_text(path, file_id)
@@ -953,14 +1056,16 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             raise errors.ObjectNotLocked(self)
         encoded_path = path.encode("utf-8")
         count = 0
+        (index, subpath) = self._lookup_index(encoded_path)
         try:
-            self._index_del_entry(encoded_path)
+            self._index_del_entry(index, encoded_path)
         except KeyError:
             # A directory, perhaps?
-            for p in list(self.index):
-                if p.startswith(encoded_path+b"/"):
+            # TODO(jelmer): Deletes that involve submodules?
+            for p in list(index):
+                if p.startswith(subpath+b"/"):
                     count += 1
-                    self._index_del_entry(p)
+                    self._index_del_entry(index, p)
         else:
             count = 1
         self._versioned_dirs = None
@@ -980,9 +1085,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def update_basis_by_delta(self, revid, delta):
         # TODO(jelmer): This shouldn't be called, it's inventory specific.
         for (old_path, new_path, file_id, ie) in delta:
-            if old_path is not None and old_path.encode('utf-8') in self.index:
-                self._index_del_entry(old_path.encode('utf-8'))
-                self._versioned_dirs = None
+            if old_path is not None:
+                (index, old_subpath) = self._lookup_index(old_path.encode('utf-8'))
+                if old_subpath in index:
+                    self._index_del_entry(index, old_subpath)
+                    self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
         self.flush()
@@ -1050,10 +1157,12 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
                 kind = self.kind(from_rel)
 
-            if not after and not from_path in self.index and kind != 'directory':
-                # It's not a file
-                raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NotVersionedError(path=from_rel))
+            if not after and kind != 'directory':
+                (index, from_subpath) = self._lookup_index(from_path)
+                if from_subpath not in index:
+                    # It's not a file
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.NotVersionedError(path=from_rel))
 
             if not after:
                 try:
@@ -1064,17 +1173,21 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                             errors.NoSuchFile(to_rel))
                     raise
             if kind != 'directory':
+                (index, from_index_path) = self._lookup_index(from_path)
                 try:
-                    self._index_del_entry(from_path)
+                    self._index_del_entry(index, from_path)
                 except KeyError:
                     pass
                 self._index_add_entry(to_rel, kind)
             else:
-                todo = [p for p in self.index if p.startswith(from_path+'/')]
-                for p in todo:
+                todo = [(p, i) for (p, i) in self._recurse_index_entries() if p.startswith(from_path+'/')]
+                for child_path, child_value in todo:
+                    (child_to_index, child_to_index_path) = self._lookup_index(posixpath.join(to_path, posixpath.relpath(child_path, from_path)))
+                    child_to_index[child_to_index_path] = child_value
+                    # TODO(jelmer): Mark individual index as dirty
                     self._index_dirty = True
-                    self.index[posixpath.join(to_path, posixpath.relpath(p, from_path))] = self.index[p]
-                    self._index_del_entry(p)
+                    (child_from_index, child_from_index_path) = self._lookup_index(child_path)
+                    self._index_del_entry(child_from_index, child_from_index_path)
 
             self._versioned_dirs = None
             self.flush()
@@ -1097,3 +1210,43 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 raise errors.PathsNotVersionedError(unversioned)
 
         return filter(self.is_versioned, paths)
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        try:
+            stat_result = self._lstat(path)
+        except OSError as e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                # no file.
+                return ('missing', None, None, None)
+            # propagate other errors
+            raise
+        kind = mode_kind(stat_result.st_mode)
+        if kind == 'file':
+            return self._file_content_summary(path, stat_result)
+        elif kind == 'directory':
+            # perhaps it looks like a plain directory, but it's really a
+            # reference.
+            if self._directory_is_tree_reference(path):
+                kind = 'tree-reference'
+            return kind, None, None, None
+        elif kind == 'symlink':
+            target = osutils.readlink(self.abspath(path))
+            return ('symlink', None, None, target)
+        else:
+            return (kind, None, None, None)
+
+    def kind(self, relpath, file_id=None):
+        kind = osutils.file_kind(self.abspath(relpath))
+        if kind == 'directory':
+            (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
+            try:
+                mode = index[index_path].mode
+            except KeyError:
+                return kind
+            else:
+                if S_ISGITLINK(mode):
+                    return 'tree-reference'
+                return 'directory'
+        else:
+            return kind
