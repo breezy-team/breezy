@@ -1,1 +1,1 @@
-breezy.tests.per_workingtree.test_commit.TestCommit.test_nested_commit(GitWorkingTreeFormat)
+breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_merge_revert(GitWorkingTreeFormat)

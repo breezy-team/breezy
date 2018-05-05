@@ -41,6 +41,7 @@ import stat
 import posixpath
 
 from ... import (
+    controldir as _mod_controldir,
     delta,
     errors,
     lock,
@@ -257,6 +258,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 raise errors.NoSuchRevision(repository, revision_id)
             self.tree = commit.tree
             self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
+
+    def _get_nested_repository(self, path):
+        nested_repo_transport = self._repository.user_transport.clone(path)
+        nested_controldir = _mod_controldir.ControlDir.open_from_transport(nested_repo_transport)
+        return nested_controldir.find_repository()
 
     def supports_rename_tracking(self):
         return False
@@ -509,7 +515,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
-            return self._repository.lookup_foreign_revision_id(hexsha)
+            nested_repo = self._get_nested_repository(path)
+            return nested_repo.lookup_foreign_revision_id(hexsha)
         else:
             return None
 
@@ -532,8 +539,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         elif kind == 'symlink':
             return (kind, None, None, store[hexsha].data)
         elif kind == 'tree-reference':
+            nested_repo = self._get_nested_repository(path)
             return (kind, None, None,
-                    self._repository.lookup_foreign_revision_id(hexsha))
+                    nested_repo.lookup_foreign_revision_id(hexsha))
         else:
             return (kind, None, None, None)
 
