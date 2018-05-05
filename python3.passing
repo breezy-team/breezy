@@ -4057,7 +4057,6 @@ breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(FtpTransport,
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(HTTPS_urllib_transport,HTTPSServer_urllib)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(HttpTransport_urllib,HttpServer_urllib)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(LocalTransport,LocalURLServer)
-breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(MemoryTransport,MemoryServer)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(NoSmartTransportDecorator,NoSmartTransportServer)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(PathFilteringTransport,TestingPathFilteringServer)
 breezy.tests.per_transport.TransportTests.test_rename_dir_nonempty(ReadonlyTransportDecorator,ReadonlyServer)
@@ -6260,7 +6259,6 @@ breezy.tests.test_errors.TestErrors.test_lock_active
 breezy.tests.test_errors.TestErrors.test_lock_corrupt
 breezy.tests.test_errors.TestErrors.test_lock_failed
 breezy.tests.test_errors.TestErrors.test_medium_not_connected
-breezy.tests.test_errors.TestErrors.test_no_arg_named_message
 breezy.tests.test_errors.TestErrors.test_no_smart_medium
 breezy.tests.test_errors.TestErrors.test_no_such_id
 breezy.tests.test_errors.TestErrors.test_no_such_revision_in_tree
@@ -6711,10 +6709,7 @@ breezy.tests.test_ignores.TestParseIgnoreFile.test_parse_non_utf8
 breezy.tests.test_ignores.TestRuntimeIgnores.test_add
 breezy.tests.test_ignores.TestRuntimeIgnores.test_add_duplicate
 breezy.tests.test_ignores.TestTreeIgnores.test_adds_ending_newline
-breezy.tests.test_ignores.TestTreeIgnores.test_add_to_existing
-breezy.tests.test_ignores.TestTreeIgnores.test_does_not_add_dupe
 breezy.tests.test_ignores.TestTreeIgnores.test_new_file
-breezy.tests.test_ignores.TestTreeIgnores.test_non_ascii
 breezy.tests.test_ignores.TestUserIgnores.test_add
 breezy.tests.test_ignores.TestUserIgnores.test_add_directory
 breezy.tests.test_ignores.TestUserIgnores.test_add_unique
@@ -7100,13 +7095,8 @@ breezy.tests.test_lazy_import.TestImportProcessor.test_incorrect_line
 breezy.tests.test_lazy_import.TestImportProcessor.test_mixed
 breezy.tests.test_lazy_import.TestImportProcessor.test_name_collision
 breezy.tests.test_lazy_import.TestImportProcessor.test_relative_imports
-breezy.tests.test_lazy_import.TestImportReplacerHelper.test_basic_import
-breezy.tests.test_lazy_import.TestImportReplacer.test_import_mod
 breezy.tests.test_lazy_import.TestImportReplacer.test_import_mod_from_root
 breezy.tests.test_lazy_import.TestImportReplacer.test_import_root
-breezy.tests.test_lazy_import.TestImportReplacer.test_import_root_and_mod
-breezy.tests.test_lazy_import.TestImportReplacer.test_import_root_and_root_mod
-breezy.tests.test_lazy_import.TestImportReplacer.test_import_root_sub_submod
 breezy.tests.test_lazy_import.TestLazyImportProcessor.test_import_deep
 breezy.tests.test_lazy_import.TestLazyImportProcessor.test_lazy_import
 breezy.tests.test_lazy_import.TestLazyImportProcessor.test_root
