@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6948-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6948-1) unstable; urgency=medium
 
   * Update Vcs-Bzr and Vcs-Browser headers.
   * New upstream snapshot.
