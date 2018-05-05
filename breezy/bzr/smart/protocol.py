@@ -151,17 +151,17 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
         :param bytes: must be a byte string
         """
-        if not isinstance(bytes, str):
+        if not isinstance(bytes, byes):
             raise ValueError(bytes)
         self.in_buffer += bytes
         if not self._has_dispatched:
-            if '\n' not in self.in_buffer:
+            if b'\n' not in self.in_buffer:
                 # no command line yet
                 return
             self._has_dispatched = True
             try:
-                first_line, self.in_buffer = self.in_buffer.split('\n', 1)
-                first_line += '\n'
+                first_line, self.in_buffer = self.in_buffer.split(b'\n', 1)
+                first_line += b'\n'
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
                     self._backing_transport, commands=request.request_handlers,
