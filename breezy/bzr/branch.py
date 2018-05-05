@@ -348,7 +348,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             self._master_branch_cache = None
             if location:
-                self._transport.put_bytes('bound', location+'\n',
+                self._transport.put_bytes('bound', location.encode('utf-8')+b'\n',
                     mode=self.controldir._get_file_mode())
             else:
                 try:
@@ -504,9 +504,11 @@ class BzrBranch8(BzrBranch):
         """
         s = BytesIO()
         writer = rio.RioWriter(s)
-        for key, (tree_path, branch_location) in viewitems(info_dict):
-            stanza = rio.Stanza(file_id=key, tree_path=tree_path,
+        for tree_path, ( branch_location, file_id) in viewitems(info_dict):
+            stanza = rio.Stanza(tree_path=tree_path,
                                 branch_location=branch_location)
+            if file_id is not None:
+                stanza.add('file_id', file_id)
             writer.write_stanza(stanza)
         with self.lock_write():
             self._transport.put_bytes('references', s.getvalue())
@@ -515,58 +517,52 @@ class BzrBranch8(BzrBranch):
     def _get_all_reference_info(self):
         """Return all the reference info stored in a branch.
 
-        :return: A dict of {file_id: (tree_path, branch_location)}
+        :return: A dict of {tree_path: (branch_location, file_id)}
         """
         with self.lock_read():
             if self._reference_info is not None:
                 return self._reference_info
-            rio_file = self._transport.get('references')
-            try:
+            with self._transport.get('references') as rio_file:
                 stanzas = rio.read_stanzas(rio_file)
-                info_dict = dict((s['file_id'], (s['tree_path'],
-                                 s['branch_location'])) for s in stanzas)
-            finally:
-                rio_file.close()
+                info_dict = {
+                    s['tree_path']: (
+                        s['branch_location'],
+                        s['file_id'].encode('ascii') if 'file_id' in s else None)
+                    for s in stanzas}
             self._reference_info = info_dict
             return info_dict
 
-    def set_reference_info(self, file_id, tree_path, branch_location):
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
         """Set the branch location to use for a tree reference.
 
-        :param file_id: The file-id of the tree reference.
         :param tree_path: The path of the tree reference in the tree.
         :param branch_location: The location of the branch to retrieve tree
             references from.
+        :param file_id: The file-id of the tree reference.
         """
         info_dict = self._get_all_reference_info()
-        info_dict[file_id] = (tree_path, branch_location)
-        if None in (tree_path, branch_location):
-            if tree_path is not None:
-                raise ValueError('tree_path must be None when branch_location'
-                                 ' is None.')
-            if branch_location is not None:
-                raise ValueError('branch_location must be None when tree_path'
-                                 ' is None.')
-            del info_dict[file_id]
+        info_dict[tree_path] = (branch_location, file_id)
+        if branch_location is None:
+            del info_dict[tree_path]
         self._set_all_reference_info(info_dict)
 
-    def get_reference_info(self, file_id):
+    def get_reference_info(self, path):
         """Get the tree_path and branch_location for a tree reference.
 
-        :return: a tuple of (tree_path, branch_location)
+        :return: a tuple of (branch_location, file_id)
         """
-        return self._get_all_reference_info().get(file_id, (None, None))
+        return self._get_all_reference_info().get(path, (None, None))
 
-    def reference_parent(self, file_id, path, possible_transports=None):
+    def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id.
 
         :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
         :return: A branch associated with the file_id
         """
-        branch_location = self.get_reference_info(file_id)[1]
+        branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return Branch.reference_parent(self, file_id, path,
+            return Branch.reference_parent(self, path, file_id,
                                            possible_transports)
         branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
@@ -668,15 +664,14 @@ class BzrBranch8(BzrBranch):
 class BzrBranch7(BzrBranch8):
     """A branch with support for a fallback repository."""
 
-    def set_reference_info(self, file_id, tree_path, branch_location):
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
         Branch.set_reference_info(self, file_id, tree_path, branch_location)
 
-    def get_reference_info(self, file_id):
-        Branch.get_reference_info(self, file_id)
+    def get_reference_info(self, path):
+        Branch.get_reference_info(self, path)
 
-    def reference_parent(self, file_id, path, possible_transports=None):
-        return Branch.reference_parent(self, file_id, path,
-                                       possible_transports)
+    def reference_parent(self, path, file_id=None, possible_transports=None):
+        return Branch.reference_parent(self, path, file_id, possible_transports)
 
 
 class BzrBranch6(BzrBranch7):
@@ -707,12 +702,10 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             raise errors.NotBranchError(path=name, controldir=controldir)
         try:
             format_string = transport.get_bytes("format")
-            # GZ 2017-06-09: Where should format strings get decoded...
-            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NotBranchError(
                 path=transport.base, controldir=controldir)
-        return klass._find_format(format_registry, 'branch', format_text)
+        return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
@@ -821,7 +814,7 @@ class BzrBranchFormat6(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 6 (bzr 0.15)\n"
+        return b"Bazaar Branch Format 6 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -830,10 +823,10 @@ class BzrBranchFormat6(BranchFormatMetadir):
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', '0 null:\n'),
+        utf8_files = [('last-revision', b'0 null:\n'),
                       ('branch.conf',
                           self._get_initial_config(append_revisions_only)),
-                      ('tags', ''),
+                      ('tags', b''),
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
@@ -854,7 +847,7 @@ class BzrBranchFormat8(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 8 (needs bzr 1.15)\n"
+        return b"Bazaar Branch Format 8 (needs bzr 1.15)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -863,11 +856,11 @@ class BzrBranchFormat8(BranchFormatMetadir):
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', '0 null:\n'),
+        utf8_files = [('last-revision', b'0 null:\n'),
                       ('branch.conf',
                           self._get_initial_config(append_revisions_only)),
-                      ('tags', ''),
-                      ('references', '')
+                      ('tags', b''),
+                      ('references', b'')
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
@@ -909,7 +902,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
+        return b"Bazaar Branch Format 7 (needs bzr 1.6)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -942,7 +935,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG Branch Reference Format 1\n"
+        return b"Bazaar-NG Branch Reference Format 1\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -951,12 +944,22 @@ class BranchReferenceFormat(BranchFormatMetadir):
     def get_reference(self, a_controldir, name=None):
         """See BranchFormat.get_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
-        return transport.get_bytes('location')
+        url = urlutils.split_segment_parameters(a_controldir.user_url)[0]
+        return urlutils.join(url, transport.get_bytes('location'))
+
+    def _write_reference(self, a_controldir, transport, to_branch):
+        to_url = to_branch.user_url
+        if a_controldir.control_url == to_branch.controldir.control_url:
+            # Write relative paths for colocated branches, but absolute
+            # paths for everything else. This is for the benefit
+            # of older bzr versions that don't support relative paths.
+            to_url = urlutils.relative_url(a_controldir.user_url, to_branch.user_url)
+        transport.put_bytes('location', to_url)
 
     def set_reference(self, a_controldir, name, to_branch):
         """See BranchFormat.set_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
-        location = transport.put_bytes('location', to_branch.base)
+        self._write_reference(a_controldir, transport, to_branch)
 
     def initialize(self, a_controldir, name=None, target_branch=None,
             repository=None, append_revisions_only=None):
@@ -971,8 +974,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         if name is None:
             name = a_controldir._get_selected_branch()
         branch_transport = a_controldir.get_branch_transport(self, name=name)
-        branch_transport.put_bytes('location',
-            target_branch.user_url)
+        self._write_reference(a_controldir, branch_transport, target_branch)
         branch_transport.put_bytes('format', self.as_string())
         branch = self.open(a_controldir, name, _found=True,
             possible_transports=[target_branch.controldir.root_transport])

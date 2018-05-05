@@ -28,10 +28,14 @@ from ...bzr.inventory import (
     InventoryDirectory,
     InventoryLink,
     )
-from ...bzr.inventorytree import InventoryRevisionTree
+from ...bzr.inventorytree import (
+    InventoryRevisionTree,
+    InventoryTree,
+    )
 from ...sixish import (
     BytesIO,
     )
+from ...tests import TestNotApplicable
 from ..per_workingtree import TestCaseWithWorkingTree
 from .. import (
     features,
@@ -392,11 +396,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def assertDeltaApplicationResultsInExpectedBasis(self, tree, revid, delta,
         expected_inventory):
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.update_basis_by_delta(revid, delta)
-        finally:
-            tree.unlock()
         # check the last revision was adjusted to rev_id
         self.assertEqual(revid, tree.last_revision())
         # check the parents are what we expect
@@ -404,11 +405,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # check that the basis tree has the inventory we expect from applying
         # the delta.
         result_basis = tree.basis_tree()
-        result_basis.lock_read()
-        try:
+        with result_basis.lock_read():
             self.assertEqual(expected_inventory, result_basis.root_inventory)
-        finally:
-            result_basis.unlock()
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
@@ -421,14 +419,17 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         for file_id in deletes:
             delta.append((old.id2path(file_id), None, file_id, None))
         for file_id in adds:
-            delta.append((None, new.id2path(file_id), file_id, new[file_id]))
+            delta.append((None, new.id2path(file_id), file_id, new.get_entry(file_id)))
         for file_id in common:
-            if old[file_id] != new[file_id]:
+            if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
-                    file_id, new[file_id]))
+                    file_id, new.get_entry(file_id)))
         return delta
 
     def fake_up_revision(self, tree, revid, shape):
+
+        if not isinstance(tree, InventoryTree):
+            raise TestNotApplicable("test requires inventory tree")
 
         class ShapeTree(InventoryRevisionTree):
 
@@ -439,7 +440,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             def get_file_text(self, path, file_id=None):
                 if file_id is None:
                     file_id = self.path2id(path)
-                ie = self.root_inventory[file_id]
+                ie = self.root_inventory.get_entry(file_id)
                 if ie.kind != "file":
                     return ""
                 return 'a' * ie.text_size

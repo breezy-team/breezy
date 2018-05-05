@@ -34,9 +34,6 @@ from breezy import (
     rules,
     trace,
     )
-from breezy.bzr import (
-    inventory,
-    )
 from breezy.i18n import gettext
 """)
 
@@ -93,6 +90,13 @@ class TreeLink(TreeEntry):
 
     def kind_character(self):
         return ''
+
+
+class TreeReference(TreeEntry):
+    """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    def kind_character(self):
+        return '/'
 
 
 class Tree(object):
@@ -213,7 +217,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -237,10 +241,6 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_files that have been requested. This has no
-            impact if specific_files is None.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
@@ -653,6 +653,11 @@ class Tree(object):
         searcher = default_searcher
         return searcher
 
+    @classmethod
+    def versionable_kind(cls, kind):
+        """Check if this tree support versioning a specific file kind."""
+        return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
+
 
 class InterTree(InterObject):
     """This class represents operations taking place between two Trees.
@@ -859,7 +864,7 @@ class InterTree(InterObject):
         # the unversioned path lookup only occurs on real trees - where there
         # can be extras. So the fake_entry is solely used to look up
         # executable it values when execute is not supported.
-        fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
+        fake_entry = TreeFile()
         for target_path, target_entry in to_entries_by_dir:
             while (all_unversioned and
                 all_unversioned[0][0] < target_path.split('/')):
@@ -1186,7 +1191,7 @@ class MultiWalker(object):
             return (None, None)
         else:
             self._out_of_order_processed.add(file_id)
-            cur_ie = other_tree.root_inventory[file_id]
+            cur_ie = other_tree.root_inventory.get_entry(file_id)
             return (cur_path, cur_ie)
 
     def iter_all(self):

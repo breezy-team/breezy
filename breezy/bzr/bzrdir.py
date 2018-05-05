@@ -475,7 +475,7 @@ class BzrDir(controldir.ControlDir):
                 subtrees = []
             for path, file_id in subtrees:
                 target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation = source_branch.reference_parent(path, file_id)
                 sublocation.controldir.sprout(target,
                     basis.get_reference_revision(path, file_id),
                     force_new_repo=force_new_repo, recurse=recurse,
@@ -847,7 +847,7 @@ class BzrDirMeta1(BzrDir):
         ret = []
         try:
             for name in f:
-                ret.append(name.rstrip("\n"))
+                ret.append(name.rstrip(b"\n"))
         finally:
             f.close()
         return ret
@@ -955,6 +955,9 @@ class BzrDirMeta1(BzrDir):
 
     def set_branch_reference(self, target_branch, name=None):
         format = _mod_bzrbranch.BranchReferenceFormat()
+        if (self.control_url == target_branch.controldir.control_url and
+            name == target_branch.name):
+            raise controldir.BranchReferenceLoop(target_branch)
         return format.initialize(self, target_branch=target_branch, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
@@ -1144,7 +1147,7 @@ class BzrFormat(object):
 
         :param name: Name of the feature
         """
-        if " " in name:
+        if b" " in name:
             raise ValueError("spaces are not allowed in feature names")
         if name in cls._present_features:
             raise FeatureAlreadyRegistered(name)
@@ -1160,10 +1163,10 @@ class BzrFormat(object):
         for name, necessity in self.features.items():
             if name in self._present_features:
                 continue
-            if necessity == "optional":
+            if necessity == b"optional":
                 mutter("ignoring optional missing feature %s", name)
                 continue
-            elif necessity == "required":
+            elif necessity == b"required":
                 raise MissingFeature(name)
             else:
                 mutter("treating unknown necessity as require for %s",
@@ -1184,7 +1187,7 @@ class BzrFormat(object):
         ret = cls()
         for lineno, line in enumerate(lines):
             try:
-                (necessity, feature) = line.split(" ", 1)
+                (necessity, feature) = line.split(b" ", 1)
             except ValueError:
                 raise errors.ParseFormatError(format=cls, lineno=lineno+2,
                     line=line, text=text)
@@ -1195,15 +1198,14 @@ class BzrFormat(object):
         """Return the string representation of this format.
         """
         lines = [self.get_format_string()]
-        lines.extend([("%s %s\n" % (item[1], item[0])) for item in
-            self.features.items()])
-        # GZ 2016-07-09: Should push byte-ness up a level perhaps?
-        return "".join(lines).encode('ascii')
+        lines.extend([(item[1] + b" " + item[0] + b"\n")
+                      for item in self.features.items()])
+        return b"".join(lines)
 
     @classmethod
     def _find_format(klass, registry, kind, format_string):
         try:
-            first_line = format_string[:format_string.index("\n")+1]
+            first_line = format_string[:format_string.index(b"\n")+1]
         except ValueError:
             first_line = format_string
         try:
@@ -1622,7 +1624,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG meta directory, format 1\n"
+        return b"Bazaar-NG meta directory, format 1\n"
 
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
@@ -1696,7 +1698,7 @@ class BzrDirMetaFormat1Colo(BzrDirMetaFormat1):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar meta directory, format 1 (with colocated branches)\n"
+        return b"Bazaar meta directory, format 1 (with colocated branches)\n"
 
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""

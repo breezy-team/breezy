@@ -150,6 +150,10 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         self.assertIn(repo._format.is_supported(), (True, False))
 
+    def test_attribute_format_records_per_file_revision(self):
+        self.assertFormatAttribute('records_per_file_revision',
+            (True, False))
+
     def test_clone_to_default_format(self):
         #TODO: Test that cloning a repository preserves all the information
         # such as signatures[not tested yet] etc etc.
@@ -493,13 +497,13 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file1', 'foo'),
-                                  ('tree/file2', 'bar')])
+        self.build_tree_contents([('tree/file1', b'foo'),
+                                  ('tree/file2', b'bar')])
         tree.add(['file1', 'file2'])
         file1_id = tree.path2id('file1')
         file2_id = tree.path2id('file2')
         rev1 = tree.commit('rev1')
-        self.build_tree_contents([('tree/file1', 'baz')])
+        self.build_tree_contents([('tree/file1', b'baz')])
         rev2 = tree.commit('rev2')
         repository = tree.branch.repository
         repository.lock_read()
@@ -594,7 +598,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         builder = self.make_branch_builder('.')
         builder.start_series()
         rev_a = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))])
+            ('add', ('', None, 'directory', None))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()

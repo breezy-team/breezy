@@ -36,7 +36,12 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_tree(files)
         tree.add(files)
         tree.commit(message)
-        self.assertInWorkingTree(files)
+        if not tree.has_versioned_directories():
+            self.assertInWorkingTree(
+                [f for f in files if not f.endswith("/")])
+            self.assertPathExists(files)
+        else:
+            self.assertInWorkingTree(files)
         return tree
 
     def assertRemovedAndDeleted(self, files):
@@ -51,7 +56,6 @@ class TestRemove(TestCaseWithWorkingTree):
         """Check that files and directories are unversioned but not deleted."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
-        self.assertInWorkingTree(TestRemove.files)
 
         tree.remove(TestRemove.files)
         self.assertRemovedAndNotDeleted(TestRemove.files)
@@ -60,6 +64,7 @@ class TestRemove(TestCaseWithWorkingTree):
         """Check that a directory is unversioned but not deleted."""
         tree = self.make_branch_and_tree('.')
         subtree = self.make_branch_and_tree('subtree')
+        subtree.commit('')
         tree.add('subtree')
 
         tree.remove('subtree')
@@ -76,7 +81,6 @@ class TestRemove(TestCaseWithWorkingTree):
         """Removal of newly added files must back them up."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
-        self.assertInWorkingTree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertNotInWorkingTree(TestRemove.files)
         self.assertPathExists(TestRemove.backup_files)
@@ -85,7 +89,7 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_changed_file(self):
         """Removal of changed files must back it up."""
         tree = self.get_committed_tree(['a'])
-        self.build_tree_contents([('a', "some other new content!")])
+        self.build_tree_contents([('a', b"some other new content!")])
         self.assertInWorkingTree('a')
         tree.remove('a', keep_files=False)
         self.assertNotInWorkingTree(TestRemove.files)
@@ -97,7 +101,6 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(TestRemove.files)
         for f in TestRemove.rfiles:
             osutils.delete_any(f)
-        self.assertInWorkingTree(TestRemove.files)
         self.assertPathDoesNotExist(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)
@@ -110,7 +113,6 @@ class TestRemove(TestCaseWithWorkingTree):
         for f in TestRemove.rfiles:
             tree.rename_one(f, f+'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
-        self.assertInWorkingTree(rfilesx)
         self.assertPathExists(rfilesx)
 
         tree.remove(rfilesx, keep_files=False)
@@ -124,22 +126,23 @@ class TestRemove(TestCaseWithWorkingTree):
         for f in TestRemove.rfiles:
             tree.rename_one(f, f+'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
-        self.build_tree_contents([('ax', 'changed and renamed!'),
-                                  ('bx/cx', 'changed and renamed!')])
-        self.assertInWorkingTree(rfilesx)
+        self.build_tree_contents([('ax', b'changed and renamed!'),
+                                  ('bx/cx', b'changed and renamed!')])
         self.assertPathExists(rfilesx)
 
         tree.remove(rfilesx, keep_files=False)
         self.assertNotInWorkingTree(rfilesx)
         self.assertPathExists(['bx.~1~/cx.~1~', 'bx.~1~', 'ax.~1~'])
-        self.assertPathDoesNotExist('dx.~1~') # unchanged file
+        if tree.supports_rename_tracking():
+            self.assertPathDoesNotExist('dx.~1~') # unchanged file
+        else:
+            self.assertPathExists('dx.~1~') # renamed, so appears changed
         tree._validate()
 
     def test_force_remove_changed_files(self):
         """Check that changed files are removed and deleted when forced."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
-        self.assertInWorkingTree(TestRemove.files)
 
         tree.remove(TestRemove.files, keep_files=False, force=True)
         self.assertRemovedAndDeleted(TestRemove.files)
@@ -201,7 +204,6 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_tree(files)
         tree.add(files)
         ignores.add_runtime_ignores(["*ignored*"])
-        self.assertInWorkingTree(files)
         self.assertNotEqual(None, tree.is_ignored(files[0]))
 
         tree.remove(files, keep_files=False)
@@ -211,7 +213,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
     def test_dont_remove_directory_with_unknowns(self):
         """Directories with unknowns should be backed up."""
-        directories = ['a/', 'b/', 'c/', 'c/c/']
+        directories = ['a/', 'b/', 'c/', 'c/c/', 'c/blah']
         tree = self.get_committed_tree(directories)
 
         self.build_tree(['a/unknown_file'])
@@ -254,7 +256,7 @@ class TestRemove(TestCaseWithWorkingTree):
         """Backup directories with changed files."""
         files = ['b/', 'b/c']
         tree = self.get_committed_tree(files)
-        self.build_tree_contents([('b/c', "some other new content!")])
+        self.build_tree_contents([('b/c', b"some other new content!")])
 
         tree.remove('b', keep_files=False)
         self.assertPathExists('b.~1~/c.~1~')
@@ -264,7 +266,7 @@ class TestRemove(TestCaseWithWorkingTree):
         """Delete directories with changed files when forced."""
         files = ['b/', 'b/c']
         tree = self.get_committed_tree(files)
-        self.build_tree_contents([('b/c', "some other new content!")])
+        self.build_tree_contents([('b/c', b"some other new content!")])
 
         # see if we can force it now..
         tree.remove('b', keep_files=False, force=True)
@@ -274,10 +276,10 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_directory_with_changed_emigrated_file(self):
         # As per bug #129880
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('somedir/',), ('somedir/file', 'contents')])
+        self.build_tree_contents([('somedir/',), (b'somedir/file', b'contents')])
         tree.add(['somedir', 'somedir/file'])
         tree.commit(message="first")
-        self.build_tree_contents([('somedir/file', 'changed')])
+        self.build_tree_contents([('somedir/file', b'changed')])
         tree.rename_one('somedir/file', 'moved-file')
         tree.remove('somedir', keep_files=False)
         self.assertNotInWorkingTree('somedir')
@@ -288,7 +290,7 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_directory_with_renames(self):
         """Delete directory with renames in or out."""
 
-        files = ['a/', 'a/file', 'a/directory/', 'b/']
+        files = ['a/', 'a/file', 'a/directory/', 'a/directory/stuff', 'b/']
         files_to_move = ['a/file', 'a/directory/']
 
         tree = self.get_committed_tree(files)

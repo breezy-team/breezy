@@ -35,19 +35,17 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-            # GZ 2017-06-09: Where should format strings get decoded...
-            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            first_line = format_text[:format_text.index("\n")+1]
+            first_line = format_string[:format_string.index(b"\n")+1]
         except ValueError:
-            first_line = format_text
+            first_line = format_string
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
             raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
-        return cls.from_string(format_text)
+        return cls.from_string(format_string)
 
     @classmethod
     def known_formats(cls):
@@ -100,10 +98,10 @@ controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)
 
 # Register bzr formats
 BzrProber.formats.register_lazy(
-    "Bazaar-NG meta directory, format 1\n",
+    b"Bazaar-NG meta directory, format 1\n",
     __name__ + '.bzrdir', 'BzrDirMetaFormat1')
 BzrProber.formats.register_lazy(
-    "Bazaar meta directory, format 1 (with colocated branches)\n",
+    b"Bazaar meta directory, format 1 (with colocated branches)\n",
     __name__ + '.bzrdir', 'BzrDirMetaFormat1Colo')
 
 
@@ -113,7 +111,7 @@ def register_metadir(registry, key,
          tree_format=None,
          hidden=False,
          experimental=False,
-         alias=False, bzrdir_format=None):
+         bzrdir_format=None):
     """Register a metadir subformat.
 
     These all use a meta bzrdir, but can be parameterized by the
@@ -151,7 +149,7 @@ def register_metadir(registry, key,
             bd.repository_format = _load(repository_format)
         return bd
     registry.register(key, helper, help, native, deprecated, hidden,
-        experimental, alias)
+        experimental)
 
 register_metadir(controldir.format_registry, 'knit',
     'breezy.bzr.knitrepo.RepositoryFormatKnit1',
@@ -203,6 +201,7 @@ register_metadir(controldir.format_registry, 'pack-0.92',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     deprecated=True,
+    hidden=True,
     )
 register_metadir(controldir.format_registry, 'pack-0.92-subtree',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack3',
@@ -293,9 +292,6 @@ register_metadir(controldir.format_registry, 'development-subtree',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,
-    alias=False, # Restore to being an alias when an actual development subtree format is added
-                 # This current non-alias status is simply because we did not introduce a
-                 # chk based subtree format.
     )
 register_metadir(controldir.format_registry, 'development5-subtree',
     'breezy.bzr.knitpack_repo.RepositoryFormatPackDevelopment2Subtree',
@@ -309,7 +305,6 @@ register_metadir(controldir.format_registry, 'development5-subtree',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,
-    alias=False,
     )
 
 register_metadir(controldir.format_registry, 'development-colo',
@@ -319,6 +314,7 @@ register_metadir(controldir.format_registry, 'development-colo',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     bzrdir_format='breezy.bzr.bzrdir.BzrDirMetaFormat1Colo',
+    hidden=True,
     )
 
 
@@ -327,11 +323,7 @@ register_metadir(controldir.format_registry, 'development-colo',
 # Finally, the current format.
 register_metadir(controldir.format_registry, '2a',
     'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
-    help='Format for the bzr 2.0 series.\n'
-        'Uses group-compress storage.\n'
-        'Provides rich roots which are a one-way transition.\n',
-        # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
-        # 'rich roots. Supported by bzr 1.16 and later.',
+    help='Format for the bzr 2.0 series.\n',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=False,
@@ -339,14 +331,11 @@ register_metadir(controldir.format_registry, '2a',
 
 # The following format should be an alias for the rich root equivalent
 # of the default format
-register_metadir(controldir.format_registry, 'default-rich-root',
-    'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
-    branch_format='breezy.bzr.branch.BzrBranchFormat7',
-    tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-    alias=True,
-    hidden=True,
-    help='Same as 2a.')
 
+controldir.format_registry.register_alias('default-rich-root', '2a', hidden=True)
+
+# The following format should is just an alias for the default bzr format.
+controldir.format_registry.register_alias('bzr', '2a')
 
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get('default_format')

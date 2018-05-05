@@ -54,8 +54,7 @@ def read_news_bugnos(path):
     # Pattern to find bug numbers
     bug_pattern = re.compile("\#([0-9]+)")
     ret = set()
-    f = open(path, 'r')
-    try:
+    with open(path, 'r') as f:
         section = ""
         for l in f.readlines():
             if l.strip() == "":
@@ -70,8 +69,6 @@ def read_news_bugnos(path):
             else:
                 section += l
         return ret
-    finally:
-        f.close()
 
 
 def print_bug_url(bugno):

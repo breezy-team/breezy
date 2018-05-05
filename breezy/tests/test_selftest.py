@@ -106,7 +106,7 @@ class TestTreeShape(tests.TestCaseInTempDir):
         self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
-        self.build_tree_contents([(filename, 'contents of hello')])
+        self.build_tree_contents([(filename, b'contents of hello')])
         self.assertPathExists(filename)
 
 
@@ -235,7 +235,7 @@ class TestRepositoryScenarios(tests.TestCase):
         from .per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
-                    'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
+                    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
@@ -635,7 +635,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         dir_format = controldir.format_registry.make_controldir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
-        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+        self.assertEqual(b'Bazaar-NG Knit Repository Format 1',
                          self.get_transport().get_bytes(
                             'dir/.bzr/repository/format'))
 
@@ -2172,7 +2172,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
 
     def test_load_list(self):
         # Provide a list with one test - this test.
-        test_id_line = '%s\n' % self.id()
+        test_id_line = b'%s\n' % self.id()
         self.build_tree_contents([('test.list', test_id_line)])
         # And generate a list of the tests in  the suite.
         stream = self.run_selftest(load_list='test.list', list_only=True)

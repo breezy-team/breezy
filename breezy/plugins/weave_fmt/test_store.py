@@ -51,12 +51,12 @@ class TestStores(object):
         store = self.get_store()
         self.fill_store(store)
 
-        self.check_content(store, 'a', 'hello')
-        self.check_content(store, 'b', 'other')
-        self.check_content(store, 'c', 'something')
+        self.check_content(store, 'a', b'hello')
+        self.check_content(store, 'b', b'other')
+        self.check_content(store, 'c', b'something')
 
         # Make sure that requesting a non-existing file fails
-        self.assertRaises(KeyError, self.check_content, store, 'd', None)
+        self.assertRaises(KeyError, self.check_content, store, b'd', None)
 
     def test_multiple_add(self):
         """Multiple add with same ID should raise a BzrError"""
@@ -95,10 +95,10 @@ class TestMemoryStore(TestCase):
         store = self.get_store()
         store.add(BytesIO(b'hello'), 'aa')
         self.assertNotEqual(store.get('aa'), None)
-        self.assertEqual(store.get('aa').read(), 'hello')
+        self.assertEqual(store.get('aa').read(), b'hello')
         store.add(BytesIO(b'hello world'), 'bb')
         self.assertNotEqual(store.get('bb'), None)
-        self.assertEqual(store.get('bb').read(), 'hello world')
+        self.assertEqual(store.get('bb').read(), b'hello world')
 
     def test_missing_is_absent(self):
         store = self.get_store()
@@ -324,22 +324,22 @@ class TestTransportStore(TestCase):
 
     def test_get_simple(self):
         my_store = self.get_populated_store()
-        self.assertEqual('content', my_store.get('foo').read())
+        self.assertEqual(b'content', my_store.get('foo').read())
         my_store = self.get_populated_store(True)
-        self.assertEqual('content', my_store.get('foo').read())
+        self.assertEqual(b'content', my_store.get('foo').read())
 
     def test_get_suffixed(self):
         my_store = self.get_populated_store()
-        self.assertEqual('signature', my_store.get('foo', 'sig').read())
+        self.assertEqual(b'signature', my_store.get('foo', 'sig').read())
         my_store = self.get_populated_store(True)
-        self.assertEqual('signature', my_store.get('foo', 'sig').read())
+        self.assertEqual(b'signature', my_store.get('foo', 'sig').read())
 
     def test_get_suffixed_no_base(self):
         my_store = self.get_populated_store()
-        self.assertEqual('signature for missing base',
+        self.assertEqual(b'signature for missing base',
                          my_store.get('missing', 'sig').read())
         my_store = self.get_populated_store(True)
-        self.assertEqual('signature for missing base',
+        self.assertEqual(b'signature for missing base',
                          my_store.get('missing', 'sig').read())
 
     def test___iter__no_suffix(self):

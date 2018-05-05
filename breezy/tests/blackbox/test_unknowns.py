@@ -31,7 +31,7 @@ class TestUnknowns(TestCaseWithTransport):
         self.assertEqual(self.run_bzr('unknowns')[0], '')
 
         # single unknown file
-        self.build_tree_contents([('a', 'contents of a\n')])
+        self.build_tree_contents([('a', b'contents of a\n')])
         self.assertEqual(self.run_bzr('unknowns')[0], 'a\n')
 
         # multiple unknown files, including one with a space in its name

@@ -32,11 +32,11 @@ class TestVersionInfo(TestCaseWithTransport):
 
         self.build_tree(['branch/a'])
         wt.add('a')
-        wt.commit('adding a', rev_id='r1')
+        wt.commit('adding a', rev_id=b'r1')
 
         self.build_tree(['branch/b'])
         wt.add('b')
-        wt.commit('adding b', rev_id='r2')
+        wt.commit('adding b', rev_id=b'r2')
         return wt
 
     def test_basic(self):
@@ -72,7 +72,7 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = self.run_bzr('version-info branch --check-clean')[0]
         self.assertContainsRe(txt, 'clean: True')
 
-        self.build_tree_contents([('branch/c', 'now unclean\n')])
+        self.build_tree_contents([('branch/c', b'now unclean\n')])
         txt = self.run_bzr('version-info branch --check-clean')[0]
         self.assertContainsRe(txt, 'clean: False')
 
@@ -145,7 +145,7 @@ class TestVersionInfo(TestCaseWithTransport):
             '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 1\n", out)
         self.assertEqual("", err)
-        self.build_tree_contents([('branch/c', 'now unclean\n')])
+        self.build_tree_contents([('branch/c', b'now unclean\n')])
         out, err = self.run_bzr('version-info --custom --template='
             '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 0\n", out)

@@ -35,7 +35,7 @@ def shellcomplete_on_command(cmdname, outfile=None):
         outfile = sys.stdout
 
     from inspect import getdoc
-    import commands
+    from . import commands
     cmdobj = commands.get_cmd_object(cmdname)
 
     doc = getdoc(cmdobj)
@@ -57,7 +57,7 @@ def shellcomplete_on_options(options, outfile=None):
             outfile.write('--%s\n' % opt.name)
 
 
-def shellcomplete_commands(outfile = None):
+def shellcomplete_commands(outfile=None):
     """List all commands"""
     from . import commands
     from inspect import getdoc

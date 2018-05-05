@@ -286,11 +286,8 @@ class BundleInfo(object):
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            f = open(',,bogus-inv', 'wb')
-            try:
+            with open(',,bogus-inv', 'wb') as f:
                 f.write(s)
-            finally:
-                f.close()
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
@@ -631,8 +628,9 @@ class BundleTree(Tree):
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
             base_id != self.base_tree.get_root_id()):
+            old_path = self.old_path(path)
             patch_original = self.base_tree.get_file(
-                    self.base_tree.id2path(base_id), base_id)
+                    old_path, base_id)
         else:
             patch_original = None
         file_patch = self.patches.get(path)
@@ -653,30 +651,35 @@ class BundleTree(Tree):
         try:
             return self._targets[path]
         except KeyError:
-            return self.base_tree.get_symlink_target(path, file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.get_symlink_target(old_path, file_id)
 
     def kind(self, path, file_id=None):
         try:
             return self._kinds[path]
         except KeyError:
-            return self.base_tree.kind(path, file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.kind(old_path, file_id)
 
     def get_file_revision(self, path, file_id=None):
         if path in self._last_changed:
             return self._last_changed[path]
         else:
-            return self.base_tree.get_file_revision(path, file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.get_file_revision(old_path, file_id)
 
     def is_executable(self, path, file_id=None):
         if path in self._executable:
             return self._executable[path]
         else:
-            return self.base_tree.is_executable(path, file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.is_executable(old_path, file_id)
 
     def get_last_changed(self, path, file_id=None):
         if path in self._last_changed:
             return self._last_changed[path]
-        return self.base_tree.get_file_revision(path, file_id)
+        old_path = self.old_path(path)
+        return self.base_tree.get_file_revision(old_path, file_id)
 
     def get_size_and_sha1(self, new_path, file_id=None):
         """Return the size and sha1 hash of the given file id.
@@ -688,7 +691,7 @@ class BundleTree(Tree):
         if new_path not in self.patches:
             # If the entry does not have a patch, then the
             # contents must be the same as in the base_tree
-            base_path = self.base_tree.id2path(file_id)
+            base_path = self.old_path(new_path)
             text_size = self.base_tree.get_file_size(base_path, file_id)
             text_sha1 = self.base_tree.get_file_sha1(base_path, file_id)
             return text_size, text_sha1

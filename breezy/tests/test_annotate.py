@@ -185,15 +185,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
             ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com",
             revision_id='rev-1')
         builder.build_snapshot(['rev-1'], [
-            ('modify', ('a-id', 'first\nsecond\n')),
+            ('modify', ('a', 'first\nsecond\n')),
             ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com",
             revision_id='rev-2')
         builder.build_snapshot(['rev-1'], [
-            ('modify', ('a-id', 'first\nthird\n')),
+            ('modify', ('a', 'first\nthird\n')),
             ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com",
             revision_id='rev-1_1_1')
         builder.build_snapshot(['rev-2', 'rev-1_1_1'], [
-            ('modify', ('a-id', 'first\nsecond\nthird\n')),
+            ('modify', ('a', 'first\nsecond\nthird\n')),
             ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com",
             revision_id='rev-3')
         return builder
@@ -225,22 +225,22 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder.build_snapshot(['rev-1_1_1'], [], revision_id='rev-1_1_2')
         builder.build_snapshot(['rev-3', 'rev-1_1_2'], [], revision_id='rev-4')
         builder.build_snapshot(['rev-1_1_1'], [
-            ('modify', ('a-id', 'first\nthird\nfourth\n')),
+            ('modify', ('a', 'first\nthird\nfourth\n')),
             ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com",
             revision_id='rev-1_2_1')
         builder.build_snapshot(['rev-1_2_1'], [],
             timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
             revision_id='rev-1_2_2')
         builder.build_snapshot(['rev-4', 'rev-1_2_2'], [
-            ('modify', ('a-id', 'first\nsecond\nthird\nfourth\n')),
+            ('modify', ('a', 'first\nsecond\nthird\nfourth\n')),
             ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
             revision_id='rev-5')
         builder.build_snapshot(['rev-1_2_1'], [
-            ('modify', ('a-id', 'first\nthird\nfourth\nfifth\nsixth\n')),
+            ('modify', ('a', 'first\nthird\nfourth\nfifth\nsixth\n')),
             ], timestamp=1166046005.00, timezone=0, committer="george@foo.com",
             revision_id='rev-1_3_1')
         builder.build_snapshot(['rev-5', 'rev-1_3_1'], [
-            ('modify', ('a-id',
+            ('modify', ('a',
                         'first\nsecond\nthird\nfourth\nfifth\nsixth\n')),
             ], revision_id='rev-6')
         return builder
@@ -260,19 +260,19 @@ class TestAnnotate(tests.TestCaseWithTransport):
             ('add', ('file', 'file-id', 'file', base_text)),
             ], revision_id='rev-base')
         builder.build_snapshot(['rev-base'], [
-            ('modify', ('file-id', a_text))],
+            ('modify', ('file', a_text))],
             revision_id='rev-A')
         builder.build_snapshot(['rev-base'], [
-            ('modify', ('file-id', b_text))],
+            ('modify', ('file', b_text))],
             revision_id='rev-B')
         builder.build_snapshot(['rev-A'], [
-            ('modify', ('file-id', c_text))],
+            ('modify', ('file', c_text))],
             revision_id='rev-C')
         builder.build_snapshot(['rev-B', 'rev-A'], [
-            ('modify', ('file-id', d_text))],
+            ('modify', ('file', d_text))],
             revision_id='rev-D')
         builder.build_snapshot(['rev-C', 'rev-D'], [
-            ('modify', ('file-id', e_text))],
+            ('modify', ('file', e_text))],
             revision_id='rev-E')
         return builder
 
@@ -399,15 +399,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_unicode_author(self):
         tree1 = self.make_branch_and_tree('tree1')
 
-        self.build_tree_contents([('tree1/a', 'adi\xc3\xb3s')])
-        tree1.add(['a'], ['a-id'])
-        tree1.commit('a', rev_id='rev-1',
+        self.build_tree_contents([('tree1/a', b'adi\xc3\xb3s')])
+        tree1.add(['a'], [b'a-id'])
+        tree1.commit('a', rev_id=b'rev-1',
                      committer=u'Pepe P\xe9rez <pperez@ejemplo.com>',
                      timestamp=1166046000.00, timezone=0)
 
-        self.build_tree_contents([('tree1/b', 'bye')])
-        tree1.add(['b'], ['b-id'])
-        tree1.commit('b', rev_id='rev-2',
+        self.build_tree_contents([('tree1/b', b'bye')])
+        tree1.add(['b'], [b'b-id'])
+        tree1.commit('b', rev_id=b'rev-2',
                      committer=u'p\xe9rez',
                      timestamp=1166046000.00, timezone=0)
 
@@ -437,15 +437,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_author_or_committer(self):
         tree1 = self.make_branch_and_tree('tree1')
 
-        self.build_tree_contents([('tree1/a', 'hello')])
-        tree1.add(['a'], ['a-id'])
-        tree1.commit('a', rev_id='rev-1',
+        self.build_tree_contents([('tree1/a', b'hello')])
+        tree1.add(['a'], [b'a-id'])
+        tree1.commit('a', rev_id=b'rev-1',
                      committer='Committer <committer@example.com>',
                      timestamp=1166046000.00, timezone=0)
 
-        self.build_tree_contents([('tree1/b', 'bye')])
-        tree1.add(['b'], ['b-id'])
-        tree1.commit('b', rev_id='rev-2',
+        self.build_tree_contents([('tree1/b', b'bye')])
+        tree1.add(['b'], [b'b-id'])
+        tree1.commit('b', rev_id=b'rev-2',
                      committer='Committer <committer@example.com>',
                      authors=['Author <author@example.com>'],
                      timestamp=1166046000.00, timezone=0)

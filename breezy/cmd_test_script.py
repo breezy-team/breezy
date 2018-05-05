@@ -46,11 +46,8 @@ class cmd_test_script(commands.Command):
         from breezy import tests
         from breezy.tests.script import TestCaseWithTransportAndScript
 
-        f = open(infile)
-        try:
+        with open(infile) as f:
             script = f.read()
-        finally:
-            f.close()
 
         class Test(TestCaseWithTransportAndScript):
 

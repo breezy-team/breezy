@@ -54,7 +54,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.make_controldir('ctrl')
         out, err = self.run_bzr('info ctrl')
         self.assertEqual(out,
-            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Empty control directory (format: 2a)\n'
             'Location:\n'
             '  control directory: ctrl\n')
         self.assertEqual(err, '')
@@ -63,7 +63,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.make_controldir('ctrl')
         out, err = self.run_bzr('info -v ctrl')
         self.assertEqualDiff(out,
-            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Empty control directory (format: 2a)\n'
             'Location:\n'
             '  control directory: ctrl\n\n'
             'Format:\n'
@@ -78,7 +78,7 @@ class TestInfo(tests.TestCaseWithTransport):
         shutil.rmtree('target')
         out, err = self.run_bzr('info from')
         self.assertEqual(out,
-            'Dangling branch reference (format: 2a or pack-0.92)\n'
+            'Dangling branch reference (format: 2a)\n'
             'Location:\n'
             '   control directory: from\n'
             '  checkout of branch: target\n')
@@ -1553,7 +1553,7 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
     def test_simple_branch_info(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
@@ -1570,7 +1570,7 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
     def test_verbose_branch_info(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

@@ -49,6 +49,9 @@ from . import (
     errors,
     registry,
     )
+from .sixish import (
+    viewitems,
+    )
 
 
 class MustHaveWorkingTree(errors.BzrError):
@@ -57,6 +60,14 @@ class MustHaveWorkingTree(errors.BzrError):
 
     def __init__(self, format, url):
         errors.BzrError.__init__(self, format=format, url=url)
+
+
+class BranchReferenceLoop(errors.BzrError):
+
+    _fmt = "Can not create branch reference that points at branch itself."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch)
 
 
 class ControlComponent(object):
@@ -1295,16 +1306,11 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._aliases = set()
         self._registration_order = list()
         super(ControlDirFormatRegistry, self).__init__()
 
-    def aliases(self):
-        """Return a set of the format names which are aliases."""
-        return frozenset(self._aliases)
-
     def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False, experimental=False, alias=False):
+                 hidden=False, experimental=False):
         """Register a ControlDirFormat factory.
 
         The factory must be a callable that takes one parameter: the key.
@@ -1315,16 +1321,25 @@ class ControlDirFormatRegistry(registry.Registry):
         """
         registry.Registry.register(self, key, factory, help,
             ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
+    def register_alias(self, key, target, hidden=False):
+        """Register a format alias.
+
+        :param key: Alias name
+        :param target: Target format
+        :param hidden: Whether the alias is hidden
+        """
+        info = self.get_info(target)
+        registry.Registry.register_alias(self, key, target,
+                ControlDirFormatInfo(
+                    native=info.native, deprecated=info.deprecated,
+                    hidden=hidden, experimental=info.experimental))
+
     def register_lazy(self, key, module_name, member_name, help, native=True,
-        deprecated=False, hidden=False, experimental=False, alias=False):
+        deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
             help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
     def set_default(self, key):
@@ -1332,9 +1347,7 @@ class ControlDirFormatRegistry(registry.Registry):
 
         This method must be called once and only once.
         """
-        registry.Registry.register(self, 'default', self.get(key),
-            self.get_help(key), info=self.get_info(key))
-        self._aliases.add('default')
+        self.register_alias('default', key)
 
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.

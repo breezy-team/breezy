@@ -61,13 +61,13 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('from')
         if not tree._format.supports_versioned_directories:
             self.skipTest('format does not support custom root ids')
-        tree.set_root_id('first_root_id')
+        tree.set_root_id(b'first_root_id')
         self.build_tree(['from/file'])
         tree.add(['file'])
         tree.commit('first')
         to_tree = tree.controldir.sprout('to').open_workingtree()
         self.assertEqual('first_root_id', to_tree.get_root_id())
-        tree.set_root_id('second_root_id')
+        tree.set_root_id(b'second_root_id')
         tree.commit('second')
         to_tree.pull(tree.branch)
         self.assertEqual('second_root_id', to_tree.get_root_id())
@@ -90,7 +90,7 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
                 ('add', ('file', 'file-id', 'file', 'trunk content\n')),],
                 revision_id='2')
         builder.build_snapshot(['2'], [
-                ('unversion', 'dir-id'),],
+                ('unversion', 'dir'),],
                 revision_id='3')
         builder.finish_series()
         return builder.get_branch()

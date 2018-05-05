@@ -59,13 +59,13 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_compare_after_merge(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        self.build_tree_contents([('tree_a/file', 'text-a')])
+        self.build_tree_contents([('tree_a/file', b'text-a')])
         tree_a.add('file')
         tree_a.commit('added file')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')
         tree_a.commit('deleted file')
-        self.build_tree_contents([('tree_b/file', 'text-b')])
+        self.build_tree_contents([('tree_b/file', b'text-b')])
         tree_b.commit('changed file')
         tree_a.merge_from_branch(tree_b.branch)
         tree_a.lock_read()
@@ -74,7 +74,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_merge_empty(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        self.build_tree_contents([('tree_a/file', 'text-a')])
+        self.build_tree_contents([('tree_a/file', b'text-a')])
         tree_a.add('file')
         tree_a.commit('added file')
         tree_b = self.make_branch_and_tree('treeb')
@@ -84,13 +84,13 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_merge_base(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        self.build_tree_contents([('tree_a/file', 'text-a')])
+        self.build_tree_contents([('tree_a/file', b'text-a')])
         tree_a.add('file')
         rev1 = tree_a.commit('added file')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')
         tree_a.commit('deleted file')
-        self.build_tree_contents([('tree_b/file', 'text-b')])
+        self.build_tree_contents([('tree_b/file', b'text-b')])
         tree_b.commit('changed file')
         self.assertRaises(errors.PointlessMerge, tree_a.merge_from_branch,
             tree_b.branch, from_revision=tree_b.branch.last_revision())
@@ -102,13 +102,13 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_merge_type(self):
         this = self.make_branch_and_tree('this')
-        self.build_tree_contents([('this/foo', 'foo')])
+        self.build_tree_contents([('this/foo', b'foo')])
         this.add('foo')
         this.commit('added foo')
         other = this.controldir.sprout('other').open_workingtree()
-        self.build_tree_contents([('other/foo', 'bar')])
+        self.build_tree_contents([('other/foo', b'bar')])
         other.commit('content -> bar')
-        self.build_tree_contents([('this/foo', 'baz')])
+        self.build_tree_contents([('this/foo', b'baz')])
         this.commit('content -> baz')
         class QuxMerge(merge.Merge3Merger):
             def text_merge(self, trans_id, paths, file_id):
@@ -124,48 +124,46 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         bld_inner.start_series()
         rev1 = bld_inner.build_snapshot(
             None,
-            [('add', ('', 'inner-root-id', 'directory', '')),
-             ('add', ('dir', 'dir-id', 'directory', '')),
-             ('add', ('dir/file1', 'file1-id', 'file', 'file1 content\n')),
-             ('add', ('file3', 'file3-id', 'file', 'file3 content\n')),
+            [('add', ('', None, 'directory', '')),
+             ('add', ('dir', None, 'directory', '')),
+             ('add', ('dir/file1', None, 'file', 'file1 content\n')),
+             ('add', ('file3', None, 'file', 'file3 content\n')),
              ])
         rev4 = bld_inner.build_snapshot(
             [rev1],
-            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))
+            [('add', ('file4', None, 'file', 'file4 content\n'))
              ])
         rev5 = bld_inner.build_snapshot(
             [rev4], [('rename', ('file4', 'dir/file4'))])
         rev3 = bld_inner.build_snapshot(
-            [rev1], [('modify', ('file3-id', 'new file3 contents\n')),])
+            [rev1], [('modify', ('file3', 'new file3 contents\n')),])
         rev2 = bld_inner.build_snapshot(
             [rev1],
-            [('add', ('dir/file2', 'file2-id', 'file', 'file2 content\n')),
-             ], revision_id='2')
+            [('add', ('dir/file2', None, 'file', 'file2 content\n')),
+             ])
         bld_inner.finish_series()
         br = bld_inner.get_branch()
         return br, [rev1, rev2, rev3, rev4, rev5]
 
     def assertTreeLayout(self, expected, tree):
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             actual = [e[0] for e in tree.list_files()]
             # list_files doesn't guarantee order
             actual = sorted(actual)
             self.assertEqual(expected, actual)
-        finally:
-            tree.unlock()
 
     def make_outer_tree(self):
         outer = self.make_branch_and_tree('outer')
-        self.build_tree_contents([('outer/foo', 'foo')])
+        self.build_tree_contents([('outer/foo', b'foo')])
         outer.add('foo')
         outer.commit('added foo')
         inner, revs = self.make_inner_branch()
-        outer.merge_from_branch(inner, to_revision=revs[0], from_revision='null:')
+        outer.merge_from_branch(inner, to_revision=revs[0], from_revision=b'null:')
         #retain original root id.
-        outer.set_root_id(outer.basis_tree().get_root_id())
+        if outer.supports_setting_file_ids():
+            outer.set_root_id(outer.basis_tree().get_root_id())
         outer.commit('merge inner branch')
-        outer.mkdir('dir-outer', 'dir-outer-id')
+        outer.mkdir('dir-outer')
         outer.move(['dir', 'file3'], to_dir='dir-outer')
         outer.commit('rename imported dir and file3 to dir-outer')
         return outer, inner, revs
@@ -176,12 +174,21 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.commit('delete file1')
         outer.merge_from_branch(inner)
         outer.commit('merge the rest')
-        self.assertTreeLayout(['dir-outer',
-                               'dir-outer/dir',
-                               'dir-outer/dir/file2',
-                               'dir-outer/file3',
-                               'foo'],
-                              outer)
+        if outer.supports_rename_tracking():
+            self.assertTreeLayout(['dir-outer',
+                                   'dir-outer/dir',
+                                   'dir-outer/dir/file2',
+                                   'dir-outer/file3',
+                                   'foo'],
+                                  outer)
+        else:
+            self.assertTreeLayout(['dir',
+                                   'dir-outer',
+                                   'dir-outer/dir',
+                                   'dir-outer/file3',
+                                   'dir/file2',
+                                   'foo'],
+                                  outer)
 
     def test_file3_deleted_in_root(self):
         # Reproduce bug #375898
@@ -190,20 +197,31 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.commit('delete file3')
         outer.merge_from_branch(inner)
         outer.commit('merge the rest')
-        self.assertTreeLayout(['dir-outer',
-                               'dir-outer/dir',
-                               'dir-outer/dir/file1',
-                               'dir-outer/dir/file2',
-                               'foo'],
-                              outer)
-
+        if outer.supports_rename_tracking():
+            self.assertTreeLayout(['dir-outer',
+                                   'dir-outer/dir',
+                                   'dir-outer/dir/file1',
+                                   'dir-outer/dir/file2',
+                                   'foo'],
+                                  outer)
+        else:
+            self.assertTreeLayout(['dir',
+                                   'dir-outer',
+                                   'dir-outer/dir',
+                                   'dir-outer/dir/file1',
+                                   'dir/file2',
+                                   'foo'],
+                                  outer)
 
     def test_file3_in_root_conflicted(self):
         outer, inner, revs = self.make_outer_tree()
         outer.remove(['dir-outer/file3'], keep_files=False)
         outer.commit('delete file3')
         nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[2])
-        self.assertEqual(4, nb_conflicts)
+        if outer.supports_rename_tracking():
+            self.assertEqual(4, nb_conflicts)
+        else:
+            self.assertEqual(1, nb_conflicts)
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
@@ -221,7 +239,10 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[3])
         # file4 could not be added to its original root, so it gets added to
         # the new root with a conflict.
-        self.assertEqual(1, nb_conflicts)
+        if outer.supports_rename_tracking():
+            self.assertEqual(1, nb_conflicts)
+        else:
+            self.assertEqual(0, nb_conflicts)
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
@@ -233,7 +254,11 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
     def test_file4_added_then_renamed(self):
         outer, inner, revs = self.make_outer_tree()
         # 1 conflict, because file4 can't be put into the old root
-        self.assertEqual(1, outer.merge_from_branch(inner, to_revision=revs[3]))
+        nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[3])
+        if outer.supports_rename_tracking():
+            self.assertEqual(1, nb_conflicts)
+        else:
+            self.assertEqual(0, nb_conflicts)
         try:
             outer.set_conflicts(conflicts.ConflictList())
         except errors.UnsupportedOperation:
@@ -244,11 +269,22 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.commit('added file4')
         # And now file4 gets renamed into an existing dir
         nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[4])
-        self.assertEqual(1, nb_conflicts)
-        self.assertTreeLayout(['dir-outer',
-                               'dir-outer/dir',
-                               'dir-outer/dir/file1',
-                               'dir-outer/dir/file4',
-                               'dir-outer/file3',
-                               'foo'],
-                              outer)
+        if outer.supports_rename_tracking():
+            self.assertEqual(1, nb_conflicts)
+            self.assertTreeLayout(['dir-outer',
+                                   'dir-outer/dir',
+                                   'dir-outer/dir/file1',
+                                   'dir-outer/dir/file4',
+                                   'dir-outer/file3',
+                                   'foo'],
+                                  outer)
+        else:
+            self.assertEqual(2, nb_conflicts)
+            self.assertTreeLayout(['dir',
+                                   'dir-outer',
+                                   'dir-outer/dir',
+                                   'dir-outer/dir/file1',
+                                   'dir-outer/file3',
+                                   'dir/file4',
+                                   'foo'],
+                                  outer)

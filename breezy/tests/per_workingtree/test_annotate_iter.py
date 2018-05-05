@@ -24,8 +24,8 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def make_single_rev_tree(self):
         builder = self.make_branch_builder('branch')
         revid = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', 'initial content\n')),
             ])
         b = builder.get_branch()
         tree = b.create_checkout('tree', lightweight=True)
@@ -42,24 +42,24 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_mod_from_parent(self):
         tree, revid = self.make_single_rev_tree()
         self.build_tree_contents([('tree/file',
-                                   'initial content\nnew content\n')])
+                                   b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
         self.assertEqual([(revid, 'initial content\n'),
-                          ('current:', 'new content\n'),
+                          (b'current:', 'new content\n'),
                          ], annotations)
 
     def test_annotate_merge_parents(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\ncontent in 2\n')),
+            ('modify', ('file', b'initial content\ncontent in 2\n')),
             ])
         revid3 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', b'initial content\ncontent in 3\n')),
             ])
         builder.finish_series()
         b = builder.get_branch()
@@ -68,23 +68,23 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         tree.set_parent_ids([revid2, revid3])
         self.build_tree_contents([('tree/file',
-                                   'initial content\ncontent in 2\n'
-                                   'content in 3\nnew content\n')])
+                                   b'initial content\ncontent in 2\n'
+                                   b'content in 3\nnew content\n')])
         annotations = tree.annotate_iter('file')
         self.assertEqual([(revid1, 'initial content\n'),
                           (revid2, 'content in 2\n'),
                           (revid3, 'content in 3\n'),
-                          ('current:', 'new content\n'),
+                          (b'current:', 'new content\n'),
                          ], annotations)
 
     def test_annotate_merge_parent_no_file(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
+            ('add', ('', None, 'directory', None)),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid3 = builder.build_snapshot([revid1], [])
         builder.finish_series()
@@ -94,23 +94,23 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         tree.set_parent_ids([revid2, revid3])
         self.build_tree_contents([('tree/file',
-                                   'initial content\nnew content\n')])
+                                   b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
         self.assertEqual([(revid2, 'initial content\n'),
-                          ('current:', 'new content\n'),
+                          (b'current:', 'new content\n'),
                          ], annotations)
 
     def test_annotate_merge_parent_was_directory(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
+            ('add', ('', None, 'directory', None)),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid3 = builder.build_snapshot([revid1], [
-            ('add', ('a_dir', 'file-id', 'directory', None)),
+            ('add', ('a_dir', None, 'directory', None)),
             ])
         builder.finish_series()
         b = builder.get_branch()
@@ -119,23 +119,23 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         tree.set_parent_ids([revid2, revid3])
         self.build_tree_contents([('tree/file',
-                                   'initial content\nnew content\n')])
+                                   b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
         self.assertEqual([(revid2, 'initial content\n'),
-                          ('current:', 'new content\n'),
+                          (b'current:', 'new content\n'),
                          ], annotations)
 
     def test_annotate_same_as_merge_parent(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
             ])
         revid3 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', b'initial content\ncontent in 3\n')),
             ])
         builder.finish_series()
         b = builder.get_branch()
@@ -144,7 +144,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         tree.set_parent_ids([revid2, revid3])
         self.build_tree_contents([('tree/file',
-                                   'initial content\ncontent in 3\n')])
+                                   b'initial content\ncontent in 3\n')])
         annotations = tree.annotate_iter('file')
         self.assertEqual([(revid1, 'initial content\n'),
                           (revid3, 'content in 3\n'),
@@ -154,17 +154,17 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'initial content\n')),
+            ('add', ('', None, 'directory', None)),
+            ('add', ('file', None, 'file', 'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('modify', ('file-id', 'initial content\nnew content\n')),
+            ('modify', ('file', 'initial content\nnew content\n')),
             ])
         revid3 = builder.build_snapshot([revid2], [
-            ('modify', ('file-id', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', 'initial content\ncontent in 3\n')),
             ])
         revid4 = builder.build_snapshot([revid3], [
-            ('modify', ('file-id', 'initial content\nnew content\n')),
+            ('modify', ('file', 'initial content\nnew content\n')),
             ])
         # In this case, the content locally is the same as content in basis
         # tree, but the merge revision states that *it* should win

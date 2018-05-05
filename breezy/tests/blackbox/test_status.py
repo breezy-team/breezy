@@ -491,7 +491,7 @@ class BranchStatus(TestCaseWithTransport):
     def test_status_out_of_date(self):
         """Simulate status of out-of-date tree after remote push"""
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('a', 'foo\n')])
+        self.build_tree_contents([('a', b'foo\n')])
         tree.lock_write()
         try:
             tree.add(['a'])
@@ -753,11 +753,11 @@ class TestStatus(TestCaseWithTransport):
     def test_pending_specific_files(self):
         """With a specific file list, pending merges are not shown."""
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/a', 'content of a\n')])
+        self.build_tree_contents([('tree/a', b'content of a\n')])
         tree.add('a')
         r1_id = tree.commit('one')
         alt = tree.controldir.sprout('alt').open_workingtree()
-        self.build_tree_contents([('alt/a', 'content of a\nfrom alt\n')])
+        self.build_tree_contents([('alt/a', b'content of a\nfrom alt\n')])
         alt_id = alt.commit('alt')
         tree.merge_from_branch(alt.branch)
         output = self.make_utf8_encoded_stringio()
@@ -774,7 +774,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         working_tree = self.make_branch_and_tree(u'.')
         filename = u'hell\u00d8'
         try:
-            self.build_tree_contents([(filename, 'contents of hello')])
+            self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
             raise TestSkipped("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())

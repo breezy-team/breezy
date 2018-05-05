@@ -52,7 +52,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         sub_tree_root_id = sub_tree.get_root_id()
         tree.lock_write()
         try:
-            self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
+            if tree.supports_setting_file_ids():
+                self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
             self.assertEqual(tree.kind('sub-tree'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()
@@ -73,9 +74,9 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.skipTest('format does not support setting file ids')
         self.build_tree(['tree/file1'])
         tree.add('file1')
-        tree.set_root_id('root-id')
+        tree.set_root_id(b'root-id')
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
-        sub_tree.set_root_id('root-id')
+        sub_tree.set_root_id(b'root-id')
         try:
             self.assertRaises(BadReferenceTarget, tree.add_reference,
                               sub_tree)

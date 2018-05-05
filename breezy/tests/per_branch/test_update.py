@@ -46,11 +46,11 @@ class TestUpdate(per_branch.TestCaseWithBranch):
             # old branch, cant test.
             return
         # commit to the child to make the last rev not-None.
-        child_tree.commit('foo', rev_id='foo', allow_pointless=True)
+        child_tree.commit('foo', rev_id=b'foo', allow_pointless=True)
         # update the master so we can commit there.
         master_tree.update()
         # commit to the master making the child tree out of date and a prefix.
-        master_tree.commit('bar', rev_id='bar', allow_pointless=True)
+        master_tree.commit('bar', rev_id=b'bar', allow_pointless=True)
         self.assertEqual(None, child_tree.branch.update())
 
     def test_update_local_commits_returns_old_tip(self):
@@ -64,9 +64,9 @@ class TestUpdate(per_branch.TestCaseWithBranch):
             # old branch, cant test.
             return
         # commit to the child to make the last rev not-None and skew it from master.
-        child_tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
+        child_tree.commit('foo', rev_id=b'foo', allow_pointless=True, local=True)
         # commit to the master making the child tree out of date and not a prefix.
-        master_tree.commit('bar', rev_id='bar', allow_pointless=True)
+        master_tree.commit('bar', rev_id=b'bar', allow_pointless=True)
         self.assertEqual('foo', child_tree.branch.update())
         self.assertEqual('bar', child_tree.branch.last_revision())
 

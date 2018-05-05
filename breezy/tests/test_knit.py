@@ -387,10 +387,10 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
             ], revision_id='rev-1')
         builder.build_snapshot(['rev-1'], [
-            ('modify', ('file-id', 'content\nrev 2\n')),
+            ('modify', ('file', 'content\nrev 2\n')),
             ], revision_id='rev-2')
         builder.build_snapshot(['rev-2'], [
-            ('modify', ('file-id', 'content\nrev 3\n')),
+            ('modify', ('file', 'content\nrev 3\n')),
             ], revision_id='rev-3')
         self.addCleanup(builder.finish_series)
         b = builder.get_branch()
@@ -420,10 +420,10 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
             ], revision_id='rev-1')
         builder.build_snapshot(['rev-1'], [
-            ('modify', ('file-id', 'content\nrev 2\n')),
+            ('modify', ('file', 'content\nrev 2\n')),
             ], revision_id='rev-2')
         builder.build_snapshot(['rev-2'], [
-            ('modify', ('file-id', 'content\nrev 3\n')),
+            ('modify', ('file', 'content\nrev 3\n')),
             ], revision_id='rev-3')
         builder.finish_series()
         b = builder.get_branch()

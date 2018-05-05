@@ -354,9 +354,9 @@ class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
         builder = self.make_branch_builder('tip')
         builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
+            revision_id=b'A')
         b = builder.get_branch()
-        b.tags.set_tag('tip-1.0', 'A')
+        b.tags.set_tag('tip-1.0', b'A')
         return builder, b, b.tags.get_tag_dict()
 
     def test_get_most_recent_tag_tip(self):
@@ -366,7 +366,7 @@ class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
 
     def test_get_most_recent_tag_older(self):
         builder, b, tag_dict = self.make_simple_builder()
-        builder.build_snapshot(['A'], [], revision_id='B')
+        builder.build_snapshot(['A'], [], revision_id=b'B')
         self.assertEqual('B', b.last_revision())
         self.assertEqual('tip-1.0',
                          lp_api_lite.get_most_recent_tag(tag_dict, b))
@@ -392,8 +392,8 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
         super(TestReportFreshness, self).setUp()
         builder = self.make_branch_builder('tip')
         builder.build_snapshot([], [
-            ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
+            ('add', ('', b'root-id', 'directory', None))],
+            revision_id=b'A')
         self.branch = builder.get_branch()
 
     def assertFreshnessReports(self, verbosity, latest_version, content):
@@ -454,8 +454,8 @@ class Test_GetNewestVersions(tests.TestCaseWithMemoryTransport):
         super(Test_GetNewestVersions, self).setUp()
         builder = self.make_branch_builder('tip')
         builder.build_snapshot([], [
-            ('add', ('', 'root-id', 'directory', None))],
-            revision_id='A')
+            ('add', ('', b'root-id', 'directory', None))],
+            revision_id=b'A')
         self.branch = builder.get_branch()
 
     def assertLatestVersions(self, latest_branch_version, pub_version):

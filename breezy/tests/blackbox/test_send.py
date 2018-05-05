@@ -65,17 +65,17 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         super(TestSend, self).setUp()
         grandparent_tree = ControlDir.create_standalone_workingtree(
             'grandparent')
-        self.build_tree_contents([('grandparent/file1', 'grandparent')])
+        self.build_tree_contents([('grandparent/file1', b'grandparent')])
         grandparent_tree.add('file1')
-        grandparent_tree.commit('initial commit', rev_id='rev1')
+        grandparent_tree.commit('initial commit', rev_id=b'rev1')
 
         parent_bzrdir = grandparent_tree.controldir.sprout('parent')
         parent_tree = parent_bzrdir.open_workingtree()
-        parent_tree.commit('next commit', rev_id='rev2')
+        parent_tree.commit('next commit', rev_id=b'rev2')
 
         branch_tree = parent_tree.controldir.sprout('branch').open_workingtree()
-        self.build_tree_contents([('branch/file1', 'branch')])
-        branch_tree.commit('last commit', rev_id='rev3')
+        self.build_tree_contents([('branch/file1', b'branch')])
+        branch_tree.commit('last commit', rev_id=b'rev3')
 
     def assertFormatIs(self, fmt_string, md):
         self.assertEqual(fmt_string, md.get_raw_bundle().splitlines()[0])
@@ -276,14 +276,14 @@ class TestSendStrictMixin(TestSendMixin):
     def make_parent_and_local_branches(self):
         # Create a 'parent' branch as the base
         self.parent_tree = ControlDir.create_standalone_workingtree('parent')
-        self.build_tree_contents([('parent/file', 'parent')])
+        self.build_tree_contents([('parent/file', b'parent')])
         self.parent_tree.add('file')
-        self.parent_tree.commit('first commit', rev_id='parent')
+        self.parent_tree.commit('first commit', rev_id=b'parent')
         # Branch 'local' from parent and do a change
         local_bzrdir = self.parent_tree.controldir.sprout('local')
         self.local_tree = local_bzrdir.open_workingtree()
-        self.build_tree_contents([('local/file', 'local')])
-        self.local_tree.commit('second commit', rev_id='local')
+        self.build_tree_contents([('local/file', b'local')])
+        self.local_tree.commit('second commit', rev_id=b'local')
 
     _default_command = ['send', '-o-', '../parent']
     _default_wd = 'local'
@@ -380,16 +380,16 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
     def _uncommitted_changes(self):
         self.make_parent_and_local_branches()
         # Make a change without committing it
-        self.build_tree_contents([('local/file', 'modified')])
+        self.build_tree_contents([('local/file', b'modified')])
 
     def _pending_merges(self):
         self.make_parent_and_local_branches()
         # Create 'other' branch containing a new file
         other_bzrdir = self.parent_tree.controldir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
-        self.build_tree_contents([('other/other-file', 'other')])
+        self.build_tree_contents([('other/other-file', b'other')])
         other_tree.add('other-file')
-        other_tree.commit('other commit', rev_id='other')
+        other_tree.commit('other commit', rev_id=b'other')
         # Merge and revert, leaving a pending merge
         self.local_tree.merge_from_branch(other_tree.branch)
         self.local_tree.revert(filenames=['other-file'], backups=False)
@@ -398,8 +398,8 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.make_parent_and_local_branches()
         self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
         # Make a change and commit it
-        self.build_tree_contents([('local/file', 'modified in local')])
-        self.local_tree.commit('modify file', rev_id='modified-in-local')
+        self.build_tree_contents([('local/file', b'modified in local')])
+        self.local_tree.commit('modify file', rev_id=b'modified-in-local')
         # Exercise commands from the checkout directory
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
@@ -448,11 +448,11 @@ class TestSmartServerSend(tests.TestCaseWithTransport):
     def test_send(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         local = t.controldir.sprout('local-branch').open_workingtree()
-        self.build_tree_contents([('branch/foo', 'thenewcontents')])
+        self.build_tree_contents([('branch/foo', b'thenewcontents')])
         local.commit("anothermessage")
         self.reset_smart_call_log()
         out, err = self.run_bzr(

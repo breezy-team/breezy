@@ -54,6 +54,14 @@ class TestInit(TestCaseWithTransport):
             out)
         self.assertEqual('', err)
 
+    def test_init_format_bzr(self):
+        """Smoke test for constructing a format with the 'bzr' alias."""
+        out, err = self.run_bzr('init --format=bzr')
+        self.assertEqual(
+            "Created a standalone tree (format: %s)\n" % self._default_label,
+            out)
+        self.assertEqual('', err)
+
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
         out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
@@ -153,8 +161,8 @@ Using shared repository: %s
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='r1')
+        tree.add(['a'], [b'a-id'])
+        tree.commit('one', rev_id=b'r1')
         return tree
 
     def test_init_create_prefix(self):

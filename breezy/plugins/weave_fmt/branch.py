@@ -148,8 +148,8 @@ class BzrBranchFormat4(BranchFormat):
         if not [isinstance(a_controldir._format, format) for format in
                 self._compatible_bzrdirs]:
             raise errors.IncompatibleFormat(self, a_controldir._format)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
+        utf8_files = [('revision-history', b''),
+                      ('branch-name', b''),
                       ]
         mutter('creating branch %r in %s', self, a_controldir.user_url)
         branch_transport = a_controldir.get_branch_transport(self, name=name)

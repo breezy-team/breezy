@@ -308,8 +308,9 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
         control_files.lock_write()
         transport = a_controldir.transport
         try:
-            transport.mkdir_multi(['revision-store', 'weaves'],
-                mode=a_controldir._get_dir_mode())
+            transport.mkdir('revision-store',
+                            mode=a_controldir._get_dir_mode())
+            transport.mkdir('weaves', mode=a_controldir._get_dir_mode())
             transport.put_bytes_non_atomic('inventory.weave', empty_weave,
                 mode=a_controldir._get_file_mode())
         finally:
@@ -510,7 +511,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Repository format 7"
+        return b"Bazaar-NG Repository format 7"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -796,7 +797,7 @@ class InterWeaveRepo(InterSameDataRepository):
             # weave specific optimised path:
             try:
                 self.target.set_make_working_trees(self.source.make_working_trees())
-            except (errors.RepositoryUpgradeRequired, NotImplemented):
+            except (errors.RepositoryUpgradeRequired, NotImplementedError):
                 pass
             # FIXME do not peek!
             if self.source._transport.listable():

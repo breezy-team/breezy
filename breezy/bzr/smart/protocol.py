@@ -40,6 +40,7 @@ from ...sixish import (
     reraise,
 )
 from . import message, request
+from ...sixish import text_type
 from ...trace import log_exception_quietly, mutter
 from ...bencode import bdecode_as_tuple, bencode
 
@@ -47,10 +48,10 @@ from ...bencode import bdecode_as_tuple, bencode
 # Protocol version strings.  These are sent as prefixes of bzr requests and
 # responses to identify the protocol version being used. (There are no version
 # one strings because that version doesn't send any).
-REQUEST_VERSION_TWO = 'bzr request 2\n'
-RESPONSE_VERSION_TWO = 'bzr response 2\n'
+REQUEST_VERSION_TWO = b'bzr request 2\n'
+RESPONSE_VERSION_TWO = b'bzr response 2\n'
 
-MESSAGE_VERSION_THREE = 'bzr message 3 (bzr 1.6)\n'
+MESSAGE_VERSION_THREE = b'bzr message 3 (bzr 1.6)\n'
 RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
 
 
@@ -60,17 +61,17 @@ def _recv_tuple(from_file):
 
 
 def _decode_tuple(req_line):
-    if req_line is None or req_line == '':
+    if req_line is None or req_line == b'':
         return None
-    if req_line[-1] != '\n':
+    if req_line[-1] != b'\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
     return tuple(req_line[:-1].split('\x01'))
 
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    joined = '\x01'.join(args) + '\n'
-    if isinstance(joined, unicode):
+    joined = b'\x01'.join(args) + b'\n'
+    if isinstance(joined, text_type):
         # XXX: We should fix things so this never happens!  -AJB, 20100304
         mutter('response args contain unicode, should be only bytes: %r',
                joined)
@@ -119,14 +120,14 @@ class SmartProtocolBase(object):
     # support multiple chunks?
     def _encode_bulk_data(self, body):
         """Encode body as a bulk data chunk."""
-        return ''.join(('%d\n' % len(body), body, 'done\n'))
+        return b''.join((b'%d\n' % len(body), body, b'done\n'))
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
         txt = []
         for start, length in offsets:
-            txt.append('%d,%d' % (start, length))
-        return '\n'.join(txt)
+            txt.append(b'%d,%d' % (start, length))
+        return b'\n'.join(txt)
 
 
 class SmartServerRequestProtocolOne(SmartProtocolBase):
@@ -137,9 +138,9 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._jail_root = jail_root
-        self.unused_data = ''
+        self.unused_data = b''
         self._finished = False
-        self.in_buffer = ''
+        self.in_buffer = b''
         self._has_dispatched = False
         self.request = None
         self._body_decoder = None
@@ -170,7 +171,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 if self.request.finished_reading:
                     # trivial request
                     self.unused_data = self.in_buffer
-                    self.in_buffer = ''
+                    self.in_buffer = b''
                     self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
@@ -193,7 +194,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 # nothing to do.XXX: this routine should be a single state
                 # machine too.
                 self.unused_data += self.in_buffer
-                self.in_buffer = ''
+                self.in_buffer = b''
                 return
             if self._body_decoder is None:
                 self._body_decoder = LengthPrefixedBodyDecoder()
@@ -208,7 +209,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             if self.request.response is not None:
                 self._send_response(self.request.response)
                 self.unused_data = self.in_buffer
-                self.in_buffer = ''
+                self.in_buffer = b''
             else:
                 if self.request.finished_reading:
                     raise AssertionError(
@@ -265,9 +266,9 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
     def _write_success_or_failure_prefix(self, response):
         """Write the protocol specific success/failure prefix."""
         if response.is_successful():
-            self._write_func('success\n')
+            self._write_func(b'success\n')
         else:
-            self._write_func('failed\n')
+            self._write_func(b'failed\n')
 
     def _write_protocol_version(self):
         r"""Write any prefixes this protocol requires.
@@ -346,14 +347,14 @@ class _StatefulDecoder(object):
         self.finished_reading = False
         self._in_buffer_list = []
         self._in_buffer_len = 0
-        self.unused_data = ''
+        self.unused_data = b''
         self.bytes_left = None
         self._number_needed_bytes = None
 
     def _get_in_buffer(self):
         if len(self._in_buffer_list) == 1:
             return self._in_buffer_list[0]
-        in_buffer = ''.join(self._in_buffer_list)
+        in_buffer = b''.join(self._in_buffer_list)
         if len(in_buffer) != self._in_buffer_len:
             raise AssertionError(
                 "Length of buffer did not match expected value: %s != %s"
@@ -465,7 +466,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
     def _extract_line(self):
         in_buf = self._get_in_buffer()
-        pos = in_buf.find('\n')
+        pos = in_buf.find(b'\n')
         if pos == -1:
             # We haven't read a complete line yet, so request more bytes before
             # we continue.
@@ -488,7 +489,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
     def _state_accept_expecting_header(self):
         prefix = self._extract_line()
-        if prefix == 'chunked':
+        if prefix == b'chunked':
             self.state_accept = self._state_accept_expecting_length
         else:
             raise errors.SmartProtocolError(
@@ -496,12 +497,12 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
     def _state_accept_expecting_length(self):
         prefix = self._extract_line()
-        if prefix == 'ERR':
+        if prefix == b'ERR':
             self.error = True
             self.error_in_progress = []
             self._state_accept_expecting_length()
             return
-        elif prefix == 'END':
+        elif prefix == b'END':
             # We've read the end-of-body marker.
             # Any further bytes are unused data, including the bytes left in
             # the _in_buffer.
@@ -509,7 +510,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             return
         else:
             self.bytes_left = int(prefix, 16)
-            self.chunk_in_progress = ''
+            self.chunk_in_progress = b''
             self.state_accept = self._state_accept_reading_chunk
 
     def _state_accept_reading_chunk(self):
@@ -540,8 +541,8 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_length
         self.state_read = self._state_read_no_data
-        self._body = ''
-        self._trailer_buffer = ''
+        self._body = b''
+        self._trailer_buffer = b''
 
     def next_read_size(self):
         if self.bytes_left is not None:
@@ -565,7 +566,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
 
     def _state_accept_expecting_length(self):
         in_buf = self._get_in_buffer()
-        pos = in_buf.find('\n')
+        pos = in_buf.find(b'\n')
         if pos == -1:
             return
         self.bytes_left = int(in_buf[:pos])
@@ -591,8 +592,8 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         self._set_in_buffer(None)
         # TODO: what if the trailer does not match "done\n"?  Should this raise
         # a ProtocolViolation exception?
-        if self._trailer_buffer.startswith('done\n'):
-            self.unused_data = self._trailer_buffer[len('done\n'):]
+        if self._trailer_buffer.startswith(b'done\n'):
+            self.unused_data = self._trailer_buffer[len(b'done\n'):]
             self.state_accept = self._state_accept_reading_unused
             self.finished_reading = True
 
@@ -601,11 +602,11 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         self._set_in_buffer(None)
 
     def _state_read_no_data(self):
-        return ''
+        return b''
 
     def _state_read_body_buffer(self):
         result = self._body
-        self._body = ''
+        self._body = b''
         return result
 
 
@@ -776,7 +777,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
         while not _body_decoder.finished_reading:
             bytes = self._request.read_bytes(_body_decoder.next_read_size())
-            if bytes == '':
+            if bytes == b'':
                 # end of file encountered reading from server
                 raise errors.ConnectionReset(
                     "Connection lost while reading response body.")
@@ -795,11 +796,11 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
     def query_version(self):
         """Return protocol version number of the server."""
-        self.call('hello')
+        self.call(b'hello')
         resp = self.read_response_tuple()
-        if resp == ('ok', '1'):
+        if resp == (b'ok', '1'):
             return 1
-        elif resp == ('ok', '2'):
+        elif resp == (b'ok', '2'):
             return 2
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
@@ -865,7 +866,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         _body_decoder = ChunkedBodyDecoder()
         while not _body_decoder.finished_reading:
             bytes = self._request.read_bytes(_body_decoder.next_read_size())
-            if bytes == '':
+            if bytes == b'':
                 # end of file encountered reading from server
                 raise errors.ConnectionReset(
                     "Connection lost while reading streamed body.")
@@ -1100,7 +1101,7 @@ class _ProtocolThreeEncoder(object):
 
     def flush(self):
         if self._buf:
-            self._real_write_func(''.join(self._buf))
+            self._real_write_func(b''.join(self._buf))
             del self._buf[:]
             self._buf_len = 0
 
@@ -1108,8 +1109,8 @@ class _ProtocolThreeEncoder(object):
         """Serialise a readv offset list."""
         txt = []
         for start, length in offsets:
-            txt.append('%d,%d' % (start, length))
-        return '\n'.join(txt)
+            txt.append(b'%d,%d' % (start, length))
+        return b'\n'.join(txt)
 
     def _write_protocol_version(self):
         self._write_func(MESSAGE_VERSION_THREE)
@@ -1123,32 +1124,32 @@ class _ProtocolThreeEncoder(object):
         self._write_prefixed_bencode(headers)
 
     def _write_structure(self, args):
-        self._write_func('s')
+        self._write_func(b's')
         utf8_args = []
         for arg in args:
-            if isinstance(arg, unicode):
+            if isinstance(arg, text_type):
                 utf8_args.append(arg.encode('utf8'))
             else:
                 utf8_args.append(arg)
         self._write_prefixed_bencode(utf8_args)
 
     def _write_end(self):
-        self._write_func('e')
+        self._write_func(b'e')
         self.flush()
 
     def _write_prefixed_body(self, bytes):
-        self._write_func('b')
+        self._write_func(b'b')
         self._write_func(struct.pack('!L', len(bytes)))
         self._write_func(bytes)
 
     def _write_chunked_body_start(self):
-        self._write_func('oC')
+        self._write_func(b'oC')
 
     def _write_error_status(self):
-        self._write_func('oE')
+        self._write_func(b'oE')
 
     def _write_success_status(self):
-        self._write_func('oS')
+        self._write_func(b'oS')
 
 
 class ProtocolThreeResponder(_ProtocolThreeEncoder):

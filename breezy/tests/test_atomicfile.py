@@ -33,7 +33,7 @@ class TestAtomicFile(TestCaseInTempDir):
     def test_commit(self):
         f = atomicfile.AtomicFile('test')
         self.assertPathDoesNotExist('test')
-        f.write('foo\n')
+        f.write(b'foo\n')
         f.commit()
 
         self.assertEqual(['test'], os.listdir('.'))
@@ -45,7 +45,7 @@ class TestAtomicFile(TestCaseInTempDir):
 
     def test_abort(self):
         f = atomicfile.AtomicFile('test')
-        f.write('foo\n')
+        f.write(b'foo\n')
         f.abort()
         self.assertEqual([], os.listdir('.'))
 
@@ -57,7 +57,7 @@ class TestAtomicFile(TestCaseInTempDir):
 
     def test_close(self):
         f = atomicfile.AtomicFile('test')
-        f.write('foo\n')
+        f.write(b'foo\n')
         # close on an open file is an abort
         f.close()
         self.assertEqual([], os.listdir('.'))
@@ -70,7 +70,7 @@ class TestAtomicFile(TestCaseInTempDir):
 
     def test_text_mode(self):
         f = atomicfile.AtomicFile('test', mode='wt')
-        f.write('foo\n')
+        f.write(b'foo\n')
         f.commit()
 
         contents = open('test', 'rb').read()
@@ -87,7 +87,7 @@ class TestAtomicFile(TestCaseInTempDir):
         if not self.can_sys_preserve_mode():
             raise TestSkipped("This test cannot be run on your platform")
         f = atomicfile.AtomicFile('test', mode='wb', new_mode=mode)
-        f.write('foo\n')
+        f.write(b'foo\n')
         f.commit()
         st = os.lstat('test')
         self.assertEqualMode(mode, stat.S_IMODE(st.st_mode))
@@ -119,7 +119,7 @@ class TestAtomicFile(TestCaseInTempDir):
         # The default file permissions should be based on umask
         umask = osutils.get_umask()
         f = atomicfile.AtomicFile('test', mode='wb')
-        f.write('foo\n')
+        f.write(b'foo\n')
         f.commit()
         st = os.lstat('test')
         self.assertEqualMode(0o666 & ~umask, stat.S_IMODE(st.st_mode))

@@ -291,16 +291,16 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
 
     def make_tree_with_text_conflict(self):
         tb = self.make_branch_and_tree('base')
-        self.build_tree_contents([('base/file', 'content in base')])
+        self.build_tree_contents([('base/file', b'content in base')])
         tb.add('file')
         tb.commit('Adding file')
 
         t1 = tb.controldir.sprout('t1').open_workingtree()
 
-        self.build_tree_contents([('base/file', 'content changed in base')])
+        self.build_tree_contents([('base/file', b'content changed in base')])
         tb.commit('Changing file in base')
 
-        self.build_tree_contents([('t1/file', 'content in t1')])
+        self.build_tree_contents([('t1/file', b'content in t1')])
         t1.commit('Changing file in t1')
         t1.merge_from_branch(tb.branch)
         return t1

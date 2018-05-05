@@ -89,14 +89,10 @@ import breezy.trace
 
 
 if __name__ == '__main__':
-    library_state = breezy.initialize()
-    library_state.__enter__()
-    try:
+    with breezy.initialize():
         exit_val = breezy.commands.main()
         if profiling:
             profile_imports.log_stack_info(sys.stderr)
-    finally:
-        library_state.__exit__(None, None, None)
 
     # By this point we really have completed everything we want to do, and
     # there's no point doing any additional cleanup.  Abruptly exiting here

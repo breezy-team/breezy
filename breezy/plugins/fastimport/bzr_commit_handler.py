@@ -375,14 +375,14 @@ class GenericCommitHandler(processor.CommitHandler):
             return
         # Record it
         try:
-            old_ie = inv[file_id]
+            old_ie = inv.get_entry(file_id)
         except errors.NoSuchId:
             try:
                 self.record_new(path, ie)
             except:
-                print "failed to add path '%s' with entry '%s' in command %s" \
-                    % (path, ie, self.command.id)
-                print "parent's children are:\n%r\n" % (ie.parent_id.children,)
+                print("failed to add path '%s' with entry '%s' in command %s" \
+                    % (path, ie, self.command.id))
+                print("parent's children are:\n%r\n" % (ie.parent_id.children,))
                 raise
         else:
             if old_ie.kind == 'directory':
@@ -438,7 +438,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 raise KeyError
             if file_id is None:
                 raise KeyError
-            result = inv[file_id]
+            result = inv.get_entry(file_id)
             # dirname must be a directory for us to return it
             if result.kind == 'directory':
                 self.directory_entries[dirname] = result
@@ -459,7 +459,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 self.mutter("ignoring delete of %s as not in inventory", path)
                 return
             try:
-                ie = inv[file_id]
+                ie = inv.get_entry(file_id)
             except errors.NoSuchId:
                 self.mutter("ignoring delete of %s as not in inventory", path)
                 return
@@ -479,7 +479,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 self.warning("ignoring copy of %s to %s - source does not exist",
                     src_path, dest_path)
                 return
-            ie = inv[file_id]
+            ie = inv.get_entry(file_id)
         kind = ie.kind
         if kind == 'file':
             if newly_changed:
@@ -509,11 +509,11 @@ class GenericCommitHandler(processor.CommitHandler):
                 "ignoring rename of %s to %s - old path does not exist" %
                 (old_path, new_path))
             return
-        ie = inv[file_id]
+        ie = inv.get_entry(file_id)
         rev_id = ie.revision
         new_file_id = inv.path2id(new_path)
         if new_file_id is not None:
-            self.record_delete(new_path, inv[new_file_id])
+            self.record_delete(new_path, inv.get_entry(new_file_id))
         self.record_rename(old_path, new_path, file_id, ie)
 
         # The revision-id for this entry will be/has been updated and
@@ -713,7 +713,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             file_id = new_inv.path2id(dir)
             if file_id is None:
                 continue
-            ie = new_inv[file_id]
+            ie = new_inv.get_entry(file_id)
             if ie.kind != 'directory':
                 continue
             if len(ie.children) == 0:
@@ -734,7 +734,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
-            del new_inv[inventory.ROOT_ID]
+            new_inv.delete(inventory.ROOT_ID)
             try:
                 new_inv.apply_delta(delta)
             except errors.InconsistentDelta:

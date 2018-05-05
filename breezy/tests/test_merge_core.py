@@ -320,7 +320,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(
-                builder.this.get_file(builder.this.id2path("a")).read(),
+                builder.this.get_file(builder.this.id2path(b"a")).read(),
                 expected)
         builder.cleanup()
 
@@ -373,7 +373,7 @@ y
                                      ContentsConflict('name2', file_id='2'),
                                      ContentsConflict('name3', file_id='3')])
         self.assertEqual(
-            builder.this.get_file(builder.this.id2path('2')).read(),
+            builder.this.get_file(builder.this.id2path(b'2')).read(),
             '\x00')
         builder.cleanup()
 
@@ -489,13 +489,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_conflicts(self):
         wta = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/file', 'contents\n')])
+        self.build_tree_contents([('a/file', b'contents\n')])
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
         d_b = wta.branch.controldir.clone('b')
-        self.build_tree_contents([('a/file', 'other contents\n')])
+        self.build_tree_contents([('a/file', b'other contents\n')])
         wta.commit('other revision', allow_pointless=False)
-        self.build_tree_contents([('b/file', 'this contents contents\n')])
+        self.build_tree_contents([('b/file', b'this contents contents\n')])
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(1, wtb.merge_from_branch(wta.branch))
@@ -535,7 +535,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
             ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))],
             revision_id='D-id')
         builder.build_snapshot(['C-id', 'B-id'], [
-            ('modify', ('foo-id', 'orig\ncontents\nand E\n'))],
+            ('modify', ('foo', 'orig\ncontents\nand E\n'))],
             revision_id='E-id')
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
@@ -617,15 +617,15 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt = self.make_branch_and_tree('a')
         with file('a/un', 'wb') as f: f.write('UN')
         with file('a/deux', 'wb') as f: f.write('DEUX')
-        a_wt.add('un', 'un-id')
-        a_wt.add('deux', 'deux-id')
-        a_wt.commit('r0', rev_id='r0')
+        a_wt.add('un', b'un-id')
+        a_wt.add('deux', b'deux-id')
+        a_wt.commit('r0', rev_id=b'r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('un', 'tmp')
         b_wt.rename_one('deux', 'un')
         b_wt.rename_one('tmp', 'deux')
-        b_wt.commit('r1', rev_id='r1')
+        b_wt.commit('r1', rev_id=b'r1')
         self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
             b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
         self.assertPathExists('a/un')
@@ -772,10 +772,10 @@ class TestMerger(TestCaseWithTransport):
 
     def set_up_trees(self):
         this = self.make_branch_and_tree('this')
-        this.commit('rev1', rev_id='rev1')
+        this.commit('rev1', rev_id=b'rev1')
         other = this.controldir.sprout('other').open_workingtree()
-        this.commit('rev2a', rev_id='rev2a')
-        other.commit('rev2b', rev_id='rev2b')
+        this.commit('rev2a', rev_id=b'rev2a')
+        other.commit('rev2b', rev_id=b'rev2b')
         return this, other
 
     def test_from_revision_ids(self):
@@ -801,7 +801,7 @@ class TestMerger(TestCaseWithTransport):
 
     def prepare_for_merging(self):
         this, other = self.set_up_trees()
-        other.commit('rev3', rev_id='rev3')
+        other.commit('rev3', rev_id=b'rev3')
         this.lock_write()
         self.addCleanup(this.unlock)
         return this, other

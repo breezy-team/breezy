@@ -86,13 +86,13 @@ class TestRevno(tests.TestCaseWithTransport):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id'], [], revision_id='B-id')
-        builder.build_snapshot(['A-id', 'B-id'], [], revision_id='C-id')
+            revision_id=b'A-id')
+        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot(['A-id', 'B-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         co_b = b.create_checkout('checkout_b', lightweight=True,
-                                 revision_id='B-id')
+                                 revision_id=b'B-id')
         out, err = self.run_bzr('revno checkout_b')
         self.assertEqual('', err)
         self.assertEqual('2\n', out)
@@ -104,17 +104,17 @@ class TestRevno(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id'], [], revision_id='B-id')
-        builder.build_snapshot(['A-id'], [], revision_id='C-id')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            revision_id=b'A-id')
+        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         # The branch is now at "C-id", but the checkout is still at "B-id"
         # which is no longer in the history
         co_b = b.create_checkout('checkout_b', lightweight=True,
-                                 revision_id='B-id')
+                                 revision_id=b'B-id')
         out, err = self.run_bzr('revno checkout_b')
         self.assertEqual('', err)
         self.assertEqual('2\n', out)
@@ -147,7 +147,7 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
     def test_simple_branch_revno(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         revid = t.commit("message")
         self.reset_smart_call_log()
@@ -164,7 +164,7 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
     def test_simple_branch_revno_lookup(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         revid1 = t.commit("message")
         revid2 = t.commit("message")

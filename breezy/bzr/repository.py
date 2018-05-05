@@ -137,7 +137,8 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         if shared == True:
             utf8_files += [('shared-storage', b'')]
         try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            for dir in dirs:
+                transport.mkdir(dir, mode=a_bzrdir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
                     mode=a_bzrdir._get_file_mode())
@@ -158,11 +159,9 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-            # GZ 2017-06-17: Where should format strings get decoded...
-            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
-        return klass._find_format(format_registry, 'repository', format_text)
+        return klass._find_format(format_registry, 'repository', format_string)
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
