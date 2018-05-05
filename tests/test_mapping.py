@@ -19,10 +19,6 @@
 
 from __future__ import absolute_import
 
-from ....bzr.inventory import (
-    InventoryDirectory,
-    InventoryFile,
-    )
 from ....revision import (
     Revision,
     )
@@ -30,16 +26,20 @@ from ....revision import (
 from dulwich.objects import (
     Blob,
     Commit,
+    Tag,
     Tree,
     parse_timezone,
+    )
+from dulwich.tests.utils import (
+    make_object,
     )
 
 from .. import tests
 from ..errors import UnknownCommitExtra
 from ..mapping import (
     BzrGitMappingv1,
-    directory_to_tree,
     escape_file_id,
+    fix_person_identifier,
     unescape_file_id,
     )
 
@@ -194,6 +194,27 @@ class TestImportCommit(tests.TestCase):
         mapping = BzrGitMappingv1()
         self.assertRaises(UnknownCommitExtra, mapping.import_commit, c,
             mapping.revision_id_foreign_to_bzr)
+
+    def test_mergetag(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = "Author"
+        tag = make_object(Tag,
+                tagger=b'Jelmer Vernooij <jelmer@samba.org>',
+                name=b'0.1', message=None,
+                object=(Blob, b'd80c186a03f423a81b39df39dc87fd269736ca86'),
+                tag_time=423423423, tag_timezone=0)
+        c.mergetag = [tag]
+        mapping = BzrGitMappingv1()
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+                c, mapping.revision_id_foreign_to_bzr)
+        self.assertEqual(rev.properties['git-mergetag-0'], tag.as_raw_string())
 
 
 class RoundtripRevisionsFromBazaar(tests.TestCase):
@@ -353,40 +374,37 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c._extra = [("HG:rename-source", "hg")]
         self.assertRoundtripCommit(c)
 
+    def test_commit_mergetag(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer <Committer>"
+        c.commit_time = 4
+        c.commit_timezone = -60 * 3
+        c.author_time = 5
+        c.author_timezone = 60 * 2
+        c.author = "Author <author>"
+        tag = make_object(Tag,
+                tagger=b'Jelmer Vernooij <jelmer@samba.org>',
+                name=b'0.1', message=None,
+                object=(Blob, b'd80c186a03f423a81b39df39dc87fd269736ca86'),
+                tag_time=423423423, tag_timezone=0)
+        c.mergetag = [tag]
+        self.assertRoundtripCommit(c)
 
-class DirectoryToTreeTests(tests.TestCase):
 
-    def test_empty(self):
-        t = directory_to_tree({}, None, {}, None, allow_empty=False)
-        self.assertEquals(None, t)
+class FixPersonIdentifierTests(tests.TestCase):
 
-    def test_empty_dir(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        children = {'bar': child_ie}
-        t = directory_to_tree(children, lambda x: None, {}, None,
-                allow_empty=False)
-        self.assertEquals(None, t)
+    def test_valid(self):
+        self.assertEqual("foo <bar@blah.nl>",
+                         fix_person_identifier("foo <bar@blah.nl>"))
+        self.assertEqual("bar@blah.nl <bar@blah.nl>",
+                         fix_person_identifier("bar@blah.nl"))
 
-    def test_empty_dir_dummy_files(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        children = {'bar':child_ie}
-        t = directory_to_tree(children, lambda x: None, {}, ".mydummy",
-                allow_empty=False)
-        self.assertTrue(".mydummy" in t)
-
-    def test_empty_root(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        children = {'bar': child_ie}
-        t = directory_to_tree(children, lambda x: None, {}, None,
-                allow_empty=True)
-        self.assertEquals(Tree(), t)
-
-    def test_with_file(self):
-        child_ie = InventoryFile('bar', 'bar', 'bar')
-        children = {"bar": child_ie}
-        b = Blob.from_string("bla")
-        t1 = directory_to_tree(children, lambda x: b.id, {}, None,
-                allow_empty=False)
-        t2 = Tree()
-        t2.add("bar", 0100644, b.id)
-        self.assertEquals(t1, t2)
+    def test_fix(self):
+        self.assertEqual("person <bar@blah.nl>",
+                         fix_person_identifier("somebody <person <bar@blah.nl>>"))
+        self.assertEqual("person <bar@blah.nl>",
+                         fix_person_identifier("person<bar@blah.nl>"))
+        self.assertRaises(ValueError,
+                         fix_person_identifier, "person >bar@blah.nl<")

@@ -28,6 +28,10 @@ from dulwich.errors import (
     NotGitRepository,
     NoIndexPresent,
     )
+from dulwich.file import (
+    GitFile,
+    FileLocked,
+    )
 from dulwich.objects import (
     ShaFile,
     )
@@ -68,11 +72,16 @@ from ... import (
 from ...errors import (
     AlreadyControlDirError,
     FileExists,
+    LockBroken,
     LockError,
+    LockContention,
+    NotLocalUrl,
     NoSuchFile,
     ReadError,
     TransportNotPossible,
     )
+
+from ...lock import LogicalLockResult
 
 
 class TransportRefsContainer(RefsContainer):
@@ -329,6 +338,17 @@ class TransportRefsContainer(RefsContainer):
         except KeyError:
             return default
 
+    def unlock_ref(self, name):
+        if name == b"HEAD":
+            transport = self.worktree_transport
+        else:
+            transport = self.transport
+        lockname = name + ".lock"
+        try:
+            self.transport.delete(lockname)
+        except NoSuchFile:
+            pass
+
     def lock_ref(self, name):
         if name == b"HEAD":
             transport = self.worktree_transport
@@ -337,14 +357,27 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(name)
         lockname = name + ".lock"
         try:
-            return transport.lock_write(lockname)
-        except TransportNotPossible:
-            # better than not locking at all, I guess?
-            if transport.has(lockname):
-                raise LockError(lockname + " exists")
-            transport.put_bytes(lockname, "Locked by brz-git")
-            from ...lock import LogicalLockResult
-            return LogicalLockResult(lambda: transport.delete(lockname))
+            local_path = self.transport.local_abspath(name)
+        except NotLocalUrl:
+            # This is racy, but what can we do?
+            if self.transport.has(lockname):
+                raise LockContention(name)
+            lock_result = self.transport.put_bytes(lockname, b'Locked by brz-git')
+            return LogicalLockResult(lambda: self.transport.delete(lockname))
+        else:
+            try:
+                gf = GitFile(local_path, 'wb')
+            except FileLocked as e:
+                raise LockContention(name, e)
+            else:
+                def unlock():
+                    try:
+                        self.transport.delete(lockname)
+                    except NoSuchFile:
+                        raise LockBroken(lockname)
+                    # GitFile.abort doesn't care if the lock has already disappeared
+                    gf.abort()
+                return LogicalLockResult(unlock)
 
 
 class TransportRepo(BaseRepo):
@@ -391,6 +424,9 @@ class TransportRepo(BaseRepo):
 
     def controldir(self):
         return self._controltransport.local_abspath('.')
+
+    def commondir(self):
+        return self._commontransport.local_abspath('.')
 
     @property
     def path(self):
@@ -678,6 +714,8 @@ class TransportObjectStore(PackBasedObjectStore):
             write_pack_index_v2(idxfile, entries, data_sum)
         finally:
             idxfile.close()
+        # TODO(jelmer): Just add new pack to the cache
+        self._flush_pack_cache()
 
     def add_pack(self):
         """Add a new pack to this object store.

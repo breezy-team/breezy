@@ -52,7 +52,7 @@ def get_cache_dir():
         from ...config import config_dir
         ret = os.path.join(config_dir(), "git")
     else:
-        ret = os.path.join(xdg_cache_home, "bazaar", "git")
+        ret = os.path.join(xdg_cache_home, "breezy", "git")
     if not os.path.isdir(ret):
         os.makedirs(ret)
     return ret
@@ -262,9 +262,8 @@ class CacheUpdater(object):
 class BzrGitCache(object):
     """Caching backend."""
 
-    def __init__(self, idmap, content_cache, cache_updater_klass):
+    def __init__(self, idmap, cache_updater_klass):
         self.idmap = idmap
-        self.content_cache = content_cache
         self._cache_updater_klass = cache_updater_klass
 
     def get_updater(self, rev):
@@ -274,7 +273,7 @@ class BzrGitCache(object):
         return self._cache_updater_klass(self, rev)
 
 
-DictBzrGitCache = lambda: BzrGitCache(DictGitShaMap(), None, DictCacheUpdater)
+DictBzrGitCache = lambda: BzrGitCache(DictGitShaMap(), DictCacheUpdater)
 
 
 class DictCacheUpdater(CacheUpdater):
@@ -288,25 +287,26 @@ class DictCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+        else:
+            type_name = obj.type_name
+            hexsha = obj.id
+        if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
             key = self.revid
             type_data = (self.revid, self._commit.tree, bzr_key_data)
-            self.cache.idmap._by_revid[self.revid] = obj.id
-        elif obj.type_name in ("blob", "tree"):
+            self.cache.idmap._by_revid[self.revid] = hexsha
+        elif type_name in ("blob", "tree"):
             if bzr_key_data is not None:
-                if obj.type_name == "blob":
-                    revision = bzr_key_data[1]
-                else:
-                    revision = self.revid
-                key = type_data = (bzr_key_data[0], revision)
-                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
+                key = type_data = bzr_key_data
+                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = hexsha
         else:
             raise AssertionError
-        entry = (obj.type_name, type_data)
-        self.cache.idmap._by_sha.setdefault(obj.id, {})[key] = entry
+        entry = (type_name, type_data)
+        self.cache.idmap._by_sha.setdefault(hexsha, {})[key] = entry
 
     def finish(self):
         if self._commit is None:
@@ -356,17 +356,22 @@ class SqliteCacheUpdater(CacheUpdater):
         self._blobs = []
 
     def add_object(self, obj, bzr_key_data, path):
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+        else:
+            type_name = obj.type_name
+            hexsha = obj.id
+        if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
             self._testament3_sha1 = bzr_key_data.get("testament3-sha1")
-        elif obj.type_name == "tree":
+        elif type_name == "tree":
             if bzr_key_data is not None:
-                self._trees.append((obj.id, bzr_key_data[0], self.revid))
-        elif obj.type_name == "blob":
+                self._trees.append((hexsha, bzr_key_data[0], bzr_key_data[1]))
+        elif type_name == "blob":
             if bzr_key_data is not None:
-                self._blobs.append((obj.id, bzr_key_data[0], bzr_key_data[1]))
+                self._blobs.append((hexsha, bzr_key_data[0], bzr_key_data[1]))
         else:
             raise AssertionError
 
@@ -385,7 +390,7 @@ class SqliteCacheUpdater(CacheUpdater):
         return self._commit
 
 
-SqliteBzrGitCache = lambda p: BzrGitCache(SqliteGitShaMap(p), None, SqliteCacheUpdater)
+SqliteBzrGitCache = lambda p: BzrGitCache(SqliteGitShaMap(p), SqliteCacheUpdater)
 
 
 class SqliteGitCacheFormat(BzrGitCacheFormat):
@@ -520,8 +525,13 @@ class TdbCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
-        sha = obj.sha().digest()
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+            sha = hex_to_sha(hexsha)
+        else:
+            type_name = obj.type_name
+            sha = obj.sha().digest()
+        if type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
@@ -531,19 +541,18 @@ class TdbCacheUpdater(CacheUpdater):
             except KeyError:
                 pass
             self._commit = obj
-        elif obj.type_name == "blob":
+        elif type_name == "blob":
             if bzr_key_data is None:
                 return
             self.db["\0".join(("blob", bzr_key_data[0], bzr_key_data[1]))] = sha
             type_data = bzr_key_data
-        elif obj.type_name == "tree":
+        elif type_name == "tree":
             if bzr_key_data is None:
                 return
-            (file_id, ) = bzr_key_data
-            type_data = (file_id, self.revid)
+            type_data = bzr_key_data
         else:
             raise AssertionError
-        entry = "\0".join((obj.type_name, ) + type_data) + "\n"
+        entry = "\0".join((type_name, ) + type_data) + "\n"
         key = "git\0" + sha
         try:
             oldval = self.db[key]
@@ -561,7 +570,7 @@ class TdbCacheUpdater(CacheUpdater):
         return self._commit
 
 
-TdbBzrGitCache = lambda p: BzrGitCache(TdbGitShaMap(p), None, TdbCacheUpdater)
+TdbBzrGitCache = lambda p: BzrGitCache(TdbGitShaMap(p), TdbCacheUpdater)
 
 
 class TdbGitCacheFormat(BzrGitCacheFormat):
@@ -706,21 +715,6 @@ class VersionedFilesContentCache(ContentCache):
         return ShaFile._parse_legacy_object(entry.get_bytes_as('fulltext'))
 
 
-class GitObjectStoreContentCache(ContentCache):
-
-    def __init__(self, store):
-        self.store = store
-
-    def add_multi(self, objs):
-        self.store.add_objects(objs)
-
-    def add(self, obj, path):
-        self.store.add_object(obj)
-
-    def __getitem__(self, sha):
-        return self.store[sha]
-
-
 class IndexCacheUpdater(CacheUpdater):
 
     def __init__(self, cache, rev):
@@ -729,31 +723,31 @@ class IndexCacheUpdater(CacheUpdater):
         self.parent_revids = rev.parent_ids
         self._commit = None
         self._entries = []
-        self._cache_objs = set()
 
     def add_object(self, obj, bzr_key_data, path):
-        if obj.type_name == "commit":
+        if isinstance(obj, tuple):
+            (type_name, hexsha) = obj
+        else:
+            type_name = obj.type_name
+            hexsha = obj.id
+        if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
-            self.cache.idmap._add_git_sha(obj.id, "commit",
+            self.cache.idmap._add_git_sha(hexsha, "commit",
                 (self.revid, obj.tree, bzr_key_data))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
-                " ".join((obj.id, obj.tree)))
-            self._cache_objs.add((obj, path))
-        elif obj.type_name == "blob":
-            self.cache.idmap._add_git_sha(obj.id, "blob", bzr_key_data)
+                " ".join((hexsha, obj.tree)))
+        elif type_name == "blob":
+            self.cache.idmap._add_git_sha(hexsha, "blob", bzr_key_data)
             self.cache.idmap._add_node(("blob", bzr_key_data[0],
-                bzr_key_data[1]), obj.id)
-        elif obj.type_name == "tree":
-            self.cache.idmap._add_git_sha(obj.id, "tree",
-                (bzr_key_data[0], self.revid))
-            self._cache_objs.add((obj, path))
+                bzr_key_data[1]), hexsha)
+        elif type_name == "tree":
+            self.cache.idmap._add_git_sha(hexsha, "tree", bzr_key_data)
         else:
             raise AssertionError
 
     def finish(self):
-        self.cache.content_cache.add_multi(self._cache_objs)
         return self._commit
 
 
@@ -762,13 +756,8 @@ class IndexBzrGitCache(BzrGitCache):
     def __init__(self, transport=None):
         mapper = versionedfile.ConstantMapper("trees")
         shamap = IndexGitShaMap(transport.clone('index'))
-        #trees_store = knit.make_file_factory(True, mapper)(transport)
-        #content_cache = VersionedFilesContentCache(trees_store)
         from .transportgit import TransportObjectStore
-        store = TransportObjectStore(transport.clone('objects'))
-        content_cache = GitObjectStoreContentCache(store)
-        super(IndexBzrGitCache, self).__init__(shamap, content_cache,
-                IndexCacheUpdater)
+        super(IndexBzrGitCache, self).__init__(shamap, IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
@@ -792,8 +781,8 @@ class IndexGitShaMap(GitShaMap):
 
     BTree Index file with the following contents:
 
-    ("git", <sha1>) -> "<type> <type-data1> <type-data2>"
-    ("commit", <revid>) -> "<sha1> <tree-id>"
+    ("git", <sha1>, "X") -> "<type> <type-data1> <type-data2>"
+    ("commit", <revid>, "X") -> "<sha1> <tree-id>"
     ("blob", <fileid>, <revid>) -> <sha1>
 
     """
@@ -836,8 +825,9 @@ class IndexGitShaMap(GitShaMap):
         if self._builder is not None:
             raise errors.BzrError('builder already open')
         self.start_write_group()
-        for _, key, value in self._index.iter_all_entries():
-            self._builder.add_node(key, value)
+        self._builder.add_nodes(
+            ((key, value) for (_, key, value) in
+                self._index.iter_all_entries()))
         to_remove = []
         for name in self._transport.list_dir('.'):
             if name.endswith('.rix'):
@@ -872,12 +862,12 @@ class IndexGitShaMap(GitShaMap):
 
     def _add_node(self, key, value):
         try:
+            self._get_entry(key)
+        except KeyError:
             self._builder.add_node(key, value)
-        except bzr_errors.BadIndexDuplicateKey:
-            # Multiple bzr objects can have the same contents
-            return True
-        else:
             return False
+        else:
+            return True
 
     def _get_entry(self, key):
         entries = self._index.iter_entries([key])
@@ -925,20 +915,19 @@ class IndexGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        found = False
-        for key, value in self._iter_entries_prefix(("git", sha, None)):
-            found = True
-            data = value.split(" ", 3)
-            if data[0] == "commit":
+        value = self._get_entry(("git", sha, "X"))
+        data = value.split(" ", 3)
+        if data[0] == "commit":
+            try:
                 if data[3]:
                     verifiers = {"testament3-sha1": data[3]}
                 else:
                     verifiers = {}
-                yield ("commit", (data[1], data[2], verifiers))
-            else:
-                yield (data[0], tuple(data[1:]))
-        if not found:
-            raise KeyError(sha)
+            except IndexError:
+                verifiers = {}
+            yield ("commit", (data[1], data[2], verifiers))
+        else:
+            yield (data[0], tuple(data[1:]))
 
     def revids(self):
         """List the revision ids known."""
@@ -967,13 +956,7 @@ formats.register(SqliteGitCacheFormat().get_format_string(),
 formats.register(IndexGitCacheFormat().get_format_string(),
     IndexGitCacheFormat())
 # In the future, this will become the default:
-# formats.register('default', IndexGitCacheFormat())
-try:
-    import tdb
-except ImportError:
-    formats.register('default', SqliteGitCacheFormat())
-else:
-    formats.register('default', TdbGitCacheFormat())
+formats.register('default', IndexGitCacheFormat())
 
 
 

@@ -18,9 +18,6 @@
 
 from __future__ import absolute_import
 
-from dulwich.errors import (
-    NotCommitError,
-    )
 from dulwich.objects import (
     Commit,
     Tag,
@@ -30,17 +27,13 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 from dulwich.object_store import (
-    ObjectStoreGraphWalker,
     tree_lookup_path,
     )
-from dulwich.protocol import CAPABILITY_THIN_PACK
 from dulwich.walk import Walker
 from itertools import (
     imap,
     )
-from io import BytesIO
 import posixpath
-import re
 import stat
 
 from ... import (
@@ -83,7 +76,6 @@ from .mapping import (
     warn_unusual_mode,
     )
 from .object_store import (
-    BazaarObjectStore,
     LRUTreeCache,
     _tree_to_objects,
     )
@@ -190,7 +182,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
 
 class SubmodulesRequireSubtrees(BzrError):
     _fmt = ("The repository you are fetching from contains submodules, "
-            "which are not yet supported.")
+            "which require a Bazaar format that supports tree references.")
     internal = False
 
 
@@ -332,7 +324,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_bzr_tree, old_path,
             base_tree, existing_children, lookup_object))
-    store_updater.add_object(tree, (file_id, ), path)
+    store_updater.add_object(tree, (file_id, revision_id), path)
     return invdelta, child_modes
 
 
@@ -540,170 +532,6 @@ def import_git_objects(repo, mapping, object_iter,
     return pack_hints, last_imported
 
 
-class InterFromGitRepository(InterRepository):
-
-    _matching_repo_format = GitRepositoryFormat()
-
-    def _target_has_shas(self, shas):
-        raise NotImplementedError(self._target_has_shas)
-
-    def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                for k, unpeeled in refs.iteritems():
-                    if k.endswith("^{}"):
-                        continue
-                    if not is_tag(k):
-                        continue
-                    if unpeeled == ZERO_SHA:
-                        continue
-                    potential.add(unpeeled)
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
-
-    def determine_wants_all(self, refs):
-        raise NotImplementedError(self.determine_wants_all)
-
-    @staticmethod
-    def _get_repo_format_to_test():
-        return None
-
-    def copy_content(self, revision_id=None):
-        """See InterRepository.copy_content."""
-        self.fetch(revision_id, find_ghosts=False)
-
-    def search_missing_revision_ids(self,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
-        if limit is not None:
-            raise errors.FetchLimitUnsupported(self)
-        git_shas = []
-        todo = []
-        if revision_ids:
-            todo.extend(revision_ids)
-        if if_present_ids:
-            todo.extend(revision_ids)
-        for revid in revision_ids:
-            if revid == NULL_REVISION:
-                continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-            git_shas.append(git_sha)
-        walker = Walker(self.source._git.object_store,
-            include=git_shas, exclude=[
-                sha for sha in self.target.controldir.get_refs_container().as_dict().values()
-                if sha != ZERO_SHA])
-        missing_revids = set()
-        for entry in walker:
-            missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
-        return self.source.revision_ids_to_search_result(missing_revids)
-
-
-class InterGitNonGitRepository(InterFromGitRepository):
-    """Base InterRepository that copies revisions from a Git into a non-Git
-    repository."""
-
-    def _target_has_shas(self, shas):
-        revids = {}
-        for sha in shas:
-            try:
-                revid = self.source.lookup_foreign_revision_id(sha)
-            except NotCommitError:
-                # Commit is definitely not present
-                continue
-            else:
-                revids[revid] = sha
-        return set([revids[r] for r in self.target.has_revisions(revids)])
-
-    def determine_wants_all(self, refs):
-        potential = set()
-        for k, v in refs.iteritems():
-            # For non-git target repositories, only worry about peeled
-            if v == ZERO_SHA:
-                continue
-            potential.add(self.source.controldir.get_peeled(k) or v)
-        return list(potential - self._target_has_shas(potential))
-
-    def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                for k, unpeeled in refs.iteritems():
-                    if not is_tag(k):
-                        continue
-                    if unpeeled == ZERO_SHA:
-                        continue
-                    potential.add(self.source.controldir.get_peeled(k) or unpeeled)
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
-
-    def _warn_slow(self):
-        trace.warning(
-            'Fetching from Git to Bazaar repository. '
-            'For better performance, fetch into a Git repository.')
-
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
-        """Fetch objects from a remote server.
-
-        :param determine_wants: determine_wants callback
-        :param mapping: BzrGitMapping to use
-        :param limit: Maximum number of commits to import.
-        :return: Tuple with pack hint, last imported revision id and remote refs
-        """
-        raise NotImplementedError(self.fetch_objects)
-
-    def get_determine_wants_revids(self, revids, include_tags=False):
-        wants = set()
-        for revid in set(revids):
-            if self.target.has_revision(revid):
-                continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-            wants.add(git_sha)
-        return self.get_determine_wants_heads(wants, include_tags=include_tags)
-
-    def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, include_tags=False):
-        if mapping is None:
-            mapping = self.source.get_mapping()
-        if revision_id is not None:
-            interesting_heads = [revision_id]
-        elif fetch_spec is not None:
-            recipe = fetch_spec.get_recipe()
-            if recipe[0] in ("search", "proxy-search"):
-                interesting_heads = recipe[1]
-            else:
-                raise AssertionError("Unsupported search result type %s" %
-                        recipe[0])
-        else:
-            interesting_heads = None
-
-        if interesting_heads is not None:
-            determine_wants = self.get_determine_wants_revids(
-                interesting_heads, include_tags=include_tags)
-        else:
-            determine_wants = self.determine_wants_all
-
-        (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants,
-            mapping)
-        if pack_hint is not None and self.target._format.pack_compresses:
-            self.target.pack(hint=pack_hint)
-        return remote_refs
-
-
-_GIT_PROGRESS_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
-def report_git_progress(pb, text):
-    text = text.rstrip("\r\n")
-    trace.mutter('git: %s', text)
-    g = _GIT_PROGRESS_RE.match(text)
-    if g is not None:
-        (text, pct, current, total) = g.groups()
-        pb.update(text, int(current), int(total))
-    else:
-        pb.update(text, 0, 0)
-
-
 class DetermineWantsRecorder(object):
 
     def __init__(self, actual):
@@ -719,216 +547,4 @@ class DetermineWantsRecorder(object):
         return self.wants
 
 
-class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
-    """InterRepository that copies revisions from a remote Git into a non-Git
-    repository."""
 
-    def get_target_heads(self):
-        # FIXME: This should be more efficient
-        all_revs = self.target.all_revision_ids()
-        parent_map = self.target.get_parent_map(all_revs)
-        all_parents = set()
-        map(all_parents.update, parent_map.itervalues())
-        return set(all_revs) - all_parents
-
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
-        """See `InterGitNonGitRepository`."""
-        self._warn_slow()
-        store = BazaarObjectStore(self.target, mapping)
-        with store.lock_write():
-            heads = self.get_target_heads()
-            graph_walker = ObjectStoreGraphWalker(
-                [store._lookup_revision_sha1(head) for head in heads],
-                lambda sha: store[sha].parents)
-            wants_recorder = DetermineWantsRecorder(determine_wants)
-
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                objects_iter = self.source.fetch_objects(
-                    wants_recorder, graph_walker, store.get_raw,
-                    progress=lambda text: report_git_progress(pb, text),)
-                trace.mutter("Importing %d new revisions",
-                             len(wants_recorder.wants))
-                (pack_hint, last_rev) = import_git_objects(self.target,
-                    mapping, objects_iter, store, wants_recorder.wants, pb,
-                    limit)
-                return (pack_hint, last_rev, wants_recorder.remote_refs)
-            finally:
-                pb.finished()
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with GitRepository."""
-        if not isinstance(source, RemoteGitRepository):
-            return False
-        if not target.supports_rich_root():
-            return False
-        if isinstance(target, GitRepository):
-            return False
-        if not getattr(target._format, "supports_full_versioned_files", True):
-            return False
-        return True
-
-
-class InterLocalGitNonGitRepository(InterGitNonGitRepository):
-    """InterRepository that copies revisions from a local Git into a non-Git
-    repository."""
-
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
-        """See `InterGitNonGitRepository`."""
-        self._warn_slow()
-        remote_refs = self.source.controldir.get_refs_container().as_dict()
-        wants = determine_wants(remote_refs)
-        create_pb = None
-        pb = ui.ui_factory.nested_progress_bar()
-        target_git_object_retriever = BazaarObjectStore(self.target, mapping)
-        try:
-            target_git_object_retriever.lock_write()
-            try:
-                (pack_hint, last_rev) = import_git_objects(self.target,
-                    mapping, self.source._git.object_store,
-                    target_git_object_retriever, wants, pb, limit)
-                return (pack_hint, last_rev, remote_refs)
-            finally:
-                target_git_object_retriever.unlock()
-        finally:
-            pb.finished()
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with GitRepository."""
-        if not isinstance(source, LocalGitRepository):
-            return False
-        if not target.supports_rich_root():
-            return False
-        if isinstance(target, GitRepository):
-            return False
-        if not getattr(target._format, "supports_full_versioned_files", True):
-            return False
-        return True
-
-
-class InterGitGitRepository(InterFromGitRepository):
-    """InterRepository that copies between Git repositories."""
-
-    def fetch_refs(self, update_refs, lossy=False):
-        if lossy:
-            raise errors.LossyPushToSameVCS(self.source, self.target)
-        old_refs = self.target.controldir.get_refs_container()
-        ref_changes = {}
-        def determine_wants(heads):
-            old_refs = dict([(k, (v, None)) for (k, v) in heads.as_dict().iteritems()])
-            new_refs = update_refs(old_refs)
-            ref_changes.update(new_refs)
-            return [sha1 for (sha1, bzr_revid) in new_refs.itervalues()]
-        self.fetch_objects(determine_wants, lossy=lossy)
-        for k, (git_sha, bzr_revid) in ref_changes.iteritems():
-            self.target._git.refs[k] = git_sha
-        new_refs = self.target.controldir.get_refs_container()
-        return None, old_refs, new_refs
-
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
-        if lossy:
-            raise errors.LossyPushToSameVCS(self.source, self.target)
-        if limit is not None:
-            raise errors.FetchLimitUnsupported(self)
-        graphwalker = self.target._git.get_graph_walker()
-        if (isinstance(self.source, LocalGitRepository) and
-            isinstance(self.target, LocalGitRepository)):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                refs = self.source._git.fetch(self.target._git, determine_wants,
-                    lambda text: report_git_progress(pb, text))
-            finally:
-                pb.finished()
-            return (None, None, refs)
-        elif (isinstance(self.source, LocalGitRepository) and
-              isinstance(self.target, RemoteGitRepository)):
-            raise NotImplementedError
-        elif (isinstance(self.source, RemoteGitRepository) and
-              isinstance(self.target, LocalGitRepository)):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
-                    # TODO(jelmer): Avoid reading entire file into memory and
-                    # only processing it after the whole file has been fetched.
-                    f = BytesIO()
-
-                    def commit():
-                        if f.tell():
-                            f.seek(0)
-                            self.target._git.object_store.move_in_thin_pack(f)
-
-                    def abort():
-                        pass
-                else:
-                    f, commit, abort = self.target._git.object_store.add_pack()
-                try:
-                    refs = self.source.controldir.fetch_pack(
-                        determine_wants, graphwalker, f.write,
-                        lambda text: report_git_progress(pb, text))
-                    commit()
-                    return (None, None, refs)
-                except BaseException:
-                    abort()
-                    raise
-            finally:
-                pb.finished()
-        else:
-            raise AssertionError("fetching between %r and %r not supported" %
-                    (self.source, self.target))
-
-    def _target_has_shas(self, shas):
-        return set([sha for sha in shas if sha in self.target._git.object_store])
-
-    def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, branches=None, limit=None, include_tags=False):
-        if mapping is None:
-            mapping = self.source.get_mapping()
-        r = self.target._git
-        if revision_id is not None:
-            args = [revision_id]
-        elif fetch_spec is not None:
-            recipe = fetch_spec.get_recipe()
-            if recipe[0] in ("search", "proxy-search"):
-                heads = recipe[1]
-            else:
-                raise AssertionError(
-                    "Unsupported search result type %s" % recipe[0])
-            args = heads
-        if branches is not None:
-            def determine_wants(refs):
-                ret = []
-                for name, value in refs.iteritems():
-                    if value == ZERO_SHA:
-                        continue
-
-                    if name in branches or (include_tags and is_tag(name)):
-                        ret.append(value)
-                return ret
-        elif fetch_spec is None and revision_id is None:
-            determine_wants = self.determine_wants_all
-        else:
-            determine_wants = self.get_determine_wants_revids(args, include_tags=include_tags)
-        wants_recorder = DetermineWantsRecorder(determine_wants)
-        self.fetch_objects(wants_recorder, mapping, limit=limit)
-        return wants_recorder.remote_refs
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with GitRepository."""
-        return (isinstance(source, GitRepository) and
-                isinstance(target, GitRepository))
-
-    def get_determine_wants_revids(self, revids, include_tags=False):
-        wants = set()
-        for revid in set(revids):
-            if self.target.has_revision(revid):
-                continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-            wants.add(git_sha)
-        return self.get_determine_wants_heads(wants, include_tags=include_tags)
-
-    def determine_wants_all(self, refs):
-        potential = set([v for v in refs.values() if not v == ZERO_SHA])
-        return list(potential - self._target_has_shas(potential))

@@ -507,7 +507,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_reference_revision(self, path, file_id=None):
         """See RevisionTree.get_symlink_target."""
-        (mode, hexsha) = self._lookup_path(path)
+        (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
             return self._repository.lookup_foreign_revision_id(hexsha)
         else:
@@ -787,6 +787,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._lock_mode = None
         self._lock_count = 0
         self._versioned_dirs = None
+        self._index_dirty = False
 
     def is_versioned(self, path):
         with self.lock_read():
@@ -870,6 +871,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         # TODO(jelmer): Look in other indexes
         return self.index, encoded_path
 
+    def _index_del_entry(self, index, path):
+        del index[path]
+        # TODO(jelmer): Keep track of dirty per index
+        self._index_dirty = True
+
     def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
         if not isinstance(path, basestring):
             raise TypeError(path)
@@ -929,6 +935,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return
         (index, index_path) = self._lookup_index(encoded_path)
         index[index_path] = index_entry_from_stat(stat_val, hexsha, flags)
+        self._index_dirty = True
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
 
@@ -1043,14 +1050,14 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         count = 0
         (index, subpath) = self._lookup_index(encoded_path)
         try:
-            del index[subpath]
+            self._index_del_entry(index, encoded_path)
         except KeyError:
             # A directory, perhaps?
             # TODO(jelmer): Deletes that involve submodules?
             for p in list(index):
                 if p.startswith(subpath+b"/"):
                     count += 1
-                    del index[p]
+                    self._index_del_entry(index, p)
         else:
             count = 1
         self._versioned_dirs = None
@@ -1073,7 +1080,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(old_path.encode('utf-8'))
                 if old_subpath in index:
-                    del index[old_subpath]
+                    self._index_del_entry(index, old_subpath)
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
                 self._index_add_entry(new_path, ie.kind)
@@ -1160,7 +1167,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if kind != 'directory':
                 (index, from_index_path) = self._lookup_index(from_path)
                 try:
-                    del index[from_index_path]
+                    self._index_del_entry(index, from_path)
                 except KeyError:
                     pass
                 self._index_add_entry(to_rel, kind)
@@ -1169,8 +1176,10 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 for child_path, child_value in todo:
                     (child_to_index, child_to_index_path) = self._lookup_index(posixpath.join(to_path, posixpath.relpath(child_path, from_path)))
                     child_to_index[child_to_index_path] = child_value
+                    # TODO(jelmer): Mark individual index as dirty
+                    self._index_dirty = True
                     (child_from_index, child_from_index_path) = self._lookup_index(child_path)
-                    del child_from_index[child_from_index_path]
+                    self._index_del_entry(child_from_index, child_from_index_path)
 
             self._versioned_dirs = None
             self.flush()

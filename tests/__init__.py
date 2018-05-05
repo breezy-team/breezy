@@ -211,6 +211,7 @@ def test_suite():
         'test_server',
         'test_transportgit',
         'test_unpeel_map',
+        'test_urls',
         'test_workingtree',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]

@@ -18,16 +18,23 @@
 
 from __future__ import absolute_import
 
+import re
+
 from ... import (
     config,
     debug,
+    errors,
     trace,
     ui,
     urlutils,
     )
+from ...push import (
+    PushResult,
+    )
 from ...errors import (
     AlreadyBranchError,
     BzrError,
+    DivergedBranches,
     InProcessTransport,
     InvalidRevisionId,
     NoSuchFile,
@@ -35,6 +42,7 @@ from ...errors import (
     NoSuchTag,
     NotBranchError,
     NotLocalUrl,
+    NoWorkingTree,
     UninitializableFormat,
     )
 from ...transport import (
@@ -43,13 +51,16 @@ from ...transport import (
 
 from . import (
     lazy_check_versions,
+    user_agent_for_github,
     )
 lazy_check_versions()
 
 from .branch import (
     GitBranch,
     GitBranchFormat,
+    GitBranchPushResult,
     GitTags,
+    _quick_lookup_revno,
     )
 from .dir import (
     GitControlDirFormat,
@@ -62,6 +73,12 @@ from .errors import (
     )
 from .mapping import (
     mapping_registry,
+    )
+from .object_store import (
+    get_object_store,
+    )
+from .push import (
+    remote_divergence,
     )
 from .repository import (
     GitRepository,
@@ -82,8 +99,14 @@ from dulwich.pack import (
     Pack,
     pack_objects_to_data,
     )
-from dulwich.refs import SYMREF
-from dulwich.repo import DictRefsContainer
+from dulwich.protocol import ZERO_SHA
+from dulwich.refs import (
+    DictRefsContainer,
+    SYMREF,
+    )
+from dulwich.repo import (
+    NotGitRepository,
+    )
 import os
 import select
 import tempfile
@@ -95,6 +118,24 @@ import urlparse
 urlparse.uses_netloc.extend(['git', 'git+ssh'])
 
 from dulwich.pack import load_pack_index
+
+
+class GitPushResult(PushResult):
+
+    def _lookup_revno(self, revid):
+        try:
+            return _quick_lookup_revno(self.source_branch, self.target_branch,
+                revid)
+        except GitSmartRemoteNotSupported:
+            return None
+
+    @property
+    def old_revno(self):
+        return self._lookup_revno(self.old_revid)
+
+    @property
+    def new_revno(self):
+        return self._lookup_revno(self.new_revid)
 
 
 # Don't run any tests on GitSmartTransport as it is not intended to be
@@ -273,11 +314,31 @@ class RemoteGitBranchFormat(GitBranchFormat):
         raise UninitializableFormat(self)
 
 
-def default_report_progress(text):
-    if text.startswith('error: '):
-        trace.show_error('git: %s', text[len('error: '):])
-    else:
-        trace.mutter("git: %s" % text)
+class DefaultProgressReporter(object):
+
+    _GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
+    _GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
+
+    def __init__(self, pb):
+        self.pb = pb
+
+    def progress(self, text):
+        text = text.rstrip("\r\n")
+        if text.startswith('error: '):
+            trace.show_error('git: %s', text[len('error: '):])
+        else:
+            trace.mutter("git: %s", text)
+            g = self._GIT_PROGRESS_PARTIAL_RE.match(text)
+            if g is not None:
+                (text, pct, current, total) = g.groups()
+                self.pb.update(text, int(current), int(total))
+            else:
+                g = self._GIT_PROGRESS_TOTAL_RE.match(text)
+                if g is not None:
+                    (text, total) = g.groups()
+                    self.pb.update(text, None, int(total))
+                else:
+                    trace.note("%s", text)
 
 
 class RemoteGitDir(GitDir):
@@ -298,7 +359,10 @@ class RemoteGitDir(GitDir):
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
-            progress = default_report_progress
+            pb = ui.ui_factory.nested_progress_bar()
+            progress = DefaultProgressReporter(pb).progress
+        else:
+            pb = None
         try:
             result = self._client.fetch_pack(self._client_path, determine_wants,
                 graph_walker, pack_data, progress)
@@ -308,16 +372,28 @@ class RemoteGitDir(GitDir):
             return result
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
+        finally:
+            if pb is not None:
+                pb.finished()
 
     def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
         if progress is None:
-            progress = default_report_progress
-
+            pb = ui.ui_factory.nested_progress_bar()
+            progress = DefaultProgressReporter(pb).progress
+        else:
+            pb = None
+        def get_changed_refs_wrapper(refs):
+            # TODO(jelmer): This drops symref information
+            self._refs = remote_refs_dict_to_container(refs)
+            return get_changed_refs(refs)
         try:
-            return self._client.send_pack(self._client_path, get_changed_refs,
-                generate_pack_data, progress)
+            return self._client.send_pack(self._client_path,
+                    get_changed_refs_wrapper, generate_pack_data, progress)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
+        finally:
+            if pb is not None:
+                pb.finished()
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None, ref=None):
@@ -391,6 +467,73 @@ class RemoteGitDir(GitDir):
                 result.refs, result.symrefs)
         return self._refs
 
+    def push_branch(self, source, revision_id=None, overwrite=False,
+                    remember=False, create_prefix=False, lossy=False,
+                    name=None):
+        """Push the source branch into this ControlDir."""
+        if revision_id is None:
+            # No revision supplied by the user, default to the branch
+            # revision
+            revision_id = source.last_revision()
+
+        push_result = GitPushResult()
+        push_result.workingtree_updated = None
+        push_result.master_branch = None
+        push_result.source_branch = source
+        push_result.stacked_on = None
+        push_result.branch_push_result = None
+        repo = self.find_repository()
+        refname = self._get_selected_ref(name)
+        if isinstance(source, GitBranch) and lossy:
+            raise errors.LossyPushToSameVCS(source.controldir, self)
+        source_store = get_object_store(source.repository)
+        with source_store.lock_read():
+            def get_changed_refs(refs):
+                self._refs = remote_refs_dict_to_container(refs)
+                ret = dict(refs)
+                # TODO(jelmer): Unpeel if necessary
+                push_result.new_original_revid = revision_id
+                if lossy:
+                    new_sha = source_store._lookup_revision_sha1(revision_id)
+                else:
+                    new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+                if not overwrite:
+                    if remote_divergence(ret.get(refname), new_sha, source_store):
+                        raise DivergedBranches(
+                                source, self.open_branch(name, nascent_ok=True))
+                ret[refname] = new_sha
+                return ret
+            if lossy:
+                generate_pack_data = source_store.generate_lossy_pack_data
+            else:
+                generate_pack_data = source_store.generate_pack_data
+            new_refs = self.send_pack(get_changed_refs, generate_pack_data)
+        push_result.new_revid = repo.lookup_foreign_revision_id(
+                new_refs[refname])
+        try:
+            old_remote = self._refs[refname]
+        except KeyError:
+            old_remote = ZERO_SHA
+        push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
+        self._refs = remote_refs_dict_to_container(new_refs)
+        push_result.target_branch = self.open_branch(name)
+        if old_remote != ZERO_SHA:
+            push_result.branch_push_result = GitBranchPushResult()
+            push_result.branch_push_result.source_branch = source
+            push_result.branch_push_result.target_branch = push_result.target_branch
+            push_result.branch_push_result.local_branch = None
+            push_result.branch_push_result.master_branch = push_result.target_branch
+            push_result.branch_push_result.old_revid = push_result.old_revid
+            push_result.branch_push_result.new_revid = push_result.new_revid
+            push_result.branch_push_result.new_original_revid = push_result.new_original_revid
+        if source.get_push_location() is None or remember:
+            source.set_push_location(push_result.target_branch.base)
+        return push_result
+
+    def _find_commondir(self):
+        # There is no way to find the commondir, if there is any.
+        return self
+
 
 class EmptyObjectStoreIterator(dict):
 
@@ -431,14 +574,63 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
         super(BzrGitHttpClient, self).__init__(transport.external_url(), *args, **kwargs)
-        import urllib2
-        self._http_perform = getattr(self.transport, "_perform", urllib2.urlopen)
 
-    def _perform(self, req):
-        req.accepted_errors = (200, 404)
-        req.follow_redirections = True
-        req.redirected_to = None
-        return self._http_perform(req)
+    def _http_request(self, url, headers=None, data=None,
+                      allow_compression=False):
+        """Perform HTTP request.
+
+        :param url: Request URL.
+        :param headers: Optional custom headers to override defaults.
+        :param data: Request data.
+        :param allow_compression: Allow GZipped communication.
+        :return: Tuple (`response`, `read`), where response is an `urllib3`
+            response object with additional `content_type` and
+            `redirect_location` properties, and `read` is a consumable read
+            method for the response data.
+        """
+        from breezy.transport.http._urllib2_wrappers import Request
+        headers['User-agent'] = user_agent_for_github()
+        headers["Pragma"] = "no-cache"
+        if allow_compression:
+            headers["Accept-Encoding"] = "gzip"
+        else:
+            headers["Accept-Encoding"] = "identity"
+
+        request = Request(
+            ('GET' if data is None else 'POST'),
+            url, data, headers,
+            accepted_errors=[200, 404])
+
+        response = self.transport._perform(request)
+
+        if response.code == 404:
+            raise NotGitRepository()
+        elif response.code != 200:
+            raise GitProtocolError("unexpected http resp %d for %s" %
+                                   (response.code, url))
+
+        # TODO: Optimization available by adding `preload_content=False` to the
+        # request and just passing the `read` method on instead of going via
+        # `BytesIO`, if we can guarantee that the entire response is consumed
+        # before issuing the next to still allow for connection reuse from the
+        # pool.
+        if response.getheader("Content-Encoding") == "gzip":
+            read = gzip.GzipFile(fileobj=response).read
+        else:
+            read = response.read
+
+        class WrapResponse(object):
+
+            def __init__(self, response):
+                self._response = response
+                self.status = response.code
+                self.content_type = response.getheader("Content-Type")
+                self.redirect_location = response.geturl()
+
+            def close(self):
+                self._response.close()
+
+        return WrapResponse(response), read
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):

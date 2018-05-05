@@ -108,12 +108,12 @@ class TestGitShaMap:
 
     def test_tree(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision("myrevid"))
+        updater = self.cache.get_updater(Revision("somerevid"))
         updater.add_object(self._get_test_commit(), {
             "testament3-sha1": "mytestamentsha" }, None)
         t = Tree()
         t.add("somename", stat.S_IFREG, Blob().id)
-        updater.add_object(t, ("fileid", ), "")
+        updater.add_object(t, ("fileid", "myrevid"), "")
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals([("tree", ("fileid", "myrevid"))],

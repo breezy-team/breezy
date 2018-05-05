@@ -93,11 +93,17 @@ def unescape_file_id(file_id):
 
 
 def fix_person_identifier(text):
-    if "<" in text and ">" in text:
-        if not " <" in text and text.count("<") == 1:
-            text = text.replace("<", " <")
-        return text
-    return "%s <%s>" % (text, text)
+    if not "<" in text and not ">" in text:
+        username = text
+        email = text
+    else:
+        if text.rindex(">") < text.rindex("<"):
+            raise ValueError(text)
+        username, email = text.split("<", 2)[-2:]
+        email = email.split(">", 1)[0]
+        if username.endswith(" "):
+            username = username[:-1]
+    return "%s <%s>" % (username, email)
 
 
 def warn_escaped(commit, num_escaped):
@@ -175,7 +181,7 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
         else:
-            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(file_modes.encode("utf-8"))])
+            return dict(bencode.bdecode(file_modes.encode("utf-8")))
 
     def _generate_git_svn_metadata(self, rev, encoding):
         try:
@@ -257,7 +263,7 @@ class BzrGitMapping(foreign.VcsMapping):
         :param verifiers: Verifiers info
         :return dulwich.objects.Commit represent the revision:
         """
-        from dulwich.objects import Commit
+        from dulwich.objects import Commit, Tag
         commit = Commit()
         commit.tree = tree_sha
         if not lossy:
@@ -329,6 +335,12 @@ class BzrGitMapping(foreign.VcsMapping):
                 raise NoPushSupport()
         if type(commit.message) is not str:
             raise TypeError(commit.message)
+        i = 0
+        propname = 'git-mergetag-0'
+        while propname in rev.properties:
+            commit.mergetag.append(Tag.from_string(rev.properties[propname].encode(encoding)))
+            i += 1
+            propname = 'git-mergetag-%d' % i
         if 'git-extra' in rev.properties:
             commit.extra.extend([l.split(' ', 1) for l in rev.properties['git-extra'].splitlines()])
         return commit
@@ -381,6 +393,9 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
             rev.properties['git-gpg-signature'] = commit.gpgsig.decode('ascii')
+        if commit.mergetag:
+            for i, tag in enumerate(commit.mergetag):
+                rev.properties['git-mergetag-%d' % i] = tag.as_raw_string()
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
@@ -585,36 +600,6 @@ def object_mode(kind, executable):
 def entry_mode(entry):
     """Determine the git file mode for an inventory entry."""
     return object_mode(entry.kind, getattr(entry, 'executable', False))
-
-
-def directory_to_tree(children, lookup_ie_sha1, unusual_modes, empty_file_name,
-                      allow_empty=False):
-    """Create a Git Tree object from a Bazaar directory.
-
-    :param children: Children inventory entries
-    :param lookup_ie_sha1: Lookup the Git SHA1 for a inventory entry
-    :param unusual_modes: Dictionary with unusual file modes by file ids
-    :param empty_file_name: Name to use for dummy files in empty directories,
-        None to ignore empty directories.
-    """
-    from dulwich.objects import Blob, Tree
-    tree = Tree()
-    for name, value in children.iteritems():
-        ie = children[name]
-        try:
-            mode = unusual_modes[ie.file_id]
-        except KeyError:
-            mode = entry_mode(ie)
-        hexsha = lookup_ie_sha1(ie)
-        if hexsha is not None:
-            tree.add(name.encode("utf-8"), mode, hexsha)
-    if not allow_empty and len(tree) == 0:
-        # Only the root can be an empty tree
-        if empty_file_name is not None:
-            tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
-        else:
-            return None
-    return tree
 
 
 def extract_unusual_modes(rev):

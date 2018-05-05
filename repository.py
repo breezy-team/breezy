@@ -26,6 +26,7 @@ from ... import (
     lock,
     repository,
     revision as _mod_revision,
+    trace,
     transactions,
     ui,
     version_info as breezy_version,
@@ -93,17 +94,37 @@ class GitCheck(check.Check):
 
     def __init__(self, repository, check_repo=True):
         self.repository = repository
+        self.check_repo = check_repo
         self.checked_rev_cnt = 0
+        self.object_count = None
+        self.problems = []
 
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with self.repository.lock_read():
-            # TODO(jelmer): Check some things
-            pass
+        with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
+            shas = set(self.repository._git.object_store)
+            self.object_count = len(shas)
+            # TODO(jelmer): Check more things
+            for i, sha in enumerate(shas):
+                self.progress.update('checking objects', i, self.object_count)
+                o = self.repository._git.object_store[sha]
+                try:
+                    o.check()
+                except Exception as e:
+                    self.problems.append((sha, e))
+
+    def _report_repo_results(self, verbose):
+        trace.note('checked repository {0} format {1}'.format(
+            self.repository.user_url,
+            self.repository._format))
+        trace.note('%6d objects', self.object_count)
+        for sha, problem in self.problems:
+            trace.note('%s: %s', sha, problem)
 
     def report_results(self, verbose):
-        pass
+        if self.check_repo:
+            self._report_repo_results(verbose)
 
 
 _optimisers_loaded = False
@@ -112,12 +133,14 @@ def lazy_load_optimisers():
     global _optimisers_loaded
     if _optimisers_loaded:
         return
-    from . import fetch, push
-    for optimiser in [fetch.InterRemoteGitNonGitRepository,
-                      fetch.InterLocalGitNonGitRepository,
-                      fetch.InterGitGitRepository,
-                      push.InterToLocalGitRepository,
-                      push.InterToRemoteGitRepository]:
+    from . import interrepo
+    for optimiser in [interrepo.InterRemoteGitNonGitRepository,
+                      interrepo.InterLocalGitNonGitRepository,
+                      interrepo.InterLocalGitLocalGitRepository,
+                      interrepo.InterRemoteGitLocalGitRepository,
+                      interrepo.InterToLocalGitRepository,
+                      interrepo.InterToRemoteGitRepository,
+                      ]:
         repository.InterRepository.register_optimiser(optimiser)
     _optimisers_loaded = True
 

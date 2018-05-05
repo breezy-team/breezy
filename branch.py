@@ -58,7 +58,11 @@ from .errors import (
     NoPushSupport,
     NoSuchRef,
     )
+from .push import (
+    remote_divergence,
+    )
 from .refs import (
+    branch_name_to_ref,
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
@@ -68,6 +72,7 @@ from .refs import (
 from .unpeel_map import (
     UnpeelMap,
     )
+from .urls import git_url_to_bzr_url
 
 from ...foreign import ForeignBranch
 
@@ -440,15 +445,41 @@ class GitBranch(ForeignBranch):
         # FIXME: Set "origin" url from .git/config ?
         cs = self.repository._git.get_config_stack()
         try:
-            return cs.get((b"remote", b'origin'), b"url").decode("utf-8")
+            location = cs.get((b"remote", b'origin'), b"url")
         except KeyError:
             return None
+
+        params = {}
+        try:
+            ref = cs.get((b"remote", b"origin"), b"merge")
+        except KeyError:
+            pass
+        else:
+            if ref != 'HEAD':
+                try:
+                    params['branch'] = ref_to_branch_name(ref).encode('utf-8')
+                except ValueError:
+                    params['ref'] = ref.encode('utf-8')
+
+        url = git_url_to_bzr_url(location)
+        return urlutils.join_segment_parameters(url, params)
 
     def set_parent(self, location):
         # FIXME: Set "origin" url in .git/config ?
         cs = self.repository._git.get_config()
-        location = urlutils.relative_url(self.base, location)
+        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        target_url, target_params = urlutils.split_segment_parameters(location)
+        location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", b"origin"), b"url", location)
+        if 'branch' in target_params:
+            cs.set((b"remote", b"origin"), b"merge",
+                   branch_name_to_ref(target_params['branch']))
+        elif 'ref' in target_params:
+            cs.set((b"remote", b"origin"), b"merge",
+                   target_params['ref'])
+        else:
+            # TODO(jelmer): Maybe unset rather than setting to HEAD?
+            cs.set((b"remote", b"origin"), b"merge", 'HEAD')
         f = StringIO()
         cs.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
@@ -572,6 +603,9 @@ class LocalGitBranch(GitBranch):
 
     def _unlock_ref(self):
         self._ref_lock.unlock()
+
+    def break_lock(self):
+        self.repository._git.refs.unlock_ref(self.ref)
 
     def fetch(self, from_branch, last_revision=None, limit=None):
         return branch.InterBranch.get(from_branch, self).fetch(
@@ -957,17 +991,22 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite, stop_revision):
-        # TODO(jelmer): Support overwrite
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         if stop_revision is None:
             stop_revision = self.source.last_revision()
-        # TODO(jelmer): Check for diverged branches
         def get_changed_refs(old_refs):
-            old_ref = old_refs.get(self.target.ref, ZERO_SHA)
-            result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
-            refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
+            old_ref = old_refs.get(self.target.ref, None)
+            if old_ref is None:
+                result.old_revid = revision.NULL_REVISION
+            else:
+                result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
+            new_ref = self.source.repository.lookup_bzr_revision_id(stop_revision)[0]
+            if not overwrite:
+                if remote_divergence(old_ref, new_ref, self.source.repository._git.object_store):
+                    raise errors.DivergedBranches(self.source, self.target)
+            refs = { self.target.ref: new_ref }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
                 refs[tag_name_to_ref(name)] = sha
@@ -1233,7 +1272,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                    update_refs, lossy=lossy)
+                    update_refs, lossy=lossy, overwrite=overwrite)
             except NoPushSupport:
                 raise errors.NoRoundtrippingSupport(self.source, self.target)
             (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))

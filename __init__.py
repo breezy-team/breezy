@@ -88,7 +88,7 @@ def import_dulwich():
         from dulwich import __version__ as dulwich_version
     except ImportError:
         raise bzr_errors.DependencyNotPresent("dulwich",
-            "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
+            "bzr-git: Please install dulwich, https://www.dulwich.io/")
     else:
         if dulwich_version < dulwich_minimum_version:
             raise bzr_errors.DependencyNotPresent("dulwich",
@@ -158,19 +158,24 @@ class LocalGitProber(Prober):
         return set([BareLocalGitControlDirFormat(), LocalGitControlDirFormat()])
 
 
+def user_agent_for_github():
+    # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
+    return "git/Breezy/%s" % breezy_version
+
+
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
         from ... import urlutils
         base_url, _ = urlutils.split_segment_parameters(transport.external_url())
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
-        from ...transport.http._urllib import HttpTransport_urllib, Request
+        from ...transport.http import Request
         headers = {"Content-Type": "application/x-git-upload-pack-request"}
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                       headers=headers)
         if req.get_host() == "github.com":
             # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-            req.add_header("User-Agent", "git/Breezy/%s" % breezy_version)
+            req.add_header("User-Agent", user_agent_for_github())
         elif req.get_host() == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise bzr_errors.NotBranchError(transport.base)

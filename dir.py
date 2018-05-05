@@ -26,22 +26,29 @@ from ... import (
     errors as bzr_errors,
     trace,
     osutils,
+    repository as _mod_repository,
     revision as _mod_revision,
     urlutils,
     )
-from ...controldir import RepositoryAcquisitionPolicy
 from ...transport import (
     do_catching_redirections,
     get_transport_from_path,
     )
 
 from ...controldir import (
+    BranchReferenceLoop,
     ControlDir,
     ControlDirFormat,
     format_registry,
     RepositoryAcquisitionPolicy,
     )
+from .object_store import (
+    get_object_store,
+    )
 
+from .push import (
+    GitPushResult,
+    )
 from .transportgit import (
     OBJECTDIR,
     TransportObjectStore,
@@ -219,16 +226,16 @@ class GitDir(ControlDir):
         result_dir = self.__class__(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
-        return result_dir
-
-    def _find_commondir(self):
         try:
-            commondir = self.control_transport.get_bytes('commondir')
-        except bzr_errors.NoSuchFile:
-            return self
-        else:
-            commondir = commondir.rstrip('/.git/')
-            return ControlDir.open_from_transport(get_transport_from_path(commondir))
+            # Cheaper to check if the target is not local, than to try making
+            # the tree and fail.
+            result_dir.root_transport.local_abspath('.')
+            if result_dir.open_repository().make_working_trees():
+                self.open_workingtree().clone(result_dir, revision_id=revision_id)
+        except (bzr_errors.NoWorkingTree, bzr_errors.NotLocalUrl):
+            pass
+
+        return result_dir
 
     def find_repository(self):
         """Find the repository that should be used.
@@ -277,6 +284,31 @@ class GitDir(ControlDir):
 
     def list_branches(self):
         return self.get_branches().values()
+
+    def push_branch(self, source, revision_id=None, overwrite=False,
+                    remember=False, create_prefix=False, lossy=False,
+                    name=None):
+        """Push the source branch into this ControlDir."""
+        push_result = GitPushResult()
+        push_result.workingtree_updated = None
+        push_result.master_branch = None
+        push_result.source_branch = source
+        push_result.stacked_on = None
+        repo = self.find_repository()
+        refname = self._get_selected_ref(name)
+        from .branch import GitBranch
+        if isinstance(source, GitBranch) and lossy:
+            raise errors.LossyPushToSameVCS(source.controldir, self)
+        target = self.open_branch(name, nascent_ok=True)
+        push_result.branch_push_result = source.push(
+                target, overwrite=overwrite, stop_revision=revision_id,
+                lossy=lossy)
+        push_result.new_revid = push_result.branch_push_result.new_revid
+        push_result.old_revid = push_result.branch_push_result.old_revid
+        push_result.target_branch = self.open_branch(name)
+        if source.get_push_location() is None or remember:
+            source.set_push_location(push_result.target_branch.base)
+        return push_result
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):
@@ -419,6 +451,8 @@ class LocalGitDir(GitDir):
     def set_branch_reference(self, target_branch, name=None):
         ref = self._get_selected_ref(name)
         if self.control_transport.base == target_branch.controldir.control_transport.base:
+            if ref == target_branch.ref:
+                raise BranchReferenceLoop(target_branch)
             self._git.refs.set_symbolic_ref(ref, target_branch.ref)
         else:
             try:
@@ -543,14 +577,9 @@ class LocalGitDir(GitDir):
         if not self._git.bare:
             from dulwich.errors import NoIndexPresent
             repo = self.find_repository()
-            try:
-                index = repo._git.open_index()
-            except NoIndexPresent:
-                pass
-            else:
-                from .workingtree import GitWorkingTree
-                branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
-                return GitWorkingTree(self, repo, branch, index)
+            from .workingtree import GitWorkingTree
+            branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
+            return GitWorkingTree(self, repo, branch)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
@@ -590,15 +619,13 @@ class LocalGitDir(GitDir):
         accelerator_tree=None, hardlink=False):
         if self._git.bare:
             raise bzr_errors.UnsupportedOperation(self.create_workingtree, self)
-        from dulwich.index import build_index_from_tree
         if from_branch is None:
             from_branch = self.open_branch(nascent_ok=True)
         if revision_id is None:
             revision_id = from_branch.last_revision()
         repo = self.find_repository()
         from .workingtree import GitWorkingTree
-        index = self._git.open_index()
-        wt = GitWorkingTree(self, repo, from_branch, index)
+        wt = GitWorkingTree(self, repo, from_branch)
         wt.set_last_revision(revision_id)
         wt._build_checkout_with_index()
         return wt
@@ -655,3 +682,12 @@ class LocalGitDir(GitDir):
 
     def get_peeled(self, ref):
         return self._git.get_peeled(ref)
+
+    def _find_commondir(self):
+        try:
+            commondir = self.control_transport.get_bytes('commondir')
+        except bzr_errors.NoSuchFile:
+            return self
+        else:
+            commondir = commondir.rstrip('/.git/')
+            return ControlDir.open_from_transport(get_transport_from_path(commondir))
