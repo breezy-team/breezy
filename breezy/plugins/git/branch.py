@@ -699,6 +699,20 @@ class LocalGitBranch(GitBranch):
         from .memorytree import GitMemoryTree
         return GitMemoryTree(self, self.repository._git.object_store, self.head)
 
+    def reference_parent(self, path, file_id=None, possible_transports=None):
+        """Return the parent branch for a tree-reference file_id
+
+        :param path: The path of the file_id in the tree
+        :param file_id: Optional file_id of the tree reference
+        :return: A branch associated with the file_id
+        """
+        # FIXME should provide multiple branches, based on config
+        url = urlutils.join(self.user_url, path)
+        return branch.Branch.open(
+                url,
+                possible_transports=possible_transports)
+
+
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     if type(revid) is not str:
