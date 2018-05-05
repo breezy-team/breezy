@@ -525,7 +525,9 @@ class BzrBranch8(BzrBranch):
             with self._transport.get('references') as rio_file:
                 stanzas = rio.read_stanzas(rio_file)
                 info_dict = {
-                    s['tree_path']: (s['branch_location'], s.get('file_id'))
+                    s['tree_path']: (
+                        s['branch_location'],
+                        s['file_id'].encode('ascii') if 'file_id' in s else None)
                     for s in stanzas}
             self._reference_info = info_dict
             return info_dict
