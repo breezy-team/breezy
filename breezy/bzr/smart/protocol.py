@@ -146,14 +146,14 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self._body_decoder = None
         self._write_func = write_func
 
-    def accept_bytes(self, bytes):
+    def accept_bytes(self, data):
         """Take bytes, and advance the internal state machine appropriately.
 
-        :param bytes: must be a byte string
+        :param data: must be a byte string
         """
-        if not isinstance(bytes, byes):
-            raise ValueError(bytes)
-        self.in_buffer += bytes
+        if not isinstance(data, bytes):
+            raise ValueError(data)
+        self.in_buffer += data
         if not self._has_dispatched:
             if b'\n' not in self.in_buffer:
                 # no command line yet
