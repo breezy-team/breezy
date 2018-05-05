@@ -1176,6 +1176,27 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         """
         return []
 
+    def copy_content_into(self, tree, revision_id=None):
+        """Copy the current content and user files of this tree into tree."""
+        with self.lock_read():
+            if revision_id is None:
+                merge.transform_tree(tree, self)
+            else:
+                # TODO now merge from tree.last_revision to revision (to
+                # preserve user local changes)
+                try:
+                    other_tree = self.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    other_tree = self.branch.repository.revision_tree(
+                            revision_id)
+
+                merge.transform_tree(tree, other_tree)
+                if revision_id == _mod_revision.NULL_REVISION:
+                    new_parents = []
+                else:
+                    new_parents = [revision_id]
+                tree.set_parent_ids(new_parents)
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 

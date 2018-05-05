@@ -226,6 +226,15 @@ class GitDir(ControlDir):
         result_dir = self.__class__(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
+        try:
+            # Cheaper to check if the target is not local, than to try making
+            # the tree and fail.
+            result_dir.root_transport.local_abspath('.')
+            if result_dir.open_repository().make_working_trees():
+                self.open_workingtree().clone(result_dir, revision_id=revision_id)
+        except (bzr_errors.NoWorkingTree, bzr_errors.NotLocalUrl):
+            pass
+
         return result_dir
 
     def find_repository(self):
