@@ -169,7 +169,7 @@ class RemoteGitProber(Prober):
         from ... import urlutils
         base_url, _ = urlutils.split_segment_parameters(transport.external_url())
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
-        from ...transport.http._urllib import Request
+        from ...transport.http import Request
         headers = {"Content-Type": "application/x-git-upload-pack-request"}
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                       headers=headers)
