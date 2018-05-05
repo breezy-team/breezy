@@ -631,8 +631,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         this.revert()
         self.assertFileEqual('a test\n', 'b1/a')
         self.assertPathExists('b1/b.~1~')
-        self.assertPathDoesNotExist('b1/c')
-        self.assertPathDoesNotExist('b1/a.~1~')
+        if this.supports_merge_modified():
+            self.assertPathDoesNotExist('b1/c')
+            self.assertPathDoesNotExist('b1/a.~1~')
+        else:
+            self.assertPathExists('b1/c')
+            self.assertPathExists('b1/a.~1~')
         self.assertPathExists('b1/d')
 
     def test_update_updates_bound_branch_no_local_commits(self):
