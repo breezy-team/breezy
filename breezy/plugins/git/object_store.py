@@ -31,12 +31,15 @@ from dulwich.object_store import (
     )
 from dulwich.pack import (
     pack_objects_to_data,
+    PackData,
+    Pack,
     )
 
 from ... import (
     errors,
     lru_cache,
     trace,
+    osutils,
     ui,
     urlutils,
     )
@@ -53,7 +56,7 @@ from .cache import (
     )
 from .mapping import (
     default_mapping,
-    directory_to_tree,
+    entry_mode,
     extract_unusual_modes,
     mapping_registry,
     symlink_to_blob,
@@ -64,6 +67,9 @@ from .unpeel_map import (
 
 import posixpath
 import stat
+
+
+BANNED_FILENAMES = ['.git']
 
 
 def get_object_store(repo, mapping=None):
@@ -168,8 +174,40 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
+def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes, empty_file_name,
+                      allow_empty=False):
+    """Create a Git Tree object from a Bazaar directory.
+
+    :param path: directory path
+    :param children: Children inventory entries
+    :param lookup_ie_sha1: Lookup the Git SHA1 for a inventory entry
+    :param unusual_modes: Dictionary with unusual file modes by file ids
+    :param empty_file_name: Name to use for dummy files in empty directories,
+        None to ignore empty directories.
+    """
+    tree = Tree()
+    for value in children:
+        if value.name in BANNED_FILENAMES:
+            continue
+        child_path = osutils.pathjoin(path, value.name)
+        try:
+            mode = unusual_modes[child_path]
+        except KeyError:
+            mode = entry_mode(value)
+        hexsha = lookup_ie_sha1(child_path, value)
+        if hexsha is not None:
+            tree.add(value.name.encode("utf-8"), mode, hexsha)
+    if not allow_empty and len(tree) == 0:
+        # Only the root can be an empty tree
+        if empty_file_name is not None:
+            tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
+        else:
+            return None
+    return tree
+
+
 def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
-                     dummy_file_name=None):
+                     dummy_file_name=None, add_cache_entry=None):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
@@ -181,6 +219,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     """
     dirty_dirs = set()
     new_blobs = []
+    new_contents = {}
     shamap = {}
     try:
         base_tree = parent_trees[0]
@@ -209,105 +248,130 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     # Find all the changed blobs
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):
+        if name[1] in BANNED_FILENAMES:
+            continue
         if kind[1] == "file":
-            if changed_content:
+            sha1 = tree.get_file_sha1(path[1], file_id)
+            blob_id = None
+            try:
+                (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], sha1, other_parent_trees)
+            except KeyError:
+                pass
+            else:
+                # It existed in one of the parents, with the same contents.
+                # So no need to yield any new git objects.
                 try:
-                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(path[1], file_id), other_parent_trees)
+                    blob_id = idmap.lookup_blob_id(
+                        pfile_id, prevision)
                 except KeyError:
-                    pass
-                else:
-                    try:
-                        shamap[file_id] = idmap.lookup_blob_id(
-                            pfile_id, prevision)
-                    except KeyError:
+                    if not changed_content:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(path[1], file_id)
-                        shamap[file_id] = blob.id
-            if not file_id in shamap:
+                        blob_id = blob.id
+            if blob_id is None:
                 new_blobs.append((path[1], file_id))
+            else:
+                shamap[path[1]] = blob_id
+                if add_cache_entry is not None:
+                    add_cache_entry(("blob", blob_id), (file_id, tree.get_file_revision(path[1])), path[1])
         elif kind[1] == "symlink":
-            if changed_content:
-                target = tree.get_symlink_target(path[1], file_id)
-                blob = symlink_to_blob(target)
-                shamap[file_id] = blob.id
-                try:
-                    find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
-                except KeyError:
+            target = tree.get_symlink_target(path[1], file_id)
+            blob = symlink_to_blob(target)
+            shamap[path[1]] = blob.id
+            if add_cache_entry is not None:
+                add_cache_entry(blob, (file_id, tree.get_file_revision(path[1])), path[1])
+            try:
+                find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
+            except KeyError:
+                if changed_content:
                     yield path[1], blob, (file_id, tree.get_file_revision(path[1], file_id))
-        elif kind[1] not in (None, "directory"):
+        elif kind[1] is None:
+            shamap[path[1]] = None
+        elif kind[1] != 'directory':
             raise AssertionError(kind[1])
-        for p in parent:
-            if p and tree.has_id(p) and tree.kind(tree.id2path(p)) == "directory":
-                dirty_dirs.add(p)
+        for p in path:
+            if p is None:
+                continue
+            dirty_dirs.add(osutils.dirname(p))
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
         [(path, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
+        if add_cache_entry is not None:
+            add_cache_entry(obj, (file_id, tree.get_file_revision(path)), path)
         yield path, obj, (file_id, tree.get_file_revision(path, file_id))
-        shamap[file_id] = obj.id
+        shamap[path] = obj.id
 
     for path in unusual_modes:
-        parent_path = posixpath.dirname(path)
-        file_id = tree.path2id(parent_path)
-        if file_id is None:
-            raise AssertionError("Unable to find file id for %r" % parent_path)
-        dirty_dirs.add(file_id)
+        dirty_dirs.add(posixpath.dirname(path))
 
-    try:
-        inv = tree.root_inventory
-    except AttributeError:
-        inv = tree.inventory
+    for dir in list(dirty_dirs):
+        for parent in osutils.parent_directories(dir):
+            if parent in dirty_dirs:
+                break
+            dirty_dirs.add(parent)
 
-    trees = {}
-    while dirty_dirs:
-        new_dirs = set()
-        for file_id in dirty_dirs:
-            if file_id is None or not inv.has_id(file_id):
-                continue
-            trees[inv.id2path(file_id)] = file_id
-            ie = inv.get_entry(file_id)
-            if ie.parent_id is not None:
-                new_dirs.add(ie.parent_id)
-        dirty_dirs = new_dirs
+    if dirty_dirs:
+        dirty_dirs.add('')
 
-    def ie_to_hexsha(ie):
+    def ie_to_hexsha(path, ie):
         try:
-            return shamap[ie.file_id]
+            return shamap[path]
         except KeyError:
-            # FIXME: Should be the same as in parent
-            if ie.kind in ("file", "symlink"):
-                try:
-                    return idmap.lookup_blob_id(ie.file_id, ie.revision)
-                except KeyError:
-                    # no-change merge ?
-                    blob = Blob()
-                    path = tree.id2path(ie.file_id)
-                    blob.data = tree.get_file_text(path, ie.file_id)
-                    return blob.id
-            elif ie.kind == "directory":
-                # Not all cache backends store the tree information,
-                # calculate again from scratch
-                ret = directory_to_tree(ie.children, ie_to_hexsha,
-                    unusual_modes, dummy_file_name, ie.parent_id is None)
-                if ret is None:
-                    return ret
-                return ret.id
-            else:
-                raise AssertionError
-
-    for path in sorted(trees.keys(), reverse=True):
-        file_id = trees[path]
-        if tree.kind(path, file_id) != 'directory':
+            pass
+        # FIXME: Should be the same as in parent
+        if ie.kind in ("file", "symlink"):
+            try:
+                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+            except KeyError:
+                # no-change merge ?
+                blob = Blob()
+                blob.data = tree.get_file_text(path, ie.file_id)
+                if add_cache_entry is not None:
+                    add_cache_entry(blob, (ie.file_id, ie.revision), path)
+                return blob.id
+        elif ie.kind == "directory":
+            # Not all cache backends store the tree information,
+            # calculate again from scratch
+            ret = directory_to_tree(path, ie.children.values(), ie_to_hexsha,
+                unusual_modes, dummy_file_name, ie.parent_id is None)
+            if ret is None:
+                return ret
+            return ret.id
+        else:
             raise AssertionError
-        ie = inv.get_entry(file_id)
-        obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
-            dummy_file_name, path == "")
-        if obj is not None:
-            yield path, obj, (file_id, )
-            shamap[file_id] = obj.id
+
+    for path in sorted(dirty_dirs, reverse=True):
+        if not tree.has_filename(path):
+            continue
+
+        if tree.kind(path) != 'directory':
+            raise AssertionError
+
+        obj = Tree()
+        for value in tree.iter_child_entries(path):
+            if value.name in BANNED_FILENAMES:
+                trace.warning('not exporting %s with banned filename %s',
+                              value.kind, value.name)
+                continue
+            child_path = osutils.pathjoin(path, value.name)
+            try:
+                mode = unusual_modes[child_path]
+            except KeyError:
+                mode = entry_mode(value)
+            hexsha = ie_to_hexsha(child_path, value)
+            if hexsha is not None:
+                obj.add(value.name.encode("utf-8"), mode, hexsha)
+
+        if len(obj) > 0:
+            file_id = tree.path2id(path)
+            if add_cache_entry is not None:
+                add_cache_entry(obj, (file_id, tree.get_revision_id()), path)
+            yield path, obj, (file_id, tree.get_revision_id())
+            shamap[path] = obj.id
 
 
 class PackTupleIterable(object):
@@ -430,7 +494,7 @@ class BazaarObjectStore(BaseObjectStore):
                 file_ids[path] = ie.file_id
         return self.mapping.export_fileid_map(file_ids)
 
-    def _revision_to_objects(self, rev, tree, lossy):
+    def _revision_to_objects(self, rev, tree, lossy, add_cache_entry=None):
         """Convert a revision to a set of git objects.
 
         :param rev: Bazaar revision object
@@ -443,13 +507,14 @@ class BazaarObjectStore(BaseObjectStore):
             [p for p in rev.parent_ids if p in present_parents])
         root_tree = None
         for path, obj, bzr_key_data in _tree_to_objects(tree, parent_trees,
-                self._cache.idmap, unusual_modes, self.mapping.BZR_DUMMY_FILE):
+                self._cache.idmap, unusual_modes,
+                self.mapping.BZR_DUMMY_FILE, add_cache_entry):
             if path == "":
                 root_tree = obj
                 root_key_data = bzr_key_data
                 # Don't yield just yet
             else:
-                yield path, obj, bzr_key_data
+                yield path, obj
         if root_tree is None:
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
@@ -457,14 +522,16 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_key_data = (tree.get_root_id(), )
+            root_key_data = (tree.get_root_id(), tree.get_revision_id())
         if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
                     (stat.S_IFREG | 0644), b.id)
-                yield self.mapping.BZR_FILE_IDS_FILE, b, None
-        yield "", root_tree, root_key_data
+                yield self.mapping.BZR_FILE_IDS_FILE, b
+        if add_cache_entry is not None:
+            add_cache_entry(root_tree, root_key_data, "")
+        yield "", root_tree
         if not lossy:
             testament3 = StrictTestament3(rev, tree)
             verifiers = { "testament3-sha1": testament3.as_sha1() }
@@ -479,7 +546,10 @@ class BazaarObjectStore(BaseObjectStore):
             pass
         else:
             _check_expected_sha(foreign_revid, commit_obj)
-        yield None, commit_obj, None
+        if add_cache_entry is not None:
+            add_cache_entry(commit_obj, verifiers, None)
+
+        yield None, commit_obj
 
     def _get_updater(self, rev):
         return self._cache.get_updater(rev)
@@ -489,11 +559,11 @@ class BazaarObjectStore(BaseObjectStore):
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
         # FIXME JRV 2011-12-15: Shouldn't we try both values for lossy ?
-        for path, obj, ie in self._revision_to_objects(rev, tree, lossy=(not self.mapping.roundtripping)):
+        for path, obj in self._revision_to_objects(
+                rev, tree, lossy=(not self.mapping.roundtripping),
+                add_cache_entry=updater.add_object):
             if isinstance(obj, Commit):
-                testament3 = StrictTestament3(rev, tree)
-                ie = { "testament3-sha1": testament3.as_sha1() }
-            updater.add_object(obj, ie, path)
+                commit_obj = obj
         commit_obj = updater.finish()
         return commit_obj.id
 
@@ -524,7 +594,7 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: fileid in the tree.
         :param revision: Revision of the tree.
         """
-        def get_ie_sha1(entry):
+        def get_ie_sha1(path, entry):
             if entry.kind == "directory":
                 try:
                     return self._cache.idmap.lookup_tree_id(entry.file_id,
@@ -549,11 +619,10 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        try:
-            inv = bzr_tree.root_inventory
-        except AttributeError:
-            inv = bzr_tree.inventory
-        tree = directory_to_tree(inv.get_entry(fileid).children,
+        path = bzr_tree.id2path(fileid)
+        tree = directory_to_tree(
+                path,
+                bzr_tree.iter_child_entries(path),
                 get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
                 bzr_tree.get_root_id() == fileid)
         if (bzr_tree.get_root_id() == fileid and
@@ -661,11 +730,6 @@ class BazaarObjectStore(BaseObjectStore):
         return self.lookup_git_shas([sha])[sha]
 
     def __getitem__(self, sha):
-        if self._cache.content_cache is not None:
-            try:
-                return self._cache.content_cache[sha]
-            except KeyError:
-                pass
         for (kind, type_data) in self.lookup_git_sha(sha):
             # convert object to git object
             if kind == "commit":
@@ -749,14 +813,15 @@ class BazaarObjectStore(BaseObjectStore):
         ret = PackTupleIterable(self)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, revid in enumerate(todo):
+            for i, revid in enumerate(graph.iter_topo_order(todo)):
                 pb.update("generating git objects", i, len(todo))
                 try:
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
                     continue
                 tree = self.tree_cache.revision_tree(revid)
-                for path, obj, ie in self._revision_to_objects(rev, tree, lossy=lossy):
+                for path, obj in self._revision_to_objects(
+                        rev, tree, lossy=lossy):
                     ret.add(obj.id, path)
             return ret
         finally:
@@ -768,7 +833,6 @@ class BazaarObjectStore(BaseObjectStore):
         fd, path = tempfile.mkstemp(suffix=".pack")
         f = os.fdopen(fd, 'wb')
         def commit():
-            from dulwich.pack import PackData, Pack
             from .fetch import import_git_objects
             os.fsync(fd)
             f.close()

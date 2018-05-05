@@ -181,7 +181,7 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
         else:
-            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(file_modes.encode("utf-8"))])
+            return dict(bencode.bdecode(file_modes.encode("utf-8")))
 
     def _generate_git_svn_metadata(self, rev, encoding):
         try:
@@ -600,36 +600,6 @@ def object_mode(kind, executable):
 def entry_mode(entry):
     """Determine the git file mode for an inventory entry."""
     return object_mode(entry.kind, entry.executable)
-
-
-def directory_to_tree(children, lookup_ie_sha1, unusual_modes, empty_file_name,
-                      allow_empty=False):
-    """Create a Git Tree object from a Bazaar directory.
-
-    :param children: Children inventory entries
-    :param lookup_ie_sha1: Lookup the Git SHA1 for a inventory entry
-    :param unusual_modes: Dictionary with unusual file modes by file ids
-    :param empty_file_name: Name to use for dummy files in empty directories,
-        None to ignore empty directories.
-    """
-    from dulwich.objects import Blob, Tree
-    tree = Tree()
-    for name, value in children.iteritems():
-        ie = children[name]
-        try:
-            mode = unusual_modes[ie.file_id]
-        except KeyError:
-            mode = entry_mode(ie)
-        hexsha = lookup_ie_sha1(ie)
-        if hexsha is not None:
-            tree.add(name.encode("utf-8"), mode, hexsha)
-    if not allow_empty and len(tree) == 0:
-        # Only the root can be an empty tree
-        if empty_file_name is not None:
-            tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
-        else:
-            return None
-    return tree
 
 
 def extract_unusual_modes(rev):

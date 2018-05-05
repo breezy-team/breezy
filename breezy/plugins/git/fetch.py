@@ -77,6 +77,7 @@ from .mapping import (
     )
 from .object_store import (
     LRUTreeCache,
+    _tree_to_objects,
     )
 from .refs import (
     is_tag,
@@ -323,7 +324,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_bzr_tree, old_path,
             base_tree, existing_children, lookup_object))
-    store_updater.add_object(tree, (file_id, ), path)
+    store_updater.add_object(tree, (file_id, revision_id), path)
     return invdelta, child_modes
 
 
