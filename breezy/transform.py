@@ -2299,7 +2299,7 @@ class _PreviewTree(inventorytree.InventoryTree):
                 if e.errno == errno.ENOENT:
                     return False
                 raise
-            except errors.NoSuchId:
+            except errors.NoSuchFile:
                 return False
 
     def has_filename(self, path):

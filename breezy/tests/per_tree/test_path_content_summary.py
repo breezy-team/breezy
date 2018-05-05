@@ -150,6 +150,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         if not tree.branch.repository._format.supports_tree_reference:
             raise tests.TestNotApplicable("Tree references not supported.")
         subtree = self.make_branch_and_tree('tree/path')
+        subtree.commit('')
         tree.add(['path'])
         summary = self._convert_tree(tree).path_content_summary('path')
         self.assertEqual(4, len(summary))
