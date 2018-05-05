@@ -676,7 +676,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from .http_server import HttpServer
-        from ..transport.http import HttpTransportBase
+        from ..transport.http import HttpTransport
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
@@ -685,8 +685,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # the transport returned may be any HttpTransportBase subclass
         t = transport.get_transport_from_url(url)
         t2 = transport.get_transport_from_url(url2)
-        self.assertIsInstance(t, HttpTransportBase)
-        self.assertIsInstance(t2, HttpTransportBase)
+        self.assertIsInstance(t, HttpTransport)
+        self.assertIsInstance(t2, HttpTransport)
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_is_directory(self):

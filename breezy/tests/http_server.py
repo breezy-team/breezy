@@ -490,14 +490,3 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return self._url_protocol + '://127.0.0.1:1/'
-
-
-class HttpServer_urllib(HttpServer):
-    """Subclass of HttpServer that gives http+urllib urls.
-
-    This is for use in testing: connections to this server will always go
-    through urllib where possible.
-    """
-
-    # urls returned by this server should require the urllib client impl
-    _url_protocol = 'http+urllib'
