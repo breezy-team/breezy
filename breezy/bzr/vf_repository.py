@@ -24,7 +24,6 @@ lazy_import(globals(), """
 import itertools
 
 from breezy import (
-    check,
     config as _mod_config,
     debug,
     fetch as _mod_fetch,
@@ -40,6 +39,7 @@ from breezy import (
     ui,
     )
 from breezy.bzr import (
+    check,
     inventory_delta,
     inventorytree,
     versionedfile,

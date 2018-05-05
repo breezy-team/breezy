@@ -191,7 +191,7 @@ class TestCheckout(TestCaseWithTransport):
         # We should always be creating a lighweight checkout for colocated
         # branches.
         self.assertEqual(
-            target.open_branch(name='somebranch').base,
+            target.open_branch(name='somebranch').user_url,
             target.get_branch_reference(name=""))
 
 
