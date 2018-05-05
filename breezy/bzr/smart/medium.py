@@ -113,14 +113,14 @@ def _get_line(read_bytes_func):
     :returns: a tuple of two strs: (line, excess)
     """
     newline_pos = -1
-    bytes = ''
+    bytes = b''
     while newline_pos == -1:
         new_bytes = read_bytes_func(1)
         bytes += new_bytes
-        if new_bytes == '':
+        if new_bytes == b'':
             # Ran out of bytes before receiving a complete line.
-            return bytes, ''
-        newline_pos = bytes.find('\n')
+            return bytes, b''
+        newline_pos = bytes.find(b'\n')
     line = bytes[:newline_pos+1]
     excess = bytes[newline_pos+1:]
     return line, excess
