@@ -489,7 +489,7 @@ if 'bdist_wininst' in sys.argv:
         return docs
 
     # python's distutils-based win32 installer
-    ARGS = {'scripts': ['brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
+    ARGS = {'scripts': [ 'brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
             # help pages
             'data_files': find_docs(),
@@ -739,7 +739,12 @@ else:
 
     DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
-    ARGS = {'scripts': ['brz'],
+    ARGS = {'scripts': ['brz',
+                        # TODO(jelmer): Only install the git scripts if
+                        # Dulwich was found.
+                        'breezy/plugins/git/git-remote-bzr',
+                        'breezy/plugins/git/bzr-receive-pack',
+                        'breezy/plugins/git/bzr-upload-pack'],
             'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
