@@ -639,7 +639,7 @@ def is_inside(dir, fname):
     if dir == '':
         return True
 
-    if dir[-1] != '/':
+    if not dir.endswith('/'):
         dir += '/'
 
     return fname.startswith(dir)
