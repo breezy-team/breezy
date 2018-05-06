@@ -298,7 +298,7 @@ class GitDir(ControlDir):
         refname = self._get_selected_ref(name)
         from .branch import GitBranch
         if isinstance(source, GitBranch) and lossy:
-            raise errors.LossyPushToSameVCS(source.controldir, self)
+            raise bzr_errors.LossyPushToSameVCS(source.controldir, self)
         target = self.open_branch(name, nascent_ok=True)
         push_result.branch_push_result = source.push(
                 target, overwrite=overwrite, stop_revision=revision_id,
