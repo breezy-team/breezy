@@ -1668,23 +1668,23 @@ register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
-register_lazy_transport('http+urllib://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
+register_lazy_transport('http+urllib://', 'breezy.transport.http',
+                        'HttpTransport')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
-register_lazy_transport('https+urllib://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
+register_lazy_transport('https+urllib://', 'breezy.transport.http',
+                        'HttpTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport('http://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
-register_lazy_transport('https://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
+register_lazy_transport('http://', 'breezy.transport.http',
+                        'HttpTransport')
+register_lazy_transport('https://', 'breezy.transport.http',
+                        'HttpTransport')
 
 register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'breezy.transport.ftp', 'FtpTransport')
