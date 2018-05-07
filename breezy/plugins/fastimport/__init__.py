@@ -46,9 +46,6 @@ valuable to retain. For further details on importing, manipulating and
 reporting on fast-import streams, see the online help for the commands::
 
   bzr help fast-import
-  bzr help fast-import-filter
-  bzr help fast-import-info
-  bzr help fast-import-query
 
 Finally, you may wish to generate a fast-import dump file from a Bazaar
 repository. The fast-export command is provided for that purpose.
@@ -70,6 +67,11 @@ def load_fastimport():
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
             "fastimport requires the fastimport python module")
+    if fastimport.__version__ < (0, 9, 8):
+        from ...errors import DependencyNotPresent
+        raise DependencyNotPresent("fastimport",
+            "fastimport requires at least version 0.9.8 of the "
+            "fastimport python module")
 
 
 def test_suite():
@@ -79,9 +81,6 @@ def test_suite():
 
 for name in [
         "fast_import",
-        "fast_import_filter",
-        "fast_import_info",
-        "fast_import_query",
         "fast_export",
         ]:
     plugin_cmds.register_lazy("cmd_%s" % name, [], "breezy.plugins.fastimport.cmds")
