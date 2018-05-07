@@ -68,6 +68,7 @@ def load_fastimport():
         raise DependencyNotPresent("fastimport",
             "fastimport requires the fastimport python module")
     if fastimport.__version__ < (0, 9, 8):
+        from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
             "fastimport requires at least version 0.9.8 of the "
             "fastimport python module")
