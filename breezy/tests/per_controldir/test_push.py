@@ -16,6 +16,8 @@
 
 """Tests for bzrdir implementations - push."""
 
+from ...errors import LossyPushToSameVCS
+
 from breezy.tests.per_controldir import (
     TestCaseWithControlDir,
     )
@@ -38,6 +40,12 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
         self.assertEqual(dir.open_branch().base,
             tree.branch.get_push_location())
+
+    def test_push_new_branch_lossy(self):
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
+        self.assertRaises(LossyPushToSameVCS, dir.push_branch,
+                          tree.branch, lossy=True)
 
     def test_push_new_empty(self):
         tree = self.make_branch_and_tree('tree')
