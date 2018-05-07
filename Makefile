@@ -53,7 +53,7 @@ check-nodocs3:
 	echo `date` ": selftest starts" 1>&2
 	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
-	  --subunit2 $(tests) | tee selftest.log | subunit2pyunit
+	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
 	# command above (the '|' swallow any errors since 'make'
