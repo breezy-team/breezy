@@ -13,7 +13,7 @@ Build-Depends: bash-completion,
                python-all-dev (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
-               python-fastimport,
+               python-fastimport (>= 0.9.8),
                python-lzma-dbg [!m68k !powerpcspe !sh4],
                python-meliae-dbg,
                python-paramiko (<< 1.12.0) | python-paramiko (>= 1.14.1),
@@ -38,7 +38,7 @@ Depends: python-breezy (<= ${source:Version}.1~),
 Conflicts: bzr (<< 2.7.0+bzr6622-1)
 Suggests: brz-doc,
           python-breezy.tests,
-          python-fastimport
+          python-fastimport (>= 0.9.8)
 Description: easy to use distributed version control system
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
