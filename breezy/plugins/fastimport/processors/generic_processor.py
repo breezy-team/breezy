@@ -433,8 +433,9 @@ class GenericProcessor(processor.ImportProcessor):
         self.note("Removing obsolete packs ...")
         # TODO: Use a public API for this once one exists
         repo_transport = self.repo._pack_collection.transport
-        repo_transport.clone('obsolete_packs').delete_multi(
-            repo_transport.list_dir('obsolete_packs'))
+        obsolete_pack_transport = repo_transport.clone('obsolete_packs')
+        for name in obsolete_pack_transport.list_dir('.'):
+            obsolete_pack_transport.delete(name)
 
         # If we're not done, free whatever memory we can
         if not final:

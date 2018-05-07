@@ -20,6 +20,7 @@
 
 ### Core Stuff ###
 
+SHELL=bash
 PYTHON?=python
 PYTHON3?=python3
 PYTHON24=python24
@@ -50,7 +51,7 @@ check-nodocs3:
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
@@ -79,7 +80,7 @@ check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
@@ -94,7 +95,12 @@ check-ci: docs extensions
 	# FIXME: Remove -Wignore::FutureWarning once
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
-	python -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O \
+	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
+	  | subunit-filter -s --passthrough --rename "^" "python2."
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning  -Wignore::ImportWarning -O \
+	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --load-list=python3.passing --subunit2 \
+	  | subunit-filter -s --passthrough --rename "^" "python3."
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -156,6 +162,7 @@ MAN_DEPENDENCIES = breezy/builtins.py \
 
 MAN_PAGES = man1/brz.1
 man1/brz.1: $(MAN_DEPENDENCIES)
+	mkdir -p $(dir $@)
 	$(PYTHON) tools/generate_docs.py -o $@ man
 
 

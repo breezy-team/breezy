@@ -23,7 +23,7 @@ import breezy
 
 def get_long_description():
     dirname = os.path.dirname(__file__)
-    readme = os.path.join(dirname, 'README')
+    readme = os.path.join(dirname, 'README.rst')
     with open(readme, 'rb') as f:
         return f.read()
 
@@ -63,8 +63,8 @@ META_INFO = {
 }
 
 # The list of packages is automatically generated later. Add other things
-# that are part of BZRLIB here.
-BZRLIB = {}
+# that are part of BREEZY here.
+BREEZY = {}
 
 PKG_DATA = {# install files from selftest suite
             'package_data': {'breezy': ['doc/api/*.txt',
@@ -103,7 +103,7 @@ def get_breezy_packages():
     return sorted(packages)
 
 
-BZRLIB['packages'] = get_breezy_packages()
+BREEZY['packages'] = get_breezy_packages()
 
 
 from distutils import log
@@ -497,7 +497,7 @@ if 'bdist_wininst' in sys.argv:
            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     PKG_DATA['package_data']['breezy'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
@@ -563,7 +563,7 @@ elif 'py2exe' in sys.argv:
     gui_target = copy.copy(target)
     gui_target.dest_base = "bzrw"
 
-    packages = BZRLIB['packages']
+    packages = BREEZY['packages']
     packages.remove('breezy')
     packages = [i for i in packages if not i.startswith('breezy.plugins')]
     includes = []
@@ -745,7 +745,7 @@ else:
            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':

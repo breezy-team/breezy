@@ -475,7 +475,7 @@ class BzrDir(controldir.ControlDir):
                 subtrees = []
             for path, file_id in subtrees:
                 target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation = source_branch.reference_parent(path, file_id)
                 sublocation.controldir.sprout(target,
                     basis.get_reference_revision(path, file_id),
                     force_new_repo=force_new_repo, recurse=recurse,
@@ -955,6 +955,9 @@ class BzrDirMeta1(BzrDir):
 
     def set_branch_reference(self, target_branch, name=None):
         format = _mod_bzrbranch.BranchReferenceFormat()
+        if (self.control_url == target_branch.controldir.control_url and
+            name == target_branch.name):
+            raise controldir.BranchReferenceLoop(target_branch)
         return format.initialize(self, target_branch=target_branch, name=name)
 
     def get_branch_transport(self, branch_format, name=None):

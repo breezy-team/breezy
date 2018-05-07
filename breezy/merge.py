@@ -648,8 +648,8 @@ class Merger(object):
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                 sub_merge.merge_type = self.merge_type
-                other_branch = self.other_branch.reference_parent(file_id,
-                                                                  relpath)
+                other_branch = self.other_branch.reference_parent(
+                    relpath, file_id)
                 sub_merge.set_other_revision(other_revision, other_branch)
                 base_tree_path = _mod_tree.find_previous_path(
                     self.this_tree, self.base_tree, relpath)
@@ -953,7 +953,7 @@ class Merge3Merger(object):
                     lca_paths.append(None)
                 else:
                     lca_entries.append(lca_ie)
-                    lca_paths.append(path)
+                    lca_paths.append(lca_path)
 
             try:
                 base_ie = base_inventory.get_entry(file_id)
@@ -1008,7 +1008,8 @@ class Merge3Merger(object):
                         except errors.NoSuchFile:
                             return None
                     base_sha1 = get_sha1(self.base_tree, base_path)
-                    lca_sha1s = [get_sha1(tree, lca_path) for tree, lca_path
+                    lca_sha1s = [get_sha1(tree, lca_path)
+                                 for tree, lca_path
                                  in zip(self._lca_trees, lca_paths)]
                     this_sha1 = get_sha1(self.this_tree, this_path)
                     other_sha1 = get_sha1(self.other_tree, other_path)
@@ -1565,7 +1566,7 @@ class Merge3Merger(object):
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
-            if self.executable(self.other_tree, other_path, file_id) is None:
+            if other_path is None:
                 winner = "this"
             else:
                 winner = "other"

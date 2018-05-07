@@ -657,7 +657,7 @@ class TreeTransformBase(object):
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
-            if not inventory.InventoryEntry.versionable_kind(kind):
+            if not self._tree.versionable_kind(kind):
                 conflicts.append(('versioning bad kind', trans_id, kind))
         return conflicts
 
@@ -2127,8 +2127,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             if self._transform.final_file_id(trans_id) is None:
                 yield self._final_paths._determine_path(trans_id)
 
-    def _make_inv_entries(self, ordered_entries, specific_files=None,
-        yield_parents=False):
+    def _make_inv_entries(self, ordered_entries, specific_files=None):
         for trans_id, parent_file_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
             if file_id is None:
@@ -2170,7 +2169,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
@@ -2178,7 +2177,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         # position.
         ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
-            specific_files, yield_parents=yield_parents):
+            specific_files):
             yield unicode(self._final_paths.get_path(trans_id)), entry
 
     def _iter_entries_for_dir(self, dir_path):
@@ -2300,7 +2299,7 @@ class _PreviewTree(inventorytree.InventoryTree):
                 if e.errno == errno.ENOENT:
                     return False
                 raise
-            except errors.NoSuchId:
+            except errors.NoSuchFile:
                 return False
 
     def has_filename(self, path):

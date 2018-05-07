@@ -40,6 +40,7 @@ from breezy import (
     config as _mod_config,
     errors,
     globbing,
+    gpg,
     hooks,
     lazy_regex,
     log,
@@ -49,7 +50,6 @@ from breezy import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
-    static_tuple,
     symbol_versioning,
     timestamp,
     transport,
@@ -57,10 +57,6 @@ from breezy import (
     ui,
     urlutils,
     views,
-    gpg,
-    )
-from breezy.bzr import (
-    btree_index,
     )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
@@ -480,90 +476,6 @@ class cmd_cat_revision(Command):
                             gettext('You cannot specify a NULL revision.'))
                     rev_id = rev.as_revision_id(b)
                     self.print_revision(revisions, rev_id)
-
-
-class cmd_dump_btree(Command):
-    __doc__ = """Dump the contents of a btree index file to stdout.
-
-    PATH is a btree index file, it can be any URL. This includes things like
-    .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
-
-    By default, the tuples stored in the index file will be displayed. With
-    --raw, we will uncompress the pages, but otherwise display the raw bytes
-    stored in the index.
-    """
-
-    # TODO: Do we want to dump the internal nodes as well?
-    # TODO: It would be nice to be able to dump the un-parsed information,
-    #       rather than only going through iter_all_entries. However, this is
-    #       good enough for a start
-    hidden = True
-    encoding_type = 'exact'
-    takes_args = ['path']
-    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
-                                        ' rather than the parsed tuples.'),
-                    ]
-
-    def run(self, path, raw=False):
-        dirname, basename = osutils.split(path)
-        t = transport.get_transport(dirname)
-        if raw:
-            self._dump_raw_bytes(t, basename)
-        else:
-            self._dump_entries(t, basename)
-
-    def _get_index_and_bytes(self, trans, basename):
-        """Create a BTreeGraphIndex and raw bytes."""
-        bt = btree_index.BTreeGraphIndex(trans, basename, None)
-        bytes = trans.get_bytes(basename)
-        bt._file = BytesIO(bytes)
-        bt._size = len(bytes)
-        return bt, bytes
-
-    def _dump_raw_bytes(self, trans, basename):
-        import zlib
-
-        # We need to parse at least the root node.
-        # This is because the first page of every row starts with an
-        # uncompressed header.
-        bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(range(0, len(bytes),
-                                                    btree_index._PAGE_SIZE)):
-            page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
-            page_bytes = bytes[page_start:page_end]
-            if page_idx == 0:
-                self.outf.write('Root node:\n')
-                header_end, data = bt._parse_header_from_bytes(page_bytes)
-                self.outf.write(page_bytes[:header_end])
-                page_bytes = data
-            self.outf.write('\nPage %d\n' % (page_idx,))
-            if len(page_bytes) == 0:
-                self.outf.write('(empty)\n');
-            else:
-                decomp_bytes = zlib.decompress(page_bytes)
-                self.outf.write(decomp_bytes)
-                self.outf.write('\n')
-
-    def _dump_entries(self, trans, basename):
-        try:
-            st = trans.stat(basename)
-        except errors.TransportNotPossible:
-            # We can't stat, so we'll fake it because we have to do the 'get()'
-            # anyway.
-            bt, _ = self._get_index_and_bytes(trans, basename)
-        else:
-            bt = btree_index.BTreeGraphIndex(trans, basename, st.st_size)
-        for node in bt.iter_all_entries():
-            # Node is made up of:
-            # (index, key, value, [references])
-            try:
-                refs = node[3]
-            except IndexError:
-                refs_as_tuples = None
-            else:
-                refs_as_tuples = static_tuple.as_tuples(refs)
-            as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
-            self.outf.write('%s\n' % (as_tuple,))
 
 
 class cmd_remove_tree(Command):
@@ -2141,10 +2053,10 @@ class cmd_init(Command):
                     'if it does not already exist.'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
-                'See "help formats".',
+                'See "help formats" for a full list.',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
-                value_switches=False,
+                value_switches=True,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
@@ -2263,7 +2175,7 @@ class cmd_init_repository(Command):
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=False, title='Repository format'),
+                            value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
@@ -2279,12 +2191,17 @@ class cmd_init_repository(Command):
 
         to_transport = transport.get_transport(location)
 
+        if format.fixed_components:
+            repo_format_name = None
+        else:
+            repo_format_name = format.repository_format.get_format_string()
+
         (repo, newdir, require_stacking, repository_policy) = (
             format.initialize_on_transport_ex(to_transport,
             create_prefix=True, make_working_trees=not no_trees,
             shared_repo=True, force_new_repo=True,
             use_existing_dir=True,
-            repo_format_name=format.repository_format.get_format_string()))
+            repo_format_name=repo_format_name))
         if not is_quiet():
             from .info import show_bzrdir_info
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
@@ -3064,7 +2981,7 @@ class cmd_ls(Command):
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None, directory=None):
 
-        if kind and kind not in ('file', 'directory', 'symlink'):
+        if kind and kind not in ('file', 'directory', 'symlink', 'tree-reference'):
             raise errors.BzrCommandError(gettext('invalid kind specified'))
 
         if verbose and null:
@@ -4200,7 +4117,11 @@ class cmd_selftest(Command):
             # disallowing it currently leads to failures in many places.
             lazy_import.disallow_proxying()
 
-        from . import tests
+        try:
+            from . import tests
+        except ImportError:
+            raise errors.BzrCommandError("tests not available. Install the "
+                "breezy tests to run the breezy testsuite.")
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -5300,7 +5221,6 @@ class cmd_re_sign(Command):
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
-        from . import gpg
         gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
@@ -6343,8 +6263,14 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision,
-                      store_uncommitted=store)
+        try:
+            switch.switch(control_dir, to_branch, force, revision_id=revision,
+                          store_uncommitted=store)
+        except controldir.BranchReferenceLoop:
+            raise errors.BzrCommandError(
+                    gettext('switching would create a branch reference loop. '
+                            'Use the "bzr up" command to switch to a '
+                            'different revision.'))
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
@@ -6746,22 +6672,18 @@ class cmd_reference(Command):
             info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
-            file_id = tree.path2id(path)
-            if file_id is None:
+            if not tree.is_versioned(path):
                 raise errors.NotVersionedError(path)
             if location is None:
-                info = [(file_id, branch.get_reference_info(file_id))]
+                info = [(path, branch.get_reference_info(path))]
                 self._display_reference_info(tree, branch, info)
             else:
-                branch.set_reference_info(file_id, path, location)
+                branch.set_reference_info(
+                    path, location, file_id=tree.path2id(path))
 
     def _display_reference_info(self, tree, branch, info):
         ref_list = []
-        for file_id, (path, location) in info:
-            try:
-                path = tree.id2path(file_id)
-            except errors.NoSuchId:
-                pass
+        for path, (location, file_id) in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))
@@ -6862,6 +6784,7 @@ def _register_lazy_builtins():
         ('cmd_bisect', [], 'breezy.bisect'),
         ('cmd_bundle_info', [], 'breezy.bundle.commands'),
         ('cmd_config', [], 'breezy.config'),
+        ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
         ('cmd_dpush', [], 'breezy.foreign'),
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),

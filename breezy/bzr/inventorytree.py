@@ -222,19 +222,26 @@ class InventoryTree(Tree):
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
 
-    def _path2inv_file_id(self, path, file_id=None):
+    def _path2ie(self, path):
+        """Lookup an inventory entry by path.
+
+        :param path: Path to look up
+        :return: InventoryEntry
+        """
+        ie = self.root_inventory.get_entry_by_path(path)
+        if ie is None:
+            raise errors.NoSuchFile(path)
+        return ie
+
+    def _path2inv_file_id(self, path):
         """Lookup a inventory and inventory file id by path.
 
         :param path: Path to look up
-        :param file_id: Optional file_id matching path, if known.
         :return: tuple with inventory and inventory file id
         """
-        if file_id is not None:
-            inv, inv_file_id = self._unpack_file_id(file_id)
-        else:
-            # FIXME: Support nested trees
-            inv = self.root_inventory
-            inv_file_id = self.root_inventory.path2id(path)
+        # FIXME: Support nested trees
+        inv = self.root_inventory
+        inv_file_id = self.root_inventory.path2id(path)
         return inv, inv_file_id
 
     def id2path(self, file_id):
@@ -269,17 +276,13 @@ class InventoryTree(Tree):
         # are not versioned.
         return set((p for p in paths if self.path2id(p) is None))
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
         The order that they are yielded is:
 
         See Tree.iter_entries_by_dir for details.
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_files that have been requested. This has no
-            impact if specific_files is None.
         """
         with self.lock_read():
             if specific_files is not None:
@@ -294,19 +297,14 @@ class InventoryTree(Tree):
                 inventory_file_ids = None
             # FIXME: Handle nested trees
             return self.root_inventory.iter_entries_by_dir(
-                specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+                specific_file_ids=inventory_file_ids)
 
     def iter_child_entries(self, path, file_id=None):
         with self.lock_read():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
-            try:
-                ie = inv.get_entry(inv_file_id)
-            except errors.NoSuchId:
-                raise errors.NoSuchFile(path)
-            else:
-                if ie.kind != 'directory':
-                    raise errors.NotADirectory(path)
-                return iter(viewvalues(ie.children))
+            ie = self._path2ie(path)
+            if ie.kind != 'directory':
+                raise errors.NotADirectory(path)
+            return iter(viewvalues(ie.children))
 
     def _get_plan_merge_data(self, file_id, other, base):
         from . import versionedfile
@@ -805,11 +803,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         self._inventory = inv
 
     def get_file_mtime(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        try:
-            ie = inv.get_entry(inv_file_id)
-        except errors.NoSuchId:
-            raise errors.NoSuchFile(path)
+        ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:
@@ -817,27 +811,19 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return revision.timestamp
 
     def get_file_size(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv.get_entry(inv_file_id).text_size
+        return self._path2ie(path).text_size
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv.get_entry(inv_file_id)
+        ie = self._path2ie(path)
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        try:
-            ie = inv.get_entry(inv_file_id)
-        except errors.NoSuchId:
-            raise errors.NoSuchFile(path)
-        return ie.revision
+        return self._path2ie(path).revision
 
     def is_executable(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv.get_entry(inv_file_id)
+        ie = self._path2ie(path)
         if ie.kind != "file":
             return False
         return ie.executable
@@ -863,32 +849,25 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv.get_entry(inv_file_id)
         # Inventories store symlink targets in unicode
-        return ie.symlink_target
+        return self._path2ie(path).symlink_target
 
     def get_reference_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv.get_entry(inv_file_id).reference_revision
+        return self._path2ie(path).reference_revision
 
     def get_root_id(self):
         if self.root_inventory.root:
             return self.root_inventory.root.file_id
 
     def kind(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        try:
-            return inv.get_entry(inv_file_id).kind
-        except errors.NoSuchId:
-            raise errors.NoSuchFile(path)
+        return self._path2ie(path).kind
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        inv, file_id = self._path2inv_file_id(path)
-        if file_id is None:
+        try:
+            entry = self._path2ie(path)
+        except errors.NoSuchFile:
             return ('missing', None, None, None)
-        entry = inv.get_entry(file_id)
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
