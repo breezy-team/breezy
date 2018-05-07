@@ -58,7 +58,7 @@ META_INFO = {
         'six>=1.9.0',
         ],
     'extras_require': {
-        'fastimport': ['fastimport'],
+        'fastimport': ['fastimport>=0.9.8'],
         },
 }
 
