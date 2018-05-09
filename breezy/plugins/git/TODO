@@ -1,6 +1,2 @@
-- Fix tests
- + Rename detection
- + Check for diverged branches
- + Inventory deltas
- + Remaining CommitBuilder tests
- + Commit slowness
++ Rename detection - pad.lv/1760740
++ Shallow branches - pad.lv/1764215
