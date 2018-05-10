@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6961-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6961-1) unstable; urgency=medium
 
   * New upstream snapshot.
    + Bundles git support. Add dependency on python-dulwich.
