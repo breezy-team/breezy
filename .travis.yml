@@ -1,4 +1,7 @@
 language: python
+addons:
+  apt:
+    update: true
 sudo: false
 cache: pip
 git:
