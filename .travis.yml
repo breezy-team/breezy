@@ -27,4 +27,5 @@ install:
   - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit $TEST_REQUIRE
 
 after_success:
+  - python -m coverage combine
   - codecov
