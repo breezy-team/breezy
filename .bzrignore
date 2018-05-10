@@ -75,3 +75,4 @@ python3.passing.old
 python3.passing.new
 selftest.log
 .coverage
+.coverage.*
