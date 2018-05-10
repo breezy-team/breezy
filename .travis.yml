@@ -14,12 +14,12 @@ env:
 matrix:
   include:
     - python: 2.7
-      env: SELFTEST_OPTIONS=""
+      env: SELFTEST_OPTIONS="--coverage"
            EXTRA_MAKE_ARGS="extensions"
 
 script:
   - make docs $EXTRA_MAKE_ARGS
-  - BRZ_PLUGIN_PATH=-site:-user python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -m coverage run -p --source=breezy ./brz selftest --parallel=fork $SELFTEST_OPTIONS
+  - BRZ_PLUGIN_PATH=-site:-user python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning ./brz selftest --parallel=fork $SELFTEST_OPTIONS
 
 install:
   - sudo apt install python-all-dev python3-all-dev subunit
@@ -27,5 +27,4 @@ install:
   - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit $TEST_REQUIRE
 
 after_success:
-  - python -m coverage combine
   - codecov
