@@ -1201,7 +1201,7 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-            repository=None):
+            repository=None, lossy=False):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1213,6 +1213,8 @@ class Branch(controldir.ControlComponent):
             repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
         result = to_controldir.create_branch(repository=repository)
+        if lossy:
+            raise errors.LossyPushToSameVCS(self, result)
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
