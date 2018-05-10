@@ -1,6 +1,11 @@
 language: python
+addons:
+  apt:
+    update: true
 sudo: false
 cache: pip
+git:
+  depth: false
 
 python:
   - 3.5
@@ -14,7 +19,7 @@ env:
 matrix:
   include:
     - python: 2.7
-      env: SELFTEST_OPTIONS=""
+      env: SELFTEST_OPTIONS="--coverage"
            EXTRA_MAKE_ARGS="extensions"
 
 script:
@@ -24,8 +29,7 @@ script:
 install:
   - sudo apt install python-all-dev python3-all-dev subunit
   - travis_retry pip install -U setuptools
-  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit $TEST_REQUIRE
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE
 
 after_success:
-  - python -m coverage combine
   - codecov

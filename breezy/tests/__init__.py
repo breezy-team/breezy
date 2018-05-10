@@ -3487,6 +3487,12 @@ def fork_for_tests(suite):
             try:
                 stream = os.fdopen(c2pwrite, 'wb', 1)
                 workaround_zealous_crypto_random()
+                try:
+                    import coverage
+                except ImportError:
+                    pass
+                else:
+                    coverage.process_startup()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
