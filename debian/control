@@ -12,6 +12,7 @@ Build-Depends: bash-completion,
                python-all-dbg (>= 2.6.6-3),
                python-all-dev (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
+               python-dulwich (>= 0.19.1),
                python-docutils,
                python-fastimport (>= 0.9.8),
                python-lzma-dbg [!m68k !powerpcspe !sh4],
@@ -29,7 +30,7 @@ Homepage: https://www.breezy-vcs.org/
 XS-Testsuite: autopkgtest
 
 Package: brz
-Recommends: python-gpg
+Recommends: python-gpg, python-dulwich (>= 0.19.1)
 Architecture: all
 Depends: python-breezy (<= ${source:Version}.1~),
          python-breezy (>= ${source:Version}),
@@ -66,7 +67,8 @@ Depends: python-configobj,
          ${shlibs:Depends}
 Recommends: ca-certificates,
             python-launchpadlib,
-            ssh-client | python-paramiko
+            ssh-client | python-paramiko,
+            python-dulwich (>= 0.19.1)
 Conflicts: python-paramiko (<< 1.14.1)
 Suggests: python-breezy-dbg,
           python-breezy.tests,

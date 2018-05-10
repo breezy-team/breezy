@@ -1,7 +1,7 @@
 breezy (3.0.0~bzr6960-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
-  * New upstream snapshot.
+   + Bundles git support. Add dependency on python-dulwich.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 10 May 2018 02:44:55 +0100
 
