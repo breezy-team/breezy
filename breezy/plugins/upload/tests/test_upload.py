@@ -43,7 +43,7 @@ def get_transport_scenarios():
     result = []
     basis = per_transport.transport_test_permutations()
     # Keep only the interesting ones for upload
-    usable_classes = {}
+    usable_classes = set()
     if features.paramiko.available():
         from ....transport import sftp
         usable_classes.add(sftp.SFTPTransport)
