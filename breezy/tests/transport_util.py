@@ -15,18 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from . import features
+from . import TestCaseWithTransport
 from ..transport import Transport
 
-# SFTPTransport offers better performance but relies on paramiko.
-if features.paramiko.available():
-    from . import test_sftp_transport
-    _backing_test_class = test_sftp_transport.TestCaseWithSFTPServer
-else:
-    from . import http_utils
-    _backing_test_class = http_utils.TestCaseWithWebserver
+# SFTPTransport is the only bundled transport that properly counts connections
+# at the moment.
+from . import test_sftp_transport
 
-
-class TestCaseWithConnectionHookedTransport(_backing_test_class):
+class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTPServer):
 
     def setUp(self):
         super(TestCaseWithConnectionHookedTransport, self).setUp()
@@ -38,4 +34,3 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
 
     def reset_connections(self):
         self.connections = []
-
