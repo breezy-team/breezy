@@ -374,9 +374,6 @@ class LockDir(lock.Lock):
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
                 # within it.
-                #
-                # Maybe this should be broader to allow for ftp servers with
-                # non-specific error messages?
                 self._trace("doing recursive deletion of non-empty directory "
                         "%s", tmpname)
                 self.transport.delete_tree(tmpname)

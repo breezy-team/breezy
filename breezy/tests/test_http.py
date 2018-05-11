@@ -1895,9 +1895,9 @@ class Test_redirected_to(tests.TestCase):
     def test_redirected_to_same_host_different_protocol(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
-                             'ftp://www.example.com/foo')
+                             'bzr://www.example.com/foo')
         self.assertNotEqual(type(r), type(t))
-        self.assertEqual('ftp://www.example.com/foo/', r.external_url())
+        self.assertEqual('bzr://www.example.com/foo/', r.external_url())
 
     def test_redirected_to_same_host_specific_implementation(self):
         t = self._transport('http://www.example.com/foo')
