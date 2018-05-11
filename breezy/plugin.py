@@ -463,7 +463,7 @@ def format_concise_plugin_list(state=None):
     if state is None:
         state = breezy.get_global_state()
     items = []
-    for name, a_plugin in sorted(state.plugins.items()):
+    for name, a_plugin in sorted(getattr(state, 'plugins', {}).items()):
         items.append("%s[%s]" %
             (name, a_plugin.__version__))
     return ', '.join(items)

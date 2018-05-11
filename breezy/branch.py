@@ -662,11 +662,11 @@ class Branch(controldir.ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
 
-    def set_reference_info(self, file_id, tree_path, branch_location):
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
         """Set the branch location to use for a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
 
-    def get_reference_info(self, file_id):
+    def get_reference_info(self, path):
         """Get the tree_path and branch_location for a tree reference."""
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
@@ -1201,7 +1201,7 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-            repository=None):
+            repository=None, lossy=False):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1213,6 +1213,8 @@ class Branch(controldir.ControlComponent):
             repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
         result = to_controldir.create_branch(repository=repository)
+        if lossy:
+            raise errors.LossyPushToSameVCS(self, result)
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
@@ -1267,11 +1269,11 @@ class Branch(controldir.ControlComponent):
         old_base = self.base
         new_base = target.base
         target_reference_dict = target._get_all_reference_info()
-        for file_id, (tree_path, branch_location) in viewitems(reference_dict):
+        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
             branch_location = urlutils.rebase_url(branch_location,
                                                   old_base, new_base)
             target_reference_dict.setdefault(
-                file_id, (tree_path, branch_location))
+                tree_path, (branch_location, file_id))
         target._set_all_reference_info(target_reference_dict)
 
     def check(self, refs):
@@ -1390,7 +1392,7 @@ class Branch(controldir.ControlComponent):
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
             for path, file_id in basis_tree.iter_references():
-                reference_parent = self.reference_parent(file_id, path)
+                reference_parent = self.reference_parent(path, file_id)
                 reference_parent.create_checkout(tree.abspath(path),
                     basis_tree.get_reference_revision(path, file_id),
                     lightweight)
@@ -1404,11 +1406,11 @@ class Branch(controldir.ControlComponent):
             reconciler.reconcile()
             return reconciler
 
-    def reference_parent(self, file_id, path, possible_transports=None):
+    def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
 
-        :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
+        :param file_id: Optional file_id of the tree reference
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config

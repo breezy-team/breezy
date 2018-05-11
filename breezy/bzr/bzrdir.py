@@ -348,7 +348,8 @@ class BzrDir(controldir.ControlDir):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True,
+               lossy=False):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -385,7 +386,7 @@ class BzrDir(controldir.ControlDir):
     def _sprout(self, op, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True, lossy=False):
         add_cleanup = op.add_cleanup
         fetch_spec_factory = fetch.FetchSpecFactory()
         if revision_id is not None:
@@ -475,7 +476,7 @@ class BzrDir(controldir.ControlDir):
                 subtrees = []
             for path, file_id in subtrees:
                 target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation = source_branch.reference_parent(path, file_id)
                 sublocation.controldir.sprout(target,
                     basis.get_reference_revision(path, file_id),
                     force_new_repo=force_new_repo, recurse=recurse,
