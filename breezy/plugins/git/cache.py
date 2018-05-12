@@ -788,6 +788,7 @@ class IndexGitShaMap(GitShaMap):
     """
 
     def __init__(self, transport=None):
+        self._name = None
         if transport is None:
             self._transport = None
             self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
