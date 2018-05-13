@@ -107,7 +107,7 @@ class TestSmartRequest(TestCase):
         # Create a SmartServerRequestHandler with a SmartServerRequest subclass
         # that does not implement do_body.
         handler = request.SmartServerRequestHandler(
-            None, {'foo': NoBodyRequest}, '/')
+            None, {b'foo': NoBodyRequest}, '/')
         # Emulate a request with no body (i.e. just args).
         handler.args_received((b'foo',))
         handler.end_received()
@@ -116,7 +116,7 @@ class TestSmartRequest(TestCase):
     def test_only_request_code_is_jailed(self):
         transport = 'dummy transport'
         handler = request.SmartServerRequestHandler(
-            transport, {'foo': CheckJailRequest}, '/')
+            transport, {b'foo': CheckJailRequest}, '/')
         handler.args_received((b'foo',))
         self.assertEqual(None, request.jail_info.transports)
         handler.accept_body(b'bytes')
@@ -154,13 +154,13 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
 
     def test_error_translation_from_args_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': DoErrorRequest}, '/')
+            None, {b'foo': DoErrorRequest}, '/')
         handler.args_received((b'foo',))
         self.assertResponseIsTranslatedError(handler)
 
     def test_error_translation_from_chunk_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': ChunkErrorRequest}, '/')
+            None, {b'foo': ChunkErrorRequest}, '/')
         handler.args_received((b'foo',))
         self.assertNoResponse(handler)
         handler.accept_body(b'bytes')
@@ -168,7 +168,7 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
 
     def test_error_translation_from_end_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': EndErrorRequest}, '/')
+            None, {b'foo': EndErrorRequest}, '/')
         handler.args_received((b'foo',))
         self.assertNoResponse(handler)
         handler.end_received()
@@ -176,7 +176,7 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
 
     def test_unexpected_error_translation(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': DoUnexpectedErrorRequest}, '/')
+            None, {b'foo': DoUnexpectedErrorRequest}, '/')
         handler.args_received((b'foo',))
         self.assertEqual(
             request.FailedSmartServerResponse((b'error', b'KeyError', b"1")),

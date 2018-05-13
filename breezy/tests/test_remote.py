@@ -3104,7 +3104,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             b'error', (b'UnsuspendableWriteGroup',))
         repo.lock_write()
         repo.start_write_group()
-        self.assertEqual(client._calls[-2:], [ 
+        self.assertEqual(client._calls[-2:], [
             ('_ensure_real',),
             ('start_write_group',)])
 
