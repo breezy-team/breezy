@@ -270,21 +270,21 @@ class VersionedFileTestMixIn(object):
         # \r characters are not permitted in lines being added
         vf = self.get_file()
         self.assertRaises(errors.BzrBadParameterContainsNewline,
-            vf.add_lines, 'a', [], ['a\n\n'])
+            vf.add_lines, b'a', [], [b'a\n\n'])
         self.assertRaises(
             (errors.BzrBadParameterContainsNewline, NotImplementedError),
-            vf.add_lines_with_ghosts, 'a', [], ['a\n\n'])
+            vf.add_lines_with_ghosts, b'a', [], [b'a\n\n'])
         # but inline CR's are allowed
-        vf.add_lines(b'a', [], ['a\r\n'])
+        vf.add_lines(b'a', [], [b'a\r\n'])
         try:
-            vf.add_lines_with_ghosts('b', [], ['a\r\n'])
+            vf.add_lines_with_ghosts(b'b', [], [b'a\r\n'])
         except NotImplementedError:
             pass
 
     def test_add_reserved(self):
         vf = self.get_file()
         self.assertRaises(errors.ReservedId,
-            vf.add_lines, 'a:', [], ['a\n', 'b\n', 'c\n'])
+            vf.add_lines, b'a:', [], [b'a\n', b'b\n', b'c\n'])
 
     def test_add_lines_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -1487,7 +1487,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         if self.key_length == 1:
             return (suffix,)
         else:
-            return ('FileA',) + (suffix,)
+            return (b'FileA',) + (suffix,)
 
     def test_add_fallback_implies_without_fallbacks(self):
         f = self.get_versionedfiles('files')
@@ -1527,25 +1527,25 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         if self.key_length == 1:
             prefix = ()
         else:
-            prefix = ('FileA',)
+            prefix = (b'FileA',)
         # introduced full text
-        origins = files.annotate(prefix + ('origin',))
+        origins = files.annotate(prefix + (b'origin',))
         self.assertEqual([
-            (prefix + ('origin',), 'origin\n')],
+            (prefix + (b'origin',), b'origin\n')],
             origins)
         # a delta
-        origins = files.annotate(prefix + ('base',))
+        origins = files.annotate(prefix + (b'base',))
         self.assertEqual([
-            (prefix + ('base',), 'base\n')],
+            (prefix + (b'base',), b'base\n')],
             origins)
         # a merge
-        origins = files.annotate(prefix + ('merged',))
+        origins = files.annotate(prefix + (b'merged',))
         if self.graph:
             self.assertEqual([
-                (prefix + ('base',), 'base\n'),
-                (prefix + ('left',), 'left\n'),
-                (prefix + ('right',), 'right\n'),
-                (prefix + ('merged',), 'merged\n')
+                (prefix + (b'base',), b'base\n'),
+                (prefix + (b'left',), b'left\n'),
+                (prefix + (b'right',), b'right\n'),
+                (prefix + (b'merged',), b'merged\n')
                 ],
                 origins)
         else:
@@ -1913,7 +1913,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         if self.key_length == 1:
             lows = {():0}
         else:
-            lows = {('FileA',):0, ('FileB',):0}
+            lows = {(b'FileA',):0, (b'FileB',):0}
         if not self.graph:
             self.assertEqual(set(keys), set(seen))
         else:
@@ -1981,15 +1981,15 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def test_get_record_stream_native_formats_are_wire_ready_one_ft(self):
         files = self.get_versionedfiles()
-        key = self.get_simple_key('foo')
-        files.add_lines(key, (), ['my text\n', 'content'])
+        key = self.get_simple_key(b'foo')
+        files.add_lines(key, (), [b'my text\n', b'content'])
         stream = files.get_record_stream([key], 'unordered', False)
         record = next(stream)
         if record.storage_kind in ('chunked', 'fulltext'):
             # chunked and fulltext representations are for direct use not wire
             # serialisation: check they are able to be used directly. To send
             # such records over the wire translation will be needed.
-            self.assertRecordHasContent(record, "my text\ncontent")
+            self.assertRecordHasContent(record, b"my text\ncontent")
         else:
             bytes = [record.get_bytes_as(record.storage_kind)]
             network_stream = versionedfile.NetworkRecordStream(bytes).read()

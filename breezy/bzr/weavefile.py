@@ -140,7 +140,7 @@ def _read_weave_v5(f, w):
                 w._parents.append(list(map(int, l[2:].split(b' '))))
             else:
                 w._parents.append([])
-            l = lines.next()[:-1]
+            l = next(lines)[:-1]
             w._sha1s.append(l[2:])
             l = next(lines)
             name = l[2:-1]
