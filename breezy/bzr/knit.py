@@ -675,7 +675,7 @@ class KnitAnnotateFactory(_KnitFactory):
         #       but the code itself doesn't really depend on that.
         #       Figure out a way to not require the overhead of turning the
         #       list back into tuples.
-        lines = (tuple(line.split(' ', 1)) for line in content)
+        lines = (tuple(line.split(b' ', 1)) for line in content)
         return AnnotatedKnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
@@ -700,7 +700,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
         cache = {}
         def cache_and_return(line):
-            origin, text = line.split(' ', 1)
+            origin, text = line.split(b' ', 1)
             return cache.setdefault(origin, origin), text
 
         # walk through the lines parsing.
@@ -708,20 +708,20 @@ class KnitAnnotateFactory(_KnitFactory):
         # loop to minimise any performance impact
         if plain:
             for header in lines:
-                start, end, count = [int(n) for n in header.split(',')]
-                contents = [next(lines).split(' ', 1)[1] for _ in range(count)]
+                start, end, count = [int(n) for n in header.split(b',')]
+                contents = [next(lines).split(b' ', 1)[1] for _ in range(count)]
                 result.append((start, end, count, contents))
         else:
             for header in lines:
-                start, end, count = [int(n) for n in header.split(',')]
-                contents = [tuple(next(lines).split(' ', 1))
+                start, end, count = [int(n) for n in header.split(b',')]
+                contents = [tuple(next(lines).split(b' ', 1))
                     for _ in range(count)]
                 result.append((start, end, count, contents))
         return result
 
     def get_fulltext_content(self, lines):
         """Extract just the content lines from a fulltext."""
-        return (line.split(' ', 1)[1] for line in lines)
+        return (line.split(b' ', 1)[1] for line in lines)
 
     def get_linedelta_content(self, lines):
         """Extract just the content from a line delta.
@@ -731,10 +731,10 @@ class KnitAnnotateFactory(_KnitFactory):
         """
         lines = iter(lines)
         for header in lines:
-            header = header.split(',')
+            header = header.split(b',')
             count = int(header[2])
             for _ in range(count):
-                origin, text = next(lines).split(' ', 1)
+                origin, text = next(lines).split(b' ', 1)
                 yield text
 
     def lower_fulltext(self, content):
@@ -742,7 +742,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
         see parse_fulltext which this inverts.
         """
-        return ['%s %s' % (o, t) for o, t in content._lines]
+        return [b'%s %s' % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
         """convert a delta into a serializable form.
@@ -753,7 +753,7 @@ class KnitAnnotateFactory(_KnitFactory):
         #       the origin is a valid utf-8 line, eventually we could remove it
         out = []
         for start, end, c, lines in delta:
-            out.append('%d,%d,%d\n' % (start, end, c))
+            out.append(b'%d,%d,%d\n' % (start, end, c))
             out.extend(origin + ' ' + text
                        for origin, text in lines)
         return out
@@ -797,7 +797,7 @@ class KnitPlainFactory(_KnitFactory):
         while cur < num_lines:
             header = lines[cur]
             cur += 1
-            start, end, c = [int(n) for n in header.split(',')]
+            start, end, c = [int(n) for n in header.split(b',')]
             yield start, end, c, lines[cur:cur+c]
             cur += c
 
@@ -816,7 +816,7 @@ class KnitPlainFactory(_KnitFactory):
         """
         lines = iter(lines)
         for header in lines:
-            header = header.split(',')
+            header = header.split(b',')
             count = int(header[2])
             for _ in range(count):
                 yield next(lines)
@@ -827,7 +827,7 @@ class KnitPlainFactory(_KnitFactory):
     def lower_line_delta(self, delta):
         out = []
         for start, end, c, lines in delta:
-            out.append('%d,%d,%d\n' % (start, end, c))
+            out.append(b'%d,%d,%d\n' % (start, end, c))
             out.extend(lines)
         return out
 
@@ -2494,7 +2494,7 @@ class _KndxIndex(object):
                     if parents is None:
                         # kndx indices cannot be parentless.
                         parents = ()
-                    line = "\n%s %s %s %s %s :" % (
+                    line = b"\n%s %s %s %s %s :" % (
                         key[-1], ','.join(options), pos, size,
                         self._dictionary_compress(parents))
                     if not isinstance(line, str):
@@ -2503,7 +2503,7 @@ class _KndxIndex(object):
                     lines.append(line)
                     self._cache_key(key, options, pos, size, parents)
                 if len(orig_history):
-                    self._transport.append_bytes(path, ''.join(lines))
+                    self._transport.append_bytes(path, b''.join(lines))
                 else:
                     self._init_index(path, lines)
             except:

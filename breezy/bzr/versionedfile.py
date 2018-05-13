@@ -910,7 +910,7 @@ def make_versioned_files_factory(versioned_file_factory, mapper):
     """
     def factory(transport):
         return ThunkedVersionedFiles(transport, versioned_file_factory, mapper,
-            lambda:True)
+            lambda: True)
     return factory
 
 
