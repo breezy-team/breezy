@@ -516,9 +516,9 @@ class Weave(VersionedFile):
             # even more specially, if we're adding an empty text we
             # need do nothing at all.
             if lines:
-                self._weave.append(('{', new_version))
+                self._weave.append((b'{', new_version))
                 self._weave.extend(lines)
-                self._weave.append(('}', None))
+                self._weave.append((b'}', None))
             return new_version
 
         if len(parents) == 1:
@@ -572,8 +572,8 @@ class Weave(VersionedFile):
             # the deletion and insertion are handled separately.
             # first delete the region.
             if i1 != i2:
-                self._weave.insert(i1+offset, ('[', new_version))
-                self._weave.insert(i2+offset+1, (']', new_version))
+                self._weave.insert(i1+offset, (b'[', new_version))
+                self._weave.insert(i2+offset+1, (b']', new_version))
                 offset += 2
 
             if j1 != j2:
@@ -581,9 +581,9 @@ class Weave(VersionedFile):
                 # i2; we want to insert after this region to make sure
                 # we don't destroy ourselves
                 i = i2 + offset
-                self._weave[i:i] = ([('{', new_version)]
+                self._weave[i:i] = ([(b'{', new_version)]
                                     + lines[j1:j2]
-                                    + [('}', None)])
+                                    + [(b'}', None)])
                 offset += 2 + (j2 - j1)
         return new_version
 
@@ -654,13 +654,13 @@ class Weave(VersionedFile):
             if l.__class__ == tuple:
                 c, v = l
                 isactive = None
-                if c == '{':
+                if c == b'{':
                     istack.append(self._names[v])
-                elif c == '}':
+                elif c == b'}':
                     istack.pop()
-                elif c == '[':
+                elif c == b'[':
                     dset.add(self._names[v])
-                elif c == ']':
+                elif c == b']':
                     dset.remove(self._names[v])
                 else:
                     raise WeaveFormatError('unexpected instruction %r' % v)
@@ -770,22 +770,19 @@ class Weave(VersionedFile):
         # 'in' test could dominate, so I'm leaving this change in place -
         # when its fast enough to consider profiling big datasets we can review.
 
-
-
-
         for l in self._weave:
             if l.__class__ == tuple:
                 c, v = l
                 isactive = None
-                if c == '{':
+                if c == b'{':
                     istack.append(v)
                     iset.add(v)
-                elif c == '}':
+                elif c == b'}':
                     iset.remove(istack.pop())
-                elif c == '[':
+                elif c == b'[':
                     if v in included:
                         dset.add(v)
-                elif c == ']':
+                elif c == b']':
                     if v in included:
                         dset.remove(v)
                 else:

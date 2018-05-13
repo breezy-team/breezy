@@ -2681,7 +2681,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                  25: b'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
                  }
         for depth in range(26):
-            new_version = self.get_simple_key(text_name + b'%s' % depth)
+            new_version = self.get_simple_key(text_name + b'%d' % depth)
             text = text + [b'line\n']
             files.add_lines(new_version, self.get_parents([next_parent]), text)
             next_parent = new_version

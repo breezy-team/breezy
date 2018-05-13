@@ -114,7 +114,7 @@ class TransportStore(Store):
         if not isinstance(fileid, str):
             raise TypeError('Fileids should be bytestrings: %s %r' % (
                 type(fileid), fileid))
-        if '\\' in fileid or '/' in fileid:
+        if b'\\' in fileid or b'/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
     def _id_to_names(self, fileid, suffix):
