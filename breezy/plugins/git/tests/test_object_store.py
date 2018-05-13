@@ -130,7 +130,7 @@ class LRUTreeCacheTests(TestCaseWithTransport):
         bb.start_series()
         revid = bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         tree = self.cache.revision_tree(revid)
@@ -156,7 +156,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.start_series()
         bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         # read locks cache
@@ -175,7 +175,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.start_series()
         bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         # read locks cache
@@ -186,7 +186,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_contains(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertFalse(b.id in self.store)
@@ -194,7 +194,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.start_series()
         bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         # read locks cache
@@ -257,7 +257,7 @@ class DirectoryToTreeTests(TestCase):
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0100644, b.id)
+        t2.add("bar", 0o100644, b.id)
         self.assertEquals(t1, t2)
 
     def test_with_gitdir(self):
@@ -268,5 +268,5 @@ class DirectoryToTreeTests(TestCase):
                 lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0100644, b.id)
+        t2.add("bar", 0o100644, b.id)
         self.assertEquals(t1, t2)

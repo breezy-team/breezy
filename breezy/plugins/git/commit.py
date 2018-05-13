@@ -182,7 +182,7 @@ class GitCommitBuilder(CommitBuilder):
                 if self._mapping.BZR_FILE_IDS_FILE is None:
                     raise SettingCustomFileIdsUnsupported(fileid_map)
                 self.store.add_object(fileid_blob)
-                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (stat.S_IFREG | 0644, fileid_blob.id)
+                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (stat.S_IFREG | 0o644, fileid_blob.id)
             else:
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None
         self.new_inventory = None

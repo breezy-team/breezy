@@ -19,7 +19,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from io import BytesIO
 
 import time
 
@@ -62,7 +62,7 @@ class GitBranchBuilder(object):
         self.commit_info = []
         self.orig_stream = stream
         if stream is None:
-            self.stream = StringIO()
+            self.stream = BytesIO()
         else:
             self.stream = stream
         self._counter = 0

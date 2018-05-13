@@ -47,6 +47,7 @@ from ...errors import (
     )
 from ...transport import (
     Transport,
+    register_urlparse_netloc_protocol,
     )
 
 from . import (
@@ -111,11 +112,17 @@ import os
 import select
 import tempfile
 import urllib
-import urlparse
+
+try:
+    import urllib.parse as urlparse
+    from urllib.parse import splituser, splitnport
+except ImportError:
+    import urlparse
+    from urllib import splituser, splitnport
 
 # urlparse only supports a limited number of schemes by default
-
-urlparse.uses_netloc.extend(['git', 'git+ssh'])
+register_urlparse_netloc_protocol('git')
+register_urlparse_netloc_protocol('git+ssh')
 
 from dulwich.pack import load_pack_index
 
@@ -151,11 +158,11 @@ def split_git_url(url):
     :return: Tuple with host, port, username, path.
     """
     (scheme, netloc, loc, _, _) = urlparse.urlsplit(url)
-    path = urllib.unquote(loc)
+    path = urlparse.unquote(loc)
     if path.startswith("/~"):
         path = path[1:]
-    (username, hostport) = urllib.splituser(netloc)
-    (host, port) = urllib.splitnport(hostport, None)
+    (username, hostport) = splituser(netloc)
+    (host, port) = splitnport(hostport, None)
     return (host, port, username, path)
 
 
@@ -370,7 +377,7 @@ class RemoteGitDir(GitDir):
                 result.refs = {}
             self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
             return result
-        except GitProtocolError, e:
+        except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
@@ -389,7 +396,7 @@ class RemoteGitDir(GitDir):
         try:
             return self._client.send_pack(self._client_path,
                     get_changed_refs_wrapper, generate_pack_data, progress)
-        except GitProtocolError, e:
+        except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
@@ -825,7 +832,7 @@ class RemoteGitBranch(GitBranch):
         :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
         """
         refs = self.controldir.get_refs_container()
-        for ref_name, unpeeled in refs.as_dict().iteritems():
+        for ref_name, unpeeled in refs.as_dict().items():
             try:
                 tag_name = ref_to_tag_name(ref_name)
             except (ValueError, UnicodeDecodeError):
@@ -845,13 +852,13 @@ class RemoteGitBranch(GitBranch):
 def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
     base = {}
     peeled = {}
-    for k, v in refs_dict.iteritems():
+    for k, v in refs_dict.items():
         if is_peeled(k):
             peeled[k[:-3]] = v
         else:
             base[k] = v
             peeled[k] = v
-    for name, target in symrefs_dict.iteritems():
+    for name, target in symrefs_dict.items():
         base[name] = SYMREF + target
     ret = DictRefsContainer(base)
     ret._peeled = peeled

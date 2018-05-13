@@ -44,7 +44,7 @@ from .object_store import (
     get_object_store,
     )
 
-from cStringIO import StringIO
+from io import BytesIO
 from dulwich import (
     __version__ as dulwich_version,
     )
@@ -131,7 +131,7 @@ class GitMergeDirective(BaseMergeDirective):
 
     @classmethod
     def _generate_commit(cls, repository, revision_id, num, total):
-        s = StringIO()
+        s = BytesIO()
         store = get_object_store(repository)
         with store.lock_read():
             commit = store[store._lookup_revision_sha1(revision_id)]
@@ -142,7 +142,7 @@ class GitMergeDirective(BaseMergeDirective):
             lhs_parent = _mod_revision.NULL_REVISION
         tree_1 = repository.revision_tree(lhs_parent)
         tree_2 = repository.revision_tree(revision_id)
-        contents = StringIO()
+        contents = BytesIO()
         differ = GitDiffTree.from_trees_options(tree_1, tree_2,
                 contents, 'utf8', None, 'a/', 'b/', None)
         differ.show_diff(None, None)

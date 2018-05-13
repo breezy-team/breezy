@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from StringIO import StringIO
+from io import BytesIO
 
 import os
 import time
@@ -116,9 +116,9 @@ class FetchFromRemoteTestBase(object):
 
     def test_sprout_simple(self):
         self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
         self.make_controldir('local', format=self._to_format)
@@ -130,13 +130,13 @@ class FetchFromRemoteTestBase(object):
     def test_sprout_with_tags(self):
         c1 = self.remote_real.do_commit(
                 message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/tags/another')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/tags/another')
         self.remote_real.refs['refs/tags/blah'] = self.remote_real.head()
 
         remote = ControlDir.open(self.remote_url)
@@ -153,23 +153,23 @@ class FetchFromRemoteTestBase(object):
 
     def test_sprout_with_annotated_tag(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/heads/another')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/another')
         porcelain.tag_create(
                 self.remote_real,
-                tag="blah",
-                author='author <author@example.com>',
+                tag=b"blah",
+                author=b'author <author@example.com>',
                 objectish=c2,
                 tag_time=int(time.time()),
                 tag_timezone=0,
                 annotated=True,
-                message="Annotated tag")
+                message=b"Annotated tag")
 
         remote = ControlDir.open(self.remote_url)
         self.make_controldir('local', format=self._to_format)
@@ -223,18 +223,18 @@ class PushToRemoteBase(object):
         else:
             self.assertIs(None, result.new_revno)
 
-        result.report(StringIO())
+        result.report(BytesIO())
 
         self.assertEqual(
-                {'refs/heads/newbranch': self.remote_real.refs['refs/heads/newbranch'],
+                {b'refs/heads/newbranch': self.remote_real.refs[b'refs/heads/newbranch'],
                 },
                 self.remote_real.get_refs())
 
     def test_push(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
         self.make_controldir('local', format=self._from_format)
@@ -254,22 +254,22 @@ class PushToRemoteBase(object):
         self.assertEqual(0, result.old_revno)
         self.assertEqual(2, result.new_revno)
 
-        result.report(StringIO())
+        result.report(BytesIO())
 
         self.assertEqual(
-                {'refs/heads/master': self.remote_real.head(),
-                 'HEAD': self.remote_real.head(),
-                 'refs/heads/newbranch': self.remote_real.refs['refs/heads/newbranch'],
-                 'refs/tags/sometag': self.remote_real.refs['refs/heads/newbranch'],
+                {b'refs/heads/master': self.remote_real.head(),
+                 b'HEAD': self.remote_real.head(),
+                 b'refs/heads/newbranch': self.remote_real.refs[b'refs/heads/newbranch'],
+                 b'refs/tags/sometag': self.remote_real.refs[b'refs/heads/newbranch'],
                 },
                 self.remote_real.get_refs())
 
     def test_push_diverged(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/heads/newbranch')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/newbranch')
 
         remote = ControlDir.open(self.remote_url)
         wt = self.make_branch_and_tree('local', format=self._from_format)
@@ -317,33 +317,33 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
     def test_remove_branch(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/heads/blah')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/blah')
 
         remote = ControlDir.open(self.remote_url)
         remote.destroy_branch(name='blah')
         self.assertEqual(
                 self.remote_real.get_refs(),
-                {'refs/heads/master': self.remote_real.head(),
-                 'HEAD': self.remote_real.head(),
+                {b'refs/heads/master': self.remote_real.head(),
+                 b'HEAD': self.remote_real.head(),
                 })
 
     def test_list_branches(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/heads/blah')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/blah')
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
@@ -352,14 +352,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
     def test_get_branches(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/heads/blah')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/blah')
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
@@ -368,14 +368,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
     def test_remove_tag(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>',
-                ref='refs/tags/blah')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/tags/blah')
 
         remote = ControlDir.open(self.remote_url)
         remote_branch = remote.open_branch()
@@ -383,66 +383,66 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertRaises(NoSuchTag, remote_branch.tags.delete_tag, 'blah')
         self.assertEqual(
                 self.remote_real.get_refs(),
-                {'refs/heads/master': self.remote_real.head(),
-                 'HEAD': self.remote_real.head(),
+                {b'refs/heads/master': self.remote_real.head(),
+                 b'HEAD': self.remote_real.head(),
                 })
 
     def test_set_tag(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
         remote.open_branch().tags.set_tag(
-            'blah', default_mapping.revision_id_foreign_to_bzr(c1))
+            b'blah', default_mapping.revision_id_foreign_to_bzr(c1))
         self.assertEqual(
                 self.remote_real.get_refs(),
-                {'refs/heads/master': self.remote_real.head(),
-                 'refs/tags/blah': c1,
-                 'HEAD': self.remote_real.head(),
+                {b'refs/heads/master': self.remote_real.head(),
+                 b'refs/tags/blah': c1,
+                 b'HEAD': self.remote_real.head(),
                 })
 
     def test_annotated_tag(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
 
         porcelain.tag_create(
                 self.remote_real,
-                tag="blah",
-                author='author <author@example.com>',
+                tag=b"blah",
+                author=b'author <author@example.com>',
                 objectish=c2,
                 tag_time=int(time.time()),
                 tag_timezone=0,
                 annotated=True,
-                message="Annotated tag")
+                message=b"Annotated tag")
 
         remote = ControlDir.open(self.remote_url)
         remote_branch = remote.open_branch()
         self.assertEqual({
-            'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
+            b'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
             remote_branch.tags.get_tag_dict())
 
     def tetst_get_branch_reference(self):
         c1 = self.remote_real.do_commit(
-                message='message',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
-                message='another commit',
-                committer='committer <committer@example.com>',
-                author='author <author@example.com>')
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
-        self.assertEqual('refs/heads/master', remote.get_branch_reference(''))
+        self.assertEqual(b'refs/heads/master', remote.get_branch_reference(''))
         self.assertEqual(None, remote.get_branch_reference('master'))

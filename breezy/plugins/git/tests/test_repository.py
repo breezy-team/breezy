@@ -55,8 +55,8 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
     def _do_commit(self):
         builder = tests.GitBranchBuilder()
-        builder.set_file('a', 'text for a\n', False)
-        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        builder.set_file(b'a', b'text for a\n', False)
+        commit_handle = builder.commit(b'Joe Foo <joe@foo.com>', b'message')
         mapping = builder.finish()
         return mapping[commit_handle]
 
@@ -76,7 +76,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         GitRepo.init(self.test_dir)
         commit_id = self._do_commit()
         repo = Repository.open('.')
-        self.assertFalse(repo.has_revision('foobar'))
+        self.assertFalse(repo.has_revision(b'foobar'))
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
         self.assertTrue(repo.has_revision(revid))
 
@@ -84,9 +84,9 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         GitRepo.init(self.test_dir)
         commit_id = self._do_commit()
         repo = Repository.open('.')
-        self.assertEquals(set(), repo.has_revisions(['foobar']))
+        self.assertEquals(set(), repo.has_revisions([b'foobar']))
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
-        self.assertEquals(set([revid]), repo.has_revisions(['foobar', revid]))
+        self.assertEquals(set([revid]), repo.has_revisions([b'foobar', revid]))
 
     def test_get_revision(self):
         # GitRepository.get_revision gives a Revision object.
@@ -111,11 +111,11 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         # Create a git repository with some interesting files in a revision.
         GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
-        builder.set_file('data', 'text\n', False)
-        builder.set_file('executable', 'content', True)
-        builder.set_link('link', 'broken')
-        builder.set_file('subdir/subfile', 'subdir text\n', False)
-        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message',
+        builder.set_file(b'data', b'text\n', False)
+        builder.set_file(b'executable', b'content', True)
+        builder.set_link(b'link', b'broken')
+        builder.set_file(b'subdir/subfile', b'subdir text\n', False)
+        commit_handle = builder.commit(b'Joe Foo <joe@foo.com>', b'message',
             timestamp=1205433193)
         mapping = builder.finish()
         return mapping[commit_handle]
@@ -138,8 +138,8 @@ class TestGitRepository(tests.TestCaseWithTransport):
 
     def _do_commit(self):
         builder = tests.GitBranchBuilder()
-        builder.set_file('a', 'text for a\n', False)
-        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        builder.set_file(b'a', b'text for a\n', False)
+        commit_handle = builder.commit(b'Joe Foo <joe@foo.com>', b'message')
         mapping = builder.finish()
         return mapping[commit_handle]
 
@@ -190,7 +190,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertIs(None, tree.get_root_id())
 
     def test_get_parent_map_null(self):
-        self.assertEquals({revision.NULL_REVISION: ()}, 
+        self.assertEquals({revision.NULL_REVISION: ()},
                            self.git_repo.get_parent_map([revision.NULL_REVISION]))
 
 
@@ -223,7 +223,8 @@ class GitRepositoryFormat(tests.TestCase):
         self.format = repository.GitRepositoryFormat()
 
     def test_get_format_description(self):
-        self.assertEquals("Git Repository", self.format.get_format_description())
+        self.assertEquals("Git Repository",
+                          self.format.get_format_description())
 
 
 class RevisionGistImportTests(tests.TestCaseWithTransport):
@@ -237,7 +238,7 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         self.bzr_tree = self.make_branch_and_tree("bzr")
 
     def get_inter(self):
-        return InterRepository.get(self.bzr_tree.branch.repository, 
+        return InterRepository.get(self.bzr_tree.branch.repository,
                                    self.git_repo)
 
     def object_iter(self):
@@ -258,11 +259,10 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
 
     def test_pointless(self):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
-                timezone=0,
-                  committer="Jelmer Vernooij <jelmer@samba.org>")
-        self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
+                timezone=0, committer="Jelmer Vernooij <jelmer@samba.org>")
+        self.assertEquals(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
                 self.import_rev(revid))
-        self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
+        self.assertEquals(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
                 self.import_rev(revid))
 
 

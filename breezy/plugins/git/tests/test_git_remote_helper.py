@@ -21,7 +21,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from io import BytesIO
 import os
 
 from dulwich.repo import Repo
@@ -68,7 +68,7 @@ class FetchTests(TestCaseWithTransport):
         self.shortname = 'bzr'
 
     def fetch(self, wants):
-        outf = StringIO()
+        outf = BytesIO()
         fetch(outf, wants, self.shortname, self.remote_dir, self.local_dir)
         return outf.getvalue()
 
@@ -100,19 +100,19 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
 
     def test_capabilities(self):
-        f = StringIO()
+        f = BytesIO()
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = "fetch\noption\npush\n"
         self.assertTrue(capabs in (base+"\n", base+"import\n\n"), capabs)
 
     def test_option(self):
-        f = StringIO()
+        f = BytesIO()
         self.helper.cmd_option(f, [])
         self.assertEquals("unsupported\n", f.getvalue())
 
     def test_list_basic(self):
-        f = StringIO()
+        f = BytesIO()
         self.helper.cmd_list(f, [])
         self.assertEquals(
             '\n',
@@ -125,7 +125,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.remote_tree.add(["afile"])
         self.remote_tree.commit("A commit message", timestamp=1330445983,
             timezone=0, committer='Somebody <jrandom@example.com>')
-        f = StringIO()
+        f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEquals(
             'commit refs/heads/master\n'

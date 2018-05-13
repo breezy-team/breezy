@@ -95,12 +95,12 @@ def store_git_pristine_tar_data(repo, filename, delta, gitid,
         (delta_ob, delta_name),
         (id_ob, id_name)]
     tree = get_pristine_tar_tree(repo)
-    tree.add(delta_name, stat.S_IFREG | 0644, delta_ob.id)
-    tree.add(id_name, stat.S_IFREG | 0644, id_ob.id)
+    tree.add(delta_name, stat.S_IFREG | 0o644, delta_ob.id)
+    tree.add(id_name, stat.S_IFREG | 0o644, id_ob.id)
     if not "README" in tree:
         readme_ob = Blob.from_string(README_CONTENTS)
         objects.append((readme_ob, "README"))
-        tree.add("README", stat.S_IFREG | 0644, readme_ob.id)
+        tree.add("README", stat.S_IFREG | 0o644, readme_ob.id)
     objects.append((tree, ""))
     repo.object_store.add_objects(objects)
     if message is None:

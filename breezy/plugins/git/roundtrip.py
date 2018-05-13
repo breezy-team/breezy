@@ -49,7 +49,7 @@ from __future__ import absolute_import
 
 from ... import osutils
 
-from cStringIO import StringIO
+from io import BytesIO
 
 
 class CommitSupplement(object):
@@ -85,21 +85,21 @@ class TreeSupplement(object):
 def parse_roundtripping_metadata(text):
     """Parse Bazaar roundtripping metadata."""
     ret = CommitSupplement()
-    f = StringIO(text)
+    f = BytesIO(text)
     for l in f.readlines():
-        (key, value) = l.split(":", 1)
-        if key == "revision-id":
+        (key, value) = l.split(b":", 1)
+        if key == b"revision-id":
             ret.revision_id = value.strip()
-        elif key == "parent-ids":
-            ret.explicit_parent_ids = tuple(value.strip().split(" "))
-        elif key == "testament3-sha1":
-            ret.verifiers["testament3-sha1"] = value.strip()
-        elif key.startswith("property-"):
-            name = key[len("property-"):]
+        elif key == b"parent-ids":
+            ret.explicit_parent_ids = tuple(value.strip().split(b" "))
+        elif key == b"testament3-sha1":
+            ret.verifiers[b"testament3-sha1"] = value.strip()
+        elif key.startswith(b"property-"):
+            name = key[len(b"property-"):]
             if not name in ret.properties:
-                ret.properties[name] = value[1:].rstrip("\n")
+                ret.properties[name] = value[1:].rstrip(b"\n")
             else:
-                ret.properties[name] += "\n" + value[1:].rstrip("\n")
+                ret.properties[name] += b"\n" + value[1:].rstrip(b"\n")
         else:
             raise ValueError
     return ret
@@ -113,16 +113,16 @@ def generate_roundtripping_metadata(metadata, encoding):
     """
     lines = []
     if metadata.revision_id:
-        lines.append("revision-id: %s\n" % metadata.revision_id)
+        lines.append(b"revision-id: %s\n" % metadata.revision_id)
     if metadata.explicit_parent_ids:
-        lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
+        lines.append(b"parent-ids: %s\n" % b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
-        for l in metadata.properties[key].split("\n"):
-            lines.append("property-%s: %s\n" % (key.encode(encoding), osutils.safe_utf8(l)))
-    if "testament3-sha1" in metadata.verifiers:
-        lines.append("testament3-sha1: %s\n" %
-                     metadata.verifiers["testament3-sha1"])
-    return "".join(lines)
+        for l in metadata.properties[key].split(b"\n"):
+            lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))
+    if b"testament3-sha1" in metadata.verifiers:
+        lines.append(b"testament3-sha1: %s\n" %
+                     metadata.verifiers[b"testament3-sha1"])
+    return b"".join(lines)
 
 
 def extract_bzr_metadata(message):
@@ -131,7 +131,7 @@ def extract_bzr_metadata(message):
     :param message: Commit message to extract from
     :return: Tuple with original commit message and metadata object
     """
-    split = message.split("\n--BZR--\n", 1)
+    split = message.split(b"\n--BZR--\n", 1)
     if len(split) != 2:
         return message, None
     return split[0], parse_roundtripping_metadata(split[1])
@@ -143,9 +143,9 @@ def inject_bzr_metadata(message, commit_supplement, encoding):
     rt_data = generate_roundtripping_metadata(commit_supplement, encoding)
     if not rt_data:
         return message
-    if type(rt_data) is not str:
+    if type(rt_data) is not bytes:
         raise TypeError(rt_data)
-    return message + "\n--BZR--\n" + rt_data
+    return message + b"\n--BZR--\n" + rt_data
 
 
 def serialize_fileid_map(file_ids):
@@ -156,7 +156,7 @@ def serialize_fileid_map(file_ids):
     """
     lines = []
     for path in sorted(file_ids.keys()):
-        lines.append("%s\0%s\n" % (path, file_ids[path]))
+        lines.append(b"%s\0%s\n" % (path, file_ids[path]))
     return lines
 
 
@@ -167,9 +167,9 @@ def deserialize_fileid_map(filetext):
     :return: Fileid map (path -> fileid)
     """
     ret = {}
-    f = StringIO(filetext)
+    f = BytesIO(filetext)
     lines = f.readlines()
     for l in lines:
-        (path, file_id) = l.rstrip("\n").split("\0")
+        (path, file_id) = l.rstrip(b"\n").split(b"\0")
         ret[path] = file_id
     return ret

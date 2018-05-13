@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from io import BytesIO
 
 from ....tests import (
     TestCaseWithTransport,
@@ -36,18 +36,18 @@ class TestUnpeelMap(TestCaseWithTransport):
         self.assertIs(None, m.peel_tag("ab"* 20))
 
     def test_load(self):
-        f = StringIO(
-            "unpeel map version 1\n"
-            "0123456789012345678901234567890123456789: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
+        f = BytesIO(
+            b"unpeel map version 1\n"
+            b"0123456789012345678901234567890123456789: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
         m = UnpeelMap()
         m.load(f)
-        self.assertEquals("0123456789012345678901234567890123456789",
-            m.peel_tag("aa"*20))
+        self.assertEquals(b"0123456789012345678901234567890123456789",
+            m.peel_tag(b"aa"*20))
 
     def test_update(self):
         m = UnpeelMap()
         m.update({
-           "0123456789012345678901234567890123456789": set(["aa" * 20]),
+           b"0123456789012345678901234567890123456789": set([b"aa" * 20]),
            })
-        self.assertEquals("0123456789012345678901234567890123456789",
-            m.peel_tag("aa"*20))
+        self.assertEquals(b"0123456789012345678901234567890123456789",
+            m.peel_tag(b"aa"*20))

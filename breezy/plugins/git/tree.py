@@ -242,7 +242,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._revision_id = revision_id
         self._repository = repository
         self.store = repository._git.object_store
-        if type(revision_id) is not str:
+        if type(revision_id) is not bytes:
             raise TypeError(revision_id)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:
@@ -254,7 +254,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             try:
                 commit = self.store[self.commit_id]
-            except KeyError, r:
+            except KeyError:
                 raise errors.NoSuchRevision(repository, revision_id)
             self.tree = commit.tree
             self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
@@ -570,7 +570,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
 
 def tree_delta_from_git_changes(changes, mapping,
-        (old_fileid_map, new_fileid_map), specific_files=None,
+        fileid_maps, specific_files=None,
         require_versioned=False, include_root=False,
         target_extras=None):
     """Create a TreeDelta from two git trees.
@@ -578,6 +578,7 @@ def tree_delta_from_git_changes(changes, mapping,
     source and target are iterators over tuples with:
         (filename, sha, mode)
     """
+    (old_fileid_map, new_fileid_map) = fileid_maps
     if target_extras is None:
         target_extras = set()
     ret = delta.TreeDelta()
@@ -868,7 +869,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             path, can_access = osutils.normalized_filename(path)
             if not can_access:
                 raise errors.InvalidNormalization(path)
-            self._index_add_entry(path, kind)
+            self._index_add_entry(path.encode('utf-8'), kind)
 
     def _read_submodule_head(self, path):
         raise NotImplementedError(self._read_submodule_head)
@@ -885,7 +886,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._index_dirty = True
 
     def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
-        if not isinstance(path, basestring):
+        if not isinstance(path, bytes):
             raise TypeError(path)
         if kind == "directory":
             # Git indexes don't contain directories
@@ -898,7 +899,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 # TODO: Rather than come up with something here, use the old index
                 file = BytesIO()
                 stat_val = os.stat_result(
-                    (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+                    (stat.S_IFREG | 0o644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(file.read())
             # Add object to the repository if it didn't exist yet
             if not blob.id in self.store:
@@ -1091,7 +1092,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     self._index_del_entry(index, old_subpath)
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
-                self._index_add_entry(new_path, ie.kind)
+                self._index_add_entry(new_path.encode('utf-8'), ie.kind)
         self.flush()
         self._set_merges_from_parent_ids([])
 

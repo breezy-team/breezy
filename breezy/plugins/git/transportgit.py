@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from io import BytesIO
 
 import os
 import sys
@@ -158,7 +158,7 @@ class TransportRefsContainer(RefsContainer):
             except NoSuchFile:
                 return {}
             try:
-                first_line = iter(f).next().rstrip()
+                first_line = next(iter(f)).rstrip()
                 if (first_line.startswith("# pack-refs") and " peeled" in
                         first_line):
                     for sha, name, peeled in read_packed_refs_with_peeled(f):
@@ -210,12 +210,12 @@ class TransportRefsContainer(RefsContainer):
             f = transport.get(name)
         except NoSuchFile:
             return None
-        f = StringIO(f.read())
+        f = BytesIO(f.read())
         try:
             header = f.read(len(SYMREF))
             if header == SYMREF:
                 # Read only the first line
-                return header + iter(f).next().rstrip("\r\n")
+                return header + next(iter(f)).rstrip(b"\r\n")
             else:
                 # Read only the first 40 bytes
                 return header + f.read(40-len(SYMREF))
@@ -255,7 +255,7 @@ class TransportRefsContainer(RefsContainer):
             self._ensure_dir_exists(name)
         else:
             transport = self.worktree_transport
-        transport.put_bytes(name, SYMREF + other + '\n')
+        transport.put_bytes(name, SYMREF + other + b'\n')
 
     def set_if_equals(self, name, old_ref, new_ref):
         """Set a refname to new_ref only if it currently equals old_ref.
@@ -409,7 +409,7 @@ class TransportRepo(BaseRepo):
         object_store = TransportObjectStore(
             self._commontransport.clone(OBJECTDIR))
         if refs_text is not None:
-            refs_container = InfoRefsContainer(StringIO(refs_text))
+            refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
                 head = TransportRefsContainer(self._commontransport).read_loose_ref("HEAD")
             except KeyError:
@@ -516,7 +516,7 @@ class TransportRepo(BaseRepo):
             raise AlreadyControlDirError(transport.base)
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
         ret = cls(transport, bare)
-        ret.refs.set_symbolic_ref("HEAD", "refs/heads/master")
+        ret.refs.set_symbolic_ref(b"HEAD", b"refs/heads/master")
         ret._init_files(bare)
         return ret
 
@@ -611,7 +611,7 @@ class TransportObjectStore(PackBasedObjectStore):
                     # FIXME: This reads the whole pack file at once
                     f = self.pack_transport.get(name)
                     contents = f.read()
-                    pd = PackData(name, StringIO(contents), size=len(contents))
+                    pd = PackData(name, BytesIO(contents), size=len(contents))
                 else:
                     pd = PackData(name, self.pack_transport.get(name),
                             size=size)
@@ -723,8 +723,7 @@ class TransportObjectStore(PackBasedObjectStore):
         :return: Fileobject to write to and a commit function to
             call when the pack is finished.
         """
-        from cStringIO import StringIO
-        f = StringIO()
+        f = BytesIO()
         def commit():
             if len(f.getvalue()) > 0:
                 return self.move_in_pack(f)

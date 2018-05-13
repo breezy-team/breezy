@@ -401,7 +401,7 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add("foo", stat.S_IFREG | 0644, blob.id)
+        tree.add("foo", stat.S_IFREG | 0o644, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
@@ -426,19 +426,19 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add("foo", stat.S_IFREG | 0664, blob.id)
+        tree.add("foo", stat.S_IFREG | 0o664, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping,
             "bla", "bla", (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEquals(child_modes, { "bla/foo": stat.S_IFREG | 0664 })
+        self.assertEquals(child_modes, { "bla/foo": stat.S_IFREG | 0o664 })
 
     def test_import_tree_with_file_exe(self):
         base_inv = Inventory(root_id=None)
         blob = Blob.from_string("bar")
         tree = Tree()
-        tree.add("foo", 0100755, blob.id)
+        tree.add("foo", 0o100755, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, "somerevid", [],
@@ -463,11 +463,11 @@ class ImportObjects(TestCaseWithTransport):
         othertree = Blob.from_string("someotherthing")
         blob = Blob.from_string("bar")
         tree = Tree()
-        tree.add("bar", 0160000, blob.id)
+        tree.add("bar", 0o160000, blob.id)
         objects = { tree.id: tree }
         ret, child_modes = import_git_submodule(self._texts, self._mapping, "foo", "foo",
                 (tree.id, othertree.id), base_inv, base_inv.root.file_id, "somerevid", [],
-                objects.__getitem__, (stat.S_IFDIR | 0755, S_IFGITLINK), DummyStoreUpdater(),
+                objects.__getitem__, (stat.S_IFDIR | 0o755, S_IFGITLINK), DummyStoreUpdater(),
                 self._mapping.generate_file_id)
         self.assertEquals(child_modes, {})
         self.assertEquals(2, len(ret))
