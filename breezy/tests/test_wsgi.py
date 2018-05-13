@@ -276,7 +276,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         wsgi_app = wsgi.SmartWSGIApp(self.get_transport())
         # send a request to /repo/branch that will have to access /repo.
         environ = self.make_hpss_wsgi_request(
-            '/repo/branch', 'BzrDir.open_branchV2', '.')
+            '/repo/branch', b'BzrDir.open_branchV2', b'.')
         iterable = wsgi_app(environ, self.start_response)
         response_bytes = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)

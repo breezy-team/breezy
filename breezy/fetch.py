@@ -101,7 +101,7 @@ class RepoFetcher(object):
             pb.show_pct = pb.show_count = False
             pb.update(gettext("Finding revisions"), 0, 2)
             search_result = self._revids_to_fetch()
-            mutter('fetching: %s', search_result)
+            mutter('fetching: %s', str(search_result))
             if search_result.is_empty():
                 return
             pb.update(gettext("Fetching revisions"), 1, 2)

@@ -639,7 +639,7 @@ def is_inside(dir, fname):
     if dir == '':
         return True
 
-    if dir[-1] != '/':
+    if not dir.endswith('/'):
         dir += '/'
 
     return fname.startswith(dir)
@@ -2170,7 +2170,8 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error as err:
+        except socket.error as e:
+            err = e
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()

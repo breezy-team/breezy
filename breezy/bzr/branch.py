@@ -945,7 +945,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         """See BranchFormat.get_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
         url = urlutils.split_segment_parameters(a_controldir.user_url)[0]
-        return urlutils.join(url, transport.get_bytes('location'))
+        return urlutils.join(url, transport.get_bytes('location').decode('utf-8'))
 
     def _write_reference(self, a_controldir, transport, to_branch):
         to_url = to_branch.user_url
@@ -954,7 +954,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
             # paths for everything else. This is for the benefit
             # of older bzr versions that don't support relative paths.
             to_url = urlutils.relative_url(a_controldir.user_url, to_branch.user_url)
-        transport.put_bytes('location', to_url)
+        transport.put_bytes('location', to_url.encode('utf-8'))
 
     def set_reference(self, a_controldir, name, to_branch):
         """See BranchFormat.set_reference()."""

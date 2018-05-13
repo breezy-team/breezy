@@ -98,7 +98,7 @@ def _search_key_plain(key):
 
 
 search_key_registry = registry.Registry()
-search_key_registry.register('plain', _search_key_plain)
+search_key_registry.register(b'plain', _search_key_plain)
 
 
 class CHKMap(object):
@@ -1734,8 +1734,8 @@ except ImportError as e:
         _deserialise_leaf_node,
         _deserialise_internal_node,
         )
-search_key_registry.register('hash-16-way', _search_key_16)
-search_key_registry.register('hash-255-way', _search_key_255)
+search_key_registry.register(b'hash-16-way', _search_key_16)
+search_key_registry.register(b'hash-255-way', _search_key_255)
 
 
 def _check_key(key):

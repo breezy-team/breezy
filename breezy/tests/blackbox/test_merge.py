@@ -373,7 +373,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree_a/file', b'bar\n')])
         tree_a.add(['file'])
         tree_a.commit('commit 1')
-        self.run_bzr_error(('Path\(s\) do not exist: non/existing',),
+        self.run_bzr_error(('Path\\(s\\) do not exist: non/existing',),
                            ['merge', 'non/existing'], working_dir='tree_a')
 
     def pullable_branch(self):
@@ -560,15 +560,12 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_c = tree_a.controldir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
-                              'Merging from remembered parent location .*a\/')
-        tree_c.branch.lock_write()
-        try:
+                              'Merging from remembered parent location .*a\\/')
+        with tree_c.branch.lock_write():
             tree_c.branch.set_submit_branch(tree_b.controldir.root_transport.base)
-        finally:
-            tree_c.branch.unlock()
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
-                              'Merging from remembered submit location .*b\/')
+                              'Merging from remembered submit location .*b\\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')
@@ -653,8 +650,8 @@ class TestMerge(tests.TestCaseWithTransport):
         other_tree.commit('rev2a')
         this_tree.commit('rev2b')
         out, err = self.run_bzr(['merge', '-d', 'this', 'other', '--preview'])
-        self.assertContainsRe(out, '\+new line')
-        self.assertNotContainsRe(err, '\+N  file\n')
+        self.assertContainsRe(out, '\\+new line')
+        self.assertNotContainsRe(err, '\\+N  file\n')
         this_tree.lock_read()
         self.addCleanup(this_tree.unlock)
         self.assertEqual([],

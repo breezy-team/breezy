@@ -539,7 +539,7 @@ def split_segment_parameters_raw(url):
     segment_start = lurl.find(",", lurl.rfind("/")+1)
     if segment_start == -1:
         return (url, [])
-    return (lurl[:segment_start], lurl[segment_start+1:].split(","))
+    return (lurl[:segment_start], [str(s) for s in lurl[segment_start+1:].split(",")])
 
 
 def split_segment_parameters(url):
@@ -552,6 +552,10 @@ def split_segment_parameters(url):
     parameters = {}
     for subsegment in subsegments:
         (key, value) = subsegment.split("=", 1)
+        if not isinstance(key, str):
+            raise TypeError(key)
+        if not isinstance(value, str):
+            raise TypeError(value)
         parameters[key] = value
     return (base_url, parameters)
 
@@ -597,7 +601,7 @@ def join_segment_parameters(url, parameters):
             raise InvalidURLJoin("= exists in parameter key", url,
                 parameters)
         new_parameters[key] = value
-    return join_segment_parameters_raw(base, 
+    return join_segment_parameters_raw(base,
         *["%s=%s" % item for item in sorted(new_parameters.items())])
 
 
@@ -746,22 +750,25 @@ def unescape_for_display(url, encoding):
             except UnicodeDecodeError:
                 escaped_chunks[j] = unichr(int(item[:2], 16)) + item[2:]
         unescaped = ''.join(escaped_chunks)
-        try:
-            decoded = unescaped.decode('utf-8')
-        except UnicodeDecodeError:
-            # If this path segment cannot be properly utf-8 decoded
-            # after doing unescaping we will just leave it alone
-            pass
-        else:
+        if sys.version_info[0] == 2:
             try:
-                decoded.encode(encoding)
-            except UnicodeEncodeError:
-                # If this chunk cannot be encoded in the local
-                # encoding, then we should leave it alone
+                decoded = unescaped.decode('utf-8')
+            except UnicodeDecodeError:
+                # If this path segment cannot be properly utf-8 decoded
+                # after doing unescaping we will just leave it alone
                 pass
             else:
-                # Otherwise take the url decoded one
-                res[i] = decoded
+                try:
+                    decoded.encode(encoding)
+                except UnicodeEncodeError:
+                    # If this chunk cannot be encoded in the local
+                    # encoding, then we should leave it alone
+                    pass
+                else:
+                    # Otherwise take the url decoded one
+                    res[i] = decoded
+        else:
+            res[i] = unescaped
     return u'/'.join(res)
 
 
@@ -962,7 +969,9 @@ class URL(object):
         :return: `URL` instance
         """
         if offset is not None:
-            relative = unescape(offset).encode('utf-8')
+            relative = unescape(offset)
+            if sys.version_info[0] == 2:
+                relative = relative.encode('utf-8')
             path = self._combine_paths(self.path, relative)
             path = quote(path, safe="/~")
         else:

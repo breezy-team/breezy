@@ -1465,9 +1465,9 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         #  use a small maximum_size to force internal paging structures
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
                         maximum_size=100,
-                        search_key_name='hash-255-way')
-        bytes = ''.join(chk_inv.to_lines())
-        return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+                        search_key_name=b'hash-255-way')
+        bytes = b''.join(chk_inv.to_lines())
+        return CHKInventory.deserialise(chk_bytes, bytes, (b"revid",))
 
     def assert_Getitems(self, expected_fileids, inv, file_ids):
         self.assertEqual(sorted(expected_fileids),

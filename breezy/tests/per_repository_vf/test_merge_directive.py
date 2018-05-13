@@ -44,15 +44,15 @@ class TestMergeDirective(TestCaseWithRepository):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('f', 'f-id', 'file', 'initial content\n')),
-            ], revision_id='A')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('f', b'f-id', 'file', b'initial content\n')),
+            ], revision_id=b'A')
         builder.build_snapshot('A', [
-            ('modify', ('f', 'new content\n')),
-            ], revision_id='B')
+            ('modify', ('f', b'new content\n')),
+            ], revision_id=b'B')
         builder.finish_series()
         b1 = builder.get_branch()
-        b2 = b1.controldir.sprout('target', revision_id='A').open_branch()
+        b2 = b1.controldir.sprout('target', revision_id=b'A').open_branch()
         return b1, b2
 
     def create_merge_directive(self, source_branch, submit_url):
@@ -77,5 +77,5 @@ class TestMergeDirective(TestCaseWithRepository):
         directive.install_revisions(target_branch.repository)
         rt = target_branch.repository.revision_tree('B')
         rt.lock_read()
-        self.assertEqualDiff('new content\n', rt.get_file_text('f', 'f-id'))
+        self.assertEqualDiff(b'new content\n', rt.get_file_text('f', b'f-id'))
         rt.unlock()

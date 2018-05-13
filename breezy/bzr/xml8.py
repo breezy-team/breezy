@@ -80,7 +80,7 @@ class Serializer_v8(XMLSerializer):
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = {'file', 'directory', 'symlink'}
-    format_num = '8'
+    format_num = b'8'
     revision_format_num = None
 
     # The search regex used by xml based repositories to determine what things

@@ -628,7 +628,7 @@ class SFTPTransport(ConnectedTransport):
     def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
-        if not isinstance(raw_bytes, str):
+        if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
 

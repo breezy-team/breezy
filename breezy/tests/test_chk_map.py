@@ -1893,7 +1893,7 @@ class TestInternalNode(TestCaseWithStore):
             sorted(node.iteritems(None, [('strange',), ('weird',)])))
 
     def test_iteritems_two_children_with_hash(self):
-        search_key_func = chk_map.search_key_registry.get('hash-255-way')
+        search_key_func = chk_map.search_key_registry.get(b'hash-255-way')
         node = InternalNode(search_key_func=search_key_func)
         leaf1 = LeafNode(search_key_func=search_key_func)
         leaf1.map(None, StaticTuple('foo bar',), 'quux')
