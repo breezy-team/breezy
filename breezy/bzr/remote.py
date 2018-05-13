@@ -2327,7 +2327,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         for key in keys:
             if not isinstance(key, bytes):
                 raise ValueError(
-                    "key %r not a plain string" % (key,))
+                    "key %r not a bytes string" % (key,))
         verb = b'Repository.get_parent_map'
         args = (path, b'include-missing:') + tuple(keys)
         try:
@@ -4263,11 +4263,11 @@ no_context_error_translators.register(b'ShortReadvError',
     _translate_short_readv_error)
 
 def _translate_unicode_error(err):
-        encoding = err.error_args[0].decode('ascii') # encoding must always be a string
+        encoding = err.error_args[0].decode('ascii')
         val = err.error_args[1].decode('utf-8')
         start = int(err.error_args[2].decode('ascii'))
         end = int(err.error_args[3].decode('ascii'))
-        reason = err.error_args[4].decode('utf-8') # reason must always be a string
+        reason = err.error_args[4].decode('utf-8')
         if val.startswith('u:'):
             val = val[2:].decode('utf-8')
         elif val.startswith('s:'):
