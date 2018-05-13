@@ -244,10 +244,10 @@ class VersionedFileTestMixIn(object):
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(errors.BzrBadParameterUnicode,
-            vf.add_lines, 'a', [], ['a\n', u'b\n', 'c\n'])
+            vf.add_lines, b'a', [], ['a\n', u'b\n', 'c\n'])
         self.assertRaises(
             (errors.BzrBadParameterUnicode, NotImplementedError),
-            vf.add_lines_with_ghosts, 'a', [], ['a\n', u'b\n', 'c\n'])
+            vf.add_lines_with_ghosts, b'a', [], ['a\n', u'b\n', 'c\n'])
 
     def test_add_follows_left_matching_blocks(self):
         """If we change left_matching_blocks, delta changes
@@ -261,10 +261,10 @@ class VersionedFileTestMixIn(object):
         vf.add_lines(b'1', [], [b'a\n'])
         vf.add_lines(b'2', [b'1'], [b'a\n', b'a\n', b'a\n'],
                      left_matching_blocks=[(0, 0, 1), (1, 3, 0)])
-        self.assertEqual(['a\n', 'a\n', 'a\n'], vf.get_lines('2'))
-        vf.add_lines(b'3', ['1'], ['a\n', 'a\n', 'a\n'],
+        self.assertEqual([b'a\n', b'a\n', b'a\n'], vf.get_lines(b'2'))
+        vf.add_lines(b'3', [b'1'], [b'a\n', b'a\n', b'a\n'],
                      left_matching_blocks=[(0, 2, 1), (1, 3, 0)])
-        self.assertEqual(['a\n', 'a\n', 'a\n'], vf.get_lines('3'))
+        self.assertEqual([b'a\n', b'a\n', b'a\n'], vf.get_lines(b'3'))
 
     def test_inline_newline_throws(self):
         # \r characters are not permitted in lines being added
@@ -289,9 +289,9 @@ class VersionedFileTestMixIn(object):
     def test_add_lines_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
         vf = self.get_file()
-        empty_text = ('a', [])
-        sample_text_nl = ('b', ["foo\n", "bar\n"])
-        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        empty_text = (b'a', [])
+        sample_text_nl = (b'b', [b"foo\n", b"bar\n"])
+        sample_text_no_nl = (b'c', [b"foo\n", b"bar"])
         shas = []
         for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
             sha, _, _ = vf.add_lines(version, [], lines)
@@ -300,18 +300,18 @@ class VersionedFileTestMixIn(object):
         for sha, (version, lines) in zip(
             shas, (empty_text, sample_text_nl, sample_text_no_nl)):
             self.assertRaises(errors.ExistingContent,
-                vf.add_lines, version + "2", [], lines,
+                vf.add_lines, version + b"2", [], lines,
                 nostore_sha=sha)
             # and no new version should have been added.
             self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
-                version + "2")
+                version + b"2")
 
     def test_add_lines_with_ghosts_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
         vf = self.get_file()
-        empty_text = ('a', [])
-        sample_text_nl = ('b', ["foo\n", "bar\n"])
-        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        empty_text = (b'a', [])
+        sample_text_nl = (b'b', [b"foo\n", b"bar\n"])
+        sample_text_no_nl = (b'c', [b"foo\n", b"bar"])
         shas = []
         for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
             sha, _, _ = vf.add_lines(version, [], lines)
@@ -319,24 +319,24 @@ class VersionedFileTestMixIn(object):
         # we now have a copy of all the lines in the vf.
         # is the test applicable to this vf implementation?
         try:
-            vf.add_lines_with_ghosts('d', [], [])
+            vf.add_lines_with_ghosts(b'd', [], [])
         except NotImplementedError:
             raise TestSkipped("add_lines_with_ghosts is optional")
         for sha, (version, lines) in zip(
             shas, (empty_text, sample_text_nl, sample_text_no_nl)):
             self.assertRaises(errors.ExistingContent,
-                vf.add_lines_with_ghosts, version + "2", [], lines,
+                vf.add_lines_with_ghosts, version + b"2", [], lines,
                 nostore_sha=sha)
             # and no new version should have been added.
             self.assertRaises(errors.RevisionNotPresent, vf.get_lines,
-                version + "2")
+                version + b"2")
 
     def test_add_lines_return_value(self):
         # add_lines should return the sha1 and the text size.
         vf = self.get_file()
-        empty_text = ('a', [])
-        sample_text_nl = ('b', ["foo\n", "bar\n"])
-        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        empty_text = (b'a', [])
+        sample_text_nl = (b'b', [b"foo\n", b"bar\n"])
+        sample_text_no_nl = (b'c', [b"foo\n", b"bar"])
         # check results for the three cases:
         for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
             # the first two elements are the same for all versioned files:
@@ -349,13 +349,13 @@ class VersionedFileTestMixIn(object):
         # parents should not affect the result:
         lines = sample_text_nl[1]
         self.assertEqual((osutils.sha_strings(lines), sum(map(len, lines))),
-            vf.add_lines(b'd', ['b', 'c'], lines)[0:2])
+            vf.add_lines(b'd', [b'b', b'c'], lines)[0:2])
 
     def test_get_reserved(self):
         vf = self.get_file()
-        self.assertRaises(errors.ReservedId, vf.get_texts, ['b:'])
-        self.assertRaises(errors.ReservedId, vf.get_lines, 'b:')
-        self.assertRaises(errors.ReservedId, vf.get_text, 'b:')
+        self.assertRaises(errors.ReservedId, vf.get_texts, [b'b:'])
+        self.assertRaises(errors.ReservedId, vf.get_lines, b'b:')
+        self.assertRaises(errors.ReservedId, vf.get_text, b'b:')
 
     def test_add_unchanged_last_line_noeol_snapshot(self):
         """Add a text with an unchanged last line with no eol should work."""
@@ -370,17 +370,17 @@ class VersionedFileTestMixIn(object):
         for length in range(20):
             version_lines = {}
             vf = self.get_file('case-%d' % length)
-            prefix = 'step-%d'
+            prefix = b'step-%d'
             parents = []
             for step in range(length):
                 version = prefix % step
-                lines = (['prelude \n'] * step) + ['line']
+                lines = ([b'prelude \n'] * step) + [b'line']
                 vf.add_lines(version, parents, lines)
                 version_lines[version] = lines
                 parents = [version]
-            vf.add_lines(b'no-eol', parents, ['line'])
+            vf.add_lines(b'no-eol', parents, [b'line'])
             vf.get_texts(version_lines.keys())
-            self.assertEqualDiff('line', vf.get_text('no-eol'))
+            self.assertEqualDiff(b'line', vf.get_text(b'no-eol'))
 
     def test_get_texts_eol_variation(self):
         # similar to the failure in <http://bugs.launchpad.net/234748>
@@ -527,40 +527,40 @@ class VersionedFileTestMixIn(object):
     def test_ancestry(self):
         f = self.get_file()
         self.assertEqual([], f.get_ancestry([]))
-        f.add_lines(b'r0', [], ['a\n', 'b\n'])
-        f.add_lines(b'r1', ['r0'], ['b\n', 'c\n'])
-        f.add_lines(b'r2', ['r0'], ['b\n', 'c\n'])
-        f.add_lines(b'r3', ['r2'], ['b\n', 'c\n'])
-        f.add_lines(b'rM', ['r1', 'r2'], ['b\n', 'c\n'])
+        f.add_lines(b'r0', [], [b'a\n', b'b\n'])
+        f.add_lines(b'r1', [b'r0'], [b'b\n', b'c\n'])
+        f.add_lines(b'r2', [b'r0'], [b'b\n', b'c\n'])
+        f.add_lines(b'r3', [b'r2'], [b'b\n', b'c\n'])
+        f.add_lines(b'rM', [b'r1', b'r2'], [b'b\n', b'c\n'])
         self.assertEqual([], f.get_ancestry([]))
-        versions = f.get_ancestry(['rM'])
+        versions = f.get_ancestry([b'rM'])
         # there are some possibilities:
         # r0 r1 r2 rM r3
         # r0 r1 r2 r3 rM
         # etc
         # so we check indexes
-        r0 = versions.index('r0')
-        r1 = versions.index('r1')
-        r2 = versions.index('r2')
-        self.assertFalse('r3' in versions)
-        rM = versions.index('rM')
+        r0 = versions.index(b'r0')
+        r1 = versions.index(b'r1')
+        r2 = versions.index(b'r2')
+        self.assertFalse(b'r3' in versions)
+        rM = versions.index(b'rM')
         self.assertTrue(r0 < r1)
         self.assertTrue(r0 < r2)
         self.assertTrue(r1 < rM)
         self.assertTrue(r2 < rM)
 
         self.assertRaises(RevisionNotPresent,
-            f.get_ancestry, ['rM', 'rX'])
+            f.get_ancestry, [b'rM', b'rX'])
 
-        self.assertEqual(set(f.get_ancestry('rM')),
-            set(f.get_ancestry('rM', topo_sorted=False)))
+        self.assertEqual(set(f.get_ancestry(b'rM')),
+            set(f.get_ancestry(b'rM', topo_sorted=False)))
 
     def test_mutate_after_finish(self):
         self._transaction = 'before'
         f = self.get_file()
         self._transaction = 'after'
-        self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
-        self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
+        self.assertRaises(errors.OutSideTransaction, f.add_lines, b'', [], [])
+        self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, b'', [], [])
 
     def test_copy_to(self):
         f = self.get_file()
@@ -712,32 +712,32 @@ class VersionedFileTestMixIn(object):
         parent_id_unicode = u'b\xbfse'
         parent_id_utf8 = parent_id_unicode.encode('utf8')
         try:
-            vf.add_lines_with_ghosts('notbxbfse', [parent_id_utf8], [])
+            vf.add_lines_with_ghosts(b'notbxbfse', [parent_id_utf8], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
-            self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, ['foo'])
-            self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
+            self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, [b'foo'])
+            self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, b'foo')
             return
         vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
-        self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
+        self.assertEqual([b'notbxbfse'], vf.get_ancestry(b'notbxbfse'))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
-        self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
+        self.assertEqual([parent_id_utf8, b'notbxbfse'], vf.get_ancestry_with_ghosts([b'notbxbfse']))
+        self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts(b'notbxbfse'))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
-        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
-        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
-            vf.get_parent_map(['notbxbfse']))
+        self.assertEqual([parent_id_utf8, b'notbxbfse'], vf.get_ancestry([b'notbxbfse']))
+        self.assertEqual({b'notbxbfse':(parent_id_utf8,)},
+            vf.get_parent_map([b'notbxbfse']))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([parent_id_utf8, 'notbxbfse'],
-            vf.get_ancestry_with_ghosts(['notbxbfse']))
-        self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
+        self.assertEqual([parent_id_utf8, b'notbxbfse'],
+            vf.get_ancestry_with_ghosts([b'notbxbfse']))
+        self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts(b'notbxbfse'))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent
@@ -747,26 +747,26 @@ class VersionedFileTestMixIn(object):
         vf = self.get_file()
         # probe for ghost support
         try:
-            vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
+            vf.add_lines_with_ghosts(b'base', [], [b'line\n', b'line_b\n'])
         except NotImplementedError:
             return
-        vf.add_lines_with_ghosts('references_ghost',
-                                 ['base', 'a_ghost'],
-                                 ['line\n', 'line_b\n', 'line_c\n'])
-        origins = vf.annotate('references_ghost')
-        self.assertEqual(('base', 'line\n'), origins[0])
-        self.assertEqual(('base', 'line_b\n'), origins[1])
-        self.assertEqual(('references_ghost', 'line_c\n'), origins[2])
+        vf.add_lines_with_ghosts(b'references_ghost',
+                                 [b'base', b'a_ghost'],
+                                 [b'line\n', b'line_b\n', b'line_c\n'])
+        origins = vf.annotate(b'references_ghost')
+        self.assertEqual((b'base', b'line\n'), origins[0])
+        self.assertEqual((b'base', b'line_b\n'), origins[1])
+        self.assertEqual((b'references_ghost', b'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
         t = self.get_transport()
         factory = self.get_factory()
         vf = factory('id', t, 0o777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
-        self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
+        self.assertRaises(errors.ReadOnlyError, vf.add_lines, b'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
                           vf.add_lines_with_ghosts,
-                          'base',
+                          b'base',
                           [],
                           [])
 
@@ -823,11 +823,11 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
     def get_file_corrupted_checksum(self):
         w = self.get_file_corrupted_text()
         # Corrected
-        w._weave[4] = 'there\n'
-        self.assertEqual('hello\nthere\n', w.get_text('v2'))
+        w._weave[4] = b'there\n'
+        self.assertEqual(b'hello\nthere\n', w.get_text(b'v2'))
 
         #Invalid checksum, first digit changed
-        w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+        w._sha1s[1] =b'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
         return w
 
     def reopen_file(self, name='foo', create=False):
@@ -858,48 +858,48 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         self.plan_merge_vf.fallback_versionedfiles.extend([self.vf1, self.vf2])
 
     def test_add_lines(self):
-        self.plan_merge_vf.add_lines(('root', 'a:'), [], [])
+        self.plan_merge_vf.add_lines((b'root', b'a:'), [], [])
         self.assertRaises(ValueError, self.plan_merge_vf.add_lines,
-            ('root', 'a'), [], [])
+            (b'root', b'a'), [], [])
         self.assertRaises(ValueError, self.plan_merge_vf.add_lines,
-            ('root', 'a:'), None, [])
+            (b'root', b'a:'), None, [])
         self.assertRaises(ValueError, self.plan_merge_vf.add_lines,
-            ('root', 'a:'), [], None)
+            (b'root', b'a:'), [], None)
 
     def setup_abcde(self):
-        self.vf1.add_lines(('root', 'A'), [], ['a'])
-        self.vf1.add_lines(('root', 'B'), [('root', 'A')], ['b'])
-        self.vf2.add_lines(('root', 'C'), [], ['c'])
-        self.vf2.add_lines(('root', 'D'), [('root', 'C')], ['d'])
-        self.plan_merge_vf.add_lines(('root', 'E:'),
-            [('root', 'B'), ('root', 'D')], ['e'])
+        self.vf1.add_lines((b'root', b'A'), [], [b'a'])
+        self.vf1.add_lines((b'root', b'B'), [(b'root', b'A')], [b'b'])
+        self.vf2.add_lines((b'root', b'C'), [], [b'c'])
+        self.vf2.add_lines((b'root', b'D'), [(b'root', b'C')], [b'd'])
+        self.plan_merge_vf.add_lines((b'root', b'E:'),
+            [(b'root', 'B'), (b'root', b'D')], [b'e'])
 
     def test_get_parents(self):
         self.setup_abcde()
-        self.assertEqual({('root', 'B'):(('root', 'A'),)},
-            self.plan_merge_vf.get_parent_map([('root', 'B')]))
-        self.assertEqual({('root', 'D'):(('root', 'C'),)},
-            self.plan_merge_vf.get_parent_map([('root', 'D')]))
-        self.assertEqual({('root', 'E:'):(('root', 'B'), ('root', 'D'))},
-            self.plan_merge_vf.get_parent_map([('root', 'E:')]))
+        self.assertEqual({(b'root', b'B'): ((b'root', b'A'),)},
+            self.plan_merge_vf.get_parent_map([(b'root', b'B')]))
+        self.assertEqual({(b'root', b'D'): ((b'root', b'C'),)},
+            self.plan_merge_vf.get_parent_map([('root', b'D')]))
+        self.assertEqual({(b'root', b'E:'): ((b'root', b'B'), (b'root', b'D'))},
+            self.plan_merge_vf.get_parent_map([(b'root', b'E:')]))
         self.assertEqual({},
-            self.plan_merge_vf.get_parent_map([('root', 'F')]))
+            self.plan_merge_vf.get_parent_map([(b'root', b'F')]))
         self.assertEqual({
-                ('root', 'B'): (('root', 'A'),),
-                ('root', 'D'): (('root', 'C'),),
-                ('root', 'E:'): (('root', 'B'), ('root', 'D')),
+                (b'root', b'B'): ((b'root', b'A'),),
+                (b'root', b'D'): ((b'root', b'C'),),
+                (b'root', b'E:'): ((b'root', b'B'), (b'root', b'D')),
                 },
             self.plan_merge_vf.get_parent_map(
-                [('root', 'B'), ('root', 'D'), ('root', 'E:'), ('root', 'F')]))
+                [(b'root', b'B'), (b'root', b'D'), (b'root', b'E:'), (b'root', b'F')]))
 
     def test_get_record_stream(self):
         self.setup_abcde()
         def get_record(suffix):
             return next(self.plan_merge_vf.get_record_stream(
-                [('root', suffix)], 'unordered', True))
-        self.assertEqual('a', get_record('A').get_bytes_as('fulltext'))
-        self.assertEqual('c', get_record('C').get_bytes_as('fulltext'))
-        self.assertEqual('e', get_record('E:').get_bytes_as('fulltext'))
+                [(b'root', suffix)], 'unordered', True))
+        self.assertEqual(b'a', get_record(b'A').get_bytes_as(b'fulltext'))
+        self.assertEqual(b'c', get_record(b'C').get_bytes_as(b'fulltext'))
+        self.assertEqual(b'e', get_record(b'E:').get_bytes_as(b'fulltext'))
         self.assertEqual('absent', get_record('F').storage_kind)
 
 
@@ -920,12 +920,12 @@ class TestReadonlyHttpMixin(object):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
         # now with feeling.
-        vf.add_lines(b'1', [], ['a\n'])
-        vf.add_lines(b'2', ['1'], ['b\n', 'a\n'])
+        vf.add_lines(b'1', [], [b'a\n'])
+        vf.add_lines(b'2', [b'1'], [b'b\n', b'a\n'])
         readonly_vf = self.get_factory()('foo',
             transport.get_transport_from_url(self.get_readonly_url('.')))
-        self.assertEqual(['1', '2'], vf.versions())
-        self.assertEqual(['1', '2'], readonly_vf.versions())
+        self.assertEqual([b'1', b'2'], vf.versions())
+        self.assertEqual([b'1', b'2'], readonly_vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 
@@ -1064,14 +1064,14 @@ class MergeCasesMixin(object):
             line 2
             line 3
             """
-        a = """\
+        a = b"""\
             line 1
             line 2
             """
-        b = """\
+        b = b"""\
             line 1
             """
-        result = """\
+        result = b"""\
             line 1
 <<<<<<<\x20
             line 2
@@ -1093,17 +1093,17 @@ class MergeCasesMixin(object):
             int c() {}
             end context
             """
-        a = """\
+        a = b"""\
             start context
             int a() {}
             end context
             """
-        b = """\
+        b = b"""\
             start context
             int c() {}
             end context
             """
-        result = """\
+        result = b"""\
             start context
 <<<<<<<\x20
             int a() {}
@@ -1122,17 +1122,17 @@ class MergeCasesMixin(object):
             base line 2
             end context
             """
-        a = """\
+        a = b"""\
             start context
             base line 1
             end context
             """
-        b = """\
+        b = b"""\
             start context
             base line 1
             end context
             """
-        result = """\
+        result = b"""\
             start context
             base line 1
             end context
@@ -1155,19 +1155,19 @@ class MergeCasesMixin(object):
             base line 2
             end context
             """
-        a = """\
+        a = b"""\
             start context
             base line 1
             a's replacement line 2
             end context
             """
-        b = """\
+        b = b"""\
             start context
             b replaces
             both lines
             end context
             """
-        result = """\
+        result = b"""\
             start context
 <<<<<<<\x20
             base line 1
@@ -1193,8 +1193,8 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
         write_weave(w, tmpf)
         self.log(tmpf.getvalue())
 
-    overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======',
-                                'xxx', '>>>>>>> ', 'bbb']
+    overlappedInsertExpected = [b'aaa', b'<<<<<<< ', b'xxx', b'yyy', b'=======',
+                                b'xxx', b'>>>>>>> ', b'bbb']
 
 
 class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
@@ -1229,11 +1229,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
     def helpGetBytes(self, f, ft_adapter, delta_adapter):
         """Grab the interested adapted texts for tests."""
         # origin is a fulltext
-        entries = f.get_record_stream([('origin',)], 'unordered', False)
+        entries = f.get_record_stream([(b'origin',)], 'unordered', False)
         base = next(entries)
         ft_data = ft_adapter.get_bytes(base)
         # merged is both a delta and multiple parents.
-        entries = f.get_record_stream([('merged',)], 'unordered', False)
+        entries = f.get_record_stream([(b'merged',)], 'unordered', False)
         merged = next(entries)
         delta_data = delta_adapter.get_bytes(merged)
         return ft_data, delta_data
@@ -1247,13 +1247,13 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             _mod_knit.FTAnnotatedToUnannotated(None),
             _mod_knit.DeltaAnnotatedToUnannotated(None))
         self.assertEqual(
-            'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
-            'origin\n'
-            'end origin\n',
+            b'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
+            b'origin\n'
+            b'end origin\n',
             GzipFile(mode='rb', fileobj=BytesIO(ft_data)).read())
         self.assertEqual(
-            'version merged 4 32c2e79763b3f90e8ccde37f9710b6629c25a796\n'
-            '1,2,3\nleft\nright\nmerged\nend merged\n',
+            b'version merged 4 32c2e79763b3f90e8ccde37f9710b6629c25a796\n'
+            b'1,2,3\nleft\nright\nmerged\nend merged\n',
             GzipFile(mode='rb', fileobj=BytesIO(delta_data)).read())
 
     def test_deannotation(self):
@@ -1265,13 +1265,13 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             _mod_knit.FTAnnotatedToUnannotated(None),
             _mod_knit.DeltaAnnotatedToUnannotated(None))
         self.assertEqual(
-            'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
-            'origin\n'
-            'end origin\n',
+            b'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
+            b'origin\n'
+            b'end origin\n',
             GzipFile(mode='rb', fileobj=BytesIO(ft_data)).read())
         self.assertEqual(
-            'version merged 3 ed8bce375198ea62444dc71952b22cfc2b09226d\n'
-            '2,2,2\nright\nmerged\nend merged\n',
+            b'version merged 3 ed8bce375198ea62444dc71952b22cfc2b09226d\n'
+            b'2,2,2\nright\nmerged\nend merged\n',
             GzipFile(mode='rb', fileobj=BytesIO(delta_data)).read())
 
     def test_annotated_to_fulltext_no_eol(self):
@@ -1285,9 +1285,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTAnnotatedToFullText(None),
             _mod_knit.DeltaAnnotatedToFullText(logged_vf))
-        self.assertEqual('origin', ft_data)
-        self.assertEqual('base\nleft\nright\nmerged', delta_data)
-        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+        self.assertEqual(b'origin', ft_data)
+        self.assertEqual(b'base\nleft\nright\nmerged', delta_data)
+        self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
             True)], logged_vf.calls)
 
     def test_annotated_to_fulltext(self):
@@ -1301,9 +1301,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTAnnotatedToFullText(None),
             _mod_knit.DeltaAnnotatedToFullText(logged_vf))
-        self.assertEqual('origin\n', ft_data)
-        self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
-        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+        self.assertEqual(b'origin\n', ft_data)
+        self.assertEqual(b'base\nleft\nright\nmerged\n', delta_data)
+        self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
             True)], logged_vf.calls)
 
     def test_unannotated_to_fulltext(self):
@@ -1320,9 +1320,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTPlainToFullText(None),
             _mod_knit.DeltaPlainToFullText(logged_vf))
-        self.assertEqual('origin\n', ft_data)
-        self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
-        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+        self.assertEqual(b'origin\n', ft_data)
+        self.assertEqual(b'base\nleft\nright\nmerged\n', delta_data)
+        self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
             True)], logged_vf.calls)
 
     def test_unannotated_to_fulltext_no_eol(self):
@@ -1339,9 +1339,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTPlainToFullText(None),
             _mod_knit.DeltaPlainToFullText(logged_vf))
-        self.assertEqual('origin', ft_data)
-        self.assertEqual('base\nleft\nright\nmerged', delta_data)
-        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+        self.assertEqual(b'origin', ft_data)
+        self.assertEqual(b'base\nleft\nright\nmerged', delta_data)
+        self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
             True)], logged_vf.calls)
 
 
@@ -1350,35 +1350,35 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
 
     def test_identity_mapper(self):
         mapper = versionedfile.ConstantMapper("inventory")
-        self.assertEqual("inventory", mapper.map(('foo@ar',)))
-        self.assertEqual("inventory", mapper.map(('quux',)))
+        self.assertEqual("inventory", mapper.map((b'foo@ar',)))
+        self.assertEqual("inventory", mapper.map((b'quux',)))
 
     def test_prefix_mapper(self):
         #format5: plain
         mapper = versionedfile.PrefixMapper()
-        self.assertEqual("file-id", mapper.map(("file-id", "revision-id")))
-        self.assertEqual("new-id", mapper.map(("new-id", "revision-id")))
-        self.assertEqual(('file-id',), mapper.unmap("file-id"))
-        self.assertEqual(('new-id',), mapper.unmap("new-id"))
+        self.assertEqual(b"file-id", mapper.map((b"file-id", b"revision-id")))
+        self.assertEqual(b"new-id", mapper.map((b"new-id", b"revision-id")))
+        self.assertEqual((b'file-id',), mapper.unmap(b"file-id"))
+        self.assertEqual((b'new-id',), mapper.unmap(b"new-id"))
 
     def test_hash_prefix_mapper(self):
         #format6: hash + plain
         mapper = versionedfile.HashPrefixMapper()
-        self.assertEqual("9b/file-id", mapper.map(("file-id", "revision-id")))
-        self.assertEqual("45/new-id", mapper.map(("new-id", "revision-id")))
-        self.assertEqual(('file-id',), mapper.unmap("9b/file-id"))
-        self.assertEqual(('new-id',), mapper.unmap("45/new-id"))
+        self.assertEqual(b"9b/file-id", mapper.map((b"file-id", b"revision-id")))
+        self.assertEqual(b"45/new-id", mapper.map((b"new-id", b"revision-id")))
+        self.assertEqual((b'file-id',), mapper.unmap(b"9b/file-id"))
+        self.assertEqual((b'new-id',), mapper.unmap(b"45/new-id"))
 
     def test_hash_escaped_mapper(self):
         #knit1: hash + escaped
         mapper = versionedfile.HashEscapedPrefixMapper()
-        self.assertEqual("88/%2520", mapper.map((" ", "revision-id")))
-        self.assertEqual("ed/fil%2545-%2549d", mapper.map(("filE-Id",
-            "revision-id")))
-        self.assertEqual("88/ne%2557-%2549d", mapper.map(("neW-Id",
-            "revision-id")))
-        self.assertEqual(('filE-Id',), mapper.unmap("ed/fil%2545-%2549d"))
-        self.assertEqual(('neW-Id',), mapper.unmap("88/ne%2557-%2549d"))
+        self.assertEqual(b"88/%2520", mapper.map((b" ", b"revision-id")))
+        self.assertEqual(b"ed/fil%2545-%2549d", mapper.map((b"filE-Id",
+            b"revision-id")))
+        self.assertEqual(b"88/ne%2557-%2549d", mapper.map((b"neW-Id",
+            b"revision-id")))
+        self.assertEqual((b'filE-Id',), mapper.unmap(b"ed/fil%2545-%2549d"))
+        self.assertEqual((b'neW-Id',), mapper.unmap(b"88/ne%2557-%2549d"))
 
 
 class TestVersionedFiles(TestCaseWithMemoryTransport):
@@ -1495,23 +1495,23 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             raise TestNotApplicable("%s doesn't support fallbacks"
                                     % (f.__class__.__name__,))
         g = self.get_versionedfiles('fallback')
-        key_a = self.get_simple_key('a')
-        g.add_lines(key_a, [], ['\n'])
+        key_a = self.get_simple_key(b'a')
+        g.add_lines(key_a, [], [b'\n'])
         f.add_fallback_versioned_files(g)
         self.assertTrue(key_a in f.get_parent_map([key_a]))
         self.assertFalse(key_a in f.without_fallbacks().get_parent_map([key_a]))
 
     def test_add_lines(self):
         f = self.get_versionedfiles()
-        key0 = self.get_simple_key('r0')
-        key1 = self.get_simple_key('r1')
-        key2 = self.get_simple_key('r2')
-        keyf = self.get_simple_key('foo')
-        f.add_lines(key0, [], ['a\n', 'b\n'])
+        key0 = self.get_simple_key(b'r0')
+        key1 = self.get_simple_key(b'r1')
+        key2 = self.get_simple_key(b'r2')
+        keyf = self.get_simple_key(b'foo')
+        f.add_lines(key0, [], [b'a\n', b'b\n'])
         if self.graph:
-            f.add_lines(key1, [key0], ['b\n', 'c\n'])
+            f.add_lines(key1, [key0], [b'b\n', b'c\n'])
         else:
-            f.add_lines(key1, [], ['b\n', 'c\n'])
+            f.add_lines(key1, [], [b'b\n', b'c\n'])
         keys = f.keys()
         self.assertTrue(key0 in keys)
         self.assertTrue(key1 in keys)
@@ -1519,7 +1519,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for record in f.get_record_stream([key0, key1], 'unordered', True):
             records.append((record.key, record.get_bytes_as('fulltext')))
         records.sort()
-        self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
+        self.assertEqual([(key0, b'a\nb\n'), (key1, b'b\nc\n')], records)
 
     def test_annotate(self):
         files = self.get_versionedfiles()
@@ -1599,9 +1599,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def _add_content_nostoresha(self, add_lines):
         """When nostore_sha is supplied using old content raises."""
         vf = self.get_versionedfiles()
-        empty_text = ('a', [])
-        sample_text_nl = ('b', ["foo\n", "bar\n"])
-        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        empty_text = (b'a', [])
+        sample_text_nl = (b'b', [b"foo\n", b"bar\n"])
+        sample_text_no_nl = (b'c', [b"foo\n", b"bar"])
         shas = []
         for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
             if add_lines:
@@ -1614,7 +1614,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
             shas, (empty_text, sample_text_nl, sample_text_no_nl)):
-            new_key = self.get_simple_key(version + "2")
+            new_key = self.get_simple_key(version + b"2")
             self.assertRaises(errors.ExistingContent,
                 vf.add_lines, new_key, [], lines,
                 nostore_sha=sha)
@@ -1847,20 +1847,20 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def get_keys_and_groupcompress_sort_order(self):
         """Get diamond test keys list, and their groupcompress sort ordering."""
         if self.key_length == 1:
-            keys = [('merged',), ('left',), ('right',), ('base',)]
-            sort_order = {('merged',):0, ('left',):1, ('right',):1, ('base',):2}
+            keys = [(b'merged',), (b'left',), (b'right',), (b'base',)]
+            sort_order = {(b'merged',): 0, (b'left',): 1, (b'right',): 1, (b'base',):2}
         else:
             keys = [
-                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
-                ('FileA', 'base'),
-                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
-                ('FileB', 'base'),
+                (b'FileA', b'merged'), (b'FileA', b'left'), (b'FileA', b'right'),
+                (b'FileA', b'base'),
+                (b'FileB', b'merged'), (b'FileB', b'left'), (b'FileB', b'right'),
+                (b'FileB', b'base'),
                 ]
             sort_order = {
-                ('FileA', 'merged'): 0, ('FileA', 'left'): 1, ('FileA', 'right'): 1,
-                ('FileA', 'base'): 2,
-                ('FileB', 'merged'): 3, ('FileB', 'left'): 4, ('FileB', 'right'): 4,
-                ('FileB', 'base'): 5,
+                (b'FileA', b'merged'): 0, (b'FileA', b'left'): 1, (b'FileA', b'right'): 1,
+                (b'FileA', b'base'): 2,
+                (b'FileB', b'merged'): 3, (b'FileB', b'left'): 4, (b'FileB', b'right'): 4,
+                (b'FileB', b'base'): 5,
                 }
         return keys, sort_order
 
@@ -1893,7 +1893,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             ft_bytes = factory.get_bytes_as('fulltext')
             self.assertIsInstance(ft_bytes, str)
             chunked_bytes = factory.get_bytes_as('chunked')
-            self.assertEqualDiff(ft_bytes, ''.join(chunked_bytes))
+            self.assertEqualDiff(ft_bytes, b''.join(chunked_bytes))
 
         self.assertStreamOrder(sort_order, seen, keys)
 
@@ -1928,13 +1928,13 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
         if self.key_length == 1:
-            keys = [('merged',), ('left',), ('right',), ('base',)]
+            keys = [(b'merged',), (b'left',), (b'right',), (b'base',)]
         else:
             keys = [
-                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
-                ('FileA', 'base'),
-                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
-                ('FileB', 'base'),
+                (b'FileA', b'merged'), (b'FileA', b'left'), (b'FileA', b'right'),
+                (b'FileA', b'base'),
+                (b'FileB', b'merged'), (b'FileB', b'left'), (b'FileB', b'right'),
+                (b'FileB', b'base'),
                 ]
         parent_map = files.get_parent_map(keys)
         entries = files.get_record_stream(keys, 'unordered', False)
@@ -1959,14 +1959,14 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
         if self.key_length == 1:
-            keys = [('merged',), ('left',), ('right',), ('absent',), ('base',)]
+            keys = [(b'merged',), (b'left',), (b'right',), (b'absent',), (b'base',)]
         else:
             keys = [
-                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
-                ('FileA', 'absent'), ('FileA', 'base'),
-                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
-                ('FileB', 'absent'), ('FileB', 'base'),
-                ('absent', 'absent'),
+                (b'FileA', b'merged'), (b'FileA', b'left'), (b'FileA', b'right'),
+                (b'FileA', b'absent'), (b'FileA', b'base'),
+                (b'FileB', b'merged'), (b'FileB', b'left'), (b'FileB', b'right'),
+                (b'FileB', b'absent'), (b'FileB', b'base'),
+                (b'absent', b'absent'),
                 ]
         parent_map = files.get_parent_map(keys)
         entries = files.get_record_stream(keys, 'unordered', False)
@@ -1977,7 +1977,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def assertRecordHasContent(self, record, bytes):
         """Assert that record has the bytes bytes."""
         self.assertEqual(bytes, record.get_bytes_as('fulltext'))
-        self.assertEqual(bytes, ''.join(record.get_bytes_as('chunked')))
+        self.assertEqual(bytes, b''.join(record.get_bytes_as('chunked')))
 
     def test_get_record_stream_native_formats_are_wire_ready_one_ft(self):
         files = self.get_versionedfiles()
@@ -2144,8 +2144,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         seen = set()
         for factory in entries:
             seen.add(factory.key)
-            if factory.key[-1] == 'absent':
-                self.assertEqual('absent', factory.storage_kind)
+            if factory.key[-1] == b'absent':
+                self.assertEqual(b'absent', factory.storage_kind)
                 self.assertEqual(None, factory.sha1)
                 self.assertEqual(None, factory.parents)
             else:
@@ -2195,16 +2195,16 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_get_annotator(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
-        origin_key = self.get_simple_key('origin')
-        base_key = self.get_simple_key('base')
-        left_key = self.get_simple_key('left')
-        right_key = self.get_simple_key('right')
-        merged_key = self.get_simple_key('merged')
+        origin_key = self.get_simple_key(b'origin')
+        base_key = self.get_simple_key(b'base')
+        left_key = self.get_simple_key(b'left')
+        right_key = self.get_simple_key(b'right')
+        merged_key = self.get_simple_key(b'merged')
         # annotator = files.get_annotator()
         # introduced full text
         origins, lines = files.get_annotator().annotate(origin_key)
         self.assertEqual([(origin_key,)], origins)
-        self.assertEqual(['origin\n'], lines)
+        self.assertEqual([b'origin\n'], lines)
         # a delta
         origins, lines = files.get_annotator().annotate(base_key)
         self.assertEqual([(base_key,)], origins)
@@ -2445,12 +2445,12 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         source = self.get_versionedfiles('source')
         parents = ()
         keys = []
-        content = [('same same %d\n' % n) for n in range(500)]
+        content = [(b'same same %d\n' % n) for n in range(500)]
         for letter in 'abcdefghijklmnopqrstuvwxyz':
-            key = ('key-' + letter,)
+            key = (('key-' + letter).encode('ascii'),)
             if self.key_length == 2:
-                key = ('prefix',) + key
-            content.append('content for ' + letter + '\n')
+                key = (b'prefix',) + key
+            content.append(b'content for ' + letter + b'\n')
             source.add_lines(key, parents, content)
             keys.append(key)
             parents = (key,)
@@ -2491,7 +2491,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         not added.
         """
         source = self.get_knit_delta_source()
-        keys = [self.get_simple_key('origin'), self.get_simple_key('merged')]
+        keys = [self.get_simple_key(b'origin'), self.get_simple_key(b'merged')]
         entries = source.get_record_stream(keys, 'unordered', False)
         files = self.get_versionedfiles()
         if self.support_partial_insertion:
@@ -2499,7 +2499,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 list(files.get_missing_compression_parent_keys()))
             files.insert_record_stream(entries)
             missing_bases = files.get_missing_compression_parent_keys()
-            self.assertEqual({self.get_simple_key('left')},
+            self.assertEqual({self.get_simple_key(b'left')},
                 set(missing_bases))
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
@@ -2518,16 +2518,16 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             raise TestNotApplicable(
                 'versioned file scenario does not support partial insertion')
         source = self.get_knit_delta_source()
-        entries = source.get_record_stream([self.get_simple_key('origin'),
-            self.get_simple_key('merged')], 'unordered', False)
+        entries = source.get_record_stream([self.get_simple_key(b'origin'),
+            self.get_simple_key(b'merged')], 'unordered', False)
         files = self.get_versionedfiles()
         files.insert_record_stream(entries)
         missing_bases = files.get_missing_compression_parent_keys()
-        self.assertEqual({self.get_simple_key('left')},
+        self.assertEqual({self.get_simple_key(b'left')},
             set(missing_bases))
         # 'merged' is inserted (although a commit of a write group involving
         # this versionedfiles would fail).
-        merged_key = self.get_simple_key('merged')
+        merged_key = self.get_simple_key(b'merged')
         self.assertEqual(
             [merged_key], files.get_parent_map([merged_key]).keys())
         # Add the full delta closure of the missing records
@@ -2738,7 +2738,7 @@ class VirtualVersionedFilesTests(TestCase):
 
     def test_add_lines(self):
         self.assertRaises(NotImplementedError,
-                self.texts.add_lines, "foo", [], [])
+                self.texts.add_lines, b"foo", [], [])
 
     def test_add_mpdiffs(self):
         self.assertRaises(NotImplementedError,
@@ -2752,7 +2752,7 @@ class VirtualVersionedFilesTests(TestCase):
                           [])
 
     def test_get_sha1s_nonexistent(self):
-        self.assertEqual({}, self.texts.get_sha1s([("NONEXISTENT",)]))
+        self.assertEqual({}, self.texts.get_sha1s([(b"NONEXISTENT",)]))
 
     def test_get_sha1s(self):
         self._lines[b"key"] = [b"dataline1", b"dataline2"]
@@ -2773,16 +2773,16 @@ class VirtualVersionedFilesTests(TestCase):
         self.assertEqual([b"FOO", b"BAR"], record.get_bytes_as("chunked"))
 
     def test_get_record_stream_absent(self):
-        it = self.texts.get_record_stream([("A",)], "unordered", True)
+        it = self.texts.get_record_stream([(b"A",)], "unordered", True)
         record = next(it)
         self.assertEqual("absent", record.storage_kind)
 
     def test_iter_lines_added_or_present_in_keys(self):
-        self._lines["A"] = ["FOO", "BAR"]
-        self._lines["B"] = ["HEY"]
-        self._lines["C"] = ["Alberta"]
-        it = self.texts.iter_lines_added_or_present_in_keys([("A",), ("B",)])
-        self.assertEqual(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]),
+        self._lines[b"A"] = [b"FOO", b"BAR"]
+        self._lines[b"B"] = [b"HEY"]
+        self._lines[b"C"] = [b"Alberta"]
+        it = self.texts.iter_lines_added_or_present_in_keys([(b"A",), (b"B",)])
+        self.assertEqual(sorted([(b"FOO", b"A"), (b"BAR", b"A"), (b"HEY", b"B")]),
             sorted(list(it)))
 
 
@@ -2820,24 +2820,24 @@ class TestOrderingVersionedFilesDecorator(TestCaseWithMemoryTransport):
                            False)], vf.calls)
 
     def test_get_record_stream_ordered(self):
-        vf = self.get_ordering_vf({('A',): 3, ('B',): 2, ('C',): 4, ('D',): 1})
-        request_keys = [('B',), ('C',), ('D',), ('A',)]
+        vf = self.get_ordering_vf({(b'A',): 3, (b'B',): 2, (b'C',): 4, (b'D',): 1})
+        request_keys = [(b'B',), (b'C',), (b'D',), (b'A',)]
         keys = [r.key for r in vf.get_record_stream(request_keys,
                                    'unordered', False)]
         # They should be returned based on their priority
-        self.assertEqual([('D',), ('B',), ('A',), ('C',)], keys)
+        self.assertEqual([(b'D',), (b'B',), (b'A',), (b'C',)], keys)
         # And the request recorded
         self.assertEqual([('get_record_stream', request_keys, 'unordered',
                            False)], vf.calls)
 
     def test_get_record_stream_implicit_order(self):
-        vf = self.get_ordering_vf({('B',): 2, ('D',): 1})
-        request_keys = [('B',), ('C',), ('D',), ('A',)]
+        vf = self.get_ordering_vf({(b'B',): 2, (b'D',): 1})
+        request_keys = [(b'B',), (b'C',), (b'D',), (b'A',)]
         keys = [r.key for r in vf.get_record_stream(request_keys,
                                    'unordered', False)]
         # A and C are not in the map, so they get sorted to the front. A comes
         # before C alphabetically, so it comes back first
-        self.assertEqual([('A',), ('C',), ('D',), ('B',)], keys)
+        self.assertEqual([(b'A',), (b'C',), (b'D',), (b'B',)], keys)
         # And the request recorded
         self.assertEqual([('get_record_stream', request_keys, 'unordered',
                            False)], vf.calls)

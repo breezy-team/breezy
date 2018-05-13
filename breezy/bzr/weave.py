@@ -494,7 +494,7 @@ class Weave(VersionedFile):
         if sha1 == nostore_sha:
             raise errors.ExistingContent
         if version_id is None:
-            version_id = "sha1:" + sha1
+            version_id = b"sha1:" + sha1
         if version_id in self._name_map:
             return self._check_repeated_add(version_id, parents, lines, sha1)
 
@@ -509,7 +509,6 @@ class Weave(VersionedFile):
         self._sha1s.append(sha1)
         self._names.append(version_id)
         self._name_map[version_id] = new_version
-
 
         if not parents:
             # special case; adding with no parents revision; can do
@@ -638,8 +637,8 @@ class Weave(VersionedFile):
         version_ids = set(version_ids)
         for lineno, inserted, deletes, line in self._walk_internal(version_ids):
             if inserted not in version_ids: continue
-            if line[-1] != '\n':
-                yield line + '\n', inserted
+            if not line.endswith(b'\n'):
+                yield line + b'\n', inserted
             else:
                 yield line, inserted
 

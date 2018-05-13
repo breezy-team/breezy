@@ -1326,14 +1326,14 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_fulltext(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
+        rev_key = (b'rev-id',)
         ann._num_compression_children[rev_key] = 1
-        res = ann._expand_record(rev_key, (('parent-id',),), None,
-                           ['line1\n', 'line2\n'], ('fulltext', True))
+        res = ann._expand_record(rev_key, ((b'parent-id',),), None,
+                           [b'line1\n', b'line2\n'], (b'fulltext', True))
         # The content object and text lines should be cached appropriately
-        self.assertEqual(['line1\n', 'line2'], res)
+        self.assertEqual([b'line1\n', b'line2'], res)
         content_obj = ann._content_objects[rev_key]
-        self.assertEqual(['line1\n', 'line2\n'], content_obj._lines)
+        self.assertEqual([b'line1\n', b'line2\n'], content_obj._lines)
         self.assertEqual(res, content_obj.text())
         self.assertEqual(res, ann._text_cache[rev_key])
 
@@ -1390,7 +1390,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
                          ann._matching_blocks)
         rev2_key = (b'rev2-id',)
-        record = ['0,1,1\n', 'new-line\n']
+        record = [b'0,1,1\n', b'new-line\n']
         details = (b'line-delta', False)
         ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
         self.assertEqual([(1, 1, 2), (3, 3, 0)],
