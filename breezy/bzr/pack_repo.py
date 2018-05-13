@@ -999,7 +999,7 @@ class RepositoryPackCollection(object):
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Packing repository %s, which has %d pack files, '
-            'containing %d revisions with hint %r.', self, total_packs,
+            'containing %d revisions with hint %r.', str(self), total_packs,
             total_revisions, hint)
         while True:
             try:

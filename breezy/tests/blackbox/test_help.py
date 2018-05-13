@@ -67,7 +67,7 @@ class TestHelp(tests.TestCaseWithTransport):
         """Smoke test for 'brz help urlspec'"""
         out, err = self.run_bzr('help urlspec')
         self.assertContainsRe(out, 'bzr://')
-        self.assertContainsRe(out, 'bzr\+ssh://')
+        self.assertContainsRe(out, 'bzr\\+ssh://')
         self.assertContainsRe(out, 'file://')
         self.assertContainsRe(out, 'http://')
         self.assertContainsRe(out, 'https://')

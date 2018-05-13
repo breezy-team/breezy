@@ -303,7 +303,7 @@ def _read_dirblocks(state):
                      ),
                      ])
             trailing = next()
-            if trailing != '\n':
+            if trailing != b'\n':
                 raise ValueError("trailing garbage in dirstate: %r" % trailing)
             # append the entry to the current block
             append_entry(entry)

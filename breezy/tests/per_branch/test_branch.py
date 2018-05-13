@@ -90,14 +90,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br.fetch(wt.branch)
         br.generate_revision_history(rev3)
         for revision_id in [rev3, rev2, rev1]:
-            self.assertIsInstance(revision_id, str)
+            self.assertIsInstance(revision_id, bytes)
         last = br.last_revision()
         self.assertEqual(rev3, last)
-        self.assertIsInstance(last, str)
+        self.assertIsInstance(last, bytes)
         revno, last = br.last_revision_info()
         self.assertEqual(3, revno)
         self.assertEqual(rev3, last)
-        self.assertIsInstance(last, str)
+        self.assertIsInstance(last, bytes)
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
@@ -509,7 +509,7 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
         br = self.make_branch('.')
         format = br._format
         network_name = format.network_name()
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
         # We want to test that the network_name matches the actual format on
         # disk. For local branches that means that using network_name as a key
         # in the registry gives back the same format. For remote branches we
@@ -619,7 +619,7 @@ class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
     def test_get_child_submit_format_default(self):
         submit_format = self.get_branch().get_child_submit_format()
         self.assertTrue(submit_format is None or
-                        isinstance(submit_format, str))
+                        isinstance(submit_format, bytes))
 
     def test_get_child_submit_format(self):
         branch = self.get_branch()

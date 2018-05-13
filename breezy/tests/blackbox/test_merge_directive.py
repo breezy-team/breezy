@@ -28,7 +28,7 @@ from breezy import (
 EMAIL1 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: bar
 To: pqm@example.com
-User-Agent: Bazaar \(.*\)
+User-Agent: Bazaar \\(.*\\)
 
 # Bazaar merge directive format 2 \\(Bazaar 0.90\\)
 # revision_id: bar-id

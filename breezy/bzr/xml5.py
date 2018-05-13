@@ -36,7 +36,7 @@ class Serializer_v5(xml6.Serializer_v6):
 
     Packs objects into XML and vice versa.
     """
-    format_num = '5'
+    format_num = b'5'
     root_id = inventory.ROOT_ID
 
     def _unpack_inventory(self, elt, revision_id, entry_cache=None,

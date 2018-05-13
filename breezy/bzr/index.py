@@ -1093,18 +1093,18 @@ class GraphIndex(object):
         if not start_adjacent:
             # work around python bug in rfind
             if trim_start is None:
-                trim_start = data.find('\n') + 1
+                trim_start = data.find(b'\n') + 1
             else:
-                trim_start = data.find('\n', trim_start) + 1
+                trim_start = data.find(b'\n', trim_start) + 1
             if not (trim_start != 0):
                 raise AssertionError('no \n was present')
             # print 'removing start', offset, trim_start, repr(data[:trim_start])
         if not end_adjacent:
             # work around python bug in rfind
             if trim_end is None:
-                trim_end = data.rfind('\n') + 1
+                trim_end = data.rfind(b'\n') + 1
             else:
-                trim_end = data.rfind('\n', None, trim_end) + 1
+                trim_end = data.rfind(b'\n', None, trim_end) + 1
             if not (trim_end != 0):
                 raise AssertionError('no \n was present')
             # print 'removing end', offset, trim_end, repr(data[trim_end:])
@@ -1117,7 +1117,7 @@ class GraphIndex(object):
             offset += trim_start
         # print "parsing", repr(trimmed_data)
         # splitlines mangles the \r delimiters.. don't use it.
-        lines = trimmed_data.split('\n')
+        lines = trimmed_data.split(b'\n')
         del lines[-1]
         pos = offset
         first_key, last_key, nodes, _ = self._parse_lines(lines, pos)
@@ -1133,7 +1133,7 @@ class GraphIndex(object):
         trailers = 0
         nodes = []
         for line in lines:
-            if line == '':
+            if line == b'':
                 # must be at the end
                 if self._size:
                     if not (self._size == pos + 1):
@@ -1150,9 +1150,9 @@ class GraphIndex(object):
                 first_key = key
             absent, references, value = elements[-3:]
             ref_lists = []
-            for ref_string in references.split('\t'):
+            for ref_string in references.split(b'\t'):
                 ref_lists.append(tuple([
-                    int(ref) for ref in ref_string.split('\r') if ref
+                    int(ref) for ref in ref_string.split(b'\r') if ref
                     ]))
             ref_lists = tuple(ref_lists)
             self._keys_by_offset[pos] = (key, absent, ref_lists, value)
