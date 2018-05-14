@@ -198,6 +198,12 @@ def show_log(branch,
     else:
         diff_type = None
 
+    if isinstance(start_revision, int):
+        start_revision = revisionspec.RevisionInfo(branch, start_revision)
+
+    if isinstance(end_revision, int):
+        end_revision = revisionspec.RevisionInfo(branch, end_revision)
+
     # Build the request and execute it
     rqst = make_log_request_dict(direction=direction, specific_fileids=file_ids,
         start_revision=start_revision, end_revision=end_revision,
@@ -565,8 +571,8 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
             '--exclude-common-ancestry requires two different revisions'))
     if direction not in ('reverse', 'forward'):
         raise ValueError(gettext('invalid direction %r') % direction)
-    br_revno, br_rev_id = branch.last_revision_info()
-    if br_revno == 0:
+    br_rev_id = branch.last_revision()
+    if br_rev_id == _mod_revision.NULL_REVISION:
         return []
 
     if (end_rev_id and start_rev_id == end_rev_id
@@ -574,7 +580,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
              or not _has_merges(branch, end_rev_id))):
         # If a single revision is requested, check we can handle it
         return  _generate_one_revision(branch, end_rev_id, br_rev_id,
-                                       br_revno)
+                                       branch.revno())
     if not generate_merge_revisions:
         try:
             # If we only want to see linear revisions, we can iterate ...
@@ -728,11 +734,16 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     :raises _StartNotLinearAncestor: if a start_rev_id is specified but
         is not found walking the left-hand history
     """
-    br_revno, br_rev_id = branch.last_revision_info()
     repo = branch.repository
     graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
-        cur_revno = br_revno
+        try:
+            br_revno, br_rev_id = branch.last_revision_info()
+        except errors.GhostRevisionsHaveNoRevno:
+            br_rev_id = branch.last_revision()
+            cur_revno = None
+        else:
+            cur_revno = br_revno
         graph_iter = graph.iter_lefthand_ancestry(br_rev_id,
             (_mod_revision.NULL_REVISION,))
         while True:
@@ -743,9 +754,11 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
                 yield e.revision_id, None, None
                 break
             else:
-                yield revision_id, str(cur_revno), 0
-                cur_revno -= 1
+                yield revision_id, str(cur_revno) if cur_revno is not None else None, 0
+                if cur_revno is not None:
+                    cur_revno -= 1
     else:
+        br_rev_id = branch.last_revision()
         if end_rev_id is None:
             end_rev_id = br_rev_id
         found_start = start_rev_id is None
@@ -1049,7 +1062,6 @@ def _get_revision_limits(branch, start_revision, end_revision):
     :param  branch: The branch containing the revisions.
 
     :param  start_revision: The first revision to be logged.
-            For backwards compatibility this may be a mainline integer revno,
             but for merge revision support a RevisionInfo is expected.
 
     :param  end_revision: The last revision to be logged.
@@ -1058,36 +1070,34 @@ def _get_revision_limits(branch, start_revision, end_revision):
 
     :return: (start_rev_id, end_rev_id) tuple.
     """
-    branch_revno, branch_rev_id = branch.last_revision_info()
     start_rev_id = None
-    if start_revision is None:
+    start_revno = None
+    if start_revision is not None:
+        if not isinstance(start_revision, revisionspec.RevisionInfo):
+            raise TypeError(start_revision)
+        start_rev_id = start_revision.rev_id
+        start_revno = start_revision.revno
+    if start_revno is None:
         start_revno = 1
-    else:
-        if isinstance(start_revision, revisionspec.RevisionInfo):
-            start_rev_id = start_revision.rev_id
-            start_revno = start_revision.revno or 1
-        else:
-            branch.check_real_revno(start_revision)
-            start_revno = start_revision
-            start_rev_id = branch.get_rev_id(start_revno)
 
     end_rev_id = None
-    if end_revision is None:
-        end_revno = branch_revno
-    else:
-        if isinstance(end_revision, revisionspec.RevisionInfo):
-            end_rev_id = end_revision.rev_id
-            end_revno = end_revision.revno or branch_revno
-        else:
-            branch.check_real_revno(end_revision)
-            end_revno = end_revision
-            end_rev_id = branch.get_rev_id(end_revno)
+    end_revno = None
+    if end_revision is not None:
+        if not isinstance(end_revision, revisionspec.RevisionInfo):
+            raise TypeError(start_revision)
+        end_rev_id = end_revision.rev_id
+        end_revno = end_revision.revno
+    if end_revno is None:
+        try:
+            end_revno = branch.revno()
+        except errors.GhostRevisionsHaveNoRevno:
+            end_revno = None
 
-    if branch_revno != 0:
+    if branch.last_revision() != _mod_revision.NULL_REVISION:
         if (start_rev_id == _mod_revision.NULL_REVISION
             or end_rev_id == _mod_revision.NULL_REVISION):
             raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
-        if start_revno > end_revno:
+        if end_revno is not None and start_revno > end_revno:
             raise errors.BzrCommandError(gettext("Start revision must be "
                                          "older than the end revision."))
     return (start_rev_id, end_rev_id)
@@ -1996,7 +2006,7 @@ def show_branch_change(branch, output, old_revno, old_revision_id):
         output.write('Added Revisions:\n')
         start_revno = new_revno - len(new_history) + 1
         show_log(branch, lf, None, verbose=False, direction='forward',
-                 start_revision=start_revno,)
+                 start_revision=start_revno)
 
 
 def show_flat_log(repository, history, last_revno, lf):

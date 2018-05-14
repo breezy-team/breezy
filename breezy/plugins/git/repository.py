@@ -390,9 +390,13 @@ class LocalGitRepository(GitRepository):
             commit = self._git.object_store[hexsha]
         except KeyError:
             return None
-        return [
-            self.lookup_foreign_revision_id(p, mapping)
-            for p in commit.parents]
+        ret = []
+        for p in commit.parents:
+            try:
+                ret.append(self.lookup_foreign_revision_id(p, mapping))
+            except KeyError:
+                ret.append(mapping.revision_id_foreign_to_bzr(p))
+        return ret
 
     def _get_parent_map_no_fallbacks(self, revids):
         return self.get_parent_map(revids, no_alternates=True)

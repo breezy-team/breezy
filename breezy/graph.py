@@ -119,7 +119,10 @@ class StackedParentsProvider(object):
         if not remaining:
             return found
         for parents_provider in self._parent_providers:
-            new_found = parents_provider.get_parent_map(remaining)
+            try:
+                new_found = parents_provider.get_parent_map(remaining)
+            except errors.UnsupportedOperation:
+                continue
             found.update(new_found)
             remaining.difference_update(new_found)
             if not remaining:
