@@ -159,7 +159,7 @@ class SmartServerRequest(object):
 
         Must return a SmartServerResponse.
         """
-        if body_bytes != '':
+        if body_bytes != b'':
             raise errors.SmartProtocolError('Request does not expect a body')
 
     def do_chunk(self, chunk_bytes):
@@ -171,7 +171,7 @@ class SmartServerRequest(object):
 
     def do_end(self):
         """Called when the end of the request has been received."""
-        body_bytes = ''.join(self._body_chunks)
+        body_bytes = b''.join(self._body_chunks)
         self._body_chunks = None
         return self.do_body(body_bytes)
 
@@ -192,6 +192,7 @@ class SmartServerRequest(object):
             (unlike the untranslated client_path, which must not be used with
             the backing transport).
         """
+        client_path = client_path.decode('utf-8')
         if self._root_client_path is None:
             # no translation necessary!
             return client_path
@@ -216,6 +217,8 @@ class SmartServerRequest(object):
         :returns: a transport cloned from self._backing_transport
         """
         relpath = self.translate_client_path(client_path)
+        if not isinstance(relpath, str):
+            raise TypeError(relpath)
         return self._backing_transport.clone(relpath)
 
 
@@ -308,7 +311,7 @@ class SmartServerRequestHandler(object):
             self._thread_id = thread.get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
-        # It is a bit of a shame that this functionality overlaps with that of 
+        # It is a bit of a shame that this functionality overlaps with that of
         # ProtocolThreeRequester._trace. However, there is enough difference
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
@@ -386,7 +389,7 @@ class SmartServerRequestHandler(object):
             command = self._commands.get(cmd)
         except LookupError:
             if 'hpss' in debug.debug_flags:
-                self._trace('hpss unknown request', 
+                self._trace('hpss unknown request',
                             cmd, repr(args)[1:-1])
             raise errors.UnknownSmartMethod(cmd)
         if 'hpss' in debug.debug_flags:
@@ -395,8 +398,7 @@ class SmartServerRequestHandler(object):
                 action = 'hpss vfs req'
             else:
                 action = 'hpss request'
-            self._trace(action, 
-                        '%s %s' % (cmd, repr(args)[1:-1]))
+            self._trace(action, '%s %s' % (cmd, repr(args)[1:-1]))
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
@@ -416,27 +418,31 @@ class SmartServerRequestHandler(object):
 
 def _translate_error(err):
     if isinstance(err, errors.NoSuchFile):
-        return ('NoSuchFile', err.path)
+        return (b'NoSuchFile', err.path.encode('utf-8'))
     elif isinstance(err, errors.FileExists):
-        return ('FileExists', err.path)
+        return (b'FileExists', err.path.encode('utf-8'))
     elif isinstance(err, errors.DirectoryNotEmpty):
-        return ('DirectoryNotEmpty', err.path)
+        return (b'DirectoryNotEmpty', err.path.encode('utf-8'))
     elif isinstance(err, errors.IncompatibleRepositories):
-        return ('IncompatibleRepositories', str(err.source), str(err.target),
+        return (b'IncompatibleRepositories', str(err.source), str(err.target),
             str(err.details))
     elif isinstance(err, errors.ShortReadvError):
-        return ('ShortReadvError', err.path, str(err.offset), str(err.length),
-                str(err.actual))
+        return (b'ShortReadvError', err.path.encode('utf-8'),
+                str(err.offset).encode('ascii'),
+                str(err.length).encode('ascii'),
+                str(err.actual).encode('ascii'))
     elif isinstance(err, errors.RevisionNotPresent):
-        return ('RevisionNotPresent', err.revision_id, err.file_id)
+        return (b'RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
-        return (('UnstackableRepositoryFormat', str(err.format), err.url))
+        return ((b'UnstackableRepositoryFormat',
+            str(err.format).encode('utf-8'), err.url.encode('utf-8')))
     elif isinstance(err, _mod_branch.UnstackableBranchFormat):
-        return ('UnstackableBranchFormat', str(err.format), err.url)
+        return (b'UnstackableBranchFormat', str(err.format).encode('utf-8'),
+                err.url.encode('utf-8'))
     elif isinstance(err, errors.NotStacked):
-        return ('NotStacked',)
+        return (b'NotStacked',)
     elif isinstance(err, errors.BzrCheckError):
-        return ('BzrCheckError', err.msg)
+        return (b'BzrCheckError', err.msg.encode('utf-8'))
     elif isinstance(err, UnicodeError):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string
@@ -453,23 +459,24 @@ def _translate_error(err):
                 str(err.end), err.reason)
     elif isinstance(err, errors.TransportNotPossible):
         if err.msg == "readonly transport":
-            return ('ReadOnlyError', )
+            return (b'ReadOnlyError', )
     elif isinstance(err, errors.ReadError):
         # cannot read the file
-        return ('ReadError', err.path)
+        return (b'ReadError', err.path)
     elif isinstance(err, errors.PermissionDenied):
-        return ('PermissionDenied', err.path, err.extra)
+        return (b'PermissionDenied', err.path.encode('utf-8'), err.extra.encode('utf-8'))
     elif isinstance(err, errors.TokenMismatch):
-        return ('TokenMismatch', err.given_token, err.lock_token)
+        return (b'TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
-        return ('LockContention',)
+        return (b'LockContention',)
     elif isinstance(err, MemoryError):
         # GZ 2011-02-24: Copy breezy.trace -Dmem_dump functionality here?
-        return ('MemoryError',)
+        return (b'MemoryError',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
-    return ('error', trace._qualified_exception_name(err.__class__, True),
-        str(err))
+    return (b'error',
+            trace._qualified_exception_name(err.__class__, True).encode('utf-8'),
+            str(err).encode('utf-8'))
 
 
 class HelloRequest(SmartServerRequest):
@@ -478,7 +485,7 @@ class HelloRequest(SmartServerRequest):
     """
 
     def do(self):
-        return SuccessfulSmartServerResponse(('ok', '2'))
+        return SuccessfulSmartServerResponse((b'ok', b'2'))
 
 
 class GetBundleRequest(SmartServerRequest):
@@ -501,9 +508,9 @@ class SmartServerIsReadonly(SmartServerRequest):
 
     def do(self):
         if self._backing_transport.is_readonly():
-            answer = 'yes'
+            answer = b'yes'
         else:
-            answer = 'no'
+            answer = b'no'
         return SuccessfulSmartServerResponse((answer,))
 
 
@@ -533,254 +540,254 @@ class SmartServerIsReadonly(SmartServerRequest):
 #           file. If append succeeds, it moves the file pointer.
 request_handlers = registry.Registry()
 request_handlers.register_lazy(
-    'append', 'breezy.bzr.smart.vfs', 'AppendRequest', info='mutate')
+    b'append', 'breezy.bzr.smart.vfs', 'AppendRequest', info='mutate')
 request_handlers.register_lazy(
-    'Branch.break_lock', 'breezy.bzr.smart.branch',
+    b'Branch.break_lock', 'breezy.bzr.smart.branch',
     'SmartServerBranchBreakLock', info='idem')
 request_handlers.register_lazy(
-    'Branch.get_config_file', 'breezy.bzr.smart.branch',
+    b'Branch.get_config_file', 'breezy.bzr.smart.branch',
     'SmartServerBranchGetConfigFile', info='read')
 request_handlers.register_lazy(
-    'Branch.get_parent', 'breezy.bzr.smart.branch', 'SmartServerBranchGetParent',
+    b'Branch.get_parent', 'breezy.bzr.smart.branch', 'SmartServerBranchGetParent',
     info='read')
 request_handlers.register_lazy(
-    'Branch.put_config_file', 'breezy.bzr.smart.branch',
+    b'Branch.put_config_file', 'breezy.bzr.smart.branch',
     'SmartServerBranchPutConfigFile', info='idem')
 request_handlers.register_lazy(
-    'Branch.get_tags_bytes', 'breezy.bzr.smart.branch',
+    b'Branch.get_tags_bytes', 'breezy.bzr.smart.branch',
     'SmartServerBranchGetTagsBytes', info='read')
 request_handlers.register_lazy(
-    'Branch.set_tags_bytes', 'breezy.bzr.smart.branch',
+    b'Branch.set_tags_bytes', 'breezy.bzr.smart.branch',
     'SmartServerBranchSetTagsBytes', info='idem')
 request_handlers.register_lazy(
-    'Branch.heads_to_fetch', 'breezy.bzr.smart.branch',
+    b'Branch.heads_to_fetch', 'breezy.bzr.smart.branch',
     'SmartServerBranchHeadsToFetch', info='read')
 request_handlers.register_lazy(
-    'Branch.get_stacked_on_url', 'breezy.bzr.smart.branch',
+    b'Branch.get_stacked_on_url', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestGetStackedOnURL', info='read')
 request_handlers.register_lazy(
-    'Branch.get_physical_lock_status', 'breezy.bzr.smart.branch',
+    b'Branch.get_physical_lock_status', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestGetPhysicalLockStatus', info='read')
 request_handlers.register_lazy(
-    'Branch.last_revision_info', 'breezy.bzr.smart.branch',
+    b'Branch.last_revision_info', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestLastRevisionInfo', info='read')
 request_handlers.register_lazy(
-    'Branch.lock_write', 'breezy.bzr.smart.branch',
+    b'Branch.lock_write', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestLockWrite', info='semi')
 request_handlers.register_lazy(
-    'Branch.revision_history', 'breezy.bzr.smart.branch',
+    b'Branch.revision_history', 'breezy.bzr.smart.branch',
     'SmartServerRequestRevisionHistory', info='read')
 request_handlers.register_lazy(
-    'Branch.set_config_option', 'breezy.bzr.smart.branch',
+    b'Branch.set_config_option', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestSetConfigOption', info='idem')
 request_handlers.register_lazy(
-    'Branch.set_config_option_dict', 'breezy.bzr.smart.branch',
+    b'Branch.set_config_option_dict', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestSetConfigOptionDict', info='idem')
 request_handlers.register_lazy(
-    'Branch.set_last_revision', 'breezy.bzr.smart.branch',
+    b'Branch.set_last_revision', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestSetLastRevision', info='idem')
 request_handlers.register_lazy(
-    'Branch.set_last_revision_info', 'breezy.bzr.smart.branch',
+    b'Branch.set_last_revision_info', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestSetLastRevisionInfo', info='idem')
 request_handlers.register_lazy(
-    'Branch.set_last_revision_ex', 'breezy.bzr.smart.branch',
+    b'Branch.set_last_revision_ex', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestSetLastRevisionEx', info='idem')
 request_handlers.register_lazy(
-    'Branch.set_parent_location', 'breezy.bzr.smart.branch',
+    b'Branch.set_parent_location', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestSetParentLocation', info='idem')
 request_handlers.register_lazy(
-    'Branch.unlock', 'breezy.bzr.smart.branch',
+    b'Branch.unlock', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestUnlock', info='semi')
 request_handlers.register_lazy(
-    'Branch.revision_id_to_revno', 'breezy.bzr.smart.branch',
+    b'Branch.revision_id_to_revno', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
 request_handlers.register_lazy(
-    'BzrDir.checkout_metadir', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.checkout_metadir', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestCheckoutMetaDir', info='read')
 request_handlers.register_lazy(
-    'BzrDir.cloning_metadir', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.cloning_metadir', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir', info='read')
 request_handlers.register_lazy(
-    'BzrDir.create_branch', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.create_branch', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestCreateBranch', info='semi')
 request_handlers.register_lazy(
-    'BzrDir.create_repository', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.create_repository', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestCreateRepository', info='semi')
 request_handlers.register_lazy(
-    'BzrDir.find_repository', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.find_repository', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestFindRepositoryV1', info='read')
 request_handlers.register_lazy(
-    'BzrDir.find_repositoryV2', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.find_repositoryV2', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestFindRepositoryV2', info='read')
 request_handlers.register_lazy(
-    'BzrDir.find_repositoryV3', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.find_repositoryV3', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestFindRepositoryV3', info='read')
 request_handlers.register_lazy(
-    'BzrDir.get_branches', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.get_branches', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestGetBranches', info='read')
 request_handlers.register_lazy(
-    'BzrDir.get_config_file', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.get_config_file', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestConfigFile', info='read')
 request_handlers.register_lazy(
-    'BzrDir.destroy_branch', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.destroy_branch', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestDestroyBranch', info='semi')
 request_handlers.register_lazy(
-    'BzrDir.destroy_repository', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.destroy_repository', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestDestroyRepository', info='semi')
 request_handlers.register_lazy(
-    'BzrDir.has_workingtree', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.has_workingtree', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestHasWorkingTree', info='read')
 request_handlers.register_lazy(
-    'BzrDirFormat.initialize', 'breezy.bzr.smart.bzrdir',
+    b'BzrDirFormat.initialize', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir', info='semi')
 request_handlers.register_lazy(
-    'BzrDirFormat.initialize_ex_1.16', 'breezy.bzr.smart.bzrdir',
+    b'BzrDirFormat.initialize_ex_1.16', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestBzrDirInitializeEx', info='semi')
 request_handlers.register_lazy(
-    'BzrDir.open', 'breezy.bzr.smart.bzrdir', 'SmartServerRequestOpenBzrDir',
+    b'BzrDir.open', 'breezy.bzr.smart.bzrdir', 'SmartServerRequestOpenBzrDir',
     info='read')
 request_handlers.register_lazy(
-    'BzrDir.open_2.1', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.open_2.1', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestOpenBzrDir_2_1', info='read')
 request_handlers.register_lazy(
-    'BzrDir.open_branch', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.open_branch', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestOpenBranch', info='read')
 request_handlers.register_lazy(
-    'BzrDir.open_branchV2', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.open_branchV2', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestOpenBranchV2', info='read')
 request_handlers.register_lazy(
-    'BzrDir.open_branchV3', 'breezy.bzr.smart.bzrdir',
+    b'BzrDir.open_branchV3', 'breezy.bzr.smart.bzrdir',
     'SmartServerRequestOpenBranchV3', info='read')
 request_handlers.register_lazy(
-    'delete', 'breezy.bzr.smart.vfs', 'DeleteRequest', info='semivfs')
+    b'delete', 'breezy.bzr.smart.vfs', 'DeleteRequest', info='semivfs')
 request_handlers.register_lazy(
-    'get', 'breezy.bzr.smart.vfs', 'GetRequest', info='read')
+    b'get', 'breezy.bzr.smart.vfs', 'GetRequest', info='read')
 request_handlers.register_lazy(
-    'get_bundle', 'breezy.bzr.smart.request', 'GetBundleRequest', info='read')
+    b'get_bundle', 'breezy.bzr.smart.request', 'GetBundleRequest', info='read')
 request_handlers.register_lazy(
-    'has', 'breezy.bzr.smart.vfs', 'HasRequest', info='read')
+    b'has', 'breezy.bzr.smart.vfs', 'HasRequest', info='read')
 request_handlers.register_lazy(
-    'hello', 'breezy.bzr.smart.request', 'HelloRequest', info='read')
+    b'hello', 'breezy.bzr.smart.request', 'HelloRequest', info='read')
 request_handlers.register_lazy(
-    'iter_files_recursive', 'breezy.bzr.smart.vfs', 'IterFilesRecursiveRequest',
+    b'iter_files_recursive', 'breezy.bzr.smart.vfs', 'IterFilesRecursiveRequest',
     info='read')
 request_handlers.register_lazy(
-    'list_dir', 'breezy.bzr.smart.vfs', 'ListDirRequest', info='read')
+    b'list_dir', 'breezy.bzr.smart.vfs', 'ListDirRequest', info='read')
 request_handlers.register_lazy(
-    'mkdir', 'breezy.bzr.smart.vfs', 'MkdirRequest', info='semivfs')
+    b'mkdir', 'breezy.bzr.smart.vfs', 'MkdirRequest', info='semivfs')
 request_handlers.register_lazy(
-    'move', 'breezy.bzr.smart.vfs', 'MoveRequest', info='semivfs')
+    b'move', 'breezy.bzr.smart.vfs', 'MoveRequest', info='semivfs')
 request_handlers.register_lazy(
-    'put', 'breezy.bzr.smart.vfs', 'PutRequest', info='idem')
+    b'put', 'breezy.bzr.smart.vfs', 'PutRequest', info='idem')
 request_handlers.register_lazy(
-    'put_non_atomic', 'breezy.bzr.smart.vfs', 'PutNonAtomicRequest', info='idem')
+    b'put_non_atomic', 'breezy.bzr.smart.vfs', 'PutNonAtomicRequest', info='idem')
 request_handlers.register_lazy(
-    'readv', 'breezy.bzr.smart.vfs', 'ReadvRequest', info='read')
+    b'readv', 'breezy.bzr.smart.vfs', 'ReadvRequest', info='read')
 request_handlers.register_lazy(
-    'rename', 'breezy.bzr.smart.vfs', 'RenameRequest', info='semivfs')
+    b'rename', 'breezy.bzr.smart.vfs', 'RenameRequest', info='semivfs')
 request_handlers.register_lazy(
-    'Repository.add_signature_text', 'breezy.bzr.smart.repository',
+    b'Repository.add_signature_text', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAddSignatureText', info='idem')
 request_handlers.register_lazy(
-    'Repository.all_revision_ids', 'breezy.bzr.smart.repository',
+    b'Repository.all_revision_ids', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAllRevisionIds', info='read')
 request_handlers.register_lazy(
-    'PackRepository.autopack', 'breezy.bzr.smart.packrepository',
+    b'PackRepository.autopack', 'breezy.bzr.smart.packrepository',
     'SmartServerPackRepositoryAutopack', info='idem')
 request_handlers.register_lazy(
-    'Repository.break_lock', 'breezy.bzr.smart.repository',
+    b'Repository.break_lock', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryBreakLock', info='idem')
 request_handlers.register_lazy(
-    'Repository.gather_stats', 'breezy.bzr.smart.repository',
+    b'Repository.gather_stats', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGatherStats', info='read')
 request_handlers.register_lazy(
-    'Repository.get_parent_map', 'breezy.bzr.smart.repository',
+    b'Repository.get_parent_map', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetParentMap', info='read')
 request_handlers.register_lazy(
-    'Repository.get_revision_graph', 'breezy.bzr.smart.repository',
+    b'Repository.get_revision_graph', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetRevisionGraph', info='read')
 request_handlers.register_lazy(
-    'Repository.get_revision_signature_text', 'breezy.bzr.smart.repository',
+    b'Repository.get_revision_signature_text', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetRevisionSignatureText', info='read')
 request_handlers.register_lazy(
-    'Repository.has_revision', 'breezy.bzr.smart.repository',
+    b'Repository.has_revision', 'breezy.bzr.smart.repository',
     'SmartServerRequestHasRevision', info='read')
 request_handlers.register_lazy(
-    'Repository.has_signature_for_revision_id', 'breezy.bzr.smart.repository',
+    b'Repository.has_signature_for_revision_id', 'breezy.bzr.smart.repository',
     'SmartServerRequestHasSignatureForRevisionId', info='read')
 request_handlers.register_lazy(
-    'Repository.insert_stream', 'breezy.bzr.smart.repository',
+    b'Repository.insert_stream', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryInsertStream', info='stream')
 request_handlers.register_lazy(
-    'Repository.insert_stream_1.19', 'breezy.bzr.smart.repository',
+    b'Repository.insert_stream_1.19', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryInsertStream_1_19', info='stream')
 request_handlers.register_lazy(
-    'Repository.insert_stream_locked', 'breezy.bzr.smart.repository',
+    b'Repository.insert_stream_locked', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryInsertStreamLocked', info='stream')
 request_handlers.register_lazy(
-    'Repository.is_shared', 'breezy.bzr.smart.repository',
+    b'Repository.is_shared', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIsShared', info='read')
 request_handlers.register_lazy(
-    'Repository.iter_files_bytes', 'breezy.bzr.smart.repository',
+    b'Repository.iter_files_bytes', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIterFilesBytes', info='read')
 request_handlers.register_lazy(
-    'Repository.lock_write', 'breezy.bzr.smart.repository',
+    b'Repository.lock_write', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryLockWrite', info='semi')
 request_handlers.register_lazy(
-    'Repository.make_working_trees', 'breezy.bzr.smart.repository',
+    b'Repository.make_working_trees', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryMakeWorkingTrees', info='read')
 request_handlers.register_lazy(
-    'Repository.set_make_working_trees', 'breezy.bzr.smart.repository',
+    b'Repository.set_make_working_trees', 'breezy.bzr.smart.repository',
     'SmartServerRepositorySetMakeWorkingTrees', info='idem')
 request_handlers.register_lazy(
-    'Repository.unlock', 'breezy.bzr.smart.repository',
+    b'Repository.unlock', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryUnlock', info='semi')
 request_handlers.register_lazy(
-    'Repository.get_physical_lock_status', 'breezy.bzr.smart.repository',
+    b'Repository.get_physical_lock_status', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetPhysicalLockStatus', info='read')
 request_handlers.register_lazy(
-    'Repository.get_rev_id_for_revno', 'breezy.bzr.smart.repository',
+    b'Repository.get_rev_id_for_revno', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetRevIdForRevno', info='read')
 request_handlers.register_lazy(
-    'Repository.get_stream', 'breezy.bzr.smart.repository',
+    b'Repository.get_stream', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetStream', info='read')
 request_handlers.register_lazy(
-    'Repository.get_stream_1.19', 'breezy.bzr.smart.repository',
+    b'Repository.get_stream_1.19', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
 request_handlers.register_lazy(
-    'Repository.iter_revisions', 'breezy.bzr.smart.repository',
+    b'Repository.iter_revisions', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIterRevisions', info='read')
 request_handlers.register_lazy(
-    'Repository.pack', 'breezy.bzr.smart.repository',
+    b'Repository.pack', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryPack', info='idem')
 request_handlers.register_lazy(
-    'Repository.start_write_group', 'breezy.bzr.smart.repository',
+    b'Repository.start_write_group', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryStartWriteGroup', info='semi')
 request_handlers.register_lazy(
-    'Repository.commit_write_group', 'breezy.bzr.smart.repository',
+    b'Repository.commit_write_group', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryCommitWriteGroup', info='semi')
 request_handlers.register_lazy(
-    'Repository.abort_write_group', 'breezy.bzr.smart.repository',
+    b'Repository.abort_write_group', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAbortWriteGroup', info='semi')
 request_handlers.register_lazy(
-    'Repository.check_write_group', 'breezy.bzr.smart.repository',
+    b'Repository.check_write_group', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryCheckWriteGroup', info='read')
 request_handlers.register_lazy(
-    'Repository.reconcile', 'breezy.bzr.smart.repository',
+    b'Repository.reconcile', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryReconcile', info='idem')
 request_handlers.register_lazy(
-    'Repository.tarball', 'breezy.bzr.smart.repository',
+    b'Repository.tarball', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryTarball', info='read')
 request_handlers.register_lazy(
-    'VersionedFileRepository.get_serializer_format', 'breezy.bzr.smart.repository',
+    b'VersionedFileRepository.get_serializer_format', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetSerializerFormat', info='read')
 request_handlers.register_lazy(
-    'VersionedFileRepository.get_inventories', 'breezy.bzr.smart.repository',
+    b'VersionedFileRepository.get_inventories', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetInventories', info='read')
 request_handlers.register_lazy(
-    'rmdir', 'breezy.bzr.smart.vfs', 'RmdirRequest', info='semivfs')
+    b'rmdir', 'breezy.bzr.smart.vfs', 'RmdirRequest', info='semivfs')
 request_handlers.register_lazy(
-    'stat', 'breezy.bzr.smart.vfs', 'StatRequest', info='read')
+    b'stat', 'breezy.bzr.smart.vfs', 'StatRequest', info='read')
 request_handlers.register_lazy(
-    'Transport.is_readonly', 'breezy.bzr.smart.request',
+    b'Transport.is_readonly', 'breezy.bzr.smart.request',
     'SmartServerIsReadonly', info='read')

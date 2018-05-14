@@ -1821,7 +1821,7 @@ class CHKInventory(CommonInventory):
         result.revision_id = revision_id
         result.root_id = root_id
         search_key_func = chk_map.search_key_registry.get(
-            result._search_key_name.decode("ascii"))
+            result._search_key_name)
         if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 chk_store, StaticTuple(parent_id_basename_to_file_id,),
@@ -1838,7 +1838,7 @@ class CHKInventory(CommonInventory):
         return result
 
     @classmethod
-    def from_inventory(klass, chk_store, inventory, maximum_size=0, search_key_name='plain'):
+    def from_inventory(klass, chk_store, inventory, maximum_size=0, search_key_name=b'plain'):
         """Create a CHKInventory from an existing inventory.
 
         The content of inventory is copied into the chk_store, and a
@@ -2161,10 +2161,10 @@ class CHKInventory(CommonInventory):
     def to_lines(self):
         """Serialise the inventory to lines."""
         lines = [b"chkinventory:\n"]
-        if self._search_key_name != 'plain':
+        if self._search_key_name != b'plain':
             # custom ordering grouping things that don't change together
             lines.append(b'search_key_name: %s\n' % (
-                self._search_key_name.encode('ascii')))
+                self._search_key_name))
             lines.append(b"root_id: %s\n" % self.root_id)
             lines.append(b'parent_id_basename_to_file_id: %s\n' %
                 (self.parent_id_basename_to_file_id.key()[0],))

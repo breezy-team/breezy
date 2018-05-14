@@ -40,7 +40,7 @@ class _SmartClient(object):
         """
         self._medium = medium
         if headers is None:
-            self._headers = {'Software version': breezy.__version__}
+            self._headers = {b'Software version': breezy.__version__.encode('utf-8')}
         else:
             self._headers = dict(headers)
 
@@ -73,12 +73,12 @@ class _SmartClient(object):
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        if not isinstance(method, str):
+        if not isinstance(method, bytes):
             raise TypeError('method must be a byte string, not %r' % (method,))
         for arg in args:
-            if not isinstance(arg, str):
+            if not isinstance(arg, bytes):
                 raise TypeError('args must be byte strings, not %r' % (args,))
-        if not isinstance(body, str):
+        if not isinstance(body, bytes):
             raise TypeError('body must be byte string, not %r' % (body,))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False)
@@ -86,12 +86,12 @@ class _SmartClient(object):
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        if not isinstance(method, str):
+        if not isinstance(method, bytes):
             raise TypeError('method must be a byte string, not %r' % (method,))
         for arg in args:
-            if not isinstance(arg, str):
+            if not isinstance(arg, bytes):
                 raise TypeError('args must be byte strings, not %r' % (args,))
-        if not isinstance(body, str):
+        if not isinstance(body, bytes):
             raise TypeError('body must be byte string, not %r' % (body,))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=True)
@@ -115,7 +115,7 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        return self._medium.remote_path_from_transport(transport)
+        return self._medium.remote_path_from_transport(transport).encode('utf-8')
 
 
 class _SmartClientRequest(object):

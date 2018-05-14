@@ -289,7 +289,7 @@ class TestSendStrictMixin(TestSendMixin):
     _default_wd = 'local'
     _default_sent_revs = ['local']
     _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \(See brz status\)\.',]
+                       'changes \\(See brz status\\)\\.',]
     _default_additional_error = 'Use --no-strict to force the send.\n'
     _default_additional_warning = 'Uncommitted changes will not be sent.'
 
@@ -403,7 +403,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         # Exercise commands from the checkout directory
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
-                                " 'brz update'\.",]
+                                " 'brz update'\\.",]
         self._default_sent_revs = ['modified-in-local', 'local']
 
     def test_send_default(self):

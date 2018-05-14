@@ -456,5 +456,5 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_tree(checkout.controldir)
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertEqual(('../location', 'file_id'),
+        self.assertEqual(('../location', b'file_id'),
                          checkout_branch.get_reference_info('path'))

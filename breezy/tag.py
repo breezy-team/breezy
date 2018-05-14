@@ -230,7 +230,7 @@ class BasicTags(_Tags):
         """Convert the tag file into a dictionary of tags"""
         # was a special case to make initialization easy, an empty definition
         # is an empty dictionary
-        if tag_content == '':
+        if tag_content == b'':
             return {}
         try:
             r = {}

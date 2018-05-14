@@ -142,7 +142,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_from_stacked_smart_old(self):
         self.setup_smart_server_with_call_log()
-        self.disable_verb('Repository.get_stream_1.19')
+        self.disable_verb(b'Repository.get_stream_1.19')
         self.test_fetch_from_stacked()
 
     def test_fetch_from_stacked(self):
@@ -183,7 +183,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_parent_inventories_at_stacking_boundary_smart_old(self):
         self.setup_smart_server_with_call_log()
-        self.disable_verb('Repository.insert_stream_1.19')
+        self.disable_verb(b'Repository.insert_stream_1.19')
         try:
             self.test_fetch_parent_inventories_at_stacking_boundary()
         except errors.ConnectionReset:

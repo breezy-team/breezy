@@ -504,14 +504,14 @@ class TestLogVerbose(TestLog):
     def assertUseShortDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the short status format
-        self.assertContainsRe(log, '(?m)^\s*A  hello.txt$')
-        self.assertNotContainsRe(log, '(?m)^\s*added:$')
+        self.assertContainsRe(log, '(?m)^\\s*A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^\\s*added:$')
 
     def assertUseLongDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the long status format
-        self.assertNotContainsRe(log, '(?m)^\s*A  hello.txt$')
-        self.assertContainsRe(log, '(?m)^\s*added:$')
+        self.assertNotContainsRe(log, '(?m)^\\s*A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^\\s*added:$')
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])

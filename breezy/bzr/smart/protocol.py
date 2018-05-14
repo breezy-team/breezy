@@ -63,20 +63,17 @@ def _recv_tuple(from_file):
 def _decode_tuple(req_line):
     if req_line is None or req_line == b'':
         return None
-    if req_line[-1] != b'\n':
+    if not req_line.endswith(b'\n'):
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
-    return tuple(req_line[:-1].split('\x01'))
+    return tuple(req_line[:-1].split(b'\x01'))
 
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    joined = b'\x01'.join(args) + b'\n'
-    if isinstance(joined, text_type):
-        # XXX: We should fix things so this never happens!  -AJB, 20100304
-        mutter('response args contain unicode, should be only bytes: %r',
-               joined)
-        joined = joined.encode('ascii')
-    return joined
+    for arg in args:
+        if isinstance(arg, text_type):
+            raise TypeError(args)
+    return b'\x01'.join(args) + b'\n'
 
 
 class Requester(object):
@@ -179,14 +176,14 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 protocol_error = errors.SmartProtocolError(
                     "bad request %r" % (err.verb,))
                 failure = request.FailedSmartServerResponse(
-                    ('error', str(protocol_error)))
+                    (b'error', str(protocol_error).encode('utf-8')))
                 self._send_response(failure)
                 return
             except Exception as exception:
                 # everything else: pass to client, flush, and quit
                 log_exception_quietly()
                 self._send_response(request.FailedSmartServerResponse(
-                    ('error', str(exception))))
+                    (b'error', str(exception).encode('utf-8'))))
                 return
 
         if self._has_dispatched:
@@ -286,30 +283,30 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         self._write_success_or_failure_prefix(response)
         self._write_func(_encode_tuple(response.args))
         if response.body is not None:
-            if not isinstance(response.body, str):
-                raise AssertionError('body must be a str')
+            if not isinstance(response.body, bytes):
+                raise AssertionError('body must be bytes')
             if not (response.body_stream is None):
                 raise AssertionError(
                     'body_stream and body cannot both be set')
-            bytes = self._encode_bulk_data(response.body)
-            self._write_func(bytes)
+            data = self._encode_bulk_data(response.body)
+            self._write_func(data)
         elif response.body_stream is not None:
             _send_stream(response.body_stream, self._write_func)
 
 
 def _send_stream(stream, write_func):
-    write_func('chunked\n')
+    write_func(b'chunked\n')
     _send_chunks(stream, write_func)
-    write_func('END\n')
+    write_func(b'END\n')
 
 
 def _send_chunks(stream, write_func):
     for chunk in stream:
-        if isinstance(chunk, str):
-            bytes = "%x\n%s" % (len(chunk), chunk)
-            write_func(bytes)
+        if isinstance(chunk, bytes):
+            data = ("%x\n" % len(chunk)).encode('ascii') + chunk
+            write_func(data)
         elif isinstance(chunk, request.FailedSmartServerResponse):
-            write_func('ERR\n')
+            write_func(b'ERR\n')
             _send_chunks(chunk.args, write_func)
             return
         else:
@@ -726,23 +723,23 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         # returned in response to existing version 1 smart requests.  Responses
         # starting with these codes are always "failed" responses.
         v1_error_codes = [
-            'norepository',
-            'NoSuchFile',
-            'FileExists',
-            'DirectoryNotEmpty',
-            'ShortReadvError',
-            'UnicodeEncodeError',
-            'UnicodeDecodeError',
-            'ReadOnlyError',
-            'nobranch',
-            'NoSuchRevision',
-            'nosuchrevision',
-            'LockContention',
-            'UnlockableTransport',
-            'LockFailed',
-            'TokenMismatch',
-            'ReadError',
-            'PermissionDenied',
+            b'norepository',
+            b'NoSuchFile',
+            b'FileExists',
+            b'DirectoryNotEmpty',
+            b'ShortReadvError',
+            b'UnicodeEncodeError',
+            b'UnicodeDecodeError',
+            b'ReadOnlyError',
+            b'nobranch',
+            b'NoSuchRevision',
+            b'nosuchrevision',
+            b'LockContention',
+            b'UnlockableTransport',
+            b'LockFailed',
+            b'TokenMismatch',
+            b'ReadError',
+            b'PermissionDenied',
             ]
         if result_tuple[0] in v1_error_codes:
             self._request.finished_reading()
@@ -757,10 +754,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         :param verb: The verb used in that call.
         :raises: UnexpectedSmartServerResponse
         """
-        if (result_tuple == ('error', "Generic bzr smart protocol error: "
-                "bad request '%s'" % self._last_verb) or
-              result_tuple == ('error', "Generic bzr smart protocol error: "
-                "bad request u'%s'" % self._last_verb)):
+        if (result_tuple == (b'error', b"Generic bzr smart protocol error: "
+                b"bad request '" + self._last_verb + b"'") or
+              result_tuple == (b'error', b"Generic bzr smart protocol error: "
+                b"bad request u'%s'" % self._last_verb)):
             # The response will have no body, so we've finished reading.
             self._request.finished_reading()
             raise errors.UnknownSmartMethod(self._last_verb)
@@ -838,12 +835,12 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         response_status = self._request.read_line()
         result = SmartClientRequestProtocolOne._read_response_tuple(self)
         self._response_is_unknown_method(result)
-        if response_status == 'success\n':
+        if response_status == b'success\n':
             self.response_status = True
             if not expect_body:
                 self._request.finished_reading()
             return result
-        elif response_status == 'failed\n':
+        elif response_status == b'failed\n':
             self.response_status = False
             self._request.finished_reading()
             raise errors.ErrorFromSmartServer(result)
@@ -973,7 +970,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # The buffer is empty
             raise _NeedMoreBytes(1)
         in_buf = self._get_in_buffer()
-        one_byte = in_buf[0]
+        one_byte = in_buf[0:1]
         self._set_in_buffer(in_buf[1:])
         return one_byte
 
@@ -1011,13 +1008,13 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
     def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
-        if message_part_kind == 'o':
+        if message_part_kind == b'o':
             self.state_accept = self._state_accept_expecting_one_byte
-        elif message_part_kind == 's':
+        elif message_part_kind == b's':
             self.state_accept = self._state_accept_expecting_structure
-        elif message_part_kind == 'b':
+        elif message_part_kind == b'b':
             self.state_accept = self._state_accept_expecting_bytes
-        elif message_part_kind == 'e':
+        elif message_part_kind == b'e':
             self.done()
         else:
             raise errors.SmartProtocolError(
@@ -1157,7 +1154,8 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
     def __init__(self, write_func):
         _ProtocolThreeEncoder.__init__(self, write_func)
         self.response_sent = False
-        self._headers = {'Software version': breezy.__version__}
+        self._headers = {
+                b'Software version': breezy.__version__.encode('utf-8')}
         if 'hpss' in debug.debug_flags:
             self._thread_id = _thread.get_ident()
             self._response_start_time = None
@@ -1185,7 +1183,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                 % (exception,))
         if isinstance(exception, errors.UnknownSmartMethod):
             failure = request.FailedSmartServerResponse(
-                ('UnknownMethod', exception.verb))
+                (b'UnknownMethod', exception.verb))
             self.send_response(failure)
             return
         if 'hpss' in debug.debug_flags:
@@ -1194,7 +1192,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_error_status()
-        self._write_structure(('error', str(exception)))
+        self._write_structure((b'error', str(exception).encode('utf-8', 'replace')))
         self._write_end()
 
     def send_response(self, response):
@@ -1380,7 +1378,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_error_status()
                 # Currently the client unconditionally sends ('error',) as the
                 # error args.
-                self._write_structure(('error',))
+                self._write_structure((b'error',))
                 self._write_end()
                 self._medium_request.finished_writing()
                 try:

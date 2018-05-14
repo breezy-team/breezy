@@ -830,7 +830,7 @@ class _CommonGroupCompressor(object):
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
-            element is 'None' it is replaced with the sha1 of the text -
+            element is b'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
         :param bytes: The bytes to be compressed
         :param expected_sha: If non-None, the sha the lines are believed to

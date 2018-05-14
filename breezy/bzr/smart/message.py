@@ -113,11 +113,13 @@ class ConventionalRequestHandler(MessageHandler):
         self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
+        if not isinstance(byte, bytes):
+            raise TypeError(byte)
         if self.expecting == 'body':
-            if byte == 'S':
+            if byte == b'S':
                 # Success.  Nothing more to come except the end of message.
                 self.expecting = 'end'
-            elif byte == 'E':
+            elif byte == b'E':
                 # Error.  Expect an error structure.
                 self.expecting = 'error'
             else:
@@ -228,7 +230,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._medium_request = medium_request
 
     def byte_part_received(self, byte):
-        if byte not in ['E', 'S']:
+        if not isinstance(byte, bytes):
+            raise TypeError(byte)
+        if byte not in [b'E', b'S']:
             raise errors.SmartProtocolError(
                 'Unknown response status: %r' % (byte,))
         if self._body_started:
@@ -257,7 +261,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     % (structure, self.args))
             self.args = structure
         else:
-            if self._body_stream_status != 'E':
+            if self._body_stream_status != b'E':
                 raise errors.SmartProtocolError(
                     'Unexpected structure received after body: %r'
                     % (structure,))
@@ -279,7 +283,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             self._medium_request.finished_reading()
             return
         bytes = self._medium_request.read_bytes(next_read_size)
-        if bytes == '':
+        if bytes == b'':
             # end of file encountered reading from server
             if 'hpss' in debug.debug_flags:
                 mutter(
@@ -305,7 +309,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             self._wait_for_response_end()
         if 'hpss' in debug.debug_flags:
             mutter('   result:   %r', self.args)
-        if self.status == 'E':
+        if self.status == b'E':
             self._wait_for_response_end()
             _raise_smart_server_error(self.args)
         return tuple(self.args)
@@ -323,7 +327,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         # != -1.  (2008/04/30, Andrew Bennetts)
         if self._body is None:
             self._wait_for_response_end()
-            body_bytes = ''.join(self._bytes_parts)
+            body_bytes = b''.join(self._bytes_parts)
             if 'hpss' in debug.debug_flags:
                 mutter('              %d body bytes read', len(body_bytes))
             self._body = BytesIO(body_bytes)
@@ -338,7 +342,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()
-        if self._body_stream_status == 'E':
+        if self._body_stream_status == b'E':
             _raise_smart_server_error(self._body_error_args)
 
     def cancel_read_body(self):
@@ -350,6 +354,6 @@ def _raise_smart_server_error(error_tuple):
 
     Specific error translation is handled by breezy.bzr.remote._translate_error
     """
-    if error_tuple[0] == 'UnknownMethod':
+    if error_tuple[0] == b'UnknownMethod':
         raise errors.UnknownSmartMethod(error_tuple[1])
     raise errors.ErrorFromSmartServer(error_tuple)

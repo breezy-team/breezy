@@ -392,8 +392,15 @@ def update_git_cache(repository, revid):
             return
         missing_revisions = store._missing_revisions(parent_revisions)
         if not missing_revisions:
-            # Only update if the cache was up to date previously
-            store._update_sha_map_revision(revid)
+            store._cache.idmap.start_write_group()
+            try:
+                # Only update if the cache was up to date previously
+                store._update_sha_map_revision(revid)
+            except BaseException:
+                store._cache.idmap.abort_write_group()
+                raise
+            else:
+                store._cache.idmap.commit_write_group()
 
 
 def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,

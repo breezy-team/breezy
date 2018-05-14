@@ -229,7 +229,7 @@ class PathBasedViews(_Views):
             for view in sorted(view_dict):
                 view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
                 lines.append(view_data.encode('utf-8'))
-        return "".join(lines)
+        return b"".join(lines)
 
     def _deserialize_view_content(self, view_content):
         """Convert a stream into view keywords and a dictionary of views."""

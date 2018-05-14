@@ -371,9 +371,9 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         main_branch = main_wt.branch
         self.build_tree(["main/a", "main/b", "main/c"])
 
-        main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
-                                 'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id>quiji\'"%bo'])
+        main_wt.add(['a', 'b', 'c'], [b'a-file-id-2006-01-01-abcd',
+                                 b'b-file-id-2006-01-01-defg',
+                                 b'c-funky<file-id>quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except errors.IllegalPath:

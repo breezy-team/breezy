@@ -940,23 +940,23 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # needs to be included (because otherwise the output of applying the
         # delta to the source would have two items at that path).
         tree1 = self.make_branch_and_tree('1')
-        tree1.mkdir('a', 'a-old-id')
-        tree1.mkdir('a/reparented', 'reparented-id')
-        tree1.mkdir('collides', 'collides-id')
+        tree1.mkdir('a', b'a-old-id')
+        tree1.mkdir('a/reparented', b'reparented-id')
+        tree1.mkdir('collides', b'collides-id')
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id(tree1.get_root_id())
-        tree2.mkdir('a', 'a-new-id')
-        tree2.mkdir('a/selected', 'selected-id')
-        tree2.mkdir('collides', 'reparented-id')
+        tree2.mkdir('a', b'a-new-id')
+        tree2.mkdir('a/selected', b'selected-id')
+        tree2.mkdir('collides', b'reparented-id')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # a-old-id is one, a-new-id is added, reparented-id is renamed,
         # collides-id is gone, selected-id is new.
         self.assertEqualIterChanges(
-            [self.deleted(tree1, 'a-old-id'),
-             self.added(tree2, 'a-new-id'),
-             self.renamed(tree1, tree2, 'reparented-id', False),
-             self.deleted(tree1, 'collides-id'),
-             self.added(tree2, 'selected-id')],
+            [self.deleted(tree1, b'a-old-id'),
+             self.added(tree2, b'a-new-id'),
+             self.renamed(tree1, tree2, b'reparented-id', False),
+             self.deleted(tree1, b'collides-id'),
+             self.added(tree2, b'selected-id')],
              self.do_iter_changes(tree1, tree2,
                 specific_files=['a/selected']))
 
@@ -967,26 +967,26 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # a deleted subtree (a/reparented), and checking that a sibling
         # directory (a/deleted) has its children included in the delta.
         tree1 = self.make_branch_and_tree('1')
-        tree1.mkdir('a', 'a-old-id')
-        tree1.mkdir('a/reparented', 'reparented-id-1')
-        tree1.mkdir('a/deleted', 'deleted-id-1')
-        tree1.mkdir('a/deleted/reparented', 'reparented-id-2')
-        tree1.mkdir('a/deleted/deleted', 'deleted-id-2')
+        tree1.mkdir('a', b'a-old-id')
+        tree1.mkdir('a/reparented', b'reparented-id-1')
+        tree1.mkdir('a/deleted', b'deleted-id-1')
+        tree1.mkdir('a/deleted/reparented', b'reparented-id-2')
+        tree1.mkdir('a/deleted/deleted', b'deleted-id-2')
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id(tree1.get_root_id())
-        tree2.mkdir('a', 'a-new-id')
-        tree2.mkdir('a/reparented', 'reparented-id-1')
-        tree2.mkdir('reparented', 'reparented-id-2')
+        tree2.mkdir('a', b'a-new-id')
+        tree2.mkdir('a/reparented', b'reparented-id-1')
+        tree2.mkdir('reparented', b'reparented-id-2')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # a-old-id is gone, a-new-id is added, reparented-id-1, -2 are renamed,
         # deleted-id-1 and -2 are gone.
         self.assertEqualIterChanges(
-            [self.deleted(tree1, 'a-old-id'),
-             self.added(tree2, 'a-new-id'),
-             self.renamed(tree1, tree2, 'reparented-id-1', False),
-             self.renamed(tree1, tree2, 'reparented-id-2', False),
-             self.deleted(tree1, 'deleted-id-1'),
-             self.deleted(tree1, 'deleted-id-2')],
+            [self.deleted(tree1, b'a-old-id'),
+             self.added(tree2, b'a-new-id'),
+             self.renamed(tree1, tree2, b'reparented-id-1', False),
+             self.renamed(tree1, tree2, b'reparented-id-2', False),
+             self.deleted(tree1, b'deleted-id-1'),
+             self.deleted(tree1, b'deleted-id-2')],
              self.do_iter_changes(tree1, tree2,
                 specific_files=['a/reparented']))
 

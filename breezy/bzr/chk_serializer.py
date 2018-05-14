@@ -148,7 +148,7 @@ class BEncodeRevisionSerializer1(object):
 class CHKSerializer(serializer.Serializer):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
-    format_num = '9'
+    format_num = b'9'
     revision_format_num = None
     support_altered_by_hack = False
     supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
@@ -246,13 +246,13 @@ class CHKSerializer(serializer.Serializer):
         return output
 
 
-chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
+chk_serializer_255_bigpage = CHKSerializer(65536, b'hash-255-way')
 
 
 class CHKBEncodeSerializer(BEncodeRevisionSerializer1, CHKSerializer):
     """A CHKInventory and BEncode based serializer with 'plain' behaviour."""
 
-    format_num = '10'
+    format_num = b'10'
 
 
-chk_bencode_serializer = CHKBEncodeSerializer(65536, 'hash-255-way')
+chk_bencode_serializer = CHKBEncodeSerializer(65536, b'hash-255-way')
