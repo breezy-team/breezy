@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr6964-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr6964-1) unstable; urgency=medium
 
   * debian/tests: Run breezy rather than bazaar testsuite.
   * New upstream snapshot.
