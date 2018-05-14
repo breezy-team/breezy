@@ -53,15 +53,15 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
             # Ideally we'd return a FailedSmartServerResponse here rather than
             # a "successful" negative, but we want to be compatibile with
             # clients that don't anticipate errors from this method.
-            answer = 'no'
+            answer = b'no'
         else:
             bzr_prober = BzrProber()
             try:
                 bzr_prober.probe_transport(t)
             except (errors.NotBranchError, errors.UnknownFormatError):
-                answer = 'no'
+                answer = b'no'
             else:
-                answer = 'yes'
+                answer = b'yes'
         return SuccessfulSmartServerResponse((answer,))
 
 
@@ -77,17 +77,17 @@ class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
         except errors.PathNotChild:
             # The client is trying to ask about a path that they have no access
             # to.
-            return SuccessfulSmartServerResponse(('no',))
+            return SuccessfulSmartServerResponse((b'no',))
         try:
             bd = BzrDir.open_from_transport(t)
         except errors.NotBranchError:
-            answer = ('no',)
+            answer = (b'no',)
         else:
-            answer = ('yes',)
+            answer = (b'yes',)
             if bd.has_workingtree():
-                answer += ('yes',)
+                answer += (b'yes',)
             else:
-                answer += ('no',)
+                answer += (b'no',)
         return SuccessfulSmartServerResponse(answer)
 
 
@@ -99,14 +99,14 @@ class SmartServerRequestBzrDir(SmartServerRequest):
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))
         except errors.NotBranchError as e:
-            return FailedSmartServerResponse(('nobranch',))
+            return FailedSmartServerResponse((b'nobranch',))
         return self.do_bzrdir_request(*args)
 
     def _boolean_to_yes_no(self, a_boolean):
         if a_boolean:
-            return 'yes'
+            return b'yes'
         else:
-            return 'no'
+            return b'no'
 
     def _format_to_capabilities(self, repo_format):
         rich_root = self._boolean_to_yes_no(repo_format.rich_root_data)
@@ -140,8 +140,8 @@ class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
         try:
             self._bzrdir.destroy_branch(name)
         except errors.NotBranchError as e:
-            return FailedSmartServerResponse(('nobranch',))
-        return SuccessfulSmartServerResponse(('ok',))
+            return FailedSmartServerResponse((b'nobranch',))
+        return SuccessfulSmartServerResponse((b'ok',))
 
 
 class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
@@ -155,9 +155,9 @@ class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
             Otherwise 'no'.
         """
         if self._bzrdir.has_workingtree():
-            return SuccessfulSmartServerResponse(('yes', ))
+            return SuccessfulSmartServerResponse((b'yes', ))
         else:
-            return SuccessfulSmartServerResponse(('no', ))
+            return SuccessfulSmartServerResponse((b'no', ))
 
 
 class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
@@ -172,8 +172,8 @@ class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
         try:
             self._bzrdir.destroy_repository()
         except errors.NoRepositoryPresent as e:
-            return FailedSmartServerResponse(('norepository',))
-        return SuccessfulSmartServerResponse(('ok',))
+            return FailedSmartServerResponse((b'norepository',))
+        return SuccessfulSmartServerResponse((b'ok',))
 
 
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
@@ -197,8 +197,8 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             # The server shouldn't try to resolve references, and it quite
             # possibly can't reach them anyway.  The client needs to resolve
             # the branch reference to determine the cloning_metadir.
-            return FailedSmartServerResponse(('BranchReference',))
-        if require_stacking == "True":
+            return FailedSmartServerResponse((b'BranchReference',))
+        if require_stacking == b"True":
             require_stacking = True
         else:
             require_stacking = False
@@ -206,13 +206,13 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             require_stacking=require_stacking)
         control_name = control_format.network_name()
         if not control_format.fixed_components:
-            branch_name = ('branch',
+            branch_name = (b'branch',
                 control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()
         else:
             # Only MetaDir has delegated formats today.
-            branch_name = ('branch', '')
-            repository_name = ''
+            branch_name = (b'branch', b'')
+            repository_name = b''
         return SuccessfulSmartServerResponse((control_name, repository_name,
             branch_name))
 
@@ -239,15 +239,15 @@ class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
             # The server shouldn't try to resolve references, and it quite
             # possibly can't reach them anyway.  The client needs to resolve
             # the branch reference to determine the cloning_metadir.
-            return FailedSmartServerResponse(('BranchReference',))
+            return FailedSmartServerResponse((b'BranchReference',))
         control_format = self._bzrdir.checkout_metadir()
         control_name = control_format.network_name()
         if not control_format.fixed_components:
             branch_name = control_format.get_branch_format().network_name()
             repo_name = control_format.repository_format.network_name()
         else:
-            branch_name = ''
-            repo_name = ''
+            branch_name = b''
+            repo_name = b''
         return SuccessfulSmartServerResponse(
             (control_name, repo_name, branch_name))
 
@@ -285,7 +285,7 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
             result.repository)
         # branch format, repo relpath, rich_root, tree_ref, external_lookup,
         # repo_network_name
-        return SuccessfulSmartServerResponse(('ok', branch_format, repo_path,
+        return SuccessfulSmartServerResponse((b'ok', branch_format, repo_path,
             rich_root, tree_ref, external_lookup, repo_format))
 
 
@@ -312,13 +312,13 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
         """
         bzrdir = BzrDir.open_from_transport(
             self.transport_from_client_path(path))
-        shared = shared == 'True'
+        shared = shared == b'True'
         format = repository.network_format_registry.get(network_name)
         bzrdir.repository_format = format
         result = format.initialize(bzrdir, shared=shared)
         rich_root, tree_ref, external_lookup = self._format_to_capabilities(
             result._format)
-        return SuccessfulSmartServerResponse(('ok', rich_root, tree_ref,
+        return SuccessfulSmartServerResponse((b'ok', rich_root, tree_ref,
             external_lookup, result._format.network_name()))
 
 
@@ -364,9 +364,9 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
         """
         try:
             path, rich_root, tree_ref, external_lookup, name = self._find(path)
-            return SuccessfulSmartServerResponse(('ok', path, rich_root, tree_ref))
+            return SuccessfulSmartServerResponse((b'ok', path.encode('utf-8'), rich_root, tree_ref))
         except errors.NoRepositoryPresent:
-            return FailedSmartServerResponse(('norepository', ))
+            return FailedSmartServerResponse((b'norepository', ))
 
 
 class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
@@ -389,9 +389,9 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
         try:
             path, rich_root, tree_ref, external_lookup, name = self._find(path)
             return SuccessfulSmartServerResponse(
-                ('ok', path, rich_root, tree_ref, external_lookup))
+                (b'ok', path.encode('utf-8'), rich_root, tree_ref, external_lookup))
         except errors.NoRepositoryPresent:
-            return FailedSmartServerResponse(('norepository', ))
+            return FailedSmartServerResponse((b'norepository', ))
 
 
 class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
@@ -413,21 +413,21 @@ class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
         try:
             path, rich_root, tree_ref, external_lookup, name = self._find(path)
             return SuccessfulSmartServerResponse(
-                ('ok', path, rich_root, tree_ref, external_lookup, name))
+                (b'ok', path.encode('utf-8'), rich_root, tree_ref, external_lookup, name))
         except errors.NoRepositoryPresent:
-            return FailedSmartServerResponse(('norepository', ))
+            return FailedSmartServerResponse((b'norepository', ))
 
 
 class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self):
         """Get the configuration bytes for a config file in bzrdir.
-        
+
         The body is not utf8 decoded - it is the literal bytestream from disk.
         """
         config = self._bzrdir._get_config()
         if config is None:
-            content = ''
+            content = b''
         else:
             content = config._get_config_file().read()
         return SuccessfulSmartServerResponse((), content)
@@ -446,9 +446,9 @@ class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
         for name, b in branches.items():
             if name is None:
                 name = ""
-            ret[name] = ("branch", b._format.network_name())
+            ret[name] = (b"branch", b._format.network_name())
         return SuccessfulSmartServerResponse(
-            ("success", ), bencode.bencode(ret))
+            (b"success", ), bencode.bencode(ret))
 
 
 class SmartServerRequestInitializeBzrDir(SmartServerRequest):
@@ -461,7 +461,7 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         """
         target_transport = self.transport_from_client_path(path)
         BzrDirFormat.get_default_format().initialize_on_transport(target_transport)
-        return SuccessfulSmartServerResponse(('ok', ))
+        return SuccessfulSmartServerResponse((b'ok', ))
 
 
 class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
@@ -469,9 +469,9 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
     def parse_NoneTrueFalse(self, arg):
         if not arg:
             return None
-        if arg == 'False':
+        if arg == b'False':
             return False
-        if arg == 'True':
+        if arg == b'True':
             return True
         raise AssertionError("invalid arg %r" % arg)
 
@@ -480,10 +480,10 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
 
     def _serialize_NoneTrueFalse(self, arg):
         if arg is False:
-            return 'False'
+            return b'False'
         if not arg:
-            return ''
-        return 'True'
+            return b''
+        return b'True'
 
     def do(self, bzrdir_network_name, path, use_existing_dir, create_prefix,
         force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
@@ -538,7 +538,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             # It is returned locked, but we need to do the lock to get the lock
             # token.
             repo.unlock()
-            repo_lock_token = repo.lock_write().repository_token or ''
+            repo_lock_token = repo.lock_write().repository_token or b''
             if repo_lock_token:
                 repo.leave_lock_in_place()
             repo.unlock()
@@ -571,11 +571,10 @@ class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
         try:
             reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
-                return SuccessfulSmartServerResponse(('ok', ''))
-            else:
-                return SuccessfulSmartServerResponse(('ok', reference_url))
+                reference_url = ''
+            return SuccessfulSmartServerResponse((b'ok', reference_url.encode('utf-8')))
         except errors.NotBranchError as e:
-            return FailedSmartServerResponse(('nobranch',))
+            return FailedSmartServerResponse((b'nobranch',))
 
 
 class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
@@ -587,11 +586,11 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
             if reference_url is None:
                 br = self._bzrdir.open_branch(ignore_fallbacks=True)
                 format = br._format.network_name()
-                return SuccessfulSmartServerResponse(('branch', format))
+                return SuccessfulSmartServerResponse((b'branch', format))
             else:
-                return SuccessfulSmartServerResponse(('ref', reference_url))
+                return SuccessfulSmartServerResponse((b'ref', reference_url))
         except errors.NotBranchError as e:
-            return FailedSmartServerResponse(('nobranch',))
+            return FailedSmartServerResponse((b'nobranch',))
 
 
 class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
@@ -611,17 +610,17 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
             if reference_url is None:
                 br = self._bzrdir.open_branch(ignore_fallbacks=True)
                 format = br._format.network_name()
-                return SuccessfulSmartServerResponse(('branch', format))
+                return SuccessfulSmartServerResponse((b'branch', format))
             else:
-                return SuccessfulSmartServerResponse(('ref', reference_url))
+                return SuccessfulSmartServerResponse((b'ref', reference_url))
         except errors.NotBranchError as e:
             # Stringify the exception so that its .detail attribute will be
             # filled out.
             str(e)
-            resp = ('nobranch',)
+            resp = (b'nobranch',)
             detail = e.detail
             if detail:
-                if detail.startswith(': '):
+                if detail.startswith(b': '):
                     detail = detail[2:]
                 resp += (detail,)
             return FailedSmartServerResponse(resp)

@@ -154,7 +154,7 @@ class TestInetServer(tests.TestCase):
 
     def test_inet_server_responds_to_sighup(self):
         t = transport.get_transport('memory:///')
-        content = 'a'*1024*1024
+        content = b'a'*1024*1024
         t.put_bytes('bigfile', content)
         factory = server.BzrServerFactory()
         # Override stdin/stdout so that we can inject our own handles

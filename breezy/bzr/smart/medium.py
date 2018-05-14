@@ -142,12 +142,12 @@ class SmartMedium(object):
             raise AssertionError(
                 "_push_back called when self._push_back_buffer is %r"
                 % (self._push_back_buffer,))
-        if bytes == '':
+        if bytes == b'':
             return
         self._push_back_buffer = bytes
 
     def _get_push_back_buffer(self):
-        if self._push_back_buffer == '':
+        if self._push_back_buffer == b'':
             raise AssertionError(
                 '%s._push_back_buffer should never be the empty string, '
                 'which can be confused with EOF' % (self,))
@@ -390,7 +390,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             # than MAX_SOCKET_CHUNK ready, the socket will just return a
             # short read immediately rather than block.
             bytes = self.read_bytes(osutils.MAX_SOCKET_CHUNK)
-            if bytes == '':
+            if bytes == b'':
                 self.finished = True
                 return
             protocol.accept_bytes(bytes)
@@ -476,7 +476,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 self._out.flush()
                 return
             bytes = self.read_bytes(bytes_to_read)
-            if bytes == '':
+            if bytes == b'':
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
@@ -637,7 +637,7 @@ class SmartClientMediumRequest(object):
 
     def read_line(self):
         line = self._read_line()
-        if not line.endswith('\n'):
+        if not line.endswith(b'\n'):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
                 "Unexpected end of message. Please check connectivity "

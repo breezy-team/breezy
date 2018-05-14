@@ -70,7 +70,7 @@ class MetaDirRepository(Repository):
                     pass
             else:
                 self._transport.put_bytes(
-                        'no-working-trees', '',
+                        'no-working-trees', b'',
                         mode=self.controldir._get_file_mode())
 
     def make_working_trees(self):

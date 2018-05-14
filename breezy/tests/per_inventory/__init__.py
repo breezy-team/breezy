@@ -40,7 +40,7 @@ def load_tests(loader, basic_tests, pattern):
         # likely to trigger splits, and get increased test coverage.
         chk_inv = CHKInventory.from_inventory(vf, inv,
                         maximum_size=100,
-                        search_key_name='hash-255-way')
+                        search_key_name=b'hash-255-way')
         return chk_inv
     scenarios = [('Inventory', {'_inventory_class': Inventory,
                                 '_inv_to_test_inv': lambda test, inv: inv

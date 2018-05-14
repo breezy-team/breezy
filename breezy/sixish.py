@@ -24,6 +24,7 @@ from __future__ import absolute_import
 
 from six import (
     binary_type,
+    get_unbound_function,
     indexbytes,
     int2byte,
     PY3,

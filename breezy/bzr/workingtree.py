@@ -1564,7 +1564,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # everything is missing
                 direction = -1
             else:
-                direction = cmp(current_inv[0][0], cur_disk_dir_relpath)
+                direction = ((current_inv[0][0] > cur_disk_dir_relpath) -
+                             (current_inv[0][0] < cur_disk_dir_relpath))
+
             if direction > 0:
                 # disk is before inventory - unknown
                 dirblock = [(relpath, basename, kind, stat, None, None) for

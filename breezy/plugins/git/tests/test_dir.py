@@ -91,5 +91,5 @@ class TestGitDirFormat(tests.TestCase):
         self.assertEquals(self.format, format2)
         self.assertEquals(self.format, self.format)
         bzr_format = controldir.format_registry.make_controldir("default")
-        self.assertNotEquals(self.format, bzr_format)
+        self.assertNotEqual(self.format, bzr_format)
 

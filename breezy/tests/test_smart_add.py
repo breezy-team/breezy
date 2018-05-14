@@ -24,7 +24,7 @@ from ..bzr import (
     inventory,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 
 
@@ -56,7 +56,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
 
     def add_helper(self, base_tree, base_path, new_tree, file_list,
                    should_print=False):
-        to_file = BytesIO()
+        to_file = StringIO()
         base_tree.lock_read()
         try:
             new_tree.lock_write()
@@ -155,7 +155,7 @@ class TestAddActions(tests.TestCase):
 
     def run_action(self, output):
         inv = inventory.Inventory()
-        stdout = BytesIO()
+        stdout = StringIO()
         action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,

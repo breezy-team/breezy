@@ -36,12 +36,12 @@ class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
         if pack_collection is None:
             # This is a not a pack repo, so asking for an autopack is just a
             # no-op.
-            return SuccessfulSmartServerResponse(('ok',))
+            return SuccessfulSmartServerResponse((b'ok',))
         repository.lock_write()
         try:
             repository._pack_collection.autopack()
         finally:
             repository.unlock()
-        return SuccessfulSmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse((b'ok',))
 
 
