@@ -58,6 +58,17 @@ class TestDirExport(tests.TestCaseWithTransport):
         export.export(wt, 'target', format="dir")
         self.assertPathExists('target/link')
 
+    def test_nested_tree(self):
+        wt = self.make_branch_and_tree('.', format='development-subtree')
+        subtree = self.make_branch_and_tree('subtree')
+        self.build_tree(['subtree/file'])
+        subtree.add(['file'])
+        wt.add(['subtree'])
+        export.export(wt, 'target', format="dir")
+        self.assertPathExists('target/subtree')
+        # TODO(jelmer): Once iter_entries_by_dir supports nested tree iteration:
+        # self.assertPathExists('target/subtree/file')
+
     def test_to_existing_empty_dir_success(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         wt = self.make_branch_and_tree('source')
