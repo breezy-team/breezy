@@ -65,7 +65,7 @@ class TestPlainFetch(GitServerTestCase):
         c = TCPGitClient('localhost', port=port)
         gitrepo = Repo.init('gitrepo', mkdir=True)
         result = c.fetch('/', gitrepo)
-        self.assertEquals(
+        self.assertEqual(
             set(result.refs.keys()),
             set(["refs/tags/atag", "HEAD"]))
 
@@ -80,6 +80,6 @@ class TestPlainFetch(GitServerTestCase):
         c = TCPGitClient('localhost', port=port)
         gitrepo = Repo.init('gitrepo', mkdir=True)
         result = c.fetch('/', gitrepo, determine_wants=lambda x: [])
-        self.assertEquals(
+        self.assertEqual(
             set(result.refs.keys()),
             set(["refs/tags/atag", "HEAD"]))

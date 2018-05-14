@@ -74,7 +74,7 @@ class FetchTests(TestCaseWithTransport):
 
     def test_no_wants(self):
         r = self.fetch([])
-        self.assertEquals("\n", r)
+        self.assertEqual("\n", r)
 
     def test_simple(self):
         self.build_tree(['remote/foo'])
@@ -82,10 +82,10 @@ class FetchTests(TestCaseWithTransport):
         revid = self.remote_tree.commit("msg")
         git_sha1 = map_to_git_sha1(self.remote_dir, revid)
         out = self.fetch([(git_sha1, 'HEAD')])
-        self.assertEquals(out, "\n")
+        self.assertEqual(out, "\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
-        self.assertEquals({
+        self.assertEqual({
             }, r.get_refs())
 
 
@@ -109,12 +109,12 @@ class RemoteHelperTests(TestCaseWithTransport):
     def test_option(self):
         f = BytesIO()
         self.helper.cmd_option(f, [])
-        self.assertEquals("unsupported\n", f.getvalue())
+        self.assertEqual("unsupported\n", f.getvalue())
 
     def test_list_basic(self):
         f = BytesIO()
         self.helper.cmd_list(f, [])
-        self.assertEquals(
+        self.assertEqual(
             '\n',
             f.getvalue())
 
@@ -127,7 +127,7 @@ class RemoteHelperTests(TestCaseWithTransport):
             timezone=0, committer='Somebody <jrandom@example.com>')
         f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
-        self.assertEquals(
+        self.assertEqual(
             'commit refs/heads/master\n'
             'mark :1\n'
             'committer Somebody <jrandom@example.com> 1330445983 +0000\n'

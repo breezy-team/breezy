@@ -50,7 +50,7 @@ class RevisionPristineTarDataTests(TestCase):
     def test_pristine_tar_delta_gz(self):
         rev = Revision("myrevid")
         rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
-        self.assertEquals((b"bla", "gz"), revision_pristine_tar_data(rev))
+        self.assertEqual((b"bla", "gz"), revision_pristine_tar_data(rev))
 
 
 class ReadPristineTarData(TestCase):
@@ -84,7 +84,7 @@ class ReadPristineTarData(TestCase):
         r.object_store.add_object(t)
         r.do_commit(b"pristine tar delta for foo", tree=t.id,
                     ref=b'refs/heads/pristine-tar')
-        self.assertEquals(
+        self.assertEqual(
             (b"some yummy data", b"someid"),
             read_git_pristine_tar_data(r, 'foo'))
 
@@ -95,12 +95,12 @@ class StoreGitPristineTarData(TestCase):
         r = GitMemoryRepo()
         cid = store_git_pristine_tar_data(r, "foo", "mydelta", "myid")
         tree = get_pristine_tar_tree(r)
-        self.assertEquals(
+        self.assertEqual(
             (stat.S_IFREG | 0o644, "7b02de8ac4162e64f402c43487d8a40a505482e1"),
             tree["README"])
-        self.assertEquals(r[cid].tree, tree.id)
-        self.assertEquals(r[tree["foo.delta"][1]].data, "mydelta")
-        self.assertEquals(r[tree["foo.id"][1]].data, "myid")
+        self.assertEqual(r[cid].tree, tree.id)
+        self.assertEqual(r[tree["foo.delta"][1]].data, "mydelta")
+        self.assertEqual(r[tree["foo.id"][1]].data, "myid")
 
-        self.assertEquals(("mydelta", "myid"),
+        self.assertEqual(("mydelta", "myid"),
             read_git_pristine_tar_data(r, "foo"))

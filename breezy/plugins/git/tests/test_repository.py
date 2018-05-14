@@ -84,9 +84,9 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         GitRepo.init(self.test_dir)
         commit_id = self._do_commit()
         repo = Repository.open('.')
-        self.assertEquals(set(), repo.has_revisions([b'foobar']))
+        self.assertEqual(set(), repo.has_revisions([b'foobar']))
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
-        self.assertEquals(set([revid]), repo.has_revisions([b'foobar', revid]))
+        self.assertEqual(set([revid]), repo.has_revisions([b'foobar', revid]))
 
     def test_get_revision(self):
         # GitRepository.get_revision gives a Revision object.
@@ -130,8 +130,8 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
         repo = Repository.open('.')
         tree = repo.revision_tree(revid)
-        self.assertEquals(tree.get_revision_id(), revid)
-        self.assertEquals("text\n", tree.get_file_text("data"))
+        self.assertEqual(tree.get_revision_id(), revid)
+        self.assertEqual("text\n", tree.get_file_text("data"))
 
 
 class TestGitRepository(tests.TestCaseWithTransport):
@@ -156,16 +156,16 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoSuchRevision, self.git_repo.get_signature_text, revision.NULL_REVISION)
 
     def test_has_signature_for_revision_id(self):
-        self.assertEquals(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))
+        self.assertEqual(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))
 
     def test_all_revision_ids_none(self):
-        self.assertEquals([], self.git_repo.all_revision_ids())
+        self.assertEqual([], self.git_repo.all_revision_ids())
 
     def test_get_known_graph_ancestry(self):
         cid = self._do_commit()
         revid = default_mapping.revision_id_foreign_to_bzr(cid)
         g = self.git_repo.get_known_graph_ancestry([revid])
-        self.assertEquals(frozenset([revid]),
+        self.assertEqual(frozenset([revid]),
             g.heads([revid]))
         self.assertEqual([(revid, 0, (1,), True)],
             [(n.key, n.merge_depth, n.revno, n.end_of_merge)
@@ -173,7 +173,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
 
     def test_all_revision_ids(self):
         commit_id = self._do_commit()
-        self.assertEquals(
+        self.assertEqual(
                 [default_mapping.revision_id_foreign_to_bzr(commit_id)],
                 self.git_repo.all_revision_ids())
 
@@ -190,7 +190,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertIs(None, tree.get_root_id())
 
     def test_get_parent_map_null(self):
-        self.assertEquals({revision.NULL_REVISION: ()},
+        self.assertEqual({revision.NULL_REVISION: ()},
                            self.git_repo.get_parent_map([revision.NULL_REVISION]))
 
 
@@ -223,7 +223,7 @@ class GitRepositoryFormat(tests.TestCase):
         self.format = repository.GitRepositoryFormat()
 
     def test_get_format_description(self):
-        self.assertEquals("Git Repository",
+        self.assertEqual("Git Repository",
                           self.format.get_format_description())
 
 
@@ -260,9 +260,9 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
     def test_pointless(self):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
                 timezone=0, committer="Jelmer Vernooij <jelmer@samba.org>")
-        self.assertEquals(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
+        self.assertEqual(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
                 self.import_rev(revid))
-        self.assertEquals(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
+        self.assertEqual(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
                 self.import_rev(revid))
 
 

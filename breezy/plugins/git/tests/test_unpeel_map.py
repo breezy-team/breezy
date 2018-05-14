@@ -41,7 +41,7 @@ class TestUnpeelMap(TestCaseWithTransport):
             b"0123456789012345678901234567890123456789: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
         m = UnpeelMap()
         m.load(f)
-        self.assertEquals(b"0123456789012345678901234567890123456789",
+        self.assertEqual(b"0123456789012345678901234567890123456789",
             m.peel_tag(b"aa"*20))
 
     def test_update(self):
@@ -49,5 +49,5 @@ class TestUnpeelMap(TestCaseWithTransport):
         m.update({
            b"0123456789012345678901234567890123456789": set([b"aa" * 20]),
            })
-        self.assertEquals(b"0123456789012345678901234567890123456789",
+        self.assertEqual(b"0123456789012345678901234567890123456789",
             m.peel_tag(b"aa"*20))

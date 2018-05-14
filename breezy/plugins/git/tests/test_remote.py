@@ -51,27 +51,27 @@ from dulwich.repo import Repo as GitRepo
 class SplitUrlTests(TestCase):
 
     def test_simple(self):
-        self.assertEquals(("foo", None, None, "/bar"),
+        self.assertEqual(("foo", None, None, "/bar"),
             split_git_url("git://foo/bar"))
 
     def test_port(self):
-        self.assertEquals(("foo", 343, None, "/bar"),
+        self.assertEqual(("foo", 343, None, "/bar"),
             split_git_url("git://foo:343/bar"))
 
     def test_username(self):
-        self.assertEquals(("foo", None, "la", "/bar"),
+        self.assertEqual(("foo", None, "la", "/bar"),
             split_git_url("git://la@foo/bar"))
 
     def test_nopath(self):
-        self.assertEquals(("foo", None, None, "/"),
+        self.assertEqual(("foo", None, None, "/"),
             split_git_url("git://foo/"))
 
     def test_slashpath(self):
-        self.assertEquals(("foo", None, None, "//bar"),
+        self.assertEqual(("foo", None, None, "//bar"),
             split_git_url("git://foo//bar"))
 
     def test_homedir(self):
-        self.assertEquals(("foo", None, None, "~bar"),
+        self.assertEqual(("foo", None, None, "~bar"),
             split_git_url("git://foo/~bar"))
 
 
@@ -93,10 +93,10 @@ class TestRemoteGitBranchFormat(TestCase):
         self.format = RemoteGitBranchFormat()
 
     def test_get_format_description(self):
-        self.assertEquals("Remote Git Branch", self.format.get_format_description())
+        self.assertEqual("Remote Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
-        self.assertEquals("git", self.format.network_name())
+        self.assertEqual("git", self.format.network_name())
 
     def test_supports_tags(self):
         self.assertTrue(self.format.supports_tags())

@@ -242,7 +242,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._revision_id = revision_id
         self._repository = repository
         self.store = repository._git.object_store
-        if type(revision_id) is not bytes:
+        if not isinstance(revision_id, bytes):
             raise TypeError(revision_id)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:

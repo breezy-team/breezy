@@ -79,13 +79,13 @@ class TestGitShaMap:
             None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEquals(
+        self.assertEqual(
             [("commit", ("myrevid",
                 "cc9462f7f8263ef5adfbeff2fb936bb36b504cba",
                 {"testament3-sha1": "cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
                 ))],
             list(self.map.lookup_git_sha(c.id)))
-        self.assertEquals(c.id, self.map.lookup_commit("myrevid"))
+        self.assertEqual(c.id, self.map.lookup_commit("myrevid"))
 
     def test_lookup_notfound(self):
         self.assertRaises(KeyError, list,
@@ -100,10 +100,10 @@ class TestGitShaMap:
         updater.add_object(b, ("myfileid", "myrevid"), None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEquals(
+        self.assertEqual(
             [("blob", ("myfileid", "myrevid"))],
             list(self.map.lookup_git_sha(b.id)))
-        self.assertEquals(b.id,
+        self.assertEqual(b.id,
             self.map.lookup_blob_id("myfileid", "myrevid"))
 
     def test_tree(self):
@@ -116,11 +116,11 @@ class TestGitShaMap:
         updater.add_object(t, ("fileid", "myrevid"), "")
         updater.finish()
         self.map.commit_write_group()
-        self.assertEquals([("tree", ("fileid", "myrevid"))],
+        self.assertEqual([("tree", ("fileid", "myrevid"))],
             list(self.map.lookup_git_sha(t.id)))
         # It's possible for a backend to not implement lookup_tree
         try:
-            self.assertEquals(t.id,
+            self.assertEqual(t.id,
                 self.map.lookup_tree_id("fileid", "myrevid"))
         except NotImplementedError:
             pass
@@ -132,7 +132,7 @@ class TestGitShaMap:
         updater.add_object(c, {"testament3-sha1": "mtestament"}, None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEquals(["myrevid"], list(self.map.revids()))
+        self.assertEqual(["myrevid"], list(self.map.revids()))
 
     def test_missing_revisions(self):
         self.map.start_write_group()
@@ -141,7 +141,7 @@ class TestGitShaMap:
         updater.add_object(c, {"testament3-sha1": "testament"}, None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEquals(set(["lala", "bla"]),
+        self.assertEqual(set(["lala", "bla"]),
             set(self.map.missing_revisions(["myrevid", "lala", "bla"])))
 
 

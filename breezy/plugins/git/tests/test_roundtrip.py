@@ -37,15 +37,15 @@ class RoundtripTests(TestCase):
 
     def test_revid(self):
         md = parse_roundtripping_metadata(b"revision-id: foo\n")
-        self.assertEquals(b"foo", md.revision_id)
+        self.assertEqual(b"foo", md.revision_id)
 
     def test_parent_ids(self):
         md = parse_roundtripping_metadata(b"parent-ids: foo bar\n")
-        self.assertEquals((b"foo", b"bar"), md.explicit_parent_ids)
+        self.assertEqual((b"foo", b"bar"), md.explicit_parent_ids)
 
     def test_properties(self):
         md = parse_roundtripping_metadata(b"property-foop: blar\n")
-        self.assertEquals({b"foop": b"blar"}, md.properties)
+        self.assertEqual({b"foop": b"blar"}, md.properties)
 
 
 class FormatTests(TestCase):
@@ -53,24 +53,24 @@ class FormatTests(TestCase):
     def test_revid(self):
         metadata = CommitSupplement()
         metadata.revision_id = b"bla"
-        self.assertEquals(b"revision-id: bla\n",
+        self.assertEqual(b"revision-id: bla\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_parent_ids(self):
         metadata = CommitSupplement()
         metadata.explicit_parent_ids = (b"foo", b"bar")
-        self.assertEquals(b"parent-ids: foo bar\n",
+        self.assertEqual(b"parent-ids: foo bar\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_properties(self):
         metadata = CommitSupplement()
         metadata.properties = {b"foo": b"bar"}
-        self.assertEquals(b"property-foo: bar\n",
+        self.assertEqual(b"property-foo: bar\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_empty(self):
         metadata = CommitSupplement()
-        self.assertEquals(b"",
+        self.assertEqual(b"",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
 
@@ -81,8 +81,8 @@ class ExtractMetadataTests(TestCase):
 --BZR--
 revision-id: foo
 """)
-        self.assertEquals(b"Foo", msg)
-        self.assertEquals(b"foo", metadata.revision_id)
+        self.assertEqual(b"Foo", msg)
+        self.assertEqual(b"foo", metadata.revision_id)
 
 
 class GenerateMetadataTests(TestCase):
@@ -91,7 +91,7 @@ class GenerateMetadataTests(TestCase):
         metadata = CommitSupplement()
         metadata.revision_id = b"myrevid"
         msg = inject_bzr_metadata(b"Foo", metadata, "utf-8")
-        self.assertEquals(b"""Foo
+        self.assertEqual(b"""Foo
 --BZR--
 revision-id: myrevid
 """, msg)
@@ -99,16 +99,16 @@ revision-id: myrevid
     def test_no_metadata(self):
         metadata = CommitSupplement()
         msg = inject_bzr_metadata(b"Foo", metadata, "utf-8")
-        self.assertEquals(b"Foo", msg)
+        self.assertEqual(b"Foo", msg)
 
 
 class FileIdRoundTripTests(TestCase):
 
     def test_deserialize(self):
-        self.assertEquals({"bar/bla": b"fid"},
+        self.assertEqual({"bar/bla": b"fid"},
             deserialize_fileid_map(b"bar/bla\0fid\n"))
 
     def test_serialize(self):
-        self.assertEquals([b"bar/bla\0fid\n"],
+        self.assertEqual([b"bar/bla\0fid\n"],
             serialize_fileid_map({"bar/bla": b"fid"}))
 

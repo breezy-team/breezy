@@ -33,15 +33,15 @@ from ..refs import (
 class BranchNameRefConversionTests(tests.TestCase):
 
     def test_head(self):
-        self.assertEquals("", ref_to_branch_name(b"HEAD"))
-        self.assertEquals(b"HEAD", branch_name_to_ref(""))
+        self.assertEqual("", ref_to_branch_name(b"HEAD"))
+        self.assertEqual(b"HEAD", branch_name_to_ref(""))
 
     def test_tag(self):
         self.assertRaises(ValueError, ref_to_branch_name, b"refs/tags/FOO")
 
     def test_branch(self):
-        self.assertEquals("frost", ref_to_branch_name(b"refs/heads/frost"))
-        self.assertEquals(b"refs/heads/frost", branch_name_to_ref("frost"))
+        self.assertEqual("frost", ref_to_branch_name(b"refs/heads/frost"))
+        self.assertEqual(b"refs/heads/frost", branch_name_to_ref("frost"))
 
 
 class BazaarRefsContainerTests(tests.TestCaseWithTransport):
