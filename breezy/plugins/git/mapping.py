@@ -57,7 +57,12 @@ from .roundtrip import (
     serialize_fileid_map,
     )
 
-DEFAULT_FILE_MODE = stat.S_IFREG | 0644
+try:
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote
+
+DEFAULT_FILE_MODE = stat.S_IFREG | 0o644
 HG_RENAME_SOURCE = "HG:rename-source"
 HG_EXTRA = "HG:extra"
 
@@ -166,8 +171,7 @@ class BzrGitMapping(foreign.VcsMapping):
         return unescape_file_id(file_id[len(FILE_ID_PREFIX):])
 
     def revid_as_refname(self, revid):
-        import urllib
-        return "refs/bzr/%s" % urllib.quote(revid)
+        return "refs/bzr/%s" % quote(revid)
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -557,18 +561,18 @@ def symlink_to_blob(symlink_target):
 
 def mode_is_executable(mode):
     """Check if mode should be considered executable."""
-    return bool(mode & 0111)
+    return bool(mode & 0o111)
 
 
 def mode_kind(mode):
     """Determine the Bazaar inventory kind based on Unix file mode."""
     if mode is None:
         return None
-    entry_kind = (mode & 0700000) / 0100000
+    entry_kind = (mode & 0o700000) / 0o100000
     if entry_kind == 0:
         return 'directory'
     elif entry_kind == 1:
-        file_kind = (mode & 070000) / 010000
+        file_kind = (mode & 0o70000) / 0o10000
         if file_kind == 0:
             return 'file'
         elif file_kind == 2:
@@ -589,12 +593,12 @@ def object_mode(kind, executable):
     elif kind == 'symlink':
         mode = stat.S_IFLNK
         if executable:
-            mode |= 0111
+            mode |= 0o111
         return mode
     elif kind == 'file':
-        mode = stat.S_IFREG | 0644
+        mode = stat.S_IFREG | 0o644
         if executable:
-            mode |= 0111
+            mode |= 0o111
         return mode
     elif kind == 'tree-reference':
         from dulwich.objects import S_IFGITLINK

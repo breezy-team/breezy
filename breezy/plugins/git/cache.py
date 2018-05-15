@@ -86,7 +86,7 @@ try:
     try:
         import sqlite3
         check_pysqlite_version(sqlite3)
-    except (ImportError, bzr_errors.BzrError), e:
+    except (ImportError, bzr_errors.BzrError) as e:
         from pysqlite2 import dbapi2 as sqlite3
         check_pysqlite_version(sqlite3)
 except:
@@ -396,7 +396,7 @@ SqliteBzrGitCache = lambda p: BzrGitCache(SqliteGitShaMap(p), SqliteCacheUpdater
 class SqliteGitCacheFormat(BzrGitCacheFormat):
 
     def get_format_string(self):
-        return 'bzr-git sha map version 1 using sqlite\n'
+        return b'bzr-git sha map version 1 using sqlite\n'
 
     def open(self, transport):
         try:
@@ -577,7 +577,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
     """Cache format for tdb-based caches."""
 
     def get_format_string(self):
-        return 'bzr-git sha map version 3 using tdb\n'
+        return b'bzr-git sha map version 3 using tdb\n'
 
     def open(self, transport):
         try:
@@ -763,7 +763,7 @@ class IndexBzrGitCache(BzrGitCache):
 class IndexGitCacheFormat(BzrGitCacheFormat):
 
     def get_format_string(self):
-        return 'bzr-git sha map with git object cache version 1\n'
+        return b'bzr-git sha map with git object cache version 1\n'
 
     def initialize(self, transport):
         super(IndexGitCacheFormat, self).initialize(transport)

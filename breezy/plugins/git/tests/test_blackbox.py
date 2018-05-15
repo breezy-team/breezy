@@ -54,33 +54,33 @@ class TestGitBlackBox(ExternalBase):
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
-        self.assertEquals("master\n", output)
+        self.assertEqual(b"master\n", output)
 
     def test_branches(self):
         self.simple_commit()
         output, error = self.run_bzr(['branches'])
-        self.assertEquals("* master\n", output)
+        self.assertEqual(b"* master\n", output)
 
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone tree (format: git)" in output)
+        self.assertTrue(b"Standalone tree (format: git)" in output)
 
     def test_branch(self):
         os.mkdir("gitbranch")
         GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
         os.chdir('gitbranch')
         builder = tests.GitBranchBuilder()
-        builder.set_file('a', 'text for a\n', False)
-        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.set_file(b'a', b'text for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', b'<The commit message>')
         builder.finish()
         os.chdir('..')
 
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
         self.assertTrue(
-            (error == 'Branched 1 revision(s).\n') or
-            (error == 'Branched 1 revision.\n'),
+            (error == b'Branched 1 revision(s).\n') or
+            (error == b'Branched 1 revision.\n'),
             error)
 
     def test_checkout(self):
@@ -88,8 +88,8 @@ class TestGitBlackBox(ExternalBase):
         GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
         os.chdir('gitbranch')
         builder = tests.GitBranchBuilder()
-        builder.set_file('a', 'text for a\n', False)
-        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.set_file(b'a', b'text for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', b'<The commit message>')
         builder.finish()
         os.chdir('..')
 
@@ -127,7 +127,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
         # when roundtripping is supported
         output, error = self.run_bzr(['push', '-d', 'foo', 'bla'])
-        self.assertEquals("", output)
+        self.assertEqual("", output)
         self.assertTrue(error.endswith("Created new branch.\n"))
 
     def test_log(self):
@@ -153,8 +153,8 @@ class TestGitBlackBox(ExternalBase):
         git_repo.refs["refs/tags/foo"] = commit_sha1
 
         output, error = self.run_bzr(['tags'])
-        self.assertEquals(error, '')
-        self.assertEquals(output, "foo                  1\n")
+        self.assertEqual(error, '')
+        self.assertEqual(output, "foo                  1\n")
 
     def test_tag(self):
         self.simple_commit()
@@ -163,28 +163,28 @@ class TestGitBlackBox(ExternalBase):
 
         # bzr <= 2.2 emits this message in the output stream
         # bzr => 2.3 emits this message in the error stream
-        self.assertEquals(error + output, 'Created tag bar.\n')
+        self.assertEqual(error + output, 'Created tag bar.\n')
 
     def test_init_repo(self):
         output, error = self.run_bzr(["init", "--format=git", "bla.git"])
-        self.assertEquals(error, '')
-        self.assertEquals(output, 'Created a standalone tree (format: git)\n')
+        self.assertEqual(error, b'')
+        self.assertEqual(output, b'Created a standalone tree (format: git)\n')
 
     def test_diff_format(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
-        self.assertEqual(error, '')
+        self.assertEqual(error, b'')
         self.assertEqual(output,
-            'diff --git /dev/null b/a\n'
-            'old mode 0\n'
-            'new mode 100644\n'
-            'index 0000000..c197bd8 100644\n'
-            '--- /dev/null\n'
-            '+++ b/a\n'
-            '@@ -0,0 +1 @@\n'
-            '+contents of a\n')
+            b'diff --git /dev/null b/a\n'
+            b'old mode 0\n'
+            b'new mode 100644\n'
+            b'index 0000000..c197bd8 100644\n'
+            b'--- /dev/null\n'
+            b'+++ b/a\n'
+            b'@@ -0,0 +1 @@\n'
+            b'+contents of a\n')
 
     def test_git_import_uncolocated(self):
         r = GitRepo.init("a", mkdir=True)
@@ -193,7 +193,7 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
         self.run_bzr(["git-import", "a", "b"])
-        self.assertEquals(set([".bzr", "abranch", "bbranch"]), set(os.listdir("b")))
+        self.assertEqual(set([".bzr", "abranch", "bbranch"]), set(os.listdir("b")))
 
     def test_git_import(self):
         r = GitRepo.init("a", mkdir=True)
@@ -202,8 +202,8 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEquals(set([".bzr"]), set(os.listdir("b")))
-        self.assertEquals(set(["abranch", "bbranch"]),
+        self.assertEqual(set([".bzr"]), set(os.listdir("b")))
+        self.assertEqual(set(["abranch", "bbranch"]),
                 set(ControlDir.open("b").get_branches().keys()))
 
     def test_git_import_incremental(self):
@@ -213,9 +213,9 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEquals(set([".bzr"]), set(os.listdir("b")))
+        self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEquals(["abranch"], b.get_branches().keys())
+        self.assertEqual(["abranch"], b.get_branches().keys())
 
     def test_git_import_tags(self):
         r = GitRepo.init("a", mkdir=True)
@@ -224,10 +224,10 @@ class TestGitBlackBox(ExternalBase):
         cid = r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r["refs/tags/atag"] = cid
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEquals(set([".bzr"]), set(os.listdir("b")))
+        self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEquals(["abranch"], b.get_branches().keys())
-        self.assertEquals(["atag"],
+        self.assertEqual(["abranch"], b.get_branches().keys())
+        self.assertEqual(["atag"],
                 b.open_branch("abranch").tags.get_tag_dict().keys())
 
     def test_git_import_colo(self):
@@ -238,7 +238,7 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
         self.make_controldir("b", format="development-colo")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEquals(
+        self.assertEqual(
             set([b.name for b in ControlDir.open("b").list_branches()]),
             set(["abranch", "bbranch"]))
 
@@ -249,10 +249,10 @@ class TestGitBlackBox(ExternalBase):
         cid = r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r["refs/tags/atag"] = cid
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
-        self.assertEquals(stderr, "")
-        self.assertEquals(stdout,
-            'refs/tags/atag -> ' + cid + '\n'
-            'refs/heads/abranch -> ' + cid + '\n')
+        self.assertEqual(stderr, b"")
+        self.assertEqual(stdout,
+            b'refs/tags/atag -> ' + cid + b'\n'
+            b'refs/heads/abranch -> ' + cid + b'\n')
 
     def test_git_refs_from_bzr(self):
         tree = self.make_branch_and_tree('a')
@@ -261,9 +261,9 @@ class TestGitBlackBox(ExternalBase):
         revid = tree.commit(committer="Joe <joe@example.com>", message="Dummy")
         tree.branch.tags.set_tag("atag", revid)
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
-        self.assertEquals(stderr, "")
-        self.assertTrue("refs/tags/atag -> " in stdout)
-        self.assertTrue("HEAD -> " in stdout)
+        self.assertEqual(stderr, b"")
+        self.assertTrue(b"refs/tags/atag -> " in stdout)
+        self.assertTrue(b"HEAD -> " in stdout)
 
     def test_check(self):
         r = GitRepo.init("gitr", mkdir=True)
@@ -272,8 +272,8 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit("message", committer="Somebody <user@example.com>")
         out, err = self.run_bzr(["check", "gitr"])
         self.maxDiff = None
-        self.assertMultiLineEqual(out, '')
-        self.assertTrue(err.endswith, '3 objects\n')
+        self.assertMultiLineEqual(out, b'')
+        self.assertTrue(err.endswith, b'3 objects\n')
 
     def test_log_shallow(self):
         # Smoke test for "bzr log" in a git repository with shallow depth.

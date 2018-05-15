@@ -65,26 +65,26 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
     def test_pointless_fetch_refs(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())
         revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
-        self.assertEquals(old_refs, {})
-        self.assertEquals(new_refs, {})
+        self.assertEqual(old_refs, {})
+        self.assertEqual(new_refs, {})
 
     def test_pointless_lossy_fetch_refs(self):
         revidmap, old_refs, new_refs = self._get_interrepo().fetch_refs(lambda x: {}, lossy=True)
-        self.assertEquals(old_refs, {})
-        self.assertEquals(new_refs, {})
-        self.assertEquals(revidmap, {})
+        self.assertEqual(old_refs, {})
+        self.assertEqual(new_refs, {})
+        self.assertEqual(revidmap, {})
 
     def test_pointless_missing_revisions(self):
         interrepo = self._get_interrepo()
         interrepo.source_store.lock_read()
         self.addCleanup(interrepo.source_store.unlock)
-        self.assertEquals([], list(interrepo.missing_revisions([])))
+        self.assertEqual([], list(interrepo.missing_revisions([])))
 
     def test_missing_revisions_unknown_stop_rev(self):
         interrepo = self._get_interrepo()
         interrepo.source_store.lock_read()
         self.addCleanup(interrepo.source_store.unlock)
-        self.assertEquals([],
+        self.assertEqual([],
                 list(interrepo.missing_revisions([(None, "unknown")])))
 
     def test_odd_rename(self):

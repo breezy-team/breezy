@@ -242,7 +242,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._revision_id = revision_id
         self._repository = repository
         self.store = repository._git.object_store
-        if type(revision_id) is not str:
+        if not isinstance(revision_id, bytes):
             raise TypeError(revision_id)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         if revision_id == NULL_REVISION:
@@ -254,7 +254,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             try:
                 commit = self.store[self.commit_id]
-            except KeyError, r:
+            except KeyError:
                 raise errors.NoSuchRevision(repository, revision_id)
             self.tree = commit.tree
             self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
@@ -573,7 +573,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
 
 def tree_delta_from_git_changes(changes, mapping,
-        (old_fileid_map, new_fileid_map), specific_files=None,
+        fileid_maps, specific_files=None,
         require_versioned=False, include_root=False,
         target_extras=None):
     """Create a TreeDelta from two git trees.
@@ -581,6 +581,7 @@ def tree_delta_from_git_changes(changes, mapping,
     source and target are iterators over tuples with:
         (filename, sha, mode)
     """
+    (old_fileid_map, new_fileid_map) = fileid_maps
     if target_extras is None:
         target_extras = set()
     ret = delta.TreeDelta()
@@ -888,8 +889,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._index_dirty = True
 
     def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
-        if not isinstance(path, basestring):
-            raise TypeError(path)
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -901,7 +900,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 # TODO: Rather than come up with something here, use the old index
                 file = BytesIO()
                 stat_val = os.stat_result(
-                    (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+                    (stat.S_IFREG | 0o644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(file.read())
             # Add object to the repository if it didn't exist yet
             if not blob.id in self.store:

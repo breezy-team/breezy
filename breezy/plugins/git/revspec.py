@@ -46,6 +46,8 @@ def valid_git_sha1(hex):
         binascii.unhexlify(hex)
     except TypeError:
         return False
+    except binascii.Error:
+        return False
     else:
         return True
 

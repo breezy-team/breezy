@@ -166,7 +166,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
 
     def test_extra(self):
         self.build_tree(['a'])
-        newa = Blob.from_string('contents of a\n')
+        newa = Blob.from_string(b'contents of a\n')
         newt = Tree()
         newt.add("a", stat.S_IFREG | 0o644, newa.id)
         self.expectDelta([

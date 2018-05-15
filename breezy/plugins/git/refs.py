@@ -40,7 +40,7 @@ is_peeled = lambda x: x.endswith(ANNOTATED_TAG_SUFFIX)
 
 def gather_peeled(refs):
     ret = {}
-    for k, v in refs.iteritems():
+    for k, v in refs.items():
         if is_peeled(k):
             continue
         try:
@@ -60,7 +60,7 @@ def branch_name_to_ref(name):
     :return: ref string
     """
     if name == "":
-        return "HEAD"
+        return b"HEAD"
     if not name.startswith("refs/"):
         return LOCAL_BRANCH_PREFIX + osutils.safe_utf8(name)
     else:
@@ -82,7 +82,7 @@ def ref_to_branch_name(ref):
     :param ref: Ref
     :return: A branch name
     """
-    if ref == "HEAD":
+    if ref == b"HEAD":
         return u""
     if ref is None:
         return ref
@@ -158,7 +158,7 @@ class BazaarRefsContainer(RefsContainer):
                 ref = branch_name_to_ref(getattr(branch, "name", ""))
                 keys.add(ref)
             try:
-                for tag_name, revid in branch.tags.get_tag_dict().iteritems():
+                for tag_name, revid in branch.tags.get_tag_dict().items():
                     if repo.has_revision(revid):
                         keys.add(tag_name_to_ref(tag_name))
             except errors.TagsNotSupported:
@@ -198,7 +198,7 @@ def get_refs_container(controldir, object_store):
 def remote_refs_dict_to_tag_refs(refs_dict):
     base = {}
     peeled = {}
-    for k, v in refs_dict.iteritems():
+    for k, v in refs_dict.items():
         if is_peeled(k):
             peeled[k[:-3]] = v
         else:

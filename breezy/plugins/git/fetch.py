@@ -30,9 +30,6 @@ from dulwich.object_store import (
     tree_lookup_path,
     )
 from dulwich.walk import Walker
-from itertools import (
-    imap,
-    )
 import posixpath
 import stat
 
@@ -92,9 +89,9 @@ from .repository import (
     )
 
 
-def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
+def import_git_blob(texts, mapping, path, name, hexshas,
         base_bzr_tree, parent_id, revision_id,
-        parent_bzr_trees, lookup_object, (base_mode, mode), store_updater,
+        parent_bzr_trees, lookup_object, modes, store_updater,
         lookup_file_id):
     """Import a git blob object into a bzr repository.
 
@@ -103,6 +100,8 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     :param blob: A git blob
     :return: Inventory delta for this file
     """
+    (base_mode, mode) = modes
+    (base_hexsha, hexsha) = hexshas
     if mapping.is_special_file(path):
         return []
     if base_hexsha == hexsha and base_mode == mode:
@@ -133,7 +132,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             ie.revision = None
             ie.symlink_target = blob.data.decode("utf-8")
         else:
-            ie.text_size = sum(imap(len, blob.chunked))
+            ie.text_size = sum(map(len, blob.chunked))
             ie.text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
@@ -186,10 +185,12 @@ class SubmodulesRequireSubtrees(BzrError):
     internal = False
 
 
-def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
+def import_git_submodule(texts, mapping, path, name, hexshas,
     base_bzr_tree, parent_id, revision_id, parent_bzr_trees, lookup_object,
-    (base_mode, mode), store_updater, lookup_file_id):
+    modes, store_updater, lookup_file_id):
     """Import a git submodule."""
+    (base_hexsha, hexsha) = hexshas
+    (base_mode, mode) = modes
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
     file_id = lookup_file_id(path)
@@ -239,9 +240,9 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree, existing_childre
     return ret
 
 
-def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
+def import_git_tree(texts, mapping, path, name, hexshas,
         base_bzr_tree, parent_id, revision_id, parent_bzr_trees,
-        lookup_object, (base_mode, mode), store_updater,
+        lookup_object, modes, store_updater,
         lookup_file_id, allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
@@ -252,6 +253,8 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     :param base_bzr_tree: Base inventory against which to return inventory delta
     :return: Inventory delta for this subtree
     """
+    (base_hexsha, hexsha) = hexshas
+    (base_mode, mode) = modes
     if type(path) is not str:
         raise TypeError(path)
     if type(name) is not str:
@@ -317,7 +320,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
         if child_mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
-                        stat.S_IFLNK, DEFAULT_FILE_MODE|0111,
+                        stat.S_IFLNK, DEFAULT_FILE_MODE|0o111,
                         S_IFGITLINK):
             child_modes[child_path] = child_mode
     # Remove any children that have disappeared
