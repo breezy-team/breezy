@@ -18,7 +18,10 @@
 
 from __future__ import absolute_import
 
-from breezy import hooks
+from breezy import (
+    errors,
+    hooks,
+    )
 from breezy.revision import (
     NULL_REVISION,
     )
@@ -40,14 +43,18 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             info.add('revision-id', revision_id)
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
-            revno = self._get_revno_str(revision_id)
+            try:
+                revno = self._get_revno_str(revision_id)
+            except errors.GhostRevisionsHaveNoRevno:
+                revno = None
             for hook in RioVersionInfoBuilder.hooks['revision']:
                 hook(rev, info)
         else:
             revno = '0'
 
         info.add('build-date', create_date_str())
-        info.add('revno', revno)
+        if revno is not None:
+            info.add('revno', revno)
 
         if self._branch.nick is not None:
             info.add('branch-nick', self._branch.nick)
