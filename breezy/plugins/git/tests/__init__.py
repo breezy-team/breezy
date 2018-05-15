@@ -27,12 +27,12 @@ from .... import (
     errors as bzr_errors,
     tests,
     )
-from ....tests.features import Feature
+from ....tests.features import (
+    Feature,
+    ModuleAvailableFeature,
+    )
 from .. import (
     import_dulwich,
-    )
-from fastimport import (
-    commands,
     )
 
 TestCase = tests.TestCase
@@ -54,6 +54,7 @@ class _DulwichFeature(Feature):
 
 
 DulwichFeature = _DulwichFeature()
+FastimportFeature = ModuleAvailableFeature('fastimport')
 
 
 class GitBranchBuilder(object):
@@ -80,7 +81,8 @@ class GitBranchBuilder(object):
 
     def _create_blob(self, content):
         self._counter += 1
-        blob = commands.BlobCommand(str(self._counter), content)
+        from fastimport.commands import BlobCommand
+        blob = BlobCommand(str(self._counter), content)
         self._write(str(blob)+"\n")
         return self._counter
 
