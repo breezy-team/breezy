@@ -869,7 +869,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             path, can_access = osutils.normalized_filename(path)
             if not can_access:
                 raise errors.InvalidNormalization(path)
-            self._index_add_entry(path.encode('utf-8'), kind)
+            self._index_add_entry(path, kind)
 
     def _read_submodule_head(self, path):
         raise NotImplementedError(self._read_submodule_head)
@@ -886,8 +886,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._index_dirty = True
 
     def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
-        if not isinstance(path, bytes):
-            raise TypeError(path)
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -1092,7 +1090,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     self._index_del_entry(index, old_subpath)
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != 'directory':
-                self._index_add_entry(new_path.encode('utf-8'), ie.kind)
+                self._index_add_entry(new_path, ie.kind)
         self.flush()
         self._set_merges_from_parent_ids([])
 

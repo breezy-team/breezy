@@ -31,6 +31,9 @@ from ...commands import (
 from ...option import (
     Option,
     )
+from ...sixish import (
+    text_type,
+    )
 
 
 class cmd_git_import(Command):
@@ -169,7 +172,7 @@ class cmd_git_object(Command):
     takes_args = ["sha1?"]
     takes_options = [Option('directory',
         short_name='d',
-        help='Location of repository.', type=unicode),
+        help='Location of repository.', type=text_type),
         Option('pretty', help='Pretty-print objects.')]
     encoding_type = 'exact'
 
@@ -293,7 +296,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
 
     takes_options = [Option('directory',
         short_name='d',
-        help='Location of repository.', type=unicode)]
+        help='Location of repository.', type=text_type)]
     takes_args = ['target', 'package']
 
     def run(self, target, package, directory='.'):
