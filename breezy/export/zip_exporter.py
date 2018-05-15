@@ -77,7 +77,7 @@ def zip_exporter_generator(tree, dest, root, subdir=None,
                 zinfo.external_attr = _FILE_ATTR
                 content = tree.get_file_text(tp, file_id)
                 zipf.writestr(zinfo, content)
-            elif ie.kind == "directory":
+            elif ie.kind in ("directory", "tree-reference"):
                 # Directories must contain a trailing slash, to indicate
                 # to the zip routine that they are really directories and
                 # not just empty files.

@@ -274,3 +274,25 @@ class TestGitBlackBox(ExternalBase):
         self.maxDiff = None
         self.assertMultiLineEqual(out, '')
         self.assertTrue(err.endswith, '3 objects\n')
+
+    def test_log_shallow(self):
+        # Smoke test for "bzr log" in a git repository with shallow depth.
+        r = GitRepo.init('gitr', mkdir=True)
+        self.build_tree_contents([("gitr/foo", "hello from git")])
+        r.stage("foo")
+        cid = r.do_commit("message", committer="Somebody <user@example.com>",
+                    commit_timestamp=1526330165, commit_timezone=0,
+                    author_timestamp=1526330165, author_timezone=0,
+                    merge_heads=[b'aa' * 20])
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', 'gitr'], retcode=3)
+        self.assertEqual(error, 'brz: ERROR: Further revision history missing.\n')
+        self.assertEqual(output,
+                '------------------------------------------------------------\n'
+                'revision-id: git-v1:' + cid + '\n'
+                'git commit: ' + cid + '\n'
+                'committer: Somebody <user@example.com>\n'
+                'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
+                'message:\n'
+                '  message\n')

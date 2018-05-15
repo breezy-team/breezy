@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from . import (
+    errors,
     log,
     )
 from . import revision as _mod_revision
@@ -110,9 +111,10 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
         parents = parent_map.get(cur)
         if not parents:
             break # Ghost, we are done
-        mainline.append((str(cur_revno), cur, 0))
+        mainline.append((str(cur_revno) if cur_revno is not None else None, cur, 0))
         cur = parents[0]
-        cur_revno -= 1
+        if cur_revno is not None:
+            cur_revno -= 1
     if not backward:
         mainline.reverse()
     return mainline
@@ -167,9 +169,18 @@ def _find_unmerged(local_branch, remote_branch, restrict,
 
     The branches should already be locked before entering.
     """
-    local_revno, local_revision_id = local_branch.last_revision_info()
-    remote_revno, remote_revision_id = remote_branch.last_revision_info()
-    if local_revno == remote_revno and local_revision_id == remote_revision_id:
+    try:
+        local_revno, local_revision_id = local_branch.last_revision_info()
+    except (errors.UnsupportedOperation, errors.GhostRevisionsHaveNoRevno):
+        local_revno = None
+        local_revision_id = local_branch.last_revision()
+    try:
+        remote_revno, remote_revision_id = remote_branch.last_revision_info()
+    except (errors.UnsupportedOperation, errors.GhostRevisionsHaveNoRevno):
+        remote_revision_id = remote_branch.last_revision()
+        remote_revno = None
+
+    if local_revision_id == remote_revision_id:
         # A simple shortcut when the tips are at the same point
         return [], []
     graph = local_branch.repository.get_graph(remote_branch.repository)
