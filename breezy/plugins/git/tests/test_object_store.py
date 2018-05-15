@@ -84,22 +84,22 @@ class FindMissingBzrRevidsTests(TestCase):
             set(want), set(have))
 
     def test_simple(self):
-        self.assertEquals(set(), self._find_missing({}, [], []))
+        self.assertEqual(set(), self._find_missing({}, [], []))
 
     def test_up_to_date(self):
-        self.assertEquals(set(),
+        self.assertEqual(set(),
                 self._find_missing({"a": ["b"]}, ["a"], ["a"]))
 
     def test_one_missing(self):
-        self.assertEquals(set(["a"]),
+        self.assertEqual(set(["a"]),
                 self._find_missing({"a": ["b"]}, ["a"], ["b"]))
 
     def test_two_missing(self):
-        self.assertEquals(set(["a", "b"]),
+        self.assertEqual(set(["a", "b"]),
                 self._find_missing({"a": ["b"], "b": ["c"]}, ["a"], ["c"]))
 
     def test_two_missing_history(self):
-        self.assertEquals(set(["a", "b"]),
+        self.assertEqual(set(["a", "b"]),
                 self._find_missing({"a": ["b"], "b": ["c"], "c": ["d"]},
                     ["a"], ["c"]))
 
@@ -130,11 +130,11 @@ class LRUTreeCacheTests(TestCaseWithTransport):
         bb.start_series()
         revid = bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         tree = self.cache.revision_tree(revid)
-        self.assertEquals(revid, tree.get_revision_id())
+        self.assertEqual(revid, tree.get_revision_id())
 
 
 class BazaarObjectStoreTests(TestCaseWithTransport):
@@ -156,14 +156,14 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.start_series()
         bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         # read locks cache
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
         self.store.unlock()
         self.store.lock_read()
-        self.assertEquals(b, self.store[b.id])
+        self.assertEqual(b, self.store[b.id])
 
     def test_get_raw(self):
         b = Blob()
@@ -175,18 +175,18 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.start_series()
         bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         # read locks cache
         self.assertRaises(KeyError, self.store.get_raw, b.id)
         self.store.unlock()
         self.store.lock_read()
-        self.assertEquals(b.as_raw_string(), self.store.get_raw(b.id)[1])
+        self.assertEqual(b.as_raw_string(), self.store.get_raw(b.id)[1])
 
     def test_contains(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertFalse(b.id in self.store)
@@ -194,7 +194,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.start_series()
         bb.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
         # read locks cache
@@ -214,7 +214,7 @@ class TreeToObjectsTests(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.addCleanup(tree.lock_read().unlock)
         entries = list(_tree_to_objects(tree, [tree], self.idmap, {}))
-        self.assertEquals([], entries)
+        self.assertEqual([], entries)
 
     def test_with_gitdir(self):
         tree = self.make_branch_and_tree('.')
@@ -224,20 +224,20 @@ class TreeToObjectsTests(TestCaseWithTransport):
         revtree = tree.branch.repository.revision_tree(revid)
         self.addCleanup(revtree.lock_read().unlock)
         entries = list(_tree_to_objects(revtree, [], self.idmap, {}))
-        self.assertEquals(['foo', ''], [p[0] for p in entries])
+        self.assertEqual(['foo', ''], [p[0] for p in entries])
 
 
 class DirectoryToTreeTests(TestCase):
 
     def test_empty(self):
         t = directory_to_tree('', [], None, {}, None, allow_empty=False)
-        self.assertEquals(None, t)
+        self.assertEqual(None, t)
 
     def test_empty_dir(self):
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
                 allow_empty=False)
-        self.assertEquals(None, t)
+        self.assertEqual(None, t)
 
     def test_empty_dir_dummy_files(self):
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
@@ -249,7 +249,7 @@ class DirectoryToTreeTests(TestCase):
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
                 allow_empty=True)
-        self.assertEquals(Tree(), t)
+        self.assertEqual(Tree(), t)
 
     def test_with_file(self):
         child_ie = InventoryFile('bar', 'bar', 'bar')
@@ -257,8 +257,8 @@ class DirectoryToTreeTests(TestCase):
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0100644, b.id)
-        self.assertEquals(t1, t2)
+        t2.add("bar", 0o100644, b.id)
+        self.assertEqual(t1, t2)
 
     def test_with_gitdir(self):
         child_ie = InventoryFile('bar', 'bar', 'bar')
@@ -268,5 +268,5 @@ class DirectoryToTreeTests(TestCase):
                 lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0100644, b.id)
-        self.assertEquals(t1, t2)
+        t2.add("bar", 0o100644, b.id)
+        self.assertEqual(t1, t2)

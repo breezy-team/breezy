@@ -19,7 +19,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from io import BytesIO
 from collections import defaultdict
 
 from dulwich.objects import (
@@ -397,7 +397,7 @@ class GitBranch(ForeignBranch):
     def _set_nick(self, nick):
         cf = self.repository._git.get_config()
         cf.set((b"branch", self.name.encode('utf-8')), b"nick", nick.encode("utf-8"))
-        f = StringIO()
+        f = BytesIO()
         cf.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
 
@@ -480,7 +480,7 @@ class GitBranch(ForeignBranch):
         else:
             # TODO(jelmer): Maybe unset rather than setting to HEAD?
             cs.set((b"remote", b"origin"), b"merge", 'HEAD')
-        f = StringIO()
+        f = BytesIO()
         cs.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
 
@@ -638,7 +638,7 @@ class LocalGitBranch(GitBranch):
         self._last_revision_info_cache = revno, revision_id
 
     def set_last_revision(self, revid):
-        if not revid or not isinstance(revid, basestring):
+        if not revid or not isinstance(revid, bytes):
             raise errors.InvalidRevisionId(revision_id=revid, branch=self)
         if revid == NULL_REVISION:
             newhead = None

@@ -38,13 +38,13 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         TestCaseWithTransport.tearDown(self)
 
     def test_remembers_packs(self):
-        self.store.add_object(make_object(Blob, data="data"))
+        self.store.add_object(make_object(Blob, data=b"data"))
         self.assertEqual(0, len(self.store.packs))
         self.store.pack_loose_objects()
         self.assertEqual(1, len(self.store.packs))
 
         # Packing a second object creates a second pack.
-        self.store.add_object(make_object(Blob, data="more data"))
+        self.store.add_object(make_object(Blob, data=b"more data"))
         self.store.pack_loose_objects()
         self.assertEqual(2, len(self.store.packs))
 

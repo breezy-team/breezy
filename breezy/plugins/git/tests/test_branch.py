@@ -71,7 +71,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
             )
         d = ControlDir.open(url)
         b = d.create_branch()
-        self.assertEquals(b.ref, "refs/remotes/origin/unstable")
+        self.assertEqual(b.ref, "refs/remotes/origin/unstable")
 
     def test_open_existing(self):
         r = GitRepo.init('.')
@@ -83,7 +83,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         r = GitRepo.init('.')
         d = ControlDir.open('.')
         thebranch = d.create_branch()
-        self.assertEquals(
+        self.assertEqual(
             "<LocalGitBranch('%s/', u'master')>" % (
                 urlutils.local_path_to_url(self.test_dir),),
             repr(thebranch))
@@ -116,7 +116,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         revb = r.do_commit("b", committer="Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
-        self.assertEquals((2, default_mapping.revision_id_foreign_to_bzr(revb)), thebranch.last_revision_info())
+        self.assertEqual((2, default_mapping.revision_id_foreign_to_bzr(revb)), thebranch.last_revision_info())
 
     def test_tag_annotated(self):
         reva = self.simple_commit_a()
@@ -131,7 +131,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         r.object_store.add_object(o)
         r['refs/tags/foo'] = o.id
         thebranch = Branch.open('.')
-        self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
+        self.assertEqual({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
 
     def test_tag(self):
@@ -139,7 +139,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         r = GitRepo(".")
         r.refs["refs/tags/foo"] = reva
         thebranch = Branch.open('.')
-        self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
+        self.assertEqual({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
 
 
@@ -170,10 +170,10 @@ class TestLocalGitBranchFormat(tests.TestCase):
         self.format = branch.LocalGitBranchFormat()
 
     def test_get_format_description(self):
-        self.assertEquals("Local Git Branch", self.format.get_format_description())
+        self.assertEqual("Local Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
-        self.assertEquals("git", self.format.network_name())
+        self.assertEqual("git", self.format.network_name())
 
     def test_supports_tags(self):
         self.assertTrue(self.format.supports_tags())
@@ -213,9 +213,9 @@ class BranchTests(tests.TestCaseInTempDir):
         path, gitsha = self.make_onerev_branch()
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
-        self.assertEquals(gitsha, oldrepo._git.get_refs()["refs/heads/master"])
+        self.assertEqual(gitsha, oldrepo._git.get_refs()["refs/heads/master"])
         newbranch = self.clone_git_branch(path, "f")
-        self.assertEquals([revid], newbranch.repository.all_revision_ids())
+        self.assertEqual([revid], newbranch.repository.all_revision_ids())
 
     def test_sprouted_tags(self):
         path, gitsha = self.make_onerev_branch()
@@ -224,8 +224,8 @@ class BranchTests(tests.TestCaseInTempDir):
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newbranch = self.clone_git_branch(path, "f")
-        self.assertEquals({"lala": revid}, newbranch.tags.get_tag_dict())
-        self.assertEquals([revid], newbranch.repository.all_revision_ids())
+        self.assertEqual({"lala": revid}, newbranch.tags.get_tag_dict())
+        self.assertEqual([revid], newbranch.repository.all_revision_ids())
 
     def test_interbranch_pull(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
@@ -234,7 +234,7 @@ class BranchTests(tests.TestCaseInTempDir):
         newbranch = self.make_branch('g')
         inter_branch = InterBranch.get(Branch.open(path), newbranch)
         inter_branch.pull()
-        self.assertEquals(revid2, newbranch.last_revision())
+        self.assertEqual(revid2, newbranch.last_revision())
 
     def test_interbranch_pull_noop(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
@@ -245,7 +245,7 @@ class BranchTests(tests.TestCaseInTempDir):
         inter_branch.pull()
         # This is basically "assertNotRaises"
         inter_branch.pull()
-        self.assertEquals(revid2, newbranch.last_revision())
+        self.assertEqual(revid2, newbranch.last_revision())
 
     def test_interbranch_pull_stop_revision(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
@@ -254,7 +254,7 @@ class BranchTests(tests.TestCaseInTempDir):
         newbranch = self.make_branch('g')
         inter_branch = InterBranch.get(Branch.open(path), newbranch)
         inter_branch.pull(stop_revision=revid1)
-        self.assertEquals(revid1, newbranch.last_revision())
+        self.assertEqual(revid1, newbranch.last_revision())
 
     def test_interbranch_pull_with_tags(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
@@ -268,7 +268,7 @@ class BranchTests(tests.TestCaseInTempDir):
         source_branch.get_config().set_user_option("branch.fetch_tags", True)
         inter_branch = InterBranch.get(source_branch, newbranch)
         inter_branch.pull(stop_revision=revid1)
-        self.assertEquals(revid1, newbranch.last_revision())
+        self.assertEqual(revid1, newbranch.last_revision())
         self.assertTrue(newbranch.repository.has_revision(revid2))
 
 

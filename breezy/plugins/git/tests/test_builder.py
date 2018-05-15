@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+from io import BytesIO
 
 from dulwich.repo import Repo as GitRepo
 
@@ -28,14 +28,14 @@ from .. import tests
 class TestGitBranchBuilder(tests.TestCase):
 
     def test__create_blob(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         self.assertEqual(1, builder._create_blob('foo\nbar\n'))
         self.assertEqualDiff('blob\nmark :1\ndata 8\nfoo\nbar\n\n',
                              stream.getvalue())
 
     def test_set_file(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.set_file('foobar', 'foo\nbar\n', False)
         self.assertEqualDiff('blob\nmark :1\ndata 8\nfoo\nbar\n\n',
@@ -43,7 +43,7 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(['M 100644 :1 foobar\n'], builder.commit_info)
 
     def test_set_file_unicode(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.set_file(u'f\xb5/bar', 'contents\nbar\n', False)
         self.assertEqualDiff('blob\nmark :1\ndata 13\ncontents\nbar\n\n',
@@ -51,7 +51,7 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(['M 100644 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
     def test_set_file_newline(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.set_file(u'foo\nbar', 'contents\nbar\n', False)
         self.assertEqualDiff('blob\nmark :1\ndata 13\ncontents\nbar\n\n',
@@ -59,7 +59,7 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(['M 100644 :1 "foo\\nbar"\n'], builder.commit_info)
 
     def test_set_file_executable(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.set_file(u'f\xb5/bar', 'contents\nbar\n', True)
         self.assertEqualDiff('blob\nmark :1\ndata 13\ncontents\nbar\n\n',
@@ -67,7 +67,7 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(['M 100755 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
     def test_set_link(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.set_link(u'f\xb5/bar', 'link/contents')
         self.assertEqualDiff('blob\nmark :1\ndata 13\nlink/contents\n',
@@ -75,7 +75,7 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(['M 120000 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
     def test_set_link_newline(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.set_link(u'foo\nbar', 'link/contents')
         self.assertEqualDiff('blob\nmark :1\ndata 13\nlink/contents\n',
@@ -83,13 +83,13 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(['M 120000 :1 "foo\\nbar"\n'], builder.commit_info)
 
     def test_delete_entry(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.delete_entry(u'path/to/f\xb5')
         self.assertEqual(['D path/to/f\xc2\xb5\n'], builder.commit_info)
 
     def test_delete_entry_newline(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.delete_entry(u'path/to/foo\nbar')
         self.assertEqual(['D "path/to/foo\\nbar"\n'], builder.commit_info)
@@ -110,7 +110,7 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertEqual(encode(u'foo\r\nbar'), '"foo\r\\nbar"')
 
     def test_add_and_commit(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
 
         builder.set_file(u'f\xb5/bar', 'contents\nbar\n', False)
@@ -130,7 +130,7 @@ class TestGitBranchBuilder(tests.TestCase):
                              stream.getvalue())
 
     def test_commit_base(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
 
         builder.set_file(u'foo', 'contents\nfoo\n', False)
@@ -168,7 +168,7 @@ class TestGitBranchBuilder(tests.TestCase):
                              '\n', stream.getvalue())
 
     def test_commit_merge(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
 
         builder.set_file(u'foo', 'contents\nfoo\n', False)
@@ -217,26 +217,26 @@ class TestGitBranchBuilder(tests.TestCase):
                              '\n', stream.getvalue())
 
     def test_auto_timestamp(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.commit('Joe Foo <joe@foo.com>', u'message')
         self.assertContainsRe(stream.getvalue(),
                               r'committer Joe Foo <joe@foo\.com> \d+ \+0000')
 
     def test_reset(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.reset()
         self.assertEqualDiff('reset refs/heads/master\n\n', stream.getvalue())
 
     def test_reset_named_ref(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.reset('refs/heads/branch')
         self.assertEqualDiff('reset refs/heads/branch\n\n', stream.getvalue())
 
     def test_reset_revision(self):
-        stream = StringIO()
+        stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
         builder.reset(mark=123)
         self.assertEqualDiff(

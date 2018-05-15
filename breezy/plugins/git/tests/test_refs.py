@@ -33,15 +33,15 @@ from ..refs import (
 class BranchNameRefConversionTests(tests.TestCase):
 
     def test_head(self):
-        self.assertEquals("", ref_to_branch_name("HEAD"))
-        self.assertEquals("HEAD", branch_name_to_ref(""))
+        self.assertEqual("", ref_to_branch_name(b"HEAD"))
+        self.assertEqual(b"HEAD", branch_name_to_ref(""))
 
     def test_tag(self):
-        self.assertRaises(ValueError, ref_to_branch_name, "refs/tags/FOO")
+        self.assertRaises(ValueError, ref_to_branch_name, b"refs/tags/FOO")
 
     def test_branch(self):
-        self.assertEquals("frost", ref_to_branch_name("refs/heads/frost"))
-        self.assertEquals("refs/heads/frost", branch_name_to_ref("frost"))
+        self.assertEqual("frost", ref_to_branch_name(b"refs/heads/frost"))
+        self.assertEqual(b"refs/heads/frost", branch_name_to_ref("frost"))
 
 
 class BazaarRefsContainerTests(tests.TestCaseWithTransport):
@@ -59,7 +59,7 @@ class BazaarRefsContainerTests(tests.TestCaseWithTransport):
         refs = BazaarRefsContainer(tree.controldir, store)
         self.assertEqual(
                 refs.as_dict(),
-                {'HEAD': store._lookup_revision_sha1(revid)})
+                {b'HEAD': store._lookup_revision_sha1(revid)})
 
     def test_some_tag(self):
         tree = self.make_branch_and_tree('.')
@@ -69,8 +69,8 @@ class BazaarRefsContainerTests(tests.TestCaseWithTransport):
         refs = BazaarRefsContainer(tree.controldir, store)
         self.assertEqual(
                 refs.as_dict(),
-                {'HEAD': store._lookup_revision_sha1(revid),
-                 'refs/tags/sometag': store._lookup_revision_sha1(revid),
+                {b'HEAD': store._lookup_revision_sha1(revid),
+                 b'refs/tags/sometag': store._lookup_revision_sha1(revid),
                  })
 
     def test_some_branch(self):
@@ -82,6 +82,6 @@ class BazaarRefsContainerTests(tests.TestCaseWithTransport):
         refs = BazaarRefsContainer(tree.controldir, store)
         self.assertEqual(
                 refs.as_dict(),
-                {'HEAD': store._lookup_revision_sha1(revid),
-                 'refs/heads/otherbranch': store._lookup_revision_sha1(revid),
+                {b'HEAD': store._lookup_revision_sha1(revid),
+                 b'refs/heads/otherbranch': store._lookup_revision_sha1(revid),
                  })
