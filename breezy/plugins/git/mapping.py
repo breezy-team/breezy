@@ -414,7 +414,13 @@ class BzrGitMapping(foreign.VcsMapping):
             roundtrip_revid = None
             verifiers = {}
         if rev.parent_ids is None:
-            rev.parent_ids = tuple([lookup_parent_revid(p) for p in commit.parents])
+            parents = []
+            for p in commit.parents:
+                try:
+                    parents.append(lookup_parent_revid(p))
+                except KeyError:
+                    parents.append(self.revision_id_foreign_to_bzr(p))
+            rev.parent_ids = tuple(parents)
         unknown_extra_fields = []
         extra_lines = []
         for k, v in commit.extra:

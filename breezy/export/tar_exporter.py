@@ -63,7 +63,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         content = tree.get_file_text(tree_path, entry.file_id)
         item.size = len(content)
         fileobj = BytesIO(content)
-    elif entry.kind == "directory":
+    elif entry.kind in ("directory", "tree-reference"):
         item.type = tarfile.DIRTYPE
         item.name += '/'
         item.size = 0

@@ -177,9 +177,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertInvalidRevisonNumber(b, 2, 1)
         self.assertInvalidRevisonNumber(b, 1, 2)
         self.assertInvalidRevisonNumber(b, 0, 2)
-        self.assertInvalidRevisonNumber(b, 1, 0)
         self.assertInvalidRevisonNumber(b, -1, 1)
         self.assertInvalidRevisonNumber(b, 1, -1)
+        self.assertInvalidRevisonNumber(b, 1, 0)
 
     def test_empty_branch(self):
         wt = self.make_branch_and_tree('.')

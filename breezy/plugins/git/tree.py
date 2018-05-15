@@ -276,11 +276,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
 
     def get_file_mtime(self, path, file_id=None):
-        revid = self.get_file_revision(path, file_id)
+        try:
+            revid = self.get_file_revision(path, file_id)
+        except KeyError:
+            raise _mod_tree.FileTimestampUnavailable(path)
         try:
             rev = self._repository.get_revision(revid)
         except errors.NoSuchRevision:
-            raise errors.FileTimestampUnavailable(path)
+            raise _mod_tree.FileTimestampUnavailable(path)
         return rev.timestamp
 
     def id2path(self, file_id):
