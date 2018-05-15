@@ -199,10 +199,19 @@ def show_log(branch,
         diff_type = None
 
     if isinstance(start_revision, int):
-        start_revision = revisionspec.RevisionInfo(branch, start_revision)
+        try:
+            start_revision = revisionspec.RevisionInfo(branch, start_revision)
+        except errors.NoSuchRevision:
+            raise errors.InvalidRevisionNumber(start_revision)
 
     if isinstance(end_revision, int):
-        end_revision = revisionspec.RevisionInfo(branch, end_revision)
+        try:
+            end_revision = revisionspec.RevisionInfo(branch, end_revision)
+        except errors.NoSuchRevision:
+            raise errors.InvalidRevisionNumber(end_revision)
+
+    if end_revision is not None and end_revision.revno == 0:
+        raise errors.InvalidRevisionNumber(end_revision.revno)
 
     # Build the request and execute it
     rqst = make_log_request_dict(direction=direction, specific_fileids=file_ids,
