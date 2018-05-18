@@ -614,9 +614,13 @@ class LocalGitBranch(GitBranch):
     def _gen_revision_history(self):
         if self.head is None:
             return []
+        last_revid = self.last_revision()
         graph = self.repository.get_graph()
-        ret = list(graph.iter_lefthand_ancestry(self.last_revision(),
-            (revision.NULL_REVISION, )))
+        try:
+            ret = list(graph.iter_lefthand_ancestry(last_revid,
+                (revision.NULL_REVISION, )))
+        except errors.RevisionNotPresent as e:
+            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
         ret.reverse()
         return ret
 
