@@ -654,14 +654,14 @@ class LocalGitDir(GitDir):
             # directories and files are read-write for this user. This is
             # mostly a workaround for filesystems which lie about being able to
             # write to a directory (cygwin & win32)
-            if (st.st_mode & 07777 == 00000):
+            if (st.st_mode & 0o7777 == 0o0000):
                 # FTP allows stat but does not return dir/file modes
                 self._dir_mode = None
                 self._file_mode = None
             else:
-                self._dir_mode = (st.st_mode & 07777) | 00700
+                self._dir_mode = (st.st_mode & 0o7777) | 0o0700
                 # Remove the sticky and execute bits for files
-                self._file_mode = self._dir_mode & ~07111
+                self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
         """Return Unix mode for newly created files, or None.

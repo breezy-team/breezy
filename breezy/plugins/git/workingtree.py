@@ -20,9 +20,6 @@
 from __future__ import absolute_import
 
 import itertools
-from cStringIO import (
-    StringIO,
-    )
 from collections import defaultdict
 import errno
 from dulwich.ignore import (
@@ -621,7 +618,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         """See Tree.get_file_mtime."""
         try:
             return self._lstat(path).st_mtime
-        except OSError, (num, msg):
+        except OSError as e:
+            (num, msg) = e
             if num == errno.ENOENT:
                 raise errors.NoSuchFile(path)
             raise
@@ -703,7 +701,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
-            except OSError, (num, msg):
+            except OSError as e:
+                (num, msg) = e
                 if num in (errno.EISDIR, errno.ENOENT):
                     return None
                 raise
@@ -1053,7 +1052,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 if not path.startswith(prefix):
                     continue
                 add_entry(path, mode_kind(value.mode))
-        return ((k, sorted(v)) for (k, v) in sorted(per_dir.iteritems()))
+        return ((k, sorted(v)) for (k, v) in sorted(per_dir.items()))
 
     def get_shelf_manager(self):
         raise workingtree.ShelvingUnsupported()
@@ -1167,7 +1166,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         # Let's at least try to use the working tree file:
                         try:
                             st = self._lstat(self.abspath(entry.path))
-                        except OSError, (num, msg):
+                        except OSError:
                             # But if it doesn't exist, we'll make something up.
                             obj = self.store[entry.sha]
                             st = os.stat_result((entry.mode, 0, 0, 0,
@@ -1420,7 +1419,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
             np = np.encode('utf-8')
             blobs[np] = (blob.id, cleanup_mode(st.st_mode))
             extras.add(np)
-    to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.iteritems()])
+    to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
     return store.tree_changes(
         from_tree_sha, to_tree_sha, include_trees=True,
         want_unchanged=want_unchanged, change_type_same=True), extras

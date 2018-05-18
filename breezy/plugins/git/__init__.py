@@ -377,7 +377,7 @@ def update_git_cache(repository, revid):
         return # No existing cache, don't bother updating
     try:
         lazy_check_versions()
-    except bzr_errors.DependencyNotPresent, e:
+    except bzr_errors.DependencyNotPresent as e:
         # dulwich is probably missing. silently ignore
         trace.mutter("not updating git map for %r: %s",
             repository, e)

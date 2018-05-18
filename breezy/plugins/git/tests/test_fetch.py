@@ -85,7 +85,7 @@ class RepositoryFetchTests(object):
     def test_empty(self):
         self.make_git_repo("d")
         newrepos = self.clone_git_repo("d", "f")
-        self.assertEquals([], newrepos.all_revision_ids())
+        self.assertEqual([], newrepos.all_revision_ids())
 
     def make_onerev_branch(self):
         self.make_git_repo("d")
@@ -102,14 +102,14 @@ class RepositoryFetchTests(object):
         oldrepo = self.open_git_repo(path)
         newrepo = self.clone_git_repo(path, "f")
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
-        self.assertEquals([revid], newrepo.all_revision_ids())
+        self.assertEqual([revid], newrepo.all_revision_ids())
 
     def test_single_rev_specific(self):
         path, gitsha = self.make_onerev_branch()
         oldrepo = self.open_git_repo(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newrepo = self.clone_git_repo(path, "f", revision_id=revid)
-        self.assertEquals([revid], newrepo.all_revision_ids())
+        self.assertEqual([revid], newrepo.all_revision_ids())
 
     def test_incremental(self):
         self.make_git_repo("d")
@@ -126,10 +126,10 @@ class RepositoryFetchTests(object):
         oldrepo = self.open_git_repo("d")
         revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
         newrepo = self.clone_git_repo("d", "f", revision_id=revid1)
-        self.assertEquals([revid1], newrepo.all_revision_ids())
+        self.assertEqual([revid1], newrepo.all_revision_ids())
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         newrepo.fetch(oldrepo, revision_id=revid2)
-        self.assertEquals(set([revid1, revid2]), set(newrepo.all_revision_ids()))
+        self.assertEqual(set([revid1, revid2]), set(newrepo.all_revision_ids()))
 
     def test_dir_becomes_symlink(self):
         self.make_git_repo("d")
@@ -149,12 +149,12 @@ class RepositoryFetchTests(object):
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree1 = newrepo.revision_tree(revid1)
         tree2 = newrepo.revision_tree(revid2)
-        self.assertEquals(revid1, tree1.get_file_revision("mylink"))
-        self.assertEquals("directory", tree1.kind("mylink"))
-        self.assertEquals(None, tree1.get_symlink_target("mylink"))
-        self.assertEquals(revid2, tree2.get_file_revision("mylink"))
-        self.assertEquals("symlink", tree2.kind("mylink"))
-        self.assertEquals("target/", tree2.get_symlink_target("mylink"))
+        self.assertEqual(revid1, tree1.get_file_revision("mylink"))
+        self.assertEqual("directory", tree1.kind("mylink"))
+        self.assertEqual(None, tree1.get_symlink_target("mylink"))
+        self.assertEqual(revid2, tree2.get_file_revision("mylink"))
+        self.assertEqual("symlink", tree2.kind("mylink"))
+        self.assertEqual("target/", tree2.get_symlink_target("mylink"))
 
     def test_symlink_becomes_dir(self):
         self.make_git_repo("d")
@@ -174,12 +174,12 @@ class RepositoryFetchTests(object):
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree1 = newrepo.revision_tree(revid1)
         tree2 = newrepo.revision_tree(revid2)
-        self.assertEquals(revid1, tree1.get_file_revision("mylink"))
-        self.assertEquals("symlink", tree1.kind("mylink"))
-        self.assertEquals("target/", tree1.get_symlink_target("mylink"))
-        self.assertEquals(revid2, tree2.get_file_revision("mylink"))
-        self.assertEquals("directory", tree2.kind("mylink"))
-        self.assertEquals(None, tree2.get_symlink_target("mylink"))
+        self.assertEqual(revid1, tree1.get_file_revision("mylink"))
+        self.assertEqual("symlink", tree1.kind("mylink"))
+        self.assertEqual("target/", tree1.get_symlink_target("mylink"))
+        self.assertEqual(revid2, tree2.get_file_revision("mylink"))
+        self.assertEqual("directory", tree2.kind("mylink"))
+        self.assertEqual(None, tree2.get_symlink_target("mylink"))
 
     def test_changing_symlink(self):
         self.make_git_repo("d")
@@ -199,10 +199,10 @@ class RepositoryFetchTests(object):
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree1 = newrepo.revision_tree(revid1)
         tree2 = newrepo.revision_tree(revid2)
-        self.assertEquals(revid1, tree1.get_file_revision("mylink"))
-        self.assertEquals("target", tree1.get_symlink_target("mylink"))
-        self.assertEquals(revid2, tree2.get_file_revision("mylink"))
-        self.assertEquals("target/", tree2.get_symlink_target("mylink"))
+        self.assertEqual(revid1, tree1.get_file_revision("mylink"))
+        self.assertEqual("target", tree1.get_symlink_target("mylink"))
+        self.assertEqual(revid2, tree2.get_file_revision("mylink"))
+        self.assertEqual("target/", tree2.get_symlink_target("mylink"))
 
     def test_executable(self):
         self.make_git_repo("d")
@@ -218,9 +218,9 @@ class RepositoryFetchTests(object):
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         tree = newrepo.revision_tree(revid)
         self.assertTrue(tree.has_filename("foobar"))
-        self.assertEquals(True, tree.is_executable("foobar"))
+        self.assertEqual(True, tree.is_executable("foobar"))
         self.assertTrue(tree.has_filename("notexec"))
-        self.assertEquals(False, tree.is_executable("notexec"))
+        self.assertEqual(False, tree.is_executable("notexec"))
 
     def test_becomes_executable(self):
         self.make_git_repo("d")
@@ -237,8 +237,8 @@ class RepositoryFetchTests(object):
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         tree = newrepo.revision_tree(revid)
         self.assertTrue(tree.has_filename("foobar"))
-        self.assertEquals(True, tree.is_executable("foobar"))
-        self.assertEquals(revid, tree.get_file_revision("foobar"))
+        self.assertEqual(True, tree.is_executable("foobar"))
+        self.assertEqual(revid, tree.get_file_revision("foobar"))
 
     def test_into_stacked_on(self):
         r = self.make_git_repo("d")
@@ -251,10 +251,10 @@ class RepositoryFetchTests(object):
         stacked_on = self.clone_git_repo("d", "stacked-on")
         oldrepo = Repository.open("d")
         revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
-        self.assertEquals([revid1], stacked_on.all_revision_ids())
+        self.assertEqual([revid1], stacked_on.all_revision_ids())
         b = stacked_on.controldir.create_branch()
         b.generate_revision_history(revid1)
-        self.assertEquals(b.last_revision(), revid1)
+        self.assertEqual(b.last_revision(), revid1)
         tree = self.make_branch_and_tree("stacked")
         tree.branch.set_stacked_on_url(b.user_url)
         os.chdir("d")
@@ -268,10 +268,10 @@ class RepositoryFetchTests(object):
         tree.branch.fetch(Branch.open("d"))
         tree.branch.repository.check()
         self.addCleanup(tree.lock_read().unlock)
-        self.assertEquals(
+        self.assertEqual(
             set([(revid2,)]),
             tree.branch.repository.revisions.without_fallbacks().keys())
-        self.assertEquals(
+        self.assertEqual(
             set([revid1, revid2]),
             set(tree.branch.repository.all_revision_ids()))
 
@@ -310,7 +310,7 @@ class RepositoryFetchTests(object):
         oldrepo = self.open_git_repo("d")
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newrepo = self.clone_git_repo("d", "f")
-        self.assertEquals(set([revid]), set(newrepo.all_revision_ids()))
+        self.assertEqual(set([revid]), set(newrepo.all_revision_ids()))
 
 
 class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
@@ -345,17 +345,17 @@ class ImportObjects(TestCaseWithTransport):
             base_inv, None, "somerevid", [], objs.__getitem__, 
             (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEquals(set([('git:bla', 'somerevid')]), self._texts.keys())
-        self.assertEquals(self._texts.get_record_stream([('git:bla', 'somerevid')],
+        self.assertEqual(set([('git:bla', 'somerevid')]), self._texts.keys())
+        self.assertEqual(self._texts.get_record_stream([('git:bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
-        self.assertEquals(1, len(ret)) 
-        self.assertEquals(None, ret[0][0])
-        self.assertEquals("bla", ret[0][1])
+        self.assertEqual(1, len(ret)) 
+        self.assertEqual(None, ret[0][0])
+        self.assertEqual("bla", ret[0][1])
         ie = ret[0][3]
-        self.assertEquals(False, ie.executable)
-        self.assertEquals("file", ie.kind)
-        self.assertEquals("somerevid", ie.revision)
-        self.assertEquals(osutils.sha_strings(["bar"]), ie.text_sha1)
+        self.assertEqual(False, ie.executable)
+        self.assertEqual("file", ie.kind)
+        self.assertEqual("somerevid", ie.revision)
+        self.assertEqual(osutils.sha_strings(["bar"]), ie.text_sha1)
 
     def test_import_tree_empty_root(self):
         base_inv = Inventory(root_id=None)
@@ -365,17 +365,17 @@ class ImportObjects(TestCaseWithTransport):
                None, "somerevid", [], {tree.id: tree}.__getitem__,
                (None, stat.S_IFDIR), DummyStoreUpdater(),
                self._mapping.generate_file_id)
-        self.assertEquals(child_modes, {})
-        self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
-        self.assertEquals(1, len(ret))
-        self.assertEquals(None, ret[0][0])
-        self.assertEquals("", ret[0][1])
+        self.assertEqual(child_modes, {})
+        self.assertEqual(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
+        self.assertEqual(1, len(ret))
+        self.assertEqual(None, ret[0][0])
+        self.assertEqual("", ret[0][1])
         ie = ret[0][3]
-        self.assertEquals(False, ie.executable)
-        self.assertEquals("directory", ie.kind)
-        self.assertEquals({}, ie.children)
-        self.assertEquals("somerevid", ie.revision)
-        self.assertEquals(None, ie.text_sha1)
+        self.assertEqual(False, ie.executable)
+        self.assertEqual("directory", ie.kind)
+        self.assertEqual({}, ie.children)
+        self.assertEqual("somerevid", ie.revision)
+        self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_empty(self):
         base_inv = Inventory()
@@ -385,76 +385,76 @@ class ImportObjects(TestCaseWithTransport):
            { tree.id: tree }.__getitem__,
            (None, stat.S_IFDIR), DummyStoreUpdater(),
            self._mapping.generate_file_id)
-        self.assertEquals(child_modes, {})
-        self.assertEquals(set([("git:bla", 'somerevid')]), self._texts.keys())
-        self.assertEquals(1, len(ret))
-        self.assertEquals(None, ret[0][0])
-        self.assertEquals("bla", ret[0][1])
+        self.assertEqual(child_modes, {})
+        self.assertEqual(set([("git:bla", 'somerevid')]), self._texts.keys())
+        self.assertEqual(1, len(ret))
+        self.assertEqual(None, ret[0][0])
+        self.assertEqual("bla", ret[0][1])
         ie = ret[0][3]
-        self.assertEquals("directory", ie.kind)
-        self.assertEquals(False, ie.executable)
-        self.assertEquals({}, ie.children)
-        self.assertEquals("somerevid", ie.revision)
-        self.assertEquals(None, ie.text_sha1)
+        self.assertEqual("directory", ie.kind)
+        self.assertEqual(False, ie.executable)
+        self.assertEqual({}, ie.children)
+        self.assertEqual("somerevid", ie.revision)
+        self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_with_file(self):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add("foo", stat.S_IFREG | 0644, blob.id)
+        tree.add("foo", stat.S_IFREG | 0o644, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEquals(child_modes, {})
-        self.assertEquals(2, len(ret))
-        self.assertEquals(None, ret[0][0])
-        self.assertEquals("bla", ret[0][1])
-        self.assertEquals(None, ret[1][0])
-        self.assertEquals("bla/foo", ret[1][1])
+        self.assertEqual(child_modes, {})
+        self.assertEqual(2, len(ret))
+        self.assertEqual(None, ret[0][0])
+        self.assertEqual("bla", ret[0][1])
+        self.assertEqual(None, ret[1][0])
+        self.assertEqual("bla/foo", ret[1][1])
         ie = ret[0][3]
-        self.assertEquals("directory", ie.kind)
+        self.assertEqual("directory", ie.kind)
         ie = ret[1][3]
-        self.assertEquals("file", ie.kind)
-        self.assertEquals("git:bla/foo", ie.file_id)
-        self.assertEquals("somerevid", ie.revision)
-        self.assertEquals(osutils.sha_strings(["bar1"]), ie.text_sha1)
-        self.assertEquals(False, ie.executable)
+        self.assertEqual("file", ie.kind)
+        self.assertEqual("git:bla/foo", ie.file_id)
+        self.assertEqual("somerevid", ie.revision)
+        self.assertEqual(osutils.sha_strings(["bar1"]), ie.text_sha1)
+        self.assertEqual(False, ie.executable)
 
     def test_import_tree_with_unusual_mode_file(self):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add("foo", stat.S_IFREG | 0664, blob.id)
+        tree.add("foo", stat.S_IFREG | 0o664, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping,
             "bla", "bla", (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEquals(child_modes, { "bla/foo": stat.S_IFREG | 0664 })
+        self.assertEqual(child_modes, { "bla/foo": stat.S_IFREG | 0o664 })
 
     def test_import_tree_with_file_exe(self):
         base_inv = Inventory(root_id=None)
         blob = Blob.from_string("bar")
         tree = Tree()
-        tree.add("foo", 0100755, blob.id)
+        tree.add("foo", 0o100755, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEquals(child_modes, {})
-        self.assertEquals(2, len(ret))
-        self.assertEquals(None, ret[0][0])
-        self.assertEquals("", ret[0][1])
-        self.assertEquals(None, ret[1][0])
-        self.assertEquals("foo", ret[1][1])
+        self.assertEqual(child_modes, {})
+        self.assertEqual(2, len(ret))
+        self.assertEqual(None, ret[0][0])
+        self.assertEqual("", ret[0][1])
+        self.assertEqual(None, ret[1][0])
+        self.assertEqual("foo", ret[1][1])
         ie = ret[0][3]
-        self.assertEquals("directory", ie.kind)
+        self.assertEqual("directory", ie.kind)
         ie = ret[1][3]
-        self.assertEquals("file", ie.kind)
-        self.assertEquals(True, ie.executable)
+        self.assertEqual("file", ie.kind)
+        self.assertEqual(True, ie.executable)
 
     def test_directory_converted_to_submodule(self):
         base_inv = Inventory()
@@ -463,15 +463,15 @@ class ImportObjects(TestCaseWithTransport):
         othertree = Blob.from_string("someotherthing")
         blob = Blob.from_string("bar")
         tree = Tree()
-        tree.add("bar", 0160000, blob.id)
+        tree.add("bar", 0o160000, blob.id)
         objects = { tree.id: tree }
         ret, child_modes = import_git_submodule(self._texts, self._mapping, "foo", "foo",
                 (tree.id, othertree.id), base_inv, base_inv.root.file_id, "somerevid", [],
-                objects.__getitem__, (stat.S_IFDIR | 0755, S_IFGITLINK), DummyStoreUpdater(),
+                objects.__getitem__, (stat.S_IFDIR | 0o755, S_IFGITLINK), DummyStoreUpdater(),
                 self._mapping.generate_file_id)
-        self.assertEquals(child_modes, {})
-        self.assertEquals(2, len(ret))
-        self.assertEquals(ret[0], ("foo/bar", None, base_inv.path2id("foo/bar"), None))
-        self.assertEquals(ret[1][:3], ("foo", "foo", self._mapping.generate_file_id("foo")))
+        self.assertEqual(child_modes, {})
+        self.assertEqual(2, len(ret))
+        self.assertEqual(ret[0], ("foo/bar", None, base_inv.path2id("foo/bar"), None))
+        self.assertEqual(ret[1][:3], ("foo", "foo", self._mapping.generate_file_id("foo")))
         ie = ret[1][3]
-        self.assertEquals(ie.kind, "tree-reference")
+        self.assertEqual(ie.kind, "tree-reference")

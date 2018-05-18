@@ -49,8 +49,8 @@ class RevisionPristineTarDataTests(TestCase):
 
     def test_pristine_tar_delta_gz(self):
         rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
-        self.assertEquals(("bla", "gz"), revision_pristine_tar_data(rev))
+        rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
+        self.assertEqual((b"bla", "gz"), revision_pristine_tar_data(rev))
 
 
 class ReadPristineTarData(TestCase):
@@ -65,7 +65,7 @@ class ReadPristineTarData(TestCase):
         t = Tree()
         b = Blob.from_string("README")
         r.object_store.add_object(b)
-        t.add("README", stat.S_IFREG | 0644, b.id)
+        t.add("README", stat.S_IFREG | 0o644, b.id)
         r.object_store.add_object(t)
         r.do_commit("Add README", tree=t.id,
                     ref='refs/heads/pristine-tar')
@@ -74,18 +74,18 @@ class ReadPristineTarData(TestCase):
 
     def test_read_pristine_tar_data(self):
         r = GitMemoryRepo()
-        delta = Blob.from_string("some yummy data")
+        delta = Blob.from_string(b"some yummy data")
         r.object_store.add_object(delta)
-        idfile = Blob.from_string("someid")
+        idfile = Blob.from_string(b"someid")
         r.object_store.add_object(idfile)
         t = Tree()
-        t.add("foo.delta", stat.S_IFREG | 0644, delta.id)
-        t.add("foo.id", stat.S_IFREG | 0644, idfile.id)
+        t.add(b"foo.delta", stat.S_IFREG | 0o644, delta.id)
+        t.add(b"foo.id", stat.S_IFREG | 0o644, idfile.id)
         r.object_store.add_object(t)
-        r.do_commit("pristine tar delta for foo", tree=t.id,
-                    ref='refs/heads/pristine-tar')
-        self.assertEquals(
-            ("some yummy data", "someid"),
+        r.do_commit(b"pristine tar delta for foo", tree=t.id,
+                    ref=b'refs/heads/pristine-tar')
+        self.assertEqual(
+            (b"some yummy data", b"someid"),
             read_git_pristine_tar_data(r, 'foo'))
 
 
@@ -95,12 +95,12 @@ class StoreGitPristineTarData(TestCase):
         r = GitMemoryRepo()
         cid = store_git_pristine_tar_data(r, "foo", "mydelta", "myid")
         tree = get_pristine_tar_tree(r)
-        self.assertEquals(
-            (stat.S_IFREG | 0644, "7b02de8ac4162e64f402c43487d8a40a505482e1"),
+        self.assertEqual(
+            (stat.S_IFREG | 0o644, "7b02de8ac4162e64f402c43487d8a40a505482e1"),
             tree["README"])
-        self.assertEquals(r[cid].tree, tree.id)
-        self.assertEquals(r[tree["foo.delta"][1]].data, "mydelta")
-        self.assertEquals(r[tree["foo.id"][1]].data, "myid")
+        self.assertEqual(r[cid].tree, tree.id)
+        self.assertEqual(r[tree["foo.delta"][1]].data, "mydelta")
+        self.assertEqual(r[tree["foo.id"][1]].data, "myid")
 
-        self.assertEquals(("mydelta", "myid"),
+        self.assertEqual(("mydelta", "myid"),
             read_git_pristine_tar_data(r, "foo"))

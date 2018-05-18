@@ -19,7 +19,7 @@
 from __future__ import absolute_import
 
 from collections import defaultdict
-from cStringIO import StringIO
+from io import BytesIO
 
 from ... import (
     errors,
@@ -38,30 +38,30 @@ class UnpeelMap(object):
         self._re_map = {}
 
     def update(self, m):
-        for k, v in m.iteritems():
+        for k, v in m.items():
             self._map[k].update(v)
             for i in v:
                 self._re_map[i] = k
 
     def load(self, f):
         firstline = f.readline()
-        if firstline != "unpeel map version 1\n":
+        if firstline != b"unpeel map version 1\n":
             raise AssertionError("invalid format for unpeel map: %r" % firstline)
         for l in f.readlines():
-            (k, v) = l.split(":", 1)
+            (k, v) = l.split(b":", 1)
             k = k.strip()
             v = v.strip()
             self._map[k].add(v)
             self._re_map[v] = k
 
     def save(self, f):
-        f.write("unpeel map version 1\n")
-        for k, vs in self._map.iteritems():
+        f.write(b"unpeel map version 1\n")
+        for k, vs in self._map.items():
             for v in vs:
-                f.write("%s: %s\n" % (k, v))
+                f.write(b"%s: %s\n" % (k, v))
 
     def save_in_repository(self, repository):
-        f = StringIO()
+        f = BytesIO()
         try:
             self.save(f)
             f.seek(0)
