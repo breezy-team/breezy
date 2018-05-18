@@ -1,16 +1,13 @@
 This package was debianized by James Westby <jw+debian@jameswestby.net> on
 Thu, 03 Aug 2006 19:22:20 +0100.
 
-The original source can always be found at:
-        ftp://ftp.debian.org/dists/unstable/main/source/
-
 Upstream Author: James Westby <jw+debian@jameswestby.net>
 
 Copyright: 2005 Jamie Wilkinson <jaq@debian.org>
            2006, 2007 James Westby <jw+debian@jameswestby.net>
            2007 Reinhard Tartler <siretart@tauware.de>
            2008 Canonical Ltd.
-           2008-2017 Jelmer Vernooĳ <jelmer@jelmer.uk>
+           2008-2018 Jelmer Vernooĳ <jelmer@jelmer.uk>
 
 License:
 
