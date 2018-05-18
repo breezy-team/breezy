@@ -1,4 +1,4 @@
-breezy-debian (2.8.13) UNRELEASED; urgency=medium
+breezy-debian (2.8.13) unstable; urgency=medium
 
   * Add dependency on python-dulwich. Closes: #899008
   * Remove obsolete URL from debian/copyright.
