@@ -1,2 +1,2 @@
-brz-debian source: quilt-build-dep-but-no-series-file
-brz-debian source: patch-system-but-no-source-readme
+breezy-debian source: quilt-build-dep-but-no-series-file
+breezy-debian source: patch-system-but-no-source-readme

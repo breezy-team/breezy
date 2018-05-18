@@ -3,6 +3,7 @@ breezy-debian (2.8.13) UNRELEASED; urgency=medium
   * Add dependency on python-dulwich. Closes: #899008
   * Remove obsolete URL from debian/copyright.
   * Change Vcs-Bzr URL to launchpad.
+  * debian/source/lintian-overrides: Fix source package name.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 18 May 2018 16:40:12 +0100
 
