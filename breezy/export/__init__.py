@@ -104,10 +104,10 @@ def get_stream_export_generator(tree, name=None, format=None, root=None,
 
     if format is None:
         # Default to tar
-        format = 'tar'
+        format = 'dir'
 
-    if format == 'dir':
-        # 'dir' is special, and doesn't stream.
+    if format in ('dir', 'tlzma', 'txz'):
+        # formats that don't support streaming
         raise errors.NoSuchExportFormat(format)
 
     if format not in _exporters:
