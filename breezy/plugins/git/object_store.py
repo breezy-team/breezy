@@ -200,7 +200,7 @@ def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes, empty_file_
     if not allow_empty and len(tree) == 0:
         # Only the root can be an empty tree
         if empty_file_name is not None:
-            tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
+            tree.add(empty_file_name, stat.S_IFREG | 0o644, Blob().id)
         else:
             return None
     return tree
@@ -527,7 +527,7 @@ class BazaarObjectStore(BaseObjectStore):
             b = self._create_fileid_map_blob(tree)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
-                    (stat.S_IFREG | 0644), b.id)
+                    (stat.S_IFREG | 0o644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b
         if add_cache_entry is not None:
             add_cache_entry(root_tree, root_key_data, "")
@@ -632,7 +632,7 @@ class BazaarObjectStore(BaseObjectStore):
             b = self._create_fileid_map_blob(bzr_tree)
             # If this is the root tree, add the file ids
             tree[self.mapping.BZR_FILE_IDS_FILE] = (
-                (stat.S_IFREG | 0644), b.id)
+                (stat.S_IFREG | 0o644), b.id)
         if tree is not None:
             _check_expected_sha(expected_sha, tree)
         return tree

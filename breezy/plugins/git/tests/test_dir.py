@@ -42,7 +42,7 @@ class TestGitDir(tests.TestCaseInTempDir):
         GitRepo.init(".")
 
         gd = controldir.ControlDir.open('.')
-        self.assertEquals(
+        self.assertEqual(
             "%s,branch=master" %
                 urlutils.local_path_to_url(os.path.abspath(".")),
             gd.get_branch_reference())
@@ -83,13 +83,13 @@ class TestGitDirFormat(tests.TestCase):
         self.format = dir.LocalGitControlDirFormat()
 
     def test_get_format_description(self):
-        self.assertEquals("Local Git Repository",
+        self.assertEqual("Local Git Repository",
                           self.format.get_format_description())
 
     def test_eq(self):
         format2 = dir.LocalGitControlDirFormat()
-        self.assertEquals(self.format, format2)
-        self.assertEquals(self.format, self.format)
+        self.assertEqual(self.format, format2)
+        self.assertEqual(self.format, self.format)
         bzr_format = controldir.format_registry.make_controldir("default")
         self.assertNotEqual(self.format, bzr_format)
 

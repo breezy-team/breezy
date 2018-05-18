@@ -58,7 +58,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
             to_fetch.append((tp, (dp, tp, ie.file_id)))
-        elif ie.kind == "directory":
+        elif ie.kind in ("directory", "tree-reference"):
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
