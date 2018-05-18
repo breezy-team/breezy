@@ -653,6 +653,20 @@ class Tree(object):
         searcher = default_searcher
         return searcher
 
+    def archive(self, name, format=None, root=None, subdir=None):
+        """Create an archive of this tree.
+
+        :param name: target file name
+        :param format: Format name (e.g. 'tar')
+        :param root: Root directory name (or None)
+        :param subdir: Subdirectory to export (or None)
+        :return: Iterator over archive chunks
+        """
+        with self.lock_read():
+            from .export import get_stream_export_generator
+            return get_stream_export_generator(self, name, format, root or '',
+                    subdir or '')
+
     @classmethod
     def versionable_kind(cls, kind):
         """Check if this tree support versioning a specific file kind."""

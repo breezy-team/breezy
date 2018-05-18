@@ -137,16 +137,12 @@ def tgz_exporter_generator(tree, dest, root, subdir, force_mtime=None,
         is_stdout = True
     else:
         stream = open(dest, 'wb')
-        # gzip file is used with an explicit fileobj so that
-        # the basename can be stored in the gzip file rather than
-        # dest. (bug 102234)
-        basename = os.path.basename(dest)
-    try:
-        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream,
-                                  mtime=root_mtime)
-    except TypeError:
-        # Python < 2.7 doesn't support the mtime argument
-        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
+    # gzip file is used with an explicit fileobj so that
+    # the basename can be stored in the gzip file rather than
+    # dest. (bug 102234)
+    basename = os.path.basename(dest)
+    zipstream = gzip.GzipFile(basename, 'w', fileobj=stream,
+                              mtime=root_mtime)
     ball = tarfile.open(None, 'w|', fileobj=zipstream)
     for _ in export_tarball_generator(
         tree, ball, root, subdir, force_mtime):
@@ -170,12 +166,7 @@ def tbz_exporter_generator(tree, dest, root, subdir,
     elif dest == '-':
         ball = tarfile.open(None, 'w|bz2', sys.stdout)
     else:
-        # tarfile.open goes on to do 'os.getcwd() + dest' for opening the
-        # tar file. With dest being unicode, this throws UnicodeDecodeError
-        # unless we encode dest before passing it on. This works around
-        # upstream python bug http://bugs.python.org/issue8396 (fixed in
-        # Python 2.6.5 and 2.7b1)
-        ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:bz2')
+        ball = tarfile.open(dest, 'w:bz2')
     return export_tarball_generator(
         tree, ball, root, subdir, force_mtime)
 

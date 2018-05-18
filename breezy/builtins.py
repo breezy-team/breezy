@@ -3327,6 +3327,16 @@ class cmd_export(Command):
             export_tree = tree
         else:
             export_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
+        # Try asking the tree first..
+        if not filters and not per_file_timestamps:
+            try:
+                with open(dest, 'wb') as outf:
+                    outf.writelines(export_tree.archive(
+                        dest, format, root=root, subdir=subdir))
+            except errors.NoSuchExportFormat:
+                pass
+            else:
+                return
         try:
             export(export_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
