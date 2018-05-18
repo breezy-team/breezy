@@ -61,6 +61,8 @@ from ..versionedfile import (
     record_to_fulltext_bytes,
     )
 
+CHUNK_SIZE = 0x10000
+
 
 class SmartServerRepositoryRequest(SmartServerRequest):
     """Common base class for Repository requests."""
@@ -1292,3 +1294,28 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
         self._ordering = ordering
         # Signal that we want a body
         return None
+
+
+class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id, name, format,
+                             root, subdir):
+        """Stream an archive file for a specific revision.
+
+        :param repository: The repository to stream from.
+        :param revision_id: Revision for which to export the tree
+        :param name: Target file name
+        :param format: Format (tar, tgz, tbz2, etc)
+        :param root: Name of root directory (or '')
+        :param subdir: Subdirectory to export, if not the root
+        """
+        tree = repository.revision_tree(revision_id)
+        if not format:
+            format = None
+        return SuccessfulSmartServerResponse((b'ok',),
+            body_stream=self.body_stream(
+                tree, os.path.basename(name), format, root, subdir))
+
+    def body_stream(self, tree, name, format, root, subdir):
+        with tree.lock_read():
+            return tree.archive(name, format, root, subdir)

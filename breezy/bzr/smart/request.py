@@ -776,6 +776,9 @@ request_handlers.register_lazy(
     b'Repository.reconcile', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryReconcile', info='idem')
 request_handlers.register_lazy(
+    b'Repository.revision_archive', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryRevisionArchive', info='read')
+request_handlers.register_lazy(
     b'Repository.tarball', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryTarball', info='read')
 request_handlers.register_lazy(
