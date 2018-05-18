@@ -1,3 +1,9 @@
+breezy-debian (2.8.13) UNRELEASED; urgency=medium
+
+  * Add dependency on python-dulwich. Closes: #899008
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 18 May 2018 16:40:12 +0100
+
 breezy-debian (2.8.12) unstable; urgency=medium
 
   * Skip GPG signatures when looking for tarballs.
