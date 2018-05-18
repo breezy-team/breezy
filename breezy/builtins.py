@@ -3327,8 +3327,13 @@ class cmd_export(Command):
             export_tree = tree
         else:
             export_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
+
+        if filters:
+            from breezy.filter_tree import ContentFilterTree
+            export_tree = ContentFilterTree(export_tree, export_tree._content_filter_stack)
+
         # Try asking the tree first..
-        if not filters and not per_file_timestamps:
+        if not per_file_timestamps:
             try:
                 with open(dest, 'wb') as outf:
                     outf.writelines(export_tree.archive(
@@ -3338,7 +3343,7 @@ class cmd_export(Command):
             else:
                 return
         try:
-            export(export_tree, dest, format, root, subdir, filtered=filters,
+            export(export_tree, dest, format, root, subdir,
                    per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat as e:
             raise errors.BzrCommandError(
