@@ -106,12 +106,17 @@ def get_stream_export_generator(tree, name=None, format=None, root=None,
         # Default to tar
         format = 'dir'
 
-    if format in ('dir', 'tlzma', 'txz'):
+    if format in ('dir', 'tlzma', 'txz', 'tbz2'):
         # formats that don't support streaming
         raise errors.NoSuchExportFormat(format)
 
     if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
+
+    # Most of the exporters will just have to call
+    # this function anyway, so why not do it for them
+    if root is None:
+        root = get_root_name(name)
 
     if not per_file_timestamps:
         force_mtime = time.time()
@@ -123,7 +128,7 @@ def get_stream_export_generator(tree, name=None, format=None, root=None,
     with tempfile.NamedTemporaryFile() as temp:
         with tree.lock_read():
             for _ in _exporters[format](
-                tree, os.path.basename(name) if name else None, root, subdir,
+                tree, name, root, subdir,
                 force_mtime=force_mtime, fileobj=temp.file):
                 pos = temp.tell()
                 temp.seek(oldpos)

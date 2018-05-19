@@ -664,8 +664,8 @@ class Tree(object):
         """
         with self.lock_read():
             from .export import get_stream_export_generator
-            return get_stream_export_generator(self, name, format, root or '',
-                    subdir or '')
+            return get_stream_export_generator(self, name, format, root,
+                    subdir)
 
     @classmethod
     def versionable_kind(cls, kind):
