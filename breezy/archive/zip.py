@@ -28,7 +28,7 @@ import zipfile
 from .. import (
     osutils,
     )
-from ..export import _export_iter_entries
+from ..archive import _export_iter_entries
 from ..trace import mutter
 
 
@@ -42,7 +42,7 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_exporter_generator(tree, dest, root, subdir=None,
+def zip_archive_generator(tree, dest, root, subdir=None,
     force_mtime=None, fileobj=None):
     """ Export this tree to a new zip file.
 

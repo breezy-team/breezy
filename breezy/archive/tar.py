@@ -26,7 +26,7 @@ from .. import (
     errors,
     osutils,
     )
-from ..export import _export_iter_entries
+from ..archive import _export_iter_entries
 from ..sixish import (
     BytesIO,
     )
@@ -108,7 +108,7 @@ def export_tarball_generator(tree, ball, root, subdir=None, force_mtime=None):
         ball.close()
 
 
-def tgz_exporter_generator(tree, dest, root, subdir, force_mtime=None,
+def tgz_archive_generator(tree, dest, root, subdir, force_mtime=None,
     fileobj=None):
     """Export this tree to a new tar file.
 
@@ -154,7 +154,7 @@ def tgz_exporter_generator(tree, dest, root, subdir, force_mtime=None,
         stream.close()
 
 
-def tbz_exporter_generator(tree, dest, root, subdir,
+def tbz_archive_generator(tree, dest, root, subdir,
                            force_mtime=None, fileobj=None):
     """Export this tree to a new tar file.
 
@@ -171,7 +171,7 @@ def tbz_exporter_generator(tree, dest, root, subdir,
         tree, ball, root, subdir, force_mtime)
 
 
-def plain_tar_exporter_generator(tree, dest, root, subdir, compression=None,
+def plain_tar_archive_generator(tree, dest, root, subdir, compression=None,
     force_mtime=None, fileobj=None):
     """Export this tree to a new tar file.
 
@@ -189,13 +189,13 @@ def plain_tar_exporter_generator(tree, dest, root, subdir, compression=None,
         tree, ball, root, subdir, force_mtime)
 
 
-def tar_xz_exporter_generator(tree, dest, root, subdir,
+def tar_xz_archive_generator(tree, dest, root, subdir,
                               force_mtime=None, fileobj=None):
-    return tar_lzma_exporter_generator(tree, dest, root, subdir,
+    return tar_lzma_archive_generator(tree, dest, root, subdir,
                                        force_mtime, fileobj, "xz")
 
 
-def tar_lzma_exporter_generator(tree, dest, root, subdir,
+def tar_lzma_archive_generator(tree, dest, root, subdir,
                       force_mtime=None, fileobj=None,
                                 compression_format="alone"):
     """Export this tree to a new .tar.lzma file.

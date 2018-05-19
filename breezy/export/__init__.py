@@ -24,51 +24,11 @@ import time
 import warnings
 
 from .. import (
+    archive,
     errors,
     pyutils,
     trace,
     )
-
-# Maps format name => export function
-_exporters = {}
-# Maps filename extensions => export format name
-_exporter_extensions = {}
-
-
-def register_exporter(format, extensions, func, override=False):
-    """Register an exporter.
-
-    :param format: This is the name of the format, such as 'tgz' or 'zip'
-    :param extensions: Extensions which should be used in the case that a
-                       format was not explicitly specified.
-    :type extensions: List
-    :param func: The function. It will be called with (tree, dest, root)
-    :param override: Whether to override an object which already exists.
-                     Frequently plugins will want to provide functionality
-                     until it shows up in mainline, so the default is False.
-    """
-    global _exporters, _exporter_extensions
-
-    if (format not in _exporters) or override:
-        _exporters[format] = func
-
-    for ext in extensions:
-        if (ext not in _exporter_extensions) or override:
-            _exporter_extensions[ext] = format
-
-
-def register_lazy_exporter(scheme, extensions, module, funcname):
-    """Register lazy-loaded exporter function.
-
-    When requesting a specific type of export, load the respective path.
-    """
-    def _loader(tree, dest, root, subdir, force_mtime, fileobj):
-        func = pyutils.get_named_object(module, funcname)
-        return func(tree, dest, root, subdir, force_mtime=force_mtime,
-            fileobj=fileobj)
-
-    register_exporter(scheme, extensions, _loader)
-
 
 def get_stream_export_generator(tree, name=None, format=None, root=None,
         subdir=None, per_file_timestamps=False):
@@ -100,7 +60,7 @@ def get_stream_export_generator(tree, name=None, format=None, root=None,
     global _exporters
 
     if format is None and name is not None:
-        format = get_format_from_filename(name)
+        format = archive.format_registry.get_format_from_filename(name)
 
     if format is None:
         # Default to tar
@@ -143,14 +103,6 @@ def get_stream_export_generator(tree, name=None, format=None, root=None,
                 yield temp.read()
 
 
-def get_format_from_filename(name):
-    global _exporter_extensions
-
-    for ext in _exporter_extensions:
-        if name.endswith(ext):
-            return _exporter_extensions[ext]
-
-
 def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
                          per_file_timestamps=False, fileobj=None):
     """Returns a generator that exports the given tree.
@@ -183,7 +135,7 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
     global _exporters
 
     if format is None and dest is not None:
-        format = get_format_from_filename(dest)
+        format = archive.format_registry.get_format_from_filename(dest)
 
     if format is None:
         # Default to 'dir'
@@ -295,16 +247,3 @@ def _export_iter_entries(tree, subdir, skip_special=True):
 
 register_lazy_exporter('dir', [], 'breezy.export.dir_exporter',
                        'dir_exporter_generator')
-register_lazy_exporter('tar', ['.tar'], 'breezy.export.tar_exporter',
-                       'plain_tar_exporter_generator')
-register_lazy_exporter('tgz', ['.tar.gz', '.tgz'],
-                       'breezy.export.tar_exporter',
-                       'tgz_exporter_generator')
-register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'],
-                       'breezy.export.tar_exporter', 'tbz_exporter_generator')
-register_lazy_exporter('tlzma', ['.tar.lzma'], 'breezy.export.tar_exporter',
-                       'tar_lzma_exporter_generator')
-register_lazy_exporter('txz', ['.tar.xz'], 'breezy.export.tar_exporter',
-                       'tar_xz_exporter_generator')
-register_lazy_exporter('zip', ['.zip'], 'breezy.export.zip_exporter',
-                       'zip_exporter_generator')
