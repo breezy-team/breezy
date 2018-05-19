@@ -4,8 +4,6 @@ addons:
     update: true
 sudo: false
 cache: pip
-git:
-  depth: false
 
 python:
   - 3.5
