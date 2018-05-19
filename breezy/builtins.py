@@ -3344,9 +3344,10 @@ class cmd_export(Command):
                 if dest == '-':
                     self.outf.writelines(chunks)
                 else:
-                    with open(dest + '.tmp', 'wb') as outf:
-                        outf.writelines(chunks)
-                    os.rename(dest + '.tmp', dest)
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(delete=False) as temp:
+                        temp.writelines(chunks)
+                    os.rename(temp.name, dest)
             except errors.NoSuchExportFormat:
                 pass
             else:
