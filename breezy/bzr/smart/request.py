@@ -469,6 +469,8 @@ def _translate_error(err):
         return (b'TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return (b'LockContention',)
+    elif isinstance(err, errors.GhostRevisionsHaveNoRevno):
+        return (b'GhostRevisionsHaveNoRevno', err.revision_id, err.ghost_revision_id)
     elif isinstance(err, MemoryError):
         # GZ 2011-02-24: Copy breezy.trace -Dmem_dump functionality here?
         return (b'MemoryError',)

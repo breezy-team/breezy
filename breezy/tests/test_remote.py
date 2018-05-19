@@ -3749,6 +3749,12 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
             "details here")
         self.assertEqual(expected_error, translated_error)
 
+    def test_GhostRevisionsHaveNoRevno(self):
+        translated_error = self.translateTuple((b'GhostRevisionsHaveNoRevno',
+            b"revid1", b"revid2"))
+        expected_error = errors.GhostRevisionsHaveNoRevno(b"revid1", b"revid2")
+        self.assertEqual(expected_error, translated_error)
+
     def test_PermissionDenied_no_args(self):
         path = 'a path'
         translated_error = self.translateTuple((b'PermissionDenied',),
