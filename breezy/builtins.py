@@ -3289,6 +3289,7 @@ class cmd_export(Command):
       =================       =========================
     """
     encoding = 'exact'
+    encoding_type = 'exact'
     takes_args = ['dest', 'branch_or_subdir?']
     takes_options = ['directory',
         Option('format',
@@ -3326,18 +3327,26 @@ class cmd_export(Command):
                     gettext("--uncommitted requires a working tree"))
             export_tree = tree
         else:
-            export_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
+            export_tree = _get_one_revision_tree(
+                    'export', revision, branch=b,
+                    tree=tree)
 
         if filters:
             from breezy.filter_tree import ContentFilterTree
-            export_tree = ContentFilterTree(export_tree, export_tree._content_filter_stack)
+            export_tree = ContentFilterTree(
+                    export_tree, export_tree._content_filter_stack)
 
         # Try asking the tree first..
         if not per_file_timestamps:
+            chunks = export_tree.archive(
+                dest, format, root=root, subdir=subdir)
             try:
-                with open(dest, 'wb') as outf:
-                    outf.writelines(export_tree.archive(
-                        dest, format, root=root, subdir=subdir))
+                if dest == '-':
+                    self.outf.writelines(chunks)
+                else:
+                    with open(dest + '.tmp', 'wb') as outf:
+                        outf.writelines(chunks)
+                    os.rename(dest + '.tmp', dest)
             except errors.NoSuchExportFormat:
                 pass
             else:
