@@ -100,6 +100,7 @@ def tarball_generator(tree, root, subdir=None, force_mtime=None, format=''):
             (item, fileobj) = prepare_tarball_item(
                 tree, root, final_path, tree_path, entry, force_mtime)
             ball.addfile(item, fileobj)
+            # Yield the data that was written so far, rinse, repeat.
             yield buf.getvalue()
             buf.truncate(0)
             buf.seek(0)
@@ -138,6 +139,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
         for chunk in tarball_generator(
             tree, root, subdir, force_mtime):
             zipstream.write(chunk)
+            # Yield the data that was written so far, rinse, repeat.
             yield buf.getvalue()
             buf.truncate(0)
             buf.seek(0)

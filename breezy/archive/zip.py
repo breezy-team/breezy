@@ -39,7 +39,6 @@ from ..trace import mutter
 ZIP_DIRECTORY_BIT = (1 << 4)
 FILE_PERMISSIONS = (0o644 << 16)
 DIR_PERMISSIONS = (0o755 << 16)
-CHUNK_SIZE = 16384
 
 _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
@@ -96,7 +95,5 @@ def zip_archive_generator(tree, dest, root, subdir=None,
         # Urgh, headers are written last since they include e.g. file size.
         # So we have to buffer it all :(
         buf.seek(0)
-        chunk = buf.read(CHUNK_SIZE)
-        while chunk:
+        for chunk in osutils.file_iterator(buf):
             yield chunk
-            chunk = buf.read(CHUNK_SIZE)

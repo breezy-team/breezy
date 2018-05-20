@@ -665,8 +665,8 @@ class Tree(object):
             for each file to the last changed time.
         :return: Iterator over archive chunks
         """
+        from .archive import create_archive
         with self.lock_read():
-            from .archive import create_archive
             return create_archive(format, self, name, root,
                     subdir, force_mtime=force_mtime)
 
