@@ -27,7 +27,7 @@ from .. import (
     tests,
     )
 from ..export import get_root_name
-from ..export.tar_exporter import export_tarball_generator
+from ..archive.tar import tarball_generator
 from ..sixish import (
     BytesIO,
     )
@@ -250,24 +250,14 @@ class TarExporterTests(tests.TestCaseWithTransport):
         tf = tarfile.open('target.tar.bz2')
         self.assertEqual(["target/a"], tf.getnames())
 
-    def test_xz_stdout(self):
-        wt = self.make_branch_and_tree('.')
-        self.assertRaises(errors.BzrError, export.export, wt, '-',
-            format="txz")
-
     def test_export_tarball_generator(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         wt.add(["a"])
         wt.commit("1", timestamp=42)
         target = BytesIO()
-        ball = tarfile.open(None, "w|", target)
-        wt.lock_read()
-        try:
-            for _ in export_tarball_generator(wt, ball, "bar"):
-                pass
-        finally:
-            wt.unlock()
+        with wt.lock_read():
+            target.writelines(tarball_generator(wt, "bar"))
         # Ball should now be closed.
         target.seek(0)
         ball2 = tarfile.open(None, "r", target)

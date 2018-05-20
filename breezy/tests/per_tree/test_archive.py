@@ -41,10 +41,10 @@ class ArchiveTests(object):
         tree_a = self.workingtree_to_test_tree(work_a)
         output_path = 'output'
         with open(output_path, 'wb') as f:
-            f.writelines(tree_a.archive(output_path, format=self.format))
+            f.writelines(tree_a.archive(self.format, output_path))
         names = self.get_export_names(output_path)
-        self.assertIn('output/file', names)
-        self.assertIn('output/dir', names)
+        self.assertIn('file', names)
+        self.assertIn('dir', names)
 
     def test_export_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -55,9 +55,9 @@ class ArchiveTests(object):
         tree_a = self.workingtree_to_test_tree(work_a)
         output_path = 'output'
         with open(output_path, 'wb') as f:
-            f.writelines(tree_a.archive(output_path, format=self.format))
+            f.writelines(tree_a.archive(self.format, output_path))
         names = self.get_export_names(output_path)
-        self.assertIn('output/link', names)
+        self.assertIn('link', names)
 
     def get_output_names(self, path):
         raise NotImplementedError(self.get_output_names)
@@ -107,9 +107,9 @@ class TestZip(ArchiveTests, TestCaseWithTree):
         tree_a = self.workingtree_to_test_tree(work_a)
         output_path = 'output'
         with open(output_path, 'wb') as f:
-            f.writelines(tree_a.archive(output_path, format=self.format))
+            f.writelines(tree_a.archive(self.format, output_path))
         names = self.get_export_names(output_path)
-        self.assertIn('output/link.lnk', names)
+        self.assertIn('link.lnk', names)
 
 
 class GenericArchiveTests(TestCaseWithTree):
@@ -126,4 +126,4 @@ class GenericArchiveTests(TestCaseWithTree):
         self.assertRaises(
                 errors.NoSuchExportFormat,
                 list,
-                tree_a.archive('foo', format='dir'))
+                tree_a.archive('dir', 'foo'))

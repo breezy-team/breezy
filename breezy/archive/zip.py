@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import
 
+from contextlib import closing
+from io import BytesIO
 import os
 import stat
 import sys
@@ -28,7 +30,7 @@ import zipfile
 from .. import (
     osutils,
     )
-from ..archive import _export_iter_entries
+from ..export import _export_iter_entries
 from ..trace import mutter
 
 
@@ -43,20 +45,15 @@ _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
 def zip_archive_generator(tree, dest, root, subdir=None,
-    force_mtime=None, fileobj=None):
+    force_mtime=None):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be overwritten".
     """
-
     compression = zipfile.ZIP_DEFLATED
-    if fileobj is not None:
-        dest = fileobj
-    elif dest == "-":
-        dest = sys.stdout
-    zipf = zipfile.ZipFile(dest, "w", compression)
-    try:
+    buf = BytesIO()
+    with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, tree.lock_read():
         for dp, tp, ie in _export_iter_entries(tree, subdir):
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
@@ -94,12 +91,7 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, tree.get_symlink_target(tp, file_id))
-            yield
-
-        zipf.close()
-
-    except UnicodeEncodeError:
-        zipf.close()
-        os.remove(dest)
-        from breezy.errors import BzrError
-        raise BzrError("Can't export non-ascii filenames to zip")
+            yield buf.getvalue()
+            buf.truncate(0)
+            buf.seek(0)
+    yield buf.getvalue()

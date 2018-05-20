@@ -41,7 +41,12 @@ class ArchiveFormatRegistry(registry.Registry):
     """Registry of archive formats."""
 
     def __init__(self):
-        super(ArchiveFormatRegistry, self)._extension_map = {}
+        self._extension_map = {}
+        super(ArchiveFormatRegistry, self).__init__()
+
+    @property
+    def extensions(self):
+        return self._extension_map.keys()
 
     def register(self, key, factory, extensions, help=None):
         """Register an archive format.
@@ -66,23 +71,33 @@ class ArchiveFormatRegistry(registry.Registry):
         :param filename: Filename to guess from
         :return: A format name, or None
         """
-        for ext, format in self.extensions.items():
+        for ext, format in self._extension_map.items():
             if filename.endswith(ext):
                 return format
         else:
             return None
 
 
+def create_archive(format, tree, name, root=None, subdir=None,
+                   force_mtime=None):
+    try:
+        archive_fn = format_registry.get(format)
+    except KeyError:
+        raise errors.NoSuchExportFormat(format)
+    return archive_fn(tree, name, root=root, subdir=subdir,
+                      force_mtime=force_mtime)
+
+
 format_registry = ArchiveFormatRegistry()
 format_registry.register_lazy('tar', 'breezy.archive.tar',
-                              'plain_tar_archive_generator', ['.tar'], )
+                              'plain_tar_generator', ['.tar'], )
 format_registry.register_lazy('tgz', 'breezy.archive.tar',
-                              'tgz_archive_generator', ['.tar.gz', '.tgz'])
+                              'tgz_generator', ['.tar.gz', '.tgz'])
 format_registry.register_lazy('tbz2', 'breezy.archive.tar',
-                              'tbz_archive_generator',  ['.tar.bz2', '.tbz2'])
+                              'tbz_generator',  ['.tar.bz2', '.tbz2'])
 format_registry.register_lazy('tlzma', 'breezy.archive.tar',
-                              'tar_lzma_archive_generator', ['.tar.lzma'])
+                              'tar_lzma_generator', ['.tar.lzma'])
 format_registry.register_lazy('txz', 'breezy.archive.tar',
-                              'tar_xz_archive_generator', ['.tar.xz'])
+                              'tar_xz_generator', ['.tar.xz'])
 format_registry.register_lazy('zip', 'breezy.archive.zip',
                               'zip_archive_generator', ['.zip'])

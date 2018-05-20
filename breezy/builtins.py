@@ -3311,7 +3311,7 @@ class cmd_export(Command):
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
         root=None, filters=False, per_file_timestamps=False, uncommitted=False,
         directory=u'.'):
-        from .export import export
+        from .export import export, guess_format, get_root_name
 
         if branch_or_subdir is None:
             branch_or_subdir = directory
@@ -3331,15 +3331,27 @@ class cmd_export(Command):
                     'export', revision, branch=b,
                     tree=tree)
 
+        if format is None:
+            format = guess_format(dest)
+
+        if root is None:
+            root = get_root_name(dest)
+
+        if not per_file_timestamps:
+            force_mtime = time.time()
+        else:
+            force_mtime = None
+
         if filters:
             from breezy.filter_tree import ContentFilterTree
             export_tree = ContentFilterTree(
                     export_tree, export_tree._content_filter_stack)
 
-        # Try asking the tree first..
-        if not per_file_timestamps:
+        if format != 'dir':
+            # Try asking the tree first..
             chunks = export_tree.archive(
-                dest, format, root=root, subdir=subdir)
+                format, dest, root=root, subdir=subdir,
+                force_mtime=force_mtime)
             try:
                 if dest == '-':
                     self.outf.writelines(chunks)
