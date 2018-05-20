@@ -25,6 +25,8 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
+from io import BytesIO
+import tarfile
 import zlib
 
 from breezy import (
@@ -2702,3 +2704,21 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(b"".join(response.body_stream),
             b"Bazaar pack format 1 (introduced in 0.18)\nB54\n\nBazaar repository format 2a (needs bzr 1.16 or later)\nE")
+
+
+class TestSmartServerRepositoryRevisionArchive(tests.TestCaseWithTransport):
+
+    def test_get(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryRevisionArchive(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", b"somecontents")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
+        response = request.execute(b'', b"somerev", "foo.tar", "tar", "foo")
+        self.assertTrue(response.is_successful())
+        self.assertEqual(response.args, (b"ok", ))
+        b = BytesIO(b"".join(response.body_stream))
+        with tarfile.open(mode='r', fileobj=b) as tf:
+            self.assertEqual(['foo/file'], tf.getnames())
