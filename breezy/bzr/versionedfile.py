@@ -149,6 +149,8 @@ class FulltextContentFactory(ContentFactory):
         self.storage_kind = 'fulltext'
         self.key = key
         self.parents = parents
+        if not isinstance(text, bytes):
+            raise TypeError(text)
         self._text = text
 
     def get_bytes_as(self, storage_kind):
@@ -572,7 +574,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return ''.join(self.get_lines(version_id))
+        return b''.join(self.get_lines(version_id))
     get_string = get_text
 
     def get_texts(self, version_ids):
@@ -581,7 +583,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return [''.join(self.get_lines(v)) for v in version_ids]
+        return [b''.join(self.get_lines(v)) for v in version_ids]
 
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.
@@ -843,11 +845,11 @@ class PrefixMapper(URLEscapeMapper):
 
     def _map(self, key):
         """See KeyMapper.map()."""
-        return key[0]
+        return key[0].decode('utf-8')
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (partition_id,)
+        return (partition_id.encode('utf-8'),)
 
 
 class HashPrefixMapper(URLEscapeMapper):
@@ -880,7 +882,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
     This mapper is for use with a transport based backend.
     """
 
-    _safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
+    _safe = bytearray(b"abcdefghijklmnopqrstuvwxyz0123456789-_@,.")
 
     def _escape(self, prefix):
         """Turn a key element into a filesystem safe string.
@@ -892,8 +894,8 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [((c in self._safe) and c or ('%%%02x' % ord(c)))
-             for c in prefix]
+        r = [(c in self._safe) and chr(c) or ('%%%02x' % c)
+                for c in bytearray(prefix)]
         return ''.join(r)
 
     def _unescape(self, basename):

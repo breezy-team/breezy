@@ -163,7 +163,7 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
                 get_parents([(b'base',)]),
                 [b'base\n', b'right' + last_char]))
         for prefix in prefixes:
-            result.append(files.add_lines(prefix + get_key('merged'),
+            result.append(files.add_lines(prefix + get_key(b'merged'),
                 get_parents([(b'left',), (b'right',)]),
                 [b'base\n', b'left\n', b'right\n', b'merged' + last_char]))
     return result
@@ -971,7 +971,6 @@ class MergeCasesMixin(object):
         mp = list(map(addcrlf, mp))
         self.assertEqual(mt.readlines(), mp)
 
-
     def testOneInsert(self):
         self.doMerge([],
                      [b'aa'],
@@ -1019,7 +1018,6 @@ class MergeCasesMixin(object):
                      [b'yyy', b'zzz'],
                      [b'yyy', b'zzz'])
 
-
     def testDeleteAndModify(self):
         """Clashing delete and modification.
 
@@ -1047,7 +1045,7 @@ class MergeCasesMixin(object):
             if line:
                 self.log('%12s | %s' % (state, line[:-1]))
         self.log('merge result:')
-        result_text = ''.join(w.weave_merge(p))
+        result_text = b''.join(w.weave_merge(p))
         self.log(result_text)
         self.assertEqualDiff(result_text, expected)
 
@@ -1356,29 +1354,29 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
     def test_prefix_mapper(self):
         #format5: plain
         mapper = versionedfile.PrefixMapper()
-        self.assertEqual(b"file-id", mapper.map((b"file-id", b"revision-id")))
-        self.assertEqual(b"new-id", mapper.map((b"new-id", b"revision-id")))
-        self.assertEqual((b'file-id',), mapper.unmap(b"file-id"))
-        self.assertEqual((b'new-id',), mapper.unmap(b"new-id"))
+        self.assertEqual("file-id", mapper.map((b"file-id", b"revision-id")))
+        self.assertEqual("new-id", mapper.map((b"new-id", b"revision-id")))
+        self.assertEqual((b'file-id',), mapper.unmap("file-id"))
+        self.assertEqual((b'new-id',), mapper.unmap("new-id"))
 
     def test_hash_prefix_mapper(self):
         #format6: hash + plain
         mapper = versionedfile.HashPrefixMapper()
-        self.assertEqual(b"9b/file-id", mapper.map((b"file-id", b"revision-id")))
-        self.assertEqual(b"45/new-id", mapper.map((b"new-id", b"revision-id")))
-        self.assertEqual((b'file-id',), mapper.unmap(b"9b/file-id"))
-        self.assertEqual((b'new-id',), mapper.unmap(b"45/new-id"))
+        self.assertEqual("9b/file-id", mapper.map((b"file-id", b"revision-id")))
+        self.assertEqual("45/new-id", mapper.map((b"new-id", b"revision-id")))
+        self.assertEqual(('file-id',), mapper.unmap(b"9b/file-id"))
+        self.assertEqual(('new-id',), mapper.unmap(b"45/new-id"))
 
     def test_hash_escaped_mapper(self):
         #knit1: hash + escaped
         mapper = versionedfile.HashEscapedPrefixMapper()
-        self.assertEqual(b"88/%2520", mapper.map((b" ", b"revision-id")))
-        self.assertEqual(b"ed/fil%2545-%2549d", mapper.map((b"filE-Id",
+        self.assertEqual("88/%2520", mapper.map((b" ", b"revision-id")))
+        self.assertEqual("ed/fil%2545-%2549d", mapper.map((b"filE-Id",
             b"revision-id")))
         self.assertEqual(b"88/ne%2557-%2549d", mapper.map((b"neW-Id",
             b"revision-id")))
-        self.assertEqual((b'filE-Id',), mapper.unmap(b"ed/fil%2545-%2549d"))
-        self.assertEqual((b'neW-Id',), mapper.unmap(b"88/ne%2557-%2549d"))
+        self.assertEqual(('filE-Id',), mapper.unmap(b"ed/fil%2545-%2549d"))
+        self.assertEqual(('neW-Id',), mapper.unmap(b"88/ne%2557-%2549d"))
 
 
 class TestVersionedFiles(TestCaseWithMemoryTransport):
@@ -1809,7 +1807,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                     factory.sha1)
             self.assertEqual(parents[factory.key], factory.parents)
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
+                bytes)
             if require_fulltext:
                 factory.get_bytes_as('fulltext')
 
@@ -1891,7 +1889,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertEqual(parent_map[factory.key], factory.parents)
             # self.assertEqual(files.get_text(factory.key),
             ft_bytes = factory.get_bytes_as('fulltext')
-            self.assertIsInstance(ft_bytes, str)
+            self.assertIsInstance(ft_bytes, bytes)
             chunked_bytes = factory.get_bytes_as('chunked')
             self.assertEqualDiff(ft_bytes, b''.join(chunked_bytes))
 
@@ -1952,7 +1950,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertRaises(errors.UnavailableRepresentation,
                 factory.get_bytes_as, 'mpdiff')
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
+                bytes)
         self.assertEqual(set(keys), seen)
 
     def test_get_record_stream_missing_records_are_absent(self):
@@ -2145,7 +2143,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             seen.add(factory.key)
             if factory.key[-1] == b'absent':
-                self.assertEqual(b'absent', factory.storage_kind)
+                self.assertEqual('absent', factory.storage_kind)
                 self.assertEqual(None, factory.sha1)
                 self.assertEqual(None, factory.parents)
             else:
@@ -2155,7 +2153,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                     self.assertEqual(sha1, factory.sha1)
                 self.assertEqual(parents[factory.key], factory.parents)
                 self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                    str)
+                    bytes)
         self.assertEqual(set(keys), seen)
 
     def test_filter_absent_records(self):
@@ -2257,7 +2255,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         all_parents = dict(parent_details)
         self.assertEqual(all_parents, files.get_parent_map(all_parents.keys()))
         # Absent keys are just not included in the result.
-        keys = all_parents.keys()
+        keys = list(all_parents.keys())
         if self.key_length == 1:
             keys.insert(1, (b'missing',))
         else:
@@ -2446,8 +2444,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         parents = ()
         keys = []
         content = [(b'same same %d\n' % n) for n in range(500)]
-        for letter in 'abcdefghijklmnopqrstuvwxyz':
-            key = (('key-' + letter).encode('ascii'),)
+        letters = b'abcdefghijklmnopqrstuvwxyz'
+        for i in range(len(letters)):
+            letter = letters[i:i+1]
+            key = (b'key-' + letter,)
             if self.key_length == 2:
                 key = (b'prefix',) + key
             content.append(b'content for ' + letter + b'\n')
@@ -2689,7 +2689,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         text_name = b'chain2-'
         text = [b'line\n']
         for depth in range(26):
-            new_version = self.get_simple_key(text_name + b'%s' % depth)
+            new_version = self.get_simple_key(text_name + b'%d' % depth)
             text = text + [b'line\n']
             files.add_lines(new_version, self.get_parents([next_parent]), text)
             next_parent = new_version
