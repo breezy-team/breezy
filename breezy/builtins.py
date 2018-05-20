@@ -3347,23 +3347,6 @@ class cmd_export(Command):
             export_tree = ContentFilterTree(
                     export_tree, export_tree._content_filter_stack)
 
-        if format != 'dir':
-            # Try asking the tree first..
-            chunks = export_tree.archive(
-                format, dest, root=root, subdir=subdir,
-                force_mtime=force_mtime)
-            try:
-                if dest == '-':
-                    self.outf.writelines(chunks)
-                else:
-                    import tempfile
-                    with tempfile.NamedTemporaryFile(delete=False) as temp:
-                        temp.writelines(chunks)
-                    os.rename(temp.name, dest)
-            except errors.NoSuchExportFormat:
-                pass
-            else:
-                return
         try:
             export(export_tree, dest, format, root, subdir,
                    per_file_timestamps=per_file_timestamps)

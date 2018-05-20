@@ -20,10 +20,10 @@
 from __future__ import absolute_import
 
 from contextlib import closing
-from io import BytesIO
 import os
 import stat
 import sys
+import tempfile
 import time
 import zipfile
 
@@ -39,6 +39,7 @@ from ..trace import mutter
 ZIP_DIRECTORY_BIT = (1 << 4)
 FILE_PERMISSIONS = (0o644 << 16)
 DIR_PERMISSIONS = (0o755 << 16)
+CHUNK_SIZE = 16384
 
 _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
@@ -52,46 +53,50 @@ def zip_archive_generator(tree, dest, root, subdir=None,
     already exists, it will be overwritten".
     """
     compression = zipfile.ZIP_DEFLATED
-    buf = BytesIO()
-    with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, tree.lock_read():
-        for dp, tp, ie in _export_iter_entries(tree, subdir):
-            file_id = ie.file_id
-            mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
+    with tempfile.SpooledTemporaryFile() as buf:
+        with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, \
+             tree.lock_read():
+            for dp, tp, ie in _export_iter_entries(tree, subdir):
+                file_id = ie.file_id
+                mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
-            # zipfile.ZipFile switches all paths to forward
-            # slashes anyway, so just stick with that.
-            if force_mtime is not None:
-                mtime = force_mtime
-            else:
-                mtime = tree.get_file_mtime(tp, ie.file_id)
-            date_time = time.localtime(mtime)[:6]
-            filename = osutils.pathjoin(root, dp).encode('utf8')
-            if ie.kind == "file":
-                zinfo = zipfile.ZipInfo(
-                            filename=filename,
-                            date_time=date_time)
-                zinfo.compress_type = compression
-                zinfo.external_attr = _FILE_ATTR
-                content = tree.get_file_text(tp, file_id)
-                zipf.writestr(zinfo, content)
-            elif ie.kind in ("directory", "tree-reference"):
-                # Directories must contain a trailing slash, to indicate
-                # to the zip routine that they are really directories and
-                # not just empty files.
-                zinfo = zipfile.ZipInfo(
-                            filename=filename + '/',
-                            date_time=date_time)
-                zinfo.compress_type = compression
-                zinfo.external_attr = _DIR_ATTR
-                zipf.writestr(zinfo, '')
-            elif ie.kind == "symlink":
-                zinfo = zipfile.ZipInfo(
-                            filename=(filename + '.lnk'),
-                            date_time=date_time)
-                zinfo.compress_type = compression
-                zinfo.external_attr = _FILE_ATTR
-                zipf.writestr(zinfo, tree.get_symlink_target(tp, file_id))
-            yield buf.getvalue()
-            buf.truncate(0)
-            buf.seek(0)
-    yield buf.getvalue()
+                # zipfile.ZipFile switches all paths to forward
+                # slashes anyway, so just stick with that.
+                if force_mtime is not None:
+                    mtime = force_mtime
+                else:
+                    mtime = tree.get_file_mtime(tp, ie.file_id)
+                date_time = time.localtime(mtime)[:6]
+                filename = osutils.pathjoin(root, dp).encode('utf8')
+                if ie.kind == "file":
+                    zinfo = zipfile.ZipInfo(
+                                filename=filename,
+                                date_time=date_time)
+                    zinfo.compress_type = compression
+                    zinfo.external_attr = _FILE_ATTR
+                    content = tree.get_file_text(tp, file_id)
+                    zipf.writestr(zinfo, content)
+                elif ie.kind in ("directory", "tree-reference"):
+                    # Directories must contain a trailing slash, to indicate
+                    # to the zip routine that they are really directories and
+                    # not just empty files.
+                    zinfo = zipfile.ZipInfo(
+                                filename=filename + '/',
+                                date_time=date_time)
+                    zinfo.compress_type = compression
+                    zinfo.external_attr = _DIR_ATTR
+                    zipf.writestr(zinfo, '')
+                elif ie.kind == "symlink":
+                    zinfo = zipfile.ZipInfo(
+                                filename=(filename + '.lnk'),
+                                date_time=date_time)
+                    zinfo.compress_type = compression
+                    zinfo.external_attr = _FILE_ATTR
+                    zipf.writestr(zinfo, tree.get_symlink_target(tp, file_id))
+        # Urgh, headers are written last since they include e.g. file size.
+        # So we have to buffer it all :(
+        buf.seek(0)
+        chunk = buf.read(CHUNK_SIZE)
+        while chunk:
+            yield chunk
+            chunk = buf.read(CHUNK_SIZE)

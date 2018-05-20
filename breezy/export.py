@@ -32,80 +32,6 @@ from . import (
     trace,
     )
 
-def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
-                         per_file_timestamps=False, fileobj=None):
-    """Returns a generator that exports the given tree.
-
-    The generator is expected to yield None while exporting the tree while the
-    actual export is written to ``fileobj``.
-
-    :param tree: A Tree (such as RevisionTree) to export
-
-    :param dest: The destination where the files, etc should be put
-
-    :param format: The format (dir, zip, etc), if None, it will check the
-        extension on dest, looking for a match
-
-    :param root: The root location inside the format.  It is common practise to
-        have zipfiles and tarballs extract into a subdirectory, rather than
-        into the current working directory.  If root is None, the default root
-        will be selected as the destination without its extension.
-
-    :param subdir: A starting directory within the tree. None means to export
-        the entire tree, and anything else should specify the relative path to
-        a directory to start exporting from.
-
-    :param per_file_timestamps: Whether to use the timestamp stored in the tree
-        rather than now(). This will do a revision lookup for every file so
-        will be significantly slower.
-
-    :param fileobj: Optional file object to use
-    """
-    global _exporters
-
-    if format is None and dest is not None:
-        format = archive.format_registry.get_format_from_filename(dest)
-
-    if format is None:
-        # Default to 'dir'
-        format = 'dir'
-
-    # Most of the exporters will just have to call
-    # this function anyway, so why not do it for them
-    if root is None:
-        root = get_root_name(dest)
-
-    if not per_file_timestamps:
-        force_mtime = time.time()
-    else:
-        force_mtime = None
-
-    trace.mutter('export version %r', tree)
-
-    if format == 'dir':
-        with tree.lock_read():
-            for unused in dir_exporter_generator(tree, dest, root, subdir,
-                    force_mtime):
-                yield
-        return
-
-    with tree.lock_read():
-        chunks = archive.create_archive(format, tree, dest, root, subdir,
-                                        force_mtime)
-        if dest == '-':
-            for chunk in chunks:
-                 sys.stdout.write(chunk)
-                 yield
-        elif fileobj is not None:
-            for chunk in chunks:
-                fileobj.write(chunk)
-                yield
-        else:
-            with open(dest, 'wb') as f:
-                for chunk in chunks:
-                    f.writelines(chunk)
-                    yield
-
 
 def export(tree, dest, format=None, root=None, subdir=None,
            per_file_timestamps=False, fileobj=None):
@@ -130,15 +56,55 @@ def export(tree, dest, format=None, root=None, subdir=None,
         for every file so will be significantly slower.
     :param fileobj: Optional file object to use
     """
-    for _ in get_export_generator(tree, dest, format, root, subdir,
-                                  per_file_timestamps, fileobj):
-        pass
+    if format is None and dest is not None:
+        format = guess_format(dest)
+
+    # Most of the exporters will just have to call
+    # this function anyway, so why not do it for them
+    if root is None:
+        root = get_root_name(dest)
+
+    if not per_file_timestamps:
+        force_mtime = time.time()
+    else:
+        force_mtime = None
+
+    trace.mutter('export version %r', tree)
+
+    if format == 'dir':
+        # TODO(jelmer): If the tree is remote (e.g. HPSS, Git Remote),
+        # then we should stream a tar file and unpack that on the fly.
+        with tree.lock_read():
+            for unused in dir_exporter_generator(tree, dest, root, subdir,
+                    force_mtime):
+                pass
+        return
+
+    with tree.lock_read():
+        chunks = archive.create_archive(format, tree, dest, root, subdir,
+                                        force_mtime)
+        if dest == '-':
+            for chunk in chunks:
+                 sys.stdout.write(chunk)
+        elif fileobj is not None:
+            for chunk in chunks:
+                fileobj.write(chunk)
+        else:
+            with open(dest, 'wb') as f:
+                for chunk in chunks:
+                    f.writelines(chunk)
 
 
-def guess_format(filename):
+def guess_format(filename, default='dir'):
+    """Guess the export format based on a file name.
+
+    :param filename: Filename to guess from
+    :param default: Default format to fall back to
+    :return: format name
+    """
     format = archive.format_registry.get_format_from_filename(filename)
     if format is None:
-        format = 'dir'
+        format = default
     return format
 
 
@@ -202,8 +168,6 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
 
     `dest` should either not exist or should be empty. If it does not exist it
     will be created holding the contents of this tree.
-
-    :param fileobj: Is not used in this exporter
 
     :note: If the export fails, the destination directory will be
            left in an incompletely exported state: export is not transactional.
