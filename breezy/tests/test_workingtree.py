@@ -361,9 +361,8 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout/lock', t)
         our_lock = LockDir(t, '.bzr/checkout/lock')
         self.assertEqual(our_lock.peek(), None)
-        tree.lock_write()
-        self.assertTrue(our_lock.peek())
-        tree.unlock()
+        with tree.lock_write():
+            self.assertTrue(our_lock.peek())
         self.assertEqual(our_lock.peek(), None)
 
     def test_missing_pending_merges(self):
