@@ -853,6 +853,17 @@ class TestSmartServerBranchRequestLastRevisionInfo(
         self.assertEqual(smart_req.SmartServerResponse((b'ok', b'0', b'null:')),
             request.execute(b''))
 
+    def test_ghost(self):
+        """For an empty branch, the result is ('ok', '0', 'null:')."""
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestLastRevisionInfo(backing)
+        branch = self.make_branch('.')
+        def last_revision_info():
+            raise errors.GhostRevisionsHaveNoRevno('revid1', 'revid2')
+        self.overrideAttr(branch, 'last_revision_info', last_revision_info)
+        self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+            request.do_with_branch, branch)
+
     def test_not_empty(self):
         """For a non-empty branch, the result is ('ok', 'revno', 'revid')."""
         backing = self.get_transport()

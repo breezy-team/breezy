@@ -4234,6 +4234,8 @@ error_translators.register(b'UnresumableWriteGroup',
     lambda err, find, get_path: errors.UnresumableWriteGroup(
         repository=find('repository'), write_groups=err.error_args[0],
         reason=err.error_args[1]))
+no_context_error_translators.register(b'GhostRevisionsHaveNoRevno',
+    lambda err: errors.GhostRevisionsHaveNoRevno(*err.error_args))
 no_context_error_translators.register(b'IncompatibleRepositories',
     lambda err: errors.IncompatibleRepositories(
         err.error_args[0].decode('utf-8'), err.error_args[1].decode('utf-8'), err.error_args[2].decode('utf-8')))
