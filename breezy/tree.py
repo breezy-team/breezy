@@ -662,8 +662,8 @@ class Tree(object):
         :param subdir: Subdirectory to export (or None)
         :return: Iterator over archive chunks
         """
+        from .export import get_stream_export_generator
         with self.lock_read():
-            from .export import get_stream_export_generator
             return get_stream_export_generator(self, name, format, root,
                     subdir)
 
