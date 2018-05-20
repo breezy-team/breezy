@@ -653,6 +653,23 @@ class Tree(object):
         searcher = default_searcher
         return searcher
 
+    def archive(self, format, name, root='', subdir=None,
+                force_mtime=None):
+        """Create an archive of this tree.
+
+        :param name: target file name
+        :param format: Format name (e.g. 'tar')
+        :param root: Root directory name (or None)
+        :param subdir: Subdirectory to export (or None)
+        :param per_file_timestamps: Whether to set the timestamp
+            for each file to the last changed time.
+        :return: Iterator over archive chunks
+        """
+        from .archive import create_archive
+        with self.lock_read():
+            return create_archive(format, self, name, root,
+                    subdir, force_mtime=force_mtime)
+
     @classmethod
     def versionable_kind(cls, kind):
         """Check if this tree support versioning a specific file kind."""
