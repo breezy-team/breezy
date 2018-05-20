@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+from contextlib import closing
 import os
 import sys
 import tarfile
@@ -81,141 +82,114 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     return (item, fileobj)
 
 
-def export_tarball_generator(tree, ball, root, subdir=None, force_mtime=None):
+def tarball_generator(tree, root, subdir=None, force_mtime=None, format=''):
     """Export tree contents to a tarball.
 
-    :returns: A generator that will repeatedly produce None as each file is
-        emitted.  The entire generator must be consumed to complete writing
-        the file.
+    :returns: A generator that will produce file content chunks.
 
     :param tree: Tree to export
-
-    :param ball: Tarball to export to; it will be closed when writing is
-        complete.
 
     :param subdir: Sub directory to export
 
     :param force_mtime: Option mtime to force, instead of using tree
         timestamps.
     """
-    try:
+    buf = BytesIO()
+    with closing(tarfile.open(None, "w:%s" % format, buf)) as ball, tree.lock_read():
         for final_path, tree_path, entry in _export_iter_entries(tree, subdir):
             (item, fileobj) = prepare_tarball_item(
                 tree, root, final_path, tree_path, entry, force_mtime)
             ball.addfile(item, fileobj)
-            yield
-    finally:
-        ball.close()
+            # Yield the data that was written so far, rinse, repeat.
+            yield buf.getvalue()
+            buf.truncate(0)
+            buf.seek(0)
+    yield buf.getvalue()
 
 
-def tgz_exporter_generator(tree, dest, root, subdir, force_mtime=None,
-    fileobj=None):
+def tgz_generator(tree, dest, root, subdir, force_mtime=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    import gzip
-    if force_mtime is not None:
-        root_mtime = force_mtime
-    elif (getattr(tree, "repository", None) and
-          getattr(tree, "get_revision_id", None)):
-        # If this is a revision tree, use the revisions' timestamp
-        rev = tree.repository.get_revision(tree.get_revision_id())
-        root_mtime = rev.timestamp
-    elif tree.get_root_id() is not None:
-        root_mtime = tree.get_file_mtime('', tree.get_root_id())
-    else:
-        root_mtime = None
+    with tree.lock_read():
+        import gzip
+        if force_mtime is not None:
+            root_mtime = force_mtime
+        elif (getattr(tree, "repository", None) and
+              getattr(tree, "get_revision_id", None)):
+            # If this is a revision tree, use the revisions' timestamp
+            rev = tree.repository.get_revision(tree.get_revision_id())
+            root_mtime = rev.timestamp
+        elif tree.get_root_id() is not None:
+            root_mtime = tree.get_file_mtime('', tree.get_root_id())
+        else:
+            root_mtime = None
 
-    is_stdout = False
-    basename = None
-    if fileobj is not None:
-        stream = fileobj
-    elif dest == '-':
-        stream = sys.stdout
-        is_stdout = True
-    else:
-        stream = open(dest, 'wb')
-    # gzip file is used with an explicit fileobj so that
-    # the basename can be stored in the gzip file rather than
-    # dest. (bug 102234)
-    basename = os.path.basename(dest)
-    zipstream = gzip.GzipFile(basename, 'w', fileobj=stream,
-                              mtime=root_mtime)
-    ball = tarfile.open(None, 'w|', fileobj=zipstream)
-    for _ in export_tarball_generator(
-        tree, ball, root, subdir, force_mtime):
-        yield
-    # Closing zipstream may trigger writes to stream
-    zipstream.close()
-    if not is_stdout:
-        # Now we can safely close the stream
-        stream.close()
+        is_stdout = False
+        basename = None
+        # gzip file is used with an explicit fileobj so that
+        # the basename can be stored in the gzip file rather than
+        # dest. (bug 102234)
+        basename = os.path.basename(dest)
+        buf = BytesIO()
+        zipstream = gzip.GzipFile(basename, 'w', fileobj=buf,
+                                  mtime=root_mtime)
+        for chunk in tarball_generator(
+            tree, root, subdir, force_mtime):
+            zipstream.write(chunk)
+            # Yield the data that was written so far, rinse, repeat.
+            yield buf.getvalue()
+            buf.truncate(0)
+            buf.seek(0)
+        # Closing zipstream may trigger writes to stream
+        zipstream.close()
+        yield buf.getvalue()
 
 
-def tbz_exporter_generator(tree, dest, root, subdir,
-                           force_mtime=None, fileobj=None):
+def tbz_generator(tree, dest, root, subdir, force_mtime=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if fileobj is not None:
-        ball = tarfile.open(None, 'w|bz2', fileobj)
-    elif dest == '-':
-        ball = tarfile.open(None, 'w|bz2', sys.stdout)
-    else:
-        ball = tarfile.open(dest, 'w:bz2')
-    return export_tarball_generator(
-        tree, ball, root, subdir, force_mtime)
+    return tarball_generator(
+        tree, root, subdir, force_mtime, format='bz2')
 
 
-def plain_tar_exporter_generator(tree, dest, root, subdir, compression=None,
-    force_mtime=None, fileobj=None):
+def plain_tar_generator(tree, dest, root, subdir,
+    force_mtime=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if fileobj is not None:
-        stream = fileobj
-    elif dest == '-':
-        stream = sys.stdout
-    else:
-        stream = open(dest, 'wb')
-    ball = tarfile.open(None, 'w|', stream)
-    return export_tarball_generator(
-        tree, ball, root, subdir, force_mtime)
+    return tarball_generator(
+        tree, root, subdir, force_mtime, format='')
 
 
-def tar_xz_exporter_generator(tree, dest, root, subdir,
-                              force_mtime=None, fileobj=None):
-    return tar_lzma_exporter_generator(tree, dest, root, subdir,
-                                       force_mtime, fileobj, "xz")
+def tar_xz_generator(tree, dest, root, subdir, force_mtime=None):
+    return tar_lzma_generator(tree, dest, root, subdir, force_mtime, "xz")
 
 
-def tar_lzma_exporter_generator(tree, dest, root, subdir,
-                      force_mtime=None, fileobj=None,
-                                compression_format="alone"):
+def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
+                       compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if dest == '-':
-        raise errors.BzrError("Writing to stdout not supported for .tar.lzma")
-
-    if fileobj is not None:
-        raise errors.BzrError(
-            "Writing to fileobject not supported for .tar.lzma")
     try:
         import lzma
     except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
-    stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',
-        options={"format": compression_format})
-    ball = tarfile.open(None, 'w:', fileobj=stream)
-    return export_tarball_generator(
-        tree, ball, root, subdir, force_mtime=force_mtime)
+    compressor = lzma.LZMACompressor(
+            options={"format": compression_format})
+
+    for chunk in tarball_generator(
+            tree, root, subdir, force_mtime=force_mtime):
+        yield compressor.compress(chunk)
+
+    yield compressor.flush()
