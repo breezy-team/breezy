@@ -19,15 +19,16 @@
 
 from __future__ import absolute_import
 
+import errno
 import os
 import sys
 import time
 import warnings
 
-from .. import (
+from . import (
     archive,
     errors,
-    pyutils,
+    osutils,
     trace,
     )
 
@@ -83,7 +84,6 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
 
     if format == 'dir':
         with tree.lock_read():
-            from breezy.export.dir_exporter import dir_exporter_generator
             for unused in dir_exporter_generator(tree, dest, root, subdir,
                     force_mtime):
                 yield
@@ -194,3 +194,71 @@ def _export_iter_entries(tree, subdir, skip_special=True):
             continue
 
         yield final_path, path, entry
+
+
+def dir_exporter_generator(tree, dest, root, subdir=None,
+                           force_mtime=None, fileobj=None):
+    """Return a generator that exports this tree to a new directory.
+
+    `dest` should either not exist or should be empty. If it does not exist it
+    will be created holding the contents of this tree.
+
+    :param fileobj: Is not used in this exporter
+
+    :note: If the export fails, the destination directory will be
+           left in an incompletely exported state: export is not transactional.
+    """
+    try:
+        os.mkdir(dest)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            # check if directory empty
+            if os.listdir(dest) != []:
+                raise errors.BzrError(
+                    "Can't export tree to non-empty directory.")
+        else:
+            raise
+    # Iterate everything, building up the files we will want to export, and
+    # creating the directories and symlinks that we need.
+    # This tracks (file_id, (destination_path, executable))
+    # This matches the api that tree.iter_files_bytes() wants
+    # Note in the case of revision trees, this does trigger a double inventory
+    # lookup, hopefully it isn't too expensive.
+    to_fetch = []
+    for dp, tp, ie in _export_iter_entries(tree, subdir):
+        fullpath = osutils.pathjoin(dest, dp)
+        if ie.kind == "file":
+            to_fetch.append((tp, (dp, tp, ie.file_id)))
+        elif ie.kind in ("directory", "tree-reference"):
+            os.mkdir(fullpath)
+        elif ie.kind == "symlink":
+            try:
+                symlink_target = tree.get_symlink_target(tp, ie.file_id)
+                os.symlink(symlink_target, fullpath)
+            except OSError as e:
+                raise errors.BzrError(
+                    "Failed to create symlink %r -> %r, error: %s"
+                    % (fullpath, symlink_target, e))
+        else:
+            raise errors.BzrError("don't know how to export {%s} of kind %r" %
+               (tp, ie.kind))
+
+        yield
+    # The data returned here can be in any order, but we've already created all
+    # the directories
+    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
+    for (relpath, treepath, file_id), chunks in tree.iter_files_bytes(to_fetch):
+        fullpath = osutils.pathjoin(dest, relpath)
+        # We set the mode and let the umask sort out the file info
+        mode = 0o666
+        if tree.is_executable(treepath, file_id):
+            mode = 0o777
+        with os.fdopen(os.open(fullpath, flags, mode), 'wb') as out:
+            out.writelines(chunks)
+        if force_mtime is not None:
+            mtime = force_mtime
+        else:
+            mtime = tree.get_file_mtime(treepath, file_id)
+        os.utime(fullpath, (mtime, mtime))
+
+        yield

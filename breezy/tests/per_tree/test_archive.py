@@ -125,5 +125,4 @@ class GenericArchiveTests(TestCaseWithTree):
 
         self.assertRaises(
                 errors.NoSuchExportFormat,
-                list,
-                tree_a.archive('dir', 'foo'))
+                tree_a.archive, 'dir', 'foo')
