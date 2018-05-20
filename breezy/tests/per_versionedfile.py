@@ -2402,7 +2402,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """Inserting a stream with absent keys should raise an error."""
         files = self.get_versionedfiles()
         source = self.get_versionedfiles('source')
-        stream = source.get_record_stream([('missing',) * self.key_length],
+        stream = source.get_record_stream([(b'missing',) * self.key_length],
             'topological', False)
         self.assertRaises(errors.RevisionNotPresent, files.insert_record_stream,
             stream)

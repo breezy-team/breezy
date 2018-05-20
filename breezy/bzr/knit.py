@@ -256,7 +256,7 @@ class FTAnnotatedToFullText(KnitAdapter):
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content, delta = self._annotate_factory.parse_record(factory.key[-1],
             contents, factory._build_details, None)
-        return ''.join(content.text())
+        return b''.join(content.text())
 
 
 class DeltaAnnotatedToFullText(KnitAdapter):
@@ -280,7 +280,7 @@ class DeltaAnnotatedToFullText(KnitAdapter):
         basis_content = PlainKnitContent(basis_lines, compression_parent)
         basis_content.apply_delta(delta, rec[1])
         basis_content._should_strip_eol = factory._build_details[1]
-        return ''.join(basis_content.text())
+        return b''.join(basis_content.text())
 
 
 class FTPlainToFullText(KnitAdapter):
@@ -292,7 +292,7 @@ class FTPlainToFullText(KnitAdapter):
             self._data._parse_record_unchecked(compressed_bytes)
         content, delta = self._plain_factory.parse_record(factory.key[-1],
             contents, factory._build_details, None)
-        return ''.join(content.text())
+        return b''.join(content.text())
 
 
 class DeltaPlainToFullText(KnitAdapter):
@@ -316,7 +316,7 @@ class DeltaPlainToFullText(KnitAdapter):
         # one plain.
         content, _ = self._plain_factory.parse_record(rec[1], contents,
             factory._build_details, basis_content)
-        return ''.join(content.text())
+        return b''.join(content.text())
 
 
 class KnitContentFactory(ContentFactory):
@@ -432,13 +432,13 @@ class LazyKnitContentFactory(ContentFactory):
             else:
                 # all the keys etc are contained in the bytes returned in the
                 # first record.
-                return ''
+                return b''
         if storage_kind in ('chunked', 'fulltext'):
             chunks = self._generator._get_one_work(self.key).text()
             if storage_kind == 'chunked':
                 return chunks
             else:
-                return ''.join(chunks)
+                return b''.join(chunks)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
@@ -576,7 +576,7 @@ class AnnotatedKnitContent(KnitContent):
                 "line in annotated knit missing annotation information: %s"
                 % (e,))
         if self._should_strip_eol:
-            lines[-1] = lines[-1].rstrip('\n')
+            lines[-1] = lines[-1].rstrip(b'\n')
         return lines
 
     def copy(self):
@@ -1063,7 +1063,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + digest,)
         elif not isinstance(key[-1], bytes):
-                raise TypeError("key contains non-bytestrings: %r" % (key,))
+            raise TypeError("key contains non-bytestrings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
         content = self._factory.make(lines, version_id)
@@ -1901,11 +1901,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
             # XXX: Robert says the following block is a workaround for a
             # now-fixed bug and it can probably be deleted. -- mbp 20080618
-            if content._lines and content._lines[-1][1][-1] != '\n':
+            if content._lines and not content._lines[-1][1].endswith(b'\n'):
                 # The copied annotation was from a line without a trailing EOL,
                 # reinstate one for the content object, to ensure correct
                 # serialization.
-                line = content._lines[-1][1] + '\n'
+                line = content._lines[-1][1] + b'\n'
                 content._lines[-1] = (content._lines[-1][0], line)
         if delta:
             if delta_seq is None:
@@ -2557,7 +2557,7 @@ class _KndxIndex(object):
 
     def check_header(self, fp):
         line = fp.readline()
-        if line == '':
+        if line == b'':
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
             raise errors.NoSuchFile(self)
@@ -2604,8 +2604,10 @@ class _KndxIndex(object):
             if key not in parent_map:
                 continue # Ghost
             method = self.get_method(key)
+            if not isinstance(method, str):
+                raise TypeError(method)
             parents = parent_map[key]
-            if method == b'fulltext':
+            if method == 'fulltext':
                 compression_parent = None
             else:
                 compression_parent = parents[0]
@@ -3115,7 +3117,7 @@ class _KnitGraphIndex(object):
         e.g. ['foo', 'bar']
         """
         node = self._get_node(key)
-        options = [self._get_method(node)]
+        options = [self._get_method(node).encode('ascii')]
         if node[2][0] == b'N':
             options.append(b'no-eol')
         return options
