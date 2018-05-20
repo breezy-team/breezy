@@ -25,6 +25,7 @@ from ... import (
     config,
     debug,
     errors,
+    osutils,
     trace,
     ui,
     urlutils,
@@ -366,8 +367,8 @@ class RemoteGitDir(GitDir):
     def _gitrepository_class(self):
         return RemoteGitRepository
 
-    def archive(self, committish, write_data, progress=None, write_error=None,
-                format=None, subdirs=None, prefix=None):
+    def archive(self, format, committish, write_data, progress=None, write_error=None,
+                subdirs=None, prefix=None):
         if format not in ('tar', 'zip'):
             raise errors.NoSuchExportFormat(format)
         if progress is None:
@@ -722,32 +723,35 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 class GitRemoteRevisionTree(RevisionTree):
 
-    def archive(self, name, format=None, root=None, subdir=None):
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
         """Create an archive of this tree.
 
-        :param name: target file name
         :param format: Format name (e.g. 'tar')
+        :param name: target file name
         :param root: Root directory name (or None)
         :param subdir: Subdirectory to export (or None)
         :return: Iterator over archive chunks
         """
-        if subdir or root:
-            raise errors.UnsupportedOperation
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
-        f = BytesIO()
-        # Archive only supports refs. So let's see if we can find one.
+        f = tempfile.SpooledTemporaryFile()
+        # git-upload-archive(1) generaly only supports refs. So let's see if we
+        # can find one.
         reverse_refs = {
                 v: k for (k, v) in
                 self._repository.controldir.get_refs_container().as_dict().items()}
-        ref = reverse_refs[commit]
+        try:
+            committish = reverse_refs[commit]
+        except KeyError:
+            # No? Maybe the user has uploadArchive.allowUnreachable enabled.
+            # Let's hope for the best.
+            committish = commit
         self._repository.archive(
-                ref, f.write, format=format,
+                format, committish, f.write,
                 subdirs=([subdir] if subdir else None),
-                prefix=root)
-        # TODO(jelmer): Read in chunks, not all at once.
+                prefix=(root+'/') if root else '')
         f.seek(0)
-        return [f.read()]
+        return osutils.file_iterator(f)
 
 
 class RemoteGitRepository(GitRepository):

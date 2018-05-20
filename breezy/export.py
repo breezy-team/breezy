@@ -81,8 +81,7 @@ def export(tree, dest, format=None, root=None, subdir=None,
         return
 
     with tree.lock_read():
-        chunks = archive.create_archive(format, tree, dest, root, subdir,
-                                        force_mtime)
+        chunks = tree.archive(format, dest, root=root, subdir=subdir, force_mtime=force_mtime)
         if dest == '-':
             for chunk in chunks:
                  sys.stdout.write(chunk)
