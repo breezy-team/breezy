@@ -138,14 +138,16 @@ class HasLayout(Matcher):
         Matcher.__init__(self)
         self.entries = entries
 
-    def get_tree_layout(self, tree):
+    def get_tree_layout(self, tree, include_file_ids):
         """Get the (path, file_id) pairs for the current tree."""
         with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                if ie.parent_id is None:
-                    yield (u"", ie.file_id)
+                if path != u'':
+                    path += ie.kind_character()
+                if include_file_ids:
+                    yield (path, ie.file_id)
                 else:
-                    yield (path+ie.kind_character(), ie.file_id)
+                    yield path
 
     @staticmethod
     def _strip_unreferenced_directories(entries):
@@ -174,9 +176,8 @@ class HasLayout(Matcher):
         return 'HasLayout(%r)' % self.entries
 
     def match(self, tree):
-        actual = list(self.get_tree_layout(tree))
-        if self.entries and isinstance(self.entries[0], (str, text_type)):
-            actual = [path for (path, fileid) in actual]
+        include_file_ids = (self.entries and not isinstance(self.entries[0], (str, text_type)))
+        actual = list(self.get_tree_layout(tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
             entries = list(self._strip_unreferenced_directories(self.entries))
         else:
@@ -211,7 +212,7 @@ class HasPathRelations(Matcher):
                     kind = self.previous_tree.kind(previous_path)
                     if kind == 'directory':
                         previous_path += '/'
-                if ie.parent_id is None:
+                if path == u'':
                     yield (u"", previous_path)
                 else:
                     yield (path+ie.kind_character(), previous_path)
