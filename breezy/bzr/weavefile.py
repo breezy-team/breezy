@@ -61,7 +61,7 @@ def write_weave_v5(weave, f):
             # mininc = weave.minimal_parents(version)
             mininc = included
             f.write(b'i ')
-            f.write(b' '.join(str(i).encode('ascii') for i in mininc))
+            f.write(b' '.join(b'%d' %i for i in mininc))
             f.write(b'\n')
         else:
             f.write(b'i\n')

@@ -897,9 +897,9 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         def get_record(suffix):
             return next(self.plan_merge_vf.get_record_stream(
                 [(b'root', suffix)], 'unordered', True))
-        self.assertEqual(b'a', get_record(b'A').get_bytes_as(b'fulltext'))
-        self.assertEqual(b'c', get_record(b'C').get_bytes_as(b'fulltext'))
-        self.assertEqual(b'e', get_record(b'E:').get_bytes_as(b'fulltext'))
+        self.assertEqual(b'a', get_record(b'A').get_bytes_as('fulltext'))
+        self.assertEqual(b'c', get_record(b'C').get_bytes_as('fulltext'))
+        self.assertEqual(b'e', get_record(b'E:').get_bytes_as('fulltext'))
         self.assertEqual('absent', get_record('F').storage_kind)
 
 
@@ -1373,7 +1373,7 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
         self.assertEqual("88/%2520", mapper.map((b" ", b"revision-id")))
         self.assertEqual("ed/fil%2545-%2549d", mapper.map((b"filE-Id",
             b"revision-id")))
-        self.assertEqual(b"88/ne%2557-%2549d", mapper.map((b"neW-Id",
+        self.assertEqual("88/ne%2557-%2549d", mapper.map((b"neW-Id",
             b"revision-id")))
         self.assertEqual((b'filE-Id',), mapper.unmap("ed/fil%2545-%2549d"))
         self.assertEqual((b'neW-Id',), mapper.unmap("88/ne%2557-%2549d"))

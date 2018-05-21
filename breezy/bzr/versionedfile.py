@@ -1789,7 +1789,7 @@ def network_bytes_to_kind_and_offset(network_bytes):
     :return: A tuple (storage_kind, offset_of_remaining_bytes)
     """
     line_end = network_bytes.find(b'\n')
-    storage_kind = network_bytes[:line_end]
+    storage_kind = network_bytes[:line_end].decode('ascii')
     return storage_kind, line_end + 1
 
 

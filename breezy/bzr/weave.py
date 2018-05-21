@@ -894,7 +894,7 @@ class Weave(VersionedFile):
 
         for i in range(nv):
             version = self._idx_to_name(i)
-            hd = sha1s[version].hexdigest()
+            hd = sha1s[version].hexdigest().encode()
             expected = self._sha1s[i]
             if hd != expected:
                 raise WeaveInvalidChecksum(

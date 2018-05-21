@@ -755,7 +755,7 @@ class KnitAnnotateFactory(_KnitFactory):
         out = []
         for start, end, c, lines in delta:
             out.append(b'%d,%d,%d\n' % (start, end, c))
-            out.extend(origin + ' ' + text
+            out.extend(origin + b' ' + text
                        for origin, text in lines)
         return out
 
@@ -1698,7 +1698,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     # It's a knit record, it has a _raw_record field (even if
                     # it was reconstituted from a network stream).
                     bytes = record._raw_record
-                options = [record._build_details[0]]
+                options = [record._build_details[0].encode('ascii')]
                 if record._build_details[1]:
                     options.append(b'no-eol')
                 # Just blat it across.
