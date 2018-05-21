@@ -29,9 +29,11 @@ from dulwich.objects import (
     )
 
 from .... import conflicts as _mod_conflicts
+from ..tree import (
+    changes_between_git_tree_and_working_copy,
+    )
 from ..workingtree import (
     FLAG_STAGEMASK,
-    changes_between_git_tree_and_working_copy,
     )
 from ....tests import TestCaseWithTransport
 
