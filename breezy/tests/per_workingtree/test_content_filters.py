@@ -81,9 +81,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             (dir + '/file2.bin', b'Foo Bin')])
         tree.add(['file1.txt', b'file2.bin'])
         tree.commit('commit raw content')
-        txt_fileid = tree.path2id('file1.txt')
-        bin_fileid = tree.path2id('file2.bin')
-        return tree, txt_fileid, bin_fileid
+        return tree, 'file1.txt', 'file2.bin'
 
     def create_cf_tree_with_two_revisions(self, txt_reader, txt_writer,
         dir='.'):
@@ -101,9 +99,6 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             ])
         tree.add(['file1.txt', 'file2.bin', 'file3.txt'])
         tree.commit('commit raw content')
-        fileid_1 = tree.path2id('file1.txt')
-        fileid_2 = tree.path2id('file2.bin')
-        fileid_3 = tree.path2id('file3.txt')
         # Commit another revision with various changes. We make sure
         # the change includes a modification, an addition and a deletion.
         # Renames are more complex and need a separate set of tests later.
@@ -114,8 +109,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         tree.add(['file4.txt'])
         tree.remove(['file3.txt'], keep_files=False)
         tree.commit("change, add and rename stuff")
-        fileid_4 = tree.path2id('file4.txt')
-        return tree, fileid_1, fileid_2, fileid_3, fileid_4
+        return tree, 'file1.txt', 'file2.bin', 'file3.txt', 'file4.txt'
 
     def patch_in_content_filter(self):
         # Patch in a custom, symmetric content filter stack. It's pretty gross
@@ -130,21 +124,16 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
                 return []
         self.overrideAttr(WorkingTree, '_content_filter_stack', new_stack)
 
-    def assert_basis_content(self, expected_content, branch, file_id):
+    def assert_basis_content(self, expected_content, branch, path):
         # Note: We need to use try/finally here instead of addCleanup()
         # as the latter leaves the read lock in place too long
         basis = branch.basis_tree()
-        basis.lock_read()
-        try:
-            self.assertEqual(
-                    expected_content,
-                    basis.get_file_text(basis.id2path(file_id), file_id))
-        finally:
-            basis.unlock()
+        with basis.lock_read():
+            self.assertEqual(expected_content, basis.get_file_text(path))
 
     def test_symmetric_content_filtering(self):
         # test handling when read then write gives back the initial content
-        tree, txt_fileid, bin_fileid = self.create_cf_tree(
+        tree, txt_path, bin_path= self.create_cf_tree(
             txt_reader=_swapcase, txt_writer=_swapcase)
         # Check that the basis tree has the expected content
         basis = tree.basis_tree()
@@ -156,21 +145,21 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             expected = "Foo Txt"
         self.assertEqual(
                 expected,
-                basis.get_file_text(basis.id2path(txt_fileid)))
+                basis.get_file_text(txt_path))
         self.assertEqual(
                 'Foo Bin',
-                basis.get_file_text(basis.id2path(bin_fileid)))
+                basis.get_file_text(bin_path))
         # Check that the working tree has the original content
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('Foo Txt', tree.get_file(tree.id2path(txt_fileid),
+        self.assertEqual('Foo Txt', tree.get_file(txt_path,
             filtered=False).read())
-        self.assertEqual('Foo Bin', tree.get_file(tree.id2path(bin_fileid),
+        self.assertEqual('Foo Bin', tree.get_file(bin_path,
             filtered=False).read())
 
     def test_readonly_content_filtering(self):
         # test handling with a read filter but no write filter
-        tree, txt_fileid, bin_fileid = self.create_cf_tree(
+        tree, txt_path, bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=None)
         # Check that the basis tree has the expected content
         basis = tree.basis_tree()
@@ -180,24 +169,24 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             expected = "FOO TXT"
         else:
             expected = "Foo Txt"
-        self.assertEqual(expected, basis.get_file_text(basis.id2path(txt_fileid)))
-        self.assertEqual('Foo Bin', basis.get_file_text(basis.id2path(bin_fileid)))
+        self.assertEqual(expected, basis.get_file_text(txt_path))
+        self.assertEqual('Foo Bin', basis.get_file_text(bin_path))
         # We expect the workingtree content to be unchanged (for now at least)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('Foo Txt', tree.get_file(tree.id2path(txt_fileid),
+        self.assertEqual('Foo Txt', tree.get_file(txt_path,
             filtered=False).read())
-        self.assertEqual('Foo Bin', tree.get_file(tree.id2path(bin_fileid),
+        self.assertEqual('Foo Bin', tree.get_file(bin_path,
             filtered=False).read())
 
     def test_branch_source_filtered_target_not(self):
         # Create a source branch with content filtering
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_path, bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        self.assert_basis_content("FOO TXT", source, txt_fileid)
+        self.assert_basis_content("FOO TXT", source, txt_path)
 
         # Now branch it
         self.run_bzr('branch source target')
@@ -210,12 +199,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_branch_source_not_filtered_target_is(self):
         # Create a source branch with content filtering
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_path, bin_path = self.create_cf_tree(
             txt_reader=None, txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        self.assert_basis_content("Foo Txt", source, txt_fileid)
+        self.assert_basis_content("Foo Txt", source, txt_path)
 
         # Now patch in content filtering and branch the source
         self.patch_in_content_filter()
@@ -233,7 +222,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         #
         # set up a tree where the canonical form has a string added to the
         # end
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_path, bin_path = self.create_cf_tree(
             txt_reader=_append_text,
             txt_writer=_remove_appended_text,
             dir='source')
@@ -244,10 +233,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
         expected_canonical_form = 'Foo Txt\nend string\n'
         self.assertEqual(
-            source.get_file(source.id2path(txt_fileid), filtered=True).read(),
+            source.get_file(txt_path, filtered=True).read(),
             expected_canonical_form)
         self.assertEqual(
-            source.get_file(source.id2path(txt_fileid), filtered=False).read(),
+            source.get_file(txt_path, filtered=False).read(),
             'Foo Txt')
 
         # results are: kind, size, executable, sha1_or_link_target
@@ -262,51 +251,51 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_pull(self):
         # Create a source branch with two revisions
-        source, fileid_1, fileid_2, fileid_3, fileid_4 = \
+        source, path1, path2, path3, path4 = \
             self.create_cf_tree_with_two_revisions(txt_reader=None,
             txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo ROCKS!", 'source/file1.txt')
-        self.assert_basis_content("Foo ROCKS!", source, fileid_1)
+        self.assert_basis_content("Foo ROCKS!", source, path1)
 
         # Now patch in content filtering and branch from revision 1
         self.patch_in_content_filter()
         self.run_bzr('branch -r1 source target')
         target = WorkingTree.open('target')
-        self.assert_basis_content("Foo Txt", target, fileid_1)
+        self.assert_basis_content("Foo Txt", target, path1)
         self.assertFileEqual("fOO tXT", 'target/file1.txt')
-        self.assert_basis_content("Foo Bin", target, fileid_2)
+        self.assert_basis_content("Foo Bin", target, path2)
         self.assertFileEqual("Foo Bin", 'target/file2.bin')
-        self.assert_basis_content("Bar Txt", target, fileid_3)
+        self.assert_basis_content("Bar Txt", target, path3)
         self.assertFileEqual("bAR tXT", 'target/file3.txt')
 
         # Pull the latter change and check the target tree is updated
         self.run_bzr('pull -d target')
-        self.assert_basis_content("Foo ROCKS!", target, fileid_1)
+        self.assert_basis_content("Foo ROCKS!", target, path1)
         self.assertFileEqual("fOO rocks!", 'target/file1.txt')
-        self.assert_basis_content("Foo Bin", target, fileid_2)
-        self.assert_basis_content("Hello World", target, fileid_4)
+        self.assert_basis_content("Foo Bin", target, path2)
+        self.assert_basis_content("Hello World", target, path4)
         self.assertFileEqual("hELLO wORLD", 'target/file4.txt')
 
     def test_content_filtering_applied_on_merge(self):
         # Create a source branch with two revisions
-        source, fileid_1, fileid_2, fileid_3, fileid_4 = \
+        source, path1, path2, path3, path4 = \
             self.create_cf_tree_with_two_revisions(txt_reader=None,
             txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
-        self.assert_basis_content("Foo ROCKS!", source, fileid_1)
+        self.assert_basis_content("Foo ROCKS!", source, path1)
         self.assertFileEqual("Foo ROCKS!", 'source/file1.txt')
-        self.assert_basis_content("Foo Bin", source, fileid_2)
-        self.assert_basis_content("Hello World", source, fileid_4)
+        self.assert_basis_content("Foo Bin", source, path2)
+        self.assert_basis_content("Hello World", source, path4)
         self.assertFileEqual("Hello World", 'source/file4.txt')
 
         # Now patch in content filtering and branch from revision 1
         self.patch_in_content_filter()
         self.run_bzr('branch -r1 source target')
         target = WorkingTree.open('target')
-        self.assert_basis_content("Foo Txt", target, fileid_1)
+        self.assert_basis_content("Foo Txt", target, path1)
         self.assertFileEqual("fOO tXT", 'target/file1.txt')
         self.assertFileEqual("Foo Bin", 'target/file2.bin')
         self.assertFileEqual("bAR tXT", 'target/file3.txt')
@@ -318,12 +307,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
         # Commit the merge and check the right content is stored
         target.commit("merge file1.txt changes from source")
-        self.assert_basis_content("Foo ROCKS!", target, fileid_1)
-        self.assert_basis_content("Hello World", target, fileid_4)
+        self.assert_basis_content("Foo ROCKS!", target, path1)
+        self.assert_basis_content("Hello World", target, path4)
 
     def test_content_filtering_applied_on_switch(self):
         # Create a source branch with two revisions
-        source, fileid_1, fileid_2, fileid_3, fileid_4 = \
+        source, path1, path2, path3, path4 = \
             self.create_cf_tree_with_two_revisions(txt_reader=None,
             txt_writer=None, dir='branch-a')
         if not source.supports_content_filtering():
@@ -345,12 +334,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_revert_delete(self):
         # Create a source branch with content filtering
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_path, bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        self.assert_basis_content("FOO TXT", source, txt_fileid)
+        self.assert_basis_content("FOO TXT", source, txt_path)
 
         # Now delete the file, revert it and check the content
         os.unlink('source/file1.txt')
@@ -363,12 +352,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_revert_rename(self):
         # Create a source branch with content filtering
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_path, bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        self.assert_basis_content("FOO TXT", source, txt_fileid)
+        self.assert_basis_content("FOO TXT", source, txt_path)
 
         # Now modify & rename a file, revert it and check the content
         self.build_tree_contents([
