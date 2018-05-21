@@ -327,9 +327,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         builder = self.make_branch_builder('source')
         builder.start_series()
         a_revid = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        b_revid = builder.build_snapshot([a_revid, 'ghost-id'], [])
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))])
+        b_revid = builder.build_snapshot([a_revid, b'ghost-id'], [])
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

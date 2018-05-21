@@ -1326,14 +1326,14 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_fulltext(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
+        rev_key = (b'rev-id',)
         ann._num_compression_children[rev_key] = 1
-        res = ann._expand_record(rev_key, (('parent-id',),), None,
-                           ['line1\n', 'line2\n'], ('fulltext', True))
+        res = ann._expand_record(rev_key, ((b'parent-id',),), None,
+                           [b'line1\n', b'line2\n'], (b'fulltext', True))
         # The content object and text lines should be cached appropriately
-        self.assertEqual(['line1\n', 'line2'], res)
+        self.assertEqual([b'line1\n', b'line2'], res)
         content_obj = ann._content_objects[rev_key]
-        self.assertEqual(['line1\n', 'line2\n'], content_obj._lines)
+        self.assertEqual([b'line1\n', b'line2\n'], content_obj._lines)
         self.assertEqual(res, content_obj.text())
         self.assertEqual(res, ann._text_cache[rev_key])
 
@@ -1355,14 +1355,14 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_record_tracks_num_children(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        rev2_key = ('rev2-id',)
-        parent_key = ('parent-id',)
-        record = ['0,1,1\n', 'new-line\n']
-        details = ('line-delta', False)
+        rev_key = (b'rev-id',)
+        rev2_key = (b'rev2-id',)
+        parent_key = (b'parent-id',)
+        record = [b'0,1,1\n', b'new-line\n']
+        details = (b'line-delta', False)
         ann._num_compression_children[parent_key] = 2
-        ann._expand_record(parent_key, (), None, ['line1\n', 'line2\n'],
-                           ('fulltext', False))
+        ann._expand_record(parent_key, (), None, [b'line1\n', b'line2\n'],
+                           (b'fulltext', False))
         res = ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
         self.assertEqual({parent_key: 1}, ann._num_compression_children)
@@ -1378,28 +1378,28 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_delta_records_blocks(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        parent_key = ('parent-id',)
-        record = ['0,1,1\n', 'new-line\n']
-        details = ('line-delta', True)
+        rev_key = (b'rev-id',)
+        parent_key = (b'parent-id',)
+        record = [b'0,1,1\n', b'new-line\n']
+        details = (b'line-delta', True)
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None,
-                           ['line1\n', 'line2\n', 'line3\n'],
-                           ('fulltext', False))
+                           [b'line1\n', b'line2\n', b'line3\n'],
+                           (b'fulltext', False))
         ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
         self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
                          ann._matching_blocks)
-        rev2_key = ('rev2-id',)
-        record = ['0,1,1\n', 'new-line\n']
-        details = ('line-delta', False)
+        rev2_key = (b'rev2-id',)
+        record = [b'0,1,1\n', b'new-line\n']
+        details = (b'line-delta', False)
         ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
         self.assertEqual([(1, 1, 2), (3, 3, 0)],
                          ann._matching_blocks[(rev2_key, parent_key)])
 
     def test__get_parent_ann_uses_matching_blocks(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        parent_key = ('parent-id',)
+        rev_key = (b'rev-id',)
+        parent_key = (b'parent-id',)
         parent_ann = [(parent_key,)]*3
         block_key = (rev_key, parent_key)
         ann._annotations_cache[parent_key] = parent_ann
@@ -1407,19 +1407,19 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         # We should not try to access any parent_lines content, because we know
         # we already have the matching blocks
         par_ann, blocks = ann._get_parent_annotations_and_matches(rev_key,
-                                        ['1\n', '2\n', '3\n'], parent_key)
+                                        [b'1\n', b'2\n', b'3\n'], parent_key)
         self.assertEqual(parent_ann, par_ann)
         self.assertEqual([(0, 1, 1), (3, 3, 0)], blocks)
         self.assertEqual({}, ann._matching_blocks)
 
     def test__process_pending(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        p1_key = ('p1-id',)
-        p2_key = ('p2-id',)
-        record = ['0,1,1\n', 'new-line\n']
-        details = ('line-delta', False)
-        p1_record = ['line1\n', 'line2\n']
+        rev_key = (b'rev-id',)
+        p1_key = (b'p1-id',)
+        p2_key = (b'p2-id',)
+        record = [b'0,1,1\n', b'new-line\n']
+        details = (b'line-delta', False)
+        p1_record = [b'line1\n', b'line2\n']
         ann._num_compression_children[p1_key] = 1
         res = ann._expand_record(rev_key, (p1_key, p2_key), p1_key,
                                  record, details)
@@ -1428,7 +1428,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({}, ann._pending_annotation)
         # Now insert p1, and we should be able to expand the delta
         res = ann._expand_record(p1_key, (), None, p1_record,
-                                 ('fulltext', False))
+                                 (b'fulltext', False))
         self.assertEqual(p1_record, res)
         ann._annotations_cache[p1_key] = [(p1_key,)]*2
         res = ann._process_pending(p1_key)
@@ -1438,7 +1438,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
                          ann._pending_annotation)
         # Now fill in parent 2, and pending annotation should be satisfied
-        res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
+        res = ann._expand_record(p2_key, (), None, [], (b'fulltext', False))
         ann._annotations_cache[p2_key] = []
         res = ann._process_pending(p2_key)
         self.assertEqual([rev_key], res)
@@ -1447,9 +1447,9 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test_record_delta_removes_basis(self):
         ann = self.make_annotator()
-        ann._expand_record(('parent-id',), (), None,
-                           ['line1\n', 'line2\n'], ('fulltext', False))
-        ann._num_compression_children['parent-id'] = 2
+        ann._expand_record((b'parent-id',), (), None,
+                           [b'line1\n', b'line2\n'], (b'fulltext', False))
+        ann._num_compression_children[b'parent-id'] = 2
 
     def test_annotate_special_text(self):
         ann = self.make_annotator()
@@ -2138,31 +2138,31 @@ class TestKnitVersionedFiles(KnitTests):
                                   _min_buffer_size=125)
 
     def test__split_by_prefix(self):
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                 }, ['f', 'g'],
-                                 [('f', 'a'), ('g', 'b'),
-                                  ('g', 'a'), ('f', 'b')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                 }, [b'f', b'g'],
+                                 [(b'f', b'a'), (b'g', b'b'),
+                                  (b'g', b'a'), (b'f', b'b')])
 
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                 }, ['f', 'g'],
-                                 [('f', 'a'), ('f', 'b'),
-                                  ('g', 'b'), ('g', 'a')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                 }, [b'f', b'g'],
+                                 [(b'f', b'a'), (b'f', b'b'),
+                                  (b'g', b'b'), (b'g', b'a')])
 
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                 }, ['f', 'g'],
-                                 [('f', 'a'), ('f', 'b'),
-                                  ('g', 'b'), ('g', 'a')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                 }, [b'f', b'g'],
+                                 [(b'f', b'a'), (b'f', b'b'),
+                                  (b'g', b'b'), (b'g', b'a')])
 
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                  '': [('a',), ('b',)]
-                                 }, ['f', 'g', ''],
-                                 [('f', 'a'), ('g', 'b'),
-                                  ('a',), ('b',),
-                                  ('g', 'a'), ('f', 'b')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                  b'': [(b'a',), (b'b',)]
+                                 }, [b'f', b'g', b''],
+                                 [(b'f', b'a'), (b'g', b'b'),
+                                  (b'a',), (b'b',),
+                                  (b'g', b'a'), (b'f', b'b')])
 
 
 class TestStacking(KnitTests):

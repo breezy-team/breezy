@@ -42,10 +42,10 @@ class TestStores(object):
         self.assertEqual(f.read(), value)
 
     def fill_store(self, store):
-        store.add(BytesIO(b'hello'), 'a')
-        store.add(BytesIO(b'other'), 'b')
-        store.add(BytesIO(b'something'), 'c')
-        store.add(BytesIO(b'goodbye'), '123123')
+        store.add(BytesIO(b'hello'), b'a')
+        store.add(BytesIO(b'other'), b'b')
+        store.add(BytesIO(b'something'), b'c')
+        store.add(BytesIO(b'goodbye'), b'123123')
 
     def test_get(self):
         store = self.get_store()
@@ -62,7 +62,7 @@ class TestStores(object):
         """Multiple add with same ID should raise a BzrError"""
         store = self.get_store()
         self.fill_store(store)
-        self.assertRaises(BzrError, store.add, BytesIO(b'goodbye'), '123123')
+        self.assertRaises(BzrError, store.add, BytesIO(b'goodbye'), b'123123')
 
 
 class TestCompressedTextStore(TestCaseInTempDir, TestStores):
@@ -74,8 +74,8 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
     def test_total_size(self):
         store = self.get_store(u'.')
         store.register_suffix('dsc')
-        store.add(BytesIO(b'goodbye'), '123123')
-        store.add(BytesIO(b'goodbye2'), '123123', 'dsc')
+        store.add(BytesIO(b'goodbye'), b'123123')
+        store.add(BytesIO(b'goodbye2'), b'123123', 'dsc')
         # these get gzipped - content should be stable
         self.assertEqual(store.total_size(), (2, 55))
 
@@ -83,7 +83,7 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
         my_store = TextStore(MockTransport(),
                              prefixed=True, compressed=True)
         my_store.register_suffix('dsc')
-        self.assertEqual('45/foo.dsc', my_store._relpath('foo', ['dsc']))
+        self.assertEqual('45/foo.dsc', my_store._relpath(b'foo', ['dsc']))
 
 
 class TestMemoryStore(TestCase):
@@ -106,14 +106,14 @@ class TestMemoryStore(TestCase):
 
     def test_adding_fails_when_present(self):
         my_store = self.get_store()
-        my_store.add(BytesIO(b'hello'), 'aa')
+        my_store.add(BytesIO(b'hello'), b'aa')
         self.assertRaises(BzrError,
-                          my_store.add, BytesIO(b'hello'), 'aa')
+                          my_store.add, BytesIO(b'hello'), b'aa')
 
     def test_total_size(self):
         store = self.get_store()
-        store.add(BytesIO(b'goodbye'), '123123')
-        store.add(BytesIO(b'goodbye2'), '123123.dsc')
+        store.add(BytesIO(b'goodbye'), b'123123')
+        store.add(BytesIO(b'goodbye2'), b'123123.dsc')
         self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
@@ -130,8 +130,8 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 
     def test_total_size(self):
         store = self.get_store()
-        store.add(BytesIO(b'goodbye'), '123123')
-        store.add(BytesIO(b'goodbye2'), '123123.dsc')
+        store.add(BytesIO(b'goodbye'), b'123123')
+        store.add(BytesIO(b'goodbye2'), b'123123.dsc')
         self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
@@ -229,8 +229,8 @@ class TestTransportStore(TestCase):
 
     def test__relpath_invalid(self):
         my_store = TransportStore(MockTransport())
-        self.assertRaises(ValueError, my_store._relpath, '/foo')
-        self.assertRaises(ValueError, my_store._relpath, 'foo/')
+        self.assertRaises(ValueError, my_store._relpath, b'/foo')
+        self.assertRaises(ValueError, my_store._relpath, b'foo/')
 
     def test_register_invalid_suffixes(self):
         my_store = TransportStore(MockTransport())
@@ -239,56 +239,56 @@ class TestTransportStore(TestCase):
 
     def test__relpath_unregister_suffixes(self):
         my_store = TransportStore(MockTransport())
-        self.assertRaises(ValueError, my_store._relpath, 'foo', ['gz'])
-        self.assertRaises(ValueError, my_store._relpath, 'foo', ['dsc', 'gz'])
+        self.assertRaises(ValueError, my_store._relpath, b'foo', [b'gz'])
+        self.assertRaises(ValueError, my_store._relpath, b'foo', [b'dsc', b'gz'])
 
     def test__relpath_simple(self):
         my_store = TransportStore(MockTransport())
-        self.assertEqual("foo", my_store._relpath('foo'))
+        self.assertEqual("foo", my_store._relpath(b'foo'))
 
     def test__relpath_prefixed(self):
         my_store = TransportStore(MockTransport(), True)
-        self.assertEqual('45/foo', my_store._relpath('foo'))
+        self.assertEqual('45/foo', my_store._relpath(b'foo'))
 
     def test__relpath_simple_suffixed(self):
         my_store = TransportStore(MockTransport())
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
-        self.assertEqual('foo.baz', my_store._relpath('foo', ['baz']))
-        self.assertEqual('foo.bar.baz', my_store._relpath('foo', ['bar', 'baz']))
+        self.assertEqual('foo.baz', my_store._relpath(b'foo', ['baz']))
+        self.assertEqual('foo.bar.baz', my_store._relpath(b'foo', ['bar', 'baz']))
 
     def test__relpath_prefixed_suffixed(self):
         my_store = TransportStore(MockTransport(), True)
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
-        self.assertEqual('45/foo.baz', my_store._relpath('foo', ['baz']))
+        self.assertEqual('45/foo.baz', my_store._relpath(b'foo', [b'baz']))
         self.assertEqual('45/foo.bar.baz',
-                         my_store._relpath('foo', ['bar', 'baz']))
+                         my_store._relpath(b'foo', [b'bar', b'baz']))
 
     def test_add_simple(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
-        my_store.add(stream, "foo")
+        my_store.add(stream, b"foo")
         self.assertEqual([("_add", "foo", stream)], my_store._calls)
 
     def test_add_prefixed(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
-        my_store.add(stream, "foo")
+        my_store.add(stream, b"foo")
         self.assertEqual([("_add", "45/foo", stream)], my_store._calls)
 
     def test_add_simple_suffixed(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
         my_store.register_suffix('dsc')
-        my_store.add(stream, "foo", 'dsc')
+        my_store.add(stream, b"foo", b'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
 
     def test_add_simple_suffixed(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.register_suffix('dsc')
-        my_store.add(stream, "foo", 'dsc')
+        my_store.add(stream, b"foo", b'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
     def get_populated_store(self, prefixed=False,
@@ -297,11 +297,11 @@ class TestTransportStore(TestCase):
                                compressed=compressed)
         my_store.register_suffix('sig')
         stream = BytesIO(b"signature")
-        my_store.add(stream, "foo", 'sig')
+        my_store.add(stream, b"foo", 'sig')
         stream = BytesIO(b"content")
-        my_store.add(stream, "foo")
+        my_store.add(stream, b"foo")
         stream = BytesIO(b"signature for missing base")
-        my_store.add(stream, "missing", 'sig')
+        my_store.add(stream, b"missing", 'sig')
         return my_store
 
     def test_has_simple(self):
@@ -346,8 +346,8 @@ class TestTransportStore(TestCase):
         my_store = TextStore(MemoryTransport(),
                              prefixed=False, compressed=False)
         stream = BytesIO(b"content")
-        my_store.add(stream, "foo")
-        self.assertEqual({'foo'},
+        my_store.add(stream, b"foo")
+        self.assertEqual({b'foo'},
                          set(my_store.__iter__()))
 
     def test___iter__(self):
@@ -369,14 +369,14 @@ class TestTransportStore(TestCase):
 
     def test_relpath_escaped(self):
         my_store = TransportStore(MemoryTransport())
-        self.assertEqual('%25', my_store._relpath('%'))
+        self.assertEqual('%25', my_store._relpath(b'%'))
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
         my_store = TransportStore(MemoryTransport(), prefixed=True,
             escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEqual(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
+        self.assertEqual(my_store._relpath(b'C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):
