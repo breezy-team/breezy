@@ -941,7 +941,10 @@ class URL(object):
         if isinstance(relpath, str):
             pass
         elif isinstance(relpath, unicode):
-            relpath = relpath.encode()
+            try:
+                relpath = relpath.encode()
+            except UnicodeEncodeError:
+                raise InvalidURL(relpath)
         else:
             raise InvalidURL(relpath)
         relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
