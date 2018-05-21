@@ -896,7 +896,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # a lot better than seeing %40 all the time.
         r = [(c in self._safe) and chr(c) or ('%%%02x' % c)
                 for c in bytearray(prefix)]
-        return ''.join(r)
+        return ''.join(r).encode('ascii')
 
     def _unescape(self, basename):
         """Escaped names are easily unescaped by urlutils."""

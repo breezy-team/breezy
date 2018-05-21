@@ -510,7 +510,7 @@ class VersionedFileTestMixIn(object):
                  25: 'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
                  }
         for depth in range(26):
-            new_version = text_name + b'%s' % depth
+            new_version = text_name + b'%d' % depth
             text = text + [b'line\n']
             f.add_lines(new_version, [next_parent], text)
             next_parent = new_version
@@ -518,7 +518,7 @@ class VersionedFileTestMixIn(object):
         text_name = b'chain2-'
         text = [b'line\n']
         for depth in range(26):
-            new_version = text_name + b'%s' % depth
+            new_version = text_name + b'%d' % depth
             text = text + [b'line\n']
             f.add_lines(new_version, [next_parent], text)
             next_parent = new_version
@@ -1364,8 +1364,8 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
         mapper = versionedfile.HashPrefixMapper()
         self.assertEqual("9b/file-id", mapper.map((b"file-id", b"revision-id")))
         self.assertEqual("45/new-id", mapper.map((b"new-id", b"revision-id")))
-        self.assertEqual(('file-id',), mapper.unmap(b"9b/file-id"))
-        self.assertEqual(('new-id',), mapper.unmap(b"45/new-id"))
+        self.assertEqual((b'file-id',), mapper.unmap("9b/file-id"))
+        self.assertEqual((b'new-id',), mapper.unmap("45/new-id"))
 
     def test_hash_escaped_mapper(self):
         #knit1: hash + escaped
@@ -1375,8 +1375,8 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
             b"revision-id")))
         self.assertEqual(b"88/ne%2557-%2549d", mapper.map((b"neW-Id",
             b"revision-id")))
-        self.assertEqual(('filE-Id',), mapper.unmap(b"ed/fil%2545-%2549d"))
-        self.assertEqual(('neW-Id',), mapper.unmap(b"88/ne%2557-%2549d"))
+        self.assertEqual((b'filE-Id',), mapper.unmap("ed/fil%2545-%2549d"))
+        self.assertEqual((b'neW-Id',), mapper.unmap("88/ne%2557-%2549d"))
 
 
 class TestVersionedFiles(TestCaseWithMemoryTransport):
@@ -2110,7 +2110,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_get_record_stream_wire_ready_delta_closure_included(self):
         # copy a delta over the wire with the ability to get its full text.
         files = self.get_versionedfiles()
-        key = self.get_simple_key('ft')
+        key = self.get_simple_key(b'ft')
         key_delta = self.get_simple_key(b'delta')
         files.add_lines(key, (), [b'my text\n', b'content'])
         if self.graph:
@@ -2224,7 +2224,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 (merged_key,),
                 ], origins)
         self.assertRaises(RevisionNotPresent,
-            files.get_annotator().annotate, self.get_simple_key('missing-key'))
+            files.get_annotator().annotate, self.get_simple_key(b'missing-key'))
 
     def test_get_parent_map(self):
         files = self.get_versionedfiles()

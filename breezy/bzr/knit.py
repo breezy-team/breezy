@@ -369,7 +369,8 @@ class KnitContentFactory(ContentFactory):
             noeol = b'N'
         else:
             noeol = b' '
-        network_bytes = b"%s\n%s\n%s\n%s%s" % (self.storage_kind, key_bytes,
+        network_bytes = b"%s\n%s\n%s\n%s%s" % (
+            self.storage_kind.encode('ascii'), key_bytes,
             parent_bytes, noeol, self._raw_record)
         self._network_bytes = network_bytes
 
@@ -1140,6 +1141,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
+        if not all([isinstance(x, bytes) or x is None for x in key]):
+            raise TypeError(key)
         version_id = key[-1]
         if version_id is not None:
             if contains_whitespace(version_id):
@@ -2234,7 +2237,7 @@ class _ContentMapGenerator(object):
                 parent_bytes = b'None:'
             else:
                 parent_bytes = b'\t'.join(b'\x00'.join(key) for key in parents)
-            method_bytes = method
+            method_bytes = method.encode('ascii')
             if noeol:
                 noeol_bytes = b"T"
             else:

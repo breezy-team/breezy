@@ -165,5 +165,5 @@ def _read_weave_v5(f, w):
         elif l == b'}\n':
             w._weave.append((b'}', None))
         else:
-            w._weave.append((bytesintern(l[0:1]), int(l[2:])))
+            w._weave.append((bytesintern(l[0:1]), int(l[2:].decode('ascii'))))
     return w
