@@ -248,7 +248,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_inventory_5a(self):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-                _inventory_v5a, revision_id='test-rev-id')
+                _inventory_v5a, revision_id=b'test-rev-id')
         self.assertEqual('test-rev-id', inv.root.revision)
 
     def test_unpack_inventory_5a_cache_and_copy(self):
@@ -257,7 +257,7 @@ class TestSerializer(TestCase):
         # False
         entry_cache = fifo_cache.FIFOCache()
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-            _inventory_v5a, revision_id='test-rev-id',
+            _inventory_v5a, revision_id=b'test-rev-id',
             entry_cache=entry_cache, return_from_cache=False)
         for entry in inv.iter_just_entries():
             key = (entry.file_id, entry.revision)
@@ -273,7 +273,7 @@ class TestSerializer(TestCase):
         # True
         entry_cache = fifo_cache.FIFOCache()
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-            _inventory_v5a, revision_id='test-rev-id',
+            _inventory_v5a, revision_id=b'test-rev-id',
             entry_cache=entry_cache, return_from_cache=True)
         for entry in inv.iter_just_entries():
             key = (entry.file_id, entry.revision)
@@ -285,7 +285,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_inventory_5b(self):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-                _inventory_v5b, revision_id='test-rev-id')
+                _inventory_v5b, revision_id=b'test-rev-id')
         self.assertEqual('a-rev-id', inv.root.revision)
 
     def test_repack_inventory_5(self):

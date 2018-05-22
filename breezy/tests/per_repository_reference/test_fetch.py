@@ -87,7 +87,7 @@ class TestFetch(TestFetchBase):
         transport = self.make_smart_server('server')
         transport.ensure_base()
         url = transport.abspath('')
-        stack_b = source_b.controldir.sprout(url + '/stack-on', revision_id='B-id')
+        stack_b = source_b.controldir.sprout(url + '/stack-on', revision_id=b'B-id')
         # self.make_branch only takes relative paths, so we do it the 'hard'
         # way
         target_transport = transport.clone('target')
@@ -107,7 +107,7 @@ class TestFetch(TestFetchBase):
         # revision_id versus not. If you supply revision_id, then you get a
         # PendingAncestryResult for the search, versus a SearchResult...
         final2_b = target_b.controldir.sprout('final2',
-                                          revision_id='C-id').open_branch()
+                                          revision_id=b'C-id').open_branch()
         self.assertEqual('C-id', final_b.last_revision())
 
     def make_source_with_ghost_and_stacked_target(self):
@@ -116,8 +116,8 @@ class TestFetch(TestFetchBase):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id', 'ghost-id'], [], revision_id='B-id')
+            revision_id=b'A-id')
+        builder.build_snapshot(['A-id', 'ghost-id'], [], revision_id=b'B-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

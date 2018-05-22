@@ -46,9 +46,9 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-file-id', 'file', 'some content\n'))],
-            revision_id='A-id')
+            revision_id=b'A-id')
         b = builder.get_branch()
-        old_rt = b.repository.revision_tree('A-id')
+        old_rt = b.repository.revision_tree(b'A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = 'B-id'
         new_inv.get_entry('a-file-id').revision = 'ghost-id'
@@ -98,13 +98,13 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'contents\n'))],
-            revision_id='A-id')
+            revision_id=b'A-id')
         builder.build_snapshot(['A-id'], [
             ('modify', ('file', 'new-content\n'))],
-            revision_id='B-id')
+            revision_id=b'B-id')
         builder.build_snapshot(['B-id'], [
             ('modify', ('file', 'yet more content\n'))],
-            revision_id='C-id')
+            revision_id=b'C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

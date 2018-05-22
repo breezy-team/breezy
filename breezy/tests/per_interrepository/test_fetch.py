@@ -64,17 +64,17 @@ class TestInterRepository(TestCaseWithInterRepository):
         tree_a.commit('rev1', rev_id=b'rev1')
         def check_push_rev1(repo):
             # ensure the revision is missing.
-            self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
+            self.assertRaises(NoSuchRevision, repo.get_revision, b'rev1')
             # fetch with a limit of NULL_REVISION
             repo.fetch(tree_a.branch.repository,
                        revision_id=NULL_REVISION)
             # nothing should have been pushed
-            self.assertFalse(repo.has_revision('rev1'))
+            self.assertFalse(repo.has_revision(b'rev1'))
             # fetch with a default limit (grab everything)
             repo.fetch(tree_a.branch.repository)
             # check that b now has all the data from a's first commit.
-            rev = repo.get_revision('rev1')
-            tree = repo.revision_tree('rev1')
+            rev = repo.get_revision(b'rev1')
+            tree = repo.revision_tree(b'rev1')
             tree.lock_read()
             self.addCleanup(tree.unlock)
             tree.get_file_text('foo')
@@ -207,7 +207,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'base')
         builder.build_snapshot([b'base'], [
             ('modify', ('file', b'left content\n'))],
@@ -222,30 +222,30 @@ class TestInterRepository(TestCaseWithInterRepository):
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
         trunk = repo.controldir.create_branch()
-        trunk.repository.fetch(branch.repository, 'left')
-        trunk.repository.fetch(branch.repository, 'right')
+        trunk.repository.fetch(branch.repository, b'left')
+        trunk.repository.fetch(branch.repository, b'right')
         repo = self.make_to_repository('stacked')
         stacked_branch = repo.controldir.create_branch()
         stacked_branch.set_stacked_on_url(trunk.base)
-        stacked_branch.repository.fetch(branch.repository, 'merge')
+        stacked_branch.repository.fetch(branch.repository, b'merge')
         unstacked_repo = stacked_branch.controldir.open_repository()
         unstacked_repo.lock_read()
         self.addCleanup(unstacked_repo.unlock)
-        self.assertFalse(unstacked_repo.has_revision('left'))
-        self.assertFalse(unstacked_repo.has_revision('right'))
+        self.assertFalse(unstacked_repo.has_revision(b'left'))
+        self.assertFalse(unstacked_repo.has_revision(b'right'))
         self.assertEqual(
-            {('left',), ('right',), ('merge',)},
+            {(b'left',), (b'right',), (b'merge',)},
             unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         trunk.lock_read()
         self.addCleanup(trunk.unlock)
         left_tree, right_tree = trunk.repository.revision_trees(
-            ['left', 'right'])
+            [b'left', b'right'])
         stacked_branch.lock_read()
         self.addCleanup(stacked_branch.unlock)
         (stacked_left_tree,
          stacked_right_tree) = stacked_branch.repository.revision_trees(
-            ['left', 'right'])
+            [b'left', b'right'])
         self.assertEqual(
             left_tree.root_inventory, stacked_left_tree.root_inventory)
         self.assertEqual(
@@ -255,15 +255,15 @@ class TestInterRepository(TestCaseWithInterRepository):
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing
         # up.
-        self.assertTrue(unstacked_repo.has_revision('merge'))
-        expected_texts = {('file-id', 'merge')}
-        if stacked_branch.repository.texts.get_parent_map([('root-id',
-            'merge')]):
+        self.assertTrue(unstacked_repo.has_revision(b'merge'))
+        expected_texts = {(b'file-id', b'merge')}
+        if stacked_branch.repository.texts.get_parent_map([(b'root-id',
+            b'merge')]):
             # If a (root-id,merge) text exists, it should be in the stacked
             # repo.
-            expected_texts.add(('root-id', 'merge'))
+            expected_texts.add((b'root-id', b'merge'))
         self.assertEqual(expected_texts, unstacked_repo.texts.keys())
-        self.assertCanStreamRevision(unstacked_repo, 'merge')
+        self.assertCanStreamRevision(unstacked_repo, b'merge')
 
     def assertCanStreamRevision(self, repo, revision_id):
         exclude_keys = set(repo.all_revision_ids()) - {revision_id}
@@ -293,40 +293,40 @@ class TestInterRepository(TestCaseWithInterRepository):
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
         trunk = repo.controldir.create_branch()
-        trunk.repository.fetch(branch.repository, 'second')
+        trunk.repository.fetch(branch.repository, b'second')
         repo = self.make_to_repository('stacked')
         stacked_branch = repo.controldir.create_branch()
         stacked_branch.set_stacked_on_url(trunk.base)
-        stacked_branch.repository.fetch(branch.repository, 'third')
+        stacked_branch.repository.fetch(branch.repository, b'third')
         unstacked_repo = stacked_branch.controldir.open_repository()
         unstacked_repo.lock_read()
         self.addCleanup(unstacked_repo.unlock)
-        self.assertFalse(unstacked_repo.has_revision('second'))
-        self.assertFalse(unstacked_repo.has_revision('ghost'))
+        self.assertFalse(unstacked_repo.has_revision(b'second'))
+        self.assertFalse(unstacked_repo.has_revision(b'ghost'))
         self.assertEqual(
-            {('second',), ('third',)},
+            {(b'second',), (b'third',)},
             unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         trunk.lock_read()
         self.addCleanup(trunk.unlock)
-        second_tree = trunk.repository.revision_tree('second')
+        second_tree = trunk.repository.revision_tree(b'second')
         stacked_branch.lock_read()
         self.addCleanup(stacked_branch.unlock)
-        stacked_second_tree = stacked_branch.repository.revision_tree('second')
+        stacked_second_tree = stacked_branch.repository.revision_tree(b'second')
         self.assertEqual(second_tree, stacked_second_tree)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing
         # up.
-        self.assertTrue(unstacked_repo.has_revision('third'))
+        self.assertTrue(unstacked_repo.has_revision(b'third'))
         expected_texts = {('file-id', 'third')}
-        if stacked_branch.repository.texts.get_parent_map([('root-id',
-            'third')]):
+        if stacked_branch.repository.texts.get_parent_map([(b'root-id',
+            b'third')]):
             # If a (root-id,third) text exists, it should be in the stacked
             # repo.
-            expected_texts.add(('root-id', 'third'))
+            expected_texts.add((b'root-id', b'third'))
         self.assertEqual(expected_texts, unstacked_repo.texts.keys())
-        self.assertCanStreamRevision(unstacked_repo, 'third')
+        self.assertCanStreamRevision(unstacked_repo, b'third')
 
     def test_fetch_from_stacked_to_stacked_copies_parent_inventories(self):
         """Fetch from a stacked branch copies inventories for parents of
@@ -344,8 +344,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'base')
         builder.build_snapshot([b'base'], [
             ('modify', ('file', b'left content\n'))],
@@ -361,18 +361,18 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo = self.make_repository('old-trunk')
         # Make a pair of equivalent trunk repos in the from and to formats.
         old_trunk = repo.controldir.create_branch()
-        old_trunk.repository.fetch(branch.repository, 'left')
-        old_trunk.repository.fetch(branch.repository, 'right')
+        old_trunk.repository.fetch(branch.repository, b'left')
+        old_trunk.repository.fetch(branch.repository, b'right')
         repo = self.make_to_repository('new-trunk')
         new_trunk = repo.controldir.create_branch()
-        new_trunk.repository.fetch(branch.repository, 'left')
-        new_trunk.repository.fetch(branch.repository, 'right')
+        new_trunk.repository.fetch(branch.repository, 'bleft')
+        new_trunk.repository.fetch(branch.repository, 'bright')
         # Make the source; a repo stacked on old_trunk contained just the data
         # for 'merge'.
         repo = self.make_repository('old-stacked')
         old_stacked_branch = repo.controldir.create_branch()
         old_stacked_branch.set_stacked_on_url(old_trunk.base)
-        old_stacked_branch.repository.fetch(branch.repository, 'merge')
+        old_stacked_branch.repository.fetch(branch.repository, b'merge')
         # Make the target, a repo stacked on new_trunk.
         repo = self.make_to_repository('new-stacked')
         new_stacked_branch = repo.controldir.create_branch()
@@ -381,41 +381,41 @@ class TestInterRepository(TestCaseWithInterRepository):
         new_unstacked_repo = new_stacked_branch.controldir.open_repository()
         # Reopen the source and target repos without any fallbacks, and fetch
         # 'merge'.
-        new_unstacked_repo.fetch(old_unstacked_repo, 'merge')
+        new_unstacked_repo.fetch(old_unstacked_repo, b'merge')
         # Now check the results.  new_unstacked_repo should contain all the
         # data necessary to stream 'merge' (i.e. the parent inventories).
         new_unstacked_repo.lock_read()
         self.addCleanup(new_unstacked_repo.unlock)
-        self.assertFalse(new_unstacked_repo.has_revision('left'))
-        self.assertFalse(new_unstacked_repo.has_revision('right'))
+        self.assertFalse(new_unstacked_repo.has_revision(b'left'))
+        self.assertFalse(new_unstacked_repo.has_revision(b'right'))
         self.assertEqual(
-            {('left',), ('right',), ('merge',)},
+            {(b'left',), (b'right',), (b'merge',)},
             new_unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         new_trunk.lock_read()
         self.addCleanup(new_trunk.unlock)
         left_tree, right_tree = new_trunk.repository.revision_trees(
-            ['left', 'right'])
+            [b'left', b'right'])
         new_stacked_branch.lock_read()
         self.addCleanup(new_stacked_branch.unlock)
         (stacked_left_tree,
          stacked_right_tree) = new_stacked_branch.repository.revision_trees(
-            ['left', 'right'])
+            [b'left', b'right'])
         self.assertEqual(left_tree, stacked_left_tree)
         self.assertEqual(right_tree, stacked_right_tree)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing
         # up.
-        self.assertTrue(new_unstacked_repo.has_revision('merge'))
-        expected_texts = {('file-id', 'merge')}
-        if new_stacked_branch.repository.texts.get_parent_map([('root-id',
-            'merge')]):
+        self.assertTrue(new_unstacked_repo.has_revision(b'merge'))
+        expected_texts = {(b'file-id', b'merge')}
+        if new_stacked_branch.repository.texts.get_parent_map([(b'root-id',
+            b'merge')]):
             # If a (root-id,merge) text exists, it should be in the stacked
             # repo.
-            expected_texts.add(('root-id', 'merge'))
+            expected_texts.add((b'root-id', b'merge'))
         self.assertEqual(expected_texts, new_unstacked_repo.texts.keys())
-        self.assertCanStreamRevision(new_unstacked_repo, 'merge')
+        self.assertCanStreamRevision(new_unstacked_repo, b'merge')
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""
@@ -429,27 +429,24 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to_repo')
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
-        to_repo.lock_write()
-        try:
+        with to_repo.lock_write():
             to_repo.start_write_group()
             try:
-                inv = tree.branch.repository.get_inventory('rev-one')
-                to_repo.add_inventory('rev-one', inv, [])
-                rev = tree.branch.repository.get_revision('rev-one')
-                to_repo.add_revision('rev-one', rev, inv=inv)
+                inv = tree.branch.repository.get_inventory(b'rev-one')
+                to_repo.add_inventory(b'rev-one', inv, [])
+                rev = tree.branch.repository.get_revision(b'rev-one')
+                to_repo.add_revision(b'rev-one', rev, inv=inv)
                 self.disable_commit_write_group_paranoia(to_repo)
                 to_repo.commit_write_group()
             except:
                 to_repo.abort_write_group(suppress_errors=True)
                 raise
-        finally:
-            to_repo.unlock()
 
         # Implementations can either ensure that the target of the delta is
         # reconstructable, or raise an exception (which stream based copies
         # generally do).
         try:
-            to_repo.fetch(tree.branch.repository, 'rev-two')
+            to_repo.fetch(tree.branch.repository, b'rev-two')
         except (errors.BzrCheckError, errors.RevisionNotPresent) as e:
             # If an exception is raised, the revision should not be in the
             # target.
@@ -457,14 +454,14 @@ class TestInterRepository(TestCaseWithInterRepository):
             # Can also just raise a generic check errors; stream insertion
             # does this to include all the missing data
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
-                              to_repo.revision_tree, 'rev-two')
+                              to_repo.revision_tree, b'rev-two')
         else:
             # If not exception is raised, then the text should be
             # available.
             to_repo.lock_read()
             try:
-                rt = to_repo.revision_tree('rev-two')
-                self.assertEqual('new contents\n',
+                rt = to_repo.revision_tree(b'rev-two')
+                self.assertEqual(b'new contents\n',
                                  rt.get_file_text('a'))
             finally:
                 to_repo.unlock()
@@ -488,31 +485,31 @@ class TestInterRepository(TestCaseWithInterRepository):
         # start by adding a file so the data knit for the file exists in
         # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
-        source_tree.add(['id'], ['id'])
+        source_tree.add(['id'], [b'id'])
         source_tree.commit('a', rev_id=b'a')
         # now we manually insert a revision with an inventory referencing
         # file 'id' at revision 'b', but we do not insert revision b.
         # this should ensure that the new versions of files are being checked
         # for during pull operations
-        inv = source.get_inventory('a')
+        inv = source.get_inventory(b'a')
         source.lock_write()
         self.addCleanup(source.unlock)
         source.start_write_group()
-        inv.get_entry('id').revision = 'b'
-        inv.revision_id = 'b'
-        sha1 = source.add_inventory('b', inv, ['a'])
+        inv.get_entry(b'id').revision = b'b'
+        inv.revision_id = b'b'
+        sha1 = source.add_inventory(b'b', inv, [b'a'])
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
                        revision_id=b'b')
-        rev.parent_ids = ['a']
-        source.add_revision('b', rev)
+        rev.parent_ids = [b'a']
+        source.add_revision(b'b', rev)
         self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
-        self.assertFalse(target.has_revision('b'))
+        self.assertFalse(target.has_revision(b'b'))
 
     def test_fetch_funky_file_id(self):
         from_tree = self.make_branch_and_tree('tree')
@@ -531,10 +528,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.commit('foo', rev_id=b'foo-id')
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
-        recorded_inv_sha1 = to_repo.get_revision('foo-id').inventory_sha1
+        recorded_inv_sha1 = to_repo.get_revision(b'foo-id').inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
-        stream = to_repo.inventories.get_record_stream([('foo-id',)],
+        stream = to_repo.inventories.get_record_stream([(b'foo-id',)],
                                                        'unordered', True)
         bytes = stream.next().get_bytes_as('fulltext')
         computed_inv_sha1 = osutils.sha_string(bytes)

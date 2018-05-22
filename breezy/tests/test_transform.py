@@ -2384,7 +2384,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43201,
                            committer='me <me@example.com>',
-                           revprops={'foo': 'bar'}, revision_id='revid-1',
+                           revprops={'foo': 'bar'}, revision_id=b'revid-1',
                            authors=['Author1 <author1@example.com>',
                               'Author2 <author2@example.com>',
                                ])
@@ -2706,7 +2706,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.set_root_id(b'TREE_ROOT')
         tree.add('a', b'a-id')
         tree.commit('rev1', rev_id=b'rev1')
-        return tree.branch.repository.revision_tree('rev1')
+        return tree.branch.repository.revision_tree(b'rev1')
 
     def get_empty_preview(self):
         repository = self.make_repository('repo')

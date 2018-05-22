@@ -75,7 +75,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         matcher = MatchesAncestry("A repository", "arevid")
         self.assertEqual(
             "MatchesAncestry(repository='A repository', "
-            "revision_id='arevid')",
+            "revision_id=b'arevid')",
             str(matcher))
 
     def test_match(self):

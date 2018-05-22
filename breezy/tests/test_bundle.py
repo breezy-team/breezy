@@ -988,25 +988,25 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         self.tree1.commit('message', rev_id=b'rev2a')
-        bundle = self.get_valid_bundle('null:', 'rev2a')
+        bundle = self.get_valid_bundle(b'null:', b'rev2a')
         branch2 = self.make_branch('b2')
-        self.assertFalse(branch2.repository.has_revision('rev2a'))
+        self.assertFalse(branch2.repository.has_revision(b'rev2a'))
         target_revision = bundle.install_revisions(branch2.repository)
-        self.assertTrue(branch2.repository.has_revision('rev2a'))
-        self.assertEqual('rev2a', target_revision)
+        self.assertTrue(branch2.repository.has_revision(b'rev2a'))
+        self.assertEqual(b'rev2a', target_revision)
 
     def test_bundle_empty_property(self):
         """Test serializing revision properties with an empty value."""
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id=b'rev1')
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
+        bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
                          rev.properties)
@@ -1085,26 +1085,26 @@ class BundleTester(object):
         tree = self.make_simple_tree('knit')
         tree.commit('hello', rev_id=b'rev1')
         tree.commit('hello', rev_id=b'rev2')
-        bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
+        bundle = read_bundle(self.create_bundle_text(b'null:', b'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
         return repo
 
     def test_across_models(self):
         repo = self.make_repo_with_installed_revisions()
-        inv = repo.get_inventory('rev2')
-        self.assertEqual('rev2', inv.root.revision)
+        inv = repo.get_inventory(b'rev2')
+        self.assertEqual(b'rev2', inv.root.revision)
         root_id = inv.root.file_id
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({(root_id, 'rev1'):(),
-            (root_id, 'rev2'):((root_id, 'rev1'),)},
-            repo.texts.get_parent_map([(root_id, 'rev1'), (root_id, 'rev2')]))
+        self.assertEqual({(root_id, b'rev1'):(),
+            (root_id, b'rev2'):((root_id, b'rev1'),)},
+            repo.texts.get_parent_map([(root_id, b'rev1'), (root_id, b'rev2')]))
 
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
-        recorded_inv_sha1 = repo.get_revision('rev2').inventory_sha1
-        xml = repo._get_inventory_xml('rev2')
+        recorded_inv_sha1 = repo.get_revision(b'rev2').inventory_sha1
+        xml = repo._get_inventory_xml(b'rev2')
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
@@ -1404,13 +1404,13 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
     def test_creation(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', b'contents1\nstatic\n')])
-        tree.add('file', 'fileid-2')
+        tree.add('file', b'fileid-2')
         tree.commit('added file', rev_id=b'rev1')
         self.build_tree_contents([('tree/file', b'contents2\nstatic\n')])
         tree.commit('changed file', rev_id=b'rev2')
         s = BytesIO()
         serializer = BundleSerializerV4('1.0')
-        serializer.write(tree.branch.repository, ['rev1', 'rev2'], {}, s)
+        serializer.write(tree.branch.repository, [b'rev1', b'rev2'], {}, s)
         s.seek(0)
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
@@ -1420,19 +1420,19 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         # Turn the 'iterators_of_bytes' back into simple strings for comparison
         repo_texts = dict((i, ''.join(content)) for i, content
                           in target_repo.iter_files_bytes(
-                                [('fileid-2', 'rev1', '1'),
-                                 ('fileid-2', 'rev2', '2')]))
-        self.assertEqual({'1':'contents1\nstatic\n',
-                          '2':'contents2\nstatic\n'},
+                                [(b'fileid-2', b'rev1', '1'),
+                                 (b'fileid-2', b'rev2', '2')]))
+        self.assertEqual({'1':b'contents1\nstatic\n',
+                          '2':b'contents2\nstatic\n'},
                          repo_texts)
-        rtree = target_repo.revision_tree('rev2')
+        rtree = target_repo.revision_tree(b'rev2')
         inventory_vf = target_repo.inventories
         # If the inventory store has a graph, it must match the revision graph.
         self.assertSubset(
-            [inventory_vf.get_parent_map([('rev2',)])[('rev2',)]],
-            [None, (('rev1',),)])
+            [inventory_vf.get_parent_map([(b'rev2',)])[(b'rev2',)]],
+            [None, ((b'rev1',),)])
         self.assertEqual('changed file',
-                         target_repo.get_revision('rev2').message)
+                         target_repo.get_revision(b'rev2').message)
 
     @staticmethod
     def get_raw(bundle_file):
@@ -1515,16 +1515,16 @@ class V4_2aBundleTester(V4BundleTester):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'original content\n')),
-            ], revision_id='a@cset-0-1')
+            ], revision_id=b'a@cset-0-1')
         builder.build_snapshot(['a@cset-0-1'], [
             ('modify', ('file', 'new-content\n')),
-            ], revision_id='a@cset-0-2a')
+            ], revision_id=b'a@cset-0-2a')
         builder.build_snapshot(['a@cset-0-1'], [
             ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
-            ], revision_id='a@cset-0-2b')
+            ], revision_id=b'a@cset-0-2b')
         builder.build_snapshot(['a@cset-0-2a', 'a@cset-0-2b'], [
             ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
-            ], revision_id='a@cset-0-3')
+            ], revision_id=b'a@cset-0-3')
         builder.finish_series()
         self.b1 = builder.get_branch()
         self.b1.lock_read()
@@ -1657,7 +1657,7 @@ class V4_2aBundleTester(V4BundleTester):
     def test_creating_bundle_preserves_chk_pages(self):
         self.make_merged_branch()
         target = self.b1.controldir.sprout('target',
-                                       revision_id='a@cset-0-2a').open_branch()
+                                       revision_id=b'a@cset-0-2a').open_branch()
         bundle_txt, rev_ids = self.create_bundle_text('a@cset-0-2a',
                                                       'a@cset-0-3')
         self.assertEqual(['a@cset-0-2b', 'a@cset-0-3'], rev_ids)

@@ -89,12 +89,12 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.controldir.open_repository()
-        repo_b.fetch(repo_a, 'rev1')
+        repo_b.fetch(repo_a, b'rev1')
         # check the test will be valid
-        self.assertFalse(repo_b.has_revision('rev2'))
+        self.assertFalse(repo_b.has_revision(b'rev2'))
         result = repo_b.search_missing_revision_ids(repo_a)
-        self.assertEqual({'rev2'}, result.get_keys())
-        self.assertEqual(('search', {'rev2'}, {'rev1'}, 1),
+        self.assertEqual({b'rev2'}, result.get_keys())
+        self.assertEqual(('search', {b'rev2'}, {b'rev1'}, 1),
             result.get_recipe())
 
     def test_absent_requested_raises(self):
@@ -103,14 +103,14 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository('target')
         repo_a = self.controldir.open_repository()
         # No pizza revisions anywhere
-        self.assertFalse(repo_a.has_revision('pizza'))
-        self.assertFalse(repo_b.has_revision('pizza'))
+        self.assertFalse(repo_a.has_revision(b'pizza'))
+        self.assertFalse(repo_b.has_revision(b'pizza'))
         # Asking specifically for an absent revision errors.
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=[b'pizza'],
             find_ghosts=True)
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=[b'pizza'],
             find_ghosts=False)
 
     def test_search_missing_rev_limited(self):
@@ -131,9 +131,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.controldir.open_repository()
         # check the test will be valid
-        self.assertFalse(repo_b.has_revision('rev2'))
+        self.assertFalse(repo_b.has_revision(b'rev2'))
         result = repo_b.search_missing_revision_ids(repo_a, limit=1)
-        self.assertEqual(('search', {'rev1'}, {'null:'}, 1),
+        self.assertEqual(('search', {b'rev1'}, {b'null:'}, 1),
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
@@ -184,16 +184,16 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
-        add_commit(has_ghost, 'ghost', [])
-        add_commit(has_ghost, 'references', ['ghost'])
-        add_commit(missing_ghost, 'references', ['ghost'])
-        add_commit(has_ghost, 'tip', ['references'])
-        missing_ghost.fetch(has_ghost, 'tip', find_ghosts=True)
+        add_commit(has_ghost, b'ghost', [])
+        add_commit(has_ghost, b'references', [b'ghost'])
+        add_commit(missing_ghost, b'references', [b'ghost'])
+        add_commit(has_ghost, b'tip', [b'references'])
+        missing_ghost.fetch(has_ghost, b'tip', find_ghosts=True)
         # missing ghost now has tip and ghost.
-        rev = missing_ghost.get_revision('tip')
-        inv = missing_ghost.get_inventory('tip')
-        rev = missing_ghost.get_revision('ghost')
-        inv = missing_ghost.get_inventory('ghost')
+        rev = missing_ghost.get_revision(b'tip')
+        inv = missing_ghost.get_inventory(b'tip')
+        rev = missing_ghost.get_revision(b'ghost')
+        inv = missing_ghost.get_inventory(b'ghost')
         # rev must not be corrupt now
-        self.assertThat(['ghost', 'references', 'tip'],
-            MatchesAncestry(missing_ghost, 'tip'))
+        self.assertThat([b'ghost', b'references', b'tip'],
+            MatchesAncestry(missing_ghost, b'tip'))

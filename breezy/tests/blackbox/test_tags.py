@@ -181,8 +181,8 @@ class TestTagging(TestCaseWithTransport):
         self.assertEqual(expected_tag_dict, child.branch.tags.get_tag_dict())
         self.assertEqual(expected_tag_dict, master.tags.get_tag_dict())
         # Revisions not in ancestry but named in tags are present
-        child.branch.repository.get_revision('fork-0')
-        master.repository.get_revision('fork-0')
+        child.branch.repository.get_revision(b'fork-0')
+        master.repository.get_revision(b'fork-0')
 
     def test_commit_in_heavyweight_checkout_reports_tag_conflict(self):
         master, child = self.make_master_and_checkout()

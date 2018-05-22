@@ -974,7 +974,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # in case the default tree format uses a different root id
         mt.set_root_id(b'TREE_ROOT')
         mt.commit('foo', rev_id=b'parent-revid')
-        rt = mt.branch.repository.revision_tree('parent-revid')
+        rt = mt.branch.repository.revision_tree(b'parent-revid')
         state = dirstate.DirState.initialize('dirstate')
         state._validate()
         try:

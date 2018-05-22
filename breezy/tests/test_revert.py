@@ -128,7 +128,7 @@ class TestRevert(tests.TestCaseWithTransport):
         os.unlink('file')
         tree.commit('removed file')
         self.assertPathDoesNotExist('file')
-        tree.revert(old_tree=tree.branch.repository.revision_tree('rev1'))
+        tree.revert(old_tree=tree.branch.repository.revision_tree(b'rev1'))
         self.assertPathExists('file')
         tree.revert()
         self.assertPathDoesNotExist('file')

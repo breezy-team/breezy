@@ -251,11 +251,11 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     try:
         repo.start_write_group()
         try:
-            rev = revision.Revision('basis', timestamp=0, timezone=None,
+            rev = revision.Revision(b'basis', timestamp=0, timezone=None,
                 message="", committer="foo@example.com")
-            basis.revision_id = 'basis'
+            basis.revision_id = b'basis'
             create_texts_for_inv(repo, basis)
-            repo.add_revision('basis', rev, basis)
+            repo.add_revision(b'basis', rev, basis)
             repo.commit_write_group()
         except:
             repo.abort_write_group()
@@ -266,8 +266,8 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     try:
         repo.start_write_group()
         try:
-            inv_sha1 = repo.add_inventory_by_delta('basis', delta,
-                'result', ['basis'])
+            inv_sha1 = repo.add_inventory_by_delta(b'basis', delta,
+                b'result', [b'basis'])
         except:
             repo.abort_write_group()
             raise
@@ -279,7 +279,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     repo = repo.controldir.open_repository()
     repo.lock_read()
     self.addCleanup(repo.unlock)
-    return repo.get_inventory('result')
+    return repo.get_inventory(b'result')
 
 
 class TestInventoryUpdates(TestCase):

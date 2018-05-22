@@ -657,18 +657,18 @@ class TestPackRepository(TestCaseWithTransport):
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
-        add_commit(has_ghost, 'ghost', [])
-        add_commit(has_ghost, 'references', ['ghost'])
-        add_commit(missing_ghost, 'references', ['ghost'])
-        add_commit(has_ghost, 'tip', ['references'])
-        missing_ghost.fetch(has_ghost, 'tip')
+        add_commit(has_ghost, b'ghost', [])
+        add_commit(has_ghost, b'references', [b'ghost'])
+        add_commit(missing_ghost, b'references', [b'ghost'])
+        add_commit(has_ghost, b'tip', [b'references'])
+        missing_ghost.fetch(has_ghost, b'tip')
         # missing ghost now has tip and not ghost.
-        rev = missing_ghost.get_revision('tip')
-        inv = missing_ghost.get_inventory('tip')
+        rev = missing_ghost.get_revision(b'tip')
+        inv = missing_ghost.get_inventory(b'tip')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_revision, 'ghost')
+            missing_ghost.get_revision, b'ghost')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_inventory, 'ghost')
+            missing_ghost.get_inventory, b'ghost')
 
     def make_write_ready_repo(self):
         format = self.get_format()
