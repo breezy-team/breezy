@@ -526,7 +526,7 @@ class TestEncodeAndEscape(TestCase):
 
     def test_utf8_with_xml(self):
         # u'\xb5\xe5&\u062c'
-        utf8_str = '\xc2\xb5\xc3\xa5&\xd8\xac'
+        utf8_str = b'\xc2\xb5\xc3\xa5&\xd8\xac'
         self.assertEqual(b'&#181;&#229;&amp;&#1580;"',
                          breezy.bzr.xml_serializer.encode_and_escape(utf8_str))
 

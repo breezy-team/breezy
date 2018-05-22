@@ -187,15 +187,13 @@ class Serializer_v8(XMLSerializer):
         # them.
         decode_utf8 = cache_utf8.decode
         revision_id = rev.revision_id
-        if isinstance(revision_id, str):
-            revision_id = decode_utf8(revision_id)
         format_num = self.format_num
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         root = Element('revision',
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
-                       revision_id = revision_id.decode(),
+                       revision_id = decode_utf8(revision_id),
                        inventory_sha1 = rev.inventory_sha1,
                        format=format_num.decode(),
                        )
@@ -212,9 +210,7 @@ class Serializer_v8(XMLSerializer):
                 _mod_revision.check_not_reserved_id(parent_id)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                if isinstance(parent_id, str):
-                    parent_id = decode_utf8(parent_id)
-                p.set('revision_id', parent_id)
+                p.set('revision_id', decode_utf8(parent_id))
         if rev.properties:
             self._pack_revision_properties(rev, root)
         return root

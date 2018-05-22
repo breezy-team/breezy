@@ -100,7 +100,7 @@ class XMLSerializer(serializer.Serializer):
         self._write_element(self._pack_revision(rev), f)
 
     def write_revision_to_string(self, rev):
-        return tostring(self._pack_revision(rev)) + '\n'
+        return tostring(self._pack_revision(rev)) + b'\n'
 
     def read_revision(self, f):
         return self._unpack_revision(self._read_element(f))
@@ -110,7 +110,7 @@ class XMLSerializer(serializer.Serializer):
 
     def _write_element(self, elt, f):
         ElementTree(elt).write(f, 'utf-8')
-        f.write('\n')
+        f.write(b'\n')
 
     def _read_element(self, f):
         return ElementTree().parse(f)
@@ -195,7 +195,7 @@ def _utf8_escape_replace(match, _map=_xml_escape_map):
     decode back into Unicode, and then use the XML escape code.
     """
     try:
-        return _map[match.group().decode()].encode()
+        return _map[match.group().decode('ascii', 'replace')].encode()
     except KeyError:
         return b''.join(b'&#%d;' % ord(uni_chr)
                        for uni_chr in match.group().decode('utf8'))
@@ -312,11 +312,11 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
                                      parent_id)
         ie.symlink_target = elt_get('symlink_target')
     elif kind == 'tree-reference':
-        file_id = elt.attrib['file_id']
+        file_id = get_utf8_or_ascii(elt.attrib['file_id'])
         name = elt.attrib['name']
-        parent_id = elt.attrib['parent_id']
-        revision = elt.get('revision')
-        reference_revision = elt.get('reference_revision')
+        parent_id = get_utf8_or_ascii(elt.attrib['parent_id'])
+        revision = get_utf8_or_ascii(elt.get('revision'))
+        reference_revision = get_utf8_or_ascii(elt.get('reference_revision'))
         ie = inventory.TreeReference(file_id, name, parent_id, revision,
                                        reference_revision)
     else:
@@ -346,7 +346,7 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
     if elt.tag != 'inventory':
         raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
     format = elt.get('format')
-    if format != format_num:
+    if format.encode() != format_num:
         raise errors.UnexpectedInventoryFormat('Invalid format version %r'
                                                % format)
     revision_id = elt.get('revision_id')
