@@ -55,7 +55,10 @@ from ... import (
     tree as _mod_tree,
     workingtree,
     )
-from ...revision import NULL_REVISION
+from ...revision import (
+    CURRENT_REVISION,
+    NULL_REVISION,
+    )
 
 from .mapping import (
     mode_is_executable,
@@ -573,6 +576,29 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return iter([])
         return self.store.iter_tree_contents(
                 self.tree, include_trees=include_trees)
+
+    def annotate_iter(self, path, file_id=None,
+                      default_revision=CURRENT_REVISION):
+        """Return an iterator of revision_id, line tuples.
+
+        For working trees (and mutable trees in general), the special
+        revision_id 'current:' will be used for lines that are new in this
+        tree, e.g. uncommitted changes.
+        :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
+        """
+        with self.lock_read():
+            # Now we have the parents of this content
+            from breezy.annotate import Annotator
+            from .annotate import AnnotateProvider
+            annotator = Annotator(AnnotateProvider(
+                self._repository._file_change_scanner))
+            this_key = (path, self.get_file_revision(path))
+            annotations = [(key[-1], line)
+                           for key, line in annotator.annotate_flat(this_key)]
+            return annotations
 
 
 def tree_delta_from_git_changes(changes, mapping,
