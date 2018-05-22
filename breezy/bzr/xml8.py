@@ -195,9 +195,9 @@ class Serializer_v8(XMLSerializer):
         root = Element('revision',
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
-                       revision_id = revision_id,
+                       revision_id = revision_id.decode(),
                        inventory_sha1 = rev.inventory_sha1,
-                       format=format_num,
+                       format=format_num.decode(),
                        )
         if rev.timezone is not None:
             root.set('timezone', str(rev.timezone))
@@ -248,7 +248,7 @@ class Serializer_v8(XMLSerializer):
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         if format is not None:
-            if format != format_num:
+            if format.encode() != format_num:
                 raise BzrError("invalid format version %r on revision"
                                 % format)
         get_cached = get_utf8_or_ascii

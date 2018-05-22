@@ -195,9 +195,9 @@ def _utf8_escape_replace(match, _map=_xml_escape_map):
     decode back into Unicode, and then use the XML escape code.
     """
     try:
-        return _map[match.group()]
+        return _map[match.group().decode()].encode()
     except KeyError:
-        return ''.join('&#%d;' % ord(uni_chr)
+        return b''.join(b'&#%d;' % ord(uni_chr)
                        for uni_chr in match.group().decode('utf8'))
 
 
@@ -209,7 +209,7 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
     if text is None:
-        if unicode_or_utf8_str.__class__ is text_type:
+        if isinstance(unicode_or_utf8_str, text_type):
             # The alternative policy is to do a regular UTF8 encoding
             # and then escape only XML meta characters.
             # Performance is equivalent once you use cache_utf8. *However*
@@ -217,7 +217,7 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
             # of bzr. So no net gain. (Perhaps the read code would handle utf8
             # better than entity escapes, but cElementTree seems to do just fine
             # either way)
-            text = bytes(_unicode_re.sub(_unicode_escape_replace, unicode_or_utf8_str)) + b'"'
+            text = _unicode_re.sub(_unicode_escape_replace, unicode_or_utf8_str).encode() + b'"'
         else:
             # Plain strings are considered to already be in utf-8 so we do a
             # slightly different method for escaping.
@@ -387,7 +387,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
                     b'text_sha1="%s" text_size="%d" />\n' % (
                     executable, encode_and_escape(ie.file_id),
                     encode_and_escape(ie.name), parent_str, parent_id,
-                    encode_and_escape(ie.revision), ie.text_sha1,
+                    encode_and_escape(ie.revision), ie.text_sha1.encode(),
                     ie.text_size))
             else:
                 append(b'<file%s file_id="%s name="%s%s%s />\n' % (

@@ -27,6 +27,7 @@ from ..bzr import (
     )
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from ..bzr.inventory import Inventory
 from . import TestCase
@@ -208,7 +209,7 @@ class TestSerializer(TestCase):
         eq(len(rev.parent_ids), 1)
         eq(rev.timezone, 36000)
         eq(rev.parent_ids[0],
-           "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+           b"mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_revision_5_utc(self):
         inp = BytesIO(_revision_v5_utc)
@@ -219,7 +220,7 @@ class TestSerializer(TestCase):
         eq(len(rev.parent_ids), 1)
         eq(rev.timezone, 0)
         eq(rev.parent_ids[0],
-           "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+           b"mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_inventory_5(self):
         """Unpack canned new-style inventory"""
@@ -227,9 +228,9 @@ class TestSerializer(TestCase):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
-        ie = inv.get_entry('bar-20050824000535-6bc48cfad47ed134')
+        ie = inv.get_entry(b'bar-20050824000535-6bc48cfad47ed134')
         eq(ie.kind, 'file')
-        eq(ie.revision, 'mbp@foo-00')
+        eq(ie.revision, b'mbp@foo-00')
         eq(ie.name, 'bar')
         eq(inv.get_entry(ie.parent_id).kind, 'directory')
 
@@ -239,17 +240,17 @@ class TestSerializer(TestCase):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
-        eq(inv.revision_id, 'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
-        ie = inv.get_entry('bar-20050824000535-6bc48cfad47ed134')
+        eq(inv.revision_id, b'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
+        ie = inv.get_entry(b'bar-20050824000535-6bc48cfad47ed134')
         eq(ie.kind, 'file')
-        eq(ie.revision, 'mbp@foo-00')
+        eq(ie.revision, b'mbp@foo-00')
         eq(ie.name, 'bar')
         eq(inv.get_entry(ie.parent_id).kind, 'directory')
 
     def test_unpack_inventory_5a(self):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-                _inventory_v5a, revision_id='test-rev-id')
-        self.assertEqual('test-rev-id', inv.root.revision)
+                _inventory_v5a, revision_id=b'test-rev-id')
+        self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_unpack_inventory_5a_cache_and_copy(self):
         # Passing an entry_cache should get populated with the objects
@@ -257,7 +258,7 @@ class TestSerializer(TestCase):
         # False
         entry_cache = fifo_cache.FIFOCache()
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-            _inventory_v5a, revision_id='test-rev-id',
+            _inventory_v5a, revision_id=b'test-rev-id',
             entry_cache=entry_cache, return_from_cache=False)
         for entry in inv.iter_just_entries():
             key = (entry.file_id, entry.revision)
@@ -273,7 +274,7 @@ class TestSerializer(TestCase):
         # True
         entry_cache = fifo_cache.FIFOCache()
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-            _inventory_v5a, revision_id='test-rev-id',
+            _inventory_v5a, revision_id=b'test-rev-id',
             entry_cache=entry_cache, return_from_cache=True)
         for entry in inv.iter_just_entries():
             key = (entry.file_id, entry.revision)
@@ -285,8 +286,8 @@ class TestSerializer(TestCase):
 
     def test_unpack_inventory_5b(self):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_string(
-                _inventory_v5b, revision_id='test-rev-id')
-        self.assertEqual('a-rev-id', inv.root.revision)
+                _inventory_v5b, revision_id=b'test-rev-id')
+        self.assertEqual(b'a-rev-id', inv.root.revision)
 
     def test_repack_inventory_5(self):
         inp = BytesIO(_committed_inv_v5)
@@ -336,7 +337,7 @@ class TestSerializer(TestCase):
         outp = BytesIO()
         breezy.bzr.xml5.serializer_v5.write_revision(rev, outp)
         outfile_contents = outp.getvalue()
-        self.assertEqual(outfile_contents[-1], '\n')
+        self.assertEqual(outfile_contents[-1:], b'\n')
         self.assertEqualDiff(outfile_contents, breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev))
         self.assertEqualDiff(outfile_contents, _expected_rev_v5)
 
@@ -459,13 +460,13 @@ class TestSerializer(TestCase):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""
         s_v5 = breezy.bzr.xml5.serializer_v5
         rev = s_v5.read_revision_from_string(_revision_utf8_v5)
-        self.assertEqual('erik@b\xc3\xa5gfors-02', rev.revision_id)
-        self.assertIsInstance(rev.revision_id, str)
-        self.assertEqual(['erik@b\xc3\xa5gfors-01'], rev.parent_ids)
+        self.assertEqual(b'erik@b\xc3\xa5gfors-02', rev.revision_id)
+        self.assertIsInstance(rev.revision_id, bytes)
+        self.assertEqual([b'erik@b\xc3\xa5gfors-01'], rev.parent_ids)
         for parent_id in rev.parent_ids:
-            self.assertIsInstance(parent_id, str)
+            self.assertIsInstance(parent_id, bytes)
         self.assertEqual(u'Include \xb5nicode characters\n', rev.message)
-        self.assertIsInstance(rev.message, unicode)
+        self.assertIsInstance(rev.message, text_type)
 
         # ie.revision should either be None or a utf-8 revision id
         inv = s_v5.read_inventory_from_string(_inventory_utf8_v5)
@@ -481,21 +482,21 @@ class TestSerializer(TestCase):
                     (u's\xb5bdir/b\xe5r', fid_bar2, fid_sub, rev_id_2),
                    ]
         self.assertEqual(rev_id_2, inv.revision_id)
-        self.assertIsInstance(inv.revision_id, str)
+        self.assertIsInstance(inv.revision_id, bytes)
 
         actual = list(inv.iter_entries_by_dir())
         for ((exp_path, exp_file_id, exp_parent_id, exp_rev_id),
              (act_path, act_ie)) in zip(expected, actual):
             self.assertEqual(exp_path, act_path)
-            self.assertIsInstance(act_path, unicode)
+            self.assertIsInstance(act_path, text_type)
             self.assertEqual(exp_file_id, act_ie.file_id)
-            self.assertIsInstance(act_ie.file_id, str)
+            self.assertIsInstance(act_ie.file_id, bytes)
             self.assertEqual(exp_parent_id, act_ie.parent_id)
             if exp_parent_id is not None:
-                self.assertIsInstance(act_ie.parent_id, str)
+                self.assertIsInstance(act_ie.parent_id, bytes)
             self.assertEqual(exp_rev_id, act_ie.revision)
             if exp_rev_id is not None:
-                self.assertIsInstance(act_ie.revision, str)
+                self.assertIsInstance(act_ie.revision, bytes)
 
         self.assertEqual(len(expected), len(actual))
 
@@ -514,24 +515,24 @@ class TestEncodeAndEscape(TestCase):
         # are being used in xml attributes, and by returning it now, we have to
         # do fewer string operations later.
         val = breezy.bzr.xml_serializer.encode_and_escape('foo bar')
-        self.assertEqual('foo bar"', val)
+        self.assertEqual(b'foo bar"', val)
         # The second time should be cached
         val2 = breezy.bzr.xml_serializer.encode_and_escape('foo bar')
         self.assertIs(val2, val)
 
     def test_ascii_with_xml(self):
-        self.assertEqual('&amp;&apos;&quot;&lt;&gt;"',
+        self.assertEqual(b'&amp;&apos;&quot;&lt;&gt;"',
                          breezy.bzr.xml_serializer.encode_and_escape('&\'"<>'))
 
     def test_utf8_with_xml(self):
         # u'\xb5\xe5&\u062c'
         utf8_str = '\xc2\xb5\xc3\xa5&\xd8\xac'
-        self.assertEqual('&#181;&#229;&amp;&#1580;"',
+        self.assertEqual(b'&#181;&#229;&amp;&#1580;"',
                          breezy.bzr.xml_serializer.encode_and_escape(utf8_str))
 
     def test_unicode(self):
         uni_str = u'\xb5\xe5&\u062c'
-        self.assertEqual('&#181;&#229;&amp;&#1580;"',
+        self.assertEqual(b'&#181;&#229;&amp;&#1580;"',
                          breezy.bzr.xml_serializer.encode_and_escape(uni_str))
 
 
