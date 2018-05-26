@@ -707,9 +707,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
-    def filter_unversioned_files(self, files):
-        return set([p for p in files if not self.is_versioned(p)])
-
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)

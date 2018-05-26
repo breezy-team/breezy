@@ -554,7 +554,10 @@ class Tree(object):
 
         :return: set of paths.
         """
-        raise NotImplementedError(self.filter_unversioned_files)
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that
+        # are not versioned.
+        return set(p for p in paths if not self.is_versioned(p))
 
     def walkdirs(self, prefix=""):
         """Walk the contents of this tree from path down.
