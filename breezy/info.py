@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 __all__ = ['show_bzrdir_info']
 
-from io import StringIO
+from StringIO import StringIO
 import time
 import sys
 
