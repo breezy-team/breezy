@@ -365,8 +365,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         old_trunk.repository.fetch(branch.repository, b'right')
         repo = self.make_to_repository('new-trunk')
         new_trunk = repo.controldir.create_branch()
-        new_trunk.repository.fetch(branch.repository, 'bleft')
-        new_trunk.repository.fetch(branch.repository, 'bright')
+        new_trunk.repository.fetch(branch.repository, b'left')
+        new_trunk.repository.fetch(branch.repository, b'right')
         # Make the source; a repo stacked on old_trunk contained just the data
         # for 'merge'.
         repo = self.make_repository('old-stacked')

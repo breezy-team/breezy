@@ -182,7 +182,7 @@ class CHKMap(object):
             return _get_cache()[key]
         except KeyError:
             stream = self._store.get_record_stream([key], 'unordered', True)
-            bytes = stream.next().get_bytes_as('fulltext')
+            bytes = next(stream).get_bytes_as('fulltext')
             _get_cache()[key] = bytes
             return bytes
 

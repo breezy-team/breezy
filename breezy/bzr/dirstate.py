@@ -301,7 +301,7 @@ class DefaultSHA1Provider(SHA1Provider):
 
     def stat_and_sha1(self, abspath):
         """Return the stat and sha1 of a file given its absolute path."""
-        with file(abspath, 'rb') as file_obj:
+        with open(abspath, 'rb') as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             sha1 = osutils.sha_file(file_obj)
         return statvalue, sha1

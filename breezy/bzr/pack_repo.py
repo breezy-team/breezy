@@ -1092,7 +1092,7 @@ class RepositoryPackCollection(object):
             self._names = {}
             self._packs_at_load = set()
             for index, key, value in self._iter_disk_pack_index():
-                name = key[0]
+                name = key[0].decode()
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
             result = True
@@ -1104,7 +1104,7 @@ class RepositoryPackCollection(object):
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
-        return tuple([int(digits) for digits in value.split(' ')])
+        return tuple([int(digits.decode()) for digits in value.split(b' ')])
 
     def get_pack_by_name(self, name):
         """Get a Pack object by name.
@@ -1350,7 +1350,7 @@ class RepositoryPackCollection(object):
         current_nodes = set()
         for name, sizes in self._names.items():
             current_nodes.add(
-                ((name, ), ' '.join(str(size) for size in sizes)))
+                ((name.encode(), ), b' '.join(b'%d' % size for size in sizes)))
 
         # Packs no longer present in the repository, which were present when we
         # locked the repository
@@ -1385,7 +1385,7 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
         for key, value in disk_nodes:
-            name = key[0]
+            name = key[0].decode()
             sizes = self._parse_index_sizes(value)
             if name in self._names:
                 # existing

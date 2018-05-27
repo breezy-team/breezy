@@ -308,12 +308,12 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
             # in the response for this method, even in the error case.
-            return FailedSmartServerResponse((b'nosuchrevision', revision_id), '')
+            return FailedSmartServerResponse((b'nosuchrevision', revision_id), b'')
 
         for revision, parents in revision_graph.items():
             lines.append(b' '.join((revision, ) + tuple(parents)))
 
-        return SuccessfulSmartServerResponse((b'ok', ), '\n'.join(lines))
+        return SuccessfulSmartServerResponse((b'ok', ), b'\n'.join(lines))
 
 
 class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):

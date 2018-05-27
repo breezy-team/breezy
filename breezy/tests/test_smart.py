@@ -167,17 +167,17 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
     def test_translate_client_path(self):
         transport = self.get_transport()
         request = smart_req.SmartServerRequest(transport, 'foo/')
-        self.assertEqual('./', request.translate_client_path('foo/'))
+        self.assertEqual('./', request.translate_client_path(b'foo/'))
         self.assertRaises(
-            urlutils.InvalidURLJoin, request.translate_client_path, 'foo/..')
+            urlutils.InvalidURLJoin, request.translate_client_path, b'foo/..')
         self.assertRaises(
-            errors.PathNotChild, request.translate_client_path, '/')
+            errors.PathNotChild, request.translate_client_path, b'/')
         self.assertRaises(
-            errors.PathNotChild, request.translate_client_path, 'bar/')
-        self.assertEqual('./baz', request.translate_client_path('foo/baz'))
+            errors.PathNotChild, request.translate_client_path, b'bar/')
+        self.assertEqual('./baz', request.translate_client_path(b'foo/baz'))
         e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
         self.assertEqual('./' + urlutils.escape(e_acute),
-                         request.translate_client_path('foo/' + e_acute))
+                         request.translate_client_path(b'foo/' + e_acute))
 
     def test_translate_client_path_vfs(self):
         """VfsRequests receive escaped paths rather than raw UTF-8."""

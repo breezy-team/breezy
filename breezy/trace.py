@@ -539,9 +539,9 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write("brz: ERROR: %s\n" % (exc_info[1],))
+    err_file.write(("brz: ERROR: %s\n" % (exc_info[1],)).encode('utf-8', 'replace'))
     if advice:
-        err_file.write("%s\n" % advice)
+        err_file.write(("%s\n" % advice).encode('utf-8', 'replace'))
 
 
 def report_bug(exc_info, err_file):

@@ -32,8 +32,8 @@ from . import (
     )
 
 
-_VIEWS_FORMAT_MARKER_RE = re.compile(r'Bazaar views format (\d+)')
-_VIEWS_FORMAT1_MARKER = "Bazaar views format 1\n"
+_VIEWS_FORMAT_MARKER_RE = re.compile(b'Bazaar views format (\\d+)')
+_VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
 
 
 class NoSuchView(errors.BzrError):
@@ -235,7 +235,7 @@ class PathBasedViews(_Views):
         """Convert a stream into view keywords and a dictionary of views."""
         # as a special case to make initialization easy, an empty definition
         # maps to no current view and an empty view dictionary
-        if view_content == '':
+        if view_content == b'':
             return {}, {}
         lines = view_content.splitlines()
         match = _VIEWS_FORMAT_MARKER_RE.match(lines[0])

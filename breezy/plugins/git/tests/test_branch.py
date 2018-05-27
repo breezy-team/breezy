@@ -100,7 +100,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         r = GitRepo.init('.')
         self.build_tree(['a'])
         r.stage(["a"])
-        return r.do_commit("a", committer="Somebody <foo@example.com>")
+        return r.do_commit("a", committer=b"Somebody <foo@example.com>")
 
     def test_last_revision_is_valid(self):
         head = self.simple_commit_a()
@@ -113,7 +113,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.build_tree(['b'])
         r = GitRepo(".")
         r.stage("b")
-        revb = r.do_commit("b", committer="Somebody <foo@example.com>")
+        revb = r.do_commit("b", committer=b"Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
         self.assertEqual((2, default_mapping.revision_id_foreign_to_bzr(revb)), thebranch.last_revision_info())

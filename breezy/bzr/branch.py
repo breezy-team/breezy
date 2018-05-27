@@ -17,6 +17,8 @@
 
 from __future__ import absolute_import
 
+import sys
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -617,7 +619,10 @@ class BzrBranch8(BzrBranch):
                                                 config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
-        return stacked_url.encode('utf-8')
+        if sys.version_info[0] == 2:
+            return stacked_url.encode('utf-8')
+        else:
+            return stacked_url
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""

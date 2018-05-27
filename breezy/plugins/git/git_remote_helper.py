@@ -79,7 +79,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     else:
         lossy = True
     inter.fetch_objects(revs, lossy=lossy)
-    outf.write("\n")
+    outf.write(b"\n")
 
 
 def push(outf, wants, shortname, remote_dir, local_dir):
@@ -93,8 +93,8 @@ def push(outf, wants, shortname, remote_dir, local_dir):
         except NotBranchError:
             remote_branch = remote_dir.create_branch(name=dest_branch_name)
         local_branch.push(remote_branch)
-        outf.write("ok %s\n" % dest_ref)
-    outf.write("\n")
+        outf.write(b"ok %s\n" % dest_ref)
+    outf.write(b"\n")
 
 
 class RemoteHelper(object):
@@ -108,7 +108,7 @@ class RemoteHelper(object):
         self.wants = []
 
     def cmd_capabilities(self, outf, argv):
-        outf.write("\n".join(CAPABILITIES)+"\n\n")
+        outf.write(b"\n".join([c.encode() for c in CAPABILITIES])+b"\n\n")
 
     def cmd_list(self, outf, argv):
         try:
@@ -120,11 +120,11 @@ class RemoteHelper(object):
             refs = get_refs_container(self.remote_dir, object_store)
             for ref, git_sha1 in refs.as_dict().iteritems():
                 ref = ref.replace("~", "_")
-                outf.write("%s %s\n" % (git_sha1, ref))
-            outf.write("\n")
+                outf.write(b"%s %s\n" % (git_sha1, ref))
+            outf.write(b"\n")
 
     def cmd_option(self, outf, argv):
-        outf.write("unsupported\n")
+        outf.write(b"unsupported\n")
 
     def cmd_fetch(self, outf, argv):
         if self.batchcmd not in (None, "fetch"):

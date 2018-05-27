@@ -16,6 +16,8 @@
 
 from __future__ import absolute_import
 
+import sys
+
 from . import errors
 
 from .lazy_import import lazy_import
@@ -772,7 +774,7 @@ class Branch(controldir.ControlComponent):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file. RBC 20060125
         if url is not None:
-            if isinstance(url, text_type):
+            if isinstance(url, text_type) and sys.version_info[0] == 2:
                 try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:

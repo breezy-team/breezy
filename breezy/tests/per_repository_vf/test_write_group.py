@@ -226,7 +226,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # Now, add the objects manually
         text_keys = [(b'file-id', b'A-id')]
         if repo.supports_rich_root():
-            text_keys.append(b('root-id', b'A-id'))
+            text_keys.append((b'root-id', b'A-id'))
         # Directly add the texts, inventory, and revision object for 'A-id'
         repo.texts.insert_record_stream(b.repository.texts.get_record_stream(
             text_keys, 'unordered', True))

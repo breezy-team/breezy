@@ -72,10 +72,10 @@ class TestReturnsUnlockable(TestCase):
 class TestMatchesAncestry(TestCaseWithTransport):
 
     def test__str__(self):
-        matcher = MatchesAncestry("A repository", "arevid")
+        matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
             "MatchesAncestry(repository='A repository', "
-            "revision_id=b'arevid')",
+            "revision_id='arevid')",
             str(matcher))
 
     def test_match(self):
@@ -90,8 +90,8 @@ class TestMatchesAncestry(TestCaseWithTransport):
         self.assertThat([revid1, revid2], m)
         m = MatchesAncestry(branch.repository, revid1)
         self.assertThat([revid1], m)
-        m = MatchesAncestry(branch.repository, "unknown")
-        self.assertThat(["unknown"], m)
+        m = MatchesAncestry(branch.repository, b"unknown")
+        self.assertThat([b"unknown"], m)
 
     def test_mismatch(self):
         b = self.make_branch_builder('.')
@@ -112,7 +112,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
 class TestHasLayout(TestCaseWithTransport):
 
     def test__str__(self):
-        matcher = HasLayout([("a", "a-id")])
+        matcher = HasLayout([(b"a", b"a-id")])
         self.assertEqual("HasLayout([('a', 'a-id')])", str(matcher))
 
     def test_match(self):

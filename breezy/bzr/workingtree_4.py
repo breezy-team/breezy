@@ -1379,7 +1379,7 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         """See dirstate.SHA1Provider.stat_and_sha1()."""
         filters = self.tree._content_filter_stack(
             self.tree.relpath(osutils.safe_unicode(abspath)))
-        with file(abspath, 'rb', 65000) as file_obj:
+        with open(abspath, 'rb', 65000) as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
                 file_obj = _mod_filters.filtered_input_file(file_obj, filters)
@@ -1797,7 +1797,7 @@ class DirStateRevisionTree(InventoryTree):
         parent_index = self._dirstate.get_parent_ids().index(self._revision_id) + 1
         # This is identical now to the WorkingTree _generate_inventory except
         # for the tree index use.
-        root_key, current_entry = self._dirstate._get_entry(parent_index, path_utf8='')
+        root_key, current_entry = self._dirstate._get_entry(parent_index, path_utf8=b'')
         current_id = root_key[2]
         if current_entry[parent_index][0] != b'd':
             raise AssertionError()
