@@ -1815,17 +1815,17 @@ class DirState(object):
                     'mismatched file_id in tree 1')
             dir_block = ()
             old_kind = entry[1][1][0]
-            if active_kind in 'ar':
+            if active_kind in b'ar':
                 # The active tree doesn't have this file_id.
                 # The basis tree is changing this record. If this is a
                 # rename, then we don't want the record here at all
                 # anymore. If it is just an in-place change, we want the
                 # record here, but we'll add it if we need to. So we just
                 # delete it
-                if active_kind == 'r':
+                if active_kind == b'r':
                     active_path = entry[1][0][1]
                     active_entry = self._get_entry(0, file_id, active_path)
-                    if active_entry[1][1][0] != 'r':
+                    if active_entry[1][1][0] != b'r':
                         self._raise_invalid(old_path, file_id,
                             "Dirstate did not have matching rename entries")
                     elif active_entry[1][0][0] in 'ar':
@@ -1834,7 +1834,7 @@ class DirState(object):
                             " tree0")
                     active_entry[1][1] = null
                 del self._dirblocks[block_index][1][entry_index]
-                if old_kind == 'd':
+                if old_kind == b'd':
                     # This was a directory, and the active tree says it
                     # doesn't exist, and now the basis tree says it doesn't
                     # exist. Remove its dirblock if present
@@ -1877,7 +1877,7 @@ class DirState(object):
                 self._raise_invalid(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not present.")
             # Parents of things must be directories
-            if entry[1][index][0] != 'd':
+            if entry[1][index][0] != b'd':
                 self._raise_invalid(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not a directory.")
 
