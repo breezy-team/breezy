@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 __all__ = ['show_bzrdir_info']
 
+from io import StringIO
 import time
 import sys
 
@@ -35,9 +36,6 @@ from .bzr import (
 from .errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from .missing import find_unmerged
-from .sixish import (
-    BytesIO,
-    )
 
 
 def plural(n, base='', pl=None):
@@ -333,7 +331,7 @@ def _show_repository_info(repository, outfile):
 
 def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
-    f = BytesIO()
+    f = StringIO()
     if 'revisions' in stats:
         revisions = stats['revisions']
         f.write('  %8d revision%s\n' % (revisions, plural(revisions)))
@@ -341,7 +339,7 @@ def _show_repository_stats(repository, stats, outfile):
         f.write('  %8d KiB\n' % (stats['size']/1024))
     for hook in hooks['repository']:
         hook(repository, stats, f)
-    if f.getvalue() != "":
+    if f.getvalue() != b"":
         outfile.write('\n')
         outfile.write('Repository:\n')
         outfile.write(f.getvalue())
