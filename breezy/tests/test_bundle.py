@@ -633,7 +633,7 @@ class BundleTester(object):
         self.build_tree_contents([('b1/sub/sub/emptyfile.txt', b''),
                                   ('b1/dir/nolastnewline.txt', b'bloop')])
         tt = TreeTransform(self.tree1)
-        tt.new_file('executable', tt.root, '#!/bin/sh\n', 'exe-1', True)
+        tt.new_file('executable', tt.root, [b'#!/bin/sh\n'], 'exe-1', True)
         tt.apply()
         # have to fix length of file-id so that we can predictably rewrite
         # a (length-prefixed) record containing it later.
@@ -774,12 +774,12 @@ class BundleTester(object):
         tt = TreeTransform(self.tree1)
 
         # Add
-        tt.new_file('file', tt.root, '\x00\n\x00\r\x01\n\x02\r\xff', 'binary-1')
-        tt.new_file('file2', tt.root, '\x01\n\x02\r\x03\n\x04\r\xff',
+        tt.new_file('file', tt.root, [b'\x00\n\x00\r\x01\n\x02\r\xff'], 'binary-1')
+        tt.new_file('file2', tt.root, [b'\x01\n\x02\r\x03\n\x04\r\xff'],
             'binary-2')
         tt.apply()
         self.tree1.commit('add binary', rev_id=b'b@cset-0-1')
-        self.get_valid_bundle('null:', 'b@cset-0-1')
+        self.get_valid_bundle(b'null:', b'b@cset-0-1')
 
         # Delete
         tt = TreeTransform(self.tree1)
@@ -787,57 +787,57 @@ class BundleTester(object):
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('delete binary', rev_id=b'b@cset-0-2')
-        self.get_valid_bundle('b@cset-0-1', 'b@cset-0-2')
+        self.get_valid_bundle(b'b@cset-0-1', b'b@cset-0-2')
 
         # Rename & modify
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_path('file2')
         tt.adjust_path('file3', tt.root, trans_id)
         tt.delete_contents(trans_id)
-        tt.create_file('file\rcontents\x00\n\x00', trans_id)
+        tt.create_file(b'file\rcontents\x00\n\x00', trans_id)
         tt.apply()
         self.tree1.commit('rename and modify binary', rev_id=b'b@cset-0-3')
-        self.get_valid_bundle('b@cset-0-2', 'b@cset-0-3')
+        self.get_valid_bundle(b'b@cset-0-2', b'b@cset-0-3')
 
         # Modify
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_path('file3')
         tt.delete_contents(trans_id)
-        tt.create_file('\x00file\rcontents', trans_id)
+        tt.create_file(b'\x00file\rcontents', trans_id)
         tt.apply()
         self.tree1.commit('just modify binary', rev_id=b'b@cset-0-4')
-        self.get_valid_bundle('b@cset-0-3', 'b@cset-0-4')
+        self.get_valid_bundle(b'b@cset-0-3', b'b@cset-0-4')
 
         # Rollup
-        self.get_valid_bundle('null:', 'b@cset-0-4')
+        self.get_valid_bundle(b'null:', b'b@cset-0-4')
 
     def test_last_modified(self):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
-        tt.new_file('file', tt.root, 'file', 'file')
+        tt.new_file('file', tt.root, [b'file'], 'file')
         tt.apply()
         self.tree1.commit('create file', rev_id=b'a@lmod-0-1')
 
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
-        tt.create_file('file2', trans_id)
+        tt.create_file(b'file2', trans_id)
         tt.apply()
         self.tree1.commit('modify text', rev_id=b'a@lmod-0-2a')
 
-        other = self.get_checkout('a@lmod-0-1')
+        other = self.get_checkout(b'a@lmod-0-1')
         tt = TreeTransform(other)
         trans_id = tt.trans_id_tree_path('file2')
         tt.delete_contents(trans_id)
-        tt.create_file('file2', trans_id)
+        tt.create_file(b'file2', trans_id)
         tt.apply()
         other.commit('modify text in another tree', rev_id=b'a@lmod-0-2b')
         self.tree1.merge_from_branch(other.branch)
         self.tree1.commit(u'Merge', rev_id=b'a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id=b'a@lmod-0-4')
-        bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
+        bundle = self.get_valid_bundle(b'a@lmod-0-2a', b'a@lmod-0-4')
 
     def test_hide_history(self):
         self.tree1 = self.make_branch_and_tree('b1')
@@ -1017,7 +1017,7 @@ class BundleTester(object):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
                     revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
         self.b1 = tree.branch
@@ -1035,7 +1035,7 @@ class BundleTester(object):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         # Revisions themselves do not require anything about revision property
         # keys, other than that they are a basestring, and do not contain
         # whitespace.
@@ -1197,7 +1197,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
@@ -1229,7 +1229,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text('null:', 'rev1')
@@ -1257,7 +1257,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
                     revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
         self.b1 = tree.branch
@@ -1283,7 +1283,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], ['TREE_ROOT'])
+        tree.add([''], [b'TREE_ROOT'])
         # Revisions themselves do not require anything about revision property
         # keys, other than that they are a basestring, and do not contain
         # whitespace.
