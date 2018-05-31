@@ -40,9 +40,13 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     src_tree = _get_brz_source_tree()
     if src_tree:
         src_revision_id = src_tree.last_revision()
-        revno = src_tree.branch.revision_id_to_revno(src_revision_id)
         to_file.write("  from brz checkout %s\n" % (src_tree.basedir,))
-        to_file.write("    revision: %s\n" % (revno,))
+        try:
+            revno = src_tree.branch.revision_id_to_revno(src_revision_id)
+        except errors.GhostRevisionsHaveNoRevno:
+            pass
+        else:
+            to_file.write("    revision: %s\n" % (revno,))
         to_file.write("    revid: %s\n" % (src_revision_id,))
         to_file.write("    branch nick: %s\n" % (src_tree.branch.nick,))
 

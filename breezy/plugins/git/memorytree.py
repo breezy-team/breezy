@@ -23,7 +23,11 @@ import os
 import posixpath
 import stat
 
+from dulwich.index import (
+    index_entry_from_stat,
+    )
 from dulwich.objects import (
+    Blob,
     Tree,
     )
 
@@ -170,6 +174,18 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         stat_val = os.stat_result(
             (mem_stat.st_mode, 0, 0, 0, 0, 0, mem_stat.st_size, 0, 0, 0))
         return stat_val
+
+    def _live_entry(self, path):
+        stat_val = self._lstat(path)
+        if stat.S_ISDIR(stat_val.st_mode):
+            return None
+        elif stat.S_ISLNK(stat_val.st_mode):
+            blob = Blob.from_string(self._file_transport.readlink(path))
+        elif stat.S_ISREG(stat_val.st_mode):
+            blob = Blob.from_string(self._file_transport.get_bytes(path))
+        else:
+            raise AssertionError('unknown type %d' % stat_val.st_mode)
+        return index_entry_from_stat(stat_val, blob.id, 0)
 
     def get_file_with_stat(self, path, file_id=None):
         return (self.get_file(path, file_id), self._lstat(path))

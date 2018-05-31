@@ -554,7 +554,10 @@ class Tree(object):
 
         :return: set of paths.
         """
-        raise NotImplementedError(self.filter_unversioned_files)
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that
+        # are not versioned.
+        return set(p for p in paths if not self.is_versioned(p))
 
     def walkdirs(self, prefix=""):
         """Walk the contents of this tree from path down.
@@ -652,6 +655,23 @@ class Tree(object):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
         return searcher
+
+    def archive(self, format, name, root='', subdir=None,
+                force_mtime=None):
+        """Create an archive of this tree.
+
+        :param name: target file name
+        :param format: Format name (e.g. 'tar')
+        :param root: Root directory name (or None)
+        :param subdir: Subdirectory to export (or None)
+        :param per_file_timestamps: Whether to set the timestamp
+            for each file to the last changed time.
+        :return: Iterator over archive chunks
+        """
+        from .archive import create_archive
+        with self.lock_read():
+            return create_archive(format, self, name, root,
+                    subdir, force_mtime=force_mtime)
 
     @classmethod
     def versionable_kind(cls, kind):

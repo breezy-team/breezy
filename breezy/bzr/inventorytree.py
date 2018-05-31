@@ -266,16 +266,6 @@ class InventoryTree(Tree):
     def all_versioned_paths(self):
         return {path for path, entry in self.iter_entries_by_dir()}
 
-    def filter_unversioned_files(self, paths):
-        """Filter out paths that are versioned.
-
-        :return: set of paths.
-        """
-        # NB: we specifically *don't* call self.has_filename, because for
-        # WorkingTrees that can indicate files that exist on disk but that
-        # are not versioned.
-        return set((p for p in paths if self.path2id(p) is None))
-
     def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 

@@ -208,6 +208,11 @@ class TestRequestHanderErrorTranslation(TestCase):
     def test_MemoryError(self):
         self.assertTranslationEqual((b"MemoryError",), MemoryError())
 
+    def test_GhostRevisionsHaveNoRevno(self):
+        self.assertTranslationEqual(
+            (b"GhostRevisionsHaveNoRevno", b'revid1', b'revid2'),
+            errors.GhostRevisionsHaveNoRevno(b'revid1', b'revid2'))
+
     def test_generic_Exception(self):
         self.assertTranslationEqual((b'error', b'Exception', b""),
             Exception())

@@ -31,12 +31,9 @@ from dulwich.index import (
     SHA1Writer,
     build_index_from_tree,
     changes_from_tree,
-    cleanup_mode,
-    commit_tree,
     index_entry_from_path,
     index_entry_from_stat,
     iter_fresh_entries,
-    blob_from_path_and_stat,
     FLAG_STAGEMASK,
     read_submodule_head,
     validate_path,
@@ -710,9 +707,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
-    def filter_unversioned_files(self, files):
-        return set([p for p in files if not self.is_versioned(p)])
-
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -733,6 +727,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def _lstat(self, path):
         return os.lstat(self.abspath(path))
+
+    def _live_entry(self, path):
+        return index_entry_from_path(self.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
 
     def is_executable(self, path, file_id=None):
         with self.lock_read():
@@ -1339,87 +1336,3 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt
-
-
-class InterIndexGitTree(InterGitTrees):
-    """InterTree that works between a Git revision tree and an index."""
-
-    def __init__(self, source, target):
-        super(InterIndexGitTree, self).__init__(source, target)
-        self._index = target.index
-
-    @classmethod
-    def is_compatible(cls, source, target):
-        from .repository import GitRevisionTree
-        return (isinstance(source, GitRevisionTree) and
-                isinstance(target, GitWorkingTree))
-
-    def _iter_git_changes(self, want_unchanged=False, specific_files=None,
-            require_versioned=False, extra_trees=None,
-            want_unversioned=False):
-        trees = [self.source]
-        if extra_trees is not None:
-            trees.extend(extra_trees)
-        if specific_files is not None:
-            specific_files = self.target.find_related_paths_across_trees(
-                    specific_files, trees,
-                    require_versioned=require_versioned)
-        # TODO(jelmer): Restrict to specific_files, for performance reasons.
-        with self.lock_read():
-            return changes_between_git_tree_and_working_copy(
-                self.source.store, self.source.tree,
-                self.target, want_unchanged=want_unchanged,
-                want_unversioned=want_unversioned)
-
-
-tree.InterTree.register_optimiser(InterIndexGitTree)
-
-
-def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
-        want_unchanged=False, want_unversioned=False):
-    """Determine the changes between a git tree and a working tree with index.
-
-    """
-    extras = set()
-    blobs = {}
-    # Report dirified directories to commit_tree first, so that they can be
-    # replaced with non-empty directories if they have contents.
-    dirified = []
-    target_root_path = target.abspath('.').encode(sys.getfilesystemencoding())
-    for path, index_entry in target._recurse_index_entries():
-        try:
-            live_entry = index_entry_from_path(
-                    target.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
-        except EnvironmentError as e:
-            if e.errno == errno.ENOENT:
-                # Entry was removed; keep it listed, but mark it as gone.
-                blobs[path] = (ZERO_SHA, 0)
-            elif e.errno == errno.EISDIR:
-                # Entry was turned into a directory
-                dirified.append((path, Tree().id, stat.S_IFDIR))
-                store.add_object(Tree())
-            else:
-                raise
-        else:
-            blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
-    if want_unversioned:
-        for e in target.extras():
-            ap = target.abspath(e)
-            st = os.lstat(ap)
-            try:
-                np, accessible = osutils.normalized_filename(e)
-            except UnicodeDecodeError:
-                raise errors.BadFilenameEncoding(
-                    e, osutils._fs_enc)
-            if stat.S_ISDIR(st.st_mode):
-                blob = Tree()
-            else:
-                blob = blob_from_path_and_stat(ap.encode('utf-8'), st)
-            store.add_object(blob)
-            np = np.encode('utf-8')
-            blobs[np] = (blob.id, cleanup_mode(st.st_mode))
-            extras.add(np)
-    to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
-    return store.tree_changes(
-        from_tree_sha, to_tree_sha, include_trees=True,
-        want_unchanged=want_unchanged, change_type_same=True), extras

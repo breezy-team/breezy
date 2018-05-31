@@ -24,6 +24,9 @@ from io import BytesIO
 import os
 
 from dulwich.index import (
+    blob_from_path_and_stat,
+    cleanup_mode,
+    commit_tree,
     index_entry_from_stat,
     )
 from dulwich.object_store import (
@@ -52,7 +55,10 @@ from ... import (
     tree as _mod_tree,
     workingtree,
     )
-from ...revision import NULL_REVISION
+from ...revision import (
+    CURRENT_REVISION,
+    NULL_REVISION,
+    )
 
 from .mapping import (
     mode_is_executable,
@@ -570,6 +576,29 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return iter([])
         return self.store.iter_tree_contents(
                 self.tree, include_trees=include_trees)
+
+    def annotate_iter(self, path, file_id=None,
+                      default_revision=CURRENT_REVISION):
+        """Return an iterator of revision_id, line tuples.
+
+        For working trees (and mutable trees in general), the special
+        revision_id 'current:' will be used for lines that are new in this
+        tree, e.g. uncommitted changes.
+        :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
+        """
+        with self.lock_read():
+            # Now we have the parents of this content
+            from breezy.annotate import Annotator
+            from .annotate import AnnotateProvider
+            annotator = Annotator(AnnotateProvider(
+                self._repository._file_change_scanner))
+            this_key = (path, self.get_file_revision(path))
+            annotations = [(key[-1], line)
+                           for key, line in annotator.annotate_flat(this_key)]
+            return annotations
 
 
 def tree_delta_from_git_changes(changes, mapping,
@@ -1184,7 +1213,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             else:
                 todo = [(p, i) for (p, i) in self._recurse_index_entries() if p.startswith(from_path+'/')]
                 for child_path, child_value in todo:
-                    (child_to_index, child_to_index_path) = self._lookup_index(posixpath.join(to_path, posixpath.relpath(child_path, from_path)))
+                    (child_to_index, child_to_index_path) = self._lookup_index(
+                            posixpath.join(to_path, posixpath.relpath(child_path, from_path)))
                     child_to_index[child_to_index_path] = child_value
                     # TODO(jelmer): Mark individual index as dirty
                     self._index_dirty = True
@@ -1252,3 +1282,86 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 return 'directory'
         else:
             return kind
+
+    def _live_entry(self, relpath):
+        raise NotImplementedError(self._live_entry)
+
+
+class InterIndexGitTree(InterGitTrees):
+    """InterTree that works between a Git revision tree and an index."""
+
+    def __init__(self, source, target):
+        super(InterIndexGitTree, self).__init__(source, target)
+        self._index = target.index
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        return (isinstance(source, GitRevisionTree) and
+                isinstance(target, MutableGitIndexTree))
+
+    def _iter_git_changes(self, want_unchanged=False, specific_files=None,
+            require_versioned=False, extra_trees=None,
+            want_unversioned=False):
+        trees = [self.source]
+        if extra_trees is not None:
+            trees.extend(extra_trees)
+        if specific_files is not None:
+            specific_files = self.target.find_related_paths_across_trees(
+                    specific_files, trees,
+                    require_versioned=require_versioned)
+        # TODO(jelmer): Restrict to specific_files, for performance reasons.
+        with self.lock_read():
+            return changes_between_git_tree_and_working_copy(
+                self.source.store, self.source.tree,
+                self.target, want_unchanged=want_unchanged,
+                want_unversioned=want_unversioned)
+
+
+_mod_tree.InterTree.register_optimiser(InterIndexGitTree)
+
+
+def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
+        want_unchanged=False, want_unversioned=False):
+    """Determine the changes between a git tree and a working tree with index.
+
+    """
+    extras = set()
+    blobs = {}
+    # Report dirified directories to commit_tree first, so that they can be
+    # replaced with non-empty directories if they have contents.
+    dirified = []
+    for path, index_entry in target._recurse_index_entries():
+        try:
+            live_entry = target._live_entry(path)
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                # Entry was removed; keep it listed, but mark it as gone.
+                blobs[path] = (ZERO_SHA, 0)
+            elif e.errno == errno.EISDIR:
+                # Entry was turned into a directory
+                dirified.append((path, Tree().id, stat.S_IFDIR))
+                store.add_object(Tree())
+            else:
+                raise
+        else:
+            blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
+    if want_unversioned:
+        for e in target.extras():
+            st = target._lstat(e)
+            try:
+                np, accessible = osutils.normalized_filename(e)
+            except UnicodeDecodeError:
+                raise errors.BadFilenameEncoding(
+                    e, osutils._fs_enc)
+            if stat.S_ISDIR(st.st_mode):
+                blob = Tree()
+            else:
+                blob = blob_from_path_and_stat(target.abspath(e).encode(osutils._fs_enc), st)
+            store.add_object(blob)
+            np = np.encode('utf-8')
+            blobs[np] = (blob.id, cleanup_mode(st.st_mode))
+            extras.add(np)
+    to_tree_sha = commit_tree(store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
+    return store.tree_changes(
+        from_tree_sha, to_tree_sha, include_trees=True,
+        want_unchanged=want_unchanged, change_type_same=True), extras

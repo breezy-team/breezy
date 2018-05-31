@@ -18,12 +18,14 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import re
 
 from ... import (
     config,
     debug,
     errors,
+    osutils,
     trace,
     ui,
     urlutils,
@@ -45,6 +47,7 @@ from ...errors import (
     NoWorkingTree,
     UninitializableFormat,
     )
+from ...revisiontree import RevisionTree
 from ...transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -363,6 +366,25 @@ class RemoteGitDir(GitDir):
     @property
     def _gitrepository_class(self):
         return RemoteGitRepository
+
+    def archive(self, format, committish, write_data, progress=None, write_error=None,
+                subdirs=None, prefix=None):
+        if format not in ('tar', 'zip'):
+            raise errors.NoSuchExportFormat(format)
+        if progress is None:
+            pb = ui.ui_factory.nested_progress_bar()
+            progress = DefaultProgressReporter(pb).progress
+        else:
+            pb = None
+        try:
+            self._client.archive(self._client_path, committish,
+                write_data, progress, write_error, format=format,
+                subdirs=subdirs, prefix=prefix)
+        except GitProtocolError as e:
+            raise parse_git_error(self.transport.external_url(), e)
+        finally:
+            if pb is not None:
+                pb.finished()
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -699,6 +721,39 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
                 external_url.startswith("git:"))
 
 
+class GitRemoteRevisionTree(RevisionTree):
+
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
+        """Create an archive of this tree.
+
+        :param format: Format name (e.g. 'tar')
+        :param name: target file name
+        :param root: Root directory name (or None)
+        :param subdir: Subdirectory to export (or None)
+        :return: Iterator over archive chunks
+        """
+        commit = self._repository.lookup_bzr_revision_id(
+            self.get_revision_id())[0]
+        f = tempfile.SpooledTemporaryFile()
+        # git-upload-archive(1) generaly only supports refs. So let's see if we
+        # can find one.
+        reverse_refs = {
+                v: k for (k, v) in
+                self._repository.controldir.get_refs_container().as_dict().items()}
+        try:
+            committish = reverse_refs[commit]
+        except KeyError:
+            # No? Maybe the user has uploadArchive.allowUnreachable enabled.
+            # Let's hope for the best.
+            committish = commit
+        self._repository.archive(
+                format, committish, f.write,
+                subdirs=([subdir] if subdir else None),
+                prefix=(root+'/') if root else '')
+        f.seek(0)
+        return osutils.file_iterator(f)
+
+
 class RemoteGitRepository(GitRepository):
 
     @property
@@ -707,6 +762,9 @@ class RemoteGitRepository(GitRepository):
 
     def get_parent_map(self, revids):
         raise GitSmartRemoteNotSupported(self.get_parent_map, self)
+
+    def archive(self, *args, **kwargs):
+        return self.controldir.archive(*args, **kwargs)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
@@ -745,7 +803,7 @@ class RemoteGitRepository(GitRepository):
         return mapping.revision_id_foreign_to_bzr(foreign_revid)
 
     def revision_tree(self, revid):
-        raise GitSmartRemoteNotSupported(self.revision_tree, self)
+        return GitRemoteRevisionTree(self, revid)
 
     def get_revisions(self, revids):
         raise GitSmartRemoteNotSupported(self.get_revisions, self)
