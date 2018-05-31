@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 import pprint
 
+from breezy import errors
 from breezy.revision import (
     NULL_REVISION,
     )
@@ -64,7 +65,10 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info['revno'] = '0'
         else:
-            info['revno'] = self._get_revno_str(revision_id)
+            try:
+                info['revno'] = self._get_revno_str(revision_id)
+            except errors.GhostRevisionsHaveNoRevno:
+                pass
             info['revision_id'] = revision_id
             rev = self._branch.repository.get_revision(revision_id)
             info['date'] = create_date_str(rev.timestamp, rev.timezone)

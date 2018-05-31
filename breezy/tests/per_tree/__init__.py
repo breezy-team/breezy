@@ -333,6 +333,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
 
 def load_tests(loader, standard_tests, pattern):
     per_tree_mod_names = [
+        'archive',
         'annotate_iter',
         'export',
         'get_file_mtime',
