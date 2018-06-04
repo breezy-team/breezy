@@ -487,8 +487,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         nostore_sha = None
                     file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
                     try:
-                        entry.text_sha1, entry.text_size = self._add_lines_to_weave(
-                            file_id, file_obj.readlines(), heads, nostore_sha)
+                        entry.text_sha1, entry.text_size = self._add_file_to_weave(
+                            file_id, file_obj, heads, nostore_sha)
                         yield file_id, change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
@@ -505,7 +505,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
                     else:
-                        self._add_lines_to_weave(change[0], [], heads, None)
+                        self._add_file_to_weave(change[0], BytesIO(), heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
@@ -513,7 +513,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
                         if change[1][1] != '' or self.repository.supports_rich_root():
-                            self._add_lines_to_weave(change[0], [], heads, None)
+                            self._add_file_to_weave(change[0], BytesIO(), heads, None)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -528,7 +528,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         parent_entry.reference_revision == reference_revision):
                         carried_over = True
                     else:
-                        self._add_lines_to_weave(change[0], [], heads, None)
+                        self._add_file_to_weave(change[0], BytesIO(), heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
@@ -554,10 +554,10 @@ class VersionedFileCommitBuilder(CommitBuilder):
             self._require_root_change(tree)
         self.basis_delta_revision = basis_revision_id
 
-    def _add_lines_to_weave(self, file_id, lines, parents, nostore_sha):
+    def _add_file_to_weave(self, file_id, fileobj, parents, nostore_sha):
         parent_keys = tuple([(file_id, parent) for parent in parents])
         return self.repository.texts.add_lines(
-            (file_id, self._new_revision_id), parent_keys, lines,
+            (file_id, self._new_revision_id), parent_keys, fileobj.readlines(),
             nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
 
 
