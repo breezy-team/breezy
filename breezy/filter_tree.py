@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from . import (
     tree,
     )
@@ -51,6 +53,9 @@ class ContentFilterTree(tree.Tree):
         contents = filtered_output_bytes(chunks, filters, context)
         content = b''.join(contents)
         return content
+
+    def get_file(self, path, file_id=None):
+        return BytesIO(self.get_file_text(path, file_id))
 
     def has_filename(self, filename):
         return self.backing_tree.has_filename
