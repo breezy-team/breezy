@@ -581,7 +581,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return [''.join(self.get_lines(v)) for v in version_ids]
+        return [b''.join(self.get_lines(v)) for v in version_ids]
 
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.
