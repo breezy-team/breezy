@@ -49,7 +49,7 @@ class ContentFilterTree(tree.Tree):
         filters = self.filter_stack_callback(path)
         context = ContentFilterContext(path, self)
         contents = filtered_output_bytes(chunks, filters, context)
-        content = ''.join(contents)
+        content = b''.join(contents)
         return content
 
     def has_filename(self, filename):

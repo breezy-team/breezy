@@ -3388,6 +3388,7 @@ class cmd_cat(Command):
 
     def _run(self, tree, b, relpath, filename, revision, name_from_revision,
         filtered):
+        import shutil
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
@@ -3422,11 +3423,11 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            content = filter_tree.get_file_text(relpath, actual_file_id)
+            fileobj = filter_tree.get_file(relpath, actual_file_id)
         else:
-            content = rev_tree.get_file_text(relpath, actual_file_id)
+            fileobj = rev_tree.get_file(relpath, actual_file_id)
+        shutil.copyfileobj(fileobj, self.outf)
         self.cleanup_now()
-        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):

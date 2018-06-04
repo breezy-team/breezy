@@ -350,11 +350,8 @@ class Tree(object):
 
         :returns: A single byte string for the whole file.
         """
-        my_file = self.get_file(path, file_id)
-        try:
+        with self.get_file(path, file_id) as my_file:
             return my_file.read()
-        finally:
-            my_file.close()
 
     def get_file_lines(self, path, file_id=None):
         """Return the content of a file, as lines.
