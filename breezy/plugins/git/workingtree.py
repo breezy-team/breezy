@@ -90,9 +90,6 @@ from .dir import (
     LocalGitDir,
     )
 from .tree import (
-    changes_from_git_changes,
-    tree_delta_from_git_changes,
-    InterGitTrees,
     MutableGitIndexTree,
     )
 from .mapping import (
