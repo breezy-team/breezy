@@ -634,7 +634,7 @@ def tree_delta_from_git_changes(changes, mapping,
             else:
                 file_id = new_fileid_map.lookup_file_id(newpath)
                 ret.added.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
-        elif newpath is None:
+        elif newpath is None or newmode == 0:
             file_id = old_fileid_map.lookup_file_id(oldpath)
             ret.removed.append((oldpath.decode('utf-8'), file_id, mode_kind(oldmode)))
         elif oldpath != newpath:
