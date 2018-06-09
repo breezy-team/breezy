@@ -1104,7 +1104,7 @@ class RepositoryPackCollection(object):
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
-        return tuple([int(digits.decode()) for digits in value.split(b' ')])
+        return tuple(int(digits) for digits in value.split(b' '))
 
     def get_pack_by_name(self, name):
         """Get a Pack object by name.
