@@ -176,7 +176,7 @@ class HasLayout(Matcher):
         return 'HasLayout(%r)' % self.entries
 
     def match(self, tree):
-        include_file_ids = (self.entries and not isinstance(self.entries[0], (str, text_type)))
+        include_file_ids = self.entries and not isinstance(self.entries[0], (str, text_type))
         actual = list(self.get_tree_layout(tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
             entries = list(self._strip_unreferenced_directories(self.entries))

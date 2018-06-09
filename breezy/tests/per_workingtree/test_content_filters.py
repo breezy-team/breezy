@@ -152,10 +152,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Check that the working tree has the original content
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('Foo Txt', tree.get_file(txt_path,
-            filtered=False).read())
-        self.assertEqual('Foo Bin', tree.get_file(bin_path,
-            filtered=False).read())
+        with tree.get_file(txt_path, filtered=False) as f:
+            self.assertEqual('Foo Txt', f.read())
+        with tree.get_file(bin_path, filtered=False) as f:
+            self.assertEqual('Foo Bin', f.read())
 
     def test_readonly_content_filtering(self):
         # test handling with a read filter but no write filter
@@ -174,10 +174,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # We expect the workingtree content to be unchanged (for now at least)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('Foo Txt', tree.get_file(txt_path,
-            filtered=False).read())
-        self.assertEqual('Foo Bin', tree.get_file(bin_path,
-            filtered=False).read())
+        with tree.get_file(txt_path, filtered=False) as f:
+            self.assertEqual('Foo Txt', f.read())
+        with tree.get_file(bin_path, filtered=False) as f:
+            self.assertEqual('Foo Bin', f.read())
 
     def test_branch_source_filtered_target_not(self):
         # Create a source branch with content filtering
@@ -232,12 +232,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.addCleanup(source.unlock)
 
         expected_canonical_form = 'Foo Txt\nend string\n'
-        self.assertEqual(
-            source.get_file(txt_path, filtered=True).read(),
-            expected_canonical_form)
-        self.assertEqual(
-            source.get_file(txt_path, filtered=False).read(),
-            'Foo Txt')
+        with source.get_file(txt_path, filtered=True) as f:
+            self.assertEqual(f.read(), expected_canonical_form)
+        with source.get_file(txt_path, filtered=False) as f:
+            self.assertEqual(f.read(), 'Foo Txt')
 
         # results are: kind, size, executable, sha1_or_link_target
         result = source.path_content_summary('file1.txt')
