@@ -45,15 +45,16 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
 
     Returns a (tarinfo, fileobj) tuple
     """
+    file_id = getattr(entry, 'file_id', None)
     filename = osutils.pathjoin(root, final_path).encode('utf8')
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
         item.mtime = force_mtime
     else:
-        item.mtime = tree.get_file_mtime(tree_path, entry.file_id)
+        item.mtime = tree.get_file_mtime(tree_path, file_id)
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
-        if tree.is_executable(tree_path, entry.file_id):
+        if tree.is_executable(tree_path, file_id):
             item.mode = 0o755
         else:
             item.mode = 0o644
@@ -61,7 +62,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         # the tarfile contract, which wants the size of the file up front.  We
         # want to make sure it doesn't change, and we need to read it in one
         # go for content filtering.
-        content = tree.get_file_text(tree_path, entry.file_id)
+        content = tree.get_file_text(tree_path, file_id)
         item.size = len(content)
         fileobj = BytesIO(content)
     elif entry.kind in ("directory", "tree-reference"):
@@ -74,11 +75,11 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.type = tarfile.SYMTYPE
         item.size = 0
         item.mode = 0o755
-        item.linkname = tree.get_symlink_target(tree_path, entry.file_id)
+        item.linkname = tree.get_symlink_target(tree_path, file_id)
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"
-                              % (entry.file_id, entry.kind))
+                              % (file_id, entry.kind))
     return (item, fileobj)
 
 
@@ -122,7 +123,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
             # If this is a revision tree, use the revisions' timestamp
             rev = tree.repository.get_revision(tree.get_revision_id())
             root_mtime = rev.timestamp
-        elif tree.get_root_id() is not None:
+        elif tree.is_versioned(u''):
             root_mtime = tree.get_file_mtime('', tree.get_root_id())
         else:
             root_mtime = None

@@ -132,8 +132,7 @@ class TreeTransformBase(object):
         # Mapping trans_id -> path in old tree
         self._tree_id_paths = {}
         # The trans_id that will be used as the tree root
-        root_id = tree.get_root_id()
-        if root_id is not None:
+        if tree.is_versioned(''):
             self._new_root = self.trans_id_tree_path('')
         else:
             self._new_root = None
@@ -2871,7 +2870,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     # reverse.
     change_list = working_tree.iter_changes(target_tree,
         specific_files=specific_files, pb=pb)
-    if target_tree.get_root_id() is None:
+    if not target_tree.is_versioned(u''):
         skip_root = True
     else:
         skip_root = False

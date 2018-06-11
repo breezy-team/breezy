@@ -189,14 +189,15 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     # lookup, hopefully it isn't too expensive.
     to_fetch = []
     for dp, tp, ie in _export_iter_entries(tree, subdir):
+        file_id = getattr(ie, 'file_id', None)
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
-            to_fetch.append((tp, (dp, tp, ie.file_id)))
+            to_fetch.append((tp, (dp, tp, file_id)))
         elif ie.kind in ("directory", "tree-reference"):
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                symlink_target = tree.get_symlink_target(tp, ie.file_id)
+                symlink_target = tree.get_symlink_target(tp, file_id)
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
