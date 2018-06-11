@@ -2824,26 +2824,23 @@ def create_entry_executability(tt, entry, trans_id):
 def revert(working_tree, target_tree, filenames, backups=False,
            pb=None, change_reporter=None):
     """Revert a working tree's contents to those of a target tree."""
-    target_tree.lock_read()
     pb = ui.ui_factory.nested_progress_bar()
-    tt = TreeTransform(working_tree, pb)
     try:
-        pp = ProgressPhase("Revert phase", 3, pb)
-        conflicts, merge_modified = _prepare_revert_transform(
-            working_tree, target_tree, tt, filenames, backups, pp)
-        if change_reporter:
-            change_reporter = delta._ChangeReporter(
-                unversioned_filter=working_tree.is_ignored)
-            delta.report_changes(tt.iter_changes(), change_reporter)
-        for conflict in conflicts:
-            trace.warning(unicode(conflict))
-        pp.next_phase()
-        tt.apply()
-        if working_tree.supports_merge_modified():
-            working_tree.set_merge_modified(merge_modified)
+        with target_tree.lock_read(), TreeTransform(working_tree, pb) as tt:
+            pp = ProgressPhase("Revert phase", 3, pb)
+            conflicts, merge_modified = _prepare_revert_transform(
+                working_tree, target_tree, tt, filenames, backups, pp)
+            if change_reporter:
+                change_reporter = delta._ChangeReporter(
+                    unversioned_filter=working_tree.is_ignored)
+                delta.report_changes(tt.iter_changes(), change_reporter)
+            for conflict in conflicts:
+                trace.warning(unicode(conflict))
+            pp.next_phase()
+            tt.apply()
+            if working_tree.supports_merge_modified():
+                working_tree.set_merge_modified(merge_modified)
     finally:
-        target_tree.unlock()
-        tt.finalize()
         pb.clear()
     return conflicts
 

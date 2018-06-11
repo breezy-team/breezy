@@ -67,15 +67,9 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
         processed.  The physical lock state won't be changed.
         """
         # XXX: write a test for LockContention
-        branch.repository.lock_write(token=repo_token)
-        try:
-            branch.lock_write(token=branch_token)
-            try:
+        with branch.repository.lock_write(token=repo_token), \
+                branch.lock_write(token=branch_token):
                 return self.do_with_locked_branch(branch, *args)
-            finally:
-                branch.unlock()
-        finally:
-            branch.repository.unlock()
 
 
 class SmartServerBranchBreakLock(SmartServerBranchRequest):
@@ -119,16 +113,10 @@ class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
         return None
 
     def do_body(self, body_bytes):
-        self._branch.repository.lock_write(token=self._repo_token)
-        try:
-            self._branch.lock_write(token=self._branch_token)
-            try:
+        with self._branch.repository.lock_write(token=self._repo_token), \
+             self._branch.lock_write(token=self._branch_token):
                 self._branch.control_transport.put_bytes(
                     'branch.conf', body_bytes)
-            finally:
-                self._branch.unlock()
-        finally:
-            self._branch.repository.unlock()
         return SuccessfulSmartServerResponse((b'ok', ))
 
 
@@ -419,11 +407,8 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
 
     def do_with_branch(self, branch, branch_token, repo_token):
         try:
-            branch.repository.lock_write(token=repo_token)
-            try:
+            with branch.repository.lock_write(token=repo_token):
                 branch.lock_write(token=branch_token)
-            finally:
-                branch.repository.unlock()
         except errors.TokenMismatch:
             return FailedSmartServerResponse((b'TokenMismatch',))
         if repo_token:

@@ -989,16 +989,13 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
         :return: SuccessfulSmartServerResponse with arguments 'ok' and
             the list of new write group tokens.
         """
-        self._repository.lock_write(token=self._lock_token)
-        try:
+        with self._repository.lock_write(token=self._lock_token):
             self._repository.resume_write_group(self._write_group_tokens)
             try:
                 self._repository.add_signature_text(self._revision_id,
                     body_bytes)
             finally:
                 new_write_group_tokens = self._repository.suspend_write_group()
-        finally:
-            self._repository.unlock()
         return SuccessfulSmartServerResponse(
             (b'ok', ) + tuple(new_write_group_tokens))
 
@@ -1011,15 +1008,12 @@ class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, lock_token):
         """Start a write group."""
-        repository.lock_write(token=lock_token)
-        try:
+        with repository.lock_write(token=lock_token):
             repository.start_write_group()
             try:
                 tokens = repository.suspend_write_group()
             except errors.UnsuspendableWriteGroup:
                 return FailedSmartServerResponse((b'UnsuspendableWriteGroup',))
-        finally:
-            repository.unlock()
         return SuccessfulSmartServerResponse((b'ok', tokens))
 
 
@@ -1032,8 +1026,7 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token,
             write_group_tokens):
         """Commit a write group."""
-        repository.lock_write(token=lock_token)
-        try:
+        with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(write_group_tokens)
             except errors.UnresumableWriteGroup as e:
@@ -1046,8 +1039,6 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
                 # FIXME JRV 2011-11-19: What if the write_group_tokens
                 # have changed?
                 raise
-        finally:
-            repository.unlock()
         return SuccessfulSmartServerResponse((b'ok', ))
 
 
@@ -1059,16 +1050,13 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, lock_token, write_group_tokens):
         """Abort a write group."""
-        repository.lock_write(token=lock_token)
-        try:
+        with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(write_group_tokens)
             except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     (b'UnresumableWriteGroup', e.write_groups, e.reason))
                 repository.abort_write_group()
-        finally:
-            repository.unlock()
         return SuccessfulSmartServerResponse((b'ok', ))
 
 
@@ -1080,8 +1068,7 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, lock_token, write_group_tokens):
         """Abort a write group."""
-        repository.lock_write(token=lock_token)
-        try:
+        with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(write_group_tokens)
             except errors.UnresumableWriteGroup as e:
@@ -1089,8 +1076,6 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
                     (b'UnresumableWriteGroup', e.write_groups, e.reason))
             else:
                 repository.suspend_write_group()
-        finally:
-            repository.unlock()
         return SuccessfulSmartServerResponse((b'ok', ))
 
 
@@ -1148,11 +1133,8 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
             hint = None
         else:
             hint = body_bytes.splitlines()
-        self._repository.lock_write(token=self._lock_token)
-        try:
+        with self._repository.lock_write(token=self._lock_token):
             self._repository.pack(hint, self._clean_obsolete_packs)
-        finally:
-            self._repository.unlock()
         return SuccessfulSmartServerResponse((b"ok", ), )
 
 

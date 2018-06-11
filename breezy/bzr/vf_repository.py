@@ -1744,8 +1744,7 @@ class StreamSink(object):
         :return: a list of resume tokens and an  iterable of keys additional
             items required before the insertion can be completed.
         """
-        self.target_repo.lock_write()
-        try:
+        with self.target_repo.lock_write():
             if resume_tokens:
                 self.target_repo.resume_write_group(resume_tokens)
                 is_resume = True
@@ -1773,8 +1772,6 @@ class StreamSink(object):
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
-        finally:
-            self.target_repo.unlock()
 
     def insert_stream_without_locking(self, stream, src_format,
                                       is_resume=False):
