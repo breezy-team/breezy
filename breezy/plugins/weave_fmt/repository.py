@@ -607,7 +607,7 @@ class TextVersionedFiles(VersionedFiles):
             raise errors.ObjectNotLocked(self)
         if not self._can_write():
             raise errors.ReadOnlyError(self)
-        if '/' in key[-1]:
+        if b'/' in key[-1]:
             raise ValueError('bad idea to put / in %r' % (key,))
         chunks = lines
         if self._compressed:
