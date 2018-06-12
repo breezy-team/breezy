@@ -442,8 +442,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                     file_id = self.path2id(path)
                 ie = self.root_inventory.get_entry(file_id)
                 if ie.kind != "file":
-                    return ""
-                return 'a' * ie.text_size
+                    return b""
+                return b'a' * ie.text_size
 
             def get_file(self, path, file_id=None):
                 return BytesIO(self.get_file_text(path, file_id))
