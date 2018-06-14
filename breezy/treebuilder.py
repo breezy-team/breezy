@@ -57,11 +57,11 @@ class TreeBuilder(object):
             self._tree.add('', b'root-id', 'directory')
             self._root_done = True
         for name in recipe:
-            if name[-1] == '/':
+            if name.endswith('/'):
                 self._tree.mkdir(name[:-1])
             else:
-                end = '\n'
-                content = "contents of %s%s" % (name.encode('utf-8'), end)
+                end = b'\n'
+                content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 self._tree.add(name, None, 'file')
                 self._tree.put_file_bytes_non_atomic(name, content)
 

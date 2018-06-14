@@ -71,7 +71,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         tree.add(['dir'], [b'dir-id'], ['directory'])
         tree.add(['filename'], [b'file-id'], ['file'])
         tree.put_file_bytes_non_atomic(
-                'filename', 'content\n',
+                'filename', b'content\n',
                 file_id=b'file-id')
         tree.commit('Trunk commit', rev_id=b'rev-0')
         tree.commit('Trunk commit', rev_id=b'rev-1')
@@ -129,8 +129,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.addCleanup(trunk_repo.unlock)
         # Branch the trunk, add a new commit.
         branch_repo = self.make_new_commit_in_new_repo(
-            trunk_repo, parents=['rev-1', 'ghost-rev'])
-        inv = branch_repo.get_inventory('rev-2')
+            trunk_repo, parents=[b'rev-1', b'ghost-rev'])
+        inv = branch_repo.get_inventory(b'rev-2')
         # Make a new repo stacked on trunk, and then copy into it:
         #  - all texts in rev-2
         #  - the new inventory (rev-2)
@@ -147,10 +147,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo.texts.insert_record_stream(
             branch_repo.texts.get_record_stream(all_texts, 'unordered', False))
         # Add inventory and revision for rev-2.
-        repo.add_inventory('rev-2', inv, ['rev-1', 'ghost-rev'])
+        repo.add_inventory(b'rev-2', inv, [b'rev-1', b'ghost-rev'])
         repo.revisions.insert_record_stream(
             branch_repo.revisions.get_record_stream(
-                [('rev-2',)], 'unordered', False))
+                [(b'rev-2',)], 'unordered', False))
         # Now, no inventories are reported as missing, even though there is a
         # ghost.
         self.assertEqual(set(), repo.get_missing_parent_inventories())
@@ -176,8 +176,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.addCleanup(trunk_repo.unlock)
         # Branch the trunk, add a new commit.
         branch_repo = self.make_new_commit_in_new_repo(
-            trunk_repo, parents=['rev-1'])
-        inv = branch_repo.get_inventory('rev-2')
+            trunk_repo, parents=[b'rev-1'])
+        inv = branch_repo.get_inventory(b'rev-2')
         # Make a new repo stacked on trunk, and copy the new commit's revision
         # and inventory records to it.
         repo = self.make_stackable_repo('stacked')
@@ -185,26 +185,26 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo.start_write_group()
         # Insert a single fulltext inv (using add_inventory because it's
         # simpler than insert_record_stream)
-        repo.add_inventory('rev-2', inv, ['rev-1'])
+        repo.add_inventory(b'rev-2', inv, [b'rev-1'])
         repo.revisions.insert_record_stream(
             branch_repo.revisions.get_record_stream(
-                [('rev-2',)], 'unordered', False))
+                [(b'rev-2',)], 'unordered', False))
         # There should be no missing compression parents
         self.assertEqual(set(),
                 repo.inventories.get_missing_compression_parent_keys())
         self.assertEqual(
-            {('inventories', 'rev-1')},
+            {('inventories', b'rev-1')},
             repo.get_missing_parent_inventories())
         # Resuming the write group does not affect
         # get_missing_parent_inventories.
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
         self.assertEqual(
-            {('inventories', 'rev-1')},
+            {('inventories', b'rev-1')},
             reopened_repo.get_missing_parent_inventories())
         # Adding the parent inventory satisfies get_missing_parent_inventories.
         reopened_repo.inventories.insert_record_stream(
             branch_repo.inventories.get_record_stream(
-                [('rev-1',)], 'unordered', False))
+                [(b'rev-1',)], 'unordered', False))
         self.assertEqual(
             set(), reopened_repo.get_missing_parent_inventories())
         reopened_repo.abort_write_group()
@@ -268,7 +268,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # We need to insert something, or suspend_write_group won't actually
         # create a token
         repo.texts.insert_record_stream([versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])
         tokens = repo.suspend_write_group()
         self.assertNotEqual([], tokens)
         sink.insert_stream((), repo._format, tokens)
@@ -278,7 +278,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo = self.make_repository('test-repo')
         sink = repo._get_sink()
         stream = [('texts', [versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         self.assertRaises(errors.ObjectNotLocked,
             sink.insert_stream_without_locking, stream, repo._format)
 
@@ -287,7 +287,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.addCleanup(repo.lock_write().unlock)
         sink = repo._get_sink()
         stream = [('texts', [versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         self.assertRaises(errors.BzrError,
             sink.insert_stream_without_locking, stream, repo._format)
 
@@ -297,7 +297,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo.start_write_group()
         sink = repo._get_sink()
         stream = [('texts', [versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         missing_keys = sink.insert_stream_without_locking(stream, repo._format)
         repo.commit_write_group()
         self.assertEqual(set(), missing_keys)

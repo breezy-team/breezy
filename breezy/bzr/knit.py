@@ -63,7 +63,6 @@ import gzip
 from breezy import (
     debug,
     diff,
-    graph as _mod_graph,
     patiencediff,
     static_tuple,
     trace,

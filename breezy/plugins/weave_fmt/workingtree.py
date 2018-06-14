@@ -85,7 +85,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         transport.put_file('inventory', sio, file_mode)
-        transport.put_bytes('pending-merges', '', file_mode)
+        transport.put_bytes('pending-merges', b'', file_mode)
 
     def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
