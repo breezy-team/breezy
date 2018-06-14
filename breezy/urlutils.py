@@ -940,7 +940,7 @@ class URL(object):
         # pad.lv/1696545: For the moment, accept both native strings and unicode.
         if isinstance(relpath, str):
             pass
-        elif isinstance(relpath, unicode):
+        elif isinstance(relpath, text_type):
             try:
                 relpath = relpath.encode()
             except UnicodeEncodeError:
