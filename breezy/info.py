@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 __all__ = ['show_bzrdir_info']
 
-from StringIO import StringIO
+from io import StringIO
 import time
 import sys
 
@@ -38,13 +38,13 @@ from .errors import (NoWorkingTree, NotBranchError,
 from .missing import find_unmerged
 
 
-def plural(n, base='', pl=None):
+def plural(n, base=u'', pl=None):
     if n == 1:
         return base
     elif pl is not None:
         return pl
     else:
-        return 's'
+        return u's'
 
 
 class LocationList(object):

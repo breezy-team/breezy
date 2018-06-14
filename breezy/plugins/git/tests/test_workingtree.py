@@ -28,14 +28,25 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 
-from .... import conflicts as _mod_conflicts
+from .... import (
+    conflicts as _mod_conflicts,
+    )
+from ....delta import TreeDelta
+from ..mapping import (
+    default_mapping,
+    GitFileIdMap,
+    )
 from ..tree import (
     changes_between_git_tree_and_working_copy,
+    tree_delta_from_git_changes,
     )
 from ..workingtree import (
     FLAG_STAGEMASK,
     )
-from ....tests import TestCaseWithTransport
+from ....tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 
 
 class GitWorkingTreeTests(TestCaseWithTransport):
@@ -64,6 +75,28 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.assertTrue(self.tree.is_versioned('a'))
         self.tree.revert(['a'])
         self.assertFalse(self.tree.is_versioned('a'))
+
+
+class TreeDeltaFromGitChangesTests(TestCase):
+
+    def test_empty(self):
+        delta = TreeDelta()
+        changes = []
+        self.assertEqual(
+            delta,
+            tree_delta_from_git_changes(changes, default_mapping,
+                (GitFileIdMap({}, default_mapping),
+                 GitFileIdMap({}, default_mapping))))
+
+    def test_missing(self):
+        delta = TreeDelta()
+        delta.removed.append(('a', 'a-id', 'file'))
+        changes = [(('a', 'a'), (stat.S_IFREG | 0o755, 0), ('a' * 40, 'a' * 40))]
+        self.assertEqual(
+            delta,
+            tree_delta_from_git_changes(changes, default_mapping,
+                (GitFileIdMap({'a': 'a-id'}, default_mapping),
+                 GitFileIdMap({'a': 'a-id'}, default_mapping))))
 
 
 class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):

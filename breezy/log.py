@@ -387,15 +387,12 @@ class Logger(object):
         if not isinstance(lf, LogFormatter):
             warn("not a LogFormatter instance: %r" % lf)
 
-        self.branch.lock_read()
-        try:
+        with self.branch.lock_read():
             if getattr(lf, 'begin_log', None):
                 lf.begin_log()
             self._show_body(lf)
             if getattr(lf, 'end_log', None):
                 lf.end_log()
-        finally:
-            self.branch.unlock()
 
     def _show_body(self, lf):
         """Show the main log output.

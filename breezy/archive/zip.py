@@ -56,7 +56,7 @@ def zip_archive_generator(tree, dest, root, subdir=None,
         with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, \
              tree.lock_read():
             for dp, tp, ie in _export_iter_entries(tree, subdir):
-                file_id = ie.file_id
+                file_id = getattr(ie, 'file_id', None)
                 mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
                 # zipfile.ZipFile switches all paths to forward
@@ -64,7 +64,7 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                 if force_mtime is not None:
                     mtime = force_mtime
                 else:
-                    mtime = tree.get_file_mtime(tp, ie.file_id)
+                    mtime = tree.get_file_mtime(tp, file_id)
                 date_time = time.localtime(mtime)[:6]
                 filename = osutils.pathjoin(root, dp).encode('utf8')
                 if ie.kind == "file":

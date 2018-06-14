@@ -75,7 +75,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
             "MatchesAncestry(repository='A repository', "
-            "revision_id='arevid')",
+            "revision_id=%r)" % (b'arevid', ),
             str(matcher))
 
     def test_match(self):
@@ -104,7 +104,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision '%s' was ['%s'], expected []" % (
+            "mismatched ancestry for revision %r was [%r], expected []" % (
                 revid1, revid1),
             mismatch.describe())
 
@@ -113,7 +113,7 @@ class TestHasLayout(TestCaseWithTransport):
 
     def test__str__(self):
         matcher = HasLayout([(b"a", b"a-id")])
-        self.assertEqual("HasLayout([('a', 'a-id')])", str(matcher))
+        self.assertEqual("HasLayout(%r)" % ([(b'a', b'a-id')], ), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')
@@ -156,7 +156,7 @@ class TestHasPathRelations(TestCaseWithTransport):
     def test__str__(self):
         t = self.make_branch_and_tree('.')
         matcher = HasPathRelations(t, [("a", "b")])
-        self.assertEqual("HasPathRelations(%r, [('a', 'b')])" % t, str(matcher))
+        self.assertEqual("HasPathRelations(%r, %r)" % (t, [('a', 'b')]), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')

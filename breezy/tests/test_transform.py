@@ -1626,7 +1626,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt = TreeTransform(tree2)
         foo_trans_id = tt.create_path('foo', tt.root)
         create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id=b'foo-id',
-                         bytes='qux')
+                         chunks=['qux'])
         tt.apply()
         self.assertFileEqual('qux', 'tree2/foo')
 

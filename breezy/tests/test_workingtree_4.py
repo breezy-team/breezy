@@ -736,20 +736,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         tree.add(['foo'], [b'foo-id'])
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             current_sha1 = tree._get_entry(path="foo")[1][0][1]
-        finally:
-            tree.unlock()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree._observed_sha1("foo-id", "foo",
                 (osutils.sha_file_by_name('foo'), os.lstat("foo")))
             # Must not have changed
             self.assertEqual(current_sha1,
                 tree._get_entry(path="foo")[1][0][1])
-        finally:
-            tree.unlock()
 
     def test_get_file_with_stat_id_only(self):
         # Explicit test to ensure we get a lstat value from WT4 trees.
@@ -777,8 +771,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
     def test_invalid_rename(self):
         tree = self.create_wt4()
         # Create a corrupted dirstate
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # We need a parent, or we always compare with NULL
             tree.commit('init')
             state = tree.current_dirstate()
@@ -789,8 +782,6 @@ class TestCorruptDirstate(TestCaseWithTransport):
                                              ('r', 'bar', 0, False, '')]))
             self.assertListRaises(dirstate.DirstateCorrupt,
                                   tree.iter_changes, tree.basis_tree())
-        finally:
-            tree.unlock()
 
     def get_simple_dirblocks(self, state):
         """Extract the simple information from the DirState.

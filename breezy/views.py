@@ -127,13 +127,10 @@ class PathBasedViews(_Views):
         """
         if current is not None and current not in views:
             raise NoSuchView(current)
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             self._current = current
             self._views = views
             self._save_view_info()
-        finally:
-            self.tree.unlock()
 
     def lookup_view(self, view_name=None):
         """Return the contents of a view.
@@ -159,23 +156,19 @@ class PathBasedViews(_Views):
         :param view_files: the list of files/directories in the view
         :param make_current: make this view the current one or not
         """
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             self._load_view_info()
             self._views[view_name] = view_files
             if make_current:
                 self._current = view_name
             self._save_view_info()
-        finally:
-            self.tree.unlock()
 
     def delete_view(self, view_name):
         """Delete a view definition.
 
         If the view deleted is the current one, the current view is reset.
         """
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             self._load_view_info()
             try:
                 del self._views[view_name]
@@ -184,8 +177,6 @@ class PathBasedViews(_Views):
             if view_name == self._current:
                 self._current = None
             self._save_view_info()
-        finally:
-            self.tree.unlock()
 
     def _save_view_info(self):
         """Save the current view and all view definitions.
@@ -193,16 +184,13 @@ class PathBasedViews(_Views):
         Be sure to have initialised self._current and self._views before
         calling this method.
         """
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             if self._current is None:
                 keywords = {}
             else:
                 keywords = {'current': self._current}
             self.tree._transport.put_bytes('views',
                 self._serialize_view_content(keywords, self._views))
-        finally:
-            self.tree.unlock()
 
     def _load_view_info(self):
         """Load the current view and dictionary of view definitions."""

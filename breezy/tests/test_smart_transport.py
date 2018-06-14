@@ -1599,7 +1599,7 @@ class WritableEndToEndTests(SmartTCPTests):
                       conn2.get_smart_medium())
 
     def test__remote_path(self):
-        self.assertEqual('/foo/bar',
+        self.assertEqual(b'/foo/bar',
                           self.transport._remote_path('foo/bar'))
 
     def test_clone_changes_base(self):

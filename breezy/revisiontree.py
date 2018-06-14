@@ -18,14 +18,12 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
 from . import (
     errors,
     lock,
     revision,
     tree,
-    )
-from .sixish import (
-    BytesIO,
     )
 
 

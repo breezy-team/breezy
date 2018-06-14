@@ -71,7 +71,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         tree.add(['dir'], [b'dir-id'], ['directory'])
         tree.add(['filename'], [b'file-id'], ['file'])
         tree.put_file_bytes_non_atomic(
-                'filename', 'content\n',
+                'filename', b'content\n',
                 file_id=b'file-id')
         tree.commit('Trunk commit', rev_id=b'rev-0')
         tree.commit('Trunk commit', rev_id=b'rev-1')
@@ -268,7 +268,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # We need to insert something, or suspend_write_group won't actually
         # create a token
         repo.texts.insert_record_stream([versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])
         tokens = repo.suspend_write_group()
         self.assertNotEqual([], tokens)
         sink.insert_stream((), repo._format, tokens)
@@ -278,7 +278,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo = self.make_repository('test-repo')
         sink = repo._get_sink()
         stream = [('texts', [versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         self.assertRaises(errors.ObjectNotLocked,
             sink.insert_stream_without_locking, stream, repo._format)
 
@@ -287,7 +287,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.addCleanup(repo.lock_write().unlock)
         sink = repo._get_sink()
         stream = [('texts', [versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         self.assertRaises(errors.BzrError,
             sink.insert_stream_without_locking, stream, repo._format)
 
@@ -297,7 +297,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo.start_write_group()
         sink = repo._get_sink()
         stream = [('texts', [versionedfile.FulltextContentFactory(
-            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+            (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         missing_keys = sink.insert_stream_without_locking(stream, repo._format)
         repo.commit_write_group()
         self.assertEqual(set(), missing_keys)
