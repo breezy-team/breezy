@@ -170,7 +170,7 @@ class AptSourceTests(TestCase):
     def test_apt_provider_wrong_version(self):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -186,9 +186,9 @@ class AptSourceTests(TestCase):
     def test_apt_provider_multiple_tarballs(self):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2.orig.tar.bz2", "tar"),
-              ("checksum", 1L, "apackage_0.2.orig-extra.tar.gz", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0, "apackage_0.2.orig.tar.bz2", "tar"),
+              ("checksum", 1, "apackage_0.2.orig-extra.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -201,8 +201,8 @@ class AptSourceTests(TestCase):
     def test_apt_provider_right_version_bz2(self):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2.orig.tar.bz2", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0, "apackage_0.2.orig.tar.bz2", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -213,8 +213,8 @@ class AptSourceTests(TestCase):
     def test_apt_provider_right_version_xz(self):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2.orig.tar.xz", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0, "apackage_0.2.orig.tar.xz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -225,8 +225,8 @@ class AptSourceTests(TestCase):
     def test_apt_provider_right_version(self):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2.orig.tar.gz", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0, "apackage_0.2.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -247,8 +247,8 @@ class AptSourceTests(TestCase):
     def test_apt_provider_right_version_command_fails(self):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2.orig.tar.gz", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0, "apackage_0.2.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -269,8 +269,8 @@ class AptSourceTests(TestCase):
     def test_apt_provider_right_version_is_native(self):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2-1.orig.tar.gz", "tar")]])
+            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0, "apackage_0.2-1.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -363,7 +363,7 @@ class UScanSourceTests(TestCaseWithTransport):
         self.assertTrue(src._export_watchfile() is not None)
 
     def test__xml_report_extract_upstream_version(self):
-        self.assertEquals("1.2.9",
+        self.assertEquals(b"1.2.9",
             UScanSource._xml_report_extract_upstream_version("""
 <dehs>
 <package>tdb</package>

@@ -7,7 +7,8 @@ from __future__ import absolute_import
 
 import errno
 import os
-from StringIO import StringIO
+import sys
+from io import BytesIO
 import stat
 import tarfile
 import zipfile
@@ -33,7 +34,7 @@ class ZipFileWrapper(object):
             yield ZipInfoWrapper(self.zipfile, info)
 
     def extractfile(self, infowrapper):
-        return StringIO(self.zipfile.read(infowrapper.name))
+        return BytesIO(self.zipfile.read(infowrapper.name))
 
     def add(self, filename):
         if isdir(filename):
@@ -52,7 +53,7 @@ class ZipInfoWrapper(object):
         self.type = None
         self.name = info.filename
         self.zipfile = zipfile
-        self.mode = 0666
+        self.mode = 0o666
 
     def isdir(self):
         # Really? Eeeew!
@@ -186,7 +187,7 @@ def import_zip(tree, zip_input, file_ids_from=None, target_tree=None):
             target_tree=target_tree)
 
 def import_dir(tree, dir, file_ids_from=None, target_tree=None):
-    dir_input = StringIO(dir)
+    dir_input = BytesIO(dir.encode(sys.getfilesystemencoding()))
     dir_file = DirWrapper(dir_input)
     import_archive(tree, dir_file, file_ids_from=file_ids_from,
             target_tree=target_tree)
@@ -315,7 +316,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
             if member.isreg():
                 tt.create_file(file_iterator(archive_file.extractfile(member)),
                                trans_id)
-                executable = (member.mode & 0111) != 0
+                executable = (member.mode & 0o111) != 0
                 tt.set_executability(executable, trans_id)
             elif member.isdir():
                 do_directory(tt, trans_id, tree, relative_path, path)
@@ -377,8 +378,8 @@ def do_import(source, tree_directory=None):
             try:
                 tar_input = open_from_url(source)
                 if source.endswith('.bz2'):
-                    tar_input = StringIO(tar_input.read().decode('bz2'))
-            except IOError, e:
+                    tar_input = BytesIO(tar_input.read().decode('bz2'))
+            except IOError as e:
                 if e.errno == errno.ENOENT:
                     raise NoSuchFile(source)
             try:
@@ -388,7 +389,7 @@ def do_import(source, tree_directory=None):
         elif source.endswith('.zip'):
             import_zip(tree, open_from_url(source))
         elif file_kind(source) == 'directory':
-            s = StringIO(source)
+            s = BytesIO(source)
             s.seek(0)
             import_dir(tree, s)
         else:

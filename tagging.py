@@ -30,6 +30,7 @@ def sort_debversion(branch, tags):
     :param branch: Branch to use
     :param tags: List of tuples with name and version.
     """
-    def debversion_key((version, revid)):
+    def debversion_key(info):
+        (version, revid) = info
         return Version(version)
     tags.sort(key=debversion_key)

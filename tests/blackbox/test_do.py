@@ -69,21 +69,15 @@ class TestDo(ExternalBase):
     source_files = ['debian/'] + [cl_file]
     self.build_tree(source_files)
     c = self.make_changelog()
-    f = open(cl_file, 'wb')
-    try:
+    with open(cl_file, 'w') as f:
       c.write_to_open_file(f)
-    finally:
-      f.close()
     tree.add(source_files)
     return tree
 
   def make_merge_mode_config(self, tree):
     os.mkdir('.bzr-builddeb/')
-    f = open('.bzr-builddeb/default.conf', 'wb')
-    try:
-      f.write('[BUILDDEB]\nmerge = True\n')
-    finally:
-      f.close()
+    with open('.bzr-builddeb/default.conf', 'wb') as f:
+      f.write(b'[BUILDDEB]\nmerge = True\n')
     tree.add(['.bzr-builddeb/', '.bzr-builddeb/default.conf'])
 
   def make_upstream_tarball(self):

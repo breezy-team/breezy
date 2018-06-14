@@ -1591,11 +1591,8 @@ class DistributionBranchTests(BuilddebTestCase):
         tarball_filename = "package-0.2.tar.gz"
         tf = tarfile.open(tarball_filename, 'w:gz')
         try:
-            f = open("a", "wb")
-            try:
-                f.write("aaa")
-            finally:
-                f.close()
+            with open("a", "wb") as f:
+                f.write(b"aaa")
             tf.add("a")
         finally:
             tf.close()
@@ -1628,11 +1625,8 @@ class DistributionBranchTests(BuilddebTestCase):
         tarball_filename = "package-0.2.tar.gz"
         tf = tarfile.open(tarball_filename, 'w:gz')
         try:
-            f = open("a", "wb")
-            try:
+            with open("a", "wb") as f:
                 f.write("aaa")
-            finally:
-                f.close()
             tf.add("a")
         finally:
             tf.close()
@@ -1668,11 +1662,8 @@ class DistributionBranchTests(BuilddebTestCase):
         tarball_filename = "package-0.2.tar.gz"
         tf = tarfile.open(tarball_filename, 'w:gz')
         try:
-            f = open("a", "wb")
-            try:
+            with open("a", "wb") as f:
                 f.write("aaa")
-            finally:
-                f.close()
             tf.add("a")
         finally:
             tf.close()
@@ -1748,11 +1739,8 @@ class DistributionBranchTests(BuilddebTestCase):
         tarball_filename = "package-0.2.tar.gz"
         tf = tarfile.open(tarball_filename, 'w:gz')
         try:
-            f = open("a", "wb")
-            try:
-                f.write("aaa")
-            finally:
-                f.close()
+            with open("a", "wb") as f:
+                f.write(b"aaa")
             tf.add("a")
         finally:
             tf.close()
@@ -1775,7 +1763,7 @@ class DistributionBranchTests(BuilddebTestCase):
         upstream_tree.lock_write()
         self.addCleanup(upstream_tree.unlock)
         self.build_tree(['upstream/a'])
-        upstream_tree.add(['a'], ['a-id'])
+        upstream_tree.add(['a'], [b'a-id'])
         upstream_rev1 = upstream_tree.commit("one")
         tree = upstream_tree.controldir.sprout('packaging').open_workingtree()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
@@ -1800,7 +1788,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev2})
-        self.assertEqual("a-id", tree.path2id("b"))
+        self.assertEqual(b"a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_on_top(self):
         """Test renaming a file upstream, replacing an existing file."""
@@ -1811,7 +1799,7 @@ class DistributionBranchTests(BuilddebTestCase):
         upstream_tree.lock_write()
         self.addCleanup(upstream_tree.unlock)
         self.build_tree(['upstream/a', 'upstream/b'])
-        upstream_tree.add(['a', 'b'], ['a-id', 'b-id'])
+        upstream_tree.add(['a', 'b'], [b'a-id', b'b-id'])
         upstream_rev1 = upstream_tree.commit("one")
         tree = upstream_tree.controldir.sprout('packaging').open_workingtree()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
@@ -1837,7 +1825,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None:upstream_rev2})
-        self.assertEqual("a-id", tree.path2id("b"))
+        self.assertEqual(b"a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_in_packaging_branch(self):
         """Test renaming a file in the packaging branch."""
@@ -1848,7 +1836,7 @@ class DistributionBranchTests(BuilddebTestCase):
         packaging_tree.lock_write()
         self.addCleanup(packaging_tree.unlock)
         self.build_tree(['packaging/a'])
-        packaging_tree.add(['a'], ['a-id'])
+        packaging_tree.add(['a'], [b'a-id'])
         upstream_rev1 = packaging_tree.commit("one")
         db = DistributionBranch(packaging_tree.branch, packaging_tree.branch,
             tree=packaging_tree)
@@ -1856,7 +1844,7 @@ class DistributionBranchTests(BuilddebTestCase):
         dbs.add_branch(db)
         packaging_tree.rename_one('a', 'b')
         self.build_tree(['packaging/a'])
-        packaging_tree.add(['a'], ['other-a-id'])
+        packaging_tree.add(['a'], [b'other-a-id'])
         packaging_tree.commit("add packaging")
         packaging_tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
                 upstream_rev1)
@@ -1867,8 +1855,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.build()
         db.merge_upstream([(builder.tar_name(), None)], "packaging",
             version2.upstream_version, version1.upstream_version)
-        self.assertEqual("a-id", packaging_tree.path2id("b"))
-        self.assertEqual("other-a-id", packaging_tree.path2id("a"))
+        self.assertEqual(b"a-id", packaging_tree.path2id("b"))
+        self.assertEqual(b"other-a-id", packaging_tree.path2id("a"))
 
     def test_import_symlink(self):
         version = Version("1.0-1")

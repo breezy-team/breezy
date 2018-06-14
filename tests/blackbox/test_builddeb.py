@@ -76,7 +76,7 @@ class TestBuilddeb(BuilddebTestCase):
     self.build_tree([self.commited_file, self.uncommited_file,
                      self.unadded_file])
     tree.add([self.commited_file])
-    tree.commit("one", rev_id='revid1')
+    tree.commit("one", rev_id=b'revid1')
     tree.add([self.uncommited_file])
     return tree
 
@@ -85,17 +85,17 @@ class TestBuilddeb(BuilddebTestCase):
     self.build_tree([self.commited_file, self.uncommited_file,
                      self.unadded_file])
     tree.add([self.commited_file])
-    tree.commit("one", rev_id='revid1')
+    tree.commit("one", rev_id=b'revid1')
     newtree = tree.controldir.sprout('newtree').open_workingtree()
     tree.add([self.uncommited_file])
-    tree.commit("two", rev_id='revid2')
+    tree.commit("two", rev_id=b'revid2')
 
     p = '%s/work/newtree/%s' % (self.test_base_dir, self.uncommited_file)
     fh = open(p, 'w')
     fh.write('** This is the conflicting line.')
     fh.close()
     newtree.add([self.uncommited_file])
-    newtree.commit("new-two", rev_id='revidn2')
+    newtree.commit("new-two", rev_id=b'revidn2')
     conflicts = tree.merge_from_branch(newtree.branch) 
 
     return (conflicts, tree)
@@ -163,12 +163,9 @@ class TestBuilddeb(BuilddebTestCase):
     tree = self.make_unpacked_source()
     self.make_upstream_tarball()
     os.mkdir('.bzr-builddeb/')
-    f = open('.bzr-builddeb/default.conf', 'wb')
-    try:
-      f.write('[HOOKS]\npre-export = touch pre-export\n')
-      f.write('pre-build = touch pre-build\npost-build = touch post-build\n')
-    finally:
-      f.close()
+    with open('.bzr-builddeb/default.conf', 'wb') as f:
+      f.write(b'[HOOKS]\npre-export = touch pre-export\n')
+      f.write(b'pre-build = touch pre-build\npost-build = touch post-build\n')
     self.run_bzr('add .bzr-builddeb/default.conf')
     self.run_bzr('bd --dont-purge --builder true')
     self.assertPathExists('pre-export')
@@ -180,11 +177,8 @@ class TestBuilddeb(BuilddebTestCase):
     hooks.install_named_hook("set_commit_message",
       debian_changelog_commit, "Test builddeb set commit msg hook")
     tree = self.make_unpacked_source()
-    f = open("debian/bzr-builddeb.conf", 'wb')
-    try:
-      f.write("[BUILDDEB]\ncommit-message-from-changelog = true")
-    finally:
-      f.close()
+    with open("debian/bzr-builddeb.conf", 'wb') as f:
+      f.write(b"[BUILDDEB]\ncommit-message-from-changelog = true")
     tree.add("debian/bzr-builddeb.conf")
     # The changelog is only used for commit message when it already exists and
     # is then changed, so need to clear it, commit, then set the contents.
@@ -192,11 +186,8 @@ class TestBuilddeb(BuilddebTestCase):
     tree.commit("Prepare for release", rev_id="prerel")
     # Would be nice to use debian.changelog to make one, but it's changed
     # across versions as to how it wants non-ascii bytes provided.
-    f = open("debian/changelog", "w")
-    try:
-      f.write("  * \xe2\x80\xa6and another thing")
-    finally:
-      f.close()
+    with open("debian/changelog", "wb") as f:
+      f.write(b"  * \xe2\x80\xa6and another thing")
     self.run_bzr(['commit'])
     branch = tree.branch
     self.assertEqual(u"\u2026and another thing",

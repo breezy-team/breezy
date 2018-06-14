@@ -80,7 +80,7 @@ class RevisionSpec_upstream(RevisionSpec):
         tree = WorkingTree.open_containing('.')[0]
         try:
             (cl, top_level) = find_changelog(tree, False)
-        except MissingChangelogError, e:
+        except MissingChangelogError as e:
             raise InvalidRevisionSpec(self.user_spec, branch,
                 "no debian/changelog file found: %s" % e)
         if self.spec == '':

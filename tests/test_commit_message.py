@@ -53,18 +53,12 @@ class CommitMessageTests(TestCaseWithTransport):
             self.builder = self._Builder()
 
     def set_changelog_content(self, content):
-        f = open("debian/changelog", 'wb')
-        try:
+        with open("debian/changelog", 'wb') as f:
             f.write(content)
-        finally:
-            f.close()
 
     def _set_commit_message_from_changelog(self, value):
-        f = open("debian/bzr-builddeb.conf", 'wb')
-        try:
-            f.write("[BUILDDEB]\ncommit-message-from-changelog = %s" % value)
-        finally:
-            f.close()
+        with open("debian/bzr-builddeb.conf", 'wb') as f:
+            f.write(b"[BUILDDEB]\ncommit-message-from-changelog = %s" % value)
 
     def test_leaves_existing_message(self):
         wt = self.make_branch_and_tree(".")
@@ -92,7 +86,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(True)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * new line")
+        self.set_changelog_content(b"  * new line")
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt, exclude=["debian/changelog"])
@@ -104,7 +98,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(True)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * new line\n")
+        self.set_changelog_content(b"  * new line\n")
         wt.add(['a'])
         wt.lock_read()
         self.addCleanup(wt.unlock)
@@ -117,7 +111,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(True)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * new line\n")
+        self.set_changelog_content(b"  * new line\n")
         wt.add(['a'])
         wt.lock_read()
         self.addCleanup(wt.unlock)
@@ -131,7 +125,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(True)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * two\n  * changes\n")
+        self.set_changelog_content(b"  * two\n  * changes\n")
         wt.add(['a'])
         wt.lock_read()
         self.addCleanup(wt.unlock)
@@ -145,7 +139,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(False)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * a change\n")
+        self.set_changelog_content(b"  * a change\n")
         wt.add(['a'])
         wt.lock_read()
         self.addCleanup(wt.unlock)
@@ -160,7 +154,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(True)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * fix LP: #1234\n  * close LP: #4321\n")
+        self.set_changelog_content(b"  * fix LP: #1234\n  * close LP: #4321\n")
         wt.add(['a'])
         wt.lock_read()
         self.addCleanup(wt.unlock)
@@ -177,7 +171,7 @@ class CommitMessageTests(TestCaseWithTransport):
         self._set_commit_message_from_changelog(True)
         wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
-        self.set_changelog_content("  * \xe2\x80\xa6real fix this time\n")
+        self.set_changelog_content(b"  * \xe2\x80\xa6real fix this time\n")
         wt.add(['a'])
         wt.lock_read()
         self.addCleanup(wt.unlock)

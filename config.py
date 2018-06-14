@@ -89,22 +89,22 @@ class DebBuildConfig(object):
     ...      (d + 'local.conf', False),
     ...      (d + 'user.conf', True), 
     ...      (d + 'default.conf', False)])
-    >>> print c.orig_dir
+    >>> print(c.orig_dir)
     None
-    >>> print c.merge
+    >>> print(c.merge)
     True
-    >>> print c.build_dir
+    >>> print(c.build_dir)
     defaultbuild
-    >>> print c.result_dir
+    >>> print(c.result_dir)
     userresult
-    >>> print c.builder
+    >>> print(c.builder)
     userbuild
     """
     self._config_files = []
     for input in files:
       try:
         config = ConfigObj(input[0])
-      except configobj.ParseError, e:
+      except configobj.ParseError as e:
         if len(input) > 2:
           content = input[2]
         else:
@@ -235,7 +235,7 @@ class DebBuildConfig(object):
       if not trusted or config_file[1]:
         (found, value) = self._get_bool(config_file[0], key)
         if found:
-          mutter("Using %s for %s, taken from %s", value, key,
+          mutter("Using %s for %s, taken from %s", str(value), key,
                  config_file[0].filename)
           return value
     return default

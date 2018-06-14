@@ -52,10 +52,10 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         file_ids_tree = self.make_branch_and_tree("fileids")
         self.build_tree(["fileids/a"])
-        file_ids_tree.add(["a"], ["a-id"])
+        file_ids_tree.add(["a"], [b"a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source", file_ids_from=[file_ids_tree])
-        self.assertEqual("a-id", tree.path2id("a"))
+        self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_takes_file_id_from_first_of_several_trees(self):
         tree = self.make_branch_and_tree(".")
@@ -64,12 +64,12 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         file_ids_tree = self.make_branch_and_tree("fileids")
         file_ids_tree2 = self.make_branch_and_tree("fileids2")
         self.build_tree(["fileids/a", "fileids2/a"])
-        file_ids_tree.add(["a"], ["a-id"])
-        file_ids_tree2.add(["a"], ["other-a-id"])
+        file_ids_tree.add(["a"], [b"a-id"])
+        file_ids_tree2.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source",
                 file_ids_from=[file_ids_tree, file_ids_tree2])
-        self.assertEqual("a-id", tree.path2id("a"))
+        self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_takes_file_ids_from_last_of_several_trees_if_needed(self):
         tree = self.make_branch_and_tree(".")
@@ -78,12 +78,12 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         file_ids_tree = self.make_branch_and_tree("fileids")
         file_ids_tree2 = self.make_branch_and_tree("fileids2")
         self.build_tree(["fileids/b", "fileids2/a"])
-        file_ids_tree.add(["b"], ["b-id"])
-        file_ids_tree2.add(["a"], ["other-a-id"])
+        file_ids_tree.add(["b"], [b"b-id"])
+        file_ids_tree2.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source",
                 file_ids_from=[file_ids_tree, file_ids_tree2])
-        self.assertEqual("other-a-id", tree.path2id("a"))
+        self.assertEqual(b"other-a-id", tree.path2id("a"))
 
     def test_takes_file_id_from_target_tree(self):
         tree = self.make_branch_and_tree(".")
@@ -92,88 +92,88 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         file_ids_tree = self.make_branch_and_tree("fileids")
         file_ids_tree2 = self.make_branch_and_tree("fileids2")
         self.build_tree(["fileids/a", "fileids2/a"])
-        file_ids_tree.add(["a"], ["a-id"])
-        file_ids_tree2.add(["a"], ["other-a-id"])
+        file_ids_tree.add(["a"], [b"a-id"])
+        file_ids_tree2.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source", file_ids_from=[file_ids_tree2],
                 target_tree=file_ids_tree)
-        self.assertEqual("a-id", tree.path2id("a"))
+        self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_leaves_file_id_of_existing_file(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.build_tree(["a"])
-        tree.add(["a"], ["a-id"])
+        tree.add(["a"], [b"a-id"])
         self.addCleanup(tree.unlock)
         file_ids_tree = self.make_branch_and_tree("fileids")
         self.build_tree(["fileids/a"])
-        file_ids_tree.add(["a"], ["other-a-id"])
+        file_ids_tree.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source", file_ids_from=[file_ids_tree])
-        self.assertEqual("a-id", tree.path2id("a"))
+        self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_replaces_file_id_of_existing_file_with_target_tree(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.build_tree(["a"])
-        tree.add(["a"], ["a-id"])
+        tree.add(["a"], [b"a-id"])
         self.addCleanup(tree.unlock)
         file_ids_tree = self.make_branch_and_tree("fileids")
         self.build_tree(["fileids/a"])
-        file_ids_tree.add(["a"], ["other-a-id"])
+        file_ids_tree.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source", target_tree=file_ids_tree)
-        self.assertEqual("other-a-id", tree.path2id("a"))
+        self.assertEqual(b"other-a-id", tree.path2id("a"))
 
     def test_rename_of_file_in_target_tree(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.build_tree(["a"])
-        tree.add(["a"], ["a-id"])
+        tree.add(["a"], [b"a-id"])
         self.addCleanup(tree.unlock)
         file_ids_tree = self.make_branch_and_tree("fileids")
         self.build_tree(["fileids/a", "fileids/b"])
         # We give b the same id as a above, to simulate a rename
-        file_ids_tree.add(["a", "b"], ["other-a-id", "a-id"])
+        file_ids_tree.add(["a", "b"], [b"other-a-id", b"a-id"])
         self.build_tree(["source/", "source/a", "source/b"])
         import_dir(tree, "source", target_tree=file_ids_tree)
-        self.assertEqual("other-a-id", tree.path2id("a"))
-        self.assertEqual("a-id", tree.path2id("b"))
+        self.assertEqual(b"other-a-id", tree.path2id("a"))
+        self.assertEqual(b"a-id", tree.path2id("b"))
 
     def test_rename_of_file_in_target_tree_with_unversioned_replacement(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.build_tree(["a"])
-        tree.add(["a"], ["a-id"])
+        tree.add(["a"], [b"a-id"])
         self.addCleanup(tree.unlock)
         file_ids_tree = self.make_branch_and_tree("fileids")
         self.build_tree(["fileids/b"])
         # We give b the same id as a above, to simulate a rename
-        file_ids_tree.add(["b"], ["a-id"])
+        file_ids_tree.add(["b"], [b"a-id"])
         # We continue to put "a" in the source, even though we didn't
         # put it in file_ids_tree
         self.build_tree(["source/", "source/a", "source/b"])
         import_dir(tree, "source", target_tree=file_ids_tree)
-        self.assertEqual("a-id", tree.path2id("b"))
+        self.assertEqual(b"a-id", tree.path2id("b"))
         # a should get a random file id, so we just check the obvious
         # things it shouldn't be
-        self.assertNotEqual("a-id", tree.path2id("a"))
+        self.assertNotEqual(b"a-id", tree.path2id("a"))
         self.assertNotEqual(None, tree.path2id("a"))
 
     def test_dir_rename_in_target_tree(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.build_tree(["a/", "a/b"])
-        tree.add(["a", "a/b"], ["a-id", "b-id"])
+        tree.add(["a", "a/b"], [b"a-id", b"b-id"])
         self.addCleanup(tree.unlock)
         file_ids_tree = self.make_branch_and_tree("fileids")
         self.build_tree(["fileids/b/", "fileids/b/b"])
         # We give b the same id as a above, to simulate a rename
-        file_ids_tree.add(["b", "b/b"], ["a-id", "b-id"])
+        file_ids_tree.add(["b", "b/b"], [b"a-id", b"b-id"])
         self.build_tree(["source/", "source/b/", "source/b/b"])
         import_dir(tree, "source", target_tree=file_ids_tree)
-        self.assertEqual("a-id", tree.path2id("b"))
-        self.assertEqual("b-id", tree.path2id("b/b"))
+        self.assertEqual(b"a-id", tree.path2id("b"))
+        self.assertEqual(b"b-id", tree.path2id("b/b"))
 
     def test_nonascii_filename(self):
         self.requireFeature(tests.UnicodeFilenameFeature)

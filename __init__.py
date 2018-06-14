@@ -29,6 +29,9 @@ import os
 
 import breezy
 from ...commands import plugin_cmds
+from ...sixish import (
+    viewitems,
+    )
 
 from .info import (
     bzr_plugin_version as version_info,
@@ -37,7 +40,7 @@ from .info import (
 
 from ...i18n import load_plugin_translations
 translation = load_plugin_translations("brz-debian")
-gettext = translation.ugettext
+gettext = translation.gettext
 
 
 commands = {
@@ -52,7 +55,7 @@ commands = {
         "merge_upstream": ["mu"],
         }
 
-for command, aliases in commands.iteritems():
+for command, aliases in viewitems(commands):
     plugin_cmds.register_lazy('cmd_' + command, aliases, 
         __name__ + ".cmds")
 
@@ -267,7 +270,7 @@ def pre_merge_quilt(merger):
     try:
         merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,
             merger.this_branch, force=True)
-    except QuiltError, e:
+    except QuiltError as e:
         raise QuiltUnapplyError("this", e.stderr)
     else:
         if this_dir is not None:
@@ -275,7 +278,7 @@ def pre_merge_quilt(merger):
     try:
         merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree,
             merger.this_branch, force=True)
-    except QuiltError, e:
+    except QuiltError as e:
         raise QuiltUnapplyError("base", e.stderr)
     else:
         if base_dir is not None:
@@ -286,7 +289,7 @@ def pre_merge_quilt(merger):
     try:
         merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree,
             other_branch, force=True)
-    except QuiltError, e:
+    except QuiltError as e:
         raise QuiltUnapplyError("other", e.stderr)
     else:
         if other_dir is not None:
@@ -341,7 +344,7 @@ def pre_merge_fix_ancestry(merger):
         try:
             fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
                 source_revid=merger.other_tree.get_revision_id())
-        except PackageVersionNotPresent, e:
+        except PackageVersionNotPresent as e:
             trace.warning(
                 gettext("Not attempting to fix packaging branch ancestry, missing pristine tar "
                 "data for version %s."), e.version)

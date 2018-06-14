@@ -79,7 +79,7 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
         proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                 cwd=dest, preexec_fn=subprocess_setup,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise PristineTarError("pristine-tar is not installed")
         else:
@@ -105,7 +105,7 @@ def make_pristine_tar_delta(dest, tarball_path):
         proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                 cwd=dest, preexec_fn=subprocess_setup,
                 stderr=subprocess.PIPE)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise PristineTarError("pristine-tar is not installed")
         else:

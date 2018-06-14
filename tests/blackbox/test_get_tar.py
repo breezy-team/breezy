@@ -68,14 +68,14 @@ class TestGetOrigSource(BuilddebTestCase):
         source_files = ['README']
         self.build_tree([os.path.join(path, f) for f in source_files])
         tree.add(source_files)
-        tree.commit("one", rev_id='revid1')
+        tree.commit("one", rev_id=b'revid1')
         tree.branch.tags.set_tag("upstream-0.1", tree.branch.last_revision())
 
         os.mkdir(os.path.join(path, 'debian'))
         c = self.make_changelog()
         self.write_changelog(c, os.path.join(path, 'debian/changelog'))
         tree.add(['debian', 'debian/changelog'])
-        tree.commit("two", rev_id='revid2')
+        tree.commit("two", rev_id=b'revid2')
         return tree
 
     def test_get_orig_source_registered(self):

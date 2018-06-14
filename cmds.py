@@ -40,6 +40,7 @@ from ...errors import (
     NoWorkingTree,
     )
 from ...option import Option
+from ...sixish import text_type
 from ...trace import note, warning
 from ...workingtree import WorkingTree
 
@@ -80,7 +81,7 @@ native_opt = Option('native',
     help="Build a native package.")
 export_upstream_opt = Option('export-upstream',
     help="Create the .orig.tar.gz from specified bzr branch before building.",
-    type=unicode, argname="BRANCH")
+    type=text_type, argname="BRANCH")
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str, argname="REVISION")
@@ -313,7 +314,7 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, package_merge=None,
             strict=False):
-        import commands
+        import subprocess
         from .source_distiller import (
                 FullSourceDistiller,
                 MergeModeDistiller,
@@ -446,10 +447,12 @@ class cmd_builddeb(Command):
                 if source:
                     arch = "source"
                 else:
-                    status, arch = commands.getstatusoutput(
-                        'dpkg-architecture -qDEB_BUILD_ARCH')
-                    if status > 0:
-                        raise BzrCommandError("Could not find the build architecture")
+                    try:
+                        arch = subprocess.check_output(
+                            ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
+                    except subprocess.CalledProcessError as e:
+                        raise BzrCommandError(
+                            "Could not find the build architecture: %s" % e)
                 non_epoch_version = changelog.version.upstream_version
                 if changelog.version.debian_version is not None:
                     non_epoch_version += "-%s" % changelog.version.debian_version
@@ -478,7 +481,7 @@ class cmd_get_orig_source(Command):
 
     directory_opt = Option('directory',
         help='Directory from which to retrieve the packaging data',
-        short_name='d', type=unicode)
+        short_name='d', type=text_type)
 
     takes_options = [directory_opt]
     takes_args = ["version?"]
@@ -578,7 +581,7 @@ class cmd_merge_upstream(Command):
             "this release is targetted at.", type=str)
     directory_opt = Option('directory',
                            help='Working tree into which to merge.',
-                           short_name='d', type=unicode)
+                           short_name='d', type=text_type)
     last_version_opt = Option('last-version',
                               help='The full version of the last time '
                               'upstream was merged.', type=str)
@@ -606,7 +609,7 @@ class cmd_merge_upstream(Command):
         try:
             changelog_add_new_version(tree, version, distribution_name,
                 changelog, package)
-        except DchError, e:
+        except DchError as e:
             note(e)
             raise BzrCommandError('Adding a new changelog stanza after the '
                     'merge had completed failed. Add the new changelog '
@@ -933,7 +936,7 @@ class cmd_import_dsc(Command):
             if files_list is None:
                 files_list = []
             if file is not None:
-                if isinstance(file, unicode):
+                if isinstance(file, text_type):
                     file = file.encode('utf-8')
                 sources_file = open_file(file)
                 for line in sources_file:
@@ -1345,7 +1348,7 @@ class cmd_dep3_patch(Command):
 
     directory_opt = Option('directory',
                            help='Packaging tree for which to generate patch.',
-                           short_name='d', type=unicode)
+                           short_name='d', type=text_type)
 
     no_upstream_check_opt = Option('no-upstream-check',
         help="Don't check whether patch has been merged upstream.")

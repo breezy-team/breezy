@@ -320,10 +320,10 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', None)),
-            ('add', ('debian', 'deb-id', 'directory', None)),
-            ('add', ('debian/changelog', 'c-id', 'file', '')),
-            ('add', ('changelog', 'o-id', 'file', '')),
+            ('add', ('', b'TREE_ROOT', 'directory', None)),
+            ('add', ('debian', b'deb-id', 'directory', None)),
+            ('add', ('debian/changelog', b'c-id', 'file', b'')),
+            ('add', ('changelog', b'o-id', 'file', b'')),
             ])
         builder.finish_series()
         the_branch = builder.get_branch()
@@ -340,7 +340,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
-        params = params_cls(merger, 'c-id', ('debian/changelog',
+        params = params_cls(merger, b'c-id', ('debian/changelog',
             'debian/changelog', 'debian/changelog'), None, 'file', 'file',
             'this')
         return params, merger

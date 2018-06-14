@@ -20,13 +20,13 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
-import rfc822
+from email.parser import Parser
 
 from ....revision import (
     NULL_REVISION,
     )
+from ....sixish import StringIO
+
 from ....tests import (
     TestCase,
     )
@@ -56,7 +56,7 @@ class Dep3HeaderTests(TestCase):
             revision_id=revision_id, last_update=last_update,
             applied_upstream=applied_upstream)
         f.seek(0)
-        return rfc822.Message(f)
+        return Parser().parse(f)
 
     def test_description(self):
         ret = self.dep3_header(description="This patch fixes the foobar")
@@ -76,9 +76,9 @@ class Dep3HeaderTests(TestCase):
             "James Westby <james.westby@canonical.com>"]
         ret = self.dep3_header(authors=authors)
         self.assertEquals([
-            ("Jelmer Vernooij", "jelmer@canonical.com"),
-            ("James Westby", "james.westby@canonical.com")],
-            ret.getaddrlist("Author"))
+            "Jelmer Vernooij <jelmer@canonical.com>",
+            "James Westby <james.westby@canonical.com>"],
+            ret.get_all("Author"))
 
     def test_origin(self):
         ret = self.dep3_header(origin="Cherrypick from upstream")
@@ -103,9 +103,9 @@ class Dep3HeaderTests(TestCase):
         self.assertEquals([
             "https://bugs.launchpad.net/bugs/20110508",
             "http://bugzilla.samba.org/bug.cgi?id=52"],
-            ret.getheaders("Bug"))
+            ret.get_all("Bug"))
         self.assertEquals(["http://bugs.debian.org/424242"],
-            ret.getheaders("Bug-Debian"))
+            ret.get_all("Bug-Debian"))
 
     def test_write_bug_fix_only(self):
         # non-fixed bug lines are ignored

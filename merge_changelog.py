@@ -68,7 +68,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             proc = subprocess.Popen(['dpkg-mergechangelogs', base_filename,
                 this_filename, other_filename], stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 # No dpkg-mergechangelogs command available
                 return 'not_applicable', ''

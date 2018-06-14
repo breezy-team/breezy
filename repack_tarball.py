@@ -22,7 +22,7 @@ from __future__ import absolute_import
 
 import gzip
 import os
-from StringIO import StringIO
+from io import BytesIO
 import tarfile
 import bz2
 try:
@@ -40,6 +40,10 @@ import zipfile
 from ...errors import (
     DependencyNotPresent,
     FileExists,
+    )
+from ...sixish import (
+    text_type,
+    viewitems,
     )
 from ...transport import get_transport
 
@@ -103,7 +107,7 @@ class TarLzma2TgzRepacker(TgzRepacker):
     def repack(self, target_f):
         try:
             import lzma
-        except ImportError, e:
+        except ImportError as e:
             raise DependencyNotPresent('lzma', e)
         content = lzma.decompress(self.source_f.read())
         gz = gzip.GzipFile(mode='w', fileobj=target_f)
@@ -122,12 +126,12 @@ class ZipTgzRepacker(TgzRepacker):
             tarinfo.size = info.file_size
             tarinfo.mtime = time.mktime(info.date_time + (0, 1, -1))
             if info.filename.endswith("/"):
-                tarinfo.mode = 0755
+                tarinfo.mode = 0o755
                 tarinfo.type = tarfile.DIRTYPE
             else:
-                tarinfo.mode = 0644
+                tarinfo.mode = 0o644
                 tarinfo.type = tarfile.REGTYPE
-            contents = StringIO(zip.read(info.filename))
+            contents = BytesIO(zip.read(info.filename))
             tar.addfile(tarinfo, contents)
 
     def repack(self, target_f):
@@ -153,7 +157,7 @@ def get_filetype(filename):
         ".tar": "tar",
         ".zip": "zip"
         }
-    for filetype, name in types.iteritems():
+    for filetype, name in viewitems(types):
         if filename.endswith(filetype):
             return name
 
@@ -249,12 +253,6 @@ def repack_tarball(source_name, new_name, target_dir=None):
     """
     if target_dir is None:
         target_dir = "."
-    if isinstance(source_name, unicode):
-        source_name = source_name.encode('utf-8')
-    if isinstance(new_name, unicode):
-        new_name = new_name.encode('utf-8')
-    if isinstance(target_dir, unicode):
-        target_dir = target_dir.encode('utf-8')
     extra, new_name = os.path.split(new_name)
     target_transport = get_transport(os.path.join(target_dir, extra))
     if target_transport.has(new_name):

@@ -112,7 +112,7 @@ def safe_decode(s):
         return s
     try:
         return s.decode('utf-8')
-    except UnicodeDecodeError, e:
+    except UnicodeDecodeError as e:
         mutter('safe_decode(%r) falling back to iso-8859-1' % (s,))
         # TODO: Looking at BeautifulSoup it seems to use 'chardet' to try to
         #       guess the encoding of a given text stream. We might want to
@@ -199,7 +199,7 @@ def find_changelog(t, merge, max_blocks=1):
     changelog = Changelog()
     try:
         changelog.parse_changelog(contents, max_blocks=max_blocks, allow_empty_author=True)
-    except ChangelogParseError, e:
+    except ChangelogParseError as e:
         raise UnparseableChangelog(str(e))
     return changelog, top_level
 
@@ -324,7 +324,7 @@ def write_if_different(contents, target):
     md5sum = md5.md5()
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
-    fobj = os.fdopen(fd, "wd")
+    fobj = os.fdopen(fd, "wb")
     try:
         try:
             fobj.write(contents)
@@ -662,8 +662,8 @@ def tree_get_source_format(tree):
     filename = "debian/source/format"
     try:
         text = tree.get_file_text(filename)
-    except IOError as (num, unused_msg):
-        if num == errno.ENOENT:
+    except IOError as e:
+        if e.errno == errno.ENOENT:
             return FORMAT_1_0
         raise
     except errors.NoSuchFile:

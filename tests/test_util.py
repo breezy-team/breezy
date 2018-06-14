@@ -397,25 +397,25 @@ class MoveFileTests(TestCaseInTempDir):
 class WriteFileTests(TestCaseInTempDir):
 
     def test_write_non_extant(self):
-        write_if_different("foo", 'a')
+        write_if_different(b"foo", 'a')
         self.assertPathExists('a')
-        self.check_file_contents('a', "foo")
+        self.check_file_contents('a', b"foo")
 
     def test_write_file_same(self):
-        write_if_different("foo", 'a')
+        write_if_different(b"foo", 'a')
         self.assertPathExists('a')
-        self.check_file_contents('a', "foo")
-        write_if_different("foo", 'a')
+        self.check_file_contents('a', b"foo")
+        write_if_different(b"foo", 'a')
         self.assertPathExists('a')
-        self.check_file_contents('a', "foo")
+        self.check_file_contents('a', b"foo")
 
     def test_write_file_different(self):
-        write_if_different("foo", 'a')
+        write_if_different(b"foo", 'a')
         self.assertPathExists('a')
-        self.check_file_contents('a', "foo")
-        write_if_different("bar", 'a')
+        self.check_file_contents('a', b"foo")
+        write_if_different(b"bar", 'a')
         self.assertPathExists('a')
-        self.check_file_contents('a', "bar")
+        self.check_file_contents('a', b"bar")
 
 
 class DgetTests(TestCaseWithTransport):

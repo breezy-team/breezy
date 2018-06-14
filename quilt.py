@@ -83,7 +83,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
         proc = subprocess.Popen(command, cwd=working_dir, env=env,
                 stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
                 stdout=subprocess.PIPE, stderr=stderr)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
         raise errors.BzrError("quilt is not installed, please install it")
@@ -159,7 +159,7 @@ def quilt_applied(tree):
             if patch.strip() != ""]
     except errors.NoSuchFile:
         return []
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []
@@ -182,7 +182,7 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
             patch = os.path.basename(patch)
             patch_basenames.append(patch)
         return patch_basenames
-    except QuiltError, e:
+    except QuiltError as e:
         if e.retcode == 1:
             return []
         raise
@@ -194,10 +194,10 @@ def quilt_series(tree):
     :param tree: Tree to read from
     """
     try:
-        return [patch.rstrip("\n") for patch in
+        return [patch.rstrip(b"\n") for patch in
             tree.get_file_lines("debian/patches/series")
             if patch.strip() != ""]
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []
