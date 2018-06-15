@@ -40,7 +40,7 @@ def check_text_lines(lines):
     Only the first 1024 characters are checked.
     """
     f = IterableFile(lines)
-    if '\x00' in f.read(1024):
+    if b'\x00' in f.read(1024):
         raise BinaryFile()
 
 

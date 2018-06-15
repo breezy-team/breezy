@@ -260,7 +260,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             self.assertTransportMode(t, 'a', 0o666 &~umask)
 
             # but Transport overrides umask
-            t.put_bytes('b', 'txt', mode=0o666)
+            t.put_bytes('b', b'txt', mode=0o666)
             self.assertTransportMode(t, 'b', 0o666)
 
             t._get_sftp().mkdir('c', mode=0o777)

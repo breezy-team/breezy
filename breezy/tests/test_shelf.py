@@ -171,24 +171,24 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator = self.prepare_content_change()
         self.assertEqual([('modify text', b'foo-id')],
                          list(creator.iter_shelvable()))
-        creator.shelve_lines(b'foo-id', ['a\n', 'c\n'])
+        creator.shelve_lines(b'foo-id', [b'a\n', b'c\n'])
         creator.transform()
-        self.assertFileEqual('a\nc\n', 'foo')
-        self.assertShelvedFileEqual('b\na\n', creator, b'foo-id')
+        self.assertFileEqual(b'a\nc\n', 'foo')
+        self.assertShelvedFileEqual(b'b\na\n', creator, b'foo-id')
 
     def test_shelve_change_handles_modify_text(self):
         creator = self.prepare_content_change()
         creator.shelve_change(('modify text', b'foo-id'))
         creator.transform()
-        self.assertFileEqual('a\n', 'foo')
-        self.assertShelvedFileEqual('b\na\nc\n', creator, b'foo-id')
+        self.assertFileEqual(b'a\n', 'foo')
+        self.assertShelvedFileEqual(b'b\na\nc\n', creator, b'foo-id')
 
     def test_shelve_all(self):
         creator = self.prepare_content_change()
         creator.shelve_all()
         creator.transform()
-        self.assertFileEqual('a\n', 'foo')
-        self.assertShelvedFileEqual('b\na\nc\n', creator, b'foo-id')
+        self.assertFileEqual(b'a\n', 'foo')
+        self.assertShelvedFileEqual(b'b\na\nc\n', creator, b'foo-id')
 
     def prepare_shelve_creation(self):
         tree = self.make_branch_and_tree('.')
@@ -199,8 +199,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo', 'bar'], [b'foo-id', b'bar-id'])
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', b'bar-id', 'directory', 'bar'),
-                          ('add file', b'foo-id', 'file', 'foo')],
+        self.assertEqual([('add file', b'bar-id', 'directory', b'bar'),
+                          ('add file', b'foo-id', 'file', b'foo')],
                           sorted(list(creator.iter_shelvable())))
         return creator, tree
 

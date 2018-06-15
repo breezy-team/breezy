@@ -114,7 +114,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo'), 'hello')
+        self.assertEqual(tree.get_file_text('foo'), b'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""

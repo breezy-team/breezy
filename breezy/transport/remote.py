@@ -306,7 +306,7 @@ class RemoteTransport(transport.ConnectedTransport):
             b'append',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             bytes)
-        if resp[0] == 'appended':
+        if resp[0] == b'appended':
             return int(resp[1])
         raise errors.UnexpectedSmartServerResponse(resp)
 

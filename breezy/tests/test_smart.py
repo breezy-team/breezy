@@ -175,17 +175,17 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertRaises(
             errors.PathNotChild, request.translate_client_path, b'bar/')
         self.assertEqual('./baz', request.translate_client_path(b'foo/baz'))
-        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
-        self.assertEqual('./' + urlutils.escape(e_acute),
-                         request.translate_client_path(b'foo/' + e_acute))
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
+        self.assertEqual(u'./' + urlutils.escape(e_acute),
+                         request.translate_client_path(b'foo/' + e_acute.encode('utf-8')))
 
     def test_translate_client_path_vfs(self):
         """VfsRequests receive escaped paths rather than raw UTF-8."""
         transport = self.get_transport()
-        request = vfs.VfsRequest(transport, 'foo/')
-        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
-        escaped = urlutils.escape('foo/' + e_acute)
-        self.assertEqual('./' + urlutils.escape(e_acute),
+        request = vfs.VfsRequest(transport, b'foo/')
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
+        escaped = urlutils.escape(u'foo/' + e_acute)
+        self.assertEqual(b'./' + urlutils.escape(e_acute).encode('utf-8'),
                          request.translate_client_path(escaped))
 
     def test_transport_from_client_path(self):
@@ -924,7 +924,7 @@ class TestSmartServerBranchRequestGetConfigFile(
         request = smart_branch.SmartServerBranchGetConfigFile(backing)
         branch = self.make_branch('.')
         # there should be no file by default
-        content = ''
+        content = b''
         self.assertEqual(smart_req.SmartServerResponse((b'ok', ), content),
             request.execute(b''))
 
@@ -1103,7 +1103,7 @@ class TestSetLastRevisionVerbMixin(object):
 
     def test_set_null_to_null(self):
         """An empty branch can have its last revision set to 'null:'."""
-        self.assertRequestSucceeds('null:', 0)
+        self.assertRequestSucceeds(b'null:', 0)
 
     def test_NoSuchRevision(self):
         """If the revision_id is not present, the verb returns NoSuchRevision.
@@ -1267,7 +1267,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
             smart_req.FailedSmartServerResponse((b'Diverged',)),
             self.set_last_revision('child-1', 2))
         # The branch tip was not changed.
-        self.assertEqual('child-2', self.tree.branch.last_revision())
+        self.assertEqual(b'child-2', self.tree.branch.last_revision())
 
     def test_allow_diverged(self):
         """If allow_diverged is passed, then setting a divergent history
@@ -1486,10 +1486,10 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         branch = self.make_branch('.')
         root = self.get_transport().clone('/')
         path = urlutils.relative_url(root.base, self.get_transport().base)
-        response = request.execute(path)
+        response = request.execute(path.encode('utf-8'))
         error_name, lock_str, why_str = response.args
         self.assertFalse(response.is_successful())
-        self.assertEqual('LockFailed', error_name)
+        self.assertEqual(b'LockFailed', error_name)
 
 
 class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
@@ -1598,15 +1598,15 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute(b'', write_token,
             b'rev1', *write_group_tokens))
-        response = request.do_body('somesignature')
+        response = request.do_body(b'somesignature')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args[0], b'ok')
         write_group_tokens = response.args[1:]
         tree.branch.repository.resume_write_group(write_group_tokens)
         tree.branch.repository.commit_write_group()
         tree.unlock()
-        self.assertEqual("somesignature",
-            tree.branch.repository.get_signature_text("rev1"))
+        self.assertEqual(b"somesignature",
+            tree.branch.repository.get_signature_text(b"rev1"))
 
 
 class TestSmartServerRepositoryAllRevisionIds(
@@ -1670,7 +1670,7 @@ class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
         # Note that it returns a body that is bzipped.
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse((b'ok', ), bz2.compress(b'')),
-            request.do_body('\n\n0\n'))
+            request.do_body(b'\n\n0\n'))
 
     def test_trivial_include_missing(self):
         backing = self.get_transport()
@@ -1702,7 +1702,7 @@ class TestSmartServerRepositoryGetRevisionGraph(
         # order coming out of a dict, so sort both our test and response
         lines = sorted([b' '.join([r2, r1]), r1])
         response = request.execute(b'', b'')
-        response.body = '\n'.join(sorted(response.body.split('\n')))
+        response.body = b'\n'.join(sorted(response.body.split(b'\n')))
 
         self.assertEqual(
             smart_req.SmartServerResponse((b'ok', ), b'\n'.join(lines)), response)
@@ -1791,12 +1791,12 @@ class TestSmartServerRepositoryIterRevisions(
         tree = self.make_branch_and_memory_tree('.', format='2a')
         tree.lock_write()
         tree.add('')
-        tree.commit('1st commit', rev_id="rev1")
-        tree.commit('2nd commit', rev_id="rev2")
+        tree.commit('1st commit', rev_id=b"rev1")
+        tree.commit('2nd commit', rev_id=b"rev2")
         tree.unlock()
 
         self.assertIs(None, request.execute(b''))
-        response = request.do_body("rev1\nrev2")
+        response = request.do_body(b"rev1\nrev2")
         self.assertTrue(response.is_successful())
         # Format 2a uses serializer format 10
         self.assertEqual(response.args, (b"ok", b"10"))
@@ -1808,8 +1808,8 @@ class TestSmartServerRepositoryIterRevisions(
 
         contents = b"".join(response.body_stream)
         self.assertTrue(contents in (
-            "".join([entries[0], entries[1]]),
-            "".join([entries[1], entries[0]])))
+            b"".join([entries[0], entries[1]]),
+            b"".join([entries[1], entries[0]])))
 
     def test_missing(self):
         backing = self.get_transport()
@@ -2676,7 +2676,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
+        return b"".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
 
     def test_single(self):
         backing = self.get_transport()

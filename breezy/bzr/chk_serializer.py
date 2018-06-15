@@ -67,15 +67,15 @@ class BEncodeRevisionSerializer1(object):
     # the type.
     # TODO: add a 'validate_utf8' for things like revision_id and file_id
     #       and a validator for parent-ids
-    _schema = {'format': (None, int, _is_format_10),
-               'committer': ('committer', str, cache_utf8.decode),
-               'timezone': ('timezone', int, None),
-               'timestamp': ('timestamp', str, float),
-               'revision-id': ('revision_id', str, None),
-               'parent-ids': ('parent_ids', list, None),
-               'inventory-sha1': ('inventory_sha1', str, None),
-               'message': ('message', str, cache_utf8.decode),
-               'properties': ('properties', dict, _validate_properties),
+    _schema = {b'format': (None, int, _is_format_10),
+               b'committer': ('committer', bytes, cache_utf8.decode),
+               b'timezone': ('timezone', int, None),
+               b'timestamp': ('timestamp', bytes, float),
+               b'revision-id': ('revision_id', bytes, None),
+               b'parent-ids': ('parent_ids', list, None),
+               b'inventory-sha1': ('inventory_sha1', bytes, None),
+               b'message': ('message', bytes, cache_utf8.decode),
+               b'properties': ('properties', dict, _validate_properties),
     }
 
     def write_revision_to_string(self, rev):

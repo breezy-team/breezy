@@ -117,7 +117,7 @@ class SSHVendorManager(object):
                                  **os_specific_subprocess_params())
             stdout, stderr = p.communicate()
         except OSError:
-            stdout = stderr = ''
+            stdout = stderr = b''
         return stdout + stderr
 
     def _get_vendor_by_version_string(self, version, progname):
