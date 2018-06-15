@@ -30,6 +30,7 @@ from dulwich.protocol import (
     CAPABILITY_THIN_PACK,
     ZERO_SHA,
     )
+from dulwich.refs import SYMREF
 from dulwich.walk import Walker
 
 from ...errors import (
@@ -230,19 +231,19 @@ class InterToLocalGitRepository(InterToGitRepository):
         refs = {}
         for k in self.target._git.refs.allkeys():
             try:
-                v = self.target._git.refs[k]
+                v = self.target._git.refs.read_ref(k)
             except KeyError:
                 # broken symref?
                 continue
-            try:
-                for (kind, type_data) in self.source_store.lookup_git_sha(v):
-                    if kind == "commit" and self.source.has_revision(type_data[0]):
-                        revid = type_data[0]
-                        break
-                else:
-                    revid = None
-            except KeyError:
-                revid = None
+            revid = None
+            if not v.startswith(SYMREF):
+                try:
+                    for (kind, type_data) in self.source_store.lookup_git_sha(v):
+                        if kind == "commit" and self.source.has_revision(type_data[0]):
+                            revid = type_data[0]
+                            break
+                except KeyError:
+                    pass
             bzr_refs[k] = (v, revid)
         return bzr_refs
 
@@ -252,21 +253,22 @@ class InterToLocalGitRepository(InterToGitRepository):
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_objects(
-                [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith('ref:')], lossy=lossy)
+                [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith(SYMREF)], lossy=lossy)
             for name, (gitid, revid) in new_refs.iteritems():
                 if gitid is None:
                     try:
                         gitid = revidmap[revid][0]
                     except KeyError:
                         gitid = self.source_store._lookup_revision_sha1(revid)
-                if len(gitid) != 40 and not gitid.startswith('ref: '):
-                    raise AssertionError("invalid ref contents: %r" % gitid)
-                try:
-                    old_gitid = old_refs[name][0]
-                except KeyError:
-                    self.target_refs.add_if_new(name, gitid)
+                if gitid.startswith(SYMREF):
+                    self.target_refs.set_symbolic_ref(name, gitid[len(SYMREF):])
                 else:
-                    self.target_refs.set_if_equals(name, old_git_id, gitid)
+                    try:
+                        old_gitid = old_refs[name][0]
+                    except KeyError:
+                        self.target_refs.add_if_new(name, gitid)
+                    else:
+                        self.target_refs.set_if_equals(name, old_git_id, gitid)
         return revidmap, old_refs, new_refs
 
     def fetch_objects(self, revs, lossy, limit=None):
