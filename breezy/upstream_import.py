@@ -314,8 +314,7 @@ def do_import(source, tree_directory=None):
             tree = branch.controldir.open_workingtree()
     else:
         tree = WorkingTree.open_containing('.')[0]
-    tree.lock_write()
-    try:
+    with tree.lock_write():
         if tree.changes_from(tree.basis_tree()).has_changed():
             raise BzrCommandError("Working tree has uncommitted changes.")
 
@@ -347,8 +346,6 @@ def do_import(source, tree_directory=None):
                     import_tar(tree, tar_input)
                 finally:
                     tar_input.close()
-    finally:
-        tree.unlock()
 
 
 def get_archive_type(path):

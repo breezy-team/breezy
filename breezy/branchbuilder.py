@@ -113,15 +113,12 @@ class BranchBuilder(object):
                 self._move_branch_pointer(base_id,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
         tree = self._branch.create_memorytree()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             if parent_ids is not None:
                 tree.set_parent_ids(parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             tree.add('')
             return self._do_commit(tree, **commit_kwargs)
-        finally:
-            tree.unlock()
 
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
@@ -134,8 +131,7 @@ class BranchBuilder(object):
     def _move_branch_pointer(self, new_revision_id,
         allow_leftmost_as_ghost=False):
         """Point self._branch to a different revision id."""
-        self._branch.lock_write()
-        try:
+        with self._branch.lock_write():
             # We don't seem to have a simple set_last_revision(), so we
             # implement it here.
             cur_revno, cur_revision_id = self._branch.last_revision_info()
@@ -148,8 +144,6 @@ class BranchBuilder(object):
                 if not allow_leftmost_as_ghost:
                     raise
                 new_revno = 1
-        finally:
-            self._branch.unlock()
         if self._tree is not None:
             # We are currently processing a series, but when switching branch
             # pointers, it is easiest to just create a new memory tree.

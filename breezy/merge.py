@@ -1544,7 +1544,7 @@ class Merge3Merger(object):
         trans_id = self.tt.create_path(name, parent_id)
         transform.create_from_tree(
                 self.tt, trans_id, tree, path,
-                file_id=file_id, bytes=lines,
+                file_id=file_id, chunks=lines,
                 filter_tree_path=filter_tree_path)
         return trans_id
 

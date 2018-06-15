@@ -937,7 +937,15 @@ class URL(object):
         :param relpath: relative url string for relative part of remote path.
         :return: urlencoded string for final path.
         """
-        if not isinstance(relpath, str):
+        # pad.lv/1696545: For the moment, accept both native strings and unicode.
+        if isinstance(relpath, str):
+            pass
+        elif isinstance(relpath, text_type):
+            try:
+                relpath = relpath.encode()
+            except UnicodeEncodeError:
+                raise InvalidURL(relpath)
+        else:
             raise InvalidURL(relpath)
         relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):

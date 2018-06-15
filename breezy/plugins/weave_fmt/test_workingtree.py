@@ -86,7 +86,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         conflicts.restore('hello')
         conflicts.restore('hello.sploo')
         self.assertLength(0, tree.conflicts())
-        self.assertFileEqual('hello world2', b'hello')
+        self.assertFileEqual(b'hello world2', 'hello')
         self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(errors.NotConflicted, conflicts.restore, 'hello')
         self.assertRaises(errors.NotConflicted,

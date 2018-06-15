@@ -557,36 +557,24 @@ class MultiVersionedFile(BaseVersionedFile):
 
     def get_diff(self, version_id):
         start, count = self._diff_offset[version_id]
-        infile = open(self._filename + '.mpknit', 'rb')
-        try:
+        with open(self._filename + '.mpknit', 'rb') as infile:
             infile.seek(start)
             sio = BytesIO(infile.read(count))
-        finally:
-            infile.close()
-        zip_file = gzip.GzipFile(None, mode='rb', fileobj=sio)
-        try:
+        with gzip.GzipFile(None, mode='rb', fileobj=sio) as zip_file:
             file_version_id = zip_file.readline()
             content = zip_file.read()
             return MultiParent.from_patch(content)
-        finally:
-            zip_file.close()
 
     def add_diff(self, diff, version_id, parent_ids):
-        outfile = open(self._filename + '.mpknit', 'ab')
-        try:
+        with open(self._filename + '.mpknit', 'ab') as outfile:
             outfile.seek(0, 2)      # workaround for windows bug:
                                     # .tell() for files opened in 'ab' mode
                                     # before any write returns 0
             start = outfile.tell()
-            try:
-                zipfile = gzip.GzipFile(None, mode='ab', fileobj=outfile)
+            with gzip.GzipFile(None, mode='ab', fileobj=outfile) as zipfile:
                 zipfile.writelines(itertools.chain(
                     ['version %s\n' % version_id], diff.to_patch()))
-            finally:
-                zipfile.close()
             end = outfile.tell()
-        finally:
-            outfile.close()
         self._diff_offset[version_id] = (start, end-start)
         self._parents[version_id] = parent_ids
 
@@ -676,7 +664,6 @@ class _Reconstructor(object):
 
 def gzip_string(lines):
     sio = BytesIO()
-    data_file = gzip.GzipFile(None, mode='wb', fileobj=sio)
-    data_file.writelines(lines)
-    data_file.close()
+    with gzip.GzipFile(None, mode='wb', fileobj=sio) as data_file:
+        data_file.writelines(lines)
     return sio.getvalue()

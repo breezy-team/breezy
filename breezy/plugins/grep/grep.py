@@ -625,7 +625,7 @@ class _Outputter(object):
 
 def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
     # test and skip binary files
-    if '\x00' in file_text[:1024]:
+    if b'\x00' in file_text[:1024]:
         if opts.verbose:
             trace.warning("Binary file '%s' skipped." % path)
         return

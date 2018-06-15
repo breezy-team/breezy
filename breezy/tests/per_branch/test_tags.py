@@ -286,13 +286,13 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         """merge_to(child) also merges tags to the master."""
         master = self.make_branch('master')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         other.tags.merge_to(child.tags)
-        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
-        self.assertEqual('rev-1', master.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
 
     def test_ignore_master_disables_tag_propagation(self):
         """merge_to(child, ignore_master=True) does not merge tags to the
@@ -300,12 +300,12 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         """
         master = self.make_branch('master')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         other.tags.merge_to(child.tags, ignore_master=True)
-        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
         self.assertRaises(errors.NoSuchTag, master.tags.lookup_tag, 'foo')
 
     def test_merge_to_overwrite_conflict_in_master(self):
@@ -314,15 +314,15 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         """
         master = self.make_branch('master')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
-        master.tags.set_tag('foo', 'rev-2')
+        master.tags.set_tag('foo', b'rev-2')
         tag_updates, tag_conflicts = other.tags.merge_to(child.tags, overwrite=True)
-        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
-        self.assertEqual('rev-1', master.tags.lookup_tag('foo'))
-        self.assertEqual({"foo": "rev-1"}, tag_updates)
+        self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
+        self.assertEqual({"foo": b"rev-1"}, tag_updates)
         self.assertLength(0, tag_conflicts)
 
     def test_merge_to_overwrite_conflict_in_child_and_master(self):
@@ -330,17 +330,17 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         both the child and the master.
         """
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-2')
+        master.tags.set_tag('foo', b'rev-2')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         tag_updates, tag_conflicts = other.tags.merge_to(
             child.tags, overwrite=True)
-        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
-        self.assertEqual('rev-1', master.tags.lookup_tag('foo'))
-        self.assertEqual({u'foo': 'rev-1'}, tag_updates)
+        self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
+        self.assertEqual({u'foo': b'rev-1'}, tag_updates)
         self.assertLength(0, tag_conflicts)
 
     def test_merge_to_conflict_in_child_only(self):
@@ -348,21 +348,21 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         the master, a conflict is reported and the child receives the new tag.
         """
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-2')
+        master.tags.set_tag('foo', b'rev-2')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         master.tags.delete_tag('foo')
         tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # Conflict in child, so it is unchanged.
-        self.assertEqual('rev-2', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-2', child.tags.lookup_tag('foo'))
         # No conflict in the master, so the 'foo' tag equals other's value here.
-        self.assertEqual('rev-1', master.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
         # The conflict is reported.
-        self.assertEqual([(u'foo', 'rev-1', 'rev-2')], list(tag_conflicts))
-        self.assertEqual({u'foo': 'rev-1'}, tag_updates)
+        self.assertEqual([(u'foo', b'rev-1', b'rev-2')], list(tag_conflicts))
+        self.assertEqual({u'foo': b'rev-1'}, tag_updates)
 
     def test_merge_to_conflict_in_master_only(self):
         """When new_tags.merge_to(child.tags) conflicts with the master but not
@@ -370,62 +370,62 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         """
         master = self.make_branch('master')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
-        master.tags.set_tag('foo', 'rev-2')
+        master.tags.set_tag('foo', b'rev-2')
         tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # No conflict in the child, so the 'foo' tag equals other's value here.
-        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
         # Conflict in master, so it is unchanged.
-        self.assertEqual('rev-2', master.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-2', master.tags.lookup_tag('foo'))
         # The conflict is reported.
-        self.assertEqual({u'foo': 'rev-1'}, tag_updates)
-        self.assertEqual([(u'foo', 'rev-1', 'rev-2')], list(tag_conflicts))
+        self.assertEqual({u'foo': b'rev-1'}, tag_updates)
+        self.assertEqual([(u'foo', b'rev-1', b'rev-2')], list(tag_conflicts))
 
     def test_merge_to_same_conflict_in_master_and_child(self):
         """When new_tags.merge_to(child.tags) conflicts the same way with the
         master and the child a single conflict is reported.
         """
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-2')
+        master.tags.set_tag('foo', b'rev-2')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # Both master and child conflict, so both stay as rev-2
-        self.assertEqual('rev-2', child.tags.lookup_tag('foo'))
-        self.assertEqual('rev-2', master.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-2', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-2', master.tags.lookup_tag('foo'))
         # The conflict is reported exactly once, even though it occurs in both
         # master and child.
         self.assertEqual({}, tag_updates)
-        self.assertEqual([(u'foo', 'rev-1', 'rev-2')], list(tag_conflicts))
+        self.assertEqual([(u'foo', b'rev-1', b'rev-2')], list(tag_conflicts))
 
     def test_merge_to_different_conflict_in_master_and_child(self):
         """When new_tags.merge_to(child.tags) conflicts differently in the
         master and the child both conflicts are reported.
         """
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-2')
+        master.tags.set_tag('foo', b'rev-2')
         other = self.make_branch('other')
-        other.tags.set_tag('foo', 'rev-1')
+        other.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         # We use the private method _set_tag_dict because normally bzr tries to
         # avoid this scenario.
-        child.tags._set_tag_dict({'foo': 'rev-3'})
+        child.tags._set_tag_dict({'foo': b'rev-3'})
         tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # Both master and child conflict, so both stay as they were.
-        self.assertEqual('rev-3', child.tags.lookup_tag('foo'))
-        self.assertEqual('rev-2', master.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-3', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-2', master.tags.lookup_tag('foo'))
         # Both conflicts are reported.
         self.assertEqual({}, tag_updates)
         self.assertEqual(
-            [(u'foo', 'rev-1', 'rev-2'), (u'foo', 'rev-1', 'rev-3')],
+            [(u'foo', b'rev-1', b'rev-2'), (u'foo', b'rev-1', b'rev-3')],
             sorted(tag_conflicts))
 
 

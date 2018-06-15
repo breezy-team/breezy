@@ -61,7 +61,7 @@ def write_weave_v5(weave, f):
             # mininc = weave.minimal_parents(version)
             mininc = included
             f.write(b'i ')
-            f.write(b' '.join(str(i).encode('ascii') for i in mininc))
+            f.write(b' '.join(b'%d' % i for i in mininc))
             f.write(b'\n')
         else:
             f.write(b'i\n')
@@ -80,7 +80,7 @@ def write_weave_v5(weave, f):
         else: # text line
             if not l:
                 f.write(b', \n')
-            elif l[-1] == b'\n':
+            elif l.endswith(b'\n'):
                 f.write(b'. ' + l)
             else:
                 f.write(b', ' + l + b'\n')
@@ -140,7 +140,7 @@ def _read_weave_v5(f, w):
                 w._parents.append(list(map(int, l[2:].split(b' '))))
             else:
                 w._parents.append([])
-            l = lines.next()[:-1]
+            l = next(lines)[:-1]
             w._sha1s.append(l[2:])
             l = next(lines)
             name = l[2:-1]
@@ -165,5 +165,5 @@ def _read_weave_v5(f, w):
         elif l == b'}\n':
             w._weave.append((b'}', None))
         else:
-            w._weave.append((bytesintern(l[0:1]), int(l[2:])))
+            w._weave.append((bytesintern(l[0:1]), int(l[2:].decode('ascii'))))
     return w

@@ -258,7 +258,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
 
     def test_create_repository_shared(self):

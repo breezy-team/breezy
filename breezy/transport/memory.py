@@ -107,7 +107,7 @@ class MemoryTransport(transport.Transport):
         """See Transport.append_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        orig_content, orig_mode = self._files.get(_abspath, ("", None))
+        orig_content, orig_mode = self._files.get(_abspath, (b"", None))
         if mode is None:
             mode = orig_mode
         self._files[_abspath] = (orig_content + f.read(), mode)

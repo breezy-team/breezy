@@ -17,6 +17,7 @@
 """Tests for Knit data structure"""
 
 import gzip
+from io import BytesIO
 import sys
 
 from .. import (
@@ -51,9 +52,6 @@ from ..patiencediff import PatienceSequenceMatcher
 from ..bzr import (
     knitpack_repo,
     pack_repo,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import (
     TestCase,
@@ -249,9 +247,9 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         content = self._make_content([])
         self.assertEqual(content.annotate(), [])
 
-        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
+        content = self._make_content([(b"origin1", b"text1"), (b"origin2", b"text2")])
         self.assertEqual(content.annotate(),
-            [("origin1", "text1"), ("origin2", "text2")])
+            [(b"origin1", b"text1"), (b"origin2", b"text2")])
 
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])
@@ -317,23 +315,23 @@ class KnitRecordAccessTestsMixin(object):
     def test_add_raw_records(self):
         """Add_raw_records adds records retrievable later."""
         access = self.get_access()
-        memos = access.add_raw_records([('key', 10)], '1234567890')
-        self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
+        memos = access.add_raw_records([(b'key', 10)], b'1234567890')
+        self.assertEqual([b'1234567890'], list(access.get_raw_records(memos)))
 
     def test_add_several_raw_records(self):
         """add_raw_records with many records and read some back."""
         access = self.get_access()
-        memos = access.add_raw_records([('key', 10), ('key2', 2), ('key3', 5)],
-            '12345678901234567')
-        self.assertEqual(['1234567890', '12', '34567'],
+        memos = access.add_raw_records([(b'key', 10), (b'key2', 2), (b'key3', 5)],
+            b'12345678901234567')
+        self.assertEqual([b'1234567890', b'12', b'34567'],
             list(access.get_raw_records(memos)))
-        self.assertEqual(['1234567890'],
+        self.assertEqual([b'1234567890'],
             list(access.get_raw_records(memos[0:1])))
-        self.assertEqual(['12'],
+        self.assertEqual([b'12'],
             list(access.get_raw_records(memos[1:2])))
-        self.assertEqual(['34567'],
+        self.assertEqual([b'34567'],
             list(access.get_raw_records(memos[2:3])))
-        self.assertEqual(['1234567890', '34567'],
+        self.assertEqual([b'1234567890', b'34567'],
             list(access.get_raw_records(memos[0:1] + memos[2:3])))
 
 
@@ -371,8 +369,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         """Create a pack file with 2 records."""
         access, writer = self._get_access(packname='packname', index='foo')
         memos = []
-        memos.extend(access.add_raw_records([('key1', 10)], '1234567890'))
-        memos.extend(access.add_raw_records([('key2', 5)], '12345'))
+        memos.extend(access.add_raw_records([(b'key1', 10)], b'1234567890'))
+        memos.extend(access.add_raw_records([(b'key2', 5)], b'12345'))
         writer.end()
         return memos
 
@@ -383,15 +381,15 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         builder = self.make_branch_builder('.')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
-            ], revision_id='rev-1')
-        builder.build_snapshot(['rev-1'], [
-            ('modify', ('file', 'content\nrev 2\n')),
-            ], revision_id='rev-2')
-        builder.build_snapshot(['rev-2'], [
-            ('modify', ('file', 'content\nrev 3\n')),
-            ], revision_id='rev-3')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\nrev 1\n')),
+            ], revision_id=b'rev-1')
+        builder.build_snapshot([b'rev-1'], [
+            ('modify', ('file', b'content\nrev 2\n')),
+            ], revision_id=b'rev-2')
+        builder.build_snapshot([b'rev-2'], [
+            ('modify', ('file', b'content\nrev 3\n')),
+            ], revision_id=b'rev-3')
         self.addCleanup(builder.finish_series)
         b = builder.get_branch()
         self.addCleanup(b.lock_write().unlock)
@@ -416,15 +414,15 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
-            ], revision_id='rev-1')
-        builder.build_snapshot(['rev-1'], [
-            ('modify', ('file', 'content\nrev 2\n')),
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\nrev 1\n')),
+            ], revision_id=b'rev-1')
+        builder.build_snapshot([b'rev-1'], [
+            ('modify', ('file', b'content\nrev 2\n')),
             ], revision_id='rev-2')
-        builder.build_snapshot(['rev-2'], [
-            ('modify', ('file', 'content\nrev 3\n')),
-            ], revision_id='rev-3')
+        builder.build_snapshot([b'rev-2'], [
+            ('modify', ('file', b'content\nrev 3\n')),
+            ], revision_id=b'rev-3')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()
@@ -486,27 +484,27 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
     def test_read_from_several_packs(self):
         access, writer = self._get_access()
         memos = []
-        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
+        memos.extend(access.add_raw_records([(b'key', 10)], b'1234567890'))
         writer.end()
         access, writer = self._get_access('pack2', 'FOOBAR')
-        memos.extend(access.add_raw_records([('key', 5)], '12345'))
+        memos.extend(access.add_raw_records([(b'key', 5)], b'12345'))
         writer.end()
         access, writer = self._get_access('pack3', 'BAZ')
-        memos.extend(access.add_raw_records([('key', 5)], 'alpha'))
+        memos.extend(access.add_raw_records([(b'key', 5)], b'alpha'))
         writer.end()
         transport = self.get_transport()
         access = pack_repo._DirectPackAccess({"FOO":(transport, 'packfile'),
             "FOOBAR":(transport, 'pack2'),
             "BAZ":(transport, 'pack3')})
-        self.assertEqual(['1234567890', '12345', 'alpha'],
+        self.assertEqual([b'1234567890', b'12345', b'alpha'],
             list(access.get_raw_records(memos)))
-        self.assertEqual(['1234567890'],
+        self.assertEqual([b'1234567890'],
             list(access.get_raw_records(memos[0:1])))
-        self.assertEqual(['12345'],
+        self.assertEqual([b'12345'],
             list(access.get_raw_records(memos[1:2])))
-        self.assertEqual(['alpha'],
+        self.assertEqual([b'alpha'],
             list(access.get_raw_records(memos[2:3])))
-        self.assertEqual(['1234567890', 'alpha'],
+        self.assertEqual([b'1234567890', b'alpha'],
             list(access.get_raw_records(memos[0:1] + memos[2:3])))
 
     def test_set_writer(self):
@@ -520,9 +518,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer = pack.ContainerWriter(write_data)
         writer.begin()
         access.set_writer(writer, index, (transport, packname))
-        memos = access.add_raw_records([('key', 10)], '1234567890')
+        memos = access.add_raw_records([(b'key', 10)], b'1234567890')
         writer.end()
-        self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
+        self.assertEqual([b'1234567890'], list(access.get_raw_records(memos)))
 
     def test_missing_index_raises_retry(self):
         memos = self.make_pack_file()
@@ -583,9 +581,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             {'foo': (failing_transport, 'packname')},
             reload_func=reload_func)
         # Asking for a single record will not trigger the Mock failure
-        self.assertEqual(['1234567890'],
+        self.assertEqual([b'1234567890'],
             list(access.get_raw_records(memos[:1])))
-        self.assertEqual(['12345'],
+        self.assertEqual([b'12345'],
             list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
         e = self.assertListRaises(errors.RetryWithNewPacks,
@@ -606,9 +604,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access = pack_repo._DirectPackAccess(
             {'foo':(failing_transport, 'packname')})
         # Asking for a single record will not trigger the Mock failure
-        self.assertEqual(['1234567890'],
+        self.assertEqual([b'1234567890'],
             list(access.get_raw_records(memos[:1])))
-        self.assertEqual(['12345'],
+        self.assertEqual([b'12345'],
             list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
         e = self.assertListRaises(errors.NoSuchFile,
@@ -648,7 +646,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         vf, reload_counter = self.make_vf_for_retrying()
         # It is a little bit bogus to annotate the Revision VF, but it works,
         # as we have ancestry stored there
-        key = ('rev-3',)
+        key = (b'rev-3',)
         reload_lines = vf.annotate(key)
         self.assertEqual([1, 1, 0], reload_counter)
         plain_lines = vf.annotate(key)
@@ -664,7 +662,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test__get_record_map_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
-        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        keys = [(b'rev-1',), (b'rev-2',), (b'rev-3',)]
         records = vf._get_record_map(keys)
         self.assertEqual(keys, sorted(records.keys()))
         self.assertEqual([1, 1, 0], reload_counter)
@@ -677,16 +675,16 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_get_record_stream_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
-        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        keys = [(b'rev-1',), (b'rev-2',), (b'rev-3',)]
         record_stream = vf.get_record_stream(keys, 'topological', False)
         record = next(record_stream)
-        self.assertEqual(('rev-1',), record.key)
+        self.assertEqual((b'rev-1',), record.key)
         self.assertEqual([0, 0, 0], reload_counter)
         record = next(record_stream)
-        self.assertEqual(('rev-2',), record.key)
+        self.assertEqual((b'rev-2',), record.key)
         self.assertEqual([1, 1, 0], reload_counter)
         record = next(record_stream)
-        self.assertEqual(('rev-3',), record.key)
+        self.assertEqual((b'rev-3',), record.key)
         self.assertEqual([1, 1, 0], reload_counter)
         # Now delete all pack files, and see that we raise the right error
         for trans, name in vf._access._indices.values():
@@ -696,7 +694,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_iter_lines_added_or_present_in_keys_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
-        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        keys = [(b'rev-1',), (b'rev-2',), (b'rev-3',)]
         # Unfortunately, iter_lines_added_or_present_in_keys iterates the
         # result in random order (determined by the iteration order from a
         # set()), so we don't have any solid way to trigger whether data is
@@ -727,9 +725,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         vf = repo.texts
-        vf.add_lines(('f-id', 'rev-5'), [('f-id', 'rev-4')], ['lines\n'])
-        vf.add_lines(('f-id', 'rev-1'), [], ['lines\n'])
-        vf.add_lines(('f-id', 'rev-2'), [('f-id', 'rev-1')], ['lines\n'])
+        vf.add_lines((b'f-id', b'rev-5'), [(b'f-id', b'rev-4')], [b'lines\n'])
+        vf.add_lines((b'f-id', b'rev-1'), [], [b'lines\n'])
+        vf.add_lines((b'f-id', b'rev-2'), [(b'f-id', b'rev-1')], [b'lines\n'])
         repo.commit_write_group()
         # We inserted them as rev-5, rev-1, rev-2, we should get them back in
         # the same order
@@ -769,110 +767,110 @@ class LowLevelKnitDataTests(TestCase):
 
     def make_multiple_records(self):
         """Create the content for multiple records."""
-        sha1sum = osutils.sha_string('foo\nbar\n')
+        sha1sum = osutils.sha_string(b'foo\nbar\n')
         total_txt = []
-        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
-                                        'foo\n'
-                                        'bar\n'
-                                        'end rev-id-1\n'
+        gz_txt = self.create_gz_content(b'version rev-id-1 2 %s\n'
+                                        b'foo\n'
+                                        b'bar\n'
+                                        b'end rev-id-1\n'
                                         % (sha1sum,))
         record_1 = (0, len(gz_txt), sha1sum)
         total_txt.append(gz_txt)
-        sha1sum = osutils.sha_string('baz\n')
-        gz_txt = self.create_gz_content('version rev-id-2 1 %s\n'
-                                        'baz\n'
-                                        'end rev-id-2\n'
+        sha1sum = osutils.sha_string(b'baz\n')
+        gz_txt = self.create_gz_content(b'version rev-id-2 1 %s\n'
+                                        b'baz\n'
+                                        b'end rev-id-2\n'
                                         % (sha1sum,))
         record_2 = (record_1[1], len(gz_txt), sha1sum)
         total_txt.append(gz_txt)
         return total_txt, record_1, record_2
 
     def test_valid_knit_data(self):
-        sha1sum = osutils.sha_string('foo\nbar\n')
-        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
-                                        'foo\n'
-                                        'bar\n'
-                                        'end rev-id-1\n'
+        sha1sum = osutils.sha_string(b'foo\nbar\n')
+        gz_txt = self.create_gz_content(b'version rev-id-1 2 %s\n'
+                                        b'foo\n'
+                                        b'bar\n'
+                                        b'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
-        records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
+        records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
 
         contents = list(knit._read_records_iter(records))
-        self.assertEqual([(('rev-id-1',), ['foo\n', 'bar\n'],
-            '4e48e2c9a3d2ca8a708cb0cc545700544efb5021')], contents)
+        self.assertEqual([((b'rev-id-1',), [b'foo\n', b'bar\n'],
+            b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021')], contents)
 
         raw_contents = list(knit._read_records_iter_raw(records))
-        self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
+        self.assertEqual([((b'rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_multiple_records_valid(self):
         total_txt, record_1, record_2 = self.make_multiple_records()
-        transport = MockTransport([''.join(total_txt)])
+        transport = MockTransport([b''.join(total_txt)])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
-        records = [(('rev-id-1',), (('rev-id-1',), record_1[0], record_1[1])),
-                   (('rev-id-2',), (('rev-id-2',), record_2[0], record_2[1]))]
+        records = [((b'rev-id-1',), ((b'rev-id-1',), record_1[0], record_1[1])),
+                   ((b'rev-id-2',), ((b'rev-id-2',), record_2[0], record_2[1]))]
 
         contents = list(knit._read_records_iter(records))
-        self.assertEqual([(('rev-id-1',), ['foo\n', 'bar\n'], record_1[2]),
-                          (('rev-id-2',), ['baz\n'], record_2[2])],
+        self.assertEqual([((b'rev-id-1',), [b'foo\n', b'bar\n'], record_1[2]),
+                          ((b'rev-id-2',), [b'baz\n'], record_2[2])],
                          contents)
 
         raw_contents = list(knit._read_records_iter_raw(records))
-        self.assertEqual([(('rev-id-1',), total_txt[0], record_1[2]),
-                          (('rev-id-2',), total_txt[1], record_2[2])],
+        self.assertEqual([((b'rev-id-1',), total_txt[0], record_1[2]),
+                          ((b'rev-id-2',), total_txt[1], record_2[2])],
                          raw_contents)
 
     def test_not_enough_lines(self):
-        sha1sum = osutils.sha_string('foo\n')
+        sha1sum = osutils.sha_string(b'foo\n')
         # record says 2 lines data says 1
-        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
-                                        'foo\n'
-                                        'end rev-id-1\n'
+        gz_txt = self.create_gz_content(b'version rev-id-1 2 %s\n'
+                                        b'foo\n'
+                                        b'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
-        records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
+        records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(knit._read_records_iter_raw(records))
-        self.assertEqual([(('rev-id-1',),  gz_txt, sha1sum)], raw_contents)
+        self.assertEqual([((b'rev-id-1',),  gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
-        sha1sum = osutils.sha_string('foo\nbar\n')
+        sha1sum = osutils.sha_string(b'foo\nbar\n')
         # record says 1 lines data says 2
-        gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
-                                        'foo\n'
-                                        'bar\n'
-                                        'end rev-id-1\n'
+        gz_txt = self.create_gz_content(b'version rev-id-1 1 %s\n'
+                                        b'foo\n'
+                                        b'bar\n'
+                                        b'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
-        records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
+        records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(knit._read_records_iter_raw(records))
-        self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
+        self.assertEqual([((b'rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
-        sha1sum = osutils.sha_string('foo\nbar\n')
-        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
-                                        'foo\n'
-                                        'bar\n'
-                                        'end rev-id-1\n'
+        sha1sum = osutils.sha_string(b'foo\nbar\n')
+        gz_txt = self.create_gz_content(b'version rev-id-1 2 %s\n'
+                                        b'foo\n'
+                                        b'bar\n'
+                                        b'end rev-id-1\n'
                                         % (sha1sum,))
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
         # We are asking for rev-id-2, but the data is rev-id-1
-        records = [(('rev-id-2',), (('rev-id-2',), 0, len(gz_txt)))]
+        records = [((b'rev-id-2',), ((b'rev-id-2',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
 
@@ -881,16 +879,16 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
-        sha1sum = osutils.sha_string('foo\nbar\n')
-        txt = ('version rev-id-1 2 %s\n'
-               'foo\n'
-               'bar\n'
-               'end rev-id-1\n'
+        sha1sum = osutils.sha_string(b'foo\nbar\n')
+        txt = (b'version rev-id-1 2 %s\n'
+               b'foo\n'
+               b'bar\n'
+               b'end rev-id-1\n'
                % (sha1sum,))
         transport = MockTransport([txt])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
-        records = [(('rev-id-1',), (('rev-id-1',), 0, len(txt)))]
+        records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(txt)))]
 
         # We don't have valid gzip data ==> corrupt
         self.assertRaises(KnitCorrupt, list,
@@ -901,18 +899,18 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_corrupted_data(self):
-        sha1sum = osutils.sha_string('foo\nbar\n')
-        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
-                                        'foo\n'
-                                        'bar\n'
-                                        'end rev-id-1\n'
+        sha1sum = osutils.sha_string(b'foo\nbar\n')
+        gz_txt = self.create_gz_content(b'version rev-id-1 2 %s\n'
+                                        b'foo\n'
+                                        b'bar\n'
+                                        b'end rev-id-1\n'
                                         % (sha1sum,))
         # Change 2 bytes in the middle to \xff
-        gz_txt = gz_txt[:10] + '\xff\xff' + gz_txt[12:]
+        gz_txt = gz_txt[:10] + b'\xff\xff' + gz_txt[12:]
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper('filename'))
         knit = KnitVersionedFiles(None, access)
-        records = [(('rev-id-1',), (('rev-id-1',), 0, len(gz_txt)))]
+        records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
             knit._read_records_iter(records))
         # read_records_iter_raw will barf on bad gz data
@@ -961,7 +959,7 @@ class LowLevelKnitIndexTests(TestCase):
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "version option 0 1 .%s :" % (utf8_revision_id,)
+            b"version option 0 1 .%s :" % (utf8_revision_id,)
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({("version",):((utf8_revision_id,),)},
@@ -970,26 +968,26 @@ class LowLevelKnitIndexTests(TestCase):
     def test_read_ignore_corrupted_lines(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "corrupted",
-            "corrupted options 0 1 .b .c ",
-            "version options 0 1 :"
+            b"corrupted",
+            b"corrupted options 0 1 .b .c ",
+            b"version options 0 1 :"
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(1, len(index.keys()))
         self.assertEqual({("version",)}, index.keys())
 
     def test_read_corrupted_header(self):
-        transport = MockTransport(['not a bzr knit index header\n'])
+        transport = MockTransport([b'not a bzr knit index header\n'])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertRaises(KnitHeaderError, index.keys)
 
     def test_read_duplicate_entries(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "parent options 0 1 :",
-            "version options1 0 1 0 :",
-            "version options2 1 2 .other :",
-            "version options3 3 4 0 .other :"
+            b"parent options 0 1 :",
+            b"version options1 0 1 0 :",
+            b"version options2 1 2 .other :",
+            b"version options3 3 4 0 .other :"
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(2, len(index.keys()))
@@ -1004,9 +1002,9 @@ class LowLevelKnitIndexTests(TestCase):
     def test_read_compressed_parents(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 1 :",
-            "b option 0 1 0 :",
-            "c option 0 1 1 0 :",
+            b"a option 0 1 :",
+            b"b option 0 1 0 :",
+            b"c option 0 1 1 0 :",
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({("b",):(("a",),), ("c",):(("b",), ("a",))},
@@ -1101,9 +1099,9 @@ class LowLevelKnitIndexTests(TestCase):
         # With no history, _KndxIndex writes a new index:
         self.assertEqual(
             _KndxIndex.HEADER +
-            "\na option 0 1 .b :"
-            "\na opt 1 2 .c :"
-            "\nb option 2 3 0 :",
+            b"\na option 0 1 .b :"
+            b"\na opt 1 2 .c :"
+            b"\nb option 2 3 0 :",
             call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
         self.assertIndexIsAB(index)
@@ -1141,9 +1139,9 @@ class LowLevelKnitIndexTests(TestCase):
         # With no history, _KndxIndex writes a new index:
         self.assertEqual(
             _KndxIndex.HEADER +
-            "\na option 0 1 .b :"
-            "\na opt 1 2 .c :"
-            "\nb option 2 3 0 :",
+            b"\na option 0 1 .b :"
+            b"\na opt 1 2 .c :"
+            b"\nb option 2 3 0 :",
             call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
@@ -1170,8 +1168,8 @@ class LowLevelKnitIndexTests(TestCase):
     def test_get_position(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 1 :",
-            "b option 1 2 :"
+            b"a option 0 1 :",
+            b"b option 1 2 :"
             ])
         index = self.get_knit_index(transport, "filename", "r")
 
@@ -1181,9 +1179,9 @@ class LowLevelKnitIndexTests(TestCase):
     def test_get_method(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a fulltext,unknown 0 1 :",
-            "b unknown,line-delta 1 2 :",
-            "c bad 3 4 :"
+            b"a fulltext,unknown 0 1 :",
+            b"b unknown,line-delta 1 2 :",
+            b"c bad 3 4 :"
             ])
         index = self.get_knit_index(transport, "filename", "r")
 
@@ -1194,8 +1192,8 @@ class LowLevelKnitIndexTests(TestCase):
     def test_get_options(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a opt1 0 1 :",
-            "b opt2,opt3 1 2 :"
+            b"a opt1 0 1 :",
+            b"b opt2,opt3 1 2 :"
             ])
         index = self.get_knit_index(transport, "filename", "r")
 
@@ -1205,24 +1203,24 @@ class LowLevelKnitIndexTests(TestCase):
     def test_get_parent_map(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 1 :",
-            "b option 1 2 0 .c :",
-            "c option 1 2 1 0 .e :"
+            b"a option 0 1 :",
+            b"b option 1 2 0 .c :",
+            b"c option 1 2 1 0 .e :"
             ])
         index = self.get_knit_index(transport, "filename", "r")
 
         self.assertEqual({
-            ("a",): (),
-            ("b",): (("a",), ("c",)),
-            ("c",): (("b",), ("a",), ("e",)),
+            (b"a",): (),
+            (b"b",): ((b"a",), (b"c",)),
+            (b"c",): ((b"b",), (b"a",), (b"e",)),
             }, index.get_parent_map(index.keys()))
 
     def test_impossible_parent(self):
         """Test we get KnitCorrupt if the parent couldn't possibly exist."""
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 1 :",
-            "b option 0 1 4 :"  # We don't have a 4th record
+            b"a option 0 1 :",
+            b"b option 0 1 4 :"  # We don't have a 4th record
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1230,9 +1228,9 @@ class LowLevelKnitIndexTests(TestCase):
     def test_corrupted_parent(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 1 :",
-            "b option 0 1 :",
-            "c option 0 1 1v :", # Can't have a parent of '1v'
+            b"a option 0 1 :",
+            b"b option 0 1 :",
+            b"c option 0 1 1v :", # Can't have a parent of '1v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1240,9 +1238,9 @@ class LowLevelKnitIndexTests(TestCase):
     def test_corrupted_parent_in_list(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 1 :",
-            "b option 0 1 :",
-            "c option 0 1 1 v :", # Can't have a parent of 'v'
+            b"a option 0 1 :",
+            b"b option 0 1 :",
+            b"c option 0 1 1 v :", # Can't have a parent of 'v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1250,7 +1248,7 @@ class LowLevelKnitIndexTests(TestCase):
     def test_invalid_position(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 1v 1 :",
+            b"a option 1v 1 :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1258,7 +1256,7 @@ class LowLevelKnitIndexTests(TestCase):
     def test_invalid_size(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 1 1v :",
+            b"a option 1 1v :",
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1275,33 +1273,33 @@ class LowLevelKnitIndexTests(TestCase):
     def test_short_line(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 10  :",
-            "b option 10 10 0", # This line isn't terminated, ignored
+            b"a option 0 10  :",
+            b"b option 10 10 0", # This line isn't terminated, ignored
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual({('a',)}, index.keys())
+        self.assertEqual({(b'a',)}, index.keys())
 
     def test_skip_incomplete_record(self):
         # A line with bogus data should just be skipped
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 10  :",
-            "b option 10 10 0", # This line isn't terminated, ignored
-            "c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            b"a option 0 10  :",
+            b"b option 10 10 0", # This line isn't terminated, ignored
+            b"c option 20 10 0 :", # Properly terminated, and starts with '\n'
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual({('a',), ('c',)}, index.keys())
+        self.assertEqual({(b'a',), (b'c',)}, index.keys())
 
     def test_trailing_characters(self):
         # A line with bogus data should just be skipped
         transport = MockTransport([
             _KndxIndex.HEADER,
-            "a option 0 10  :",
-            "b option 10 10 0 :a", # This line has extra trailing characters
-            "c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            b"a option 0 10  :",
+            b"b option 10 10 0 :a", # This line has extra trailing characters
+            b"c option 20 10 0 :", # Properly terminated, and starts with '\n'
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual({('a',), ('c',)}, index.keys())
+        self.assertEqual({(b'a',), (b'c',)}, index.keys())
 
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
@@ -1326,14 +1324,14 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_fulltext(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
+        rev_key = (b'rev-id',)
         ann._num_compression_children[rev_key] = 1
-        res = ann._expand_record(rev_key, (('parent-id',),), None,
-                           ['line1\n', 'line2\n'], ('fulltext', True))
+        res = ann._expand_record(rev_key, ((b'parent-id',),), None,
+                           [b'line1\n', b'line2\n'], (b'fulltext', True))
         # The content object and text lines should be cached appropriately
-        self.assertEqual(['line1\n', 'line2'], res)
+        self.assertEqual([b'line1\n', b'line2'], res)
         content_obj = ann._content_objects[rev_key]
-        self.assertEqual(['line1\n', 'line2\n'], content_obj._lines)
+        self.assertEqual([b'line1\n', b'line2\n'], content_obj._lines)
         self.assertEqual(res, content_obj.text())
         self.assertEqual(res, ann._text_cache[rev_key])
 
@@ -1341,9 +1339,9 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         # Parent isn't available yet, so we return nothing, but queue up this
         # node for later processing
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        parent_key = ('parent-id',)
-        record = ['0,1,1\n', 'new-line\n']
+        rev_key = (b'rev-id',)
+        parent_key = (b'parent-id',)
+        record = [b'0,1,1\n', b'new-line\n']
         details = ('line-delta', False)
         res = ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
@@ -1355,14 +1353,14 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_record_tracks_num_children(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        rev2_key = ('rev2-id',)
-        parent_key = ('parent-id',)
-        record = ['0,1,1\n', 'new-line\n']
+        rev_key = (b'rev-id',)
+        rev2_key = (b'rev2-id',)
+        parent_key = (b'parent-id',)
+        record = [b'0,1,1\n', b'new-line\n']
         details = ('line-delta', False)
         ann._num_compression_children[parent_key] = 2
-        ann._expand_record(parent_key, (), None, ['line1\n', 'line2\n'],
-                           ('fulltext', False))
+        ann._expand_record(parent_key, (), None, [b'line1\n', b'line2\n'],
+                           (b'fulltext', False))
         res = ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
         self.assertEqual({parent_key: 1}, ann._num_compression_children)
@@ -1378,19 +1376,19 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__expand_delta_records_blocks(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        parent_key = ('parent-id',)
-        record = ['0,1,1\n', 'new-line\n']
+        rev_key = (b'rev-id',)
+        parent_key = (b'parent-id',)
+        record = [b'0,1,1\n', b'new-line\n']
         details = ('line-delta', True)
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None,
-                           ['line1\n', 'line2\n', 'line3\n'],
-                           ('fulltext', False))
+                           [b'line1\n', b'line2\n', b'line3\n'],
+                           (b'fulltext', False))
         ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
         self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
                          ann._matching_blocks)
-        rev2_key = ('rev2-id',)
-        record = ['0,1,1\n', 'new-line\n']
+        rev2_key = (b'rev2-id',)
+        record = [b'0,1,1\n', b'new-line\n']
         details = ('line-delta', False)
         ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
         self.assertEqual([(1, 1, 2), (3, 3, 0)],
@@ -1398,8 +1396,8 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test__get_parent_ann_uses_matching_blocks(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        parent_key = ('parent-id',)
+        rev_key = (b'rev-id',)
+        parent_key = (b'parent-id',)
         parent_ann = [(parent_key,)]*3
         block_key = (rev_key, parent_key)
         ann._annotations_cache[parent_key] = parent_ann
@@ -1407,19 +1405,19 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         # We should not try to access any parent_lines content, because we know
         # we already have the matching blocks
         par_ann, blocks = ann._get_parent_annotations_and_matches(rev_key,
-                                        ['1\n', '2\n', '3\n'], parent_key)
+                                        [b'1\n', b'2\n', b'3\n'], parent_key)
         self.assertEqual(parent_ann, par_ann)
         self.assertEqual([(0, 1, 1), (3, 3, 0)], blocks)
         self.assertEqual({}, ann._matching_blocks)
 
     def test__process_pending(self):
         ann = self.make_annotator()
-        rev_key = ('rev-id',)
-        p1_key = ('p1-id',)
-        p2_key = ('p2-id',)
-        record = ['0,1,1\n', 'new-line\n']
+        rev_key = (b'rev-id',)
+        p1_key = (b'p1-id',)
+        p2_key = (b'p2-id',)
+        record = [b'0,1,1\n', b'new-line\n']
         details = ('line-delta', False)
-        p1_record = ['line1\n', 'line2\n']
+        p1_record = [b'line1\n', b'line2\n']
         ann._num_compression_children[p1_key] = 1
         res = ann._expand_record(rev_key, (p1_key, p2_key), p1_key,
                                  record, details)
@@ -1428,7 +1426,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({}, ann._pending_annotation)
         # Now insert p1, and we should be able to expand the delta
         res = ann._expand_record(p1_key, (), None, p1_record,
-                                 ('fulltext', False))
+                                 (b'fulltext', False))
         self.assertEqual(p1_record, res)
         ann._annotations_cache[p1_key] = [(p1_key,)]*2
         res = ann._process_pending(p1_key)
@@ -1438,7 +1436,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
                          ann._pending_annotation)
         # Now fill in parent 2, and pending annotation should be satisfied
-        res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
+        res = ann._expand_record(p2_key, (), None, [], (b'fulltext', False))
         ann._annotations_cache[p2_key] = []
         res = ann._process_pending(p2_key)
         self.assertEqual([rev_key], res)
@@ -1447,9 +1445,9 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
 
     def test_record_delta_removes_basis(self):
         ann = self.make_annotator()
-        ann._expand_record(('parent-id',), (), None,
-                           ['line1\n', 'line2\n'], ('fulltext', False))
-        ann._num_compression_children['parent-id'] = 2
+        ann._expand_record((b'parent-id',), (), None,
+                           [b'line1\n', b'line2\n'], (b'fulltext', False))
+        ann._num_compression_children[b'parent-id'] = 2
 
     def test_annotate_special_text(self):
         ann = self.make_annotator()
@@ -1598,7 +1596,7 @@ class TestKnitIndex(KnitTests):
 
     def test_knit_index_checks_header(self):
         t = transport.get_transport_from_path('.')
-        t.put_bytes('test.kndx', '# not really a knit header\n\n')
+        t.put_bytes('test.kndx', b'# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)
 
@@ -1650,24 +1648,24 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_keys(self):
         index = self.two_graph_index()
-        self.assertEqual({('tail',), ('tip',), ('parent',), ('separate',)},
+        self.assertEqual({(b'tail',), (b'tip',), (b'parent',), (b'separate',)},
             set(index.keys()))
 
     def test_get_position(self):
         index = self.two_graph_index()
-        self.assertEqual((index._graph_index._indices[0], 0, 100), index.get_position(('tip',)))
-        self.assertEqual((index._graph_index._indices[1], 100, 78), index.get_position(('parent',)))
+        self.assertEqual((index._graph_index._indices[0], 0, 100), index.get_position((b'tip',)))
+        self.assertEqual((index._graph_index._indices[1], 100, 78), index.get_position((b'parent',)))
 
     def test_get_method_deltas(self):
         index = self.two_graph_index(deltas=True)
-        self.assertEqual('fulltext', index.get_method(('tip',)))
-        self.assertEqual('line-delta', index.get_method(('parent',)))
+        self.assertEqual('fulltext', index.get_method((b'tip',)))
+        self.assertEqual('line-delta', index.get_method((b'parent',)))
 
     def test_get_method_no_deltas(self):
         # check that the parent-history lookup is ignored with deltas=False.
         index = self.two_graph_index(deltas=False)
-        self.assertEqual('fulltext', index.get_method(('tip',)))
-        self.assertEqual('fulltext', index.get_method(('parent',)))
+        self.assertEqual('fulltext', index.get_method((b'tip',)))
+        self.assertEqual('fulltext', index.get_method((b'parent',)))
 
     def test_get_options_deltas(self):
         index = self.two_graph_index(deltas=True)
@@ -1935,11 +1933,11 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         """
         # put several versions in the index.
         index1 = self.make_g_index('1', 0, [
-            (('tip', ), 'N0 100'),
-            (('tail', ), '')])
+            ((b'tip', ), 'N0 100'),
+            ((b'tail', ), '')])
         index2 = self.make_g_index('2', 0, [
-            (('parent', ), ' 100 78'),
-            (('separate', ), '')])
+            ((b'parent', ), ' 100 78'),
+            ((b'separate', ), '')])
         combined_index = CombinedGraphIndex([index1, index2])
         if catch_adds:
             self.combined_index = combined_index
@@ -1952,7 +1950,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
     def test_keys(self):
         index = self.two_graph_index()
-        self.assertEqual({('tail',), ('tip',), ('parent',), ('separate',)},
+        self.assertEqual({(b'tail',), (b'tip',), (b'parent',), (b'separate',)},
             set(index.keys()))
 
     def test_get_position(self):
@@ -2036,13 +2034,13 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('new',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
+            [((b'new',), 'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_parents_not_parents_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('new',), 'no-eol,fulltext', (None, 0, 100), [('parent',)])])
+            [((b'new',), 'no-eol,fulltext', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_random_id_accepted(self):
@@ -2052,12 +2050,12 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 100), [])])
-        index.add_records([(('tip',), 'no-eol,fulltext', (None, 0, 100), [])])
+        index.add_records([((b'tip',), 'fulltext,no-eol', (None, 0, 100), [])])
+        index.add_records([((b'tip',), 'no-eol,fulltext', (None, 0, 100), [])])
         # position/length are ignored (because each pack could have fulltext or
         # delta, and be at a different position.
-        index.add_records([(('tip',), 'fulltext,no-eol', (None, 50, 100), [])])
-        index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
+        index.add_records([((b'tip',), 'fulltext,no-eol', (None, 50, 100), [])])
+        index.add_records([((b'tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
 
@@ -2065,18 +2063,18 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = self.two_graph_index(catch_adds=True)
         # change options
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
+            [((b'tip',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('tip',), 'line-delta,no-eol', (None, 0, 100), [])])
+            [((b'tip',), 'line-delta,no-eol', (None, 0, 100), [])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('tip',), 'fulltext', (None, 0, 100), [])])
+            [((b'tip',), 'fulltext', (None, 0, 100), [])])
         # parents
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
+            [((b'tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
         # change options in the second record
         self.assertRaises(KnitCorrupt, index.add_records,
-            [(('tip',), 'fulltext,no-eol', (None, 0, 100), []),
-             (('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
+            [((b'tip',), 'fulltext,no-eol', (None, 0, 100), []),
+             ((b'tip',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
 
@@ -2100,12 +2098,12 @@ class TestKnitVersionedFiles(KnitTests):
     def test__group_keys_for_io(self):
         ft_detail = ('fulltext', False)
         ld_detail = ('line-delta', False)
-        f_a = ('f', 'a')
-        f_b = ('f', 'b')
-        f_c = ('f', 'c')
-        g_a = ('g', 'a')
-        g_b = ('g', 'b')
-        g_c = ('g', 'c')
+        f_a = (b'f', b'a')
+        f_b = (b'f', b'b')
+        f_c = (b'f', b'c')
+        g_a = (b'g', b'a')
+        g_b = (b'g', b'b')
+        g_c = (b'g', b'c')
         positions = {
             f_a: (ft_detail, (f_a, 0, 100), None),
             f_b: (ld_detail, (f_b, 100, 21), f_a),
@@ -2138,31 +2136,31 @@ class TestKnitVersionedFiles(KnitTests):
                                   _min_buffer_size=125)
 
     def test__split_by_prefix(self):
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                 }, ['f', 'g'],
-                                 [('f', 'a'), ('g', 'b'),
-                                  ('g', 'a'), ('f', 'b')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                 }, [b'f', b'g'],
+                                 [(b'f', b'a'), (b'g', b'b'),
+                                  (b'g', b'a'), (b'f', b'b')])
 
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                 }, ['f', 'g'],
-                                 [('f', 'a'), ('f', 'b'),
-                                  ('g', 'b'), ('g', 'a')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                 }, [b'f', b'g'],
+                                 [(b'f', b'a'), (b'f', b'b'),
+                                  (b'g', b'b'), (b'g', b'a')])
 
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                 }, ['f', 'g'],
-                                 [('f', 'a'), ('f', 'b'),
-                                  ('g', 'b'), ('g', 'a')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                 }, [b'f', b'g'],
+                                 [(b'f', b'a'), (b'f', b'b'),
+                                  (b'g', b'b'), (b'g', b'a')])
 
-        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
-                                  'g': [('g', 'b'), ('g', 'a')],
-                                  '': [('a',), ('b',)]
-                                 }, ['f', 'g', ''],
-                                 [('f', 'a'), ('g', 'b'),
-                                  ('a',), ('b',),
-                                  ('g', 'a'), ('f', 'b')])
+        self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
+                                  b'g': [(b'g', b'b'), (b'g', b'a')],
+                                  b'': [(b'a',), (b'b',)]
+                                 }, [b'f', b'g', b''],
+                                 [(b'f', b'a'), (b'g', b'b'),
+                                  (b'a',), (b'b',),
+                                  (b'g', b'a'), (b'f', b'b')])
 
 
 class TestStacking(KnitTests):
@@ -2184,43 +2182,43 @@ class TestStacking(KnitTests):
     def test_add_lines(self):
         # lines added to the test are not added to the basis
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_cross_border = ('quux',)
-        key_delta = ('zaphod',)
-        test.add_lines(key, (), ['foo\n'])
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_cross_border = (b'quux',)
+        key_delta = (b'zaphod',)
+        test.add_lines(key, (), [b'foo\n'])
         self.assertEqual({}, basis.get_parent_map([key]))
         # lines added to the test that reference across the stack do a
         # fulltext.
-        basis.add_lines(key_basis, (), ['foo\n'])
+        basis.add_lines(key_basis, (), [b'foo\n'])
         basis.calls = []
-        test.add_lines(key_cross_border, (key_basis,), ['foo\n'])
+        test.add_lines(key_cross_border, (key_basis,), [b'foo\n'])
         self.assertEqual('fulltext', test._index.get_method(key_cross_border))
         # we don't even need to look at the basis to see that this should be
         # stored as a fulltext
         self.assertEqual([], basis.calls)
         # Subsequent adds do delta.
         basis.calls = []
-        test.add_lines(key_delta, (key_cross_border,), ['foo\n'])
+        test.add_lines(key_delta, (key_cross_border,), [b'foo\n'])
         self.assertEqual('line-delta', test._index.get_method(key_delta))
         self.assertEqual([], basis.calls)
 
     def test_annotate(self):
         # annotations from the test knit are answered without asking the basis
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_missing = ('missing',)
-        test.add_lines(key, (), ['foo\n'])
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_missing = (b'missing',)
+        test.add_lines(key, (), [b'foo\n'])
         details = test.annotate(key)
-        self.assertEqual([(key, 'foo\n')], details)
+        self.assertEqual([(key, b'foo\n')], details)
         self.assertEqual([], basis.calls)
         # But texts that are not in the test knit are looked for in the basis
         # directly.
-        basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
+        basis.add_lines(key_basis, (), [b'foo\n', b'bar\n'])
         basis.calls = []
         details = test.annotate(key_basis)
-        self.assertEqual([(key_basis, 'foo\n'), (key_basis, 'bar\n')], details)
+        self.assertEqual([(key_basis, b'foo\n'), (key_basis, b'bar\n')], details)
         # Not optimised to date:
         # self.assertEqual([("annotate", key_basis)], basis.calls)
         self.assertEqual([('get_parent_map', {key_basis}),
@@ -2237,9 +2235,9 @@ class TestStacking(KnitTests):
     def test_get_parent_map(self):
         # parents in the test knit are answered without asking the basis
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_missing = ('missing',)
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_missing = (b'missing',)
         test.add_lines(key, (), [])
         parent_map = test.get_parent_map([key])
         self.assertEqual({key: ()}, parent_map)
@@ -2256,15 +2254,15 @@ class TestStacking(KnitTests):
     def test_get_record_stream_unordered_fulltexts(self):
         # records from the test knit are answered without asking the basis:
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_missing = ('missing',)
-        test.add_lines(key, (), ['foo\n'])
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_missing = (b'missing',)
+        test.add_lines(key, (), [b'foo\n'])
         records = list(test.get_record_stream([key], 'unordered', True))
         self.assertEqual(1, len(records))
         self.assertEqual([], basis.calls)
         # Missing (from test knit) objects are retrieved from the basis:
-        basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
+        basis.add_lines(key_basis, (), [b'foo\n', b'bar\n'])
         basis.calls = []
         records = list(test.get_record_stream([key_basis, key_missing],
             'unordered', True))
@@ -2294,14 +2292,14 @@ class TestStacking(KnitTests):
     def test_get_record_stream_ordered_fulltexts(self):
         # ordering is preserved down into the fallback store.
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_basis_2 = ('quux',)
-        key_missing = ('missing',)
-        test.add_lines(key, (key_basis,), ['foo\n'])
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_basis_2 = (b'quux',)
+        key_missing = (b'missing',)
+        test.add_lines(key, (key_basis,), [b'foo\n'])
         # Missing (from test knit) objects are retrieved from the basis:
-        basis.add_lines(key_basis, (key_basis_2,), ['foo\n', 'bar\n'])
-        basis.add_lines(key_basis_2, (), ['quux\n'])
+        basis.add_lines(key_basis, (key_basis_2,), [b'foo\n', b'bar\n'])
+        basis.add_lines(key_basis_2, (), [b'quux\n'])
         basis.calls = []
         # ask for in non-topological order
         records = list(test.get_record_stream(
@@ -2345,15 +2343,15 @@ class TestStacking(KnitTests):
     def test_get_record_stream_unordered_deltas(self):
         # records from the test knit are answered without asking the basis:
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_missing = ('missing',)
-        test.add_lines(key, (), ['foo\n'])
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_missing = (b'missing',)
+        test.add_lines(key, (), [b'foo\n'])
         records = list(test.get_record_stream([key], 'unordered', False))
         self.assertEqual(1, len(records))
         self.assertEqual([], basis.calls)
         # Missing (from test knit) objects are retrieved from the basis:
-        basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
+        basis.add_lines(key_basis, (), [b'foo\n', b'bar\n'])
         basis.calls = []
         records = list(test.get_record_stream([key_basis, key_missing],
             'unordered', False))
@@ -2381,14 +2379,14 @@ class TestStacking(KnitTests):
     def test_get_record_stream_ordered_deltas(self):
         # ordering is preserved down into the fallback store.
         basis, test = self.get_basis_and_test_knit()
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_basis_2 = ('quux',)
-        key_missing = ('missing',)
-        test.add_lines(key, (key_basis,), ['foo\n'])
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_basis_2 = (b'quux',)
+        key_missing = (b'missing',)
+        test.add_lines(key, (key_basis,), [b'foo\n'])
         # Missing (from test knit) objects are retrieved from the basis:
-        basis.add_lines(key_basis, (key_basis_2,), ['foo\n', 'bar\n'])
-        basis.add_lines(key_basis_2, (), ['quux\n'])
+        basis.add_lines(key_basis, (key_basis_2,), [b'foo\n', b'bar\n'])
+        basis.add_lines(key_basis_2, (), [b'quux\n'])
         basis.calls = []
         # ask for in non-topological order
         records = list(test.get_record_stream(
@@ -2475,27 +2473,27 @@ class TestStacking(KnitTests):
     def test_iter_lines_added_or_present_in_keys(self):
         # Lines from the basis are returned, and lines for a given key are only
         # returned once.
-        key1 = ('foo1',)
-        key2 = ('foo2',)
+        key1 = (b'foo1',)
+        key2 = (b'foo2',)
         # all sources are asked for keys:
         basis, test = self.get_basis_and_test_knit()
-        basis.add_lines(key1, (), ["foo"])
+        basis.add_lines(key1, (), [b"foo"])
         basis.calls = []
         lines = list(test.iter_lines_added_or_present_in_keys([key1]))
-        self.assertEqual([("foo\n", key1)], lines)
+        self.assertEqual([(b"foo\n", key1)], lines)
         self.assertEqual([("iter_lines_added_or_present_in_keys", {key1})],
             basis.calls)
         # keys in both are not duplicated:
-        test.add_lines(key2, (), ["bar\n"])
-        basis.add_lines(key2, (), ["bar\n"])
+        test.add_lines(key2, (), [b"bar\n"])
+        basis.add_lines(key2, (), [b"bar\n"])
         basis.calls = []
         lines = list(test.iter_lines_added_or_present_in_keys([key2]))
-        self.assertEqual([("bar\n", key2)], lines)
+        self.assertEqual([(b"bar\n", key2)], lines)
         self.assertEqual([], basis.calls)
 
     def test_keys(self):
-        key1 = ('foo1',)
-        key2 = ('foo2',)
+        key1 = (b'foo1',)
+        key2 = (b'foo2',)
         # all sources are asked for keys:
         basis, test = self.get_basis_and_test_knit()
         keys = test.keys()
@@ -2519,15 +2517,15 @@ class TestStacking(KnitTests):
     def test_add_mpdiffs(self):
         # records are inserted as normal; add_mpdiff builds on
         # add_lines, so a smoke test should be all that's needed:
-        key = ('foo',)
-        key_basis = ('bar',)
-        key_delta = ('zaphod',)
+        key = (b'foo',)
+        key_basis = (b'bar',)
+        key_delta = (b'zaphod',)
         basis, test = self.get_basis_and_test_knit()
         source = self.make_test_knit(name='source')
-        basis.add_lines(key_basis, (), ['foo\n'])
+        basis.add_lines(key_basis, (), [b'foo\n'])
         basis.calls = []
-        source.add_lines(key_basis, (), ['foo\n'])
-        source.add_lines(key_delta, (key_basis,), ['bar\n'])
+        source.add_lines(key_basis, (), [b'foo\n'])
+        source.add_lines(key_delta, (key_basis,), [b'bar\n'])
         diffs = source.make_mpdiffs([key_delta])
         test.add_mpdiffs([(key_delta, (key_basis,),
             source.get_sha1s([key_delta])[key_delta], diffs[0])])
@@ -2542,19 +2540,19 @@ class TestStacking(KnitTests):
     def test_make_mpdiffs(self):
         # Generating an mpdiff across a stacking boundary should detect parent
         # texts regions.
-        key = ('foo',)
-        key_left = ('bar',)
-        key_right = ('zaphod',)
+        key = (b'foo',)
+        key_left = (b'bar',)
+        key_right = (b'zaphod',)
         basis, test = self.get_basis_and_test_knit()
-        basis.add_lines(key_left, (), ['bar\n'])
-        basis.add_lines(key_right, (), ['zaphod\n'])
+        basis.add_lines(key_left, (), [b'bar\n'])
+        basis.add_lines(key_right, (), [b'zaphod\n'])
         basis.calls = []
         test.add_lines(key, (key_left, key_right),
-            ['bar\n', 'foo\n', 'zaphod\n'])
+            [b'bar\n', b'foo\n', b'zaphod\n'])
         diffs = test.make_mpdiffs([key])
         self.assertEqual([
             multiparent.MultiParent([multiparent.ParentText(0, 0, 0, 1),
-                multiparent.NewText(['foo\n']),
+                multiparent.NewText([b'foo\n']),
                 multiparent.ParentText(1, 0, 2, 1)])],
             diffs)
         self.assertEqual(3, len(basis.calls))

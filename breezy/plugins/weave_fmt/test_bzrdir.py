@@ -124,8 +124,8 @@ class TestBreakLockOldBranch(TestCaseWithTransport):
         # break lock on a format 5 bzrdir should just return
         self.make_branch_and_tree('foo', format=BzrDirFormat5())
         out, err = self.run_bzr('break-lock foo')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
 
 _upgrade1_template = \
@@ -461,7 +461,7 @@ class TestInfo(TestCaseWithTransport):
         # U U U
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+b"""Standalone tree (format: weave)
 Location:
   branch root: %s
 
@@ -486,14 +486,14 @@ Branch history:
 
 Repository:
          0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
+""" % (b'branch', tree.branch.repository._format.get_format_description().encode(),
        ), out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # L L L
         tree.lock_write()
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+b"""Standalone tree (format: weave)
 Location:
   branch root: %s
 
@@ -518,9 +518,9 @@ Branch history:
 
 Repository:
          0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
+""" % (b'branch', tree.branch.repository._format.get_format_description().encode(),
        ), out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         tree.unlock()
 
 
@@ -554,20 +554,20 @@ class TestBoundBranch(TestCaseWithTransport):
     def test_bind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out, err = self.run_bzr('bind ../master', retcode=3)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
         # TODO: jam 20060427 Probably something like this really should
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('brz: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % cwd, err)
+        self.assertEqual(b'brz: ERROR: To use this feature you must '
+                         b'upgrade your branch at %s/.\n' % cwd, err)
 
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out, err = self.run_bzr('unbind', retcode=3)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
         cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('brz: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % cwd, err)
+        self.assertEqual(b'brz: ERROR: To use this feature you must '
+                         b'upgrade your branch at %s/.\n' % cwd, err)
 
 
 class TestInit(TestCaseWithTransport):
@@ -576,9 +576,9 @@ class TestInit(TestCaseWithTransport):
         # --format=weave should be accepted to allow interoperation with
         # old releases when desired.
         out, err = self.run_bzr('init --format=weave')
-        self.assertEqual("""Created a standalone tree (format: weave)\n""",
+        self.assertEqual(b"""Created a standalone tree (format: weave)\n""",
             out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
 
 class V4WeaveBundleTester(test_bundle.V4BundleTester):

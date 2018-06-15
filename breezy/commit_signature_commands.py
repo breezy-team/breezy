@@ -65,8 +65,7 @@ class cmd_sign_my_commits(Command):
         gpg_strategy = gpg.GPGStrategy(branch_config)
 
         count = 0
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             graph = repo.get_graph()
             repo.start_write_group()
             try:
@@ -93,8 +92,6 @@ class cmd_sign_my_commits(Command):
                 raise
             else:
                 repo.commit_write_group()
-        finally:
-            repo.unlock()
         self.outf.write(
             ngettext('Signed %d revision.\n', 'Signed %d revisions.\n', count) %
             count)
