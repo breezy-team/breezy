@@ -261,7 +261,12 @@ class InterToLocalGitRepository(InterToGitRepository):
                         gitid = self.source_store._lookup_revision_sha1(revid)
                 if len(gitid) != 40 and not gitid.startswith('ref: '):
                     raise AssertionError("invalid ref contents: %r" % gitid)
-                self.target_refs[name] = gitid
+                try:
+                    old_gitid = old_refs[name][0]
+                except KeyError:
+                    self.target_refs.add_if_new(name, gitid)
+                else:
+                    self.target_refs.set_if_equals(name, old_git_id, gitid)
         return revidmap, old_refs, new_refs
 
     def fetch_objects(self, revs, lossy, limit=None):
