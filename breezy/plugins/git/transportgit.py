@@ -210,7 +210,6 @@ class TransportRefsContainer(RefsContainer):
             f = transport.get(name)
         except NoSuchFile:
             return None
-        f = BytesIO(f.read())
         try:
             header = f.read(len(SYMREF))
             if header == SYMREF:
@@ -608,10 +607,8 @@ class TransportObjectStore(PackBasedObjectStore):
                 try:
                     size = self.pack_transport.stat(name).st_size
                 except TransportNotPossible:
-                    # FIXME: This reads the whole pack file at once
                     f = self.pack_transport.get(name)
-                    contents = f.read()
-                    pd = PackData(name, BytesIO(contents), size=len(contents))
+                    pd = PackData(name, f, size=len(contents))
                 else:
                     pd = PackData(name, self.pack_transport.get(name),
                             size=size)
