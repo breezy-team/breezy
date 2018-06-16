@@ -267,7 +267,7 @@ class SmartClientMediumTests(tests.TestCase):
             'import sys\n'
             'sys.stdout.write(sys.stdin.read(4))\n'
             'sys.stdout.close()\n'],
-            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
         client_medium = medium.SmartSimplePipesClientMedium(
             p.stdout, p.stdin, 'base')
         client_medium._accept_bytes(b'abc\n')
@@ -309,7 +309,7 @@ class SmartClientMediumTests(tests.TestCase):
             'import sys\n'
             'sys.stdout.write(sys.stdin.read(4))\n'
             'sys.stdout.close()\n'],
-            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
         client_medium = medium.SmartSimplePipesClientMedium(
             p.stdout, p.stdin, 'base')
         client_medium._accept_bytes(b'abc\n')
@@ -335,7 +335,7 @@ class SmartClientMediumTests(tests.TestCase):
             '    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)\n'
             'sys.stdout.write(sys.stdin.read(4))\n'
             'sys.stdout.close()\n'],
-            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
         client_medium = medium.SmartSimplePipesClientMedium(
             p.stdout, p.stdin, 'base')
         client_medium._accept_bytes(b'abc\n')

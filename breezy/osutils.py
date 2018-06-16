@@ -2111,10 +2111,10 @@ def recv_all(socket, count):
 
     This isn't optimized and is intended mostly for use in testing.
     """
-    b = ''
+    b = b''
     while len(b) < count:
         new = read_bytes_from_socket(socket, None, count - len(b))
-        if new == '':
+        if new == b'':
             break # eof
         b += new
     return b

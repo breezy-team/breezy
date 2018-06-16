@@ -242,7 +242,7 @@ class TestImport(TestCaseInTempDir):
                 importer(tree, archive_file)
             self.assertTrue(tree.is_versioned('README'))
             # Ensure the second version of the file is used.
-            self.assertEqual(tree.get_file_text('README'), 'Wow?')
+            self.assertEqual(tree.get_file_text('README'), b'Wow?')
             self.assertTrue(not os.path.exists(tree.abspath('FEEDME')))
         finally:
             tree.unlock()

@@ -102,13 +102,13 @@ class TestCommit(TestCaseWithTransport):
         tree1.lock_read()
         text = tree1.get_file_text('hello')
         tree1.unlock()
-        self.assertEqual('hello world', text)
+        self.assertEqual(b'hello world', text)
 
         tree2 = b.repository.revision_tree(rev2)
         tree2.lock_read()
         text = tree2.get_file_text('hello')
         tree2.unlock()
-        self.assertEqual('version 2', text)
+        self.assertEqual(b'version 2', text)
 
     def test_commit_lossy_native(self):
         """Attempt a lossy commit to a native branch."""
@@ -242,14 +242,14 @@ class TestCommit(TestCaseWithTransport):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         self.assertTrue(tree2.has_filename('hello'))
-        self.assertEqual(tree2.get_file_text('hello'), 'hello')
-        self.assertEqual(tree2.get_file_text('buongia'), 'new text')
+        self.assertEqual(tree2.get_file_text('hello'), b'hello')
+        self.assertEqual(tree2.get_file_text('buongia'), b'new text')
 
         tree3 = b.repository.revision_tree(b'test@rev-3')
         tree3.lock_read()
         self.addCleanup(tree3.unlock)
         self.assertFalse(tree3.has_filename('hello'))
-        self.assertEqual(tree3.get_file_text('buongia'), 'new text')
+        self.assertEqual(tree3.get_file_text('buongia'), b'new text')
 
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
@@ -266,8 +266,8 @@ class TestCommit(TestCaseWithTransport):
         tree1 = b.repository.revision_tree(b'test@rev-1')
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
-        eq(tree1.id2path(b'hello-id'), 'hello')
-        eq(tree1.get_file_text('hello'), 'contents of hello\n')
+        eq(tree1.id2path(b'hello-id'), b'hello')
+        eq(tree1.get_file_text('hello'), b'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
         self.check_tree_shape(tree1, ['hello'])
         eq(tree1.get_file_revision('hello'), b'test@rev-1')
@@ -276,7 +276,7 @@ class TestCommit(TestCaseWithTransport):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         eq(tree2.id2path(b'hello-id'), 'fruity')
-        eq(tree2.get_file_text('fruity'), 'contents of hello\n')
+        eq(tree2.get_file_text('fruity'), b'contents of hello\n')
         self.check_tree_shape(tree2, ['fruity'])
         eq(tree2.get_file_revision('fruity'), b'test@rev-2')
 

@@ -458,13 +458,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         else:
             # If not exception is raised, then the text should be
             # available.
-            to_repo.lock_read()
-            try:
+            with to_repo.lock_read():
                 rt = to_repo.revision_tree(b'rev-two')
                 self.assertEqual(b'new contents\n',
                                  rt.get_file_text('a'))
-            finally:
-                to_repo.unlock()
 
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')

@@ -54,15 +54,6 @@ SYSTEM_HOSTKEYS = {}
 BRZ_HOSTKEYS = {}
 
 
-_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
-
-# Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
-# to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
-# so we get an AttributeError exception. So we will not try to
-# connect to an agent if we are on win32 and using Paramiko older than 1.6
-_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
-
-
 class SSHVendorManager(object):
     """Manager for manage SSH vendors."""
 
@@ -114,6 +105,7 @@ class SSHVendorManager(object):
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
+                                 bufsize=0,
                                  **os_specific_subprocess_params())
             stdout, stderr = p.communicate()
         except OSError:
@@ -386,6 +378,7 @@ class SubprocessVendor(SSHVendor):
             stdin = stdout = subproc_sock
         proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
                                 stderr=self._stderr_target,
+                                bufsize=0,
                                 **os_specific_subprocess_params())
         if subproc_sock is not None:
             subproc_sock.close()

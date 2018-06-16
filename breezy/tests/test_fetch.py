@@ -245,10 +245,10 @@ class TestMergeFileHistory(TestCaseWithTransport):
         wt2 = WorkingTree.open('br2').merge_from_branch(br1)
         br2.lock_read()
         self.addCleanup(br2.unlock)
-        for rev_id, text in [('1-2', 'original from 1\n'),
-                             ('1-3', 'agreement\n'),
-                             ('2-1', 'contents in 2\n'),
-                             ('2-2', 'agreement\n')]:
+        for rev_id, text in [(b'1-2', b'original from 1\n'),
+                             (b'1-3', b'agreement\n'),
+                             (b'2-1', b'contents in 2\n'),
+                             (b'2-2', b'agreement\n')]:
             self.assertEqualDiff(
                 br2.repository.revision_tree(
                     rev_id).get_file_text('file'), text)

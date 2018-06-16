@@ -426,17 +426,17 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
         except errors.NoSuchRevision:
             return FailedSmartServerResponse((b'nosuchrevision', revid))
 
-        body = ''
+        body = b''
         if 'committers' in stats:
-            body += 'committers: %d\n' % stats['committers']
+            body += b'committers: %d\n' % stats['committers']
         if 'firstrev' in stats:
-            body += 'firstrev: %.3f %d\n' % stats['firstrev']
+            body += b'firstrev: %.3f %d\n' % stats['firstrev']
         if 'latestrev' in stats:
-             body += 'latestrev: %.3f %d\n' % stats['latestrev']
+             body += b'latestrev: %.3f %d\n' % stats['latestrev']
         if 'revisions' in stats:
-            body += 'revisions: %d\n' % stats['revisions']
+            body += b'revisions: %d\n' % stats['revisions']
         if 'size' in stats:
-            body += 'size: %d\n' % stats['size']
+            body += b'size: %d\n' % stats['size']
 
         return SuccessfulSmartServerResponse((b'ok', ), body)
 
