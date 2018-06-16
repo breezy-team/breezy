@@ -1523,7 +1523,7 @@ class LogFormatter(object):
                 rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
-        if not ":" in rev.revision_id:
+        if not b":" in rev.revision_id:
             return []
 
         # Revision was once imported from a foreign repository

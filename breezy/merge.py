@@ -51,6 +51,7 @@ from . import (
     registry,
     )
 from .sixish import (
+    text_type,
     viewitems,
     )
 # TODO: Report back as changes are merged in
@@ -841,7 +842,7 @@ class Merge3Merger(object):
                 self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
-            trace.warning(unicode(conflict))
+            trace.warning(text_type(conflict))
 
     def _entries3(self):
         """Gather data about files modified between three trees.

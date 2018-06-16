@@ -59,6 +59,7 @@ from ...revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
+from ...sixish import text_type
 
 from .mapping import (
     mode_is_executable,
@@ -1034,9 +1035,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
-        if type(name) is not unicode:
+        if not isinstance(name, text_type):
             raise TypeError(name)
-        if type(path) is not unicode:
+        if not isinstance(path, text_type):
             raise TypeError(path)
         if not isinstance(value, tuple) or len(value) != 10:
             raise TypeError(value)

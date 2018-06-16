@@ -149,14 +149,14 @@ class TestFetch(TestCaseWithTransport):
         Convert(tree.basedir, knit2_format)
         tree = WorkingTree.open(tree.basedir)
         branch = self.make_branch('branch', format=knit2_format)
-        branch.pull(tree.branch, stop_revision='rev1')
+        branch.pull(tree.branch, stop_revision=b'rev1')
         repo = branch.repository
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({('tree-root', 'rev1'):()},
+            self.assertEqual({(b'tree-root', b'rev1'):()},
                 repo.texts.get_parent_map(
-                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+                    [(b'tree-root', b'rev1'), (b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
         branch.pull(tree.branch)
@@ -165,8 +165,8 @@ class TestFetch(TestCaseWithTransport):
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
-                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+            self.assertEqual({(b'tree-root', b'rev2'):((b'tree-root', b'rev1'),)},
+                repo.texts.get_parent_map([(b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
 

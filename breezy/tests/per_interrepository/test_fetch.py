@@ -152,10 +152,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         builder = self.make_branch_builder('full-branch')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'first')
-        builder.build_snapshot(['first'], [
+        builder.build_snapshot([b'first'], [
             ('modify', ('file', b'second content\n'))],
             revision_id=b'second')
         builder.build_snapshot([b'second'], [
@@ -165,16 +165,16 @@ class TestInterRepository(TestCaseWithInterRepository):
         branch = builder.get_branch()
         repo = self.make_repository('stacking-base')
         trunk = repo.controldir.create_branch()
-        trunk.repository.fetch(branch.repository, 'second')
+        trunk.repository.fetch(branch.repository, b'second')
         repo = self.make_repository('stacked')
         stacked_branch = repo.controldir.create_branch()
         stacked_branch.set_stacked_on_url(trunk.base)
-        stacked_branch.repository.fetch(branch.repository, 'third')
+        stacked_branch.repository.fetch(branch.repository, b'third')
         target = self.make_to_repository('target')
-        target.fetch(stacked_branch.repository, 'third')
+        target.fetch(stacked_branch.repository, b'third')
         target.lock_read()
         self.addCleanup(target.unlock)
-        all_revs = {'first', 'second', 'third'}
+        all_revs = {b'first', b'second', b'third'}
         self.assertEqual(all_revs, set(target.get_parent_map(all_revs)))
 
     def test_fetch_parent_inventories_at_stacking_boundary_smart(self):

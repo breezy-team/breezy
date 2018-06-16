@@ -2123,7 +2123,7 @@ class GenericInterBranch(InterBranch):
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
-                mutter('parent was not accessible to copy: %s', e)
+                mutter('parent was not accessible to copy: %s', str(e))
             else:
                 if parent:
                     self.target.set_parent(parent)

@@ -51,6 +51,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from ..trace import mutter
 from . import (
@@ -153,7 +154,7 @@ class GioTransport(ConnectedTransport):
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
-        if isinstance(full_url, unicode):
+        if isinstance(full_url, text_type):
             raise urlutils.InvalidURL(full_url)
         return full_url
 

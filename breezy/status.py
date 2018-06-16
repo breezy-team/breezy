@@ -27,6 +27,7 @@ from . import (
     revision as _mod_revision,
     )
 from . import errors as errors
+from .sixish import text_type
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
 
@@ -195,7 +196,7 @@ def show_tree_status(wt,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, unicode(conflict)))
+                to_file.write("%s %s\n" % (prefix, text_type(conflict)))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status

@@ -199,8 +199,8 @@ class TestPackRepository(TestCaseWithTransport):
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # insert some files in obsolete_packs which should be removed by pack.
-        trans.put_bytes('obsolete_packs/foo', '123')
-        trans.put_bytes('obsolete_packs/bar', '321')
+        trans.put_bytes('obsolete_packs/foo', b'123')
+        trans.put_bytes('obsolete_packs/bar', b'321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = self.index_class(trans, 'pack-names', None)
@@ -275,7 +275,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))
         # these files are in use by another client and typically can't be deleted
-        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
+        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', b'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
 

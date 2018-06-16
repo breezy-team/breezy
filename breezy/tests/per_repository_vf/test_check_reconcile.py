@@ -99,10 +99,10 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev1a', )
+        return (b'rev1a', )
 
     def populated_parents(self):
-        return (((), 'rev1a'), )
+        return (((), b'rev1a'), )
 
     def corrected_parents(self):
         # Same as the populated parents, because there was nothing wrong.
@@ -114,22 +114,22 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
         inv = self.make_one_file_inventory(
-            repo, 'rev1a', [], root_revision='rev1a')
-        self.add_revision(repo, 'rev1a', inv, [])
+            repo, b'rev1a', [], root_revision=b'rev1a')
+        self.add_revision(repo, b'rev1a', inv, [])
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'rev1a'): True})
-        result.update({('a-file-id', 'rev1a'): True})
+            result.update({(b'TREE_ROOT', b'rev1a'): True})
+        result.update({(b'a-file-id', b'rev1a'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'rev1a'):[NULL_REVISION]}
+        return {(b'a-file-id', b'rev1a'):[NULL_REVISION]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'rev1a'):[NULL_REVISION]}
+        return {(b'TREE_ROOT', b'rev1a'):[NULL_REVISION]}
 
 
 class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
@@ -164,39 +164,39 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
         inv = self.make_one_file_inventory(
-            repo, 'rev1a', [], root_revision='rev1a')
-        self.add_revision(repo, 'rev1a', inv, [])
+            repo, b'rev1a', [], root_revision=b'rev1a')
+        self.add_revision(repo, b'rev1a', inv, [])
 
         # make rev1b, which has no Revision, but has an Inventory, and
         # a-file
         inv = self.make_one_file_inventory(
-            repo, 'rev1b', [], root_revision='rev1b')
-        repo.add_inventory('rev1b', inv, [])
+            repo, b'rev1b', [], root_revision=b'rev1b')
+        repo.add_inventory(b'rev1b', inv, [])
 
         # make rev2, with a-file.
         # a-file has 'rev1b' as an ancestor, even though this is not
         # mentioned by 'rev1a', making it an unreferenced ancestor
         inv = self.make_one_file_inventory(
-            repo, 'rev2', ['rev1a', 'rev1b'])
-        self.add_revision(repo, 'rev2', inv, ['rev1a'])
+            repo, b'rev2', [b'rev1a', b'rev1b'])
+        self.add_revision(repo, b'rev2', inv, [b'rev1a'])
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'rev1a'): True,
-                           ('TREE_ROOT', 'rev2'): True})
-        result.update({('a-file-id', 'rev1a'): True,
-                       ('a-file-id', 'rev2'): True})
+            result.update({(b'TREE_ROOT', b'rev1a'): True,
+                           (b'TREE_ROOT', b'rev2'): True})
+        result.update({(b'a-file-id', b'rev1a'): True,
+                       (b'a-file-id', b'rev2'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'rev1a'):[NULL_REVISION],
-                ('a-file-id', 'rev2'):[('a-file-id', 'rev1a')]}
+        return {(b'a-file-id', b'rev1a'):[NULL_REVISION],
+                (b'a-file-id', b'rev2'):[(b'a-file-id', b'rev1a')]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'rev1a'):[NULL_REVISION],
-                ('TREE_ROOT', 'rev2'):[('TREE_ROOT', 'rev1a')]}
+        return {(b'TREE_ROOT', b'rev1a'):[NULL_REVISION],
+                (b'TREE_ROOT', b'rev2'):[(b'TREE_ROOT', b'rev1a')]}
 
 
 class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
@@ -327,15 +327,15 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
         inv = self.make_one_file_inventory(
-            repo, 'rev1a', [], root_revision='rev1a')
-        self.add_revision(repo, 'rev1a', inv, [])
+            repo, b'rev1a', [], root_revision=b'rev1a')
+        self.add_revision(repo, b'rev1a', inv, [])
 
         # make rev2, with a-file.
         # a-file is unmodified from rev1a, and an unreferenced rev2 file
         # version is present in the repository.
         self.make_one_file_inventory(
-            repo, 'rev2', ['rev1a'], inv_revision='rev1a')
-        self.add_revision(repo, 'rev2', inv, ['rev1a'])
+            repo, b'rev2', [b'rev1a'], inv_revision=b'rev1a')
+        self.add_revision(repo, b'rev2', inv, [b'rev1a'])
 
         # make rev3 with a-file
         # a-file has 'rev2' as its ancestor, but the revision in 'rev2' was
@@ -344,8 +344,8 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # ghost, so only the details from rev1a are available for
         # determining whether a delta is acceptable, or a full is needed,
         # and what the correct parents are.
-        inv = self.make_one_file_inventory(repo, 'rev3', ['rev2'])
-        self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
+        inv = self.make_one_file_inventory(repo, b'rev3', [b'rev2'])
+        self.add_revision(repo, b'rev3', inv, [b'rev1c', b'rev1a'])
 
         # In rev2b, the true last-modifying-revision of a-file is rev1a,
         # inherited from rev2, but there is a version rev2b of the file, which
@@ -354,8 +354,8 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # a-file-rev2b.
         # ??? This is to test deduplication in fixing rev4
         inv = self.make_one_file_inventory(
-            repo, 'rev2b', ['rev1a'], inv_revision='rev1a')
-        self.add_revision(repo, 'rev2b', inv, ['rev1a'])
+            repo, b'rev2b', [b'rev1a'], inv_revision=b'rev1a')
+        self.add_revision(repo, b'rev2b', inv, [b'rev1a'])
 
         # rev4 is for testing that when the last modified of a file in
         # multiple parent revisions is the same, that it only appears once
@@ -365,13 +365,13 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # a-file, and is a merge of rev2 and rev2b, so it should end up with
         # a parent of just rev1a - the starting file parents list is simply
         # completely wrong.
-        inv = self.make_one_file_inventory(repo, 'rev4', ['rev2'])
-        self.add_revision(repo, 'rev4', inv, ['rev2', 'rev2b'])
+        inv = self.make_one_file_inventory(repo, b'rev4', [b'rev2'])
+        self.add_revision(repo, b'rev4', inv, [b'rev2', b'rev2b'])
 
         # rev2c changes a-file from rev1a, so the version it of a-file it
         # introduces is a head revision when rev5 is checked.
-        inv = self.make_one_file_inventory(repo, 'rev2c', ['rev1a'])
-        self.add_revision(repo, 'rev2c', inv, ['rev1a'])
+        inv = self.make_one_file_inventory(repo, b'rev2c', [b'rev1a'])
+        self.add_revision(repo, b'rev2c', inv, [b'rev1a'])
 
         # rev5 descends from rev2 and rev2c; as rev2 does not alter a-file,
         # but rev2c does, this should use rev2c as the parent for the per
@@ -379,44 +379,44 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # available, because we use the heads of the revision parents for
         # the inventory modification revisions of the file to determine the
         # parents for the per file graph.
-        inv = self.make_one_file_inventory(repo, 'rev5', ['rev2', 'rev2c'])
-        self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
+        inv = self.make_one_file_inventory(repo, b'rev5', [b'rev2', b'rev2c'])
+        self.add_revision(repo, b'rev5', inv, [b'rev2', b'rev2c'])
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'rev1a'): True,
-                           ('TREE_ROOT', 'rev2'): True,
-                           ('TREE_ROOT', 'rev2b'): True,
-                           ('TREE_ROOT', 'rev2c'): True,
-                           ('TREE_ROOT', 'rev3'): True,
-                           ('TREE_ROOT', 'rev4'): True,
-                           ('TREE_ROOT', 'rev5'): True})
-        result.update({('a-file-id', 'rev1a'): True,
-                       ('a-file-id', 'rev2c'): True,
-                       ('a-file-id', 'rev3'): True,
-                       ('a-file-id', 'rev4'): True,
-                       ('a-file-id', 'rev5'): True})
+            result.update({(b'TREE_ROOT', b'rev1a'): True,
+                           (b'TREE_ROOT', b'rev2'): True,
+                           (b'TREE_ROOT', b'rev2b'): True,
+                           (b'TREE_ROOT', b'rev2c'): True,
+                           (b'TREE_ROOT', b'rev3'): True,
+                           (b'TREE_ROOT', b'rev4'): True,
+                           (b'TREE_ROOT', b'rev5'): True})
+        result.update({(b'a-file-id', b'rev1a'): True,
+                       (b'a-file-id', b'rev2c'): True,
+                       (b'a-file-id', b'rev3'): True,
+                       (b'a-file-id', b'rev4'): True,
+                       (b'a-file-id', b'rev5'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'rev1a'): [NULL_REVISION],
-                 ('a-file-id', 'rev2c'): [('a-file-id', 'rev1a')],
-                 ('a-file-id', 'rev3'): [('a-file-id', 'rev1a')],
-                 ('a-file-id', 'rev4'): [('a-file-id', 'rev1a')],
-                 ('a-file-id', 'rev5'): [('a-file-id', 'rev2c')]}
+        return {(b'a-file-id', b'rev1a'): [NULL_REVISION],
+                 (b'a-file-id', b'rev2c'): [(b'a-file-id', b'rev1a')],
+                 (b'a-file-id', b'rev3'): [(b'a-file-id', b'rev1a')],
+                 (b'a-file-id', b'rev4'): [(b'a-file-id', b'rev1a')],
+                 (b'a-file-id', b'rev5'): [(b'a-file-id', b'rev2c')]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'rev1a'): [NULL_REVISION],
-                ('TREE_ROOT', 'rev2'): [('TREE_ROOT', 'rev1a')],
-                ('TREE_ROOT', 'rev2b'): [('TREE_ROOT', 'rev1a')],
-                ('TREE_ROOT', 'rev2c'): [('TREE_ROOT', 'rev1a')],
-                ('TREE_ROOT', 'rev3'): [('TREE_ROOT', 'rev1a')],
-                ('TREE_ROOT', 'rev4'):
-                    [('TREE_ROOT', 'rev2'), ('TREE_ROOT', 'rev2b')],
-                ('TREE_ROOT', 'rev5'):
-                    [('TREE_ROOT', 'rev2'), ('TREE_ROOT', 'rev2c')]}
+        return {(b'TREE_ROOT', bb'rev1a'): [NULL_REVISION],
+                (b'TREE_ROOT', 'rev2'): [(b'TREE_ROOT', b'rev1a')],
+                (b'TREE_ROOT', b'rev2b'): [(b'TREE_ROOT', b'rev1a')],
+                (b'TREE_ROOT', b'rev2c'): [(b'TREE_ROOT', b'rev1a')],
+                (b'TREE_ROOT', b'rev3'): [(b'TREE_ROOT', b'rev1a')],
+                (b'TREE_ROOT', b'rev4'):
+                    [(b'TREE_ROOT', b'rev2'), (b'TREE_ROOT', b'rev2b')],
+                (b'TREE_ROOT', b'rev5'):
+                    [(b'TREE_ROOT', b'rev2'), (b'TREE_ROOT', b'rev2c')]}
 
 
 class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
@@ -427,28 +427,28 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev1a', 'rev1b', 'rev2', 'rev4')
+        return (b'rev1a', b'rev1b', b'rev2', b'rev4')
 
     def populated_parents(self):
         return (
-            ((), 'rev1a'),
-            ((), 'rev1b'),
-            (('rev1a', 'rev1b'), 'rev2'),
-            (None, 'rev3'),
-            (('rev2',), 'rev4'),
+            ((), b'rev1a'),
+            ((), b'rev1b'),
+            ((b'rev1a', b'rev1b'), b'rev2'),
+            (None, b'rev3'),
+            ((b'rev2',), b'rev4'),
             )
 
     def corrected_parents(self):
         return (
-            ((), 'rev1a'),
-            ((), 'rev1b'),
-            ((), 'rev2'),
-            (None, 'rev3'),
-            (('rev2',), 'rev4'),
+            ((), b'rev1a'),
+            ((), b'rev1b'),
+            ((), b'rev2'),
+            (None, b'rev3'),
+            ((b'rev2',), b'rev4'),
             )
 
     def corrected_fulltexts(self):
-        return ['rev2']
+        return [b'rev2']
 
     def check_regexes(self, repo):
         return []
@@ -456,25 +456,25 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
         inv1a = self.make_one_file_inventory(
-            repo, 'rev1a', [], root_revision='rev1a')
-        self.add_revision(repo, 'rev1a', inv1a, [])
+            repo, b'rev1a', [], root_revision=b'rev1a')
+        self.add_revision(repo, b'rev1a', inv1a, [])
 
         # make rev1b: A well-formed revision, containing 'a-file'
         # rev1b of a-file has the exact same contents as rev1a.
-        file_contents = repo.texts.get_record_stream([('a-file-id', 'rev1a')],
+        file_contents = repo.texts.get_record_stream([(b'a-file-id', b'rev1a')],
             "unordered", False).next().get_bytes_as('fulltext')
         inv = self.make_one_file_inventory(
-            repo, 'rev1b', [], root_revision='rev1b',
+            repo, b'rev1b', [], root_revision=b'rev1b',
             file_contents=file_contents)
-        self.add_revision(repo, 'rev1b', inv, [])
+        self.add_revision(repo, b'rev1b', inv, [])
 
         # make rev2, a merge of rev1a and rev1b, with a-file.
         # a-file is unmodified from rev1a and rev1b, but a new version is
         # wrongly present anyway.
         inv = self.make_one_file_inventory(
-            repo, 'rev2', ['rev1a', 'rev1b'], inv_revision='rev1a',
+            repo, b'rev2', [b'rev1a', b'rev1b'], inv_revision=b'rev1a',
             file_contents=file_contents)
-        self.add_revision(repo, 'rev2', inv, ['rev1a', 'rev1b'])
+        self.add_revision(repo, b'rev2', inv, [b'rev1a', b'rev1b'])
 
         # rev3: a-file unchanged from rev2, but wrongly referencing rev2 of the
         # file in its inventory.

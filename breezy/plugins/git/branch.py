@@ -44,6 +44,7 @@ from ... import (
 from ...revision import (
     NULL_REVISION,
     )
+from ...sixish import text_type
 from ...trace import (
     is_quiet,
     mutter,
@@ -263,7 +264,7 @@ class LocalGitTagDict(GitTags):
 class GitBranchFormat(branch.BranchFormat):
 
     def network_name(self):
-        return "git"
+        return b"git"
 
     def supports_tags(self):
         return True
@@ -695,7 +696,7 @@ class LocalGitBranch(GitBranch):
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
                 peeled = unpeeled
-            if type(tag_name) is not unicode:
+            if not isinstance(tag_name, text_type):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 
