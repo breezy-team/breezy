@@ -2084,21 +2084,21 @@ def read_bytes_from_socket(sock, report_activity=None,
     """
     while True:
         try:
-            bytes = sock.recv(max_read_size)
+            data = sock.recv(max_read_size)
         except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
-                return ""
+                return b""
             elif eno == errno.EINTR:
                 # Retry the interrupted recv.
                 continue
             raise
         else:
             if report_activity is not None:
-                report_activity(len(bytes), 'read')
-            return bytes
+                report_activity(len(data), 'read')
+            return data
 
 
 def recv_all(socket, count):
