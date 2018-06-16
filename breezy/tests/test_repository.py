@@ -242,8 +242,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty revision-store directory
         # empty weaves directory
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
@@ -251,8 +252,8 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Check per-file knits.
         branch = control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], ['Nasty-IdC:'], ['file'])
-        tree.put_file_bytes_non_atomic('foo', '')
+        tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
+        tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             '\nfoo fulltext 0 81  :')

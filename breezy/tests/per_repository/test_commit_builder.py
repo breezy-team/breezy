@@ -556,7 +556,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         def change_file():
-            tree.put_file_bytes_non_atomic('file', 'new content')
+            tree.put_file_bytes_non_atomic('file', b'new content')
         self._add_commit_change_check_changed(tree, ('file', 'file'), change_file,
             expect_fs_hash=True)
 

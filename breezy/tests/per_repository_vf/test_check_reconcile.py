@@ -408,8 +408,8 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
                  (b'a-file-id', b'rev5'): [(b'a-file-id', b'rev2c')]}
 
     def versioned_repository_text_keys(self):
-        return {(b'TREE_ROOT', bb'rev1a'): [NULL_REVISION],
-                (b'TREE_ROOT', 'rev2'): [(b'TREE_ROOT', b'rev1a')],
+        return {(b'TREE_ROOT', b'rev1a'): [NULL_REVISION],
+                (b'TREE_ROOT', b'rev2'): [(b'TREE_ROOT', b'rev1a')],
                 (b'TREE_ROOT', b'rev2b'): [(b'TREE_ROOT', b'rev1a')],
                 (b'TREE_ROOT', b'rev2c'): [(b'TREE_ROOT', b'rev1a')],
                 (b'TREE_ROOT', b'rev3'): [(b'TREE_ROOT', b'rev1a')],
@@ -461,8 +461,9 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
 
         # make rev1b: A well-formed revision, containing 'a-file'
         # rev1b of a-file has the exact same contents as rev1a.
-        file_contents = repo.texts.get_record_stream([(b'a-file-id', b'rev1a')],
-            "unordered", False).next().get_bytes_as('fulltext')
+        file_contents = next(
+                repo.texts.get_record_stream([(b'a-file-id', b'rev1a')],
+                    "unordered", False)).get_bytes_as('fulltext')
         inv = self.make_one_file_inventory(
             repo, b'rev1b', [], root_revision=b'rev1b',
             file_contents=file_contents)
@@ -479,42 +480,42 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
         # rev3: a-file unchanged from rev2, but wrongly referencing rev2 of the
         # file in its inventory.
         inv = self.make_one_file_inventory(
-            repo, 'rev3', ['rev2'], inv_revision='rev2',
+            repo, b'rev3', [b'rev2'], inv_revision=b'rev2',
             file_contents=file_contents, make_file_version=False)
-        self.add_revision(repo, 'rev3', inv, ['rev2'])
+        self.add_revision(repo, b'rev3', inv, [b'rev2'])
 
         # rev4: a modification of a-file on top of rev3.
-        inv = self.make_one_file_inventory(repo, 'rev4', ['rev2'])
-        self.add_revision(repo, 'rev4', inv, ['rev3'])
+        inv = self.make_one_file_inventory(repo, b'rev4', [b'rev2'])
+        self.add_revision(repo, b'rev4', inv, [b'rev3'])
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'rev1a'): True,
-                           ('TREE_ROOT', 'rev1b'): True,
-                           ('TREE_ROOT', 'rev2'): True,
-                           ('TREE_ROOT', 'rev3'): True,
-                           ('TREE_ROOT', 'rev4'): True})
-        result.update({('a-file-id', 'rev1a'): True,
-                       ('a-file-id', 'rev1b'): True,
-                       ('a-file-id', 'rev2'): False,
-                       ('a-file-id', 'rev4'): True})
+            result.update({(b'TREE_ROOT', b'rev1a'): True,
+                           (b'TREE_ROOT', b'rev1b'): True,
+                           (b'TREE_ROOT', b'rev2'): True,
+                           (b'TREE_ROOT', b'rev3'): True,
+                           (b'TREE_ROOT', b'rev4'): True})
+        result.update({(b'a-file-id', b'rev1a'): True,
+                       (b'a-file-id', b'rev1b'): True,
+                       (b'a-file-id', b'rev2'): False,
+                       (b'a-file-id', b'rev4'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'rev1a'): [NULL_REVISION],
-                ('a-file-id', 'rev1b'): [NULL_REVISION],
-                ('a-file-id', 'rev2'): [NULL_REVISION],
-                ('a-file-id', 'rev4'): [('a-file-id', 'rev2')]}
+        return {(b'a-file-id', b'rev1a'): [NULL_REVISION],
+                (b'a-file-id', b'rev1b'): [NULL_REVISION],
+                (b'a-file-id', b'rev2'): [NULL_REVISION],
+                (b'a-file-id', b'rev4'): [(b'a-file-id', b'rev2')]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'rev1a'): [NULL_REVISION],
-                ('TREE_ROOT', 'rev1b'): [NULL_REVISION],
-                ('TREE_ROOT', 'rev2'):
-                    [('TREE_ROOT', 'rev1a'), ('TREE_ROOT', 'rev1b')],
-                ('TREE_ROOT', 'rev3'): [('TREE_ROOT', 'rev2')],
-                ('TREE_ROOT', 'rev4'): [('TREE_ROOT', 'rev3')]}
+        return {(b'TREE_ROOT', b'rev1a'): [NULL_REVISION],
+                (b'TREE_ROOT', b'rev1b'): [NULL_REVISION],
+                (b'TREE_ROOT', b'rev2'):
+                    [(b'TREE_ROOT', b'rev1a'), (b'TREE_ROOT', b'rev1b')],
+                (b'TREE_ROOT', b'rev3'): [(b'TREE_ROOT', b'rev2')],
+                (b'TREE_ROOT', b'rev4'): [(b'TREE_ROOT', b'rev3')]}
 
 
 class TooManyParentsScenario(BrokenRepoScenario):
@@ -525,19 +526,19 @@ class TooManyParentsScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('bad-parent', 'good-parent', 'broken-revision')
+        return (b'bad-parent', b'good-parent', b'broken-revision')
 
     def populated_parents(self):
         return (
-            ((), 'bad-parent'),
-            (('bad-parent',), 'good-parent'),
-            (('good-parent', 'bad-parent'), 'broken-revision'))
+            ((), b'bad-parent'),
+            ((b'bad-parent',), b'good-parent'),
+            ((b'good-parent', b'bad-parent'), b'broken-revision'))
 
     def corrected_parents(self):
         return (
-            ((), 'bad-parent'),
-            (('bad-parent',), 'good-parent'),
-            (('good-parent',), 'broken-revision'))
+            ((), b'bad-parent'),
+            ((b'bad-parent',), b'good-parent'),
+            ((b'good-parent',), b'broken-revision'))
 
     def check_regexes(self, repo):
         if repo.supports_rich_root():
@@ -554,40 +555,40 @@ class TooManyParentsScenario(BrokenRepoScenario):
 
     def populate_repository(self, repo):
         inv = self.make_one_file_inventory(
-            repo, 'bad-parent', (), root_revision='bad-parent')
-        self.add_revision(repo, 'bad-parent', inv, ())
+            repo, b'bad-parent', (), root_revision=b'bad-parent')
+        self.add_revision(repo, b'bad-parent', inv, ())
 
         inv = self.make_one_file_inventory(
-            repo, 'good-parent', ('bad-parent',))
-        self.add_revision(repo, 'good-parent', inv, ('bad-parent',))
+            repo, b'good-parent', (b'bad-parent',))
+        self.add_revision(repo, b'good-parent', inv, (b'bad-parent',))
 
         inv = self.make_one_file_inventory(
-            repo, 'broken-revision', ('good-parent', 'bad-parent'))
-        self.add_revision(repo, 'broken-revision', inv, ('good-parent',))
+            repo, b'broken-revision', (b'good-parent', b'bad-parent'))
+        self.add_revision(repo, b'broken-revision', inv, (b'good-parent',))
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'bad-parent'): True,
-                           ('TREE_ROOT', 'broken-revision'): True,
-                           ('TREE_ROOT', 'good-parent'): True})
-        result.update({('a-file-id', 'bad-parent'): True,
-                       ('a-file-id', 'broken-revision'): True,
-                       ('a-file-id', 'good-parent'): True})
+            result.update({(b'TREE_ROOT', b'bad-parent'): True,
+                           (b'TREE_ROOT', b'broken-revision'): True,
+                           (b'TREE_ROOT', b'good-parent'): True})
+        result.update({(b'a-file-id', b'bad-parent'): True,
+                       (b'a-file-id', b'broken-revision'): True,
+                       (b'a-file-id', b'good-parent'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'bad-parent'): [NULL_REVISION],
-                ('a-file-id', 'broken-revision'):
-                    [('a-file-id', 'good-parent')],
-                ('a-file-id', 'good-parent'): [('a-file-id', 'bad-parent')]}
+        return {(b'a-file-id', b'bad-parent'): [NULL_REVISION],
+                (b'a-file-id', b'broken-revision'):
+                    [(b'a-file-id', b'good-parent')],
+                (b'a-file-id', b'good-parent'): [('a-file-id', 'bad-parent')]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'bad-parent'): [NULL_REVISION],
-                ('TREE_ROOT', 'broken-revision'):
-                    [('TREE_ROOT', 'good-parent')],
-                ('TREE_ROOT', 'good-parent'): [('TREE_ROOT', 'bad-parent')]}
+        return {(b'TREE_ROOT', b'bad-parent'): [NULL_REVISION],
+                (b'TREE_ROOT', b'broken-revision'):
+                    [(b'TREE_ROOT', 'good-parent')],
+                (b'TREE_ROOT', b'good-parent'): [(b'TREE_ROOT', b'bad-parent')]}
 
 
 class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
@@ -601,19 +602,19 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('basis', 'current')
+        return (b'basis', b'current')
 
     def populated_parents(self):
         return (
-            ((), 'basis'),
-            (('basis',), 'modified-something-else'),
-            (('modified-something-else',), 'current'))
+            ((), b'basis'),
+            ((b'basis',), b'modified-something-else'),
+            ((b'modified-something-else',), b'current'))
 
     def corrected_parents(self):
         return (
-            ((), 'basis'),
-            (None, 'modified-something-else'),
-            (('basis',), 'current'))
+            ((), b'basis'),
+            (None, b'modified-something-else'),
+            ((b'basis',), b'current'))
 
     def check_regexes(self, repo):
         if repo.supports_rich_root():
@@ -629,44 +630,44 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
             )
 
     def populate_repository(self, repo):
-        inv = self.make_one_file_inventory(repo, 'basis', ())
-        self.add_revision(repo, 'basis', inv, ())
+        inv = self.make_one_file_inventory(repo, b'basis', ())
+        self.add_revision(repo, b'basis', inv, ())
 
         # 'modified-something-else' is a correctly recorded revision, but it
         # does not modify the file we are looking at, so the inventory for that
         # file in this revision points to 'basis'.
         inv = self.make_one_file_inventory(
-            repo, 'modified-something-else', ('basis',), inv_revision='basis')
-        self.add_revision(repo, 'modified-something-else', inv, ('basis',))
+            repo, b'modified-something-else', (b'basis',), inv_revision=b'basis')
+        self.add_revision(repo, b'modified-something-else', inv, (b'basis',))
 
         # The 'current' revision has 'modified-something-else' as its parent,
         # but the 'current' version of 'a-file' should have 'basis' as its
         # parent.
         inv = self.make_one_file_inventory(
-            repo, 'current', ('modified-something-else',))
-        self.add_revision(repo, 'current', inv, ('modified-something-else',))
+            repo, b'current', (b'modified-something-else',))
+        self.add_revision(repo, b'current', inv, (b'modified-something-else',))
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'basis'): True,
-                           ('TREE_ROOT', 'current'): True,
-                           ('TREE_ROOT', 'modified-something-else'): True})
-        result.update({('a-file-id', 'basis'): True,
-                       ('a-file-id', 'current'): True})
+            result.update({(b'TREE_ROOT', b'basis'): True,
+                           (b'TREE_ROOT', b'current'): True,
+                           (b'TREE_ROOT', b'modified-something-else'): True})
+        result.update({(b'a-file-id', b'basis'): True,
+                       (b'a-file-id', b'current'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'basis'): [NULL_REVISION],
-                ('a-file-id', 'current'): [('a-file-id', 'basis')]}
+        return {(b'a-file-id', b'basis'): [NULL_REVISION],
+                (b'a-file-id', b'current'): [(b'a-file-id', b'basis')]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'basis'): ['null:'],
-                ('TREE_ROOT', 'current'):
-                    [('TREE_ROOT', 'modified-something-else')],
-                ('TREE_ROOT', 'modified-something-else'):
-                    [('TREE_ROOT', 'basis')]}
+        return {(b'TREE_ROOT', b'basis'): [b'null:'],
+                (b'TREE_ROOT', b'current'):
+                    [(b'TREE_ROOT', b'modified-something-else')],
+                (b'TREE_ROOT', b'modified-something-else'):
+                    [(b'TREE_ROOT', b'basis')]}
 
 
 class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
@@ -682,22 +683,22 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ['parent-1', 'parent-2', 'broken-revision-1-2',
-                'broken-revision-2-1']
+        return [b'parent-1', b'parent-2', b'broken-revision-1-2',
+                b'broken-revision-2-1']
 
     def populated_parents(self):
         return (
-            ((), 'parent-1'),
-            ((), 'parent-2'),
-            (('parent-2', 'parent-1'), 'broken-revision-1-2'),
-            (('parent-1', 'parent-2'), 'broken-revision-2-1'))
+            ((), b'parent-1'),
+            ((), b'parent-2'),
+            ((b'parent-2', b'parent-1'), b'broken-revision-1-2'),
+            ((b'parent-1', b'parent-2'), b'broken-revision-2-1'))
 
     def corrected_parents(self):
         return (
-            ((), 'parent-1'),
-            ((), 'parent-2'),
-            (('parent-1', 'parent-2'), 'broken-revision-1-2'),
-            (('parent-2', 'parent-1'), 'broken-revision-2-1'))
+            ((), b'parent-1'),
+            ((), b'parent-2'),
+            ((b'parent-1', b'parent-2'), b'broken-revision-1-2'),
+            ((b'parent-2', b'parent-1'), b'broken-revision-2-1'))
 
     def check_regexes(self, repo):
         if repo.supports_rich_root():
@@ -716,51 +717,51 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
             r"\('parent-2', 'parent-1'\)")
 
     def populate_repository(self, repo):
-        inv = self.make_one_file_inventory(repo, 'parent-1', [])
-        self.add_revision(repo, 'parent-1', inv, [])
+        inv = self.make_one_file_inventory(repo, b'parent-1', [])
+        self.add_revision(repo, b'parent-1', inv, [])
 
-        inv = self.make_one_file_inventory(repo, 'parent-2', [])
-        self.add_revision(repo, 'parent-2', inv, [])
-
-        inv = self.make_one_file_inventory(
-            repo, 'broken-revision-1-2', ['parent-2', 'parent-1'])
-        self.add_revision(
-            repo, 'broken-revision-1-2', inv, ['parent-1', 'parent-2'])
+        inv = self.make_one_file_inventory(repo, b'parent-2', [])
+        self.add_revision(repo, b'parent-2', inv, [])
 
         inv = self.make_one_file_inventory(
-            repo, 'broken-revision-2-1', ['parent-1', 'parent-2'])
+            repo, b'broken-revision-1-2', [b'parent-2', b'parent-1'])
         self.add_revision(
-            repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
+            repo, b'broken-revision-1-2', inv, [b'parent-1', b'parent-2'])
+
+        inv = self.make_one_file_inventory(
+            repo, b'broken-revision-2-1', [b'parent-1', b'parent-2'])
+        self.add_revision(
+            repo, b'broken-revision-2-1', inv, [b'parent-2', b'parent-1'])
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'broken-revision-1-2'): True,
-                           ('TREE_ROOT', 'broken-revision-2-1'): True,
-                           ('TREE_ROOT', 'parent-1'): True,
-                           ('TREE_ROOT', 'parent-2'): True})
-        result.update({('a-file-id', 'broken-revision-1-2'): True,
-                       ('a-file-id', 'broken-revision-2-1'): True,
-                       ('a-file-id', 'parent-1'): True,
-                       ('a-file-id', 'parent-2'): True})
+            result.update({(b'TREE_ROOT', b'broken-revision-1-2'): True,
+                           (b'TREE_ROOT', b'broken-revision-2-1'): True,
+                           (b'TREE_ROOT', b'parent-1'): True,
+                           (b'TREE_ROOT', b'parent-2'): True})
+        result.update({(b'a-file-id', b'broken-revision-1-2'): True,
+                       (b'a-file-id', b'broken-revision-2-1'): True,
+                       (b'a-file-id', b'parent-1'): True,
+                       (b'a-file-id', b'parent-2'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'broken-revision-1-2'):
-                    [('a-file-id', 'parent-1'), ('a-file-id', 'parent-2')],
-                ('a-file-id', 'broken-revision-2-1'):
-                    [('a-file-id', 'parent-2'), ('a-file-id', 'parent-1')],
-                ('a-file-id', 'parent-1'): [NULL_REVISION],
-                ('a-file-id', 'parent-2'): [NULL_REVISION]}
+        return {(b'a-file-id', b'broken-revision-1-2'):
+                    [(b'a-file-id', b'parent-1'), (b'a-file-id', b'parent-2')],
+                (b'a-file-id', b'broken-revision-2-1'):
+                    [(b'a-file-id', b'parent-2'), (b'a-file-id', b'parent-1')],
+                (b'a-file-id', b'parent-1'): [NULL_REVISION],
+                (b'a-file-id', b'parent-2'): [NULL_REVISION]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'broken-revision-1-2'):
-                    [('TREE_ROOT', 'parent-1'), ('TREE_ROOT', 'parent-2')],
-                ('TREE_ROOT', 'broken-revision-2-1'):
-                    [('TREE_ROOT', 'parent-2'), ('TREE_ROOT', 'parent-1')],
-                ('TREE_ROOT', 'parent-1'): [NULL_REVISION],
-                ('TREE_ROOT', 'parent-2'): [NULL_REVISION]}
+        return {(b'TREE_ROOT', b'broken-revision-1-2'):
+                    [(b'TREE_ROOT', b'parent-1'), (b'TREE_ROOT', b'parent-2')],
+                (b'TREE_ROOT', b'broken-revision-2-1'):
+                    [(b'TREE_ROOT', b'parent-2'), (b'TREE_ROOT', b'parent-1')],
+                (b'TREE_ROOT', b'parent-1'): [NULL_REVISION],
+                (b'TREE_ROOT', b'parent-2'): [NULL_REVISION]}
 
 
 all_broken_scenario_classes = [
@@ -792,8 +793,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
     def make_populated_repository(self, factory):
         """Create a new repository populated by the given factory."""
         repo = self.make_repository('broken-repo')
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             repo.start_write_group()
             try:
                 factory(repo)
@@ -802,8 +802,6 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             except:
                 repo.abort_write_group()
                 raise
-        finally:
-            repo.unlock()
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         """Add a revision with a given inventory and parents to a repository.
@@ -847,15 +845,15 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         inv = Inventory(revision_id=revision)
         if root_revision is not None:
             inv.root.revision = root_revision
-        file_id = 'a-file-id'
-        entry = InventoryFile(file_id, 'a file name', 'TREE_ROOT')
+        file_id = b'a-file-id'
+        entry = InventoryFile(file_id, 'a file name', b'TREE_ROOT')
         if inv_revision is not None:
             entry.revision = inv_revision
         else:
             entry.revision = revision
         entry.text_size = 0
         if file_contents is None:
-            file_contents = '%sline\n' % entry.revision
+            file_contents = b'%sline\n' % entry.revision
         entry.text_sha1 = osutils.sha_string(file_contents)
         inv.add(entry)
         if make_file_version:
@@ -869,13 +867,13 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                     "Format does not support text parent reconciliation")
 
     def file_parents(self, repo, revision_id):
-        key = ('a-file-id', revision_id)
+        key = (b'a-file-id', revision_id)
         parent_map = repo.texts.get_parent_map([key])
         return tuple(parent[-1] for parent in parent_map[key])
 
     def assertFileVersionAbsent(self, repo, revision_id):
         self.assertEqual({},
-            repo.texts.get_parent_map([('a-file-id', revision_id)]))
+            repo.texts.get_parent_map([(b'a-file-id', revision_id)]))
 
     def assertParentsMatch(self, expected_parents_for_versions, repo,
                            when_description):
@@ -907,7 +905,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
         :returns: A dict of `{version: hash}`.
         """
-        keys = [('a-file-id', version) for version in versions]
+        keys = [(b'a-file-id', version) for version in versions]
         return repo.texts.get_sha1s(keys)
 
     def test_reconcile_behaviour(self):
@@ -915,19 +913,15 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         and after.
         """
         repo, scenario = self.prepare_test_repository()
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             self.assertParentsMatch(scenario.populated_parents(), repo,
-                'before')
+                b'before')
             vf_shas = self.shas_for_versions_of_file(
                 repo, scenario.all_versions_after_reconcile())
-        finally:
-            repo.unlock()
         result = repo.reconcile(thorough=True)
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             self.assertParentsMatch(scenario.corrected_parents(), repo,
-                'after')
+                b'after')
             # The contents of the versions in the versionedfile should be the
             # same after the reconcile.
             self.assertEqual(
@@ -943,14 +937,12 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             # (we specify it this way because a store can use arbitrary
             # compression pointers in principle.
             for file_version in scenario.corrected_fulltexts():
-                key = ('a-file-id', file_version)
+                key = (b'a-file-id', file_version)
                 self.assertEqual({key:()}, repo.texts.get_parent_map([key]))
                 self.assertIsInstance(
                     repo.texts.get_record_stream([key], 'unordered',
                         True).next().get_bytes_as('fulltext'),
                     str)
-        finally:
-            repo.unlock()
 
     def test_check_behaviour(self):
         """Populate a repository and check it, and verify the output."""
