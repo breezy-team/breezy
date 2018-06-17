@@ -60,27 +60,28 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id=b'rev1')
+        tree_a.add('foo')
+        rev1 = tree_a.commit('rev1')
         def check_push_rev1(repo):
             # ensure the revision is missing.
-            self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
+            self.assertRaises(NoSuchRevision, repo.get_revision, rev1)
             # fetch with a limit of NULL_REVISION
             repo.fetch(tree_a.branch.repository,
                        revision_id=NULL_REVISION)
             # nothing should have been pushed
-            self.assertFalse(repo.has_revision('rev1'))
+            self.assertFalse(repo.has_revision(rev1))
             # fetch with a default limit (grab everything)
             repo.fetch(tree_a.branch.repository)
             # check that b now has all the data from a's first commit.
-            rev = repo.get_revision('rev1')
-            tree = repo.revision_tree('rev1')
+            rev = repo.get_revision(rev1)
+            tree = repo.revision_tree(rev1)
             tree.lock_read()
             self.addCleanup(tree.unlock)
             tree.get_file_text('foo')
             for path in tree.all_versioned_paths():
                 if tree.kind(path) == "file":
-                    tree.get_file(path).read()
+                    with tree.get_file(path) as f:
+                        f.read()
 
         # makes a target version repo
         repo_b = self.make_to_repository('b')
@@ -93,6 +94,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         being fetched, but referenced from the revision we are fetching when the
         adjacent revisions to the one being fetched do not reference that text.
         """
+        if not self.repository_format.supports_full_versioned_files:
+            raise TestNotApplicable('Need full versioned files')
         tree = self.make_branch_and_tree('source')
         revid = tree.commit('old')
         to_repo = self.make_to_repository('to_repo')
@@ -276,57 +279,59 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_across_stacking_boundary_ignores_ghost(self):
         if not self.repository_format_to.supports_external_lookups:
             raise TestNotApplicable("Need stacking support in the target.")
+        if not self.repository_format.supports_ghosts:
+            raise TestNotApplicable("Need ghost support in the source.")
         to_repo = self.make_to_repository('to')
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', b'content\n'))],
-            revision_id=b'base')
-        builder.build_snapshot([b'base'], [
-            ('modify', ('file', b'second content\n'))],
-            revision_id=b'second')
-        builder.build_snapshot([b'second', b'ghost'], [
-            ('modify', ('file', b'third content\n'))],
-            revision_id=b'third')
+        base = builder.build_snapshot(None, [
+            ('add', ('', None, 'directory', '')),
+            ('add', ('file', None, 'file', b'content\n'))])
+        second = builder.build_snapshot([base], [
+            ('modify', ('file', b'second content\n'))])
+        third = builder.build_snapshot([second, b'ghost'], [
+            ('modify', ('file', b'third content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
+        revtree = branch.repository.revision_tree(base)
+        root_id = revtree.path2id('')
+        file_id = revtree.path2id('file')
         repo = self.make_to_repository('trunk')
         trunk = repo.controldir.create_branch()
-        trunk.repository.fetch(branch.repository, 'second')
+        trunk.repository.fetch(branch.repository, second)
         repo = self.make_to_repository('stacked')
         stacked_branch = repo.controldir.create_branch()
         stacked_branch.set_stacked_on_url(trunk.base)
-        stacked_branch.repository.fetch(branch.repository, 'third')
+        stacked_branch.repository.fetch(branch.repository, third)
         unstacked_repo = stacked_branch.controldir.open_repository()
         unstacked_repo.lock_read()
         self.addCleanup(unstacked_repo.unlock)
-        self.assertFalse(unstacked_repo.has_revision('second'))
-        self.assertFalse(unstacked_repo.has_revision('ghost'))
+        self.assertFalse(unstacked_repo.has_revision(second))
+        self.assertFalse(unstacked_repo.has_revision(b'ghost'))
         self.assertEqual(
-            {('second',), ('third',)},
+            {(second,), (third,)},
             unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         trunk.lock_read()
         self.addCleanup(trunk.unlock)
-        second_tree = trunk.repository.revision_tree('second')
+        second_tree = trunk.repository.revision_tree(second)
         stacked_branch.lock_read()
         self.addCleanup(stacked_branch.unlock)
-        stacked_second_tree = stacked_branch.repository.revision_tree('second')
+        stacked_second_tree = stacked_branch.repository.revision_tree(second)
         self.assertEqual(second_tree, stacked_second_tree)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing
         # up.
-        self.assertTrue(unstacked_repo.has_revision('third'))
-        expected_texts = {('file-id', 'third')}
-        if stacked_branch.repository.texts.get_parent_map([('root-id',
-            'third')]):
+        self.assertTrue(unstacked_repo.has_revision(third))
+        expected_texts = {(file_id, third)}
+        if stacked_branch.repository.texts.get_parent_map([(root_id,
+            third)]):
             # If a (root-id,third) text exists, it should be in the stacked
             # repo.
-            expected_texts.add(('root-id', 'third'))
+            expected_texts.add((root_id, third))
         self.assertEqual(expected_texts, unstacked_repo.texts.keys())
-        self.assertCanStreamRevision(unstacked_repo, 'third')
+        self.assertCanStreamRevision(unstacked_repo, third)
 
     def test_fetch_from_stacked_to_stacked_copies_parent_inventories(self):
         """Fetch from a stacked branch copies inventories for parents of
@@ -419,37 +424,36 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""
+        if not self.repository_format.supports_full_versioned_files:
+            raise TestNotApplicable('Need full versioned files support')
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         tree.add(['a'])
-        tree.commit('one', rev_id=b'rev-one')
+        rev1 = tree.commit('one')
         self.build_tree_contents([('tree/a', b'new contents\n')])
-        tree.commit('two', rev_id=b'rev-two')
+        rev2 = tree.commit('two')
 
         to_repo = self.make_to_repository('to_repo')
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
-        to_repo.lock_write()
-        try:
+        with to_repo.lock_write():
             to_repo.start_write_group()
             try:
-                inv = tree.branch.repository.get_inventory('rev-one')
-                to_repo.add_inventory('rev-one', inv, [])
-                rev = tree.branch.repository.get_revision('rev-one')
-                to_repo.add_revision('rev-one', rev, inv=inv)
+                inv = tree.branch.repository.get_inventory(rev1)
+                to_repo.add_inventory(rev1, inv, [])
+                rev = tree.branch.repository.get_revision(rev1)
+                to_repo.add_revision(rev1, rev, inv=inv)
                 self.disable_commit_write_group_paranoia(to_repo)
                 to_repo.commit_write_group()
             except:
                 to_repo.abort_write_group(suppress_errors=True)
                 raise
-        finally:
-            to_repo.unlock()
 
         # Implementations can either ensure that the target of the delta is
         # reconstructable, or raise an exception (which stream based copies
         # generally do).
         try:
-            to_repo.fetch(tree.branch.repository, 'rev-two')
+            to_repo.fetch(tree.branch.repository, rev2)
         except (errors.BzrCheckError, errors.RevisionNotPresent) as e:
             # If an exception is raised, the revision should not be in the
             # target.
@@ -457,17 +461,14 @@ class TestInterRepository(TestCaseWithInterRepository):
             # Can also just raise a generic check errors; stream insertion
             # does this to include all the missing data
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
-                              to_repo.revision_tree, 'rev-two')
+                              to_repo.revision_tree, rev2)
         else:
             # If not exception is raised, then the text should be
             # available.
-            to_repo.lock_read()
-            try:
-                rt = to_repo.revision_tree('rev-two')
-                self.assertEqual('new contents\n',
+            with to_repo.lock_read():
+                rt = to_repo.revision_tree(rev2)
+                self.assertEqual(b'new contents\n',
                                  rt.get_file_text('a'))
-            finally:
-                to_repo.unlock()
 
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')
@@ -481,6 +482,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a.fetch(repo_b)
 
     def test_fetch_missing_text_other_location_fails(self):
+        if not self.repository_format.supports_full_versioned_files:
+            raise TestNotApplicable('Need full versioned files')
+
         source_tree = self.make_branch_and_tree('source')
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
@@ -520,6 +524,8 @@ class TestInterRepository(TestCaseWithInterRepository):
             from_repo = from_tree.branch.repository
             check_repo_format_for_funky_id_on_win32(from_repo)
         self.build_tree(['tree/filename'])
+        if not from_tree.supports_setting_file_ids():
+            raise TestNotApplicable('from tree format can not create custom file ids')
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
@@ -528,13 +534,13 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_revision_hash(self):
         """Ensure that inventory hashes are updated by fetch"""
         from_tree = self.make_branch_and_tree('tree')
-        from_tree.commit('foo', rev_id=b'foo-id')
+        revid = from_tree.commit('foo')
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
-        recorded_inv_sha1 = to_repo.get_revision('foo-id').inventory_sha1
+        recorded_inv_sha1 = to_repo.get_revision(revid).inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
-        stream = to_repo.inventories.get_record_stream([('foo-id',)],
+        stream = to_repo.inventories.get_record_stream([(revid,)],
                                                        'unordered', True)
         bytes = stream.next().get_bytes_as('fulltext')
         computed_inv_sha1 = osutils.sha_string(bytes)
