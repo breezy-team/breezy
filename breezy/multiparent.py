@@ -186,7 +186,7 @@ class MultiParent(object):
                 yield line
 
     def patch_len(self):
-        return len(''.join(self.to_patch()))
+        return len(b''.join(self.to_patch()))
 
     def zipped_patch_len(self):
         return len(gzip_string(self.to_patch()))
@@ -207,18 +207,18 @@ class MultiParent(object):
                 cur_line = next(line_iter)
             except StopIteration:
                 break
-            if cur_line[0] == 'i':
-                num_lines = int(cur_line.split(' ')[1])
+            if cur_line[0:1] == b'i':
+                num_lines = int(cur_line.split(b' ')[1])
                 hunk_lines = [next(line_iter) for _ in range(num_lines)]
                 hunk_lines[-1] = hunk_lines[-1][:-1]
                 hunks.append(NewText(hunk_lines))
-            elif cur_line[0] == '\n':
-                hunks[-1].lines[-1] += '\n'
+            elif cur_line[0:1] == b'\n':
+                hunks[-1].lines[-1] += b'\n'
             else:
-                if not (cur_line[0] == 'c'):
-                    raise AssertionError(cur_line[0])
+                if not (cur_line[0:1] == b'c'):
+                    raise AssertionError(cur_line[0:1])
                 parent, parent_pos, child_pos, num_lines =\
-                    [int(v) for v in cur_line.split(' ')[1:]]
+                    [int(v) for v in cur_line.split(b' ')[1:]]
                 hunks.append(ParentText(parent, parent_pos, child_pos,
                                         num_lines))
         return MultiParent(hunks)
@@ -279,10 +279,10 @@ class NewText(object):
         return 'NewText(%r)' % self.lines
 
     def to_patch(self):
-        yield 'i %d\n' % len(self.lines)
+        yield b'i %d\n' % len(self.lines)
         for line in self.lines:
             yield line
-        yield '\n'
+        yield b'\n'
 
 
 class ParentText(object):
@@ -297,8 +297,10 @@ class ParentText(object):
         self.num_lines = num_lines
 
     def _as_dict(self):
-        return dict(parent=self.parent, parent_pos=self.parent_pos,
-                    child_pos=self.child_pos, num_lines=self.num_lines)
+        return {b'parent': self.parent,
+                b'parent_pos': self.parent_pos,
+                b'child_pos': self.child_pos,
+                b'num_lines': self.num_lines}
 
     def __repr__(self):
         return ('ParentText(%(parent)r, %(parent_pos)r, %(child_pos)r,'
@@ -310,7 +312,7 @@ class ParentText(object):
         return self._as_dict() == other._as_dict()
 
     def to_patch(self):
-        yield ('c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'
+        yield (b'c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'
                % self._as_dict())
 
 
@@ -410,7 +412,7 @@ class BaseVersionedFile(object):
                     parents = vf.get_parents(revision)
                     if [p for p in parents if p not in self._parents] != []:
                         continue
-                    lines = [a + ' ' + l for a, l in
+                    lines = [a + b' ' + l for a, l in
                              vf.annotate(revision)]
                     if snapshots is None:
                         force_snapshot = None
@@ -573,7 +575,7 @@ class MultiVersionedFile(BaseVersionedFile):
             start = outfile.tell()
             with gzip.GzipFile(None, mode='ab', fileobj=outfile) as zipfile:
                 zipfile.writelines(itertools.chain(
-                    ['version %s\n' % version_id], diff.to_patch()))
+                    [b'version %s\n' % version_id], diff.to_patch()))
             end = outfile.tell()
         self._diff_offset[version_id] = (start, end-start)
         self._parents[version_id] = parent_ids
