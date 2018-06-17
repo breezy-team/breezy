@@ -131,7 +131,10 @@ class InterToGitRepository(InterRepository):
             for revid in revision_ids:
                 if revid == NULL_REVISION:
                     continue
-                git_sha = self.source_store._lookup_revision_sha1(revid)
+                try:
+                    git_sha = self.source_store._lookup_revision_sha1(revid)
+                except KeyError:
+                    raise NoSuchRevision(revid, self.source)
                 git_shas.append(git_sha)
             walker = Walker(self.source_store,
                 include=git_shas, exclude=[
@@ -142,7 +145,7 @@ class InterToGitRepository(InterRepository):
                 for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
                     if kind == "commit":
                         missing_revids.add(type_data[0])
-        return self.source.revision_ids_to_search_result(missing_revids)
+            return self.source.revision_ids_to_search_result(missing_revids)
 
     def _warn_slow(self):
         if not config.GlobalConfig().suppress_warning('slow_intervcs_push'):

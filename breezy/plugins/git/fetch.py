@@ -409,8 +409,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
             None, rev.revision_id, parent_trees,
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             tree_supplement.lookup_file_id,
-            allow_submodules=getattr(repo._format, "supports_tree_reference",
-                False))
+            allow_submodules=repo._format.supports_tree_reference)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)

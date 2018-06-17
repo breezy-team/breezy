@@ -71,7 +71,10 @@ class TestInterRepository(TestCaseWithInterRepository):
             # nothing should have been pushed
             self.assertFalse(repo.has_revision(rev1))
             # fetch with a default limit (grab everything)
-            repo.fetch(tree_a.branch.repository)
+            try:
+                repo.fetch(tree_a.branch.repository)
+            except errors.NoRoundtrippingSupport:
+                raise TestNotApplicable('roundtripping not supported')
             # check that b now has all the data from a's first commit.
             rev = repo.get_revision(rev1)
             tree = repo.revision_tree(rev1)
@@ -99,7 +102,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         tree = self.make_branch_and_tree('source')
         revid = tree.commit('old')
         to_repo = self.make_to_repository('to_repo')
-        to_repo.fetch(tree.branch.repository, revid)
+        try:
+            to_repo.fetch(tree.branch.repository, revid)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
         # Make a broken revision and fetch it.
         source = tree.branch.repository
         source.lock_write()
@@ -174,7 +180,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         stacked_branch.set_stacked_on_url(trunk.base)
         stacked_branch.repository.fetch(branch.repository, 'third')
         target = self.make_to_repository('target')
-        target.fetch(stacked_branch.repository, 'third')
+        try:
+            target.fetch(stacked_branch.repository, 'third')
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
         target.lock_read()
         self.addCleanup(target.unlock)
         all_revs = {'first', 'second', 'third'}
@@ -426,6 +435,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         """If fetching a delta, we should die if a basis is not present."""
         if not self.repository_format.supports_full_versioned_files:
             raise TestNotApplicable('Need full versioned files support')
+        if not self.repository_format_to.supports_full_versioned_files:
+            raise TestNotApplicable('Need full versioned files support')
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         tree.add(['a'])
@@ -515,7 +526,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.add_revision('b', rev)
         self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
-        self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
+        try:
+            self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
         self.assertFalse(target.has_revision('b'))
 
     def test_fetch_funky_file_id(self):
@@ -529,14 +543,20 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
-        to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
+        try:
+            to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
 
     def test_fetch_revision_hash(self):
         """Ensure that inventory hashes are updated by fetch"""
         from_tree = self.make_branch_and_tree('tree')
         revid = from_tree.commit('foo')
         to_repo = self.make_to_repository('to')
-        to_repo.fetch(from_tree.branch.repository)
+        try:
+            to_repo.fetch(from_tree.branch.repository)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
         recorded_inv_sha1 = to_repo.get_revision(revid).inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)

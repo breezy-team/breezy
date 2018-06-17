@@ -90,7 +90,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.controldir.open_repository()
-        repo_b.fetch(repo_a, self.rev1)
+        try:
+            repo_b.fetch(repo_a, self.rev1)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
         # check the test will be valid
         self.assertFalse(repo_b.has_revision(self.rev2))
         result = repo_b.search_missing_revision_ids(repo_a)
@@ -133,7 +136,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_a = self.controldir.open_repository()
         # check the test will be valid
         self.assertFalse(repo_b.has_revision(self.rev2))
-        result = repo_b.search_missing_revision_ids(repo_a, limit=1)
+        try:
+            result = repo_b.search_missing_revision_ids(repo_a, limit=1)
+        except errors.FetchLimitUnsupported:
+            raise TestNotApplicable('interrepo does not support limited fetches')
         self.assertEqual(('search', {self.rev1}, {'null:'}, 1),
             result.get_recipe())
 
@@ -141,7 +147,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         from_repo = self.controldir.open_repository()
         from_signature = from_repo.get_signature_text(self.rev2)
         to_repo = self.make_to_repository('target')
-        to_repo.fetch(from_repo)
+        try:
+            to_repo.fetch(from_repo)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('interrepo does not support roundtripping')
         to_signature = to_repo.get_signature_text(self.rev2)
         self.assertEqual(from_signature, to_signature)
 
