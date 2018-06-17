@@ -507,16 +507,15 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if username is None:
         username = auth.get_user('ssh', host, port=port,
                                  default=getpass.getuser())
-    if _use_ssh_agent:
-        agent = paramiko.Agent()
-        for key in agent.get_keys():
-            trace.mutter('Trying SSH agent key %s'
-                         % self._hexify(key.get_fingerprint()))
-            try:
-                paramiko_transport.auth_publickey(username, key)
-                return
-            except paramiko.SSHException as e:
-                pass
+    agent = paramiko.Agent()
+    for key in agent.get_keys():
+        trace.mutter('Trying SSH agent key %s'
+                     % self._hexify(key.get_fingerprint()))
+        try:
+            paramiko_transport.auth_publickey(username, key)
+            return
+        except paramiko.SSHException as e:
+            pass
 
     # okay, try finding id_rsa or id_dss?  (posix only)
     if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
