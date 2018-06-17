@@ -27,6 +27,7 @@ breezy/transport/smart/__init__.py.
 from __future__ import absolute_import
 
 import errno
+import io
 import os
 import sys
 import time
@@ -504,7 +505,10 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             or sys.platform == 'win32'):
             # You can't select() file descriptors on Windows.
             return
-        return self._wait_on_descriptor(self._in, timeout_seconds)
+        try:
+            return self._wait_on_descriptor(self._in, timeout_seconds)
+        except io.UnsupportedOperation:
+            return
 
     def _read_bytes(self, desired_count):
         return self._in.read(desired_count)
@@ -1125,7 +1129,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             raise errors.ConnectionError("failed to lookup %s:%d: %s" %
                     (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
-        err = socket.error("no address found for %s" % self._host)
+        last_err = socket.error("no address found for %s" % self._host)
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)
@@ -1136,15 +1140,16 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 if self._socket is not None:
                     self._socket.close()
                 self._socket = None
+                last_err = err
                 continue
             break
         if self._socket is None:
             # socket errors either have a (string) or (errno, string) as their
             # args.
-            if isinstance(err.args, str):
-                err_msg = err.args
+            if isinstance(last_err.args, str):
+                err_msg = last_err.args
             else:
-                err_msg = err.args[1]
+                err_msg = last_err.args[1]
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
                     (self._host, port, err_msg))
         self._connected = True

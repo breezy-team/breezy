@@ -94,7 +94,7 @@ class Testament(object):
     """
 
     long_header = 'bazaar-ng testament version 1\n'
-    short_header = 'bazaar-ng testament short form 1\n'
+    short_header = b'bazaar-ng testament short form 1\n'
     include_root = False
 
     @classmethod
@@ -189,13 +189,13 @@ class Testament(object):
         return l
 
     def as_text(self):
-        return ''.join(self.as_text_lines())
+        return b''.join(self.as_text_lines())
 
     def as_short_text(self):
         """Return short digest-based testament."""
         return (self.short_header +
-                'revision-id: %s\n'
-                'sha1: %s\n'
+                b'revision-id: %s\n'
+                b'sha1: %s\n'
                 % (self.revision_id, self.as_sha1()))
 
     def _revprops_to_lines(self):

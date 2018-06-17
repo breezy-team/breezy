@@ -361,7 +361,7 @@ class TestSerializer(TestCase):
         inv.get_entry(b'tree-root-321').revision = b'rev_outer'
         inv.get_entry(b'dir-id').revision = b'rev_outer'
         inv.get_entry(b'file-id').revision = b'rev_outer'
-        inv.get_entry(b'file-id').text_sha1 = 'A'
+        inv.get_entry(b'file-id').text_sha1 = b'A'
         inv.get_entry(b'file-id').text_size = 1
         inv.get_entry(b'link-id').revision = b'rev_outer'
         inv.get_entry(b'link-id').symlink_target = 'a'

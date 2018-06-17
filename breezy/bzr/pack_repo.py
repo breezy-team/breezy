@@ -929,11 +929,11 @@ class RepositoryPackCollection(object):
         num_revs_affected = sum([po[0] for po in pack_operations])
         mutter('Auto-packing repository %s, which has %d pack files, '
             'containing %d revisions. Packing %d files into %d affecting %d'
-            ' revisions', self, total_packs, total_revisions, num_old_packs,
+            ' revisions', str(self), total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
         result = self._execute_pack_operations(pack_operations, packer_class=self.normal_packer_class,
                                       reload_func=self._restart_autopack)
-        mutter('Auto-packing repository %s completed', self)
+        mutter('Auto-packing repository %s completed', str(self))
         return result
 
     def _execute_pack_operations(self, pack_operations, packer_class,

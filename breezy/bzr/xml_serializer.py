@@ -302,6 +302,8 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
                                      elt_get('name'),
                                      parent_id)
         ie.text_sha1 = elt_get('text_sha1')
+        if ie.text_sha1 is not None:
+            ie.text_sha1 = ie.text_sha1.encode('ascii')
         if elt_get('executable') == 'yes':
             ie.executable = True
         v = elt_get('text_size')

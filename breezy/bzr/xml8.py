@@ -85,8 +85,8 @@ class Serializer_v8(XMLSerializer):
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
     _file_ids_altered_regex = lazy_regex.lazy_compile(
-        r'file_id="(?P<file_id>[^"]+)"'
-        r'.* revision="(?P<revision_id>[^"]+)"'
+        b'file_id="(?P<file_id>[^"]+)"'
+        b'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def _check_revisions(self, inv):

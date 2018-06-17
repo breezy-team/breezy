@@ -123,9 +123,9 @@ class BundleWriter(object):
         :revision_id: The revision id of the mpdiff being added.
         :file_id: The file-id of the file, or None for inventories.
         """
-        metadata = {'parents': parents,
-                    'storage_kind': 'mpdiff',
-                    'sha1': sha1}
+        metadata = {b'parents': parents,
+                    b'storage_kind': b'mpdiff',
+                    b'sha1': sha1}
         self._add_record(mp_bytes, metadata, repo_kind, revision_id, file_id)
 
     def add_fulltext_record(self, bytes, parents, repo_kind, revision_id):
@@ -137,18 +137,18 @@ class BundleWriter(object):
             'signature'
         :revision_id: The revision id of the fulltext being added.
         """
-        metadata = {'parents': parents,
-                    'storage_kind': 'mpdiff'}
-        self._add_record(bytes, {'parents': parents,
-            'storage_kind': 'fulltext'}, repo_kind, revision_id, None)
+        metadata = {b'parents': parents,
+                    b'storage_kind': b'mpdiff'}
+        self._add_record(bytes, {b'parents': parents,
+            b'storage_kind': b'fulltext'}, repo_kind, revision_id, None)
 
-    def add_info_record(self, **kwargs):
+    def add_info_record(self, kwargs):
         """Add an info record to the bundle
 
         Any parameters may be supplied, except 'self' and 'storage_kind'.
         Values must be lists, strings, integers, dicts, or a combination.
         """
-        kwargs['storage_kind'] = 'header'
+        kwargs[b'storage_kind'] = b'header'
         self._add_record(None, kwargs, 'info', None, None)
 
     @staticmethod
@@ -168,9 +168,9 @@ class BundleWriter(object):
                 raise AssertionError()
         elif revision_id is None:
             raise AssertionError()
-        names = [n.replace('/', '//') for n in
-                 (content_kind, revision_id, file_id) if n is not None]
-        return '/'.join(names)
+        names = [n.replace(b'/', b'//') for n in
+                 (content_kind.encode('ascii'), revision_id, file_id) if n is not None]
+        return b'/'.join(names)
 
     def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
         """Add a bundle record to the container.
@@ -182,7 +182,7 @@ class BundleWriter(object):
         name = self.encode_name(repo_kind, revision_id, file_id)
         encoded_metadata = bencode.bencode(metadata)
         self._container.add_bytes_record(encoded_metadata, [(name, )])
-        if metadata['storage_kind'] != 'header':
+        if metadata[b'storage_kind'] != b'header':
             self._container.add_bytes_record(bytes, [])
 
 
@@ -344,8 +344,8 @@ class BundleWriteOperation(object):
         serializer_format = self.repository.get_serializer_format()
         supports_rich_root = {True: 1, False: 0}[
             self.repository.supports_rich_root()]
-        self.bundle.add_info_record(serializer=serializer_format,
-                                    supports_rich_root=supports_rich_root)
+        self.bundle.add_info_record({b'serializer': serializer_format,
+                                     b'supports_rich_root': supports_rich_root})
 
     def write_files(self):
         """Write bundle records for all revisions of all files"""
@@ -439,7 +439,7 @@ class BundleWriteOperation(object):
         for mpdiff, item_key, in zip(mpdiffs, ordered_keys):
             sha1 = sha1s[item_key]
             parents = [key[-1] for key in parent_map[item_key]]
-            text = ''.join(mpdiff.to_patch())
+            text = b''.join(mpdiff.to_patch())
             # Infer file id records as appropriate.
             if len(item_key) == 2:
                 file_id = item_key[0]

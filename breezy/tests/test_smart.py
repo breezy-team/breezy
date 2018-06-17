@@ -656,8 +656,8 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
-            checkout.controldir)
-        self.assertFileEqual(reference_url, b'reference/.bzr/branch/location')
+            checkout.controldir).encode('utf-8')
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SmartServerResponse((b'ok', reference_url)),
             request.execute(b'reference'))
 
@@ -697,8 +697,8 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
-            checkout.controldir)
-        self.assertFileEqual(reference_url, b'reference/.bzr/branch/location')
+            checkout.controldir).encode('utf-8')
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
                 (b'ref', reference_url)),
                 request.execute(b'reference'))
@@ -760,8 +760,8 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
-            checkout.controldir)
-        self.assertFileEqual(reference_url, b'reference/.bzr/branch/location')
+            checkout.controldir).encode('utf-8')
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
                 (b'ref', reference_url)),
                          request.execute(b'reference'))
@@ -1002,7 +1002,7 @@ class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
         # A dict with non-ascii keys and values to exercise unicode
         # roundtripping.
         self.encoded_value_dict = (
-            'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
+            b'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
         self.value_dict = {
             'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
 
@@ -1060,7 +1060,7 @@ class TestSmartServerBranchRequestSetTagsBytes(TestLockedBranch):
         request = smart_branch.SmartServerBranchSetTagsBytes(
             self.get_transport())
         self.assertRaises(errors.TokenMismatch, request.execute,
-            'base', 'wrong token', 'wrong token')
+            b'base', b'wrong token', b'wrong token')
         # The request handler will keep processing the message parts, so even
         # if the request fails immediately do_chunk and do_end are still
         # called.
@@ -1631,10 +1631,12 @@ class TestSmartServerRepositoryAllRevisionIds(
         tree.commit(rev_id=b'origineel', message="message")
         tree.commit(rev_id=b'nog-een-revisie', message="message")
         tree.unlock()
-        self.assertEqual(
-            smart_req.SuccessfulSmartServerResponse((b"ok", ),
+        self.assertIn(
+            request.execute(b''),
+            (smart_req.SuccessfulSmartServerResponse((b"ok", ),
                 b"origineel\nnog-een-revisie"),
-            request.execute(b''))
+             smart_req.SuccessfulSmartServerResponse((b"ok", ),
+                b"nog-een-revisie\norigineel")))
 
 
 class TestSmartServerRepositoryBreakLock(tests.TestCaseWithMemoryTransport):
@@ -1767,7 +1769,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
         request = smart_repo.SmartServerRepositoryGetRevIdForRevno(backing)
         parent = self.make_branch_and_memory_tree('parent', format='1.9')
         parent.lock_write()
-        parent.add([''], ['TREE_ROOT'])
+        parent.add([''], [b'TREE_ROOT'])
         r1 = parent.commit(message='first commit')
         r2 = parent.commit(message='second commit')
         parent.unlock()
@@ -2691,7 +2693,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         stream = [('inventory-deltas', [
-            versionedfile.FulltextContentFactory('somerev', None, None,
+            versionedfile.FulltextContentFactory(b'somerev', None, None,
                 self._get_serialized_inventory_delta(
                     t.branch.repository, b'null:', b'somerev'))])]
         fmt = controldir.format_registry.get('2a')().repository_format

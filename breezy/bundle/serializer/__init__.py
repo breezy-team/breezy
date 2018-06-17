@@ -45,10 +45,10 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 _serializers = {}
 
-v4_string = b'4'
+v4_string = '4'
 
 def _get_bundle_header(version):
-    return b''.join([BUNDLE_HEADER, version, b'\n'])
+    return b''.join([BUNDLE_HEADER, version.encode('ascii'), b'\n'])
 
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')
