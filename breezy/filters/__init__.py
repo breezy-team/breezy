@@ -40,6 +40,10 @@ Note that context is currently only supported for write converters.
 
 from __future__ import absolute_import
 
+from io import (
+    BytesIO,
+    )
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -49,9 +53,6 @@ from breezy import (
     registry,
     )
 """)
-from ..sixish import (
-    BytesIO,
-    )
 
 
 class ContentFilter(object):

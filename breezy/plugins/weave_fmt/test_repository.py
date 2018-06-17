@@ -130,20 +130,20 @@ class TestFormat7(TestCaseWithTransport):
         # empty revision-store directory
         # empty weaves directory
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
+        self.assertEqualDiff(b'Bazaar-NG Repository format 7',
                              t.get('format').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
+        self.assertEqualDiff(b'# bzr weave file v5\n'
+                             b'w\n'
+                             b'W\n',
                              t.get('inventory.weave').read())
         # Creating a file with id Foo:Bar results in a non-escaped file name on
         # disk.
         control.create_branch()
         tree = control.create_workingtree()
         tree.add(['foo'], [b'Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('foo', 'content\n', b'Foo:Bar')
+        tree.put_file_bytes_non_atomic('foo', b'content\n', b'Foo:Bar')
         try:
             tree.commit('first post', rev_id=b'first')
         except IllegalPath:
@@ -153,16 +153,16 @@ class TestFormat7(TestCaseWithTransport):
                               ' in repo format 7')
             return
         self.assertEqualDiff(
-            '# bzr weave file v5\n'
-            'i\n'
-            '1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
-            'n first\n'
-            '\n'
-            'w\n'
-            '{ 0\n'
-            '. content\n'
-            '}\n'
-            'W\n',
+            b'# bzr weave file v5\n'
+            b'i\n'
+            b'1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
+            b'n first\n'
+            b'\n'
+            b'w\n'
+            b'{ 0\n'
+            b'. content\n'
+            b'}\n'
+            b'W\n',
             t.get('weaves/74/Foo%3ABar.weave').read())
 
     def test_shared_disk_layout(self):
@@ -176,14 +176,14 @@ class TestFormat7(TestCaseWithTransport):
         # a 'shared-storage' marker file.
         # lock is not present when unlocked
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
+        self.assertEqualDiff(b'Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff(b'', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
+        self.assertEqualDiff(b'# bzr weave file v5\n'
+                             b'w\n'
+                             b'W\n',
                              t.get('inventory.weave').read())
         self.assertFalse(t.has('branch-lock'))
 
@@ -230,18 +230,18 @@ class TestFormat7(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
+        self.assertEqualDiff(b'Bazaar-NG Repository format 7',
                              t.get('format').read())
         ## self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        self.assertEqualDiff(b'', t.get('shared-storage').read())
+        self.assertEqualDiff(b'', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
+        self.assertEqualDiff(b'# bzr weave file v5\n'
+                             b'w\n'
+                             b'W\n',
                              t.get('inventory.weave').read())
 
     def test_supports_external_lookups(self):
@@ -255,11 +255,11 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository --format=weave a")
         self.assertEqual(out,
-"""Standalone tree (format: weave)
+b"""Standalone tree (format: weave)
 Location:
   branch root: a
 """)
-        self.assertEqual(err, "")
+        self.assertEqual(err, b"")
 
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side

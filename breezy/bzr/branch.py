@@ -260,7 +260,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self._transport.get_bytes(l).strip('\n')
+                return self._transport.get_bytes(l).strip(b'\n')
             except errors.NoSuchFile:
                 pass
         return None
@@ -278,7 +278,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if url is None:
             self._transport.delete('parent')
         else:
-            self._transport.put_bytes('parent', url + '\n',
+            self._transport.put_bytes('parent', url + b'\n',
                 mode=self.controldir._get_file_mode())
 
     def unbind(self):

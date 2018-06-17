@@ -906,7 +906,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
-        with self.lock_write(), file(self.abspath(path), 'wb') as stream:
+        with self.lock_write(), open(self.abspath(path), 'wb') as stream:
                 stream.write(bytes)
 
     def extras(self):

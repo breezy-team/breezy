@@ -326,6 +326,8 @@ class SmartServerStreamMedium(SmartMedium):
                     # Interrupted, keep looping.
                     continue
                 raise
+            except ValueError:
+                return  # Socket may already be closed
         if rs or xs:
             return
         raise errors.ConnectionTimeout('disconnecting client after %.1f seconds'

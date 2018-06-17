@@ -24,6 +24,7 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import os
 import sys
 
@@ -75,7 +76,6 @@ from ..osutils import (
     safe_unicode,
     )
 from ..sixish import (
-    BytesIO,
     viewitems,
     )
 from ..transport.local import LocalTransport
@@ -1900,7 +1900,7 @@ class DirStateRevisionTree(InventoryTree):
                     ' too many entries')
             # For each entry returned by iter_files_bytes, we must consume the
             # content_iter before we step the files iterator.
-            content = ''.join(content_iter)
+            content = b''.join(content_iter)
         if content is None:
             raise AssertionError('iter_files_bytes did not return'
                 ' the requested data')

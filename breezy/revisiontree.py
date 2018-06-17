@@ -18,14 +18,12 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
 from . import (
     errors,
     lock,
     revision,
     tree,
-    )
-from .sixish import (
-    BytesIO,
     )
 
 
@@ -70,7 +68,7 @@ class RevisionTree(tree.Tree):
 
     def get_file_text(self, path, file_id=None):
         for (identifier, content) in self.iter_files_bytes([(path, None)]):
-            ret = "".join(content)
+            ret = b"".join(content)
         return ret
 
     def get_file(self, path, file_id=None):
