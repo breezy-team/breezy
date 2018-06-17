@@ -550,6 +550,8 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_revision_hash(self):
         """Ensure that inventory hashes are updated by fetch"""
+        if not self.repository_format_to.supports_full_versioned_files:
+            raise TestNotApplicable('Need full versioned files')
         from_tree = self.make_branch_and_tree('tree')
         revid = from_tree.commit('foo')
         to_repo = self.make_to_repository('to')
@@ -576,6 +578,8 @@ class TestFetchDependentData(TestCaseWithInterRepository):
             not from_tree.branch.repository._format.supports_tree_reference or
             not to_repo._format.supports_tree_reference):
             raise TestNotApplicable("Need subtree support.")
+        if not to_repo._format.supports_full_versioned_files:
+            raise TestNotApplicable('Need full versioned files support.')
         subtree = self.make_branch_and_tree('tree/subtree')
         subtree.commit('subrev 1')
         from_tree.add_reference(subtree)
@@ -587,9 +591,6 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         # to_repo should have a file_graph for from_tree.path2id('subtree') and
         # revid tree_rev.
         file_id = from_tree.path2id('subtree')
-        to_repo.lock_read()
-        try:
+        with to_repo.lock_read():
             self.assertEqual({(file_id, tree_rev):()},
                 to_repo.texts.get_parent_map([(file_id, tree_rev)]))
-        finally:
-            to_repo.unlock()
