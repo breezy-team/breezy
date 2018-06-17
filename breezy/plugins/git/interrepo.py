@@ -422,35 +422,24 @@ class InterFromGitRepository(InterRepository):
             limit=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
-        git_shas = []
-        todo = set()
-        if revision_ids is not None:
-            todo.update(revision_ids)
-        if if_present_ids is not None:
-            todo.update(revision_ids)
-        if if_present_ids is None and revision_ids is None:
+        if revision_ids is None and if_present_ids is None:
             todo = set(self.source.all_revision_ids())
-        target_store = get_object_store(self.target)
-        target_refs = get_refs_container(self.target.controldir, target_store)
-        with self.lock_read():
-            for revid in todo:
-                if revid == NULL_REVISION:
-                    continue
-                git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-                git_shas.append(git_sha)
-            walker = Walker(self.source._git.object_store,
-                include=git_shas, exclude=[
-                    sha for sha in target_refs.as_dict().values()
-                    if sha != ZERO_SHA])
-            result_set = set()
-            for entry in walker:
-                result_set.add(self.source.lookup_foreign_revision_id(entry.commit.id))
-            result_parents = set(itertools.chain.from_iterable(viewvalues(
-                self.source.get_graph().get_parent_map(result_set))))
-            included_keys = result_set.intersection(result_parents)
-            start_keys = result_set.difference(included_keys)
-            exclude_keys = result_parents.difference(result_set)
-            return GitSearchResult(start_keys, exclude_keys, result_set)
+        else:
+            todo = set()
+            if revision_ids is not None:
+                for revid in revision_ids:
+                    if not self.source.has_revision(revid):
+                        raise NoSuchRevision(revid, self.source)
+                todo.update(revision_ids)
+            if if_present_ids is not None:
+                todo.update(if_present_ids)
+        result_set = todo.difference(self.target.all_revision_ids())
+        result_parents = set(itertools.chain.from_iterable(viewvalues(
+            self.source.get_graph().get_parent_map(result_set))))
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        return GitSearchResult(start_keys, exclude_keys, result_set)
 
 
 class InterGitNonGitRepository(InterFromGitRepository):
