@@ -388,7 +388,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
                     b'text_sha1="%s" text_size="%d" />\n' % (
                     executable, encode_and_escape(ie.file_id),
                     encode_and_escape(ie.name), parent_str, parent_id,
-                    encode_and_escape(ie.revision), ie.text_sha1.encode(),
+                    encode_and_escape(ie.revision), ie.text_sha1,
                     ie.text_size))
             else:
                 append(b'<file%s file_id="%s name="%s%s%s />\n' % (

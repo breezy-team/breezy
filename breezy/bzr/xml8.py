@@ -16,14 +16,13 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from .. import (
     cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from .xml_serializer import (
     Element,
@@ -194,7 +193,7 @@ class Serializer_v8(XMLSerializer):
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
                        revision_id = decode_utf8(revision_id),
-                       inventory_sha1 = rev.inventory_sha1,
+                       inventory_sha1 = rev.inventory_sha1.decode('ascii'),
                        format=format_num.decode(),
                        )
         if rev.timezone is not None:
@@ -251,7 +250,7 @@ class Serializer_v8(XMLSerializer):
         rev = Revision(committer = elt.get('committer'),
                        timestamp = float(elt.get('timestamp')),
                        revision_id = get_cached(elt.get('revision_id')),
-                       inventory_sha1 = elt.get('inventory_sha1')
+                       inventory_sha1 = elt.get('inventory_sha1').encode('ascii')
                        )
         parents = elt.find('parents') or []
         for p in parents:

@@ -67,7 +67,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a.branch.repository.lock_write()
         tree_a.branch.repository.start_write_group()
         inv_file = tree_a.branch.repository.inventories
-        inv_file.add_lines(('orphan',), [], [])
+        inv_file.add_lines((b'orphan',), [], [])
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
         # add a real revision 'rev1'
@@ -77,7 +77,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # and sign 'rev2'
         tree_a.branch.repository.lock_write()
         tree_a.branch.repository.start_write_group()
-        tree_a.branch.repository.sign_revision('rev2',
+        tree_a.branch.repository.sign_revision(b'rev2',
             breezy.gpg.LoopbackGPGStrategy(None))
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
@@ -120,9 +120,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository('empty')
         repo_a = self.controldir.open_repository()
         result = repo_b.search_missing_revision_ids(
-            repo_a, revision_ids=['rev1'])
-        self.assertEqual({'rev1'}, result.get_keys())
-        self.assertEqual(('search', {'rev1'}, {NULL_REVISION}, 1),
+            repo_a, revision_ids=[b'rev1'])
+        self.assertEqual({b'rev1'}, result.get_keys())
+        self.assertEqual(('search', {b'rev1'}, {NULL_REVISION}, 1),
             result.get_recipe())
 
     def test_search_missing_revision_ids_limit(self):
@@ -138,10 +138,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
     def test_fetch_fetches_signatures_too(self):
         from_repo = self.controldir.open_repository()
-        from_signature = from_repo.get_signature_text('rev2')
+        from_signature = from_repo.get_signature_text(b'rev2')
         to_repo = self.make_to_repository('target')
         to_repo.fetch(from_repo)
-        to_signature = to_repo.get_signature_text('rev2')
+        to_signature = to_repo.get_signature_text(b'rev2')
         self.assertEqual(from_signature, to_signature)
 
 

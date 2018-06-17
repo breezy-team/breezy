@@ -162,9 +162,9 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertEqual(cs.get(b'a').read(), b'hello there')
         self.assertEqual(s.get(b'a').read(), b'hello there')
 
-        self.assertRaises(BzrError, s.add, BytesIO(b'goodbye'), 'a')
+        self.assertRaises(BzrError, s.add, BytesIO(b'goodbye'), b'a')
 
-        s.add(BytesIO(b'goodbye'), 'b')
+        s.add(BytesIO(b'goodbye'), b'b')
         self.assertPathExists('b')
         self.assertFalse(os.path.lexists('b.gz'))
         with open('b', 'rb') as f:
@@ -175,7 +175,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertEqual(cs.get(b'b').read(), b'goodbye')
         self.assertEqual(s.get(b'b').read(), b'goodbye')
 
-        self.assertRaises(BzrError, cs.add, BytesIO(b'again'), 'b')
+        self.assertRaises(BzrError, cs.add, BytesIO(b'again'), b'b')
 
 
 class MockTransport(transport.Transport):

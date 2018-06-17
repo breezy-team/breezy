@@ -834,7 +834,7 @@ class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):
         self.do_full_upload()
         # Put a fake revid on the remote branch
         t = self.get_transport(self.upload_dir)
-        t.put_bytes('.bzr-upload.revid', 'fake')
+        t.put_bytes('.bzr-upload.revid', b'fake')
         # Make a change
         self.add_file('foo', b'bar\n')
         self.assertRaises(cmds.DivergedUploadedTree, self.do_full_upload)
