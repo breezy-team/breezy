@@ -31,6 +31,7 @@ from breezy.tests.matchers import MatchesAncestry
 from breezy.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
+from breezy.workingtree import WorkingTree
 
 
 def check_repo_format_for_funky_id_on_win32(repo):
@@ -74,11 +75,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # add a real revision 'rev1'
         self.rev1 = tree_a.commit('rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
-        tree_a.branch.get_config_stack().set('create_signatures', 'always')
-        self.overrideAttr(breezy.gpg, 'GPGStrategy', breezy.gpg.LoopbackGPGStrategy)
         self.rev2 = tree_a.commit('rev2', allow_pointless=True)
-        self.assertFalse(tree_a.branch.repository.has_signature_for_revision_id(self.rev1))
-        self.assertTrue(tree_a.branch.repository.has_signature_for_revision_id(self.rev2))
 
     def test_search_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
@@ -141,6 +138,21 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
+        if not self.repository_format.supports_revision_signatures:
+            raise TestNotApplicable(
+                'from repository does not support signatures')
+        if not self.repository_format_to.supports_revision_signatures:
+            raise TestNotApplicable(
+                'to repository does not support signatures')
+        # and sign 'rev2'
+        tree_a = WorkingTree.open('a')
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        tree_a.branch.repository.sign_revision(self.rev2,
+            breezy.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
+
         from_repo = self.controldir.open_repository()
         from_signature = from_repo.get_signature_text(self.rev2)
         to_repo = self.make_to_repository('target')

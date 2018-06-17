@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from io import BytesIO
+import itertools
 
 from dulwich.errors import (
     NotCommitError,
@@ -52,6 +53,7 @@ from ... import (
     trace,
     ui,
     )
+from ...sixish import viewvalues
 
 from .errors import (
     NoPushSupport,
@@ -71,6 +73,7 @@ from .push import (
     remote_divergence,
     )
 from .refs import (
+    get_refs_container,
     is_tag,
     )
 from .repository import (
@@ -366,6 +369,20 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 isinstance(target, RemoteGitRepository))
 
 
+class GitSearchResult(object):
+
+    def __init__(self, start, exclude, keys):
+        self._start = start
+        self._exclude = exclude
+        self._keys = keys
+
+    def get_keys(self):
+        return self._keys
+
+    def get_recipe(self):
+        return ('search', self._start, self._exclude, len(self._keys))
+
+
 class InterFromGitRepository(InterRepository):
 
     _matching_repo_format = GitRepositoryFormat()
@@ -406,25 +423,34 @@ class InterFromGitRepository(InterRepository):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         git_shas = []
-        todo = []
-        if revision_ids:
-            todo.extend(revision_ids)
-        if if_present_ids:
-            todo.extend(revision_ids)
+        todo = set()
+        if revision_ids is not None:
+            todo.update(revision_ids)
+        if if_present_ids is not None:
+            todo.update(revision_ids)
+        if if_present_ids is None and revision_ids is None:
+            todo = set(self.source.all_revision_ids())
+        target_store = get_object_store(self.target)
+        target_refs = get_refs_container(self.target.controldir, target_store)
         with self.lock_read():
-            for revid in revision_ids:
+            for revid in todo:
                 if revid == NULL_REVISION:
                     continue
                 git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
                 git_shas.append(git_sha)
             walker = Walker(self.source._git.object_store,
                 include=git_shas, exclude=[
-                    sha for sha in self.target.controldir.get_refs_container().as_dict().values()
+                    sha for sha in target_refs.as_dict().values()
                     if sha != ZERO_SHA])
-            missing_revids = set()
+            result_set = set()
             for entry in walker:
-                missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
-            return self.source.revision_ids_to_search_result(missing_revids)
+                result_set.add(self.source.lookup_foreign_revision_id(entry.commit.id))
+            result_parents = set(itertools.chain.from_iterable(viewvalues(
+                self.source.get_graph().get_parent_map(result_set))))
+            included_keys = result_set.intersection(result_parents)
+            start_keys = result_set.difference(included_keys)
+            exclude_keys = result_parents.difference(result_set)
+            return GitSearchResult(start_keys, exclude_keys, result_set)
 
 
 class InterGitNonGitRepository(InterFromGitRepository):
