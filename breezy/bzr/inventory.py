@@ -960,7 +960,7 @@ class Inventory(CommonInventory):
 
     >>> inv.path2id('hello.c')
     '123-123'
-    >>> inv.has_id('123-123')
+    >>> inv.has_id(b'123-123')
     True
 
     There are iterators over the contents:
@@ -1228,12 +1228,12 @@ class Inventory(CommonInventory):
         """Remove entry by id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
+        >>> inv.add(InventoryFile(b'123', 'foo.c', ROOT_ID))
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> inv.has_id('123')
+        >>> inv.has_id(b'123')
         True
-        >>> inv.delete('123')
-        >>> inv.has_id('123')
+        >>> inv.delete(b'123')
+        >>> inv.has_id(b'123')
         False
         """
         ie = self.get_entry(file_id)

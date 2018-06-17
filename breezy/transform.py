@@ -1106,15 +1106,15 @@ class TreeTransformBase(object):
         tree_path_ids = dict((k.encode('utf-8'), v)
                              for k, v in viewitems(self._tree_path_ids))
         attribs = {
-            '_id_number': self._id_number,
-            '_new_name': new_name,
-            '_new_parent': self._new_parent,
-            '_new_executability': new_executability,
-            '_new_id': self._new_id,
-            '_tree_path_ids': tree_path_ids,
-            '_removed_id': list(self._removed_id),
-            '_removed_contents': list(self._removed_contents),
-            '_non_present_ids': self._non_present_ids,
+            b'_id_number': self._id_number,
+            b'_new_name': new_name,
+            b'_new_parent': self._new_parent,
+            b'_new_executability': new_executability,
+            b'_new_id': self._new_id,
+            b'_tree_path_ids': tree_path_ids,
+            b'_removed_id': list(self._removed_id),
+            b'_removed_contents': list(self._removed_contents),
+            b'_non_present_ids': self._non_present_ids,
             }
         yield serializer.bytes_record(bencode.bencode(attribs),
                                       (('attribs',),))
@@ -1139,23 +1139,23 @@ class TreeTransformBase(object):
         """
         names, content = next(records)
         attribs = bencode.bdecode(content)
-        self._id_number = attribs['_id_number']
+        self._id_number = attribs[b'_id_number']
         self._new_name = dict((k, v.decode('utf-8'))
-                              for k, v in viewitems(attribs['_new_name']))
-        self._new_parent = attribs['_new_parent']
+                              for k, v in viewitems(attribs[b'_new_name']))
+        self._new_parent = attribs[b'_new_parent']
         self._new_executability = dict((k, bool(v))
-            for k, v in viewitems(attribs['_new_executability']))
-        self._new_id = attribs['_new_id']
+            for k, v in viewitems(attribs[b'_new_executability']))
+        self._new_id = attribs[b'_new_id']
         self._r_new_id = dict((v, k) for k, v in viewitems(self._new_id))
         self._tree_path_ids = {}
         self._tree_id_paths = {}
-        for bytepath, trans_id in viewitems(attribs['_tree_path_ids']):
+        for bytepath, trans_id in viewitems(attribs[b'_tree_path_ids']):
             path = bytepath.decode('utf-8')
             self._tree_path_ids[path] = trans_id
             self._tree_id_paths[trans_id] = path
-        self._removed_id = set(attribs['_removed_id'])
-        self._removed_contents = set(attribs['_removed_contents'])
-        self._non_present_ids = attribs['_non_present_ids']
+        self._removed_id = set(attribs[b'_removed_id'])
+        self._removed_contents = set(attribs[b'_removed_contents'])
+        self._non_present_ids = attribs[b'_non_present_ids']
         for ((trans_id, kind),), content in records:
             if kind == 'file':
                 mpdiff = multiparent.MultiParent.from_patch(content)

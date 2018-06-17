@@ -109,14 +109,12 @@ class TestImport(TestCaseInTempDir):
             os.mkdir(prefix + 'junk')
             archive_file.add(prefix + 'junk')
 
-            f = file(prefix + 'README', 'wb')
-            f.write('What?')
-            f.close()
+            with open(prefix + 'README', 'wb') as f:
+                f.write(b'What?')
             archive_file.add(prefix + 'README')
 
-            f = file(prefix + 'FEEDME', 'wb')
-            f.write('Hungry!!')
-            f.close()
+            with open(prefix + 'FEEDME', 'wb') as f:
+                f.write(b'Hungry!!')
             archive_file.add(prefix + 'FEEDME')
 
             archive_file.close()
@@ -142,12 +140,12 @@ class TestImport(TestCaseInTempDir):
             os.mkdir(prefix + 'junk')
             archive_file.add(prefix + 'junk')
 
-            with file(prefix + 'README', 'wb') as f:
-                f.write('Now?')
+            with open(prefix + 'README', 'wb') as f:
+                f.write(b'Now?')
             archive_file.add(prefix + 'README')
 
-            with file(prefix + 'README', 'wb') as f:
-                f.write('Wow?')
+            with open(prefix + 'README', 'wb') as f:
+                f.write(b'Wow?')
             # Add a second entry for README with different contents.
             archive_file.add(prefix + 'README')
             archive_file.close()
@@ -167,8 +165,8 @@ class TestImport(TestCaseInTempDir):
             os.mkdir('project-0.2')
             tar_file.add('project-0.2')
 
-            with file('project-0.1/README', 'wb') as f:
-                f.write('What?')
+            with open('project-0.1/README', 'wb') as f:
+                f.write(b'What?')
             tar_file.add('project-0.1/README')
         rmtree('project-0.1')
         result.seek(0)
@@ -233,8 +231,8 @@ class TestImport(TestCaseInTempDir):
             self.assertTrue(os.path.isfile(tree.abspath('README')))
             self.assertEqual(tree.stored_kind('README'), 'file')
             self.assertEqual(tree.stored_kind('FEEDME'), 'file')
-            with file(tree.abspath('junk/food'), 'wb') as f:
-                f.write('I like food\n')
+            with open(tree.abspath('junk/food'), 'wb') as f:
+                f.write(b'I like food\n')
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')

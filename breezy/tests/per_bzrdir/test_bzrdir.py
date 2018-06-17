@@ -455,10 +455,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             # If we happen to have a tree, we'll guarantee everything
             # except for the tree root is the same.
-            inventory_f = file(local_inventory, 'rb')
-            self.addCleanup(inventory_f.close)
-            self.assertContainsRe(inventory_f.read(),
-                                  b'<inventory format="5">\n</inventory>\n')
+            with open(local_inventory, 'rb') as inventory_f:
+                self.assertContainsRe(inventory_f.read(),
+                                      b'<inventory format="5">\n</inventory>\n')
         except IOError as e:
             if e.errno != errno.ENOENT:
                 raise

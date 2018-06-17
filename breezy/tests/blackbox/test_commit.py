@@ -139,7 +139,8 @@ brz: ERROR: No changes to commit.\
         self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
-        with open(file_name, 'w') as f: f.write('hello world')
+        with open(file_name, 'w') as f:
+            f.write('hello world')
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -157,7 +158,8 @@ brz: ERROR: No changes to commit.\
         try:
             osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
-            with open(file_name, 'w') as f: f.write('hello world')
+            with open(file_name, 'w') as f:
+                f.write('hello world')
             self.run_bzr(['add'])
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -781,14 +783,12 @@ altered in u2
     def setup_editor(self):
         # Test that commit template hooks work
         if sys.platform == "win32":
-            f = file('fed.bat', 'w')
-            f.write('@rem dummy fed')
-            f.close()
+            with open('fed.bat', 'w') as f:
+                f.write('@rem dummy fed')
             self.overrideEnv('BRZ_EDITOR', "fed.bat")
         else:
-            f = file('fed.sh', 'wb')
-            f.write('#!/bin/sh\n')
-            f.close()
+            with open('fed.sh', 'wb') as f:
+                f.write(b'#!/bin/sh\n')
             os.chmod('fed.sh', 0o755)
             self.overrideEnv('BRZ_EDITOR', "./fed.sh")
 

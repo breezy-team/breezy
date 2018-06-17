@@ -30,17 +30,15 @@ class TestRevert(TestCaseWithTransport):
         self.run_bzr('init')
         self.run_bzr('mkdir dir')
 
-        f = file('dir/file', 'wb')
-        f.write('spam')
-        f.close()
+        with open('dir/file', 'wb') as f:
+            f.write(b'spam')
         self.run_bzr('add dir/file')
 
         self.run_bzr('commit -m1')
 
         # modify file
-        f = file('dir/file', 'wb')
-        f.write('eggs')
-        f.close()
+        with open('dir/file', 'wb') as f:
+            f.write(b'eggs')
 
         # check status
         self.assertEqual('modified:\n  dir/file\n', self.run_bzr('status')[0])
@@ -120,16 +118,16 @@ class TestRevert(TestCaseWithTransport):
     def test_revert(self):
         self.run_bzr('init')
 
-        with file('hello', 'wt') as f: f.write('foo')
+        with open('hello', 'wt') as f: f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup hello')
 
-        with file('goodbye', 'wt') as f: f.write('baz')
+        with open('goodbye', 'wt') as f: f.write('baz')
         self.run_bzr('add goodbye')
         self.run_bzr('commit -m setup goodbye')
 
-        with file('hello', 'wt') as f: f.write('bar')
-        with file('goodbye', 'wt') as f: f.write('qux')
+        with open('hello', 'wt') as f: f.write('bar')
+        with open('goodbye', 'wt') as f: f.write('qux')
         self.run_bzr('revert hello')
         self.check_file_contents('hello', 'foo')
         self.check_file_contents('goodbye', 'qux')
@@ -157,7 +155,7 @@ class TestRevert(TestCaseWithTransport):
         else:
             self.log("skipping revert symlink tests")
 
-        with file('hello', 'wt') as f: f.write('xyz')
+        with open('hello', 'wt') as f: f.write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', 'foo')

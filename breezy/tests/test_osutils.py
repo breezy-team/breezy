@@ -256,12 +256,11 @@ class TestLstat(tests.TestCaseInTempDir):
             # Without it, we may end up re-reading content when we don't have
             # to, but otherwise it doesn't effect correctness.
             self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        f = open('test-file.txt', 'wb')
-        self.addCleanup(f.close)
-        f.write('some content\n')
-        f.flush()
-        self.assertEqualStat(osutils.fstat(f.fileno()),
-                             osutils.lstat('test-file.txt'))
+        with open('test-file.txt', 'wb') as f:
+            f.write(b'some content\n')
+            f.flush()
+            self.assertEqualStat(osutils.fstat(f.fileno()),
+                                 osutils.lstat('test-file.txt'))
 
 
 class TestRmTree(tests.TestCaseInTempDir):
@@ -269,9 +268,8 @@ class TestRmTree(tests.TestCaseInTempDir):
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
         os.mkdir('dir')
-        f = file('dir/file', 'w')
-        f.write('spam')
-        f.close()
+        with open('dir/file', 'w') as f:
+            f.write('spam')
         # would like to also try making the directory readonly, but at the
         # moment python shutil.rmtree doesn't handle that properly - it would
         # need to chmod the directory before removing things inside it - deferred
@@ -513,9 +511,8 @@ class TestLinks(tests.TestCaseInTempDir):
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
     def test_changing_access(self):
-        f = file('file', 'w')
-        f.write('monkey')
-        f.close()
+        with open('file', 'w') as f:
+            f.write('monkey')
 
         # Make a file readonly
         osutils.make_readonly('file')
@@ -542,7 +539,7 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
     _test_needs_features = [features.CaseInsCasePresFilenameFeature]
 
     def test_canonical_relpath_simple(self):
-        f = file('MixedCaseName', 'w')
+        f = open('MixedCaseName', 'w')
         f.close()
         actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
         self.assertEqual('work/MixedCaseName', actual)
@@ -1003,22 +1000,19 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         self.assertFalse('\\' in tmpdir)
 
     def test_rename(self):
-        a = open('a', 'wb')
-        a.write('foo\n')
-        a.close()
-        b = open('b', 'wb')
-        b.write('baz\n')
-        b.close()
+        with open('a', 'wb') as a:
+            a.write(b'foo\n')
+        with open('b', 'wb') as b:
+            b.write(b'baz\n')
 
         osutils._win32_rename('b', 'a')
         self.assertPathExists('a')
         self.assertPathDoesNotExist('b')
-        self.assertFileEqual('baz\n', 'a')
+        self.assertFileEqual(b'baz\n', 'a')
 
     def test_rename_missing_file(self):
-        a = open('a', 'wb')
-        a.write('foo\n')
-        a.close()
+        with open('a', 'wb') as a:
+            a.write(b'foo\n')
 
         try:
             osutils._win32_rename('b', 'a')
@@ -1531,11 +1525,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # I hate to sleep() here, but I'm trying to make the ctime different
         # from the mtime
         time.sleep(2)
-        f = open(name0u, 'ab')
-        try:
-            f.write('just a small update')
-        finally:
-            f.close()
+        with open(name0u, 'ab') as f:
+            f.write(b'just a small update')
 
         result = Win32ReadDir().read_dir('', u'.')
         entry = result[0]

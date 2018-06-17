@@ -61,9 +61,8 @@ class TestRemove(TestCaseWithTransport):
             self.assertPathExists(f)
 
     def changeFile(self, file_name):
-        f = file(file_name, 'ab')
-        f.write("\nsome other new content!")
-        f.close()
+        with open(file_name, 'ab') as f:
+            f.write(b"\nsome other new content!")
 
     def run_bzr_remove_changed_files(self, files_to_remove, working_dir=None):
         self.run_bzr(['remove'] + list(files_to_remove),

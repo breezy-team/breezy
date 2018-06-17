@@ -84,10 +84,10 @@ class TestMerge(TestCaseWithTransport):
         tip = wt1.commit('empty commit')
         wt2 = self.make_branch_and_tree('branch2')
         wt2.pull(wt1.branch)
-        with file('branch1/foo', 'wb') as f:
-            f.write('foo')
-        with file('branch1/bar', 'wb') as f:
-            f.write('bar')
+        with open('branch1/foo', 'wb') as f:
+            f.write(b'foo')
+        with open('branch1/bar', 'wb') as f:
+            f.write(b'bar')
         wt1.add('foo')
         wt1.add('bar')
         wt1.commit('add foobar')
@@ -153,7 +153,7 @@ class TestMerge(TestCaseWithTransport):
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
-        with file('name1', 'wb') as f: f.write('Hello')
+        with open('name1', 'wb') as f: f.write(b'Hello')
         tree.add('name1')
         tree.commit(message="hello")
         tree.rename_one('name1', 'name2')
@@ -166,7 +166,7 @@ class TestMerge(TestCaseWithTransport):
         os.mkdir('dirname1')
         tree.add('dirname1')
         filename = pathjoin('dirname1', 'name1')
-        with file(filename, 'wb') as f: f.write('Hello')
+        with open(filename, 'wb') as f: f.write(b'Hello')
         tree.add(filename)
         tree.commit(message="hello")
         filename2 = pathjoin('dirname1', 'name2')

@@ -685,10 +685,10 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'a@cset-0-4')
 
         # Modified files
-        with open('b1/sub/dir/WithCaps.txt', 'ab') as f: f.write('\nAdding some text\n')
+        with open('b1/sub/dir/WithCaps.txt', 'ab') as f: f.write(b'\nAdding some text\n')
         with open('b1/sub/dir/ pre space', 'ab') as f: f.write(
-             '\r\nAdding some\r\nDOS format lines\r\n')
-        with open('b1/sub/dir/nolastnewline.txt', 'ab') as f: f.write('\n')
+             b'\r\nAdding some\r\nDOS format lines\r\n')
+        with open('b1/sub/dir/nolastnewline.txt', 'ab') as f: f.write(b'\n')
         self.tree1.rename_one('sub/dir/ pre space',
                               'sub/ start space')
         self.tree1.commit('Modified files', rev_id=b'a@cset-0-5')
@@ -933,7 +933,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'white-1')
 
         # Modified
-        with open('b1/trailing space ', 'ab') as f: f.write('add some text\n')
+        with open('b1/trailing space ', 'ab') as f: f.write(b'add some text\n')
         self.tree1.commit('add text', rev_id=b'white-2')
 
         bundle = self.get_valid_bundle('white-1', 'white-2')
@@ -1377,7 +1377,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         new_text = new_text.replace('B260', 'B275')
         bundle_txt = BytesIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
-        bundle_txt.write('\n')
+        bundle_txt.write(b'\n')
         bundle_txt.write(new_text.encode('bz2'))
         bundle_txt.seek(0)
         bundle = read_bundle(bundle_txt)
@@ -1502,7 +1502,7 @@ class V4_2aBundleTester(V4BundleTester):
         new_text = new_text.replace('B244', 'B259')
         bundle_txt = BytesIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
-        bundle_txt.write('\n')
+        bundle_txt.write(b'\n')
         bundle_txt.write(new_text.encode('bz2'))
         bundle_txt.seek(0)
         bundle = read_bundle(bundle_txt)
@@ -1706,7 +1706,7 @@ class MungedBundleTester(object):
         # Adding one extra newline used to give us
         # TypeError: float() argument must be a string or a number
         bundle_txt.seek(0, 2)
-        bundle_txt.write('\n')
+        bundle_txt.write(b'\n')
         bundle_txt.seek(0)
 
         bundle = read_bundle(bundle_txt)
@@ -1719,7 +1719,7 @@ class MungedBundleTester(object):
         # Adding two extra newlines used to give us
         # MalformedPatches: The first line of all patches should be ...
         bundle_txt.seek(0, 2)
-        bundle_txt.write('\n\n')
+        bundle_txt.write(b'\n\n')
         bundle_txt.seek(0)
 
         bundle = read_bundle(bundle_txt)

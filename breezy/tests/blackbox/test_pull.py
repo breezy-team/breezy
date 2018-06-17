@@ -277,7 +277,7 @@ class TestPull(tests.TestCaseWithTransport):
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
         with open('branch_a/a', 'wb') as f:
-            f.write('hello')
+            f.write(b'hello')
         tree_a.add('a')
         tree_a.commit('message')
 
@@ -285,7 +285,7 @@ class TestPull(tests.TestCaseWithTransport):
 
         # Make a change to 'a' that 'b' can pull
         with open('branch_a/a', 'wb') as f:
-            f.write('hey there')
+            f.write(b'hey there')
         tree_a.commit('message')
 
         # Create the bundle for 'b' to pull

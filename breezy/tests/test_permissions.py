@@ -83,7 +83,7 @@ class TestPermissions(TestCaseWithTransport):
 
         t = self.make_branch_and_tree('.')
         b = t.branch
-        with open('a', 'wb') as f: f.write('foo\n')
+        with open('a', 'wb') as f: f.write(b'foo\n')
         # ensure check_mode_r works with capital-letter file-ids like TREE_ROOT
         t.add('a', 'CAPS-ID')
         t.commit('foo')
@@ -104,13 +104,13 @@ class TestPermissions(TestCaseWithTransport):
         self.assertEqualMode(0o644, b.controldir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
-        with open('a', 'wb') as f: f.write('foo2\n')
+        with open('a', 'wb') as f: f.write(b'foo2\n')
         t.commit('foo2')
         # The mode should be maintained after commit
         check_mode_r(self, '.bzr', 0o644, 0o755)
 
         # Adding a new file should maintain the permissions
-        with open('b', 'wb') as f: f.write('new b\n')
+        with open('b', 'wb') as f: f.write(b'new b\n')
         t.add('b')
         t.commit('new b')
         check_mode_r(self, '.bzr', 0o644, 0o755)
@@ -125,11 +125,11 @@ class TestPermissions(TestCaseWithTransport):
         self.assertEqualMode(0o775, b.controldir._get_dir_mode())
         self.assertEqualMode(0o664, b.controldir._get_file_mode())
 
-        with open('a', 'wb') as f: f.write('foo3\n')
+        with open('a', 'wb') as f: f.write(b'foo3\n')
         t.commit('foo3')
         check_mode_r(self, '.bzr', 0o664, 0o775)
 
-        with open('c', 'wb') as f: f.write('new c\n')
+        with open('c', 'wb') as f: f.write(b'new c\n')
         t.add('c')
         t.commit('new c')
         check_mode_r(self, '.bzr', 0o664, 0o775)
@@ -157,11 +157,11 @@ class TestPermissions(TestCaseWithTransport):
         self.assertEqualMode(0o2775, b.controldir._get_dir_mode())
         self.assertEqualMode(0o664, b.controldir._get_file_mode())
 
-        with open('a', 'wb') as f: f.write('foo4\n')
+        with open('a', 'wb') as f: f.write(b'foo4\n')
         t.commit('foo4')
         check_mode_r(self, '.bzr', 0o664, 0o2775)
 
-        with open('d', 'wb') as f: f.write('new d\n')
+        with open('d', 'wb') as f: f.write(b'new d\n')
         t.add('d')
         t.commit('new d')
         check_mode_r(self, '.bzr', 0o664, 0o2775)
@@ -182,7 +182,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         os.mkdir('local')
         t_local = self.make_branch_and_tree('local')
         b_local = t_local.branch
-        with open('local/a', 'wb') as f: f.write('foo\n')
+        with open('local/a', 'wb') as f: f.write(b'foo\n')
         t_local.add('a')
         t_local.commit('foo')
 
@@ -212,13 +212,13 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         self.assertEqualMode(0o755, b_sftp.controldir._get_dir_mode())
         self.assertEqualMode(0o644, b_sftp.controldir._get_file_mode())
 
-        with open('local/a', 'wb') as f: f.write('foo2\n')
+        with open('local/a', 'wb') as f: f.write(b'foo2\n')
         t_local.commit('foo2')
         b_sftp.pull(b_local)
         # The mode should be maintained after commit
         check_mode_r(self, 'sftp/.bzr', 0o644, 0o755)
 
-        with open('local/b', 'wb') as f: f.write('new b\n')
+        with open('local/b', 'wb') as f: f.write(b'new b\n')
         t_local.add('b')
         t_local.commit('new b')
         b_sftp.pull(b_local)
@@ -235,12 +235,12 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         self.assertEqualMode(0o775, b_sftp.controldir._get_dir_mode())
         self.assertEqualMode(0o664, b_sftp.controldir._get_file_mode())
 
-        with open('local/a', 'wb') as f: f.write('foo3\n')
+        with open('local/a', 'wb') as f: f.write(b'foo3\n')
         t_local.commit('foo3')
         b_sftp.pull(b_local)
         check_mode_r(self, 'sftp/.bzr', 0o664, 0o775)
 
-        with open('local/c', 'wb') as f: f.write('new c\n')
+        with open('local/c', 'wb') as f: f.write(b'new c\n')
         t_local.add('c')
         t_local.commit('new c')
         b_sftp.pull(b_local)
@@ -256,7 +256,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         try:
             t = self.get_transport()
             # Direct access should be masked by umask
-            t._sftp_open_exclusive('a', mode=0o666).write('foo\n')
+            with t._sftp_open_exclusive('a', mode=0o666) as f:
+                f.write(b'foo\n')
             self.assertTransportMode(t, 'a', 0o666 &~umask)
 
             # but Transport overrides umask

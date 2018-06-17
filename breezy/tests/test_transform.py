@@ -381,7 +381,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(len(transform.find_conflicts()), 0)
         transform.apply()
         self.assertRaises(ReusingTransform, transform.find_conflicts)
-        self.assertEqual('contents', file(self.wt.abspath('name')).read())
+        with open(self.wt.abspath('name'), 'r') as f:
+            self.assertEqual('contents', f.read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertIs(self.wt.is_executable('name'), True)
         self.assertEqual(self.wt.path2id('oz'), 'oz-id')
@@ -452,7 +453,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tip_id = transform.new_file('tip', oz_id, b'ozma', 'tip-id')
         transform.apply()
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
-        self.assertEqual('contents', file(self.wt.abspath('name')).read())
+        with open(self.wt.abspath('name'), 'r') as f:
+            self.assertEqual('contents', f.read())
         transform2, root = self.get_transform()
         oz_id = transform2.trans_id_tree_path('oz')
         newtip = transform2.new_file('tip', oz_id, b'other', 'tip-id')
@@ -659,15 +661,19 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(mangle_tree.final_parent(mfile2), newdir)
         self.assertEqual(mangle_tree.final_file_id(mfile2), 'mfile2')
         mangle_tree.apply()
-        self.assertEqual(file(self.wt.abspath('name1')).read(), 'hello2')
-        self.assertEqual(file(self.wt.abspath('name2')).read(), 'hello1')
+        with open(self.wt.abspath('name1'), 'r') as f:
+            self.assertEqual(f.read(), 'hello2')
+        with open(self.wt.abspath('name2'), 'r') as f:
+            self.assertEqual(f.read(), 'hello1')
         mfile2_path = self.wt.abspath(pathjoin('new_directory', 'mfile2'))
         self.assertEqual(mangle_tree.final_parent(mfile2), newdir)
-        self.assertEqual(file(mfile2_path).read(), 'later2')
+        with open(mfile2_path, 'r') as f:
+            self.assertEqual(f.read(), 'later2')
         self.assertEqual(self.wt.id2path(b'mfile2'), 'new_directory/mfile2')
         self.assertEqual(self.wt.path2id('new_directory/mfile2'), b'mfile2')
         newfile_path = self.wt.abspath(pathjoin('new_directory', 'newfile'))
-        self.assertEqual(file(newfile_path).read(), 'hello3')
+        with open(newfile_path, 'r') as f:
+            self.assertEqual(f.read(), 'hello3')
         self.assertEqual(self.wt.path2id('dying_directory'), b'ddir')
         self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
         mfile2_path = self.wt.abspath(pathjoin('new_directory', 'mfile2'))
@@ -1020,7 +1026,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             osutils.make_readonly(self.wt.abspath('first-dir'))
         elif os.name == "nt":
             # windows filesystems fail on renaming open files
-            self.addCleanup(file(self.wt.abspath('myfile')).close)
+            self.addCleanup(open(self.wt.abspath('myfile')).close)
         else:
             self.skipTest("Can't force a permissions error on rename")
         # now transform to rename
@@ -1764,7 +1770,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        with file(this.wt.abspath(this.wt.id2path('a')), 'wb') as f: f.write('booga')
+        with open(this.wt.abspath(this.wt.id2path('a')), 'wb') as f: f.write(b'booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
@@ -1886,7 +1892,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         os.mkdir('a')
         a = ControlDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
-        with file('a/foo/bar', 'wb') as f: f.write('contents')
+        with open('a/foo/bar', 'wb') as f: f.write(b'contents')
         os.symlink('a/foo/bar', 'a/foo/baz')
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
@@ -1896,7 +1902,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.addCleanup(basis.unlock)
         build_tree(basis, b)
         self.assertIs(os.path.isdir('b/foo'), True)
-        self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
+        with open('b/foo/bar', 'rb') as f:
+            self.assertEqual(f.read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
 
     def test_build_with_references(self):
@@ -1922,15 +1929,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
                           'file.moved', 'file', None, 'new-file')],
                          target.conflicts())
         target2 = self.make_branch_and_tree('target2')
-        target_file = file('target2/file', 'wb')
-        try:
-            source_file = file('source/file', 'rb')
-            try:
-                target_file.write(source_file.read())
-            finally:
-                source_file.close()
-        finally:
-            target_file.close()
+        with open('target2/file', 'wb') as target_file, \
+                open('source/file', 'rb') as source_file:
+            target_file.write(source_file.read())
         build_tree(source.basis_tree(), target2)
         self.assertEqual([], target2.conflicts())
 
@@ -2191,9 +2192,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
             'rot13', {'yes': [rot13filter]}.get)
         os.mkdir(self.test_home_dir + '/.bazaar')
         rules_filename = self.test_home_dir + '/.bazaar/rules'
-        f = open(rules_filename, 'wb')
-        f.write('[name %s]\nrot13=yes\n' % (pattern,))
-        f.close()
+        with open(rules_filename, 'wb') as f:
+            f.write(b'[name %s]\nrot13=yes\n' % (pattern,))
         def uninstall_rules():
             os.remove(rules_filename)
             rules.reset_rules()

@@ -464,9 +464,12 @@ class Merge3(object):
 
 def main(argv):
     # as for diff3 and meld the syntax is "MINE BASE OTHER"
-    a = file(argv[1], 'rt').readlines()
-    base = file(argv[2], 'rt').readlines()
-    b = file(argv[3], 'rt').readlines()
+    with open(argv[1], 'rt') as f:
+        a = f.readlines()
+    with open(argv[2], 'rt') as f:
+        base = f.readlines()
+    with open(argv[3], 'rt') as f:
+        b = f.readlines()
 
     m3 = Merge3(base, a, b)
 

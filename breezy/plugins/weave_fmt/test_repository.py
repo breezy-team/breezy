@@ -324,7 +324,7 @@ class TestSerializer(TestCase):
         inp = BytesIO(_working_inventory_v4)
         inv = xml4.serializer_v4.read_inventory(inp)
         self.assertEqual(len(inv), 4)
-        self.assertTrue(inv.has_id('bar-20050901064931-73b4b1138abc9cd2'))
+        self.assertTrue(inv.has_id(b'bar-20050901064931-73b4b1138abc9cd2'))
 
     def test_unpack_revision(self):
         """Test unpacking a canned revision v4"""
