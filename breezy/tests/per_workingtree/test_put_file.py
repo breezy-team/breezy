@@ -26,12 +26,14 @@ class TestPutFileBytesNonAtomic(TestCaseWithWorkingTree):
         t = self.make_branch_and_tree('t1')
         t.add(['foo'], kinds=['file'])
         t.put_file_bytes_non_atomic('foo', b'barshoom')
-        self.assertEqual(b'barshoom', t.get_file('foo').read())
+        with t.get_file('foo') as f:
+            self.assertEqual(b'barshoom', f.read())
 
     def test_put_existing_file(self):
         t = self.make_branch_and_tree('t1')
         t.add(['foo'], kinds=['file'])
         t.put_file_bytes_non_atomic('foo', b'first-content')
         t.put_file_bytes_non_atomic('foo', b'barshoom')
-        self.assertEqual(b'barshoom', t.get_file('foo').read())
+        with t.get_file('foo') as f:
+            self.assertEqual(b'barshoom', f.read())
 

@@ -59,7 +59,10 @@ from ...revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
-from ...sixish import text_type
+from ...sixish import (
+    text_type,
+    viewitems,
+    )
 
 from .mapping import (
     mode_is_executable,

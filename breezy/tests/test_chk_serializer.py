@@ -22,36 +22,36 @@ from ..revision import (
     )
 from . import TestCase
 
-_working_revision_bencode1 = ('l'
-    'l6:formati10ee'
-    'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
-    'l8:timezonei3600ee'
-    'l10:propertiesd11:branch-nick6:+trunkee'
-    'l9:timestamp14:1242300770.844e'
-    'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
-    'l10:parent-ids'
-        'l'
-        '50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
-        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
-        'ee'
-    'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
-    'l7:message35:(Jelmer) Move dpush to InterBranch.e'
-    'e')
+_working_revision_bencode1 = (b'l'
+    b'l6:formati10ee'
+    b'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
+    b'l8:timezonei3600ee'
+    b'l10:propertiesd11:branch-nick6:+trunkee'
+    b'l9:timestamp14:1242300770.844e'
+    b'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
+    b'l10:parent-ids'
+        b'l'
+        b'50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
+        b'48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
+        b'ee'
+    b'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
+    b'l7:message35:(Jelmer) Move dpush to InterBranch.e'
+    b'e')
 
-_working_revision_bencode1_no_timezone = ('l'
-    'l6:formati10ee'
-    'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
-    'l9:timestamp14:1242300770.844e'
-    'l10:propertiesd11:branch-nick6:+trunkee'
-    'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
-    'l10:parent-ids'
-        'l'
-        '50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
-        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
-        'ee'
-    'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
-    'l7:message35:(Jelmer) Move dpush to InterBranch.e'
-    'e')
+_working_revision_bencode1_no_timezone = (b'l'
+    b'l6:formati10ee'
+    b'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
+    b'l9:timestamp14:1242300770.844e'
+    b'l10:propertiesd11:branch-nick6:+trunkee'
+    b'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
+    b'l10:parent-ids'
+        b'l'
+        b'50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
+        b'48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
+        b'ee'
+    b'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
+    b'l7:message35:(Jelmer) Move dpush to InterBranch.e'
+    b'e')
 
 
 class TestBEncodeSerializer1(TestCase):
@@ -91,19 +91,19 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual(orig_rev, new_rev)
 
     def test_roundtrips_non_ascii(self):
-        rev = Revision("revid1")
+        rev = Revision(b"revid1")
         rev.message = u"\n\xe5me"
         rev.committer = u'Erik B\xe5gfors'
         rev.timestamp = 1242385452
-        rev.inventory_sha1 = "4a2c7fb50e077699242cf6eb16a61779c7b680a7"
+        rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"
         rev.timezone = 3600
         self.assertRoundTrips(chk_bencode_serializer, rev)
 
     def test_roundtrips_xml_invalid_chars(self):
-        rev = Revision("revid1")
+        rev = Revision(b"revid1")
         rev.message = "\t\ue000"
         rev.committer = u'Erik B\xe5gfors'
         rev.timestamp = 1242385452
         rev.timezone = 3600
-        rev.inventory_sha1 = "4a2c7fb50e077699242cf6eb16a61779c7b680a7"
+        rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"
         self.assertRoundTrips(chk_bencode_serializer, rev)

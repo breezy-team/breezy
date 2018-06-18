@@ -99,8 +99,8 @@ class TransportRefsContainer(RefsContainer):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
     def _ensure_dir_exists(self, path):
-        for n in range(path.count("/")):
-            dirname = "/".join(path.split("/")[:n+1])
+        for n in range(path.count(b"/")):
+            dirname = b"/".join(path.split(b"/")[:n+1])
             try:
                 self.transport.mkdir(dirname)
             except FileExists:
@@ -354,7 +354,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
         self._ensure_dir_exists(name)
-        lockname = name + ".lock"
+        lockname = name + b".lock"
         try:
             local_path = self.transport.local_abspath(name)
         except NotLocalUrl:

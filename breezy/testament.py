@@ -223,7 +223,7 @@ class StrictTestament(Testament):
     include_root = False
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
-        l += ' ' + ie.revision
+        l += ' ' + ie.revision.decode('ascii')
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
 

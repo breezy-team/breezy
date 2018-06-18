@@ -99,10 +99,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_lightweight_checkout_to_branch_tags(self):
         reconfiguration, checkout = \
             self.prepare_lightweight_checkout_to_branch()
-        checkout.branch.tags.set_tag('foo', 'bar')
+        checkout.branch.tags.set_tag('foo', b'bar')
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
+        self.assertEqual(b'bar', checkout_branch.tags.lookup_tag('foo'))
 
     def prepare_lightweight_checkout_to_checkout(self):
         branch = self.make_branch('branch')
@@ -120,10 +120,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_lightweight_checkout_to_checkout_tags(self):
         reconfiguration, checkout = \
             self.prepare_lightweight_checkout_to_checkout()
-        checkout.branch.tags.set_tag('foo', 'bar')
+        checkout.branch.tags.set_tag('foo', b'bar')
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
+        self.assertEqual(b'bar', checkout_branch.tags.lookup_tag('foo'))
 
     def test_lightweight_conversion_uses_shared_repo(self):
         parent = self.make_branch('parent')
@@ -286,10 +286,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_branch_to_lightweight_checkout_fetch_tags(self):
         parent, child, reconfiguration = \
             self.prepare_branch_to_lightweight_checkout()
-        child.branch.tags.set_tag('foo', 'bar')
+        child.branch.tags.set_tag('foo', b'bar')
         reconfiguration.apply()
         child = _mod_branch.Branch.open('child')
-        self.assertEqual('bar', parent.tags.lookup_tag('foo'))
+        self.assertEqual(b'bar', parent.tags.lookup_tag('foo'))
 
     def test_lightweight_checkout_to_lightweight_checkout(self):
         parent = self.make_branch('parent')

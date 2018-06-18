@@ -428,7 +428,7 @@ class TestCommit(TestCaseWithTransport):
             from ..testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack('''
+            conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
             commit.Commit(config_stack=conf).commit(
@@ -454,7 +454,7 @@ create_signatures=always
         try:
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
-            conf = config.MemoryStack('''
+            conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
             self.assertRaises(breezy.gpg.SigningFailed,
@@ -478,7 +478,7 @@ create_signatures=always
             calls.append('called')
         breezy.ahook = called
         try:
-            conf = config.MemoryStack('post_commit=breezy.ahook breezy.ahook')
+            conf = config.MemoryStack(b'post_commit=breezy.ahook breezy.ahook')
             commit.Commit(config_stack=conf).commit(
                 message = "base", allow_pointless=True, rev_id=b'A',
                 working_tree = wt)

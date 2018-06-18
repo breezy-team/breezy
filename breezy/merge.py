@@ -1454,7 +1454,7 @@ class Merge3Merger(object):
         this_lines = self.get_lines(self.this_tree, this_path, file_id)
         m3 = merge3.Merge3(base_lines, this_lines, other_lines,
                            is_cherrypick=self.cherrypick)
-        start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = '|' * 7
         else:
@@ -1462,15 +1462,15 @@ class Merge3Merger(object):
 
         def iter_merge3(retval):
             retval["text_conflicts"] = False
-            for line in m3.merge_lines(name_a = "TREE",
-                                       name_b = "MERGE-SOURCE",
-                                       name_base = "BASE-REVISION",
+            for line in m3.merge_lines(name_a = b"TREE",
+                                       name_b = b"MERGE-SOURCE",
+                                       name_base = b"BASE-REVISION",
                                        start_marker=start_marker,
                                        base_marker=base_marker,
                                        reprocess=self.reprocess):
                 if line.startswith(start_marker):
                     retval["text_conflicts"] = True
-                    yield line.replace(start_marker, '<' * 7)
+                    yield line.replace(start_marker, b'<' * 7)
                 else:
                     yield line
         retval = {}

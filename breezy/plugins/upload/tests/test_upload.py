@@ -342,7 +342,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.run_bzr('branch branch other')
         self.modify_file('a', b'bar')
         other_tree = workingtree.WorkingTree.open('other')
-        self.set_file_content('a', 'baz', b'other/')
+        self.set_file_content('a', b'baz', 'other/')
         other_tree.commit('modify file a')
 
         self.run_bzr('merge -d branch other', retcode=1)
