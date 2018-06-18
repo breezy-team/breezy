@@ -990,25 +990,25 @@ class DiffTree(object):
             properties_changed.extend(get_executable_change(executable[0], executable[1]))
 
             if properties_changed:
-                prop_str = " (properties changed: %s)" % (", ".join(properties_changed),)
+                prop_str = b" (properties changed: %s)" % (", ".join(properties_changed),)
             else:
-                prop_str = ""
+                prop_str = b""
 
             if (old_present, new_present) == (True, False):
-                self.to_file.write("=== removed %s '%s'\n" %
-                                   (kind[0], oldpath_encoded))
+                self.to_file.write(b"=== removed %s '%s'\n" %
+                                   (kind[0].encode('ascii'), oldpath_encoded))
                 newpath = oldpath
             elif (old_present, new_present) == (False, True):
-                self.to_file.write("=== added %s '%s'\n" %
-                                   (kind[1], newpath_encoded))
+                self.to_file.write(b"=== added %s '%s'\n" %
+                                   (kind[1].encode('ascii'), newpath_encoded))
                 oldpath = newpath
             elif renamed:
-                self.to_file.write("=== renamed %s '%s' => '%s'%s\n" %
-                    (kind[0], oldpath_encoded, newpath_encoded, prop_str))
+                self.to_file.write(b"=== renamed %s '%s' => '%s'%s\n" %
+                    (kind[0].encode('ascii'), oldpath_encoded, newpath_encoded, prop_str))
             else:
                 # if it was produced by iter_changes, it must be
                 # modified *somehow*, either content or execute bit.
-                self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
+                self.to_file.write(b"=== modified %s '%s'%s\n" % (kind[0].encode('ascii'),
                                    newpath_encoded, prop_str))
             if changed_content:
                 self._diff(oldpath, newpath, kind[0], kind[1], file_id=file_id)

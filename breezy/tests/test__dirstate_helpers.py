@@ -816,7 +816,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         state.add('a', b'a-id', 'file', None, '')
-        entry = state._get_entry(0, path_utf8='a')
+        entry = state._get_entry(0, path_utf8=b'a')
         return state, entry
 
     def test_observed_sha1_cachable(self):
@@ -862,10 +862,10 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state.set_parent_trees(
             [(empty_revid, tree.branch.repository.revision_tree(empty_revid))],
             [])
-        entry = state._get_entry(0, path_utf8='a')
+        entry = state._get_entry(0, path_utf8=b'a')
         self.build_tree(['a'])
         # Add one where we don't provide the stat or sha already
-        self.assertEqual(('', 'a', 'a-id'), entry[0])
+        self.assertEqual(('', 'a', b'a-id'), entry[0])
         self.assertEqual(('f', '', 0, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
         # Flush the buffers to disk
@@ -927,7 +927,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state.set_parent_trees(
             [(with_a_id, tree.branch.repository.revision_tree(with_a_id))],
             [])
-        entry = state._get_entry(0, path_utf8='a')
+        entry = state._get_entry(0, path_utf8=b'a')
 
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
@@ -1056,7 +1056,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state.set_parent_trees(
             [(with_a_id, tree.branch.repository.revision_tree(with_a_id))],
             [])
-        entry = state._get_entry(0, path_utf8='a')
+        entry = state._get_entry(0, path_utf8=b'a')
         self.build_tree(['a'])
         sha1sum = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
         state.adjust_time(+20)
@@ -1075,9 +1075,9 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.addCleanup(state.unlock)
         state.add('r', b'r-id', 'tree-reference', None, '')
         self.build_tree(['r/'])
-        entry = state._get_entry(0, path_utf8='r')
+        entry = state._get_entry(0, path_utf8=b'r')
         self.do_update_entry(state, entry, 'r')
-        entry = state._get_entry(0, path_utf8='r')
+        entry = state._get_entry(0, path_utf8=b'r')
         self.assertEqual('t', entry[1][0][0])
 
     def create_and_test_file(self, state, entry):
@@ -1240,7 +1240,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
             UppercaseSHA1Provider())
         self.addCleanup(state.unlock)
         expected_sha = osutils.sha_string(text.upper() + "foo")
-        entry = state._get_entry(0, path_utf8='a file')
+        entry = state._get_entry(0, path_utf8=b'a file')
         state._sha_cutoff_time()
         state._cutoff_time += 10
         sha1 = self.update_entry(state, entry, 'tree/a file',

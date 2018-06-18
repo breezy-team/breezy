@@ -101,7 +101,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         if roundtrip:
             status_io = BytesIO()
             status.show_tree_status(wt2, to_file=status_io)
-            self.assertEqual('', status_io.getvalue())
+            self.assertEqual(b'', status_io.getvalue())
 
     def assertContent(self, wt, basis, expected_raw, expected_unix,
         expected_win, roundtrip_to=None):
