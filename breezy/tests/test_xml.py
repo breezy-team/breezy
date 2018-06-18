@@ -540,4 +540,4 @@ class TestMisc(TestCase):
 
     def test_unescape_xml(self):
         """We get some kind of error when malformed entities are passed"""
-        self.assertRaises(KeyError, breezy.bzr.xml8._unescape_xml, 'foo&bar;')
+        self.assertRaises(KeyError, breezy.bzr.xml8._unescape_xml, b'foo&bar;')

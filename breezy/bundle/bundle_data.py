@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import base64
+from io import BytesIO
 import os
 import pprint
 
@@ -41,7 +42,6 @@ from ..bzr.inventory import (
 from ..osutils import sha_string, pathjoin
 from ..revision import Revision, NULL_REVISION
 from ..sixish import (
-    BytesIO,
     viewitems,
     )
 from ..testament import StrictTestament
@@ -791,7 +791,7 @@ def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
     from breezy.patches import iter_patched
     from breezy.iterablefile import IterableFile
-    if file_patch == "":
+    if file_patch == b"":
         return IterableFile(())
     # string.splitlines(True) also splits on '\r', but the iter_patched code
     # only expects to iterate over '\n' style lines

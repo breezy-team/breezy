@@ -64,7 +64,7 @@ def read_bundle(f):
     for line in f:
         m = BUNDLE_HEADER_RE.match(line)
         if m:
-            if m.group('lineending') != '':
+            if m.group('lineending') != b'':
                 raise errors.UnsupportedEOLMarker()
             version = m.group('version')
             break
@@ -79,6 +79,8 @@ def read_bundle(f):
 
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
+
+    version = version.decode('ascii')
 
     # Now we have a version, to figure out how to read the bundle
     if version not in _serializers:

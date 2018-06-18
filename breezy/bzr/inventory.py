@@ -1148,7 +1148,7 @@ class Inventory(CommonInventory):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123123', 'hello.c', ROOT_ID))
-        InventoryFile('123123', 'hello.c', parent_id=b'TREE_ROOT', sha1=None, len=None, revision=None)
+        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> inv.get_entry('123123').name
         'hello.c'
         """

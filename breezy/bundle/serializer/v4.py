@@ -228,13 +228,13 @@ class BundleReader(object):
 
         :retval: content_kind, revision_id, file_id
         """
-        segments = re.split('(//?)', name)
-        names = ['']
+        segments = re.split(b'(//?)', name)
+        names = [b'']
         for segment in segments:
-            if segment == '//':
-                names[-1] += '/'
-            elif segment == '/':
-                names.append('')
+            if segment == b'//':
+                names[-1] += b'/'
+            elif segment == b'/':
+                names.append(b'')
             else:
                 names[-1] += segment
         content_kind = names[0]
@@ -244,7 +244,7 @@ class BundleReader(object):
             revision_id = names[1]
         if len(names) > 2:
             file_id = names[2]
-        return content_kind, revision_id, file_id
+        return content_kind.decode('ascii'), revision_id, file_id
 
     def iter_records(self):
         """Iterate through bundle records
@@ -258,7 +258,7 @@ class BundleReader(object):
                 raise errors.BadBundle('Record has %d names instead of 1'
                                        % len(names))
             metadata = bencode.bdecode(bytes)
-            if metadata['storage_kind'] == 'header':
+            if metadata[b'storage_kind'] == b'header':
                 bytes = None
             else:
                 _unused, bytes = next(iterator)
@@ -297,7 +297,7 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
     @staticmethod
     def get_source_serializer(info):
         """Retrieve the serializer for a given info object"""
-        return serializer.format_registry.get(info['serializer'])
+        return serializer.format_registry.get(info[b'serializer'].decode('ascii'))
 
 
 class BundleWriteOperation(object):
@@ -394,7 +394,7 @@ class BundleWriteOperation(object):
         generator = _MPDiffInventoryGenerator(self.repository,
                                               inventory_key_order)
         for revision_id, parent_ids, sha1, diff in generator.iter_diffs():
-            text = ''.join(diff.to_patch())
+            text = b''.join(diff.to_patch())
             self.bundle.add_multiparent_record(text, sha1, parent_ids,
                                                'inventory', revision_id, None)
 
@@ -590,7 +590,7 @@ class RevisionInstaller(object):
         """Extract data from an info record"""
         self._info = info
         self._source_serializer = self._serializer.get_source_serializer(info)
-        if (info['supports_rich_root'] == 0 and
+        if (info[b'supports_rich_root'] == 0 and
             self._repository.supports_rich_root()):
             self.update_root = True
         else:
@@ -617,8 +617,8 @@ class RevisionInstaller(object):
                 prefix = key[:1]
             else:
                 prefix = ()
-            parents = [prefix + (parent,) for parent in meta['parents']]
-            vf_records.append((key, parents, meta['sha1'], d_func(text)))
+            parents = [prefix + (parent,) for parent in meta[b'parents']]
+            vf_records.append((key, parents, meta[b'sha1'], d_func(text)))
         versionedfile.add_mpdiffs(vf_records)
 
     def _get_parent_inventory_texts(self, inventory_text_cache,
@@ -662,7 +662,7 @@ class RevisionInstaller(object):
         return parent_texts
 
     def _install_inventory_records(self, records):
-        if (self._info['serializer'] == self._repository._serializer.format_num
+        if (self._info[b'serializer'] == self._repository._serializer.format_num
             and self._repository._serializer.support_altered_by_hack):
             return self._install_mp_records_keys(self._repository.inventories,
                 records)
@@ -680,7 +680,7 @@ class RevisionInstaller(object):
             for idx, (key, metadata, bytes) in enumerate(records):
                 pb.update('installing inventory', idx, num_records)
                 revision_id = key[-1]
-                parent_ids = metadata['parents']
+                parent_ids = metadata[b'parents']
                 # Note: This assumes the local ghosts are identical to the
                 #       ghosts in the source, as the Bundle serialization
                 #       format doesn't record ghosts.
@@ -692,10 +692,10 @@ class RevisionInstaller(object):
                 # as lines and then cast back to a string.
                 target_lines = multiparent.MultiParent.from_patch(bytes
                             ).to_lines(p_texts)
-                inv_text = ''.join(target_lines)
+                inv_text = b''.join(target_lines)
                 del target_lines
                 sha1 = osutils.sha_string(inv_text)
-                if sha1 != metadata['sha1']:
+                if sha1 != metadata[b'sha1']:
                     raise errors.BadBundle("Can't convert to target format")
                 # Add this to the cache so we don't have to extract it again.
                 inventory_text_cache[revision_id] = inv_text

@@ -2346,8 +2346,9 @@ class TestRepositoryAllRevisionIds(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(
             b'rev1\nrev2\nanotherrev\n', b'ok')
-        self.assertEqual([b"rev1", b"rev2", b"anotherrev"],
-            repo.all_revision_ids())
+        self.assertEqual(
+            set([b"rev1", b"rev2", b"anotherrev"]),
+            set(repo.all_revision_ids()))
         self.assertEqual(
             [('call_expecting_body', b'Repository.all_revision_ids',
              (b'quack/',))],
