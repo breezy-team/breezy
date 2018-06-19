@@ -119,7 +119,7 @@ class _TestLockableFiles_mixin(object):
             # This test does not apply, because this lockable refuses
             # tokens.
             return
-        different_token = token + 'xxx'
+        different_token = token + b'xxx'
         # Re-using the same lockable instance with a different token will
         # raise TokenMismatch.
         self.assertRaises(errors.TokenMismatch,
