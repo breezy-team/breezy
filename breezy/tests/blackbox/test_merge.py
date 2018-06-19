@@ -112,7 +112,7 @@ class TestMerge(tests.TestCaseWithTransport):
                      working_dir='a')
         a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1', working_dir='a')
-        self.check_file_contents('a/goodbye', 'quux')
+        self.check_file_contents('a/goodbye', b'quux')
         # Merging a branch pulls its revision into the tree
         b = branch.Branch.open('b')
         b_tip = b.last_revision()
@@ -126,7 +126,7 @@ class TestMerge(tests.TestCaseWithTransport):
                     %(ancestor, b.revno()), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
-        self.check_file_contents('a/goodbye', 'quux')
+        self.check_file_contents('a/goodbye', b'quux')
         a_tree.revert(backups=False)
         self.run_bzr('merge -r revno:%d:../b'%b.revno(), working_dir='a')
         self.assertEqual(a.get_parent_ids(),

@@ -758,7 +758,7 @@ create_signatures=always
         tree = self.make_branch_and_tree('foo')
         # pending merge would turn into a left parent
         tree.commit('commit 1')
-        tree.add_parent_tree_id('example')
+        tree.add_parent_tree_id(b'example')
         self.build_tree(['foo/bar', 'foo/baz'])
         tree.add(['bar', 'baz'])
         err = self.assertRaises(CannotCommitSelectedFileMerge,

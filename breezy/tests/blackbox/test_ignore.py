@@ -55,7 +55,7 @@ class TestCommands(TestCaseWithTransport):
                          'dir2/', 'dir2/bar',
                          'dir3/', 'dir3/baz'])
         self.run_bzr(['ignore', 'dir1', 'dir2/', 'dir4\\'])
-        self.check_file_contents('.bzrignore', 'dir1\ndir2\ndir4\n')
+        self.check_file_contents('.bzrignore', b'dir1\ndir2\ndir4\n')
         self.assertEqual(self.run_bzr('unknowns')[0], 'dir3\n')
 
     def test_ignore_patterns(self):
@@ -82,14 +82,14 @@ class TestCommands(TestCaseWithTransport):
         self.assertEqual(list(tree.unknowns()), ['foo.blah'])
         self.run_bzr('ignore *.blah')
         self.assertEqual(list(tree.unknowns()), [])
-        self.check_file_contents('.bzrignore', '*.blah\n')
+        self.check_file_contents('.bzrignore', b'*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
         self.build_tree_contents([('garh', b'garh')])
         self.assertEqual(list(tree.unknowns()), ['garh'])
         self.run_bzr('ignore garh')
         self.assertEqual(list(tree.unknowns()), [])
-        self.check_file_contents('.bzrignore', '*.blah\ngarh\n')
+        self.check_file_contents('.bzrignore', b'*.blah\ngarh\n')
 
     def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
@@ -98,7 +98,7 @@ class TestCommands(TestCaseWithTransport):
         self.assertEqual(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
         self.run_bzr('ignore a b c')
         self.assertEqual(list(tree.unknowns()), ['d'])
-        self.check_file_contents('.bzrignore', 'a\nb\nc\n')
+        self.check_file_contents('.bzrignore', b'a\nb\nc\n')
 
     def test_ignore_no_arguments(self):
         """'ignore' with no arguments returns an error"""
@@ -159,7 +159,7 @@ class TestCommands(TestCaseWithTransport):
         """Test --directory option"""
         tree = self.make_branch_and_tree('a')
         self.run_bzr(['ignore', '--directory=a', 'README'])
-        self.check_file_contents('a/.bzrignore', 'README\n')
+        self.check_file_contents('a/.bzrignore', b'README\n')
 
     def test_ignored_invalid_pattern(self):
         """Ensure graceful handling for invalid ignore pattern.

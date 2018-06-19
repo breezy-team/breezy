@@ -230,26 +230,26 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['hello.txt'])
         tree.commit('create initial hello.txt')
 
-        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt', b'initial hello')
         with open('hello.txt', 'w') as f: f.write('new hello')
-        self.check_file_contents('hello.txt', 'new hello')
+        self.check_file_contents('hello.txt', b'new hello')
 
         # revert file modified since last revision
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # reverting again does not clobber the backup
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # backup files are numbered
         with open('hello.txt', 'w') as f: f.write('new hello2')
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
-        self.check_file_contents('hello.txt.~2~', 'new hello2')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
+        self.check_file_contents('hello.txt.~2~', b'new hello2')
 
     def test_revert_missing(self):
         # Revert a file that has been deleted since last commit

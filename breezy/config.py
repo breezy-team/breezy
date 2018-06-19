@@ -734,7 +734,9 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        self._content = BytesIO(str_or_unicode.encode('utf-8'))
+        if isinstance(str_or_unicode, text_type):
+            str_or_unicode = str_or_unicode.encode('utf-8')
+        self._content = BytesIO(str_or_unicode)
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
         if save:
@@ -2169,7 +2171,7 @@ class Base64CredentialStore(CredentialStore):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
         #                should probably propogate as something more useful.
-        return base64.decodestring(credentials['password'])
+        return base64.standard_b64decode(credentials['password'])
 
 credential_store_registry.register('base64', Base64CredentialStore,
                                    help=Base64CredentialStore.__doc__)

@@ -42,7 +42,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         wt.commit("base C", allow_pointless=True, rev_id=b'C')
         wt.commit("base D", allow_pointless=True, rev_id=b'D',
                 committer='Alternate <alt@foo.com>')
-        wt.add_parent_tree_id("aghost")
+        wt.add_parent_tree_id(b"aghost")
         wt.commit("base E", allow_pointless=True, rev_id=b'E')
         return wt
 

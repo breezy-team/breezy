@@ -177,7 +177,7 @@ Using shared repository: %s
     def test_init_default_format_option(self):
         """brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 default_format = 1.9
 ''')
