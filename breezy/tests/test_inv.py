@@ -211,17 +211,14 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
         tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
         # cache, if it has one.
-        tree.set_parent_ids(['basis'])
+        tree.set_parent_ids([b'basis'])
     finally:
         tree.unlock()
     # Fresh lock, reads disk again.
-    tree.lock_write()
-    try:
+    with tree.lock_write():
         tree.update_basis_by_delta('result', delta)
         if not invalid_delta:
             tree._validate()
-    finally:
-        tree.unlock()
     # reload tree - ensure we get what was written.
     tree = tree.controldir.open_workingtree()
     basis_tree = tree.basis_tree()

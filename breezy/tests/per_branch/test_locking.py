@@ -306,7 +306,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                 # This test does not apply, because this lockable refuses
                 # tokens.
                 return
-            different_branch_token = lock.token + 'xxx'
+            different_branch_token = lock.token + b'xxx'
             # Re-using the same lockable instance with a different branch token
             # will raise TokenMismatch.
             self.assertRaises(errors.TokenMismatch,
@@ -320,7 +320,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                 # This test does not apply, because this branch refuses
                 # tokens.
                 return
-            different_branch_token = lock.token + 'xxx'
+            different_branch_token = lock.token + b'xxx'
 
             new_branch = branch.controldir.open_branch()
             # We only want to test the relocking abilities of branch, so use the

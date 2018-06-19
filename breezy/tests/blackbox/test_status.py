@@ -497,7 +497,7 @@ class BranchStatus(TestCaseWithTransport):
             tree.add(['a'])
             tree.commit('add test file')
             # simulate what happens after a remote push
-            tree.set_last_revision("0")
+            tree.set_last_revision(b"0")
         finally:
             # before run another commands we should unlock tree
             tree.unlock()

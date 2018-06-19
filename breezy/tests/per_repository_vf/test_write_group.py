@@ -60,7 +60,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         trunk_repo.lock_read()
         self.addCleanup(trunk_repo.unlock)
         tree.branch.repository.fetch(trunk_repo, revision_id=b'rev-1')
-        tree.set_parent_ids(['rev-1'])
+        tree.set_parent_ids([b'rev-1'])
         return tree
 
     def make_first_commit(self, repo):

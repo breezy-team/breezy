@@ -149,13 +149,13 @@ class TestSetParents(TestParents):
     def test_set_one_ghost_parent_ids_force(self):
         t = self.make_branch_and_tree('.')
         if t._format.supports_leftmost_parent_id_as_ghost:
-            t.set_parent_ids(['missing-revision-id'],
+            t.set_parent_ids([b'missing-revision-id'],
                 allow_leftmost_as_ghost=True)
-            self.assertConsistentParents(['missing-revision-id'], t)
+            self.assertConsistentParents([b'missing-revision-id'], t)
         else:
             self.assertRaises(
                 errors.GhostRevisionUnusableHere, t.set_parent_ids,
-                ['missing-revision-id'], allow_leftmost_as_ghost=True)
+                [b'missing-revision-id'], allow_leftmost_as_ghost=True)
 
     def test_set_two_parents_one_ghost_ids(self):
         t = self.make_branch_and_tree('.')
@@ -164,11 +164,11 @@ class TestSetParents(TestParents):
         uncommit(t.branch, tree=t)
         rev_tree = t.branch.repository.revision_tree(revision_in_repo)
         if t._format.supports_righthand_parent_id_as_ghost:
-            t.set_parent_ids([revision_in_repo, 'another-missing'])
-            self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+            t.set_parent_ids([revision_in_repo, b'another-missing'])
+            self.assertConsistentParents([revision_in_repo, b'another-missing'], t)
         else:
             self.assertRaises(errors.GhostRevisionUnusableHere,
-                t.set_parent_ids, [revision_in_repo, 'another-missing'])
+                t.set_parent_ids, [revision_in_repo, b'another-missing'])
 
     def test_set_three_parents_ids(self):
         t = self.make_branch_and_tree('.')
