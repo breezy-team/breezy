@@ -3646,7 +3646,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         err_context = {'token': str((branch_token, repo_token))}
         response = self._call(
             b'Branch.unlock', self._remote_path(), branch_token,
-            repo_token or '', **err_context)
+            repo_token or b'', **err_context)
         if response == (b'ok',):
             return
         raise errors.UnexpectedSmartServerResponse(response)
