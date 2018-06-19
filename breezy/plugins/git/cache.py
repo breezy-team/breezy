@@ -709,7 +709,7 @@ class VersionedFilesContentCache(ContentCache):
 
     def __getitem__(self, sha):
         stream = self._vf.get_record_stream([(sha,)], 'unordered', True)
-        entry = stream.next() 
+        entry = next(stream)
         if entry.storage_kind == 'absent':
             raise KeyError(sha)
         return ShaFile._parse_legacy_object(entry.get_bytes_as('fulltext'))
@@ -873,13 +873,13 @@ class IndexGitShaMap(GitShaMap):
     def _get_entry(self, key):
         entries = self._index.iter_entries([key])
         try:
-            return entries.next()[2]
+            return next(entries)[2]
         except StopIteration:
             if self._builder is None:
                 raise KeyError
             entries = self._builder.iter_entries([key])
             try:
-                return entries.next()[2]
+                return next(entries)[2]
             except StopIteration:
                 raise KeyError
 

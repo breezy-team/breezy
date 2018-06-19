@@ -319,7 +319,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def get_bound_location(self):
         try:
-            return self._transport.get_bytes('bound')[:-1]
+            return self._transport.get_bytes('bound')[:-1].decode('utf-8')
         except errors.NoSuchFile:
             return None
 
