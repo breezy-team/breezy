@@ -395,7 +395,7 @@ class InstrumentedConfig(config.Config):
         return 'vimdiff -fo @new_path @old_path'
 
 
-bool_config = """[DEFAULT]
+bool_config = b"""[DEFAULT]
 active = true
 inactive = false
 [UPPERCASE]
@@ -423,7 +423,7 @@ class TestConfigObj(tests.TestCase):
         outfile = BytesIO()
         co.write(outfile=outfile)
         lines = outfile.getvalue().splitlines()
-        self.assertEqual(lines, ['test = "foo#bar"'])
+        self.assertEqual(lines, [b'test = "foo#bar"'])
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
 
@@ -1628,14 +1628,14 @@ class TestTransportConfig(tests.TestCaseWithTransport):
     def test_load_non_ascii(self):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', 'user=foo\n#\xff\n')
+        t.put_bytes('foo.conf', b'user=foo\n#\xff\n')
         conf = config.TransportConfig(t, 'foo.conf')
         self.assertRaises(config.ConfigContentError, conf._get_configobj)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', '[open_section\n')
+        t.put_bytes('foo.conf', b'[open_section\n')
         conf = config.TransportConfig(t, 'foo.conf')
         self.assertRaises(config.ParseConfigError, conf._get_configobj)
 
@@ -2552,14 +2552,14 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
     def test_load_non_ascii(self):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
+        t.put_bytes('foo.conf', b'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(config.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', '[open_section\n')
+        t.put_bytes('foo.conf', b'[open_section\n')
         store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(config.ParseConfigError, store.load)
 
@@ -3350,9 +3350,9 @@ class TestBaseStackGet(tests.TestCase):
 
     def test_get_first_definition(self):
         store1 = config.IniFileStore()
-        store1._load_from_string('foo=bar')
+        store1._load_from_string(b'foo=bar')
         store2 = config.IniFileStore()
-        store2._load_from_string('foo=baz')
+        store2._load_from_string(b'foo=baz')
         conf = config.Stack([store1.get_sections, store2.get_sections])
         self.assertEqual('bar', conf.get('foo'))
 
@@ -4153,7 +4153,7 @@ class TestAuthenticationConfigFilePermissions(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestAuthenticationConfigFilePermissions, self).setUp()
         self.path = osutils.pathjoin(self.test_dir, 'authentication.conf')
-        with open(self.path, 'w') as f:
+        with open(self.path, 'wb') as f:
             f.write(b"""[broken]
 scheme=ftp
 user=joe

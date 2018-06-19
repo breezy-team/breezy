@@ -219,7 +219,7 @@ class TestCommit(TestCaseWithTransport):
         with open('hello', 'w') as f: f.write('hello')
         with open('buongia', 'w') as f: f.write('buongia')
         wt.add(['hello', 'buongia'],
-              ['hello-id', 'buongia-id'])
+              [b'hello-id', b'buongia-id'])
         wt.commit(message='add files',
                  rev_id=b'test@rev-1')
 
@@ -758,7 +758,7 @@ create_signatures=always
         tree = self.make_branch_and_tree('foo')
         # pending merge would turn into a left parent
         tree.commit('commit 1')
-        tree.add_parent_tree_id('example')
+        tree.add_parent_tree_id(b'example')
         self.build_tree(['foo/bar', 'foo/baz'])
         tree.add(['bar', 'baz'])
         err = self.assertRaises(CannotCommitSelectedFileMerge,
