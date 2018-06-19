@@ -115,10 +115,10 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('a', 'a-id', 'file', 'content\n'))])
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('a', b'a-id', 'file', b'content\n'))])
         builder.build_snapshot(None, [
-            ('add', ('b', 'b-id', 'file', 'content\n'))])
+            ('add', ('b', b'b-id', 'file', b'content\n'))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()
@@ -146,11 +146,11 @@ class TestDirExport(tests.TestCaseWithTransport):
         a_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
         b_time = time.mktime((1980, 0o1, 0o1, 0, 0, 0, 0, 0, 0))
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('a', b'a-id', 'file', b'content\n'))],
             timestamp=a_time)
         builder.build_snapshot(None, [
-            ('add', ('b', 'b-id', 'file', 'content\n'))],
+            ('add', ('b', b'b-id', 'file', b'content\n'))],
             timestamp=b_time)
         builder.finish_series()
         b = builder.get_branch()
@@ -167,9 +167,9 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder.start_series()
         foo_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('subdir', 'subdir-id', 'directory', '')),
-            ('add', ('subdir/foo.txt', 'foo-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('subdir', b'subdir-id', 'directory', '')),
+            ('add', ('subdir/foo.txt', b'foo-id', 'file', b'content\n'))],
             timestamp=foo_time)
         builder.finish_series()
         b = builder.get_branch()
@@ -228,18 +228,18 @@ class TarExporterTests(tests.TestCaseWithTransport):
             per_file_timestamps=True)
         export.export(wt, 'testdir2/target.tar.gz', format="tgz",
             per_file_timestamps=True)
-        file1 = open('testdir1/target.tar.gz', 'r')
+        file1 = open('testdir1/target.tar.gz', 'rb')
         self.addCleanup(file1.close)
-        file2 = open('testdir1/target.tar.gz', 'r')
+        file2 = open('testdir1/target.tar.gz', 'rb')
         self.addCleanup(file2.close)
         content1 = file1.read()
         content2 = file2.read()
         self.assertEqualDiff(content1, content2)
         # the gzip module doesn't have a way to read back to the original
         # filename, but it's stored as-is in the tarfile.
-        self.assertFalse("testdir1" in content1)
-        self.assertFalse("target.tar.gz" in content1)
-        self.assertTrue("target.tar" in content1)
+        self.assertFalse(b"testdir1" in content1)
+        self.assertFalse(b"target.tar.gz" in content1)
+        self.assertTrue(b"target.tar" in content1)
 
     def test_tbz2(self):
         wt = self.make_branch_and_tree('.')

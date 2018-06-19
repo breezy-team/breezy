@@ -237,13 +237,13 @@ class TestWriteOption(tests.TestCase):
 
     def test_option_without_help(self):
         opt = option.Option("helpless")
-        self.assertEqual("", self.pot_from_option(opt))
+        self.assertEqual(b"", self.pot_from_option(opt))
 
     def test_option_with_help(self):
         opt = option.Option("helpful", help="Info.")
-        self.assertContainsString(self.pot_from_option(opt), "\n"
-            "# help of 'helpful' test\n"
-            "msgid \"Info.\"\n")
+        self.assertContainsString(self.pot_from_option(opt), b"\n"
+            b"# help of 'helpful' test\n"
+            b"msgid \"Info.\"\n")
 
     def test_option_hidden(self):
         opt = option.Option("hidden", help="Unseen.", hidden=True)
@@ -253,57 +253,57 @@ class TestWriteOption(tests.TestCase):
         context = export_pot._ModuleContext("remote.py", 3)
         opt = option.Option("metaphor", help="Not a literal in the source.")
         self.assertContainsString(self.pot_from_option(opt, context),
-            "#: remote.py:3\n"
-            "# help of 'metaphor' test\n")
+            b"#: remote.py:3\n"
+            b"# help of 'metaphor' test\n")
 
     def test_option_context_string(self):
         s = "Literally."
         context = export_pot._ModuleContext("local.py", 3, ({}, {s: 17}))
         opt = option.Option("example", help=s)
         self.assertContainsString(self.pot_from_option(opt, context),
-            "#: local.py:17\n"
-            "# help of 'example' test\n")
+            b"#: local.py:17\n"
+            b"# help of 'example' test\n")
 
     def test_registry_option_title(self):
         opt = option.RegistryOption.from_kwargs("group", help="Pick one.",
             title="Choose!")
         pot = self.pot_from_option(opt)
-        self.assertContainsString(pot, "\n"
-            "# title of 'group' test\n"
-            "msgid \"Choose!\"\n")
-        self.assertContainsString(pot, "\n"
-            "# help of 'group' test\n"
-            "msgid \"Pick one.\"\n")
+        self.assertContainsString(pot, b"\n"
+            b"# title of 'group' test\n"
+            b"msgid \"Choose!\"\n")
+        self.assertContainsString(pot, b"\n"
+            b"# help of 'group' test\n"
+            b"msgid \"Pick one.\"\n")
 
     def test_registry_option_title_context_missing(self):
         context = export_pot._ModuleContext("theory.py", 3)
         opt = option.RegistryOption.from_kwargs("abstract", title="Unfounded!")
         self.assertContainsString(self.pot_from_option(opt, context),
-            "#: theory.py:3\n"
-            "# title of 'abstract' test\n")
+            b"#: theory.py:3\n"
+            b"# title of 'abstract' test\n")
 
     def test_registry_option_title_context_string(self):
         s = "Grounded!"
         context = export_pot._ModuleContext("practice.py", 3, ({}, {s: 144}))
         opt = option.RegistryOption.from_kwargs("concrete", title=s)
         self.assertContainsString(self.pot_from_option(opt, context),
-            "#: practice.py:144\n"
-            "# title of 'concrete' test\n")
+            b"#: practice.py:144\n"
+            b"# title of 'concrete' test\n")
 
     def test_registry_option_value_switches(self):
         opt = option.RegistryOption.from_kwargs("switch", help="Flip one.",
             value_switches=True, enum_switch=False,
             red="Big.", green="Small.")
         pot = self.pot_from_option(opt)
-        self.assertContainsString(pot, "\n"
-            "# help of 'switch' test\n"
-            "msgid \"Flip one.\"\n")
-        self.assertContainsString(pot, "\n"
-            "# help of 'switch=red' test\n"
-            "msgid \"Big.\"\n")
-        self.assertContainsString(pot, "\n"
-            "# help of 'switch=green' test\n"
-            "msgid \"Small.\"\n")
+        self.assertContainsString(pot, b"\n"
+            b"# help of 'switch' test\n"
+            b"msgid \"Flip one.\"\n")
+        self.assertContainsString(pot, b"\n"
+            b"# help of 'switch=red' test\n"
+            b"msgid \"Big.\"\n")
+        self.assertContainsString(pot, b"\n"
+            b"# help of 'switch=green' test\n"
+            b"msgid \"Small.\"\n")
 
     def test_registry_option_value_switches_hidden(self):
         reg = registry.Registry()
@@ -314,13 +314,13 @@ class TestWriteOption(tests.TestCase):
         opt = option.RegistryOption("protocol", "Talking.", reg,
             value_switches=True, enum_switch=False)
         pot = self.pot_from_option(opt)
-        self.assertContainsString(pot, "\n"
-            "# help of 'protocol' test\n"
-            "msgid \"Talking.\"\n")
-        self.assertContainsString(pot, "\n"
-            "# help of 'protocol=new' test\n"
-            "msgid \"Current.\"\n")
-        self.assertNotContainsString(pot, "'protocol=old'")
+        self.assertContainsString(pot, b"\n"
+            b"# help of 'protocol' test\n"
+            b"msgid \"Talking.\"\n")
+        self.assertContainsString(pot, b"\n"
+            b"# help of 'protocol=new' test\n"
+            b"msgid \"Current.\"\n")
+        self.assertNotContainsString(pot, b"'protocol=old'")
 
 
 class TestPotExporter(tests.TestCase):
@@ -333,15 +333,15 @@ class TestPotExporter(tests.TestCase):
         exporter.poentry_in_context(context, "Common line.")
         context.lineno = 3
         exporter.poentry_in_context(context, "Common line.")
-        self.assertEqual(1, exporter.outf.getvalue().count("Common line."))
-    
+        self.assertEqual(1, exporter.outf.getvalue().count(b"Common line."))
+
     def test_duplicates_included(self):
         exporter = export_pot._PotExporter(BytesIO(), True)
         context = export_pot._ModuleContext("mod.py", 1)
         exporter.poentry_in_context(context, "Common line.")
         context.lineno = 3
         exporter.poentry_in_context(context, "Common line.")
-        self.assertEqual(2, exporter.outf.getvalue().count("Common line."))
+        self.assertEqual(2, exporter.outf.getvalue().count(b"Common line."))
 
 
 class PoEntryTestCase(tests.TestCase):
@@ -353,7 +353,7 @@ class PoEntryTestCase(tests.TestCase):
     def check_output(self, expected):
         self.assertEqual(
                 self.exporter.outf.getvalue(),
-                textwrap.dedent(expected)
+                textwrap.dedent(expected.decode('utf-8')).encode('utf-8')
                 )
 
 
@@ -362,7 +362,7 @@ class TestPoEntry(PoEntryTestCase):
     def test_simple(self):
         self.exporter.poentry('dummy', 1, "spam")
         self.exporter.poentry('dummy', 2, "ham", 'EGG')
-        self.check_output('''\
+        self.check_output(b'''\
                 #: dummy:1
                 msgid "spam"
                 msgstr ""
@@ -379,7 +379,7 @@ class TestPoEntry(PoEntryTestCase):
         # This should be ignored.
         self.exporter.poentry('dummy', 2, "spam", 'EGG')
 
-        self.check_output('''\
+        self.check_output(b'''\
                 #: dummy:1
                 msgid "spam"
                 msgstr ""\n
@@ -394,7 +394,7 @@ class TestPoentryPerPergraph(PoEntryTestCase):
                 10,
                 '''foo\nbar\nbaz\n'''
                 )
-        self.check_output('''\
+        self.check_output(b'''\
                 #: dummy:10
                 msgid ""
                 "foo\\n"
@@ -409,7 +409,7 @@ class TestPoentryPerPergraph(PoEntryTestCase):
                 10,
                 '''spam\nham\negg\n\nSPAM\nHAM\nEGG\n'''
                 )
-        self.check_output('''\
+        self.check_output(b'''\
                 #: dummy:10
                 msgid ""
                 "spam\\n"
@@ -447,22 +447,22 @@ class TestExportCommandHelp(PoEntryTestCase):
         export_pot._write_command_help(self.exporter, cmd_Demo())
         result = self.exporter.outf.getvalue()
         # We don't care about filename and lineno here.
-        result = re.sub(r'(?m)^#: [^\n]+\n', '', result)
+        result = re.sub(br'(?m)^#: [^\n]+\n', b'', result)
 
         self.assertEqualDiff(
-                'msgid "A sample command."\n'
-                'msgstr ""\n'
-                '\n'                # :Usage: should not be translated.
-                'msgid ""\n'
-                '":Examples:\\n"\n'
-                '"    Example 1::"\n'
-                'msgstr ""\n'
-                '\n'
-                'msgid "        cmd arg1"\n'
-                'msgstr ""\n'
-                '\n'
-                'msgid "Blah Blah Blah"\n'
-                'msgstr ""\n'
-                '\n',
+                b'msgid "A sample command."\n'
+                b'msgstr ""\n'
+                b'\n'                # :Usage: should not be translated.
+                b'msgid ""\n'
+                b'":Examples:\\n"\n'
+                b'"    Example 1::"\n'
+                b'msgstr ""\n'
+                b'\n'
+                b'msgid "        cmd arg1"\n'
+                b'msgstr ""\n'
+                b'\n'
+                b'msgid "Blah Blah Blah"\n'
+                b'msgstr ""\n'
+                b'\n',
                 result
                 )

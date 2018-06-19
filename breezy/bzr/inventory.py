@@ -227,6 +227,8 @@ class InventoryEntry(object):
         """
         if u'/' in name:
             raise errors.InvalidEntryName(name=name)
+        if not isinstance(file_id, bytes):
+            raise TypeError(file_id)
         self.file_id = file_id
         self.revision = None
         self.name = name
