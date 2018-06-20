@@ -43,6 +43,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    bytesintern,
     viewvalues,
     viewitems,
     )
@@ -286,15 +287,15 @@ class GraphIndexBuilder(object):
         """
         (node_refs,
          absent_references) = self._check_key_ref_value(key, references, value)
-        if key in self._nodes and self._nodes[key][0] != 'a':
+        if key in self._nodes and self._nodes[key][0] != b'a':
             raise BadIndexDuplicateKey(key, self)
         for reference in absent_references:
             # There may be duplicates, but I don't think it is worth worrying
             # about
-            self._nodes[reference] = ('a', (), '')
+            self._nodes[reference] = (b'a', (), b'')
         self._absent_keys.update(absent_references)
         self._absent_keys.discard(key)
-        self._nodes[key] = ('', node_refs, value)
+        self._nodes[key] = (b'', node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
@@ -520,19 +521,20 @@ class GraphIndex(object):
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
                 stream = BytesIO(stream.read()[self._base_offset:])
-        self._read_prefix(stream)
-        self._expected_elements = 3 + self._key_length
-        line_count = 0
-        # raw data keyed by offset
-        self._keys_by_offset = {}
-        # ready-to-return key:value or key:value, node_ref_lists
-        self._nodes = {}
-        self._nodes_by_key = None
-        trailers = 0
-        pos = stream.tell()
-        lines = stream.read().split(b'\n')
-        # GZ 2009-09-20: Should really use a try/finally block to ensure close
-        stream.close()
+        try:
+            self._read_prefix(stream)
+            self._expected_elements = 3 + self._key_length
+            line_count = 0
+            # raw data keyed by offset
+            self._keys_by_offset = {}
+            # ready-to-return key:value or key:value, node_ref_lists
+            self._nodes = {}
+            self._nodes_by_key = None
+            trailers = 0
+            pos = stream.tell()
+            lines = stream.read().split(b'\n')
+        finally:
+            stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in viewvalues(self._keys_by_offset):
@@ -1145,7 +1147,7 @@ class GraphIndex(object):
                 raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple([intern(element) for element in elements[:self._key_length]])
+            key = tuple([bytesintern(element) for element in elements[:self._key_length]])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
@@ -1599,7 +1601,7 @@ class CombinedGraphIndex(object):
         """
         if self._reload_func is None:
             return False
-        trace.mutter('Trying to reload after getting exception: %s', error)
+        trace.mutter('Trying to reload after getting exception: %s', str(error))
         if not self._reload_func():
             # We tried to reload, but nothing changed, so we fail anyway
             trace.mutter('_reload_func indicated nothing has changed.'
