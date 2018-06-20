@@ -254,13 +254,13 @@ bbb
                            ('unchanged', ['bbb\n']),
                            ])
 
-        ml = m3.merge_lines(name_a='a',
-                            name_b='b',
-                            start_marker='<<',
-                            mid_marker='--',
-                            end_marker='>>')
-        self.assertEqual(''.join(ml),
-'''aaa
+        ml = m3.merge_lines(name_a=b'a',
+                            name_b=b'b',
+                            start_marker=b'<<',
+                            mid_marker=b'--',
+                            end_marker=b'>>')
+        self.assertEqual(b''.join(ml),
+b'''aaa
 << a
 111
 --
@@ -271,9 +271,9 @@ bbb
 
     def test_replace_clash(self):
         """Both try to insert lines in the same place."""
-        m3 = merge3.Merge3(['aaa', '000', 'bbb'],
-                           ['aaa', '111', 'bbb'],
-                           ['aaa', '222', 'bbb'])
+        m3 = merge3.Merge3([b'aaa', b'000', b'bbb'],
+                           [b'aaa', b'111', b'bbb'],
+                           [b'aaa', b'222', b'bbb'])
 
         self.assertEqual(m3.find_unconflicted(),
                           [(0, 1), (2, 3)])
@@ -285,9 +285,9 @@ bbb
 
     def test_replace_multi(self):
         """Replacement with regions of different size."""
-        m3 = merge3.Merge3(['aaa', '000', '000', 'bbb'],
-                           ['aaa', '111', '111', '111', 'bbb'],
-                           ['aaa', '222', '222', '222', '222', 'bbb'])
+        m3 = merge3.Merge3([b'aaa', b'000', b'000', b'bbb'],
+                           [b'aaa', b'111', b'111', b'111', b'bbb'],
+                           [b'aaa', b'222', b'222', b'222', b'222', b'bbb'])
 
         self.assertEqual(m3.find_unconflicted(),
                           [(0, 1), (3, 4)])

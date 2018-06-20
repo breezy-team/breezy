@@ -678,7 +678,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([(None, self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
-        self.assertEqual([((index._size // 2, ('50', )), +1)],
+        self.assertEqual([((index._size // 2, (b'50', )), +1)],
             result)
 
     def test_lookup_key_resolves_references(self):

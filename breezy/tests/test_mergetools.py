@@ -155,7 +155,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         self.assertEqual(0, retcode)
         self.assertEqual('tool', self._exe)
         self.assertPathDoesNotExist(self._args[0])
-        self.assertFileEqual('temp stuff', 'test.txt')
+        self.assertFileEqual(b'temp stuff', 'test.txt')
 
     def test_failure_tempfile(self):
         def dummy_invoker(exe, args, cleanup):
@@ -172,4 +172,4 @@ class TestInvoke(tests.TestCaseInTempDir):
                                     dummy_invoker)
         self.assertEqual(1, retcode)
         self.assertEqual('tool', self._exe)
-        self.assertFileEqual('stuff', 'test.txt')
+        self.assertFileEqual(b'stuff', 'test.txt')

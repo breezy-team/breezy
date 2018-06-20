@@ -245,7 +245,7 @@ class TestMerge(TestCaseWithTransport):
         # tree
         tree2.commit('changed file text')
         tree.merge_from_branch(tree2.branch)
-        self.assertFileEqual('text2', 'tree/sub-tree/file')
+        self.assertFileEqual(b'text2', 'tree/sub-tree/file')
 
     def test_merge_with_missing(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -377,7 +377,7 @@ class TestMerge(TestCaseWithTransport):
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
-        self.assertFileEqual('c\na\n', 'this/file')
+        self.assertFileEqual(b'c\na\n', 'this/file')
 
     def test_weave_cannot_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
@@ -410,12 +410,12 @@ class TestMerge(TestCaseWithTransport):
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
-        self.assertFileEqual('a\n'
-                             '<<<<<<< TREE\n'
-                             '=======\n'
-                             'c\n'
-                             '>>>>>>> MERGE-SOURCE\n',
-                             'this/file')
+        self.assertFileEqual(b'a\n'
+                             b'<<<<<<< TREE\n'
+                             b'=======\n'
+                             b'c\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
+                             b'this/file')
 
     def test_merge_reverse_revision_range(self):
         tree = self.make_branch_and_tree(".")
@@ -502,11 +502,8 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         tt = tree_merger.do_merge()
-        tree_file = this_tree.get_file('file')
-        try:
-            self.assertEqual('2b\n1\n2a\n', tree_file.read())
-        finally:
-            tree_file.close()
+        with this_tree.get_file('file') as tree_file:
+            self.assertEqual(b'2b\n1\n2a\n', tree_file.read())
 
     def test_merge_require_tree_root(self):
         tree = self.make_branch_and_tree(".")
@@ -1246,8 +1243,8 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         builder.build_snapshot(None,
             [('add', ('', None, 'directory', None))],
             revision_id=b'A-id' )
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
         return builder
 
     def setup_criss_cross_graph(self):
@@ -1261,8 +1258,8 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         # |X|
         # D E
         builder = self.setup_simple_graph()
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot(['B-id', b'C-id'], [], revision_id=b'D-id')
         return builder
 
     def make_Merger(self, builder, other_revision_id, interesting_files=None):
@@ -1280,20 +1277,20 @@ class TestMergerBase(TestCaseWithMemoryTransport):
 class TestMergerInMemory(TestMergerBase):
 
     def test_cache_trees_with_revision_ids_None(self):
-        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        merger = self.make_Merger(self.setup_simple_graph(), b'C-id')
         original_cache = dict(merger._cached_trees)
         merger.cache_trees_with_revision_ids([None])
         self.assertEqual(original_cache, merger._cached_trees)
 
     def test_cache_trees_with_revision_ids_no_revision_id(self):
-        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        merger = self.make_Merger(self.setup_simple_graph(), b'C-id')
         original_cache = dict(merger._cached_trees)
         tree = self.make_branch_and_memory_tree('tree')
         merger.cache_trees_with_revision_ids([tree])
         self.assertEqual(original_cache, merger._cached_trees)
 
     def test_cache_trees_with_revision_ids_having_revision_id(self):
-        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        merger = self.make_Merger(self.setup_simple_graph(), b'C-id')
         original_cache = dict(merger._cached_trees)
         tree = merger.this_branch.repository.revision_tree(b'B-id')
         original_cache['B-id'] = tree
@@ -1301,22 +1298,22 @@ class TestMergerInMemory(TestMergerBase):
         self.assertEqual(original_cache, merger._cached_trees)
 
     def test_find_base(self):
-        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
-        self.assertEqual('A-id', merger.base_rev_id)
+        merger = self.make_Merger(self.setup_simple_graph(), b'C-id')
+        self.assertEqual(b'A-id', merger.base_rev_id)
         self.assertFalse(merger._is_criss_cross)
         self.assertIs(None, merger._lca_trees)
 
     def test_find_base_criss_cross(self):
         builder = self.setup_criss_cross_graph()
-        merger = self.make_Merger(builder, 'E-id')
-        self.assertEqual('A-id', merger.base_rev_id)
+        merger = self.make_Merger(builder, b'E-id')
+        self.assertEqual(b'A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
-        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+        self.assertEqual([b'B-id', b'C-id'], [t.get_revision_id()
                                             for t in merger._lca_trees])
         # If we swap the order, we should get a different lca order
-        builder.build_snapshot(['E-id'], [], revision_id=b'F-id')
-        merger = self.make_Merger(builder, 'D-id')
-        self.assertEqual(['C-id', 'B-id'], [t.get_revision_id()
+        builder.build_snapshot([b'E-id'], [], revision_id=b'F-id')
+        merger = self.make_Merger(builder, b'D-id')
+        self.assertEqual([b'C-id', b'B-id'], [t.get_revision_id()
                                             for t in merger._lca_trees])
 
     def test_find_base_triple_criss_cross(self):
@@ -1330,11 +1327,11 @@ class TestMergerInMemory(TestMergerBase):
         #    \|   |/
         #     G   H
         builder = self.setup_criss_cross_graph()
-        builder.build_snapshot(['A-id'], [], revision_id=b'F-id')
-        builder.build_snapshot(['E-id', 'F-id'], [], revision_id=b'H-id')
-        builder.build_snapshot(['D-id', 'F-id'], [], revision_id=b'G-id')
-        merger = self.make_Merger(builder, 'H-id')
-        self.assertEqual(['B-id', 'C-id', 'F-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'F-id')
+        builder.build_snapshot([b'E-id', b'F-id'], [], revision_id=b'H-id')
+        builder.build_snapshot([b'D-id', b'F-id'], [], revision_id=b'G-id')
+        merger = self.make_Merger(builder, b'H-id')
+        self.assertEqual([b'B-id', b'C-id', b'F-id'],
                          [t.get_revision_id() for t in merger._lca_trees])
 
     def test_find_base_new_root_criss_cross(self):
@@ -1350,33 +1347,33 @@ class TestMergerInMemory(TestMergerBase):
         builder.build_snapshot([],
             [('add', ('', None, 'directory', None))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id', 'B-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['A-id', 'B-id'], [], revision_id=b'C-id')
-        merger = self.make_Merger(builder, 'D-id')
-        self.assertEqual('A-id', merger.base_rev_id)
+        builder.build_snapshot([b'A-id', b'B-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'A-id', b'B-id'], [], revision_id=b'C-id')
+        merger = self.make_Merger(builder, b'D-id')
+        self.assertEqual(b'A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
-        self.assertEqual(['A-id', 'B-id'], [t.get_revision_id()
+        self.assertEqual([b'A-id', b'B-id'], [t.get_revision_id()
                                             for t in merger._lca_trees])
 
     def test_no_criss_cross_passed_to_merge_type(self):
         class LCATreesMerger(LoggingMerger):
             supports_lca_trees = True
 
-        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        merger = self.make_Merger(self.setup_simple_graph(), b'C-id')
         merger.merge_type = LCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, LCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
     def test_criss_cross_passed_to_merge_type(self):
-        merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
+        merger = self.make_Merger(self.setup_criss_cross_graph(), b'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
-        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+        self.assertEqual([b'B-id', b'C-id'], [t.get_revision_id()
                                             for t in merger._lca_trees])
 
     def test_criss_cross_not_supported_merge_type(self):
-        merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
+        merger = self.make_Merger(self.setup_criss_cross_graph(), b'E-id')
         # We explicitly do not define supports_lca_trees
         merger.merge_type = LoggingMerger
         merge_obj = merger.make_merger()
@@ -1387,7 +1384,7 @@ class TestMergerInMemory(TestMergerBase):
         class UnsupportedLCATreesMerger(LoggingMerger):
             supports_lca_trees = False
 
-        merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
+        merger = self.make_Merger(self.setup_criss_cross_graph(), b'E-id')
         merger.merge_type = UnsupportedLCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
@@ -1405,32 +1402,32 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_simple(self):
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', 'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('a', 'a\nb\nC\nc\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('a', b'a\nb\nC\nc\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('a', 'a\nB\nb\nc\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('a', b'a\nB\nb\nc\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('a', 'a\nB\nb\nC\nc\nE\n'))],
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('a', b'a\nB\nb\nC\nc\nE\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
-            [('modify', ('a', 'a\nB\nb\nC\nc\n'))],
+        builder.build_snapshot([b'B-id', b'C-id'],
+            [('modify', ('a', b'a\nB\nb\nC\nc\n'))],
             revision_id=b'D-id', )
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
-        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+        self.assertEqual([b'B-id', b'C-id'], [t.get_revision_id()
                                             for t in merge_obj._lca_trees])
-        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
+        self.assertEqual(b'A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
 
         # (file_id, changed, parents, names, executable)
         # BASE, lca1, lca2, OTHER, THIS
-        root_id = 'a-root-id'
-        self.assertEqual([('a-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'a-id', True,
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
@@ -1451,32 +1448,32 @@ class TestMergerEntriesLCA(TestMergerBase):
 
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None))],
+            [('add', (u'', b'a-root-id', 'directory', None))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
-            [('add', (u'bar', 'bar-id', 'file', 'd\ne\nf\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('add', (u'bar', 'bar-id', 'file', b'd\ne\nf\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['B-id', 'C-id'],
-            [('add', (u'bar', 'bar-id', 'file', 'd\ne\nf\n'))],
+        builder.build_snapshot([b'B-id', b'C-id'],
+            [('add', (u'bar', 'bar-id', 'file', b'd\ne\nf\n'))],
             revision_id=b'D-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['E-id', 'D-id'],
-            [('modify', (u'bar', 'd\ne\nf\nG\n'))],
+        builder.build_snapshot([b'E-id', b'D-id'],
+            [('modify', (u'bar', b'd\ne\nf\nG\n'))],
             revision_id=b'G-id')
-        builder.build_snapshot(['D-id', 'E-id'], [], revision_id=b'F-id')
-        merge_obj = self.make_merge_obj(builder, 'G-id')
+        builder.build_snapshot(['D-id', b'E-id'], [], revision_id=b'F-id')
+        merge_obj = self.make_merge_obj(builder, b'G-id')
 
-        self.assertEqual(['D-id', 'E-id'], [t.get_revision_id()
+        self.assertEqual([b'D-id', b'E-id'], [t.get_revision_id()
                                             for t in merge_obj._lca_trees])
-        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
+        self.assertEqual(b'A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('bar-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'bar-id', True,
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
                            ((None, [root_id, root_id]), root_id, root_id),
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
@@ -1486,30 +1483,30 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_not_in_this(self):
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('a', 'a\nB\nb\nc\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('a', b'a\nB\nb\nc\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('a', 'a\nb\nC\nc\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('a', b'a\nb\nC\nc\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('a', 'a\nB\nb\nC\nc\nE\n'))],
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('a', b'a\nB\nb\nC\nc\nE\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
+        builder.build_snapshot([b'B-id', b'C-id'],
             [('unversion', 'a')],
             revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
-        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+        self.assertEqual([b'B-id', b'C-id'], [t.get_revision_id()
                                             for t in merge_obj._lca_trees])
-        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
+        self.assertEqual(b'A-id', merge_obj.base_tree.get_revision_id())
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('a-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'a-id', True,
                            ((u'a', [u'a', u'a']), u'a', None),
                            ((root_id, [root_id, root_id]), root_id, None),
                            ((u'a', [u'a', u'a']), u'a', None),
@@ -1524,22 +1521,22 @@ class TestMergerEntriesLCA(TestMergerBase):
         #   D E # D and E both have the file, unchanged from C
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None))],
+            [('add', (u'', b'a-root-id', 'directory', None))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
-            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'],
+            [('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'C-id', b'B-id'],
                                [], revision_id=b'E-id') # Inherited from C
-        builder.build_snapshot(['B-id', 'C-id'], # Merged from C
-            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+        builder.build_snapshot([b'B-id', b'C-id'], # Merged from C
+            [('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
-        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+        self.assertEqual([b'B-id', b'C-id'], [t.get_revision_id()
                                             for t in merge_obj._lca_trees])
-        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
+        self.assertEqual(b'A-id', merge_obj.base_tree.get_revision_id())
 
         entries = list(merge_obj._entries_lca())
         self.assertEqual([], entries)
@@ -1547,20 +1544,20 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_not_in_other(self):
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.build_snapshot(
-                ['C-id', 'B-id'],
+                [b'C-id', b'B-id'],
                 [('unversion', 'a')], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('a-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'a-id', True,
                            ((u'a', [u'a', u'a']), None, u'a'),
                            ((root_id, [root_id, root_id]), None, root_id),
                            ((u'a', [u'a', u'a']), None, u'a'),
@@ -1581,15 +1578,15 @@ class TestMergerEntriesLCA(TestMergerBase):
         # D would then win 'cleanly' and no record would be given
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'],
             [('unversion', 'foo')], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
         self.assertEqual([], entries)
@@ -1611,22 +1608,22 @@ class TestMergerEntriesLCA(TestMergerBase):
         # picked C and D picked B, so we should issue a conflict
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [
-            ('modify', ('foo', 'new-content\n'))],
+        builder.build_snapshot([b'A-id'], [
+            ('modify', ('foo', b'new-content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('unversion', 'foo')],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('foo-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'foo-id', True,
                            ((u'foo', [u'foo', None]), None, u'foo'),
                            ((root_id, [root_id, None]), None, root_id),
                            ((u'foo', [u'foo', None]), None, 'foo'),
@@ -1651,17 +1648,17 @@ class TestMergerEntriesLCA(TestMergerBase):
         #   w/ C=BASE, D=THIS, E=OTHER we have 'happy convergence'
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None))],
+            [('add', (u'', b'a-root-id', 'directory', None))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
-            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'],
+            [('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'C-id', b'B-id'],
             [('unversion', 'a')],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
         self.assertEqual([], entries)
@@ -1669,19 +1666,19 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_only_in_other(self):
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None))],
+            [('add', (u'', b'a-root-id', 'directory', None))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('a-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'a-id', True,
                            ((None, [None, None]), u'a', None),
                            ((None, [None, None]), root_id, None),
                            ((None, [None, None]), u'a', None),
@@ -1704,22 +1701,22 @@ class TestMergerEntriesLCA(TestMergerBase):
         #   completely supersedes the value in D.
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'B content\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('foo', 'E content\n'))],
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('foo', b'E content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['E-id', 'D-id'], [], revision_id=b'G-id')
-        builder.build_snapshot(['D-id', 'E-id'],
-            [('modify', ('foo', 'F content\n'))],
+        builder.build_snapshot([b'E-id', b'D-id'], [], revision_id=b'G-id')
+        builder.build_snapshot([b'D-id', b'E-id'],
+            [('modify', ('foo', b'F content\n'))],
             revision_id=b'F-id')
-        merge_obj = self.make_merge_obj(builder, 'G-id')
+        merge_obj = self.make_merge_obj(builder, b'G-id')
 
         self.assertEqual([], list(merge_obj._entries_lca()))
 
@@ -1754,24 +1751,24 @@ class TestMergerEntriesLCA(TestMergerBase):
         #
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'],
             [('rename', ('foo', 'bar'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
             [('rename', ('foo', 'bing'))],
             revision_id=b'E-id') # override to bing
-        builder.build_snapshot(['E-id', 'D-id'],
+        builder.build_snapshot([b'E-id', b'D-id'],
             [('rename', ('bing', 'barry'))],
             revision_id=b'G-id') # override to barry
-        builder.build_snapshot(['D-id', 'E-id'],
+        builder.build_snapshot([b'D-id', b'E-id'],
             [('rename', ('bar', 'bing'))],
             revision_id=b'F-id') # Merge in E's change
-        merge_obj = self.make_merge_obj(builder, 'G-id')
+        merge_obj = self.make_merge_obj(builder, b'G-id')
 
         self.expectFailure("We don't do an actual heads() check on lca values,"
             " or use the per-attribute graph",
@@ -1792,28 +1789,28 @@ class TestMergerEntriesLCA(TestMergerBase):
         # (superseding B).
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'],
             [('rename', ('foo', 'bar'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['E-id', 'D-id'],
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'E-id', b'D-id'],
             [('rename', ('foo', 'bar'))],
             revision_id=b'G-id')
-        builder.build_snapshot(['D-id', 'E-id'],
+        builder.build_snapshot([b'D-id', b'E-id'],
             [('rename', ('bar', 'bing'))],
             revision_id=b'F-id') # should end up conflicting
-        merge_obj = self.make_merge_obj(builder, 'G-id')
+        merge_obj = self.make_merge_obj(builder, b'G-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
+        root_id = b'a-root-id'
         self.expectFailure("We prune values from BASE even when relevant.",
             self.assertEqual,
-                [('foo-id', False,
+                [(b'foo-id', False,
                   ((root_id, [root_id, root_id]), root_id, root_id),
                   ((u'foo', [u'bar', u'foo']), u'bar', u'bing'),
                   ((False, [False, False]), False, False)),
@@ -1829,22 +1826,22 @@ class TestMergerEntriesLCA(TestMergerBase):
         # This should conflict
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'B content\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('modify', ('foo', 'C content\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('foo-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'foo-id', True,
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
@@ -1864,25 +1861,25 @@ class TestMergerEntriesLCA(TestMergerBase):
         # merge resolution
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('modify', ('foo', 'B content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'C content\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'C content\n'))],
             revision_id=b'C-id', )
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['D-id'],
-            [('modify', ('foo', 'F content\n'))],
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'D-id'],
+            [('modify', ('foo', b'F content\n'))],
             revision_id=b'F-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('foo-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'foo-id', True,
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
@@ -1905,23 +1902,23 @@ class TestMergerEntriesLCA(TestMergerBase):
 
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'B content\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'C content\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'C content\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
-            [('modify', ('foo', 'C content\n'))],
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'],
+            [('modify', ('foo', b'C content\n'))],
             revision_id=b'D-id') # Same as E
-        builder.build_snapshot(['D-id'],
-            [('modify', ('foo', 'F content\n'))],
+        builder.build_snapshot([b'D-id'],
+            [('modify', ('foo', b'F content\n'))],
             revision_id=b'F-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
 
         entries = list(merge_obj._entries_lca())
         self.expectFailure("We don't detect that LCA resolution was the"
@@ -1931,20 +1928,20 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_only_path_changed(self):
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
             [('rename', (u'a', u'b'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
+        root_id = b'a-root-id'
         # The content was not changed, only the path
-        self.assertEqual([('a-id', False,
+        self.assertEqual([(b'a-id', False,
                            ((u'a', [u'a', u'a']), u'b', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'b', u'a'),
@@ -1955,22 +1952,22 @@ class TestMergerEntriesLCA(TestMergerBase):
         # Identical content, except 'D' changes a-id into a directory
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
             [('unversion', 'a'),
              ('flush', None),
-             ('add', (u'a', 'a-id', 'directory', None))],
+             ('add', (u'a', b'a-id', 'directory', None))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
+        root_id = b'a-root-id'
         # Only the kind was changed (content)
-        self.assertEqual([('a-id', True,
+        self.assertEqual([(b'a-id', True,
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
@@ -1981,18 +1978,18 @@ class TestMergerEntriesLCA(TestMergerBase):
         # Identical content, but THIS changes a file to a directory
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'],
             [('unversion', 'a'),
              ('flush', None),
-             ('add', (u'a', 'a-id', 'directory', None))],
+             ('add', (u'a', b'a-id', 'directory', None))],
             revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id')
         entries = list(merge_obj._entries_lca())
         # Only the kind was changed (content)
         self.assertEqual([], entries)
@@ -2001,22 +1998,22 @@ class TestMergerEntriesLCA(TestMergerBase):
         # Two files modified, but we should filter one of them
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n')),
+             ('add', (u'b', b'b-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('a', 'new-content\n')),
-             ('modify', ('b', 'new-content\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('a', b'new-content\n')),
+             ('modify', ('b', b'new-content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id',
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id',
                                         interesting_files=['b'])
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('b-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'b-id', True,
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
@@ -2027,24 +2024,24 @@ class TestMergerEntriesLCA(TestMergerBase):
         # This renamed the file, but it should still match the entry in other
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n')),
+             ('add', (u'b', b'b-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
             [('modify', ('a', 'new-content\n')),
              ('modify', ('b', 'new-content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
+        builder.build_snapshot([b'B-id', b'C-id'],
             [('rename', ('b', 'c'))],
             revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id',
+        merge_obj = self.make_merge_obj(builder, b'E-id',
                                         interesting_files=['c'])
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('b-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'b-id', True,
                            ((u'b', [u'b', u'b']), u'b', u'c'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'c'),
@@ -2055,26 +2052,26 @@ class TestMergerEntriesLCA(TestMergerBase):
         # This renamed the file, but it should still match the entry in BASE
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'c', 'c-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n')),
+             ('add', (u'c', b'c-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('rename', ('c', 'b'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('rename', ('c', 'b'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('a', 'new-content\n')),
-             ('modify', ('b', 'new-content\n'))],
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('a', b'new-content\n')),
+             ('modify', ('b', b'new-content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id',
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id',
                                         interesting_files=['c'])
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('c-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'c-id', True,
                            ((u'c', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'c', [u'b', u'b']), u'b', u'b'),
@@ -2085,24 +2082,24 @@ class TestMergerEntriesLCA(TestMergerBase):
         # This renamed the file, but it should still match the entry in LCA
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n')),
+             ('add', (u'b', 'b-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('rename', ('b', 'c'))], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('a', 'new-content\n')),
-             ('modify', ('b', 'new-content\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('a', b'new-content\n')),
+             ('modify', ('b', b'new-content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
+        builder.build_snapshot(['B-id', b'C-id'],
             [('rename', ('c', 'b'))], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id',
+        merge_obj = self.make_merge_obj(builder, b'E-id',
                                         interesting_files=['c'])
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('b-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'b-id', True,
                            ((u'b', [u'c', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'c', u'b']), u'b', u'b'),
@@ -2113,21 +2110,21 @@ class TestMergerEntriesLCA(TestMergerBase):
         # Two files modified, but we should filter one of them
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'content\n')),
-             ('add', (u'b', 'b-id', 'file', 'content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'content\n')),
+             ('add', (u'b', b'b-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
-            [('modify', ('a', 'new-content\n')),
-             ('modify', ('b', 'new-content\n'))], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, 'E-id',
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'C-id', b'B-id'],
+            [('modify', ('a', b'new-content\n')),
+             ('modify', ('b', b'new-content\n'))], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        merge_obj = self.make_merge_obj(builder, b'E-id',
                                         interesting_files=['b'])
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('b-id', True,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'b-id', True,
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
@@ -2335,7 +2332,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'A-id'],
             [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('modify', ('foo', b'C content\n'))],
             revision_id=b'C-id')
         builder.build_snapshot([b'C-id', b'B-id'], [],
@@ -2700,40 +2697,40 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #   D E E updates content, renames 'b' => 'c'
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'base content\n')),
-             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'base content\n')),
+             ('add', (u'foo', b'foo-id', 'file', b'base content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'B content\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'],
             [('rename', ('a', 'b'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'],
+        builder.build_snapshot([b'C-id', b'B-id'],
             [('rename', ('b', 'c')),
-             ('modify', ('foo', 'E content\n'))],
+             ('modify', ('foo', b'E content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
+        builder.build_snapshot(['B-id', b'C-id'],
             [('rename', ('a', 'b'))], revision_id=b'D-id') # merged change
         wt_this = self.get_wt_from_builder(builder)
-        wt_base = wt_this.controldir.sprout('base', 'A-id').open_workingtree()
+        wt_base = wt_this.controldir.sprout('base', b'a-id').open_workingtree()
         wt_base.lock_read()
         self.addCleanup(wt_base.unlock)
-        wt_lca1 = wt_this.controldir.sprout('b-tree', 'B-id').open_workingtree()
+        wt_lca1 = wt_this.controldir.sprout('b-tree', b'B-id').open_workingtree()
         wt_lca1.lock_read()
         self.addCleanup(wt_lca1.unlock)
-        wt_lca2 = wt_this.controldir.sprout('c-tree', 'C-id').open_workingtree()
+        wt_lca2 = wt_this.controldir.sprout('c-tree', b'C-id').open_workingtree()
         wt_lca2.lock_read()
         self.addCleanup(wt_lca2.unlock)
-        wt_other = wt_this.controldir.sprout('other', 'E-id').open_workingtree()
+        wt_other = wt_this.controldir.sprout('other', b'E-id').open_workingtree()
         wt_other.lock_read()
         self.addCleanup(wt_other.unlock)
         merge_obj = _mod_merge.Merge3Merger(wt_this, wt_this, wt_base,
             wt_other, lca_trees=[wt_lca1, wt_lca2], do_merge=False)
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
-        self.assertEqual([('a-id', False,
+        root_id = b'a-root-id'
+        self.assertEqual([(b'a-id', False,
                            ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'b']), u'c', u'b'),
@@ -2773,7 +2770,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, b'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2848,11 +2845,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, b'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
+        root_id = b'a-root-id'
         self.assertEqual([('sub-tree-root', False,
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
@@ -3078,17 +3075,17 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file('bar-id', builder.tree_root, file_name, 'text1', True)
-        builder.change_contents('bar-id', other='text4', this='text3')
+        builder.add_file(b'bar-id', builder.tree_root, file_name, b'text1', True)
+        builder.change_contents(b'bar-id', other=b'text4', this=b'text3')
         return builder
 
     def make_kind_change(self):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file('bar-id', builder.tree_root, 'bar', 'text1', True,
+        builder.add_file(b'bar-id', builder.tree_root, 'bar', b'text1', True,
                          this=False)
-        builder.add_dir('bar-dir', builder.tree_root, 'bar-id',
+        builder.add_dir(b'bar-dir', builder.tree_root, b'bar-id',
                         base=False, other=False)
         return builder
 
@@ -3132,14 +3129,15 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         Default is empty tree (just root entry).
         """
         if root_id is None:
-            root_id = '%s-root-id' % (relpath,)
+            root_id = ('%s-root-id' % (relpath,)).encode('ascii')
         wt = self.make_branch_and_tree(relpath)
         wt.set_root_id(root_id)
         if shape is not None:
             adjusted_shape = [relpath + '/' + elem for elem in shape]
             self.build_tree(adjusted_shape)
-            ids = ['%s-%s-id' % (relpath, basename(elem.rstrip('/')))
-                   for elem in shape]
+            ids = [
+                ('%s-%s-id' % (relpath, basename(elem.rstrip('/')))).encode('ascii')
+                for elem in shape]
             wt.add(shape, ids=ids)
         rev_id = 'r1-%s' % (relpath,)
         wt.commit("Initial commit of %s" % (relpath,), rev_id=rev_id)
@@ -3387,7 +3385,7 @@ class TestMergeHooks(TestCaseWithTransport):
                                                    factory, 'test factory')
         self.tree_a.merge_from_branch(self.tree_b.branch)
 
-        self.assertFileEqual("content_3", 'tree_a/file')
+        self.assertFileEqual(b"content_3", 'tree_a/file')
         self.assertLength(1, calls)
 
     def test_post_merge_hook_called(self):
@@ -3400,5 +3398,5 @@ class TestMergeHooks(TestCaseWithTransport):
 
         self.tree_a.merge_from_branch(self.tree_b.branch)
 
-        self.assertFileEqual("content_2", 'tree_a/file')
+        self.assertFileEqual(b"content_2", 'tree_a/file')
         self.assertLength(1, calls)
