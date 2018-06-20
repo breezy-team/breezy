@@ -1051,13 +1051,10 @@ class Converter5to6(object):
 
         # Copy source data into target
         new_branch._write_last_revision_info(*branch.last_revision_info())
-        new_branch.lock_write()
-        try:
+        with new_branch.lock_write():
             new_branch.set_parent(branch.get_parent())
             new_branch.set_bound_location(branch.get_bound_location())
             new_branch.set_push_location(branch.get_push_location())
-        finally:
-            new_branch.unlock()
 
         # New branch has no tags by default
         new_branch.tags._set_tag_dict({})
@@ -1069,15 +1066,12 @@ class Converter5to6(object):
 
         # Clean up old files
         new_branch._transport.delete('revision-history')
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             try:
                 branch.set_parent(None)
             except errors.NoSuchFile:
                 pass
             branch.set_bound_location(None)
-        finally:
-            branch.unlock()
 
 
 class Converter6to7(object):

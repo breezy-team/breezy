@@ -2750,13 +2750,10 @@ class _KndxIndex(object):
                 self._filename = prefix
                 try:
                     path = self._mapper.map(prefix) + '.kndx'
-                    fp = self._transport.get(path)
-                    try:
+                    with self._transport.get(path) as fp:
                         # _load_data may raise NoSuchFile if the target knit is
                         # completely empty.
                         _load_data(self, fp)
-                    finally:
-                        fp.close()
                     self._kndx_cache[prefix] = (self._cache, self._history)
                     del self._cache
                     del self._filename

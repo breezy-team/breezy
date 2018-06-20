@@ -845,9 +845,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     def _tarball_of_dir(self, dirname, compression, ofile):
         import tarfile
         filename = os.path.basename(ofile.name)
-        tarball = tarfile.open(fileobj=ofile, name=filename,
-            mode='w|' + compression)
-        try:
+        with tarfile.open(fileobj=ofile, name=filename,
+                mode='w|' + compression) as tarball:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files
             # within the repository have ASCII names so the should be safe
@@ -858,8 +857,6 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             if not dirname.endswith('.bzr'):
                 raise ValueError(dirname)
             tarball.add(dirname, '.bzr') # recursive by default
-        finally:
-            tarball.close()
 
 
 class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
