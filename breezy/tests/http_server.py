@@ -26,6 +26,7 @@ import posixpath
 import random
 import re
 import socket
+import sys
 try:
     from urlparse import urlparse
 except ImportError:
@@ -339,6 +340,8 @@ Message: %(message)s.
         # abandon query parameters
         path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
+        if sys.version_info[0] == 2:
+             path = path.decode('utf-8')
         words = path.split('/')
         path = self._cwd
         for num, word in enumerate(w for w in words if w):

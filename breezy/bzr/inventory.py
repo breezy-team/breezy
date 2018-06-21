@@ -1154,6 +1154,8 @@ class Inventory(CommonInventory):
         >>> inv.get_entry('123123').name
         'hello.c'
         """
+        if not isinstance(file_id, bytes):
+            raise TypeError(file_id)
         try:
             return self._byid[file_id]
         except KeyError:

@@ -1296,7 +1296,7 @@ class VersionedFileRepository(Repository):
         # always a tricky proposition.
         inventory_cache = lru_cache.LRUCache(10)
         batch_size = 10 # should be ~150MB on a 55K path tree
-        batch_count = len(revision_order) / batch_size + 1
+        batch_count = len(revision_order) // batch_size + 1
         processed_texts = 0
         pb.update(gettext("Calculating text parents"), processed_texts, text_count)
         for offset in range(batch_count):

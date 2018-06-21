@@ -1319,12 +1319,20 @@ class DirState(object):
         return result
 
     def _check_delta_is_valid(self, delta):
-        return list(inventory._check_delta_unique_ids(
+        delta = list(inventory._check_delta_unique_ids(
                     inventory._check_delta_unique_old_paths(
                     inventory._check_delta_unique_new_paths(
                     inventory._check_delta_ids_match_entry(
                     inventory._check_delta_ids_are_valid(
                     inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+        def delta_key(d):
+            (old_path, new_path, file_id, new_entry) = d
+            if old_path is None:
+                old_path = ''
+            if new_path is None:
+                new_path = ''
+            return (old_path, new_path, file_id, new_entry)
+        return sorted(delta, key=delta_key, reverse=True)
 
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0
@@ -1349,9 +1357,9 @@ class DirState(object):
         new_ids = set()
         # This loop transforms the delta to single atomic operations that can
         # be executed and validated.
-        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
+        delta = self._check_delta_is_valid(delta)
         for old_path, new_path, file_id, inv_entry in delta:
-            if file_id.__class__ is not bytes:
+            if not isinstance(file_id, bytes):
                 raise AssertionError(
                     "must be a utf8 file_id not %s" % (type(file_id), ))
             if (file_id in insertions) or (file_id in removals):
@@ -1486,7 +1494,7 @@ class DirState(object):
 
         self._parents[0] = new_revid
 
-        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
+        delta = self._check_delta_is_valid(delta)
         adds = []
         changes = []
         deletes = []
@@ -1634,7 +1642,7 @@ class DirState(object):
                 if entry[0][2] != file_id:
                     # Different file_id, so not what we want.
                     continue
-                self._raise_invalid(("%s/%s" % key[0:2]).decode('utf8'), file_id,
+                self._raise_invalid((b"%s/%s" % key[0:2]).decode('utf8'), file_id,
                     "This file_id is new in the delta but already present in "
                     "the target")
 

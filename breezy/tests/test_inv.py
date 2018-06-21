@@ -339,7 +339,7 @@ class TestInventoryUpdates(TestCase):
         inv.add(InventoryFile(b'a-id', u'\u1234', b'tree-root'))
         e = self.assertRaises(errors.InconsistentDelta, inv.add,
             InventoryFile(b'b-id', u'\u1234', b'tree-root'))
-        self.assertContainsRe(str(e), r'\\u1234')
+        self.assertContainsRe(str(e), '\u1234')
 
     def test_add_recursive(self):
         parent = InventoryDirectory(b'src-id', 'src', b'tree-root')
@@ -505,11 +505,11 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_new_parent_path_has_wrong_id(self):
         inv = self.get_empty_inventory()
-        parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
+        parent1 = inventory.InventoryDirectory(b'p-1', 'dir', inv.root.file_id)
         parent1.revision = b'result'
-        parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
+        parent2 = inventory.InventoryDirectory(b'p-2', 'dir2', inv.root.file_id)
         parent2.revision = b'result'
-        file1 = inventory.InventoryFile(b'id', 'path', 'p-2')
+        file1 = inventory.InventoryFile(b'id', 'path', b'p-2')
         file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = b""
@@ -523,11 +523,11 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_old_parent_path_is_wrong(self):
         inv = self.get_empty_inventory()
-        parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
+        parent1 = inventory.InventoryDirectory(b'p-1', 'dir', inv.root.file_id)
         parent1.revision = b'result'
-        parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
+        parent2 = inventory.InventoryDirectory(b'p-2', 'dir2', inv.root.file_id)
         parent2.revision = b'result'
-        file1 = inventory.InventoryFile(b'id', 'path', 'p-2')
+        file1 = inventory.InventoryFile(b'id', 'path', b'p-2')
         file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = b""
@@ -542,15 +542,15 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_old_parent_path_is_for_other_id(self):
         inv = self.get_empty_inventory()
-        parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
+        parent1 = inventory.InventoryDirectory(b'p-1', 'dir', inv.root.file_id)
         parent1.revision = b'result'
-        parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
+        parent2 = inventory.InventoryDirectory(b'p-2', 'dir2', inv.root.file_id)
         parent2.revision = b'result'
-        file1 = inventory.InventoryFile(b'id', 'path', 'p-2')
+        file1 = inventory.InventoryFile(b'id', 'path', b'p-2')
         file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = b""
-        file2 = inventory.InventoryFile(b'id2', 'path', 'p-1')
+        file2 = inventory.InventoryFile(b'id2', 'path', b'p-1')
         file2.revision = b'result'
         file2.text_size = 0
         file2.text_sha1 = b""
@@ -567,39 +567,39 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_add_existing_id_new_path(self):
         inv = self.get_empty_inventory()
-        parent1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
+        parent1 = inventory.InventoryDirectory(b'p-1', 'dir1', inv.root.file_id)
         parent1.revision = b'result'
-        parent2 = inventory.InventoryDirectory('p-1', 'dir2', inv.root.file_id)
+        parent2 = inventory.InventoryDirectory(b'p-1', 'dir2', inv.root.file_id)
         parent2.revision = b'result'
         inv.add(parent1)
-        delta = [(None, u'dir2', 'p-1', parent2)]
+        delta = [(None, u'dir2', b'p-1', parent2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
     def test_add_new_id_existing_path(self):
         inv = self.get_empty_inventory()
-        parent1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
+        parent1 = inventory.InventoryDirectory(b'p-1', 'dir1', inv.root.file_id)
         parent1.revision = b'result'
-        parent2 = inventory.InventoryDirectory('p-2', 'dir1', inv.root.file_id)
+        parent2 = inventory.InventoryDirectory(b'p-2', 'dir1', inv.root.file_id)
         parent2.revision = b'result'
         inv.add(parent1)
-        delta = [(None, u'dir1', 'p-2', parent2)]
+        delta = [(None, u'dir1', b'p-2', parent2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
     def test_remove_dir_leaving_dangling_child(self):
         inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
+        dir1 = inventory.InventoryDirectory(b'p-1', 'dir1', inv.root.file_id)
         dir1.revision = b'result'
-        dir2 = inventory.InventoryDirectory('p-2', 'child1', 'p-1')
+        dir2 = inventory.InventoryDirectory(b'p-2', 'child1', b'p-1')
         dir2.revision = b'result'
-        dir3 = inventory.InventoryDirectory('p-3', 'child2', 'p-1')
+        dir3 = inventory.InventoryDirectory(b'p-3', 'child2', b'p-1')
         dir3.revision = b'result'
         inv.add(dir1)
         inv.add(dir2)
         inv.add(dir3)
-        delta = [(u'dir1', None, 'p-1', None),
-            (u'dir1/child2', None, 'p-3', None)]
+        delta = [(u'dir1', None, b'p-1', None),
+            (u'dir1/child2', None, b'p-3', None)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
@@ -922,7 +922,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.root.revision = b"bar"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
-                                              search_key_name='hash-16-way')
+                                              search_key_name=b'hash-16-way')
         lines = chk_inv.to_lines()
         self.assertEqual([
             b'chkinventory:\n',
@@ -932,7 +932,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
             b'revision_id: foo\n',
             b'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
-        chk_inv = CHKInventory.deserialise(chk_bytes, b''.join(lines), ('foo',))
+        chk_inv = CHKInventory.deserialise(chk_bytes, b''.join(lines), (b'foo',))
         self.assertEqual(b'hash-16-way', chk_inv._search_key_name)
 
     def test_directory_children_on_demand(self):
@@ -982,14 +982,14 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = b"revid"
         inv.root.revision = b"rootrev"
         inv.add(InventoryFile(b"fileid", "file", inv.root.file_id))
-        inv.get_entry(b"fileid").revision = "filerev"
+        inv.get_entry(b"fileid").revision = b"filerev"
         inv.get_entry(b"fileid").executable = True
         inv.get_entry(b"fileid").text_sha1 = b"ffff"
         inv.get_entry(b"fileid").text_size = 1
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = b''.join(chk_inv.to_lines())
-        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, (b"revid",))
         fileids = sorted(new_inv.iter_all_ids())
         self.assertEqual([inv.root.file_id, b"fileid"], fileids)
 
@@ -998,7 +998,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = b"revid"
         inv.root.revision = b"rootrev"
         inv.add(InventoryFile(b"fileid", "file", inv.root.file_id))
-        inv.get_entry(b"fileid").revision = "filerev"
+        inv.get_entry(b"fileid").revision = b"filerev"
         inv.get_entry(b"fileid").executable = True
         inv.get_entry(b"fileid").text_sha1 = b"ffff"
         inv.get_entry(b"fileid").text_size = 1
@@ -1105,12 +1105,12 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = b"revid"
         chk_bytes = self.get_chk_bytes()
         base_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        inv.add_path("", "directory", "myrootid", None)
+        inv.add_path("", "directory", b"myrootid", None)
         inv.revision_id = "expectedid"
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
         delta = [("", None, base_inv.root.file_id, None),
-            (None, "",  "myrootid", inv.root)]
-        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+            (None, "",  b"myrootid", inv.root)]
+        new_inv = base_inv.create_by_apply_delta(delta, b"expectedid")
         self.assertEqual(reference_inv.root, new_inv.root)
 
     def test_create_by_apply_delta_empty_add_child(self):
@@ -1119,8 +1119,8 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.root.revision = b"rootrev"
         chk_bytes = self.get_chk_bytes()
         base_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        a_entry = InventoryFile("A-id", "A", inv.root.file_id)
-        a_entry.revision = "filerev"
+        a_entry = InventoryFile(b"A-id", "A", inv.root.file_id)
+        a_entry.revision = b"filerev"
         a_entry.executable = True
         a_entry.text_sha1 = b"ffff"
         a_entry.text_size = 1
@@ -1128,7 +1128,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = "expectedid"
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
         delta = [(None, "A",  b"a-id", a_entry)]
-        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        new_inv = base_inv.create_by_apply_delta(delta, b"expectedid")
         # new_inv should be the same as reference_inv.
         self.assertEqual(reference_inv.revision_id, new_inv.revision_id)
         self.assertEqual(reference_inv.root_id, new_inv.root_id)
@@ -1143,16 +1143,16 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.root.revision = b"rootrev"
         chk_bytes = self.get_chk_bytes()
         base_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        a_entry = InventoryFile("A-id", "A", inv.root.file_id)
-        a_entry.revision = "filerev"
+        a_entry = InventoryFile(b"A-id", "A", inv.root.file_id)
+        a_entry.revision = b"filerev"
         a_entry.executable = True
         a_entry.text_sha1 = b"ffff"
         a_entry.text_size = 1
         inv.add(a_entry)
-        inv.revision_id = "expectedid"
+        inv.revision_id = b"expectedid"
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        delta = [(None, "A",  b"a-id", a_entry)]
-        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        delta = [(None, "A", b"A-id", a_entry)]
+        new_inv = base_inv.create_by_apply_delta(delta, b"expectedid")
         reference_inv.id_to_entry._ensure_root()
         reference_inv.parent_id_basename_to_file_id._ensure_root()
         new_inv.id_to_entry._ensure_root()
@@ -1172,7 +1172,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = b"revid"
         inv.root.revision = b"rootrev"
         inv.add(InventoryFile(b"fileid", "file", inv.root.file_id))
-        inv.get_entry(b"fileid").revision = "filerev"
+        inv.get_entry(b"fileid").revision = b"filerev"
         inv.get_entry(b"fileid").executable = True
         inv.get_entry(b"fileid").text_sha1 = b"ffff"
         inv.get_entry(b"fileid").text_size = 1
@@ -1180,7 +1180,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv2.revision_id = b"revid2"
         inv2.root.revision = b"rootrev"
         inv2.add(InventoryFile(b"fileid", "file", inv.root.file_id))
-        inv2.get_entry(b"fileid").revision = "filerev2"
+        inv2.get_entry(b"fileid").revision = b"filerev2"
         inv2.get_entry(b"fileid").executable = False
         inv2.get_entry(b"fileid").text_sha1 = b"bbbb"
         inv2.get_entry(b"fileid").text_size = 2
@@ -1188,11 +1188,11 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = b''.join(chk_inv.to_lines())
-        inv_1 = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        inv_1 = CHKInventory.deserialise(chk_bytes, bytes, (b"revid",))
         chk_inv2 = CHKInventory.from_inventory(chk_bytes, inv2)
         bytes = b''.join(chk_inv2.to_lines())
-        inv_2 = CHKInventory.deserialise(chk_bytes, bytes, ("revid2",))
-        self.assertEqual([('fileid', (u'file', u'file'), True, (True, True),
+        inv_2 = CHKInventory.deserialise(chk_bytes, bytes, (b"revid2",))
+        self.assertEqual([(b'fileid', (u'file', u'file'), True, (True, True),
             (b'TREE_ROOT', b'TREE_ROOT'), (u'file', u'file'), ('file', 'file'),
             (False, True))],
             list(inv_1.iter_changes(inv_2)))
@@ -1202,7 +1202,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.revision_id = b"revid"
         inv.root.revision = b"rootrev"
         inv.add(InventoryFile(b"fileid", "file", inv.root.file_id))
-        inv.get_entry(b"fileid").revision = "filerev"
+        inv.get_entry(b"fileid").revision = b"filerev"
         inv.get_entry(b"fileid").executable = True
         inv.get_entry(b"fileid").text_sha1 = b"ffff"
         inv.get_entry(b"fileid").text_size = 1
@@ -1210,15 +1210,15 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_bytes = self.get_chk_bytes()
         tmp_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = b''.join(tmp_inv.to_lines())
-        chk_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        chk_inv = CHKInventory.deserialise(chk_bytes, bytes, (b"revid",))
         self.assertIsInstance(chk_inv.parent_id_basename_to_file_id, chk_map.CHKMap)
         self.assertEqual(
-            {('', ''): b'TREE_ROOT', (b'TREE_ROOT', 'file'): 'fileid'},
+            {(b'', b''): b'TREE_ROOT', (b'TREE_ROOT', b'file'): b'fileid'},
             dict(chk_inv.parent_id_basename_to_file_id.iteritems()))
 
     def test_file_entry_to_bytes(self):
         inv = CHKInventory(None)
-        ie = inventory.InventoryFile(b'file-id', 'filename', 'parent-id')
+        ie = inventory.InventoryFile(b'file-id', 'filename', b'parent-id')
         ie.executable = True
         ie.revision = b'file-rev-id'
         ie.text_sha1 = b'abcdefgh'
@@ -1229,7 +1229,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, text_type)
-        self.assertEqual(('filename', b'file-id', b'file-rev-id'),
+        self.assertEqual((b'filename', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_file2_entry_to_bytes(self):
@@ -1273,13 +1273,13 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, text_type)
         self.assertIs(ie2.parent_id, None)
-        self.assertEqual(('dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
+        self.assertEqual((b'dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_symlink_entry_to_bytes(self):
         inv = CHKInventory(None)
-        ie = inventory.InventoryLink('link-id', 'linkname', 'parent-id')
-        ie.revision = 'link-rev-id'
+        ie = inventory.InventoryLink(b'link-id', 'linkname', b'parent-id')
+        ie.revision = b'link-rev-id'
         ie.symlink_target = u'target/path'
         bytes = inv._entry_to_bytes(ie)
         self.assertEqual(b'symlink: link-id\nparent-id\nlinkname\n'
@@ -1288,7 +1288,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, text_type)
         self.assertIsInstance(ie2.symlink_target, text_type)
-        self.assertEqual(('linkname', b'link-id', b'link-rev-id'),
+        self.assertEqual((b'linkname', b'link-id', b'link-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_symlink2_entry_to_bytes(self):
@@ -1303,7 +1303,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, text_type)
         self.assertIsInstance(ie2.symlink_target, text_type)
-        self.assertEqual(('link\xce\xa9name', b'link-id', b'link-rev-id'),
+        self.assertEqual((b'link\xce\xa9name', b'link-id', b'link-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
     def test_tree_reference_entry_to_bytes(self):
@@ -1338,7 +1338,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = b''.join(chk_inv.to_lines())
-        return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        return CHKInventory.deserialise(chk_bytes, bytes, (b"revid",))
 
     def test__preload_handles_utf8(self):
         new_inv = self.make_basic_utf8_inventory()
@@ -1435,7 +1435,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         inv.add(inv.make_entry('directory', name, parent_id, name.encode('utf-8') + b'-id'))
 
     def make_file(self, inv, name, parent_id, content=b'content\n'):
-        ie = inv.make_entry('file', name, parent_id, name + b'-id')
+        ie = inv.make_entry('file', name, parent_id, name.encode('utf-8') + b'-id')
         ie.text_sha1 = osutils.sha_string(content)
         ie.text_size = len(content)
         inv.add(ie)

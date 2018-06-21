@@ -46,6 +46,7 @@ from ..sixish import (
     bytesintern,
     viewvalues,
     viewitems,
+    zip,
     )
 from ..static_tuple import StaticTuple
 
@@ -499,6 +500,16 @@ class GraphIndex(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __lt__(self, other):
+        # We don't really care about the order, just that there is an order.
+        if (not isinstance(other, GraphIndex) and
+            not isinstance(other, InMemoryGraphIndex)):
+            raise TypeError(other)
+        return hash(self) < hash(other)
+
+    def __hash__(self):
+        return hash((type(self), self._transport, self._name, self._size))
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__,
