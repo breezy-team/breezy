@@ -657,8 +657,8 @@ class Tree(object):
                 force_mtime=None):
         """Create an archive of this tree.
 
-        :param name: target file name
         :param format: Format name (e.g. 'tar')
+        :param name: target file name
         :param root: Root directory name (or None)
         :param subdir: Subdirectory to export (or None)
         :return: Iterator over archive chunks

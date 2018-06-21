@@ -4337,8 +4337,8 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
             info.size = len(contents)
             tf.addfile(info, BytesIO(contents))
         client.add_expected_call(
-            b'Repository.revision_archive', (b'quack/', b'somerevid', b'tar', b'', b'', b'', None),
+            b'Repository.revision_archive', (b'quack/', b'somerevid', b'tar', b'foo.tar', b'', b'', None),
             b'success', (b'ok', ),
             f.getvalue())
         tree = repo.revision_tree(b'somerevid')
-        self.assertEqual(f.getvalue(), b''.join(tree.archive('tar')))
+        self.assertEqual(f.getvalue(), b''.join(tree.archive('tar', 'foo.tar')))

@@ -2729,7 +2729,7 @@ class TestSmartServerRepositoryRevisionArchive(tests.TestCaseWithTransport):
         self.build_tree_contents([("file", b"somecontents")])
         t.add(["file"], [b"thefileid"])
         t.commit(rev_id=b'somerev', message="add file")
-        response = request.execute(b'', b"somerev", "foo.tar", "tar", "foo")
+        response = request.execute(b'', b"somerev", b"tar", b"foo.tar", b"foo")
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         b = BytesIO(b"".join(response.body_stream))
