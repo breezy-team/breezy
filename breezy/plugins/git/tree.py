@@ -315,7 +315,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def all_versioned_paths(self):
         ret = set()
-        todo = set([(self.store, '', self.tree)])
+        todo = {(self.store, '', self.tree)}
         while todo:
             (store, path, tree_id) = todo.pop()
             if tree_id is None:
