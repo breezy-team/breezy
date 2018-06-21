@@ -24,6 +24,7 @@ from .. import (
     osutils,
     tests,
     )
+from ..sixish import text_type
 from . import (
     script,
     scenarios,
@@ -129,7 +130,7 @@ class TestPerConflict(tests.TestCase):
     scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
 
     def test_stringification(self):
-        text = unicode(self.conflict)
+        text = text_type(self.conflict)
         self.assertContainsString(text, self.conflict.path)
         self.assertContainsString(text.lower(), "conflict")
         self.assertContainsString(repr(self.conflict),
@@ -140,14 +141,14 @@ class TestPerConflict(tests.TestCase):
         o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
         self.assertEqual(o, p)
 
-        self.assertIsInstance(o.path, unicode)
+        self.assertIsInstance(o.path, text_type)
 
         if o.file_id is not None:
             self.assertIsInstance(o.file_id, str)
 
         conflict_path = getattr(o, 'conflict_path', None)
         if conflict_path is not None:
-            self.assertIsInstance(conflict_path, unicode)
+            self.assertIsInstance(conflict_path, text_type)
 
         conflict_file_id = getattr(o, 'conflict_file_id', None)
         if conflict_file_id is not None:
@@ -174,7 +175,7 @@ class TestConflictList(tests.TestCase):
 
     def test_stringification(self):
         for text, o in zip(example_conflicts.to_strings(), example_conflicts):
-            self.assertEqual(text, unicode(o))
+            self.assertEqual(text, text_type(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
@@ -303,17 +304,17 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-                ('add', ('', 'root-id', 'directory', ''))],
+                ('add', (u'', b'root-id', 'directory', ''))],
                 revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
-        builder.build_snapshot(['start'], base_actions, revision_id=b'base')
+        builder.build_snapshot([b'start'], base_actions, revision_id=b'base')
         # Modify the base content in branch
         actions_other = self._get_actions(self._other['actions'])()
-        builder.build_snapshot(['base'], actions_other, revision_id=b'other')
+        builder.build_snapshot([b'base'], actions_other, revision_id=b'other')
         # Modify the base content in trunk
         actions_this = self._get_actions(self._this['actions'])()
-        builder.build_snapshot(['base'], actions_this, revision_id=b'this')
+        builder.build_snapshot([b'base'], actions_this, revision_id=b'this')
         # builder.get_branch() tip is now 'this'
 
         builder.finish_series()

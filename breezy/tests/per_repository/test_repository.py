@@ -44,6 +44,7 @@ from ...bzr import (
     )
 from ...sixish import (
     BytesIO,
+    text_type,
     )
 from .. import (
     per_repository,
@@ -416,7 +417,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
-        self.assertIsInstance(rev.message, unicode)
+        self.assertIsInstance(rev.message, text_type)
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved

@@ -23,6 +23,7 @@ from .. import (
     tests,
     workingtree,
     )
+from ..sixish import text_type
 from ..bzr import (
     chk_map,
     groupcompress,
@@ -1228,7 +1229,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'file-rev-id\nabcdefgh\n100\nY', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.name, text_type)
         self.assertEqual(('filename', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1245,7 +1246,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'file-rev-id\n123456\n25\nN', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.name, text_type)
         self.assertEqual((b'\xce\xa9name', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1257,7 +1258,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(b'dir: dir-id\nparent-id\ndirname\ndir-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.name, text_type)
         self.assertEqual(('dirname', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1271,7 +1272,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'dir-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.name, text_type)
         self.assertIs(ie2.parent_id, None)
         self.assertEqual(('dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
@@ -1286,8 +1287,8 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          'link-rev-id\ntarget/path', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
-        self.assertIsInstance(ie2.symlink_target, unicode)
+        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.symlink_target, text_type)
         self.assertEqual(('linkname', 'link-id', 'link-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1301,8 +1302,8 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          'link-rev-id\ntarget/\xce\xa9path', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
-        self.assertIsInstance(ie2.symlink_target, unicode)
+        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.symlink_target, text_type)
         self.assertEqual(('link\xce\xa9name', 'link-id', 'link-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1317,7 +1318,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          'tree-rev-id\nref-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.name, text_type)
         self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 

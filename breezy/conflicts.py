@@ -400,6 +400,9 @@ class Conflict(object):
         return not self.__eq__(other)
 
     def __unicode__(self):
+        return self.describe()
+
+    def describe(self):
         return self.format % self.__dict__
 
     def __repr__(self):

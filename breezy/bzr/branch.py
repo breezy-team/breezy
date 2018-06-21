@@ -263,7 +263,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self._transport.get_bytes(l).strip(b'\n')
+                return self._transport.get_bytes(l).strip(b'\n').decode('utf-8')
             except errors.NoSuchFile:
                 pass
         return None

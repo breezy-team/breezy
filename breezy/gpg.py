@@ -42,7 +42,7 @@ from . import (
     errors,
     )
 from .sixish import (
-    BytesIO,
+    text_type,
     )
 
 #verification results
@@ -232,7 +232,7 @@ class GPGStrategy(object):
 
     def sign(self, content, mode):
         import gpg
-        if isinstance(content, unicode):
+        if isinstance(content, text_type):
             raise errors.BzrBadParameterUnicode('content')
 
         plain_text = gpg.Data(content)

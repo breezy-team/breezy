@@ -384,12 +384,12 @@ def _win32_fixdrive(path):
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -397,7 +397,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -1454,13 +1454,17 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', text_type(path)), True
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    return unicodedata.normalize('NFC', path), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', text_type(path))
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    normalized = unicodedata.normalize('NFC', path)
     return normalized, normalized == path
 
 

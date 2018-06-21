@@ -44,6 +44,7 @@ from . import (
     )
 from .inter import InterObject
 from .sixish import (
+    text_type,
     viewvalues,
     )
 
@@ -1163,10 +1164,10 @@ class MultiWalker(object):
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
-        if not isinstance(path1, unicode):
+        if not isinstance(path1, text_type):
             raise TypeError("'path1' must be a unicode string, not %s: %r"
                             % (type(path1), path1))
-        if not isinstance(path2, unicode):
+        if not isinstance(path2, text_type):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
         return cmp(MultiWalker._path_to_key(path1),

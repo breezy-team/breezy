@@ -833,7 +833,7 @@ class BzrDirMeta1(BzrDir):
         """
         if name == "":
             return 'branch'
-        return urlutils.join('branches', name.encode("utf-8"))
+        return urlutils.join('branches', urlutils.escape(name))
 
     def _read_branch_list(self):
         """Read the branch list.

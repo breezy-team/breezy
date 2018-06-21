@@ -30,6 +30,7 @@ from breezy.bundle.serializer import binary_diff
 from breezy.bundle.bundle_data import (RevisionInfo, BundleInfo)
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
+from breezy.sixish import text_type
 from breezy.testament import StrictTestament
 from breezy.timestamp import (
     format_highres_date,
@@ -152,7 +153,7 @@ class BundleSerializerV08(BundleSerializer):
             f.write(b': ')
             f.write(value)
             f.write(b'\n')
-        elif isinstance(value, unicode):
+        elif isinstance(value, text_type):
             f.write(b': ')
             f.write(value.encode('utf-8'))
             f.write(b'\n')

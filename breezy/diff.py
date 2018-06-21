@@ -738,7 +738,7 @@ class DiffFromTool(DiffPath):
         if sys.platform == 'win32': # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
-                if isinstance(c, unicode):
+                if isinstance(c, text_type):
                     command_encoded.append(c.encode('mbcs'))
                 else:
                     command_encoded.append(c)

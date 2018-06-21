@@ -74,7 +74,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({revmap['1']: ('null:',),
+        self.assertEqual({revmap['1']: (b'null:',),
                           revmap['2']: (revmap['1'], ),
                           revmap['1.1.1']: (revmap['1'], ),
                           revmap['3']: (revmap['2'], revmap['1.1.1'], ),
@@ -213,9 +213,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
         if not wt.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable("repository format does not "
                 "support ghosts")
-        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
+        wt.set_parent_ids([b'non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
-        self.assertEqual(['non:existent@rev--ision--0--2'],
+        self.assertEqual([b'non:existent@rev--ision--0--2'],
             wt.get_parent_ids())
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
@@ -230,15 +230,15 @@ class TestBranch(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable("repository format does not "
                 "support ghosts")
         wt.set_parent_ids([
-                'foo@azkhazan-123123-abcabc',
-                'wibble@fofof--20050401--1928390812',
+                b'foo@azkhazan-123123-abcabc',
+                b'wibble@fofof--20050401--1928390812',
             ],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit("commit from ghost base with one merge")
         # the revision should have been committed with two parents
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(['foo@azkhazan-123123-abcabc',
-            'wibble@fofof--20050401--1928390812'],
+        self.assertEqual([b'foo@azkhazan-123123-abcabc',
+            b'wibble@fofof--20050401--1928390812'],
             rev.parent_ids)
 
     def test_bad_revision(self):

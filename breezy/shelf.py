@@ -297,7 +297,7 @@ class ShelfCreator(object):
         if message is not None:
             metadata[b'message'] = message.encode('utf-8')
         return serializer.bytes_record(
-            bencode.bencode(metadata), (('metadata',),))
+            bencode.bencode(metadata), ((b'metadata',),))
 
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.

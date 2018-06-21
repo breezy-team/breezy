@@ -66,6 +66,7 @@ from .osutils import (
     )
 from .progress import ProgressPhase
 from .sixish import (
+    text_type,
     viewitems,
     viewvalues,
     )
@@ -2122,7 +2123,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             if file_id is None:
                 continue
             if (specific_files is not None and
-                unicode(self._final_paths.get_path(trans_id)) not in specific_files):
+                self._final_paths.get_path(trans_id) not in specific_files):
                 continue
             kind = self._transform.final_kind(trans_id)
             if kind is None:
@@ -2167,7 +2168,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
             specific_files):
-            yield unicode(self._final_paths.get_path(trans_id)), entry
+            yield self._final_paths.get_path(trans_id), entry
 
     def _iter_entries_for_dir(self, dir_path):
         """Return path, entry for items in a directory without recursing down."""
@@ -2177,7 +2178,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         for child_trans_id in self._all_children(dir_trans_id):
             ordered_ids.append((child_trans_id, dir_id))
         for entry, trans_id in self._make_inv_entries(ordered_ids):
-            yield unicode(self._final_paths.get_path(trans_id)), entry
+            yield self._final_paths.get_path(trans_id), entry
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         """See WorkingTree.list_files."""
@@ -2463,7 +2464,7 @@ class FinalPaths(object):
 
     def _determine_path(self, trans_id):
         if (trans_id == self.transform.root or trans_id == ROOT_PARENT):
-            return ""
+            return u""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)
         if parent_id == self.transform.root:
@@ -2622,7 +2623,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             precomputed_delta = None
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
-            trace.warning(unicode(conflict))
+            trace.warning(text_type(conflict))
         try:
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
@@ -2814,7 +2815,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                     unversioned_filter=working_tree.is_ignored)
                 delta.report_changes(tt.iter_changes(), change_reporter)
             for conflict in conflicts:
-                trace.warning(unicode(conflict))
+                trace.warning(text_type(conflict))
             pp.next_phase()
             tt.apply()
             if working_tree.supports_merge_modified():
