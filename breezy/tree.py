@@ -661,8 +661,6 @@ class Tree(object):
         :param format: Format name (e.g. 'tar')
         :param root: Root directory name (or None)
         :param subdir: Subdirectory to export (or None)
-        :param per_file_timestamps: Whether to set the timestamp
-            for each file to the last changed time.
         :return: Iterator over archive chunks
         """
         from .archive import create_archive

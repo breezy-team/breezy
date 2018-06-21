@@ -1274,3 +1274,27 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
         self._ordering = ordering
         # Signal that we want a body
         return None
+
+
+class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id, name, format,
+                             root, subdir=None, force_mtime=None):
+        """Stream an archive file for a specific revision.
+
+        :param repository: The repository to stream from.
+        :param revision_id: Revision for which to export the tree
+        :param name: Target file name
+        :param format: Format (tar, tgz, tbz2, etc)
+        :param root: Name of root directory (or '')
+        :param subdir: Subdirectory to export, if not the root
+        """
+        tree = repository.revision_tree(revision_id)
+        return SuccessfulSmartServerResponse((b'ok',),
+            body_stream=self.body_stream(
+                tree, os.path.basename(name), format, root, subdir,
+                force_mtime))
+
+    def body_stream(self, tree, name, format, root, subdir=None, force_mtime=None):
+        with tree.lock_read():
+            return tree.archive(name, format, root, subdir, force_mtime)
