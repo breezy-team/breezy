@@ -55,15 +55,15 @@ class TestTagRevisionRenames(TestCaseWithTransport):
 
     def test_simple(self):
         store = self.make_branch_supporting_tags('a').tags
-        store.set_tag("foo", "myoldrevid")
-        store.rename_revisions({"myoldrevid": "mynewrevid"})
-        self.assertEqual({"foo": "mynewrevid"}, store.get_tag_dict())
+        store.set_tag("foo", b"myoldrevid")
+        store.rename_revisions({b"myoldrevid": b"mynewrevid"})
+        self.assertEqual({"foo": b"mynewrevid"}, store.get_tag_dict())
 
     def test_unknown_ignored(self):
         store = self.make_branch_supporting_tags('a').tags
-        store.set_tag("foo", "myoldrevid")
-        store.rename_revisions({"anotherrevid": "mynewrevid"})
-        self.assertEqual({"foo": "myoldrevid"}, store.get_tag_dict())
+        store.set_tag("foo", b"myoldrevid")
+        store.rename_revisions({b"anotherrevid": b"mynewrevid"})
+        self.assertEqual({"foo": b"myoldrevid"}, store.get_tag_dict())
 
 
 class TestTagMerging(TestCaseWithTransport):

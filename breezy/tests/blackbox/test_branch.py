@@ -227,18 +227,18 @@ class TestBranch(tests.TestCaseWithTransport):
         tree_b.add('file')
         tree_b.commit('commit b-1', rev_id=b'b-1')
 
-        self.assertTrue(shared_repo.has_revision('a-1'))
-        self.assertTrue(shared_repo.has_revision('a-2'))
-        self.assertTrue(shared_repo.has_revision('b-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-2'))
+        self.assertTrue(shared_repo.has_revision(b'b-1'))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
         self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision('a-1'))
-        self.assertFalse(pushed_repo.has_revision('a-2'))
-        self.assertTrue(pushed_repo.has_revision('b-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-2'))
+        self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_branch_hardlink(self):
         self.requireFeature(HardlinkFeature)

@@ -172,7 +172,10 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
-        return urlutils.URL._combine_paths(self._parsed_url.path, relpath)
+        path = urlutils.URL._combine_paths(self._parsed_url.path, relpath)
+        if not isinstance(path, bytes):
+            path = path.encode()
+        return path
 
     def _call(self, method, *args):
         resp = self._call2(method, *args)

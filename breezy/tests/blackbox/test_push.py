@@ -210,7 +210,7 @@ class TestPush(tests.TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('commit a-1', rev_id=b'a-1')
         f = open('repo/a/file', 'ab')
-        f.write('more stuff\n')
+        f.write(b'more stuff\n')
         f.close()
         tree_a.commit('commit a-2', rev_id=b'a-2')
 
@@ -219,18 +219,18 @@ class TestPush(tests.TestCaseWithTransport):
         tree_b.add('file')
         tree_b.commit('commit b-1', rev_id=b'b-1')
 
-        self.assertTrue(shared_repo.has_revision('a-1'))
-        self.assertTrue(shared_repo.has_revision('a-2'))
-        self.assertTrue(shared_repo.has_revision('b-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-2'))
+        self.assertTrue(shared_repo.has_revision(b'b-1'))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'push'
         self.run_bzr('push ../../push-b', working_dir='repo/b')
         pushed_tree = workingtree.WorkingTree.open('push-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision('a-1'))
-        self.assertFalse(pushed_repo.has_revision('a-2'))
-        self.assertTrue(pushed_repo.has_revision('b-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-2'))
+        self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
@@ -445,16 +445,16 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_with_revisionspec(self):
         """We should be able to push a revision older than the tip."""
         tree_from = self.make_branch_and_tree('from')
-        tree_from.commit("One.", rev_id="from-1")
-        tree_from.commit("Two.", rev_id="from-2")
+        tree_from.commit("One.", rev_id=b"from-1")
+        tree_from.commit("Two.", rev_id=b"from-2")
 
         self.run_bzr('push -r1 ../to', working_dir='from')
 
         tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision('from-1'))
-        self.assertFalse(repo_to.has_revision('from-2'))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertTrue(repo_to.has_revision(b'from-1'))
+        self.assertFalse(repo_to.has_revision(b'from-2'))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], b'from-1')
         self.assertFalse(
             tree_to.changes_from(tree_to.basis_tree()).has_changed())
 

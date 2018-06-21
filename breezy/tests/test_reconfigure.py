@@ -92,9 +92,9 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout_branch = checkout.controldir.open_branch()
         self.assertEqual(checkout_branch.controldir.root_transport.base,
                          checkout.controldir.root_transport.base)
-        self.assertEqual('rev1', checkout_branch.last_revision())
+        self.assertEqual(b'rev1', checkout_branch.last_revision())
         repo = checkout.controldir.open_repository()
-        repo.get_revision('rev1')
+        repo.get_revision(b'rev1')
 
     def test_lightweight_checkout_to_branch_tags(self):
         reconfiguration, checkout = \
@@ -245,7 +245,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         wt = checkout.controldir.open_workingtree()
         self.assertTrue(parent.repository.has_same_location(
             wt.branch.repository))
-        parent.repository.get_revision('new-commit')
+        parent.repository.get_revision(b'new-commit')
         self.assertRaises(errors.NoRepositoryPresent,
                           checkout.controldir.open_repository)
 
@@ -267,7 +267,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         wt = child.controldir.open_workingtree()
         self.assertTrue(parent.repository.has_same_location(
             wt.branch.repository))
-        parent.repository.get_revision('new-commit')
+        parent.repository.get_revision(b'new-commit')
         self.assertRaises(errors.NoRepositoryPresent,
                           child.controldir.open_repository)
 
@@ -335,7 +335,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
         self.assertTrue(repo.has_same_location(tree.branch.repository))
-        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+        self.assertEqual('Hello', repo.get_revision(b'hello-id').message)
 
     def add_dead_head(self, tree):
         revno, revision_id = tree.branch.last_revision_info()
@@ -352,7 +352,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.controldir)
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
-        message = repo.get_revision('dead-head-id').message
+        message = repo.get_revision(b'dead-head-id').message
         self.assertEqual('Dead head', message)
 
     def make_repository_tree(self):
@@ -375,7 +375,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         repo = tree.branch.repository
         self.assertEqual(repo.controldir.root_transport.base,
                          tree.controldir.root_transport.base)
-        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+        self.assertEqual('Hello', repo.get_revision(b'hello-id').message)
 
     def test_use_shared_to_standalone_preserves_dead_heads(self):
         tree = self.make_repository_tree()

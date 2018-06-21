@@ -419,7 +419,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             ], revision_id=b'rev-1')
         builder.build_snapshot([b'rev-1'], [
             ('modify', ('file', b'content\nrev 2\n')),
-            ], revision_id='rev-2')
+            ], revision_id=b'rev-2')
         builder.build_snapshot([b'rev-2'], [
             ('modify', ('file', b'content\nrev 3\n')),
             ], revision_id=b'rev-3')

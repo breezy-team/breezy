@@ -170,18 +170,18 @@ class TestMemoryTree(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         tree.add(['', 'foo'], ['root-id', 'foo-id'], ['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo', 'content\n')
-        tree.commit('one', rev_id='rev-one')
+        tree.commit('one', rev_id=b'rev-one')
         tree.rename_one('foo', 'bar')
         self.assertEqual('bar', tree.id2path('foo-id'))
         self.assertEqual('content\n', tree._file_transport.get_bytes('bar'))
         self.assertRaises(errors.NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
-        tree.commit('two', rev_id='rev-two')
+        tree.commit('two', rev_id=b'rev-two')
         self.assertEqual('content\n', tree._file_transport.get_bytes('bar'))
         self.assertRaises(errors.NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
 
-        rev_tree2 = tree.branch.repository.revision_tree('rev-two')
+        rev_tree2 = tree.branch.repository.revision_tree(b'rev-two')
         self.assertEqual('bar', rev_tree2.id2path('foo-id'))
         self.assertEqual('content\n', rev_tree2.get_file_text('bar'))
 

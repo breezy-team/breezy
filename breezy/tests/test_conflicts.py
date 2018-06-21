@@ -304,16 +304,16 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         # Create an empty trunk
         builder.build_snapshot(None, [
                 ('add', ('', 'root-id', 'directory', ''))],
-                revision_id='start')
+                revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
-        builder.build_snapshot(['start'], base_actions, revision_id='base')
+        builder.build_snapshot(['start'], base_actions, revision_id=b'base')
         # Modify the base content in branch
         actions_other = self._get_actions(self._other['actions'])()
-        builder.build_snapshot(['base'], actions_other, revision_id='other')
+        builder.build_snapshot(['base'], actions_other, revision_id=b'other')
         # Modify the base content in trunk
         actions_this = self._get_actions(self._this['actions'])()
-        builder.build_snapshot(['base'], actions_this, revision_id='this')
+        builder.build_snapshot(['base'], actions_this, revision_id=b'this')
         # builder.get_branch() tip is now 'this'
 
         builder.finish_series()

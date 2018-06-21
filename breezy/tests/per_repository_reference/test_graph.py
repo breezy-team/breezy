@@ -58,12 +58,12 @@ class TestGraph(TestCaseWithRepository):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', 'directory', 'root-id', None))],
-            revision_id='A')
-        builder.build_snapshot(['A'], [], revision_id='B')
-        builder.build_snapshot(['B'], [], revision_id='C')
-        builder.build_snapshot(['C'], [], revision_id='D')
-        builder.build_snapshot(['D'], [], revision_id='E')
-        builder.build_snapshot(['E'], [], revision_id='F')
+            revision_id=b'A')
+        builder.build_snapshot(['A'], [], revision_id=b'B')
+        builder.build_snapshot(['B'], [], revision_id=b'C')
+        builder.build_snapshot(['C'], [], revision_id=b'D')
+        builder.build_snapshot(['D'], [], revision_id=b'E')
+        builder.build_snapshot(['E'], [], revision_id=b'F')
         source_b = builder.get_branch()
         master_b = self.make_branch('master')
         master_b.pull(source_b, stop_revision='E')

@@ -368,7 +368,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, unicode))
+        self.assertTrue(isinstance(result, str))
 
     def test_posix_local_path_from_url(self):
         from_url = urlutils._posix_local_path_from_url

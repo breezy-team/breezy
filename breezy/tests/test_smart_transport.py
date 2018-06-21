@@ -1190,7 +1190,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # This should timeout quickly, and then close the connection so that
         # client_sock recv doesn't block.
         server.serve()
-        self.assertEqual('', client_sock.recv(1))
+        self.assertEqual(b'', client_sock.recv(1))
 
     def test_pipe_wait_for_bytes_with_timeout_with_data(self):
         # We intentionally use a real pipe here, so that we can 'select' on it.
@@ -1599,7 +1599,7 @@ class WritableEndToEndTests(SmartTCPTests):
                       conn2.get_smart_medium())
 
     def test__remote_path(self):
-        self.assertEqual('/foo/bar',
+        self.assertEqual(b'/foo/bar',
                           self.transport._remote_path('foo/bar'))
 
     def test_clone_changes_base(self):
@@ -2532,7 +2532,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         self.assertEqual(expected_bytes[0:2], smart_protocol.read_body_bytes(2))
         self.assertEqual(expected_bytes[2:4], smart_protocol.read_body_bytes(2))
         self.assertEqual(expected_bytes[4:6], smart_protocol.read_body_bytes(2))
-        self.assertEqual(expected_bytes[6], smart_protocol.read_body_bytes())
+        self.assertEqual(expected_bytes[6:7], smart_protocol.read_body_bytes())
 
     def test_client_cancel_read_body_does_not_eat_body_bytes(self):
         # cancelling the expected body needs to finish the request, but not
@@ -3757,7 +3757,7 @@ class Test_SmartClient(tests.TestCase):
 
 class Test_SmartClientRequest(tests.TestCase):
 
-    def make_client_with_failing_medium(self, fail_at_write=True, response=''):
+    def make_client_with_failing_medium(self, fail_at_write=True, response=b''):
         response_io = BytesIO(response)
         output = BytesIO()
         vendor = FirstRejectedBytesIOSSHVendor(response_io, output,
@@ -3824,7 +3824,7 @@ class Test_SmartClientRequest(tests.TestCase):
         client_medium = medium.SmartTCPClientMedium(host, port, '/')
         client_medium._ensure_connection()
         smart_client = client._SmartClient(client_medium)
-        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        smart_request = client._SmartClientRequest(smart_client, b'hello', ())
         # Accept the connection, but don't actually talk to the client.
         server_sock, _ = listen_sock.accept()
         server_sock.close()
@@ -3836,11 +3836,11 @@ class Test_SmartClientRequest(tests.TestCase):
 
     def test__send_retries_on_write(self):
         output, vendor, smart_client = self.make_client_with_failing_medium()
-        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        smart_request = client._SmartClientRequest(smart_client, b'hello', ())
         handler = smart_request._send(3)
-        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
-                         '\x00\x00\x00\x02de'   # empty headers
-                         's\x00\x00\x00\tl5:helloee',
+        self.assertEqual(b'bzr message 3 (bzr 1.6)\n' # protocol
+                         b'\x00\x00\x00\x02de'   # empty headers
+                         b's\x00\x00\x00\tl5:helloee',
                          output.getvalue())
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
@@ -3854,11 +3854,11 @@ class Test_SmartClientRequest(tests.TestCase):
     def test__send_doesnt_retry_read_failure(self):
         output, vendor, smart_client = self.make_client_with_failing_medium(
             fail_at_write=False)
-        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        smart_request = client._SmartClientRequest(smart_client, b'hello', ())
         handler = smart_request._send(3)
-        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
-                         '\x00\x00\x00\x02de'   # empty headers
-                         's\x00\x00\x00\tl5:helloee',
+        self.assertEqual(b'bzr message 3 (bzr 1.6)\n' # protocol
+                         b'\x00\x00\x00\x02de'   # empty headers
+                         b's\x00\x00\x00\tl5:helloee',
                          output.getvalue())
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
@@ -3869,8 +3869,8 @@ class Test_SmartClientRequest(tests.TestCase):
 
     def test__send_request_retries_body_stream_if_not_started(self):
         output, vendor, smart_client = self.make_client_with_failing_medium()
-        smart_request = client._SmartClientRequest(smart_client, 'hello', (),
-            body_stream=['a', 'b'])
+        smart_request = client._SmartClientRequest(smart_client, b'hello', (),
+            body_stream=[b'a', b'b'])
         response_handler = smart_request._send(3)
         # We connect, get disconnected, and notice before consuming the stream,
         # so we try again one time and succeed.

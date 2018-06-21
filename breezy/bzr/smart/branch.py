@@ -190,7 +190,7 @@ class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
         stacked_on_url = branch.get_stacked_on_url()
-        return SuccessfulSmartServerResponse((b'ok', stacked_on_url))
+        return SuccessfulSmartServerResponse((b'ok', stacked_on_url.encode('ascii')))
 
 
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
@@ -236,7 +236,7 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
         except errors.NoSuchRevision:
             return FailedSmartServerResponse((b'NoSuchRevision', revid))
         return SuccessfulSmartServerResponse(
-            (b'ok', ) + tuple([str(x).encode('ascii') for x in dotted_revno]))
+            (b'ok', ) + tuple([b'%d' % x for x in dotted_revno]))
 
 
 class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
@@ -251,7 +251,7 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             msg = e.msg
             if isinstance(msg, unicode):
                 msg = msg.encode('utf-8')
-            return FailedSmartServerResponse(('TipChangeRejected', msg))
+            return FailedSmartServerResponse((b'TipChangeRejected', msg))
 
 
 class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
@@ -328,7 +328,7 @@ class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
                 relation = branch._revision_relations(
                     last_rev, new_last_revision_id, graph)
                 if relation == 'diverged' and not allow_divergence:
-                    return FailedSmartServerResponse(('Diverged',))
+                    return FailedSmartServerResponse((b'Diverged',))
                 if relation == 'a_descends_from_b' and do_not_overwrite_descendant:
                     return SuccessfulSmartServerResponse(
                         (b'ok', last_revno, last_rev))

@@ -283,11 +283,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-id', 'file', 'content\n'))],
-            revision_id='A')
+            revision_id=b'A')
         builder.build_snapshot(['A'], [
             ('modify', ('a', 'new content\nfor a\n')),
             ('add', ('b', 'b-id', 'file', 'b-content\n'))],
-            revision_id='B')
+            revision_id=b'B')
         tree = self.make_workingtree('tree')
         source_branch = builder.get_branch()
         tree.branch.repository.fetch(source_branch.repository, 'B')
@@ -321,14 +321,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder.build_snapshot([], [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-id', 'file', 'content\n'))],
-            revision_id='A')
+            revision_id=b'A')
         builder.build_snapshot(['A'], [
             ('modify', ('a', 'new content\nfor a\n')),
             ('add', ('b', 'b-id', 'file', 'b-content\n'))],
-            revision_id='B')
+            revision_id=b'B')
         builder.build_snapshot(['A'], [
             ('add', ('c', 'c-id', 'file', 'c-content\n'))],
-            revision_id='C')
+            revision_id=b'C')
         b_c = self.make_branch('branch_with_c')
         b_c.pull(builder.get_branch(), stop_revision='C')
         b_b = self.make_branch('branch_with_b')
@@ -340,7 +340,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         fmt.set_reference(wt.controldir, None, b_c)
         # Re-open with the new reference
         wt = wt.controldir.open_workingtree()
-        wt.set_parent_trees([('C', b_c.repository.revision_tree('C'))])
+        wt.set_parent_trees([('C', b_c.repository.revision_tree(b'C'))])
         self.assertFalse(wt.basis_tree().is_versioned('b'))
 
     def test_new_dirstate_on_new_lock(self):

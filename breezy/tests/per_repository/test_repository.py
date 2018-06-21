@@ -277,7 +277,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # may only be shared in some circumstances.
             return
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(made_repo.is_shared())
 
@@ -350,7 +350,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
 
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(result.open_repository().is_shared())

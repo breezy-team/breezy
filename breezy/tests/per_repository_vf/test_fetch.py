@@ -42,7 +42,7 @@ class TestSource(TestCaseWithRepository):
         builder.start_series()
         builder.build_snapshot(['ghost'],
             [('add', ('', 'ROOT_ID', 'directory', ''))],
-            allow_leftmost_as_ghost=True, revision_id='tip')
+            allow_leftmost_as_ghost=True, revision_id=b'tip')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()

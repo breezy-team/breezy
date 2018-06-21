@@ -144,7 +144,7 @@ class TestamentTests(TestamentSetup):
             self.expected('sample_unicode').encode('utf-8'), t.as_text())
 
     def test_from_tree(self):
-        tree = self.b.repository.revision_tree('test@user-2')
+        tree = self.b.repository.revision_tree(b'test@user-2')
         testament = self.testament_class().from_revision_tree(tree)
         text_1 = testament.as_short_text()
         text_2 = self.from_revision(self.b.repository,
@@ -152,8 +152,8 @@ class TestamentTests(TestamentSetup):
         self.assertEqual(text_1, text_2)
 
     def test___init__(self):
-        revision = self.b.repository.get_revision('test@user-2')
-        tree = self.b.repository.revision_tree('test@user-2')
+        revision = self.b.repository.get_revision(b'test@user-2')
+        tree = self.b.repository.revision_tree(b'test@user-2')
         testament_1 = self.testament_class()(revision, tree)
         text_1 = testament_1.as_short_text()
         text_2 = self.from_revision(self.b.repository,

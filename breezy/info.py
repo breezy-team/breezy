@@ -339,7 +339,7 @@ def _show_repository_stats(repository, stats, outfile):
         f.write('  %8d KiB\n' % (stats['size']/1024))
     for hook in hooks['repository']:
         hook(repository, stats, f)
-    if f.getvalue() != "":
+    if f.getvalue() != b"":
         outfile.write('\n')
         outfile.write('Repository:\n')
         outfile.write(f.getvalue())

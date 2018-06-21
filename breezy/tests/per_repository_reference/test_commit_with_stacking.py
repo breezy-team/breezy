@@ -95,7 +95,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         stacked2_branch = base_tree.controldir.sprout('stacked2',
                                                   stacked=True).open_branch()
         stacked2_branch.repository.fetch(stacked_only_repo,
-                                         revision_id='new-rev-id')
+                                         revision_id=b'new-rev-id')
 
     def test_merge_commit(self):
         base_tree, stacked_tree = self.make_stacked_target()

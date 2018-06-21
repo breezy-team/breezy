@@ -37,13 +37,13 @@ class TestUnlock(TestCaseWithExternalReferenceRepository):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'contents\n'))],
-            revision_id='A-id')
+            revision_id=b'A-id')
         builder.build_snapshot(['A-id'], [
             ('modify', ('file', 'new-content\n'))],
-            revision_id='B-id')
+            revision_id=b'B-id')
         builder.build_snapshot(['B-id'], [
             ('modify', ('file', 'yet more content\n'))],
-            revision_id='C-id')
+            revision_id=b'C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()

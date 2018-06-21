@@ -148,7 +148,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_get_blob(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
@@ -167,7 +167,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_get_raw(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.get_raw, b.id)

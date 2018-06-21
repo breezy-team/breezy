@@ -46,39 +46,39 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         #
 
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'f-id', 'file', 'initial content\n')),
-            ], revision_id='A')
-        builder.build_snapshot(['A'], [
-            ('modify', ('file', 'initial content\n'
-                                'and B content\n')),
-            ], revision_id='B')
-        builder.build_snapshot(['A'], [
-            ('modify', ('file', 'initial content\n'
-                                'and C content\n')),
-            ], revision_id='C')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'f-id', 'file', b'initial content\n')),
+            ], revision_id=b'A')
+        builder.build_snapshot([b'A'], [
+            ('modify', ('file', b'initial content\n'
+                                b'and B content\n')),
+            ], revision_id=b'B')
+        builder.build_snapshot([b'A'], [
+            ('modify', ('file', b'initial content\n'
+                                b'and C content\n')),
+            ], revision_id=b'C')
         builder.build_snapshot(['B', 'C'], [
-            ('modify', ('file', 'initial content\n'
-                                'and B content\n'
-                                'and C content\n')),
-            ], revision_id='D')
-        builder.build_snapshot(['C'], [
-            ('modify', ('file', 'initial content\n'
-                                'and C content\n'
-                                'and E content\n')),
-            ], revision_id='E')
-        builder.build_snapshot(['D'], [
-            ('modify', ('file', 'initial content\n'
-                                'and B content\n'
-                                'and C content\n'
-                                'and F content\n')),
-            ], revision_id='F')
-        builder.build_snapshot(['E', 'D'], [
-            ('modify', ('file', 'initial content\n'
-                                'and B content\n'
-                                'and C content\n'
-                                'and E content\n')),
-            ], revision_id='G')
+            ('modify', ('file', b'initial content\n'
+                                b'and B content\n'
+                                b'and C content\n')),
+            ], revision_id=b'D')
+        builder.build_snapshot([b'C'], [
+            ('modify', ('file', b'initial content\n'
+                                b'and C content\n'
+                                b'and E content\n')),
+            ], revision_id=b'E')
+        builder.build_snapshot([b'D'], [
+            ('modify', ('file', b'initial content\n'
+                                b'and B content\n'
+                                b'and C content\n'
+                                b'and F content\n')),
+            ], revision_id=b'F')
+        builder.build_snapshot([b'E', b'D'], [
+            ('modify', ('file', b'initial content\n'
+                                b'and B content\n'
+                                b'and C content\n'
+                                b'and E content\n')),
+            ], revision_id=b'G')
         builder.finish_series()
         self.all_repo = builder.get_branch().repository
         self.all_repo.lock_read()
@@ -88,8 +88,8 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
 
     def make_simple_split(self):
         """Set up the repositories so that everything is in base except F"""
-        self.base_repo.fetch(self.all_repo, revision_id='G')
-        self.stacked_repo.fetch(self.all_repo, revision_id='F')
+        self.base_repo.fetch(self.all_repo, revision_id=b'G')
+        self.stacked_repo.fetch(self.all_repo, revision_id=b'F')
 
     def make_complex_split(self):
         """intermix the revisions so that base holds left stacked holds right.
@@ -99,14 +99,14 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         referring will hold
             C E G (only)
         """
-        self.base_repo.fetch(self.all_repo, revision_id='B')
-        self.stacked_repo.fetch(self.all_repo, revision_id='C')
-        self.base_repo.fetch(self.all_repo, revision_id='F')
-        self.stacked_repo.fetch(self.all_repo, revision_id='G')
+        self.base_repo.fetch(self.all_repo, revision_id=b'B')
+        self.stacked_repo.fetch(self.all_repo, revision_id=b'C')
+        self.base_repo.fetch(self.all_repo, revision_id=b'F')
+        self.stacked_repo.fetch(self.all_repo, revision_id=b'G')
 
     def test_unordered_fetch_simple_split(self):
         self.make_simple_split()
-        keys = [('f-id', r) for r in 'ABCDF']
+        keys = [(b'f-id', r) for r in 'ABCDF']
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -121,7 +121,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
 
     def test_unordered_fetch_complex_split(self):
         self.make_complex_split()
-        keys = [('f-id', r) for r in 'ABCDEG']
+        keys = [(b'f-id', r) for r in 'ABCDEG']
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -139,10 +139,10 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # Topological ordering allows B & C and D & E to be returned with
         # either one first, so the required ordering is:
         # [A (B C) (D E) G]
-        keys = [('f-id', r) for r in 'ABCDEG']
-        alt_1 = [('f-id', r) for r in 'ACBDEG']
-        alt_2 = [('f-id', r) for r in 'ABCEDG']
-        alt_3 = [('f-id', r) for r in 'ACBEDG']
+        keys = [(b'f-id', r) for r in 'ABCDEG']
+        alt_1 = [(b'f-id', r) for r in 'ACBDEG']
+        alt_2 = [(b'f-id', r) for r in 'ABCEDG']
+        alt_3 = [(b'f-id', r) for r in 'ACBEDG']
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -162,8 +162,8 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # Topological ordering allows B & C and D & E to be returned with
         # either one first, so the required ordering is:
         # [A (B C) D F]
-        keys = [('f-id', r) for r in 'ABCDF']
-        alt_1 = [('f-id', r) for r in 'ACBDF']
+        keys = [(b'f-id', r) for r in 'ABCDF']
+        alt_1 = [(b'f-id', r) for r in 'ACBDF']
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -180,10 +180,10 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # Topological ordering allows B & C and D & E to be returned with
         # either one first, so the required ordering is:
         # [A (B C) (D E) G]
-        keys = [('f-id', r) for r in 'ABCDEG']
-        alt_1 = [('f-id', r) for r in 'ACBDEG']
-        alt_2 = [('f-id', r) for r in 'ABCEDG']
-        alt_3 = [('f-id', r) for r in 'ACBEDG']
+        keys = [(b'f-id', r) for r in 'ABCDEG']
+        alt_1 = [(b'f-id', r) for r in 'ACBDEG']
+        alt_2 = [(b'f-id', r) for r in 'ABCEDG']
+        alt_3 = [(b'f-id', r) for r in 'ACBEDG']
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(

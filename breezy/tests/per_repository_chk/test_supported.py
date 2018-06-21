@@ -171,7 +171,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='A-id')
+            revision_id=b'A-id')
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -216,17 +216,17 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # inventories.
         builder = self.make_branch_builder('simple-branch')
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(None, [], revision_id='B-id')
-        builder.build_snapshot(None, [], revision_id='C-id')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
+            revision_id=b'A-id')
+        builder.build_snapshot(None, [], revision_id=b'B-id')
+        builder.build_snapshot(None, [], revision_id=b'C-id')
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
         # check our setup: B-id and C-id should have identical chk root keys.
-        inv_b = b.repository.get_inventory('B-id')
-        inv_c = b.repository.get_inventory('C-id')
+        inv_b = b.repository.get_inventory(b'B-id')
+        inv_c = b.repository.get_inventory(b'C-id')
         if not isinstance(repo, RemoteRepository):
             # Remote repositories always return plain inventories
             self.assertEqual(inv_b.id_to_entry.key(), inv_c.id_to_entry.key())
@@ -240,10 +240,10 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         src_repo = b.repository
         repo.inventories.insert_record_stream(
             src_repo.inventories.get_record_stream(
-                [('B-id',), ('C-id',)], 'unordered', True))
+                [(b'B-id',), (b'C-id',)], 'unordered', True))
         repo.revisions.insert_record_stream(
             src_repo.revisions.get_record_stream(
-                [('C-id',)], 'unordered', True))
+                [(b'C-id',)], 'unordered', True))
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
@@ -267,8 +267,8 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         self.addCleanup(src_repo.unlock)
         # Now, manually insert objects for a stacked repo with only revision
         # C-id, *except* drop the non-root chk records.
-        inv_b = src_repo.get_inventory('B-id')
-        inv_c = src_repo.get_inventory('C-id')
+        inv_b = src_repo.get_inventory(b'B-id')
+        inv_c = src_repo.get_inventory(b'C-id')
         chk_root_keys_only = [
             inv_b.id_to_entry.key(), inv_b.parent_id_basename_to_file_id.key(),
             inv_c.id_to_entry.key(), inv_c.parent_id_basename_to_file_id.key()]
@@ -286,10 +286,10 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                 src_repo.texts.keys(), 'unordered', True))
         repo.inventories.insert_record_stream(
             src_repo.inventories.get_record_stream(
-                [('B-id',), ('C-id',)], 'unordered', True))
+                [(b'B-id',), (b'C-id',)], 'unordered', True))
         repo.revisions.insert_record_stream(
             src_repo.revisions.get_record_stream(
-                [('C-id',)], 'unordered', True))
+                [(b'C-id',)], 'unordered', True))
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
@@ -315,7 +315,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
         # ('inventories', 'B-id'), and the corresponding chk roots for those
         # inventories.
-        inv_c = b.repository.get_inventory('C-id')
+        inv_c = b.repository.get_inventory(b'C-id')
         chk_keys_for_c_only = [
             inv_c.id_to_entry.key(), inv_c.parent_id_basename_to_file_id.key()]
         repo.lock_write()
@@ -326,10 +326,10 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                 chk_keys_for_c_only, 'unordered', True))
         repo.inventories.insert_record_stream(
             src_repo.inventories.get_record_stream(
-                [('B-id',), ('C-id',)], 'unordered', True))
+                [(b'B-id',), (b'C-id',)], 'unordered', True))
         repo.revisions.insert_record_stream(
             src_repo.revisions.get_record_stream(
-                [('C-id',)], 'unordered', True))
+                [(b'C-id',)], 'unordered', True))
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
@@ -348,16 +348,17 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         for char in 'abc':
             name = char * 10000
             file_adds.append(
-                ('add', ('file-' + name, 'file-%s-id' % name, 'file',
-                         'content %s\n' % name)))
+                ('add', ('file-' + name, ('file-%s-id' % name).encode(), 'file',
+                         ('content %s\n' % name).encode())))
             file_modifies.append(
-                ('modify', ('file-' + name, 'new content %s\n' % name)))
+                ('modify', (('file-' + name).encode(),
+                    ('new content %s\n' % name).encode())))
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))] +
+            ('add', ('', b'root-id', 'directory', None))] +
             file_adds,
-            revision_id='A-id')
-        builder.build_snapshot(None, [], revision_id='B-id')
-        builder.build_snapshot(None, file_modifies, revision_id='C-id')
+            revision_id=b'A-id')
+        builder.build_snapshot(None, [], revision_id=b'B-id')
+        builder.build_snapshot(None, file_modifies, revision_id=b'C-id')
         return builder.get_branch()
 
     def test_missing_text_record(self):

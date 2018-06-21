@@ -526,17 +526,17 @@ class FunctionalMergeTest(TestCaseWithTransport):
         # attributes like 'executable' in A.
         builder.build_snapshot(None, [
             ('add', ('', 'TREE_ROOT', 'directory', None))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id'], [], revision_id='B-id')
+            revision_id=b'A-id')
+        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
         builder.build_snapshot(['A-id'], [
             ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\n'))],
-            revision_id='C-id')
+            revision_id=b'C-id')
         builder.build_snapshot(['B-id', 'C-id'], [
             ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))],
-            revision_id='D-id')
+            revision_id=b'D-id')
         builder.build_snapshot(['C-id', 'B-id'], [
             ('modify', ('foo', 'orig\ncontents\nand E\n'))],
-            revision_id='E-id')
+            revision_id=b'E-id')
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         self.assertEqual(1, tree.merge_from_branch(tree.branch,

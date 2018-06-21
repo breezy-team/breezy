@@ -207,8 +207,8 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', ''))],
-            revision_id='rev-1')
-        builder.build_snapshot(['rev-1'], [], revision_id='rev-2')
+            revision_id=b'rev-1')
+        builder.build_snapshot(['rev-1'], [], revision_id=b'rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()
@@ -221,8 +221,8 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', ''))],
-            revision_id='rev-1')
-        builder.build_snapshot(['rev-1', 'ghost'], [], revision_id='rev-2')
+            revision_id=b'rev-1')
+        builder.build_snapshot(['rev-1', 'ghost'], [], revision_id=b'rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()

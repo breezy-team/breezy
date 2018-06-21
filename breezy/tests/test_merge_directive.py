@@ -278,7 +278,7 @@ class TestMergeDirective2(tests.TestCase, TestMergeDirective):
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
-                 source_branch=None, message=None, base_revision_id='null:'):
+                 source_branch=None, message=None, base_revision_id=b'null:'):
         if patch_type == 'bundle':
             bundle = patch
             patch = None
@@ -639,7 +639,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
-                 source_branch=None, message=None, base_revision_id='null:'):
+                 source_branch=None, message=None, base_revision_id=b'null:'):
         if patch_type == 'bundle':
             bundle = patch
             patch = None
@@ -657,7 +657,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         self.assertEqual(b'rev1', md.base_revision_id)
         md = self.from_objects(tree_a.branch.repository, b'rev2a', 500, 60,
             tree_b.branch.base, patch_type='bundle',
-            public_branch=tree_a.branch.base, base_revision_id='null:')
+            public_branch=tree_a.branch.base, base_revision_id=b'null:')
         self.assertEqual('null:', md.base_revision_id)
         lines = md.to_lines()
         md2 = merge_directive.MergeDirective.from_lines(lines)

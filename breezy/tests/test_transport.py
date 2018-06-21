@@ -280,9 +280,9 @@ class TestMemoryTransport(tests.TestCase):
     def test_put_and_get(self):
         t = memory.MemoryTransport()
         t.put_file('path', BytesIO(b'content'))
-        self.assertEqual(t.get('path').read(), 'content')
-        t.put_bytes('path', 'content')
-        self.assertEqual(t.get('path').read(), 'content')
+        self.assertEqual(t.get('path').read(), b'content')
+        t.put_bytes('path', b'content')
+        self.assertEqual(t.get('path').read(), b'content')
 
     def test_append_without_dir_fails(self):
         t = memory.MemoryTransport()
@@ -309,10 +309,10 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_list_dir(self):
         t = memory.MemoryTransport()
-        t.put_bytes('foo', 'content')
+        t.put_bytes('foo', b'content')
         t.mkdir('dir')
-        t.put_bytes('dir/subfoo', 'content')
-        t.put_bytes('dirlike', 'content')
+        t.put_bytes('dir/subfoo', b'content')
+        t.put_bytes('dirlike', b'content')
 
         self.assertEqual(['dir', 'dirlike', 'foo'], sorted(t.list_dir('.')))
         self.assertEqual(['subfoo'], sorted(t.list_dir('dir')))
@@ -340,16 +340,16 @@ class TestMemoryTransport(tests.TestCase):
     def test_iter_files_recursive(self):
         t = memory.MemoryTransport()
         t.mkdir('dir')
-        t.put_bytes('dir/foo', 'content')
-        t.put_bytes('dir/bar', 'content')
-        t.put_bytes('bar', 'content')
+        t.put_bytes('dir/foo', b'content')
+        t.put_bytes('dir/bar', b'content')
+        t.put_bytes('bar', b'content')
         paths = set(t.iter_files_recursive())
         self.assertEqual({'dir/foo', 'dir/bar', 'bar'}, paths)
 
     def test_stat(self):
         t = memory.MemoryTransport()
-        t.put_bytes('foo', 'content')
-        t.put_bytes('bar', 'phowar')
+        t.put_bytes('foo', b'content')
+        t.put_bytes('bar', b'phowar')
         self.assertEqual(7, t.stat('foo').st_size)
         self.assertEqual(6, t.stat('bar').st_size)
 
@@ -964,7 +964,7 @@ class TestTransportTrace(tests.TestCase):
     # changes; so there is little return doing that.
     def test_get(self):
         t = transport.get_transport_from_url('trace+memory:///')
-        t.put_bytes('foo', 'barish')
+        t.put_bytes('foo', b'barish')
         t.get('foo')
         expected_result = []
         # put_bytes records the bytes, not the content to avoid memory
@@ -976,7 +976,7 @@ class TestTransportTrace(tests.TestCase):
 
     def test_readv(self):
         t = transport.get_transport_from_url('trace+memory:///')
-        t.put_bytes('foo', 'barish')
+        t.put_bytes('foo', b'barish')
         list(t.readv('foo', [(0, 1), (3, 2)],
                      adjust_for_latency=True, upper_limit=6))
         expected_result = []

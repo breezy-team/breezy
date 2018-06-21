@@ -414,7 +414,7 @@ class SqliteGitShaMap(GitShaMap):
         if path is None:
             self.db = sqlite3.connect(":memory:")
         else:
-            if not mapdbs().has_key(path):
+            if path not in mapdbs():
                 mapdbs()[path] = sqlite3.connect(path)
             self.db = mapdbs()[path]
         self.db.text_factory = str
@@ -616,7 +616,7 @@ class TdbGitShaMap(GitShaMap):
         else:
             if type(path) is not str:
                 raise TypeError(path)
-            if not mapdbs().has_key(path):
+            if path not in mapdbs():
                 mapdbs()[path] = tdb.Tdb(path, self.TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]

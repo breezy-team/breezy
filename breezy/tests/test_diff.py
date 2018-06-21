@@ -403,8 +403,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
 ''')
 
     def test_diff_rev_tree_rev_tree(self):
-        tree1 = self.b.repository.revision_tree('rev-2')
-        tree2 = self.b.repository.revision_tree('rev-3')
+        tree1 = self.b.repository.revision_tree(b'rev-2')
+        tree2 = self.b.repository.revision_tree(b'rev-3')
         output = get_diff_as_string(tree1, tree2)
         self.assertEqualDiff(output, '''\
 === modified file 'file2'
@@ -418,7 +418,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
 
     def test_diff_add_files(self):
         tree1 = self.b.repository.revision_tree(_mod_revision.NULL_REVISION)
-        tree2 = self.b.repository.revision_tree('rev-1')
+        tree2 = self.b.repository.revision_tree(b'rev-1')
         output = get_diff_as_string(tree1, tree2)
         # the files have the epoch time stamp for the tree in which
         # they don't exist.
@@ -438,8 +438,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
 ''')
 
     def test_diff_remove_files(self):
-        tree1 = self.b.repository.revision_tree('rev-3')
-        tree2 = self.b.repository.revision_tree('rev-4')
+        tree1 = self.b.repository.revision_tree(b'rev-3')
+        tree2 = self.b.repository.revision_tree(b'rev-4')
         output = get_diff_as_string(tree1, tree2)
         # the file has the epoch time stamp for the tree in which
         # it doesn't exist.
@@ -455,8 +455,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
     def test_show_diff_specified(self):
         """A working tree filename can be used to identify a file"""
         self.wt.rename_one('file1', 'file1b')
-        old_tree = self.b.repository.revision_tree('rev-1')
-        new_tree = self.b.repository.revision_tree('rev-4')
+        old_tree = self.b.repository.revision_tree(b'rev-1')
+        new_tree = self.b.repository.revision_tree(b'rev-4')
         out = get_diff_as_string(old_tree, new_tree, specific_files=['file1b'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
@@ -467,8 +467,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
         os.mkdir('dir2')
         self.wt.add(['dir1', 'dir2'])
         self.wt.rename_one('file1', 'dir1/file1')
-        old_tree = self.b.repository.revision_tree('rev-1')
-        new_tree = self.b.repository.revision_tree('rev-4')
+        old_tree = self.b.repository.revision_tree(b'rev-1')
+        new_tree = self.b.repository.revision_tree(b'rev-4')
         out = get_diff_as_string(old_tree, new_tree, specific_files=['dir1'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')

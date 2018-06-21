@@ -1538,7 +1538,8 @@ class TestCase(testtools.TestCase):
 
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, (str, text_type)):
+        # TODO(jelmer): Clean this up for pad.lv/1696545
+        if not isinstance(path, (bytes, str, text_type)):
             for p in path:
                 self.assertPathExists(p)
         else:

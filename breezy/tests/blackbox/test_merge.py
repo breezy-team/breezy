@@ -688,16 +688,16 @@ class TestMerge(tests.TestCaseWithTransport):
         target_bzrdir = source.controldir.sprout('target')
         # Add a non-ancestry tag to source
         builder.build_commit(message="Rev 2a", rev_id=b'rev-2a')
-        source.tags.set_tag('tag-a', 'rev-2a')
-        source.set_last_revision_info(1, 'rev-1')
+        source.tags.set_tag('tag-a', b'rev-2a')
+        source.set_last_revision_info(1, b'rev-1')
         source.get_config_stack().set('branch.fetch_tags', True)
         builder.build_commit(message="Rev 2b", rev_id=b'rev-2b')
         # Merge from source
         self.run_bzr('merge -d target source')
         target = target_bzrdir.open_branch()
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2a', target.tags.lookup_tag('tag-a'))
-        target.repository.get_revision('rev-2a')
+        self.assertEqual(b'rev-2a', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision(b'rev-2a')
 
 
 class TestMergeRevisionRange(tests.TestCaseWithTransport):

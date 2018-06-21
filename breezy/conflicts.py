@@ -386,7 +386,9 @@ class Conflict(object):
     def __cmp__(self, other):
         if getattr(other, "_cmp_list", None) is None:
             return -1
-        return cmp(self._cmp_list(), other._cmp_list())
+        x = self._cmp_list()
+        y = other._cmp_list()
+        return (x > y) - (x < y)
 
     def __hash__(self):
         return hash((type(self), self.path, self.file_id))
