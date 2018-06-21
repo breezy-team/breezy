@@ -52,6 +52,7 @@ from ..decorators import (
 from ..lock import _RelockDebugMixin, LogicalLockResult
 from ..sixish import (
     BytesIO,
+    text_type,
     viewitems,
     )
 from ..trace import (
@@ -86,9 +87,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise ValueError('name must be supplied')
         self.controldir = a_controldir
         self._user_transport = self.controldir.transport.clone('..')
-        if name != "":
+        if name != u"":
             self._user_transport.set_segment_parameter(
-                "branch", urlutils.escape(name))
+                "branch", urlutils.escape(name).encode('utf-8'))
         self._base = self._user_transport.base
         self.name = name
         self._format = _format
@@ -280,6 +281,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if url is None:
             self._transport.delete('parent')
         else:
+            if isinstance(url, text_type):
+                url = url.encode('utf-8')
             self._transport.put_bytes('parent', url + b'\n',
                 mode=self.controldir._get_file_mode())
 

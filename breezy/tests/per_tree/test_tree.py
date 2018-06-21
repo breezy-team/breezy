@@ -175,14 +175,14 @@ class TestFileContent(TestCaseWithTree):
         file_without_path = tree.get_file('a')
         try:
             lines = file_without_path.readlines()
-            self.assertEqual(['foobar\n'], lines)
+            self.assertEqual([b'foobar\n'], lines)
         finally:
             file_without_path.close()
         # Test lookup with path works
         file_with_path = tree.get_file('a', a_id)
         try:
             lines = file_with_path.readlines()
-            self.assertEqual(['foobar\n'], lines)
+            self.assertEqual([b'foobar\n'], lines)
         finally:
             file_with_path.close()
 
@@ -193,7 +193,7 @@ class TestFileContent(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         with tree.get_file('a') as f:
-            self.assertEqual('foobar\n', f.read())
+            self.assertEqual(b'foobar\n', f.read())
 
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -224,7 +224,7 @@ class TestFileContent(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(['a\rb\n', 'c\r\n', 'd'],
+        self.assertEqual([b'a\rb\n', b'c\r\n', b'd'],
                          tree.get_file_lines('foobar'))
 
 
@@ -239,13 +239,13 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        extracted = dict((i, ''.join(b)) for i, b in
+        extracted = dict((i, b''.join(b)) for i, b in
                          tree.iter_files_bytes([('foo', 'id1'),
                                                 ('bar', 'id2'),
                                                 ('baz', 'id3')]))
-        self.assertEqual('foo', extracted['id1'])
-        self.assertEqual('bar', extracted['id2'])
-        self.assertEqual('baz', extracted['id3'])
+        self.assertEqual(b'foo', extracted['id1'])
+        self.assertEqual(b'bar', extracted['id2'])
+        self.assertEqual(b'baz', extracted['id3'])
         self.assertRaises(errors.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
                           [('qux', 'file1-notpresent')])))
@@ -338,7 +338,7 @@ class TestGetFileSha1(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        expected = osutils.sha_strings('file content')
+        expected = osutils.sha_strings(b'file content')
         self.assertEqual(expected, tree.get_file_sha1('file'))
 
 
@@ -358,7 +358,7 @@ class TestGetFileVerifier(TestCaseWithTree):
             tree.get_file_verifier('file1'),
             tree.get_file_verifier('file2'))
         if kind == "SHA1":
-            expected = osutils.sha_strings('file content')
+            expected = osutils.sha_strings(b'file content')
             self.assertEqual(expected, data)
 
 

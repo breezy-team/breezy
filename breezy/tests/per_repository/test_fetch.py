@@ -206,47 +206,47 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             (('my-root', 'origin'),),
             [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
-                             ('add', ('child', 'my-root', 'directory', ''))]),
+                             ('add', ('child', b'my-root', 'directory', ''))]),
              ('base', None, []),
              ('tip', None, [('unversion', 'child'),
                             ('unversion', ''),
                             ('flush', None),
-                            ('add', ('', 'my-root', 'directory', '')),
+                            ('add', ('', b'my-root', 'directory', '')),
                             ]),
-            ], root_id='my-root')
+            ], root_id=b'my-root')
 
     def test_fetch_to_rich_root_set_parent_2_parent_1_different_id_gone(self):
         # 2 parents, 1 different fileid, our second missing -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            (('my-root', 'right'),),
+            ((b'my-root', 'right'),),
             [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              ('right', None, [('unversion', ''),
-                              ('add', ('', 'my-root', 'directory', ''))]),
+                              ('add', ('', b'my-root', 'directory', ''))]),
              ('tip', ['base', 'right'], [('unversion', ''),
-                            ('add', ('', 'my-root', 'directory', '')),
+                            ('add', ('', b'my-root', 'directory', '')),
                             ]),
-            ], root_id='my-root')
+            ], root_id=b'my-root')
 
     def test_fetch_to_rich_root_set_parent_2_parent_2_different_id_moved(self):
         # 2 parents, 1 different fileid, our second moved -> 2 parent
         # (and that parent honours the changing revid of the other location)
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            (('my-root', 'right'),),
+            ((b'my-root', 'right'),),
             # 'my-root' at 'child'.
             [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
-                             ('add', ('child', 'my-root', 'directory', ''))]),
+                             ('add', ('child', b'my-root', 'directory', ''))]),
              ('base', None, []),
             # 'my-root' at root
              ('right', None, [('unversion', 'child'),
                               ('unversion', ''),
                               ('flush', None),
-                              ('add', ('', 'my-root', 'directory', ''))]),
+                              ('add', ('', b'my-root', 'directory', ''))]),
              ('tip', ['base', 'right'], [('unversion', ''),
                             ('unversion', 'child'),
                             ('flush', None),
-                            ('add', ('', 'my-root', 'directory', '')),
+                            ('add', ('', b'my-root', 'directory', '')),
                             ]),
-            ], root_id='my-root')
+            ], root_id=b'my-root')
 
     def test_fetch_all_from_self(self):
         tree = self.make_branch_and_tree('.')

@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 
 import bz2
+import sys
 import zlib
 
 from .. import (
@@ -891,8 +892,14 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
-        return urlutils.split_segment_parameters_raw(
-            client.remote_path_from_transport(self.root_transport))[0]
+        remote_path = client.remote_path_from_transport(self.root_transport)
+        if sys.version_info[0] == 3:
+            remote_path = remote_path.decode('utf-8')
+        base_url, segment_parameters = urlutils.split_segment_parameters_raw(
+                remote_path)
+        if sys.version_info[0] == 3:
+            base_url = base_url.encode('utf-8')
+        return base_url
 
     def get_branch_transport(self, branch_format, name=None):
         self._ensure_real()

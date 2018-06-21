@@ -57,28 +57,22 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         finally:
             repo.unlock()
         # And after an unlock/lock pair
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             self.assertEqual(
                 {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
-        finally:
-            repo.unlock()
         # and reopening
         repo = repo.controldir.open_repository()
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             self.assertEqual(
                 {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
-        finally:
-            repo.unlock()
 
     def test_pack_preserves_chk_bytes_store(self):
-        leaf_lines = ["chkleaf:\n", "0\n", "1\n", "0\n", "\n"]
+        leaf_lines = [b"chkleaf:\n", b"0\n", b"1\n", b"0\n", b"\n"]
         leaf_sha1 = osutils.sha_strings(leaf_lines)
-        node_lines = ["chknode:\n", "0\n", "1\n", "1\n", "foo\n",
-                      "\x00sha1:%s\n" % (leaf_sha1,)]
+        node_lines = [b"chknode:\n", b"0\n", b"1\n", b"1\n", b"foo\n",
+                      b"\x00sha1:%s\n" % (leaf_sha1,)]
         node_sha1 = osutils.sha_strings(node_lines)
         expected_set = {('sha1:' + leaf_sha1,), ('sha1:' + node_sha1,)}
         repo = self.make_repository('.')
@@ -169,8 +163,8 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         repo = self.make_repository('damaged-repo')
         builder = self.make_branch_builder('simple-branch')
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'A-id')
         b = builder.get_branch()
         b.lock_read()
@@ -178,7 +172,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         repo.lock_write()
         repo.start_write_group()
         # Now, add the objects manually
-        text_keys = [('file-id', 'A-id'), ('root-id', 'A-id')]
+        text_keys = [(b'file-id', b'A-id'), (b'root-id', b'A-id')]
         # Directly add the texts, inventory, and revision object for 'A-id' --
         # but don't add the chk_bytes.
         src_repo = b.repository
@@ -186,10 +180,10 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
             text_keys, 'unordered', True))
         repo.inventories.insert_record_stream(
             src_repo.inventories.get_record_stream(
-                [('A-id',)], 'unordered', True))
+                [(b'A-id',)], 'unordered', True))
         repo.revisions.insert_record_stream(
             src_repo.revisions.get_record_stream(
-                [('A-id',)], 'unordered', True))
+                [(b'A-id',)], 'unordered', True))
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
@@ -372,7 +366,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Now, manually insert objects for a stacked repo with only revision
         # C-id, *except* drop one changed text.
         all_texts = src_repo.texts.keys()
-        all_texts.remove(('file-%s-id' % ('c'*10000,), 'C-id'))
+        all_texts.remove((b'file-%s-id' % (b'c'*10000,), b'C-id'))
         repo.lock_write()
         repo.start_write_group()
         repo.chk_bytes.insert_record_stream(
@@ -383,10 +377,10 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                 all_texts, 'unordered', True))
         repo.inventories.insert_record_stream(
             src_repo.inventories.get_record_stream(
-                [('B-id',), ('C-id',)], 'unordered', True))
+                [(b'B-id',), (b'C-id',)], 'unordered', True))
         repo.revisions.insert_record_stream(
             src_repo.revisions.get_record_stream(
-                [('C-id',)], 'unordered', True))
+                [(b'C-id',)], 'unordered', True))
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)

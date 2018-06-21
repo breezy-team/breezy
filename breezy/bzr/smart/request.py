@@ -217,8 +217,6 @@ class SmartServerRequest(object):
         :returns: a transport cloned from self._backing_transport
         """
         relpath = self.translate_client_path(client_path)
-        if not isinstance(relpath, str):
-            raise TypeError(relpath)
         return self._backing_transport.clone(relpath)
 
 

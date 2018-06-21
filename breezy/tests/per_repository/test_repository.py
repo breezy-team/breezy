@@ -946,7 +946,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return
         self.transport_server = test_server.FakeVFATServer
-        FOO_ID = 'foo<:>ID'
+        FOO_ID = b'foo<:>ID'
         # this makes a default format repository always, which is wrong:
         # it should be a TestCaseWithRepository in order to get the
         # default format.
@@ -963,7 +963,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
-        self.assertEqual(contents, 'contents of repo/foo\n')
+        self.assertEqual(contents, b'contents of repo/foo\n')
 
     def test_create_bundle(self):
         wt = self.make_branch_and_tree('repo')

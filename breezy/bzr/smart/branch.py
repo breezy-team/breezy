@@ -24,6 +24,7 @@ from ... import (
     revision as _mod_revision,
     )
 from ...controldir import ControlDir
+from ...sixish import text_type
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -249,7 +250,7 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             return self.do_tip_change_with_locked_branch(branch, *args)
         except errors.TipChangeRejected as e:
             msg = e.msg
-            if isinstance(msg, unicode):
+            if isinstance(msg, text_type):
                 msg = msg.encode('utf-8')
             return FailedSmartServerResponse((b'TipChangeRejected', msg))
 
@@ -260,7 +261,9 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
     def do_with_locked_branch(self, branch, value, name, section):
         if not section:
             section = None
-        branch._get_config().set_option(value.decode('utf8'), name, section)
+        branch._get_config().set_option(
+                value.decode('utf-8'), name.decode('utf-8'),
+                section.decode('utf-8') if section is not None else None)
         return SuccessfulSmartServerResponse(())
 
 

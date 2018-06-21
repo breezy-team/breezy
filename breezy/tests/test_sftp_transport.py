@@ -81,7 +81,8 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         l.unlock()
         self.assertFalse(lexists('bogus.write-lock'))
 
-        with open('something.write-lock', 'wb') as f: f.write('fake lock\n')
+        with open('something.write-lock', 'wb') as f:
+            f.write(b'fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
         os.remove('something.write-lock')
 
@@ -200,13 +201,13 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), 'a1')
+        self.assertEqual(b2.last_revision(), b'a1')
 
         with open('a/foo', 'wt') as f: f.write('something new in foo\n')
         t.commit('new', rev_id=b'a2')
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), 'a2')
+        self.assertEqual(b2.last_revision(), b'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -250,7 +251,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         from breezy.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
         t = self.get_transport()
-        self.assertEqual('foobar\n', t.get('a_file').read())
+        self.assertEqual(b'foobar\n', t.get('a_file').read())
 
     def test_connection_vendor(self):
         raise TestSkipped("We don't test spawning real ssh,"
@@ -259,7 +260,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
                           " how to prevent this.")
         self.set_vendor(None)
         t = self.get_transport()
-        self.assertEqual('foobar\n', t.get('a_file').read())
+        self.assertEqual(b'foobar\n', t.get('a_file').read())
 
 
 class SSHVendorBadConnection(TestCaseWithTransport):
@@ -453,16 +454,16 @@ class Test_SFTPReadvHelper(tests.TestCase):
         self.assertEqual(expected, result)
 
     def test_request_and_yield_offsets(self):
-        data = 'abcdefghijklmnopqrstuvwxyz'
-        self.checkRequestAndYield([(0, 'a'), (5, 'f'), (10, 'klm')], data,
+        data = b'abcdefghijklmnopqrstuvwxyz'
+        self.checkRequestAndYield([(0, b'a'), (5, b'f'), (10, b'klm')], data,
                                   [(0, 1), (5, 1), (10, 3)])
         # Should combine requests, and split them again
-        self.checkRequestAndYield([(0, 'a'), (1, 'b'), (10, 'klm')], data,
+        self.checkRequestAndYield([(0, b'a'), (1, b'b'), (10, b'klm')], data,
                                   [(0, 1), (1, 1), (10, 3)])
         # Out of order requests. The requests should get combined, but then be
         # yielded out-of-order. We also need one that is at the end of a
         # previous range. See bug #293746
-        self.checkRequestAndYield([(0, 'a'), (10, 'k'), (4, 'efg'), (1, 'bcd')],
+        self.checkRequestAndYield([(0, b'a'), (10, b'k'), (4, b'efg'), (1, b'bcd')],
                                   data, [(0, 1), (10, 1), (4, 3), (1, 3)])
 
 

@@ -789,8 +789,8 @@ class TestTestResult(tests.TestCase):
 
         This is used to exercise the test framework.
         """
-        self.time(unicode, 'hello', errors='replace')
-        self.time(unicode, 'world', errors='replace')
+        self.time(text_type, 'hello', errors='replace')
+        self.time(text_type, 'world', errors='replace')
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""

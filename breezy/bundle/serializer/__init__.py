@@ -45,8 +45,9 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 serializer_registry = registry.Registry()
 
+
 def _get_bundle_header(version):
-    return '%s%s\n' % (BUNDLE_HEADER, version)
+    return b''.join([BUNDLE_HEADER, version, b'\n'])
 
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')

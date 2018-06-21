@@ -1211,7 +1211,7 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
         return None
 
     def do_body(self, body_bytes):
-        revision_ids = body_bytes.split("\n")
+        revision_ids = body_bytes.split(b"\n")
         return SuccessfulSmartServerResponse(
             (b'ok', self._repository.get_serializer_format()),
             body_stream=self.body_stream(self._repository, revision_ids))
