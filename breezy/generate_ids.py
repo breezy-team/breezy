@@ -59,7 +59,7 @@ def _next_id_suffix():
     #           suffix forever.
     global _gen_file_id_suffix, _gen_file_id_serial
     if _gen_file_id_suffix is None:
-        _gen_file_id_suffix =  ("-%s-%s-" % (
+        _gen_file_id_suffix = ("-%s-%s-" % (
                 osutils.compact_date(time.time()), osutils.rand_chars(16))
             ).encode("ascii")
     _gen_file_id_serial += 1

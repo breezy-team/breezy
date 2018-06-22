@@ -1792,12 +1792,12 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         remote_transport = remote.RemoteTransport('bzr://fake_host/',
                                                   medium=medium)
         self.assertEqual(
-            [(0, "c")], list(remote_transport.readv("data-file", [(0, 1)])))
+            [(0, b"c")], list(remote_transport.readv("data-file", [(0, 1)])))
 
     def test_http_send_smart_request(self):
 
-        post_body = 'hello\n'
-        expected_reply_body = 'ok\x012\n'
+        post_body = b'hello\n'
+        expected_reply_body = b'ok\x012\n'
 
         http_transport = transport.get_transport_from_url(
             self.http_server.get_url())
@@ -1935,7 +1935,7 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
         bytes_read = len(requestline)
         for line in headers.headers:
             bytes_read += len(line)
-        bytes_read += len('\r\n')
+        bytes_read += len(b'\r\n')
         if requestline.startswith('POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)
@@ -2010,7 +2010,7 @@ class TestActivityMixin(object):
                          self.activities.get('read', 0), 'read bytes')
 
     def test_get(self):
-        self.server.canned_response = '''HTTP/1.1 200 OK\r
+        self.server.canned_response = b'''HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -2028,7 +2028,7 @@ Bazaar-NG meta directory, format 1
         self.assertActivitiesMatch()
 
     def test_has(self):
-        self.server.canned_response = '''HTTP/1.1 200 OK\r
+        self.server.canned_response = b'''HTTP/1.1 200 OK\r
 Server: SimpleHTTP/0.6 Python/2.5.2\r
 Date: Thu, 29 Jan 2009 20:21:47 GMT\r
 Content-type: application/octet-stream\r
@@ -2041,7 +2041,7 @@ Last-Modified: Thu, 29 Jan 2009 20:21:47 GMT\r
         self.assertActivitiesMatch()
 
     def test_readv(self):
-        self.server.canned_response = '''HTTP/1.1 206 Partial Content\r
+        self.server.canned_response = b'''HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:49:48 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
@@ -2098,7 +2098,7 @@ mbp@source\r
         self.assertActivitiesMatch()
 
     def test_post(self):
-        self.server.canned_response = '''HTTP/1.1 200 OK\r
+        self.server.canned_response = b'''HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -2113,8 +2113,8 @@ lalala whatever as long as itsssss
         t = self.get_transport()
         # We must send a single line of body bytes, see
         # PredefinedRequestHandler._handle_one_request
-        code, f = t._post('abc def end-of-body\n')
-        self.assertEqual('lalala whatever as long as itsssss\n', f.read())
+        code, f = t._post(b'abc def end-of-body\n')
+        self.assertEqual(b'lalala whatever as long as itsssss\n', f.read())
         self.assertActivitiesMatch()
 
 
