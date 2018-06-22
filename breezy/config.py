@@ -2560,7 +2560,7 @@ class RegistryOption(Option):
         can take quoting into account.
         """
         super(RegistryOption, self).__init__(
-            name, default=lambda: text_type(registry.default_key),
+            name, default=lambda: registry.default_key.decode('utf-8'),
             default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)

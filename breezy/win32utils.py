@@ -31,7 +31,6 @@ from breezy import (
     cmdline,
     )
 from breezy.i18n import gettext
-from breezy.sixish import text_type
 
 # We can cope without it; use a separate variable to help pyflakes
 try:
@@ -272,7 +271,7 @@ def get_home_location():
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
-    return text_type('C:/')
+    return u'C:/'
 
 
 def get_user_name():

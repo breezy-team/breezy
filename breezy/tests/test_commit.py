@@ -219,7 +219,7 @@ class TestCommit(TestCaseWithTransport):
         with open('hello', 'w') as f: f.write('hello')
         with open('buongia', 'w') as f: f.write('buongia')
         wt.add(['hello', 'buongia'],
-              ['hello-id', 'buongia-id'])
+              [b'hello-id', b'buongia-id'])
         wt.commit(message='add files',
                  rev_id=b'test@rev-1')
 
