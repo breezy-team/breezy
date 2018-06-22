@@ -622,6 +622,7 @@ class BzrBranch8(BzrBranch):
                                                 config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
+        # TODO(jelmer): Clean this up for pad.lv/1696545
         if sys.version_info[0] == 2:
             return stacked_url.encode('utf-8')
         else:

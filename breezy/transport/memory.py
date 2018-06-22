@@ -23,7 +23,9 @@ so this is primarily useful for testing.
 from __future__ import absolute_import
 
 import contextlib
-from io import BytesIO
+from io import (
+    BytesIO,
+    )
 import os
 import errno
 from stat import S_IFREG, S_IFDIR
