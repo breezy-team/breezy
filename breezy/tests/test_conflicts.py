@@ -304,7 +304,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-                ('add', ('', b'root-id', 'directory', ''))],
+                ('add', (u'', b'root-id', 'directory', ''))],
                 revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()

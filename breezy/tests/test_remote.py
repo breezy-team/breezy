@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import base64
 import bz2
+import tarfile
 import zlib
 
 from .. import (
@@ -4306,3 +4307,39 @@ class TestRepositoryIterInventories(TestRemoteRepository):
             b'success', (b'ok', ), iter([]))
         self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
             [b"somerevid"]))
+
+
+class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
+    """Test Repository.iter_inventories."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_simple(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = controldir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory(b'somerevid', None, None,
+                self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+        client.add_expected_call(
+            b'VersionedFileRepository.get_inventories', (b'quack/', b'unordered'),
+            b'success', (b'ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        f = BytesIO()
+        with tarfile.open(mode='w', fileobj=f) as tf:
+            info = tarfile.TarInfo('somefile')
+            info.mtime = 432432
+            contents = b'some data'
+            info.type = tarfile.REGTYPE
+            info.mode = 0o644
+            info.size = len(contents)
+            tf.addfile(info, BytesIO(contents))
+        client.add_expected_call(
+            b'Repository.revision_archive', (b'quack/', b'somerevid', b'tar', b'foo.tar', b'', b'', None),
+            b'success', (b'ok', ),
+            f.getvalue())
+        tree = repo.revision_tree(b'somerevid')
+        self.assertEqual(f.getvalue(), b''.join(tree.archive('tar', 'foo.tar')))

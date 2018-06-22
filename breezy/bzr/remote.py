@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 
 import bz2
+import os
 import sys
 import zlib
 
@@ -926,6 +927,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _get_config_store(self):
         return RemoteControlStore(self)
+
+
+class RemoteInventoryTree(InventoryRevisionTree):
+
+    def __init__(self, repository, inv, revision_id):
+        super(RemoteInventoryTree, self).__init__(repository, inv, revision_id)
+
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
+        ret = self._repository._revision_archive(
+                self.get_revision_id(), format, name, root, subdir,
+                force_mtime=force_mtime)
+        if ret is None:
+            return super(RemoteInventoryTree, self).archive(
+                format, name, root, subdir, force_mtime=force_mtime)
+        return ret
 
 
 class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
@@ -2512,7 +2528,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         with self.lock_read():
             inventories = self.iter_inventories(revision_ids)
             for inv in inventories:
-                yield InventoryRevisionTree(self, inv, inv.revision_id)
+                yield RemoteInventoryTree(self, inv, inv.revision_id)
 
     def get_revision_reconcile(self, revision_id):
         with self.lock_read():
@@ -2801,6 +2817,28 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self.refresh_data()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+
+    def _revision_archive(self, revision_id, format, name, root, subdir,
+                          force_mtime=None):
+        path = self.controldir._path_for_remote_call(self._client)
+        format = format or ''
+        root = root or ''
+        subdir = subdir or ''
+        force_mtime = int(force_mtime) if force_mtime is not None else None
+        try:
+            response, protocol = self._call_expecting_body(
+                b'Repository.revision_archive', path,
+                revision_id,
+                format.encode('ascii'),
+                os.path.basename(name).encode('utf-8'),
+                root.encode('utf-8'),
+                subdir.encode('utf-8'),
+                force_mtime)
+        except errors.UnknownSmartMethod:
+            return None
+        if response[0] == b'ok':
+            return iter([protocol.read_body_bytes()])
+        raise errors.UnexpectedSmartServerResponse(response)
 
 
 class RemoteStreamSink(vf_repository.StreamSink):

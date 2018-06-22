@@ -217,7 +217,7 @@ class UTextWrapper(textwrap.TextWrapper):
         return lines
 
     def _split(self, text):
-        chunks = textwrap.TextWrapper._split(self, text_type(text))
+        chunks = textwrap.TextWrapper._split(self, text)
         cjk_split_chunks = []
         for chunk in chunks:
             prev_pos = 0
