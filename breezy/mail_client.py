@@ -660,7 +660,7 @@ class DefaultMail(MailClient):
                           directive, basename=basename, body=body)
 mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
-mail_client_registry.default_key = 'default'
+mail_client_registry.default_key = u'default'
 
 opt_mail_client = _mod_config.RegistryOption('mail_client',
         mail_client_registry, help='E-mail client to use.', invalid='error')

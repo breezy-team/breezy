@@ -658,12 +658,10 @@ class Tree(object):
                 force_mtime=None):
         """Create an archive of this tree.
 
-        :param name: target file name
         :param format: Format name (e.g. 'tar')
+        :param name: target file name
         :param root: Root directory name (or None)
         :param subdir: Subdirectory to export (or None)
-        :param per_file_timestamps: Whether to set the timestamp
-            for each file to the last changed time.
         :return: Iterator over archive chunks
         """
         from .archive import create_archive

@@ -1745,6 +1745,9 @@ class SampleSocket(object):
     def close(self):
         """Ignore and leave files alone."""
 
+    def sendall(self, bytes):
+        self.writefile.write(bytes)
+
     def makefile(self, mode='r', bufsize=None):
         if 'r' in mode:
             return self.readfile
@@ -1825,7 +1828,9 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
                                                          ('localhost', 80),
                                                          httpd)
         response = socket.writefile.getvalue()
-        self.assertStartsWith(response, '%s 200 ' % self._protocol_version)
+        self.assertStartsWith(
+                response,
+                b'%s 200 ' % self._protocol_version.encode('ascii'))
         # This includes the end of the HTTP headers, and all the body.
         expected_end_of_response = b'\r\n\r\nok\x012\n'
         self.assertEndsWith(response, expected_end_of_response)
@@ -1850,7 +1855,7 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # try to interpret it.
         self.assertRaises(errors.SmartProtocolError,
                           t.get_smart_medium().send_http_smart_request,
-                          'whatever')
+                          b'whatever')
 
 
 class Test_redirected_to(tests.TestCase):
