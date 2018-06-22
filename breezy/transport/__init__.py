@@ -188,6 +188,10 @@ class _CoalescedOffset(object):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
 
+    def __eq__(self, other):
+        return ((self.start, self.length, self.ranges) ==
+                (other.start, other.length, other.ranges))
+
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__,
             self.start, self.length, self.ranges)

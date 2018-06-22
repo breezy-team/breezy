@@ -202,9 +202,9 @@ class TestFileContent(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by file-id
-        self.assertEqual('foobar\n', tree.get_file_text('a', a_id))
+        self.assertEqual(b'foobar\n', tree.get_file_text('a', a_id))
         # test read by path
-        self.assertEqual('foobar\n', tree.get_file_text('a'))
+        self.assertEqual(b'foobar\n', tree.get_file_text('a'))
 
     def test_get_file_lines(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -213,9 +213,9 @@ class TestFileContent(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by file-id
-        self.assertEqual(['foobar\n'], tree.get_file_lines('a', a_id))
+        self.assertEqual([b'foobar\n'], tree.get_file_lines('a', a_id))
         # test read by path
-        self.assertEqual(['foobar\n'], tree.get_file_lines('a'))
+        self.assertEqual([b'foobar\n'], tree.get_file_lines('a'))
 
     def test_get_file_lines_multi_line_breaks(self):
         work_tree = self.make_branch_and_tree('wt')

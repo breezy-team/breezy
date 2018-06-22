@@ -272,10 +272,11 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_append_and_get(self):
         t = memory.MemoryTransport()
-        t.append_bytes('path', 'content')
-        self.assertEqual(t.get('path').read(), 'content')
+        t.append_bytes('path', b'content')
+        self.assertEqual(t.get('path').read(), b'content')
         t.append_file('path', BytesIO(b'content'))
-        self.assertEqual(t.get('path').read(), 'contentcontent')
+        with t.get('path') as f:
+            self.assertEqual(f.read(), b'contentcontent')
 
     def test_put_and_get(self):
         t = memory.MemoryTransport()
@@ -287,7 +288,7 @@ class TestMemoryTransport(tests.TestCase):
     def test_append_without_dir_fails(self):
         t = memory.MemoryTransport()
         self.assertRaises(errors.NoSuchFile,
-                          t.append_bytes, 'dir/path', 'content')
+                          t.append_bytes, 'dir/path', b'content')
 
     def test_put_without_dir_fails(self):
         t = memory.MemoryTransport()
@@ -304,7 +305,7 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_has_present(self):
         t = memory.MemoryTransport()
-        t.append_bytes('foo', 'content')
+        t.append_bytes('foo', b'content')
         self.assertEqual(True, t.has('foo'))
 
     def test_list_dir(self):
@@ -320,8 +321,9 @@ class TestMemoryTransport(tests.TestCase):
     def test_mkdir(self):
         t = memory.MemoryTransport()
         t.mkdir('dir')
-        t.append_bytes('dir/path', 'content')
-        self.assertEqual(t.get('dir/path').read(), 'content')
+        t.append_bytes('dir/path', b'content')
+        with t.get('dir/path') as f:
+            self.assertEqual(f.read(), b'content')
 
     def test_mkdir_missing_parent(self):
         t = memory.MemoryTransport()
@@ -802,11 +804,11 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         t = self.get_transport('.')
         calls = self.recordCalls(os, 'fdatasync')
         w = t.open_write_stream('out')
-        w.write('foo')
+        w.write(b'foo')
         w.fdatasync()
         with open('out', 'rb') as f:
             # Should have been flushed.
-            self.assertEqual(f.read(), 'foo')
+            self.assertEqual(f.read(), b'foo')
         self.assertEqual(len(calls), 1, calls)
 
     def test_missing_directory(self):
@@ -1022,7 +1024,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                 self.test.command_executed.append(command)
                 proc = subprocess.Popen(
                     command, shell=True, stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    bufsize=0)
 
                 # XXX: horribly inefficient, not to mention ugly.
                 # Start a thread for each of stdin/out/err, and relay bytes
@@ -1030,7 +1033,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                 def ferry_bytes(read, write, close):
                     while True:
                         bytes = read(1)
-                        if bytes == '':
+                        if bytes == b'':
                             close()
                             break
                         write(bytes)
@@ -1077,7 +1080,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         t.mkdir('foo')
 
         self.assertEqual(
-            ['%s serve --inet --directory=/ --allow-writes' % bzr_remote_path],
+            [b'%s serve --inet --directory=/ --allow-writes' % bzr_remote_path.encode()],
             self.command_executed)
         # Make sure to disconnect, so that the remote process can stop, and we
         # can cleanup. Then pause the test until everything is shutdown

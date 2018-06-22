@@ -2347,7 +2347,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         rev = tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path(b'file-id'))
-        self.assertEqual('contents', tree.get_file_text('file', b'file-id'))
+        self.assertEqual(b'contents', tree.get_file_text('file', b'file-id'))
         self.assertEqual('dir', tree.id2path(b'dir-id'))
         if SymlinkFeature.available():
             self.assertEqual('dir/symlink', tree.id2path(b'symlink-id'))
@@ -3242,7 +3242,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(tt.finalize)
         final_tree = tt.get_preview_tree()
         self.assertEqual(
-                'a\nb\nc\n',
+                b'a\nb\nc\n',
                 final_tree.get_file_text(final_tree.id2path(b'file-id')))
 
     def test_merge_preview_into_workingtree(self):
@@ -3317,7 +3317,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         builder.finish_inventory()
         rev2_id = builder.commit('rev2')
         rev2_tree = tree.branch.repository.revision_tree(rev2_id)
-        self.assertEqual('contents', rev2_tree.get_file_text('file'))
+        self.assertEqual(b'contents', rev2_tree.get_file_text('file'))
 
     def test_ascii_limbo_paths(self):
         self.requireFeature(features.UnicodeFilenameFeature)

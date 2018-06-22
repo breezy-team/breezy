@@ -918,16 +918,16 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
 
-    def _accept_bytes(self, bytes):
+    def _accept_bytes(self, data):
         """See SmartClientStreamMedium.accept_bytes."""
         try:
-            self._writeable_pipe.write(bytes)
+            self._writeable_pipe.write(data)
         except IOError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
                     "Error trying to write to subprocess", e)
             raise
-        self._report_activity(len(bytes), 'write')
+        self._report_activity(len(data), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
@@ -939,9 +939,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
         bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = self._readable_pipe.read(bytes_to_read)
-        self._report_activity(len(bytes), 'read')
-        return bytes
+        data = self._readable_pipe.read(bytes_to_read)
+        self._report_activity(len(data), 'read')
+        return data
 
 
 class SSHParams(object):

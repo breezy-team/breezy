@@ -2167,19 +2167,19 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_simple_lca(self):
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'],
-            [('modify', ('a', 'a\nb\nc\nd\ne\nf\n'))],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'B-id', b'C-id'],
+            [('modify', ('a', b'a\nb\nc\nd\ne\nf\n'))],
             revision_id=b'D-id')
-        wt, conflicts = self.do_merge(builder, 'E-id')
+        wt, conflicts = self.do_merge(builder, b'E-id')
         self.assertEqual(0, conflicts)
         # The merge should have simply update the contents of 'a'
-        self.assertEqual('a\nb\nc\nd\ne\nf\n', wt.get_file_text('a'))
+        self.assertEqual(b'a\nb\nc\nd\ne\nf\n', wt.get_file_text('a'))
 
     def test_conflict_without_lca(self):
         # This test would cause a merge conflict, unless we use the lca trees
@@ -2195,18 +2195,18 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     F     Path at 'baz' in F, which supersedes 'bar' and 'foo'
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'],
             [('rename', ('foo', 'bar'))], revision_id=b'B-id', )
-        builder.build_snapshot(['C-id', 'B-id'], # merge the rename
+        builder.build_snapshot([b'C-id', b'B-id'], # merge the rename
             [('rename', ('foo', 'bar'))], revision_id=b'E-id')
-        builder.build_snapshot(['E-id'],
+        builder.build_snapshot([b'E-id'],
             [('rename', ('bar', 'baz'))], revision_id=b'F-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        wt, conflicts = self.do_merge(builder, 'F-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        wt, conflicts = self.do_merge(builder, b'F-id')
         self.assertEqual(0, conflicts)
         # The merge should simply recognize that the final rename takes
         # precedence
@@ -2226,20 +2226,20 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     F     F deletes 'bar'
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'],
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'],
             [('rename', ('foo', 'bar'))], revision_id=b'B-id')
-        builder.build_snapshot(['C-id', 'B-id'], # merge the rename
+        builder.build_snapshot([b'C-id', b'B-id'], # merge the rename
             [('rename', ('foo', 'bar'))], revision_id=b'E-id')
-        builder.build_snapshot(['E-id'],
+        builder.build_snapshot([b'E-id'],
             [('unversion', 'bar')], revision_id=b'F-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        wt, conflicts = self.do_merge(builder, 'F-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        wt, conflicts = self.do_merge(builder, b'F-id')
         self.assertEqual(0, conflicts)
-        self.assertRaises(errors.NoSuchId, wt.id2path, 'foo-id')
+        self.assertRaises(errors.NoSuchId, wt.id2path, b'foo-id')
 
     def test_executable_changes(self):
         #   A       Path at 'foo'
@@ -2253,13 +2253,13 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     F     Executable bit changed
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
         tt = transform.TreeTransform(wt)
@@ -2272,11 +2272,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertTrue(wt.is_executable('foo'))
         wt.commit('F-id', rev_id=b'F-id')
         # Reset to D, so that we can merge F
-        wt.set_parent_ids(['D-id'])
-        wt.branch.set_last_revision_info(3, 'D-id')
+        wt.set_parent_ids([b'D-id'])
+        wt.branch.set_last_revision_info(3, b'D-id')
         wt.revert()
         self.assertFalse(wt.is_executable('foo'))
-        conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
+        conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
         self.assertEqual(0, conflicts)
         self.assertTrue(wt.is_executable('foo'))
 
@@ -2295,12 +2295,12 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # have symlink support
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None))],
+            [('add', (u'', b'a-root-id', 'directory', None))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['B-id', 'C-id'], [], revision_id=b'D-id')
-        builder.build_snapshot(['C-id', 'B-id'], [], revision_id=b'E-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
         os.symlink('bar', 'path/foo')
@@ -2329,26 +2329,26 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # inventory contains "None" rather than a real sha1
         builder = self.get_builder()
         builder.build_snapshot(None,
-            [('add', (u'', 'a-root-id', 'directory', None)),
-             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))],
+            [('add', (u'', b'a-root-id', 'directory', None)),
+             ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'B content\n'))],
+        builder.build_snapshot([b'A-id'],
+            [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
         builder.build_snapshot(['A-id'],
-            [('modify', ('foo', 'C content\n'))],
+            [('modify', ('foo', b'C content\n'))],
             revision_id=b'C-id')
-        builder.build_snapshot(['C-id', 'B-id'], [],
+        builder.build_snapshot([b'C-id', b'B-id'], [],
                 revision_id=b'E-id')
-        builder.build_snapshot(['B-id', 'C-id'], [],
+        builder.build_snapshot([b'B-id', b'C-id'], [],
                 revision_id=b'D-id')
-        wt, conflicts = self.do_merge(builder, 'E-id')
+        wt, conflicts = self.do_merge(builder, b'E-id')
         self.assertEqual(1, conflicts)
-        self.assertEqualDiff('<<<<<<< TREE\n'
-                             'B content\n'
-                             '=======\n'
-                             'C content\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'<<<<<<< TREE\n'
+                             b'B content\n'
+                             b'=======\n'
+                             b'C content\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              wt.get_file_text('foo'))
 
     def test_modified_symlink(self):
@@ -2378,7 +2378,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         os.symlink('baz', 'path/foo')
         wt.commit('foo => baz', rev_id=b'B-id')
         wt.set_last_revision(b'A-id')
-        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.branch.set_last_revision_info(1, b'A-id')
         wt.revert()
         wt.commit('C', rev_id=b'C-id')
         wt.merge_from_branch(wt.branch, b'B-id')
@@ -2387,7 +2387,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         os.remove('path/foo')
         os.symlink('bing', 'path/foo')
         wt.commit('F foo => bing', rev_id=b'F-id')
-        wt.set_last_revision('B-id')
+        wt.set_last_revision(b'B-id')
         wt.branch.set_last_revision_info(2, b'B-id')
         wt.revert()
         wt.merge_from_branch(wt.branch, b'C-id')
@@ -2419,7 +2419,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.commit('A add symlink', rev_id=b'A-id')
         wt.rename_one('foo', 'barry')
         wt.commit('B foo => barry', rev_id=b'B-id')
-        wt.set_last_revision('A-id')
+        wt.set_last_revision(b'A-id')
         wt.branch.set_last_revision_info(1, b'A-id')
         wt.revert()
         wt.commit('C', rev_id=b'C-id')
@@ -2531,7 +2531,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # We have to change the link in E, or it won't try to do a comparison
         os.symlink('bing', 'path/foo')
         wt.commit('E merges C & B, overrides to bing', rev_id=b'E-id')
-        wt.set_last_revision('B-id')
+        wt.set_last_revision(b'B-id')
         wt.branch.set_last_revision_info(2, b'B-id')
         wt.revert()
         wt.merge_from_branch(wt.branch, b'C-id')
@@ -2588,7 +2588,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         os.remove('path/foo')
         os.symlink('bing', 'path/foo')
         wt.commit('F foo => bing', rev_id=b'F-id')
-        wt.set_last_revision('B-id')
+        wt.set_last_revision(b'B-id')
         wt.branch.set_last_revision_info(2, b'B-id')
         wt.revert()
         wt.merge_from_branch(wt.branch, b'C-id')
@@ -2665,7 +2665,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # TODO: We need to use the per-file graph to properly select a BASE
         #       before this will work. Or at least use the LCA trees to find
         #       the appropriate content base. (which is B, not A).
-        self.assertEqual('base content\n', wt.get_file_text('foo'))
+        self.assertEqual(b'base content\n', wt.get_file_text('foo'))
 
     def test_other_modified_content(self):
         builder = self.get_builder()

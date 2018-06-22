@@ -141,13 +141,13 @@ class TestMerge(tests.TestCaseWithTransport):
         # 'show-base' is not set
         self.run_bzr('merge ../other', working_dir='tree',
                      retcode=1)
-        self.assertEqualDiff('a\n'
-                             'B\n'
-                             '<<<<<<< TREE\n'
-                             'C\n'
-                             '=======\n'
-                             'D\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'a\n'
+                             b'B\n'
+                             b'<<<<<<< TREE\n'
+                             b'C\n'
+                             b'=======\n'
+                             b'D\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              tree.get_file_text('fname'))
 
     def test_merge_explicit_reprocess_show_base(self):
@@ -162,14 +162,14 @@ class TestMerge(tests.TestCaseWithTransport):
         # Explicitly disable reprocess
         self.run_bzr('merge ../other --no-reprocess', working_dir='tree',
                      retcode=1)
-        self.assertEqualDiff('a\n'
-                             '<<<<<<< TREE\n'
-                             'B\n'
-                             'C\n'
-                             '=======\n'
-                             'B\n'
-                             'D\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'a\n'
+                             b'<<<<<<< TREE\n'
+                             b'B\n'
+                             b'C\n'
+                             b'=======\n'
+                             b'B\n'
+                             b'D\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              tree.get_file_text('fname'))
 
     def test_merge_override_show_base(self):
@@ -177,17 +177,17 @@ class TestMerge(tests.TestCaseWithTransport):
         # Setting '--show-base' will auto-disable '--reprocess'
         self.run_bzr('merge ../other --show-base', working_dir='tree',
                      retcode=1)
-        self.assertEqualDiff('a\n'
-                             '<<<<<<< TREE\n'
-                             'B\n'
-                             'C\n'
-                             '||||||| BASE-REVISION\n'
-                             'b\n'
-                             'c\n'
-                             '=======\n'
-                             'B\n'
-                             'D\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'a\n'
+                             b'<<<<<<< TREE\n'
+                             b'B\n'
+                             b'C\n'
+                             b'||||||| BASE-REVISION\n'
+                             b'b\n'
+                             b'c\n'
+                             b'=======\n'
+                             b'B\n'
+                             b'D\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              tree.get_file_text('fname'))
 
     def test_merge_with_missing_file(self):
