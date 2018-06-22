@@ -842,7 +842,7 @@ class Merge3Merger(object):
                 self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
-            trace.warning(text_type(conflict))
+            trace.warning('%s', conflict.describe())
 
     def _entries3(self):
         """Gather data about files modified between three trees.

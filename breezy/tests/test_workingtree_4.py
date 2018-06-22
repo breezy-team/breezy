@@ -693,7 +693,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         e = self.assertRaises(errors.PathsNotVersionedError,
             tree_iter_changes, tree, [u'\xa7', u'\u03c0'])
-        self.assertEqual(e.paths, [u'\xa7', u'\u03c0'])
+        self.assertEqual(set(e.paths), set([u'\xa7', u'\u03c0']))
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')
