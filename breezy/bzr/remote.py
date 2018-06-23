@@ -2865,7 +2865,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         file_id = file_id or b''
         default_revision = default_revision or b''
         try:
-            response, protocol = self._call_expecting_body(
+            response, handler = self._call_expecting_body(
                 b'Repository.annotate_file_revision', path,
                 revid,
                 tree_path,
