@@ -943,6 +943,25 @@ class RemoteInventoryTree(InventoryRevisionTree):
                 format, name, root, subdir, force_mtime=force_mtime)
         return ret
 
+    def annotate_iter(self, path, file_id=None,
+                      default_revision=_mod_revision.CURRENT_REVISION):
+        """Return an iterator of revision_id, line tuples.
+
+        For working trees (and mutable trees in general), the special
+        revision_id 'current:' will be used for lines that are new in this
+        tree, e.g. uncommitted changes.
+        :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
+        """
+        ret = self._repository._revision_file_annotate(
+                self.get_revision_id(), path, file_id, default_revision)
+        if ret is None:
+            return super(RemoteInventoryTree, self).annotate_iter(
+                path, file_id, default_revision=default_revision)
+        return ret
+
 
 class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
@@ -2839,6 +2858,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if response[0] == b'ok':
             return iter([protocol.read_body_bytes()])
         raise errors.UnexpectedSmartServerResponse(response)
+
+    def _revision_file_annotate(self, revid, path, file_id, default_revision):
+        return None
 
 
 class RemoteStreamSink(vf_repository.StreamSink):
