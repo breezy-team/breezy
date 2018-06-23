@@ -224,8 +224,10 @@ class BaseMergeDirective(object):
         if self.revision_id == revision_id:
             revno = [revno]
         else:
-            revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
-                ['merge'])
+            try:
+                revno = branch.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                revno = ['merge']
         nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
         return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
 
