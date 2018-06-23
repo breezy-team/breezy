@@ -757,6 +757,9 @@ request_handlers.register_lazy(
     b'Repository.get_stream_1.19', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
 request_handlers.register_lazy(
+    b'Repository.get_stream_for_missing_keys', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryGetStreamForMissingKeys', info='read')
+request_handlers.register_lazy(
     b'Repository.iter_revisions', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIterRevisions', info='read')
 request_handlers.register_lazy(
