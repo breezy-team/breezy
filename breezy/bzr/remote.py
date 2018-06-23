@@ -955,8 +955,8 @@ class RemoteInventoryTree(InventoryRevisionTree):
             with this revision id. Not all implementations will make use of
             this value.
         """
-        ret = self._repository._revision_file_annotate(
-                self.get_revision_id(), path, file_id, default_revision)
+        ret = self._repository._annotate_file_revision(
+                    self.get_revision_id(), path, file_id, default_revision)
         if ret is None:
             return super(RemoteInventoryTree, self).annotate_iter(
                 path, file_id, default_revision=default_revision)
@@ -2859,8 +2859,24 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return iter([protocol.read_body_bytes()])
         raise errors.UnexpectedSmartServerResponse(response)
 
-    def _revision_file_annotate(self, revid, path, file_id, default_revision):
-        return None
+    def _annotate_file_revision(self, revid, tree_path, file_id, default_revision):
+        path = self.controldir._path_for_remote_call(self._client)
+        tree_path = tree_path.encode('utf-8')
+        file_id = file_id or b''
+        default_revision = default_revision or b''
+        try:
+            response, protocol = self._call_expecting_body(
+                b'Repository.annotate_file_revision', path,
+                revid,
+                tree_path,
+                file_id,
+                default_revision)
+        except errors.UnknownSmartMethod:
+            return None
+        if response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return ((revid, line)
+                for (revid, line) in bencode.bdecode(handler.read_body_bytes()))
 
 
 class RemoteStreamSink(vf_repository.StreamSink):
