@@ -414,6 +414,8 @@ class Branch(controldir.ControlComponent):
         :return: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "get_revision_id_to_revno_map scales with ancestry.")
         with self.lock_read():
             if self._revision_id_to_revno_cache is not None:
                 mapping = self._revision_id_to_revno_cache
