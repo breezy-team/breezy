@@ -50,7 +50,7 @@ from .pack_repo import (
     Pack,
     NewPack,
     PackRepository,
-    PackRootCommitBuilder,
+    PackCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
     ResumedPack,
@@ -1356,7 +1356,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     _serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True
