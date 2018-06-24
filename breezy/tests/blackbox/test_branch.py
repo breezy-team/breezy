@@ -589,6 +589,25 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         self.expectFailure("branching to stacked requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
+    def test_branch_from_branch_with_ghosts(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        t.set_parent_ids([t.last_revision(), b'ghost'])
+        t.commit(message='add commit with parent')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 

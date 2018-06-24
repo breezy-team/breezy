@@ -1286,7 +1286,6 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
             repository.
         """
         self._to_format = network_format_registry.get(to_network_name)
-        raise KeyError
         return None # Signal that we want a body.
 
     def do_body(self, body_bytes):

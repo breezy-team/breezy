@@ -2713,3 +2713,19 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(b"".join(response.body_stream),
             b"Bazaar pack format 1 (introduced in 0.18)\nB54\n\nBazaar repository format 2a (needs bzr 1.16 or later)\nE")
+
+
+class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
+
+    def test_missing(self):
+        """The search argument may be a 'ancestry-of' some heads'."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStreamForMissingKeys(
+            backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        request.execute(b'', repo._format.network_name())
+        lines = b'inventories\t' + r1
+        response = request.do_body(lines)
+        self.assertEqual((b'ok',), response.args)
+        stream_bytes = b''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, b'Bazaar pack format 1')
