@@ -41,18 +41,18 @@ class TestFileIds(tests.TestCase):
         gen_file_id = generate_ids.gen_file_id
 
         # We try to use the filename if possible
-        self.assertStartsWith(gen_file_id('bar'), b'bar-')
+        self.assertStartsWith(gen_file_id(b'bar'), b'bar-')
 
         # but we squash capitalization, and remove non word characters
-        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), 'mwoooofm-')
+        self.assertStartsWith(gen_file_id(b'Mwoo oof\t m'), b'mwoooofm-')
 
         # We also remove leading '.' characters to prevent hidden file-ids
-        self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
-        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
+        self.assertStartsWith(gen_file_id(b'..gam.py'), b'gam.py-')
+        self.assertStartsWith(gen_file_id(b'..Mwoo oof\t m'), b'mwoooofm-')
 
         # we remove unicode characters, and still don't end up with a
         # hidden file id
-        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
+        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), b'txt-')
 
         # Our current method of generating unique ids adds 33 characters
         # plus an serial number (log10(N) characters)

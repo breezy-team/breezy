@@ -816,7 +816,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.build_tree(['new-tree/new-dir/'])
         self.new_tree.add('new-dir', b'new-dir-id')
         self.differ.diff(b'new-dir-id', None, 'new-dir')
-        self.assertEqual(self.differ.to_file.getvalue(), '')
+        self.assertEqual(self.differ.to_file.getvalue(), b'')
 
     def create_old_new(self):
         self.build_tree_contents([('old-tree/olddir/',),
@@ -1291,11 +1291,11 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
             _patiencediff_py.PatienceSequenceMatcher_py
 
     def test_patience_unified_diff_files(self):
-        txt_a = ['hello there\n',
-                 'world\n',
-                 'how are you today?\n']
-        txt_b = ['hello there\n',
-                 'how are you today?\n']
+        txt_a = [b'hello there\n',
+                 b'world\n',
+                 b'how are you today?\n']
+        txt_b = [b'hello there\n',
+                 b'how are you today?\n']
         with open('a1', 'wb') as f: f.writelines(txt_a)
         with open('b1', 'wb') as f: f.writelines(txt_b)
 
@@ -1430,7 +1430,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                      None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
-        self.assertEqual(output.getvalue().rstrip(), 'old new')
+        self.assertEqual(output.getvalue().rstrip(), b'old new')
 
     def test_execute_missing(self):
         diff_obj = diff.DiffFromTool(['a-tool-which-is-unlikely-to-exist'],

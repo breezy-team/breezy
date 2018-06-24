@@ -3614,7 +3614,7 @@ class cmd_commit(Command):
         bug_property = bugtracker.encode_fixes_bug_urls(
             self._iter_bug_fix_urls(fixes, tree.branch))
         if bug_property:
-            properties['bugs'] = bug_property
+            properties[u'bugs'] = bug_property
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()

@@ -193,7 +193,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt2 = self.make_branch_and_tree('br2')
         br2 = wt2.branch
         wt2.commit(message='rev 2-1', rev_id=b'2-1')
-        wt2.merge_from_branch(br1, from_revision='null:')
+        wt2.merge_from_branch(br1, from_revision=b'null:')
         self._check_revs_present(br2)
 
     def test_merge_fetches(self):
@@ -210,7 +210,7 @@ class TestMergeFetch(TestCaseWithTransport):
         self._check_revs_present(br2)
 
     def _check_revs_present(self, br2):
-        for rev_id in '1-1', '1-2', '2-1':
+        for rev_id in [b'1-1', b'1-2', b'2-1']:
             self.assertTrue(br2.repository.has_revision(rev_id))
             rev = br2.repository.get_revision(rev_id)
             self.assertEqual(rev.revision_id, rev_id)
@@ -290,13 +290,13 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # precondition
         self.assertTrue(target._format._fetch_uses_deltas)
         target.fetch(source, revision_id=b'rev-one')
-        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+        self.assertEqual(('get_record_stream', [(b'file-id', b'rev-one')],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
           target._format._fetch_order, False),
           self.find_get_record_stream(source.inventories.calls, 2))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
@@ -307,7 +307,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # So we know there will be extra calls, but the *last* one is the one
         # we care about.
         signature_calls = source.signatures.calls[-1:]
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(signature_calls))
 
@@ -330,13 +330,13 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # XXX: This won't work in general, but for the dirstate format it does.
         self.overrideAttr(target._format, '_fetch_uses_deltas', False)
         target.fetch(source, revision_id=b'rev-one')
-        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+        self.assertEqual(('get_record_stream', [(b'file-id', b'rev-one')],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
             target._format._fetch_order, True),
             self.find_get_record_stream(source.inventories.calls, 2))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
@@ -347,7 +347,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # So we know there will be extra calls, but the *last* one is the one
         # we care about.
         signature_calls = source.signatures.calls[-1:]
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(signature_calls))
 
@@ -370,14 +370,14 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # Ensure that we stored a delta
         source.lock_read()
         self.addCleanup(source.unlock)
-        record = next(source.revisions.get_record_stream([('rev-two',)],
+        record = next(source.revisions.get_record_stream([(b'rev-two',)],
             'unordered', False))
         self.assertEqual('knit-delta-gz', record.storage_kind)
         target.fetch(tree.branch.repository, revision_id=b'rev-two')
         # The record should get expanded back to a fulltext
         target.lock_read()
         self.addCleanup(target.unlock)
-        record = next(target.revisions.get_record_stream([('rev-two',)],
+        record = next(target.revisions.get_record_stream([(b'rev-two',)],
             'unordered', False))
         self.assertEqual('knit-ft-gz', record.storage_kind)
 
@@ -402,17 +402,17 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # random ids because otherwise the inventory fulltext compresses too
         # well and the deltas get bigger.
         to_add = [
-            ('add', ('', 'TREE_ROOT', 'directory', None))]
+            ('add', ('', b'TREE_ROOT', 'directory', None))]
         for i in range(10):
             fname = 'file%03d' % (i,)
-            fileid = '%s-%s' % (fname, osutils.rand_chars(64))
-            to_add.append(('add', (fname, fileid, 'file', 'content\n')))
+            fileid = ('%s-%s' % (fname, osutils.rand_chars(64))).encode('ascii')
+            to_add.append(('add', (fname, fileid, 'file', b'content\n')))
         builder.build_snapshot(None, to_add, revision_id=b'A')
-        builder.build_snapshot(['A'], [], revision_id=b'B')
-        builder.build_snapshot(['A'], [], revision_id=b'C')
-        builder.build_snapshot(['C'], [], revision_id=b'D')
-        builder.build_snapshot(['D'], [], revision_id=b'E')
-        builder.build_snapshot(['E', 'B'], [], revision_id=b'F')
+        builder.build_snapshot([b'A'], [], revision_id=b'B')
+        builder.build_snapshot([b'A'], [], revision_id=b'C')
+        builder.build_snapshot([b'C'], [], revision_id=b'D')
+        builder.build_snapshot([b'D'], [], revision_id=b'E')
+        builder.build_snapshot([b'E', b'B'], [], revision_id=b'F')
         builder.finish_series()
         source_branch = builder.get_branch()
         source_branch.controldir.sprout('base', revision_id=b'B')
@@ -423,15 +423,15 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         self.addCleanup(source.unlock)
         source.inventories = versionedfile.OrderingVersionedFilesDecorator(
                         source.inventories,
-                        key_priority={('E',): 1, ('D',): 2, ('C',): 4,
-                                      ('F',): 3})
+                        key_priority={(b'E',): 1, (b'D',): 2, (b'C',): 4,
+                                      (b'F',): 3})
         # Ensure that the content is yielded in the proper order, and given as
         # the expected kinds
         records = [(record.key, record.storage_kind)
                    for record in source.inventories.get_record_stream(
-                        [('D',), ('C',), ('E',), ('F',)], 'unordered', False)]
-        self.assertEqual([(('E',), 'knit-delta-gz'), (('D',), 'knit-delta-gz'),
-                          (('F',), 'knit-delta-gz'), (('C',), 'knit-delta-gz')],
+                        [(b'D',), (b'C',), (b'E',), (b'F',)], 'unordered', False)]
+        self.assertEqual([((b'E',), 'knit-delta-gz'), ((b'D',), 'knit-delta-gz'),
+                          ((b'F',), 'knit-delta-gz'), ((b'C',), 'knit-delta-gz')],
                           records)
 
         target_branch.lock_write()
@@ -441,11 +441,11 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # 'C' should be expanded to a fulltext, but D and E should still be
         # deltas
         stream = target.inventories.get_record_stream(
-            [('C',), ('D',), ('E',), ('F',)],
+            [(b'C',), (b'D',), (b'E',), (b'F',)],
             'unordered', False)
         kinds = dict((record.key, record.storage_kind) for record in stream)
-        self.assertEqual({('C',): 'knit-ft-gz', ('D',): 'knit-delta-gz',
-                          ('E',): 'knit-delta-gz', ('F',): 'knit-delta-gz'},
+        self.assertEqual({(b'C',): 'knit-ft-gz', (b'D',): 'knit-delta-gz',
+                          (b'E',): 'knit-delta-gz', (b'F',): 'knit-delta-gz'},
                          kinds)
 
 
@@ -471,11 +471,11 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def test_fetch_order_AB(self):
         """See do_fetch_order_test"""
-        self.do_fetch_order_test('A', 'B')
+        self.do_fetch_order_test(b'A', b'B')
 
     def test_fetch_order_BA(self):
         """See do_fetch_order_test"""
-        self.do_fetch_order_test('B', 'A')
+        self.do_fetch_order_test(b'B', b'A')
 
     def get_parents(self, file_id, revision_id):
         self.repo.lock_read()

@@ -342,7 +342,7 @@ class TransportRefsContainer(RefsContainer):
             transport = self.worktree_transport
         else:
             transport = self.transport
-        lockname = name + ".lock"
+        lockname = name + b".lock"
         try:
             self.transport.delete(lockname)
         except NoSuchFile:

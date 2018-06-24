@@ -317,7 +317,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def create_workingtree(self):
         # dirstate requires a ".bzr" entry to exist
-        self.root_transport.put_bytes(".bzr", "foo")
+        self.root_transport.put_bytes(".bzr", b"foo")
         return super(DummyForeignVcsDir, self).create_workingtree()
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,

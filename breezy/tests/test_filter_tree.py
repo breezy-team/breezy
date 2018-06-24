@@ -56,7 +56,7 @@ class TestFilterTree(tests.TestCaseWithTransport):
         export.export(self.filter_tree, "out.tgz")
         ball = tarfile.open("out.tgz", "r:gz")
         self.assertEqual(
-            'HELLO WORLD',
+            b'HELLO WORLD',
             ball.extractfile('out/hello').read())
 
     def test_zip_export_content_filter_tree(self):
@@ -64,5 +64,5 @@ class TestFilterTree(tests.TestCaseWithTransport):
         export.export(self.filter_tree, 'out.zip')
         zipf = zipfile.ZipFile('out.zip', 'r')
         self.assertEqual(
-            'HELLO WORLD',
+            b'HELLO WORLD',
             zipf.read('out/hello'))

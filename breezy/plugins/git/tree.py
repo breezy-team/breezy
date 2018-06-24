@@ -987,7 +987,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         with self.lock_read():
             if index is None:
                 index = self.index
-            for path, value in index.iteritems():
+            for path, value in index.items():
                 yield (posixpath.join(basepath, path), value)
                 (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
                 if S_ISGITLINK(mode):
