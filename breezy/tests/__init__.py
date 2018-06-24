@@ -1524,7 +1524,8 @@ class TestCase(testtools.TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
-        with open(path, 'r') as f:
+        
+        with open(path, 'r' + ('b' if isinstance(content, bytes) else '')) as f:
             s = f.read()
         self.assertEqualDiff(content, s)
 
