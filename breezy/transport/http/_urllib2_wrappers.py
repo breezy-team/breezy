@@ -334,7 +334,7 @@ class Response(http_client.HTTPResponse):
                 data = self.read(min(self.length, self._discarded_buf_size))
                 pending += len(data)
             if pending:
-                trace.mutter("%d bytes left on the HTTP socket", pending)
+                trace.mutter("%s bytes left on the HTTP socket", pending)
             self.close()
         return pending
 
@@ -409,7 +409,8 @@ class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
     def __init__(self, host, port=None, proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
-        http_client.HTTPConnection.__init__(self, host, port)
+        # Use strict=True since we don't support HTTP/0.9
+        http_client.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
         # ca_certs is ignored, it's only relevant for https
 
@@ -426,8 +427,9 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
                  proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
+        # Use strict=True since we don't support HTTP/0.9
         http_client.HTTPSConnection.__init__(self, host, port,
-                                         key_file, cert_file)
+                                         key_file, cert_file, strict=True)
         self.proxied_host = proxied_host
         self.ca_certs = ca_certs
 
@@ -523,8 +525,7 @@ class Request(urllib_request.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        (scheme, user, password, host, port, path) = urlutils.parse_url(
-                self.get_full_url())
+        host, port = urllib.splitport(self.get_host())
         if port is None:
             # We need to set the default port ourselves way before it gets set
             # in the HTTP[S]Connection object at build time.
@@ -591,23 +592,22 @@ class ConnectionHandler(urllib_request.BaseHandler):
         self.ca_certs = ca_certs
 
     def create_connection(self, request, http_connection_class):
-        full_url = request.get_full_url()
-        (scheme, user, password, host, port, path) = urlutils.parse_url(full_url)
+        host = request.get_host()
         if not host:
             # Just a bit of paranoia here, this should have been
             # handled in the higher levels
-            raise urlutils.InvalidURL(full_url, 'no host given.')
+            raise urlutils.InvalidURL(request.get_full_url(), 'no host given.')
 
         # We create a connection (but it will not connect until the first
         # request is made)
         try:
             connection = http_connection_class(
-                host, port=port, proxied_host=request.proxied_host,
+                host, proxied_host=request.proxied_host,
                 report_activity=self._report_activity,
                 ca_certs=self.ca_certs)
         except http_client.InvalidURL as exception:
             # There is only one occurrence of InvalidURL in http_client
-            raise urlutils.InvalidURL(full_url,
+            raise urlutils.InvalidURL(request.get_full_url(),
                                     extra='nonnumeric port')
 
         return connection
@@ -777,12 +777,11 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
 
         try:
             method = request.get_method()
-            # TODO(jelmer): Only call parse_url once for every request?
-            (scheme, user, password, host, port, url) = urlutils.parse_url(request.get_full_url())
-            connection.request(method, url,
+            url = request.get_selector()
+            connection._send_request(method, url,
                                      # FIXME: implements 100-continue
                                      #None, # We don't send the body yet
-                                     request.data,
+                                     request.get_data(),
                                      headers)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))

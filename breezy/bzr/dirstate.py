@@ -1859,7 +1859,7 @@ class DirState(object):
                 # removed.
                 entry[1][1] = null
                 block_i, entry_i, d_present, f_present = \
-                    self._get_block_entry_index(old_path, '', 1)
+                    self._get_block_entry_index(old_path, b'', 1)
                 if d_present:
                     dir_block = self._dirblocks[block_i][1]
             for child_entry in dir_block:
