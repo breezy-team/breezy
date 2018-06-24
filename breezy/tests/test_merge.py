@@ -245,7 +245,7 @@ class TestMerge(TestCaseWithTransport):
         # tree
         tree2.commit('changed file text')
         tree.merge_from_branch(tree2.branch)
-        self.assertFileEqual(b'text2', 'tree/sub-tree/file')
+        self.assertFileEqual('text2', 'tree/sub-tree/file')
 
     def test_merge_with_missing(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -377,7 +377,7 @@ class TestMerge(TestCaseWithTransport):
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
-        self.assertFileEqual(b'c\na\n', 'this/file')
+        self.assertFileEqual('c\na\n', 'this/file')
 
     def test_weave_cannot_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
@@ -410,12 +410,12 @@ class TestMerge(TestCaseWithTransport):
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
-        self.assertFileEqual(b'a\n'
-                             b'<<<<<<< TREE\n'
-                             b'=======\n'
-                             b'c\n'
-                             b'>>>>>>> MERGE-SOURCE\n',
-                             b'this/file')
+        self.assertFileEqual('a\n'
+                             '<<<<<<< TREE\n'
+                             '=======\n'
+                             'c\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             'this/file')
 
     def test_merge_reverse_revision_range(self):
         tree = self.make_branch_and_tree(".")
@@ -2711,10 +2711,10 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
             [('rename', ('b', 'c')),
              ('modify', ('foo', b'E content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', b'C-id'],
+        builder.build_snapshot([b'B-id', b'C-id'],
             [('rename', ('a', 'b'))], revision_id=b'D-id') # merged change
         wt_this = self.get_wt_from_builder(builder)
-        wt_base = wt_this.controldir.sprout('base', b'a-id').open_workingtree()
+        wt_base = wt_this.controldir.sprout('base', b'A-id').open_workingtree()
         wt_base.lock_read()
         self.addCleanup(wt_base.unlock)
         wt_lca1 = wt_this.controldir.sprout('b-tree', b'B-id').open_workingtree()
@@ -2735,7 +2735,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((False, [False, False]), False, False)),
-                          ('foo-id', True,
+                          (b'foo-id', True,
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
@@ -3385,7 +3385,7 @@ class TestMergeHooks(TestCaseWithTransport):
                                                    factory, 'test factory')
         self.tree_a.merge_from_branch(self.tree_b.branch)
 
-        self.assertFileEqual(b"content_3", 'tree_a/file')
+        self.assertFileEqual("content_3", 'tree_a/file')
         self.assertLength(1, calls)
 
     def test_post_merge_hook_called(self):
@@ -3398,5 +3398,5 @@ class TestMergeHooks(TestCaseWithTransport):
 
         self.tree_a.merge_from_branch(self.tree_b.branch)
 
-        self.assertFileEqual(b"content_2", 'tree_a/file')
+        self.assertFileEqual("content_2", 'tree_a/file')
         self.assertLength(1, calls)

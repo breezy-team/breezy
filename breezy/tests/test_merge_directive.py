@@ -176,11 +176,11 @@ class TestMergeDirective(object):
         timezone = 120
         md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', patch='booga', patch_type='bundle')
-        self.assertEqualDiff(self.OUTPUT1, ''.join(md.to_lines()))
+        self.assertEqualDiff(self.OUTPUT1, b''.join(md.to_lines()))
         md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff', message="Hi mom!")
-        self.assertEqualDiff(self.OUTPUT2, ''.join(md.to_lines()))
+        self.assertEqualDiff(self.OUTPUT2, b''.join(md.to_lines()))
 
     def test_deserialize_junk(self):
         time = 501

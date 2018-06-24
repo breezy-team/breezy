@@ -1859,12 +1859,12 @@ class DirState(object):
                 # removed.
                 entry[1][1] = null
                 block_i, entry_i, d_present, f_present = \
-                    self._get_block_entry_index(old_path, '', 1)
+                    self._get_block_entry_index(old_path, b'', 1)
                 if d_present:
                     dir_block = self._dirblocks[block_i][1]
             for child_entry in dir_block:
                 child_basis_kind = child_entry[1][1][0]
-                if child_basis_kind not in 'ar':
+                if child_basis_kind not in b'ar':
                     self._raise_invalid(old_path, file_id,
                         "The file id was deleted but its children were "
                         "not deleted.")

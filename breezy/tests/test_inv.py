@@ -245,8 +245,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     format = self.format()
     control = self.make_controldir('tree', format=format._matchingcontroldir)
     repo = format.initialize(control)
-    repo.lock_write()
-    try:
+    with repo.lock_write():
         repo.start_write_group()
         try:
             rev = revision.Revision(b'basis', timestamp=0, timezone=None,
@@ -258,10 +257,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
         except:
             repo.abort_write_group()
             raise
-    finally:
-        repo.unlock()
-    repo.lock_write()
-    try:
+    with repo.lock_write():
         repo.start_write_group()
         try:
             inv_sha1 = repo.add_inventory_by_delta(b'basis', delta,
@@ -271,8 +267,6 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
             raise
         else:
             repo.commit_write_group()
-    finally:
-        repo.unlock()
     # Fresh lock, reads disk again.
     repo = repo.controldir.open_repository()
     repo.lock_read()
@@ -1125,9 +1119,9 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         a_entry.text_sha1 = b"ffff"
         a_entry.text_size = 1
         inv.add(a_entry)
-        inv.revision_id = "expectedid"
+        inv.revision_id = b"expectedid"
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        delta = [(None, "A",  b"a-id", a_entry)]
+        delta = [(None, "A",  b"A-id", a_entry)]
         new_inv = base_inv.create_by_apply_delta(delta, b"expectedid")
         # new_inv should be the same as reference_inv.
         self.assertEqual(reference_inv.revision_id, new_inv.revision_id)
