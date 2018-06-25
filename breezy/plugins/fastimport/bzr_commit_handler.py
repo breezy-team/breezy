@@ -279,8 +279,8 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def build_revision(self):
         rev_props = self._legal_revision_properties(self.command.properties)
-        if 'branch-nick' not in rev_props:
-            rev_props['branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
+        if u'branch-nick' not in rev_props:
+            rev_props[u'branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
                     self.branch_ref)
         self._save_author_info(rev_props)
         committer = self.command.committer

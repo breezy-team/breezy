@@ -712,7 +712,7 @@ message:
         handlers.
         """
         wt = self.make_standard_commit('error_in_properties_handler',
-            revprops={'first_prop':'first_value'})
+            revprops={u'first_prop':'first_value'})
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def trivial_custom_prop_handler(revision):
@@ -725,7 +725,7 @@ message:
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
-              revprops={'a_prop':'test_value'})
+              revprops={u'a_prop':'test_value'})
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def bad_argument_prop_handler(revision):
@@ -1378,11 +1378,11 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         self.build_tree(['a', 'b'])
         tree.add('a')
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
-                       revprops={'bugs': 'test://bug/id fixed'})
+                       revprops={u'bugs': 'test://bug/id fixed'})
         tree.add('b')
         self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id=b'a2',
                        authors=['Joe Bar <joe@bar.com>'],
-                       revprops={'bugs': 'test://bug/id fixed\n'
+                       revprops={u'bugs': 'test://bug/id fixed\n'
                                  'test://bug/2 fixed'})
         return tree
 
@@ -1432,7 +1432,7 @@ message:
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['foo'])
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
-                       revprops={'bugs': 'test://bug/id invalid_value'})
+                       revprops={u'bugs': 'test://bug/id invalid_value'})
         self.assertFormatterResult("""\
     1 Joe Foo\t2005-11-22
       simple log message

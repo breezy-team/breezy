@@ -40,18 +40,18 @@ class TestRevProps(TestCaseWithRepository):
                  allow_pointless=True)
         rev = b.repository.get_revision(rev1)
         if b.repository._format.supports_custom_revision_properties:
-            self.assertTrue('flavor' in rev.properties)
-            self.assertEqual(rev.properties['flavor'], 'choc-mint')
+            self.assertTrue(u'flavor' in rev.properties)
+            self.assertEqual(rev.properties[u'flavor'], 'choc-mint')
             expected_revprops = {
-                'condiment': 'orange\n  mint\n\tcandy',
-                'empty': '',
-                'flavor': 'choc-mint',
-                'non_ascii': u'\xb5',
+                u'condiment': 'orange\n  mint\n\tcandy',
+                u'empty': '',
+                u'flavor': 'choc-mint',
+                u'non_ascii': u'\xb5',
                 }
         else:
             expected_revprops = {}
         if b.repository._format.supports_storing_branch_nick:
-            expected_revprops['branch-nick'] = 'Nicholas'
+            expected_revprops[u'branch-nick'] = 'Nicholas'
         for name, value in expected_revprops.items():
             self.assertEqual(rev.properties[name], value)
 
@@ -81,10 +81,10 @@ class TestRevisionAttributes(TestCaseWithRepository):
         """
         tree1 = self.make_branch_and_tree("br1")
         if tree1.branch.repository._format.supports_custom_revision_properties:
-            revprops={'empty':'',
-                      'value':'one',
-                      'unicode':u'\xb5',
-                      'multiline':'foo\nbar\n\n'
+            revprops={u'empty':'',
+                      u'value':'one',
+                      u'unicode':u'\xb5',
+                      u'multiline':'foo\nbar\n\n'
                       }
         else:
             revprops = {}

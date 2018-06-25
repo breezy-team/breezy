@@ -2387,7 +2387,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43201,
                            committer='me <me@example.com>',
-                           revprops={'foo': 'bar'}, revision_id=b'revid-1',
+                           revprops={u'foo': 'bar'}, revision_id=b'revid-1',
                            authors=['Author1 <author1@example.com>',
                               'Author2 <author2@example.com>',
                                ])

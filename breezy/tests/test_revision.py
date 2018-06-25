@@ -239,17 +239,17 @@ class TestRevisionBugs(TestCase):
 
     def test_no_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1'})
+            '1', properties={u'bugs': 'http://example.com/bugs/1'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
                 r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
+            '1', properties={u'bugs': 'http://example.com/bugs/1 fixed bar'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
                 r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
+            '1', properties={u'bugs': 'http://example.com/bugs/1 faxed'})
         self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())

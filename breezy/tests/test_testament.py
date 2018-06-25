@@ -75,32 +75,32 @@ class TestamentTests(TestamentSetup):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
-        t = self.from_revision(self.b.repository, 'test@user-1')
+        t = self.from_revision(self.b.repository, b'test@user-1')
         ass = self.assertTrue
         eq = self.assertEqual
         ass(isinstance(t, Testament))
-        eq(t.revision_id, 'test@user-1')
+        eq(t.revision_id, b'test@user-1')
         eq(t.committer, 'test@user')
         eq(t.timestamp, 1129025423)
         eq(t.timezone, 0)
 
     def test_testment_text_form(self):
         """Conversion of testament to canonical text form."""
-        t = self.from_revision(self.b.repository, 'test@user-1')
+        t = self.from_revision(self.b.repository, b'test@user-1')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, self.expected('rev_1'))
+        self.assertEqualDiff(text_form, self.expected(b'rev_1'))
         short_text_form = t.as_short_text()
-        self.assertEqualDiff(short_text_form, self.expected('rev_1_short'))
+        self.assertEqualDiff(short_text_form, self.expected(b'rev_1_short'))
 
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
-        t = self.from_revision(self.b.repository, 'test@user-2')
+        t = self.from_revision(self.b.repository, b'test@user-2')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, self.expected('rev_2'))
+        self.assertEqualDiff(text_form, self.expected(b'rev_2'))
         actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, self.expected('rev_2_short'))
+        self.assertEqualDiff(actual_short, self.expected(b'rev_2_short'))
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
@@ -112,7 +112,7 @@ class TestamentTests(TestamentSetup):
                  timezone=36000,
                  rev_id=b'test@user-3',
                  committer='test@user')
-        t = self.from_revision(self.b.repository, 'test@user-3')
+        t = self.from_revision(self.b.repository, b'test@user-3')
         self.assertEqualDiff(t.as_text(), self.expected(b'rev_3'))
 
     def test_testament_revprops(self):
@@ -127,8 +127,8 @@ class TestamentTests(TestamentSetup):
                       rev_id=b'test@user-3',
                       committer='test@user',
                       revprops=props)
-        t = self.from_revision(self.b.repository, 'test@user-3')
-        self.assertEqualDiff(t.as_text(), self.expected('rev_props'))
+        t = self.from_revision(self.b.repository, b'test@user-3')
+        self.assertEqualDiff(t.as_text(), self.expected(b'rev_props'))
 
     def test_testament_unicode_commit_message(self):
         self.wt.commit(
@@ -137,9 +137,9 @@ class TestamentTests(TestamentSetup):
             timezone=36000,
             rev_id=b'test@user-3',
             committer=u'Erik B\xe5gfors <test@user>',
-            revprops={'uni':u'\xb5'}
+            revprops={u'uni':u'\xb5'}
             )
-        t = self.from_revision(self.b.repository, 'test@user-3')
+        t = self.from_revision(self.b.repository, b'test@user-3')
         self.assertEqualDiff(
             self.expected('sample_unicode').encode('utf-8'), t.as_text())
 
@@ -148,7 +148,7 @@ class TestamentTests(TestamentSetup):
         testament = self.testament_class().from_revision_tree(tree)
         text_1 = testament.as_short_text()
         text_2 = self.from_revision(self.b.repository,
-                                    'test@user-2').as_short_text()
+                                    b'test@user-2').as_short_text()
         self.assertEqual(text_1, text_2)
 
     def test___init__(self):
@@ -157,7 +157,7 @@ class TestamentTests(TestamentSetup):
         testament_1 = self.testament_class()(revision, tree)
         text_1 = testament_1.as_short_text()
         text_2 = self.from_revision(self.b.repository,
-                                    'test@user-2').as_short_text()
+                                    b'test@user-2').as_short_text()
         self.assertEqual(text_1, text_2)
 
 
