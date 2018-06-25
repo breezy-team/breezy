@@ -35,6 +35,7 @@ from .mapping import (
     default_mapping,
     )
 from .object_store import (
+    BazaarObjectStore,
     get_object_store,
     )
 from .refs import (
@@ -90,8 +91,11 @@ class BzrBackendRepo(BackendRepo):
             have = self.object_store.find_common_revisions(graph_walker)
             if wants is None:
                 return
-            return self.object_store.generate_pack_contents(have, wants, progress,
-                get_tagged, lossy=(not self.mapping.roundtripping))
+            if isinstance(self.object_store, BazaarObjectStore):
+                return self.object_store.generate_pack_contents(have, wants, progress,
+                        get_tagged=get_tagged, lossy=True)
+            else:
+                return self.object_store.generate_pack_contents(have, wants, progress)
 
 
 class BzrTCPGitServer(TCPGitServer):
