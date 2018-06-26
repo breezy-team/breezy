@@ -20,10 +20,6 @@ if args.list:
     subprocess.call(['python', './brz', 'selftest', '--subunit2', '--list'])
     subprocess.call(['python3', './brz', 'selftest', '--subunit2', '--list'])
 else:
-    run_py2_tests = False
-    run_py3_tests = False
-    py2_args = ''
-    py3_args = ''
     if args.load_list:
         py2_tests = []
         py3_tests = []
@@ -38,22 +34,20 @@ else:
                 sys.stderr.write("unknown prefix %s\n" % testname)
         import tempfile
         if py2_tests:
-            py2f = tempfile.NamedTemporaryFile()
-            write_list(py2f, py2_tests)
-            py2_args = ' --load-list=%s'  % py2f.name
-            run_py2_tests = True
+            with tempfile.NamedTemporaryFile() as py2f:
+                write_list(py2f, py2_tests)
+                py2f.flush()
+                subprocess.call(
+                    'python ./brz selftest --subunit2 --load-list=%s | subunit-filter -s --passthrough --rename "^" "python2."' % py2f.name, shell=True)
 
         if py3_tests:
-            py3f = tempfile.NamedTemporaryFile()
-            write_list(py3f, py3_tests)
-            py3_args = ' --load-list=%s'  % py3f.name
-            run_py3_tests = True
+            with tempfile.NamedTemporaryFile() as py3f:
+                write_list(py3f, py3_tests)
+                py3f.flush()
+                subprocess.call(
+                    'python ./brz selftest --subunit2 --load-list=%s | subunit-filter -s --passthrough --rename "^" "python3."' % py3f.name, shell=True)
     else:
-        run_py2_tests = True
-        run_py3_tests = True
-    if run_py2_tests:
         subprocess.call(
-        'python ./brz selftest --subunit2 %s | subunit-filter -s --passthrough --rename "^" "python2."' % py2_args, shell=True)
-    if run_py3_tests:
+            'python ./brz selftest --subunit2 | subunit-filter -s --passthrough --rename "^" "python2."', shell=True)
         subprocess.call(
-        'python ./brz selftest --subunit2 %s | subunit-filter -s --passthrough --rename "^" "python3."' % py3_args, shell=True)
+            'python ./brz selftest --subunit2 | subunit-filter -s --passthrough --rename "^" "python3."', shell=True)
