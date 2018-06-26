@@ -587,6 +587,14 @@ class BTreeBuilder(index.GraphIndexBuilder):
     def validate(self):
         """In memory index's have no known corruption at the moment."""
 
+    def __lt__(self, other):
+        if isinstance(other, type(self)):
+            return self._nodes < other._nodes
+        # Always sort existing indexes before ones that are still being built.
+        if isinstance(other, BTreeGraphIndex):
+            return False
+        raise TypeError
+
 
 class _LeafNode(dict):
     """A leaf node for a serialised B+Tree index."""
@@ -703,7 +711,7 @@ class BTreeGraphIndex(object):
             return ((self._transport, self._name, self._size) <
                     (other._transport, other._name, other._size))
         # Always sort existing indexes before ones that are still being built.
-        if isinstance(other, index.GraphIndexBuilder):
+        if isinstance(other, BTreeBuilder):
             return True
         raise TypeError
 
