@@ -134,7 +134,7 @@ class LaunchpadService(object):
         """Construct a new service talking to the launchpad rpc server"""
         self._lp_instance = lp_instance
         if transport is None:
-            uri_type = urllib.splittype(self.service_url)[0]
+            uri_type = urlutils.parse_url(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
             transport.user_agent = 'Breezy/%s (xmlrpc/%s)' \
                     % (_breezy_version, xmlrpc_version)

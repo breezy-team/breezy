@@ -111,7 +111,8 @@ class InstrumentedXMLRPCTransport(Transport):
             raise AssertionError()
         return InstrumentedXMLRPCConnection(test)
 
-    def send_request(self, connection, handler_path, request_body):
+    def send_request(self, connection, handler_path, request_body,
+                     verbose=None):
         test = self.testcase
         self.got_request = True
 
@@ -133,7 +134,7 @@ class InstrumentedXMLRPCTransport(Transport):
 
 class MockLaunchpadService(LaunchpadService):
 
-    def send_request(self, method_name, method_params):
+    def send_request(self, method_name, method_params, verbose=None):
         """Stash away the method details rather than sending them to a real server"""
         self.called_method_name = method_name
         self.called_method_params = method_params
@@ -175,7 +176,8 @@ class TestResolveLaunchpadPathRequest(TestCaseWithTransport):
     def test_mock_resolve_lp_url(self):
         test_case = self
         class MockService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params,
+                             verbose=None):
                 test_case.assertEqual(method_name, "resolve_lp_path")
                 test_case.assertEqual(list(method_params), ['bzr'])
                 return dict(urls=[
