@@ -90,7 +90,7 @@ class Revision(object):
         """Verify that all revision properties are OK."""
         for name, value in self.properties.items():
             # GZ 2017-06-10: What sort of string are properties exactly?
-            not_text = not isinstance(name, text_type)
+            not_text = not isinstance(name, (text_type, str))
             if not_text or osutils.contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
             if not isinstance(value, (text_type, bytes)):

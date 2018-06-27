@@ -109,7 +109,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
         snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
-        """Assert that result is the parents of 'tip' after fetching snapshots.
+        """Assert that result is the parents of b'tip' after fetching snapshots.
 
         This helper constructs a 1.9 format source, and a test-format target
         and fetches the result of building snapshots in the source, then
@@ -146,20 +146,20 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.fetch(source.repository)
         graph = repo.get_file_graph()
         self.assertEqual(result,
-            graph.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
+            graph.get_parent_map([(root_id, b'tip')])[(root_id, b'tip')])
 
     def test_fetch_to_rich_root_set_parent_no_parents(self):
         # No parents rev -> No parents
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
-            [('tip', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+            [(b'tip', None, [('add', ('', ROOT_ID, 'directory', ''))]),
             ])
 
     def test_fetch_to_rich_root_set_parent_1_parent(self):
         # 1 parent rev -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((ROOT_ID, 'base'),),
-            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('tip', None, []),
+            [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             (b'tip', None, []),
             ])
 
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
@@ -168,47 +168,47 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestNotApplicable("repository format does not support "
                  "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
-            [('tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
+            [(b'tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
             ], allow_lefthand_ghost=True)
 
     def test_fetch_to_rich_root_set_parent_2_head_parents(self):
         # 2 parents both heads -> 2 parents
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            ((ROOT_ID, 'left'), (ROOT_ID, 'right')),
-            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+            ((ROOT_ID, b'left'), (ROOT_ID, b'right')),
+            [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              ('left', None, []),
-             ('right', ['base'], []),
-             ('tip', ['left', 'right'], []),
+             (b'right', [b'base'], []),
+             (b'tip', ['left', b'right'], []),
             ])
 
     def test_fetch_to_rich_root_set_parent_2_parents_1_head(self):
         # 2 parents one head -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            ((ROOT_ID, 'right'),),
+            ((ROOT_ID, b'right'),),
             [('left', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('right', None, []),
-             ('tip', ['left', 'right'], []),
+             (b'right', None, []),
+             (b'tip', ['left', b'right'], []),
             ])
 
     def test_fetch_to_rich_root_set_parent_1_parent_different_id_gone(self):
         # 1 parent different fileid, ours missing -> no parents
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             (),
-            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('tip', None, [('unversion', ''),
-                            ('add', ('', 'my-root', 'directory', '')),
+            [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             (b'tip', None, [('unversion', ''),
+                            ('add', ('', b'my-root', 'directory', '')),
                             ]),
-            ], root_id='my-root')
+            ], root_id=b'my-root')
 
     def test_fetch_to_rich_root_set_parent_1_parent_different_id_moved(self):
         # 1 parent different fileid, ours moved -> 1 parent
         # (and that parent honours the changing revid of the other location)
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            (('my-root', 'origin'),),
+            ((b'my-root', b'origin'),),
             [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
                              ('add', ('child', b'my-root', 'directory', ''))]),
-             ('base', None, []),
-             ('tip', None, [('unversion', 'child'),
+             (b'base', None, []),
+             (b'tip', None, [('unversion', 'child'),
                             ('unversion', ''),
                             ('flush', None),
                             ('add', ('', b'my-root', 'directory', '')),
@@ -218,11 +218,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_to_rich_root_set_parent_2_parent_1_different_id_gone(self):
         # 2 parents, 1 different fileid, our second missing -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            ((b'my-root', 'right'),),
-            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('right', None, [('unversion', ''),
+            ((b'my-root', b'right'),),
+            [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             (b'right', None, [('unversion', ''),
                               ('add', ('', b'my-root', 'directory', ''))]),
-             ('tip', ['base', 'right'], [('unversion', ''),
+             (b'tip', [b'base', b'right'], [('unversion', ''),
                             ('add', ('', b'my-root', 'directory', '')),
                             ]),
             ], root_id=b'my-root')
@@ -231,17 +231,17 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # 2 parents, 1 different fileid, our second moved -> 2 parent
         # (and that parent honours the changing revid of the other location)
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            ((b'my-root', 'right'),),
-            # 'my-root' at 'child'.
+            ((b'my-root', b'right'),),
+            # b'my-root' at 'child'.
             [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
                              ('add', ('child', b'my-root', 'directory', ''))]),
-             ('base', None, []),
-            # 'my-root' at root
-             ('right', None, [('unversion', 'child'),
+             (b'base', None, []),
+            # b'my-root' at root
+             (b'right', None, [('unversion', 'child'),
                               ('unversion', ''),
                               ('flush', None),
                               ('add', ('', b'my-root', 'directory', ''))]),
-             ('tip', ['base', 'right'], [('unversion', ''),
+             (b'tip', [b'base', b'right'], [('unversion', ''),
                             ('unversion', 'child'),
                             ('flush', None),
                             ('add', ('', b'my-root', 'directory', '')),
@@ -271,7 +271,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # is present
         repo = tree.branch.repository.controldir.open_repository()
         self.assertRaises(errors.NoSuchRevision, tree.branch.repository.fetch,
-                          repo, 'no-such-revision')
+                          repo, b'no-such-revision')
 
     def makeARepoWithSignatures(self):
         wt = self.make_branch_and_tree('a-repo-with-sigs')

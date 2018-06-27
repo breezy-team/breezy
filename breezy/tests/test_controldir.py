@@ -111,7 +111,7 @@ class TestProber(tests.TestCaseWithTransport):
 
     def test_known_formats(self):
         known_formats = self.prober_cls.known_formats()
-        self.assertIsInstance(known_formats, set)
+        self.assertIsInstance(known_formats, list)
         for format in known_formats:
             self.assertIsInstance(format, controldir.ControlDirFormat,
                 repr(format))
@@ -175,7 +175,7 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         self.addCleanup(controldir.ControlDirFormat.unregister_prober, NotBzrDirProber)
         formats = controldir.ControlDirFormat.known_formats()
-        self.assertIsInstance(formats, set)
+        self.assertIsInstance(formats, list)
         for format in formats:
             if isinstance(format, NotBzrDirFormat):
                 break
