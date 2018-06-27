@@ -62,4 +62,4 @@ else:
         subprocess.call(
             'python ./brz selftest --subunit2 | subunit-filter -s --passthrough --rename "^" "python2."', shell=True)
         subprocess.call(
-            'python ./brz selftest --subunit2 | subunit-filter -s --passthrough --rename "^" "python3."', shell=True)
+            'python3 ./brz selftest --subunit2 | subunit-filter -s --passthrough --rename "^" "python3."', shell=True)
