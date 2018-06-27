@@ -8,11 +8,6 @@ import tempfile
 from testrepository.testlist import parse_enumeration, parse_list, write_list
 
 
-def write_enumeration(f, testids):
-    stream = StreamResultToBytes(f)
-    for testid in testids:
-        stream.status(test_id=testid, test_status='exists')
-
 parser = argparse.ArgumentParser(
     description="Test runner that supports both Python 2 and Python 3.")
 
@@ -25,16 +20,18 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.list:
-    tests = []
+    testids = []
     with subprocess.Popen(['python', './brz', 'selftest', '--subunit2', '--list'],
                          stdout=subprocess.PIPE).stdout as f:
         for n in parse_enumeration(f.read()):
-            tests.append('python2.' + n)
+            testids.append('python2.' + n)
     with subprocess.Popen(['python3', './brz', 'selftest', '--subunit2', '--list'],
                          stdout=subprocess.PIPE).stdout as f:
         for n in parse_enumeration(f.read()):
-            tests.append('python3.' + n)
-    write_enumeration(sys.stdout, tests)
+            testids.append('python3.' + n)
+    stream = StreamResultToBytes(sys.stdout)
+    for testid in testids:
+        stream.status(test_id=testid, test_status='exists')
 else:
     if args.load_list:
         py2_tests = []
