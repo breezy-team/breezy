@@ -24,7 +24,22 @@ try:
 except ImportError:
     from urlparse import urlsplit, urlunsplit
 import urllib
-import xmlrpclib
+try:
+    from xmlrpc.client import (
+        __version__ as xmlrpc_version,
+        Fault,
+        ProtocolError,
+        ServerProxy,
+        Transport,
+        )
+except ImportError:  # python < 3
+    from xmlrpclib import (
+        __version__ as xmlrpc_version,
+        Fault,
+        ProtocolError,
+        Transport,
+        ServerProxy,
+        )
 
 from ... import (
     config,
@@ -62,10 +77,10 @@ class NotLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, url=url)
 
 
-class XMLRPCTransport(xmlrpclib.Transport):
+class XMLRPCTransport(Transport):
 
     def __init__(self, scheme):
-        xmlrpclib.Transport.__init__(self)
+        Transport.__init__(self)
         self._scheme = scheme
         self._opener = _urllib2_wrappers.Opener()
         self.verbose = 0
@@ -79,8 +94,8 @@ class XMLRPCTransport(xmlrpclib.Transport):
 
         response = self._opener.open(request)
         if response.code != 200:
-            raise xmlrpclib.ProtocolError(host + handler, response.code,
-                                          response.msg, response.info())
+            raise ProtocolError(host + handler, response.code,
+                                response.msg, response.info())
         return self.parse_response(response)
 
 
@@ -121,8 +136,8 @@ class LaunchpadService(object):
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
-            transport.user_agent = 'Breezy/%s (xmlrpclib/%s)' \
-                    % (_breezy_version, xmlrpclib.__version__)
+            transport.user_agent = 'Breezy/%s (xmlrpc/%s)' \
+                    % (_breezy_version, xmlrpc_version)
         self.transport = transport
 
     @property
@@ -156,14 +171,14 @@ class LaunchpadService(object):
     def get_proxy(self):
         """Return the proxy for XMLRPC requests."""
         url = self.service_url
-        return xmlrpclib.ServerProxy(url, transport=self.transport)
+        return ServerProxy(url, transport=self.transport)
 
     def send_request(self, method_name, method_params):
         proxy = self.get_proxy()
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
-        except xmlrpclib.ProtocolError as e:
+        except ProtocolError as e:
             if e.errcode == 301:
                 # TODO: This can give a ProtocolError representing a 301 error, whose
                 # e.headers['location'] tells where to go and e.errcode==301; should
@@ -198,7 +213,7 @@ class LaunchpadService(object):
             resolve = _request_factory(path)
             try:
                 result = resolve.submit(self)
-            except xmlrpclib.Fault as fault:
+            except Fault as fault:
                 raise InvalidURL(branch_url, str(fault))
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]

@@ -29,10 +29,10 @@ class TestRevProps(TestCaseWithRepository):
         b = wt.branch
         b.nick = 'Nicholas'
         if b.repository._format.supports_custom_revision_properties:
-            props = dict(flavor='choc-mint',
-                         condiment='orange\n  mint\n\tcandy',
-                         empty='',
-                         non_ascii=u'\xb5')
+            props = {u'flavor': 'choc-mint',
+                     u'condiment': 'orange\n  mint\n\tcandy',
+                     u'empty': '',
+                     u'non_ascii': u'\xb5'}
         else:
             props = {}
         rev1 = wt.commit(message='initial null commit',

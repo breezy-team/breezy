@@ -296,8 +296,11 @@ def enable_default_logging():
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    stderr_handler = EncodedStreamHandler(sys.stderr,
-        osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
+    if sys.version_info[0] == 2:
+        stderr_handler = EncodedStreamHandler(sys.stderr,
+            osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
+    else:
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 

@@ -148,7 +148,7 @@ class NotBzrDirProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return {NotBzrDirFormat()}
+        return [NotBzrDirFormat()]
 
 
 class TestNotBzrDir(tests.TestCaseWithTransport):

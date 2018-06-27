@@ -209,9 +209,9 @@ class TestRevisionMethods(TestCase):
         r = revision.Revision('1')
         r.committer = 'A'
         self.assertEqual(['A'], r.get_apparent_authors())
-        r.properties['author'] = 'B'
+        r.properties[u'author'] = 'B'
         self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties['authors'] = 'C\nD'
+        r.properties[u'authors'] = 'C\nD'
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
@@ -229,7 +229,7 @@ class TestRevisionBugs(TestCase):
     def test_some_bugs(self):
         r = revision.Revision(
             '1', properties={
-                'bugs': bugtracker.encode_fixes_bug_urls(
+                u'bugs': bugtracker.encode_fixes_bug_urls(
                     ['http://example.com/bugs/1',
                      'http://launchpad.net/bugs/1234'])})
         self.assertEqual(

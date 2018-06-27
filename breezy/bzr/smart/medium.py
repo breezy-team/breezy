@@ -133,19 +133,21 @@ class SmartMedium(object):
     def __init__(self):
         self._push_back_buffer = None
 
-    def _push_back(self, bytes):
+    def _push_back(self, data):
         """Return unused bytes to the medium, because they belong to the next
         request(s).
 
         This sets the _push_back_buffer to the given bytes.
         """
+        if not isinstance(data, bytes):
+            raise TypeError(data)
         if self._push_back_buffer is not None:
             raise AssertionError(
                 "_push_back called when self._push_back_buffer is %r"
                 % (self._push_back_buffer,))
-        if bytes == b'':
+        if data == b'':
             return
-        self._push_back_buffer = bytes
+        self._push_back_buffer = data
 
     def _get_push_back_buffer(self):
         if self._push_back_buffer == b'':

@@ -117,10 +117,10 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
-        props = dict(flavor='sour cherry\ncream cheese',
-                     size='medium',
-                     empty='',
-                    )
+        props = {u'flavor': 'sour cherry\ncream cheese',
+                 u'size': 'medium',
+                 u'empty': '',
+                 }
         self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,

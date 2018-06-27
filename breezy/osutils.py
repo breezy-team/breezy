@@ -819,7 +819,7 @@ def compare_files(a, b):
         bi = b.read(BUFSIZE)
         if ai != bi:
             return False
-        if ai == '':
+        if not ai:
             return True
 
 

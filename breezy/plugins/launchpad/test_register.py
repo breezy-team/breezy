@@ -16,7 +16,17 @@
 
 import base64
 from io import BytesIO
-import xmlrpclib
+
+try:
+    from xmlrpc.client import (
+        loads as xmlrpc_loads,
+        Transport,
+        )
+except ImportError:  # python < 3
+    from xmlrpclib import (
+        loads as xmlrpc_loads,
+        Transport,
+        )
 
 from ...tests import TestCaseWithTransport
 
@@ -84,7 +94,7 @@ class InstrumentedXMLRPCConnection(object):
 
 
 
-class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
+class InstrumentedXMLRPCTransport(Transport):
 
     # Python 2.5's xmlrpclib looks for this.
     _use_datetime = False
@@ -114,7 +124,7 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
         pass
 
     def send_content(self, conn, request_body):
-        unpacked, method = xmlrpclib.loads(request_body)
+        unpacked, method = xmlrpc_loads(request_body)
         if None in unpacked:
             raise AssertionError(
                 "xmlrpc result %r shouldn't contain None" % (unpacked,))

@@ -133,7 +133,7 @@ class LocalGitProber(Prober):
             BareLocalGitControlDirFormat,
             LocalGitControlDirFormat,
             )
-        return set([BareLocalGitControlDirFormat(), LocalGitControlDirFormat()])
+        return [BareLocalGitControlDirFormat(), LocalGitControlDirFormat()]
 
 
 def user_agent_for_github():
@@ -203,7 +203,7 @@ class RemoteGitProber(Prober):
     @classmethod
     def known_formats(cls):
         from .remote import RemoteGitControlDirFormat
-        return set([RemoteGitControlDirFormat()])
+        return [RemoteGitControlDirFormat()]
 
 
 ControlDirFormat.register_prober(LocalGitProber)

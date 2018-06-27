@@ -376,7 +376,7 @@ class DummyForeignProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return {DummyForeignVcsDirFormat()}
+        return [DummyForeignVcsDirFormat()]
 
 
 class ForeignVcsRegistryTests(tests.TestCase):
