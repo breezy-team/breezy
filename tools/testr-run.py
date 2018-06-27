@@ -57,7 +57,7 @@ else:
                 write_list(py3f, py3_tests)
                 py3f.flush()
                 subprocess.call(
-                    'python ./brz selftest --subunit2 --load-list=%s | subunit-filter -s --passthrough --rename "^" "python3."' % py3f.name, shell=True)
+                    'python3 ./brz selftest --subunit2 --load-list=%s | subunit-filter -s --passthrough --rename "^" "python3."' % py3f.name, shell=True)
     else:
         subprocess.call(
             'python ./brz selftest --subunit2 | subunit-filter -s --passthrough --rename "^" "python2."', shell=True)
