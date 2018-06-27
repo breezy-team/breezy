@@ -2,8 +2,16 @@
 
 import argparse
 import subprocess
+from subunit.v2 import StreamResultToBytes
 import sys
-from testrepository.testlist import parse_list, write_list
+import tempfile
+from testrepository.testlist import parse_enumeration, parse_list, write_list
+
+
+def write_enumeration(f, testids):
+    stream = StreamResultToBytes(f)
+    for testid in testids:
+        stream.status(test_id=testid, test_status='exists')
 
 parser = argparse.ArgumentParser(
     description="Test runner that supports both Python 2 and Python 3.")
@@ -17,8 +25,16 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.list:
-    subprocess.call(['python', './brz', 'selftest', '--subunit2', '--list'])
-    subprocess.call(['python3', './brz', 'selftest', '--subunit2', '--list'])
+    tests = []
+    with subprocess.Popen(['python', './brz', 'selftest', '--subunit2', '--list'],
+                         stdout=subprocess.PIPE).stdout as f:
+        for n in parse_enumeration(f.read()):
+            tests.append('python2.' + n)
+    with subprocess.Popen(['python3', './brz', 'selftest', '--subunit2', '--list'],
+                         stdout=subprocess.PIPE).stdout as f:
+        for n in parse_enumeration(f.read()):
+            tests.append('python3.' + n)
+    write_enumeration(sys.stdout, tests)
 else:
     if args.load_list:
         py2_tests = []
@@ -32,7 +48,6 @@ else:
                 py3_tests.append(testname[len('python3.'):].strip())
             else:
                 sys.stderr.write("unknown prefix %s\n" % testname)
-        import tempfile
         if py2_tests:
             with tempfile.NamedTemporaryFile() as py2f:
                 write_list(py2f, py2_tests)
