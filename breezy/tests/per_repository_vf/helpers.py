@@ -53,7 +53,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         try:
-            inv = inventory.Inventory(revision_id='revision-id')
+            inv = inventory.Inventory(revision_id=b'revision-id')
             inv.root.revision = 'revision-id'
             inv_sha1 = repo.add_inventory('revision-id', inv, [])
             if repo.supports_rich_root():

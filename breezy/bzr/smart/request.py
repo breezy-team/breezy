@@ -45,6 +45,7 @@ from ... import (
     trace,
     urlutils,
     )
+from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
@@ -217,8 +218,6 @@ class SmartServerRequest(object):
         :returns: a transport cloned from self._backing_transport
         """
         relpath = self.translate_client_path(client_path)
-        if not isinstance(relpath, str):
-            raise TypeError(relpath)
         return self._backing_transport.clone(relpath)
 
 
@@ -447,7 +446,7 @@ def _translate_error(err):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string
         str_or_unicode = err.object
-        if isinstance(str_or_unicode, unicode):
+        if isinstance(str_or_unicode, text_type):
             # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
             # byte) in it, so this encoding could cause broken responses.
             # Newer clients use protocol v3, so will be fine.
@@ -780,6 +779,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     b'Repository.reconcile', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryReconcile', info='idem')
+request_handlers.register_lazy(
+    b'Repository.revision_archive', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryRevisionArchive', info='read')
 request_handlers.register_lazy(
     b'Repository.tarball', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryTarball', info='read')

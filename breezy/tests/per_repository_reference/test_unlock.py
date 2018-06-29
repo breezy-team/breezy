@@ -35,24 +35,24 @@ class TestUnlock(TestCaseWithExternalReferenceRepository):
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format does not support stacking')
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'contents\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id'], [
-            ('modify', ('file', 'new-content\n'))],
-            revision_id='B-id')
-        builder.build_snapshot(['B-id'], [
-            ('modify', ('file', 'yet more content\n'))],
-            revision_id='C-id')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'contents\n'))],
+            revision_id=b'A-id')
+        builder.build_snapshot([b'A-id'], [
+            ('modify', ('file', b'new-content\n'))],
+            revision_id=b'B-id')
+        builder.build_snapshot([b'B-id'], [
+            ('modify', ('file', b'yet more content\n'))],
+            revision_id=b'C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
         base = self.make_branch('base')
-        base.pull(source_b, stop_revision='B-id')
+        base.pull(source_b, stop_revision=b'B-id')
         stacked = self.make_branch('stacked')
         stacked.set_stacked_on_url('../base')
-        stacked.pull(source_b, stop_revision='C-id')
+        stacked.pull(source_b, stop_revision=b'C-id')
 
         return base, stacked
 

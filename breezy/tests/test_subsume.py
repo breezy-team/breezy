@@ -72,11 +72,8 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         # subsuming the tree removes the control directory, so you can't open
         # it.
         self.assertPathDoesNotExist('tree/subtree/.bzr')
-        file2 = open('tree/subtree/file2', 'rb')
-        try:
+        with open('tree/subtree/file2', 'rb') as file2:
             file2_contents = file2.read()
-        finally:
-            file2.close()
         base_tree = workingtree.WorkingTree.open('tree')
         base_tree.commit('combined', rev_id=b'combined-1')
         self.assertEqual(b'file2-id', base_tree.path2id('subtree/file2'))

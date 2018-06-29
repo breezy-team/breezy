@@ -332,21 +332,15 @@ class TestUpgrade(TestCaseWithTransport):
         self.addCleanup(b.lock_read().unlock)
         rh = b._revision_history()
         eq(rh,
-           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
-            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+           [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
-        foo_id = 'foo-20051004035605-91e788d1875603ae'
-        rt.lock_read()
-        try:
-            eq(rt.get_file_text('foo', foo_id), 'initial contents\n')
-        finally:
-            rt.unlock()
+        foo_id = b'foo-20051004035605-91e788d1875603ae'
+        with rt.lock_read():
+            eq(rt.get_file_text('foo', foo_id), b'initial contents\n')
         rt = b.repository.revision_tree(rh[1])
-        rt.lock_read()
-        try:
-            eq(rt.get_file_text('foo', foo_id), 'new contents\n')
-        finally:
-            rt.unlock()
+        with rt.lock_read():
+            eq(rt.get_file_text('foo', foo_id), b'new contents\n')
         # check a backup was made:
         backup_dir = 'backup.bzr.~1~'
         t = self.get_transport('.')

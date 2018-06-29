@@ -199,8 +199,8 @@ class TestPackRepository(TestCaseWithTransport):
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # insert some files in obsolete_packs which should be removed by pack.
-        trans.put_bytes('obsolete_packs/foo', '123')
-        trans.put_bytes('obsolete_packs/bar', '321')
+        trans.put_bytes('obsolete_packs/foo', b'123')
+        trans.put_bytes('obsolete_packs/bar', b'321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = self.index_class(trans, 'pack-names', None)
@@ -275,7 +275,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))
         # these files are in use by another client and typically can't be deleted
-        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
+        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', b'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
 
@@ -318,10 +318,10 @@ class TestPackRepository(TestCaseWithTransport):
         builder = self.make_branch_builder('source', format=format)
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
         builder.build_snapshot(None, [
-            ('add', ('file', 'file-id', 'file', 'B content\n'))],
+            ('add', ('file', b'file-id', 'file', b'B content\n'))],
             revision_id=b'B-id')
         builder.build_snapshot(None, [
             ('modify', ('file', b'C content\n'))],
@@ -334,17 +334,17 @@ class TestPackRepository(TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(b.repository, revision_id=b'B-id')
-        inv = next(b.repository.iter_inventories(['C-id']))
+        inv = next(b.repository.iter_inventories([b'C-id']))
         repo.start_write_group()
-        repo.add_inventory('C-id', inv, ['B-id'])
+        repo.add_inventory(b'C-id', inv, [b'B-id'])
         repo.commit_write_group()
-        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+        self.assertEqual([(b'A-id',), (b'B-id',), (b'C-id',)],
                          sorted(repo.inventories.keys()))
         repo.pack()
-        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+        self.assertEqual([(b'A-id',), (b'B-id',), (b'C-id',)],
                          sorted(repo.inventories.keys()))
         # Content should be preserved as well
-        self.assertEqual(inv, next(repo.iter_inventories(['C-id'])))
+        self.assertEqual(inv, next(repo.iter_inventories([b'C-id'])))
 
     def test_pack_layout(self):
         # Test that the ordering of revisions in pack repositories is
@@ -657,18 +657,18 @@ class TestPackRepository(TestCaseWithTransport):
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
-        add_commit(has_ghost, 'ghost', [])
-        add_commit(has_ghost, 'references', ['ghost'])
-        add_commit(missing_ghost, 'references', ['ghost'])
-        add_commit(has_ghost, 'tip', ['references'])
-        missing_ghost.fetch(has_ghost, 'tip')
+        add_commit(has_ghost, b'ghost', [])
+        add_commit(has_ghost, b'references', [b'ghost'])
+        add_commit(missing_ghost, b'references', [b'ghost'])
+        add_commit(has_ghost, b'tip', [b'references'])
+        missing_ghost.fetch(has_ghost, b'tip')
         # missing ghost now has tip and not ghost.
-        rev = missing_ghost.get_revision('tip')
-        inv = missing_ghost.get_inventory('tip')
+        rev = missing_ghost.get_revision(b'tip')
+        inv = missing_ghost.get_inventory(b'tip')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_revision, 'ghost')
+            missing_ghost.get_revision, b'ghost')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_inventory, 'ghost')
+            missing_ghost.get_inventory, b'ghost')
 
     def make_write_ready_repo(self):
         format = self.get_format()
@@ -1012,10 +1012,10 @@ class TestKeyDependencies(TestCaseWithTransport):
         builder = self.make_branch_builder('source', format=self.get_format())
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
         builder.build_snapshot(
-                ['A-id', 'ghost-id'], [],
+                [b'A-id', b'ghost-id'], [],
                 revision_id=b'B-id', )
         builder.finish_series()
         repo = self.make_repository('target', format=self.get_format())

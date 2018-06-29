@@ -384,12 +384,12 @@ def _win32_fixdrive(path):
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -397,7 +397,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -1454,13 +1454,17 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', text_type(path)), True
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    return unicodedata.normalize('NFC', path), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', text_type(path))
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    normalized = unicodedata.normalize('NFC', path)
     return normalized, normalized == path
 
 
@@ -2084,21 +2088,21 @@ def read_bytes_from_socket(sock, report_activity=None,
     """
     while True:
         try:
-            bytes = sock.recv(max_read_size)
+            data = sock.recv(max_read_size)
         except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
-                return ""
+                return b""
             elif eno == errno.EINTR:
                 # Retry the interrupted recv.
                 continue
             raise
         else:
             if report_activity is not None:
-                report_activity(len(bytes), 'read')
-            return bytes
+                report_activity(len(data), 'read')
+            return data
 
 
 def recv_all(socket, count):
@@ -2111,10 +2115,10 @@ def recv_all(socket, count):
 
     This isn't optimized and is intended mostly for use in testing.
     """
-    b = ''
+    b = b''
     while len(b) < count:
         new = read_bytes_from_socket(socket, None, count - len(b))
-        if new == '':
+        if new == b'':
             break # eof
         b += new
     return b

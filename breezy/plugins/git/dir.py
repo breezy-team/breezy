@@ -689,5 +689,5 @@ class LocalGitDir(GitDir):
         except bzr_errors.NoSuchFile:
             return self
         else:
-            commondir = commondir.rstrip('/.git/')
+            commondir = commondir.rstrip(b'/.git/')
             return ControlDir.open_from_transport(get_transport_from_path(commondir))

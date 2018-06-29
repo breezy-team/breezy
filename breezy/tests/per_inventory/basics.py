@@ -86,14 +86,14 @@ class TestInventoryCreateByApplyDelta(TestInventory):
     def test_add(self):
         inv = self.make_init_inventory()
         inv = inv.create_by_apply_delta([
-            (None, "a", "a-id", self.make_file(b'a-id', 'a', b'tree-root')),
+            (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
             ], b'new-test-rev')
         self.assertEqual('a', inv.id2path(b'a-id'))
 
     def test_delete(self):
         inv = self.make_init_inventory()
         inv = inv.create_by_apply_delta([
-            (None, "a", "a-id", self.make_file(b'a-id', 'a', b'tree-root')),
+            (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
             ], b'new-rev-1')
         self.assertEqual('a', inv.id2path(b'a-id'))
         inv = inv.create_by_apply_delta([
@@ -137,25 +137,25 @@ class TestInventoryReads(TestInventory):
 
     def test_ids(self):
         """Test detection of files within selected directories."""
-        inv = inventory.Inventory('TREE_ROOT')
-        for args in [('src', 'directory', 'src-id'),
-                     ('doc', 'directory', 'doc-id'),
+        inv = inventory.Inventory(b'TREE_ROOT')
+        for args in [('src', 'directory', b'src-id'),
+                     ('doc', 'directory', b'doc-id'),
                      ('src/hello.c', 'file'),
-                     ('src/bye.c', 'file', 'bye-id'),
+                     ('src/bye.c', 'file', b'bye-id'),
                      ('Makefile', 'file')]:
             ie = inv.add_path(*args)
             if args[1] == 'file':
-                ie.text_sha1 = osutils.sha_string('content\n')
-                ie.text_size = len('content\n')
+                ie.text_sha1 = osutils.sha_string(b'content\n')
+                ie.text_size = len(b'content\n')
         inv = self.inv_to_test_inv(inv)
-        self.assertEqual(inv.path2id('src'), 'src-id')
-        self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
+        self.assertEqual(inv.path2id('src'), b'src-id')
+        self.assertEqual(inv.path2id('src/bye.c'), b'bye-id')
 
     def test_non_directory_children(self):
         """Test path2id when a parent directory has no children"""
-        inv = inventory.Inventory('tree-root')
-        inv.add(self.make_file(b'file-id', 'file', 'tree-root'))
-        inv.add(self.make_link(b'link-id', 'link', 'tree-root'))
+        inv = inventory.Inventory(b'tree-root')
+        inv.add(self.make_file(b'file-id', 'file', b'tree-root'))
+        inv.add(self.make_link(b'link-id', 'link', b'tree-root'))
         self.assertIs(None, inv.path2id('file/subfile'))
         self.assertIs(None, inv.path2id('link/subfile'))
 

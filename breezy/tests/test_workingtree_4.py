@@ -281,17 +281,17 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         builder.start_series()
         self.addCleanup(builder.finish_series)
         builder.build_snapshot([], [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', 'content\n'))],
-            revision_id='A')
-        builder.build_snapshot(['A'], [
-            ('modify', ('a', 'new content\nfor a\n')),
-            ('add', ('b', 'b-id', 'file', 'b-content\n'))],
-            revision_id='B')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('a', b'a-id', 'file', b'content\n'))],
+            revision_id=b'A')
+        builder.build_snapshot([b'A'], [
+            ('modify', ('a', b'new content\nfor a\n')),
+            ('add', ('b', b'b-id', 'file', b'b-content\n'))],
+            revision_id=b'B')
         tree = self.make_workingtree('tree')
         source_branch = builder.get_branch()
-        tree.branch.repository.fetch(source_branch.repository, 'B')
-        tree.pull(source_branch, stop_revision='A')
+        tree.branch.repository.fetch(source_branch.repository, b'B')
+        tree.pull(source_branch, stop_revision=b'A')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         state = tree.current_dirstate()
@@ -302,37 +302,37 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             return orig_update(delta, new_revid)
         state.update_basis_by_delta = log_update_basis_by_delta
         basis = tree.basis_tree()
-        self.assertEqual('a-id', basis.path2id('a'))
+        self.assertEqual(b'a-id', basis.path2id('a'))
         self.assertFalse(basis.is_versioned('b'))
         def fail_set_parent_trees(trees, ghosts):
             raise AssertionError('dirstate.set_parent_trees() was called')
         state.set_parent_trees = fail_set_parent_trees
         repo = tree.branch.repository
-        tree.pull(source_branch, stop_revision='B')
-        self.assertEqual(['B'], called)
+        tree.pull(source_branch, stop_revision=b'B')
+        self.assertEqual([b'B'], called)
         basis = tree.basis_tree()
-        self.assertEqual('a-id', basis.path2id('a'))
-        self.assertEqual('b-id', basis.path2id('b'))
+        self.assertEqual(b'a-id', basis.path2id('a'))
+        self.assertEqual(b'b-id', basis.path2id('b'))
 
     def test_set_parent_trees_handles_missing_basis(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
         self.addCleanup(builder.finish_series)
         builder.build_snapshot([], [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-id', 'file', 'content\n'))],
-            revision_id='A')
-        builder.build_snapshot(['A'], [
-            ('modify', ('a', 'new content\nfor a\n')),
-            ('add', ('b', 'b-id', 'file', 'b-content\n'))],
-            revision_id='B')
-        builder.build_snapshot(['A'], [
-            ('add', ('c', 'c-id', 'file', 'c-content\n'))],
-            revision_id='C')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('a', b'a-id', 'file', b'content\n'))],
+            revision_id=b'A')
+        builder.build_snapshot([b'A'], [
+            ('modify', ('a', b'new content\nfor a\n')),
+            ('add', ('b', b'b-id', 'file', b'b-content\n'))],
+            revision_id=b'B')
+        builder.build_snapshot([b'A'], [
+            ('add', ('c', b'c-id', 'file', b'c-content\n'))],
+            revision_id=b'C')
         b_c = self.make_branch('branch_with_c')
-        b_c.pull(builder.get_branch(), stop_revision='C')
+        b_c.pull(builder.get_branch(), stop_revision=b'C')
         b_b = self.make_branch('branch_with_b')
-        b_b.pull(builder.get_branch(), stop_revision='B')
+        b_b.pull(builder.get_branch(), stop_revision=b'B')
         # This is reproducing some of what 'switch' does, just to isolate the
         # set_parent_trees() step.
         wt = b_b.create_checkout('tree', lightweight=True)
@@ -340,7 +340,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         fmt.set_reference(wt.controldir, None, b_c)
         # Re-open with the new reference
         wt = wt.controldir.open_workingtree()
-        wt.set_parent_trees([('C', b_c.repository.revision_tree('C'))])
+        wt.set_parent_trees([(b'C', b_c.repository.revision_tree(b'C'))])
         self.assertFalse(wt.basis_tree().is_versioned('b'))
 
     def test_new_dirstate_on_new_lock(self):

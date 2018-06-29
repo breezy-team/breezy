@@ -44,6 +44,7 @@ from ...bzr import (
     )
 from ...sixish import (
     BytesIO,
+    text_type,
     )
 from .. import (
     per_repository,
@@ -277,7 +278,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # may only be shared in some circumstances.
             return
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(made_repo.is_shared())
 
@@ -350,7 +351,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
 
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(result.open_repository().is_shared())
@@ -416,7 +417,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
-        self.assertIsInstance(rev.message, unicode)
+        self.assertIsInstance(rev.message, text_type)
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved
@@ -946,7 +947,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return
         self.transport_server = test_server.FakeVFATServer
-        FOO_ID = 'foo<:>ID'
+        FOO_ID = b'foo<:>ID'
         # this makes a default format repository always, which is wrong:
         # it should be a TestCaseWithRepository in order to get the
         # default format.
@@ -963,7 +964,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
-        self.assertEqual(contents, 'contents of repo/foo\n')
+        self.assertEqual(contents, b'contents of repo/foo\n')
 
     def test_create_bundle(self):
         wt = self.make_branch_and_tree('repo')

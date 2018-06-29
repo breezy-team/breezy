@@ -42,7 +42,7 @@ from . import (
     errors,
     )
 from .sixish import (
-    BytesIO,
+    text_type,
     )
 
 #verification results
@@ -151,12 +151,12 @@ class LoopbackGPGStrategy(object):
         """Real strategies take a configuration."""
 
     def sign(self, content, mode):
-        return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
-                "-----END PSEUDO-SIGNED CONTENT-----\n")
+        return (b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
+                b"-----END PSEUDO-SIGNED CONTENT-----\n")
 
     def verify(self, signed_data, signature=None):
-        plain_text = signed_data.replace("-----BEGIN PSEUDO-SIGNED CONTENT-----\n", "")
-        plain_text = plain_text.replace("-----END PSEUDO-SIGNED CONTENT-----\n", "")
+        plain_text = signed_data.replace(b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n", b"")
+        plain_text = plain_text.replace(b"-----END PSEUDO-SIGNED CONTENT-----\n", b"")
         return SIGNATURE_VALID, None, plain_text
 
     def set_acceptable_keys(self, command_line_input):
@@ -232,7 +232,7 @@ class GPGStrategy(object):
 
     def sign(self, content, mode):
         import gpg
-        if isinstance(content, unicode):
+        if isinstance(content, text_type):
             raise errors.BzrBadParameterUnicode('content')
 
         plain_text = gpg.Data(content)

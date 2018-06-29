@@ -138,7 +138,8 @@ class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
         :return: On success, 'ok'.
         """
         try:
-            self._bzrdir.destroy_branch(name)
+            self._bzrdir.destroy_branch(
+                name.decode('utf-8') if name is not None else None)
         except errors.NotBranchError as e:
             return FailedSmartServerResponse((b'nobranch',))
         return SuccessfulSmartServerResponse((b'ok',))
@@ -445,8 +446,8 @@ class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
         ret = {}
         for name, b in branches.items():
             if name is None:
-                name = ""
-            ret[name] = (b"branch", b._format.network_name())
+                name = b""
+            ret[name.encode('utf-8')] = (b"branch", b._format.network_name())
         return SuccessfulSmartServerResponse(
             (b"success", ), bencode.bencode(ret))
 
@@ -620,8 +621,8 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
             resp = (b'nobranch',)
             detail = e.detail
             if detail:
-                if detail.startswith(b': '):
+                if detail.startswith(': '):
                     detail = detail[2:]
-                resp += (detail,)
+                resp += (detail.encode('utf-8'),)
             return FailedSmartServerResponse(resp)
 

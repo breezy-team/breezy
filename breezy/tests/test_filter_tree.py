@@ -45,10 +45,10 @@ class TestFilterTree(tests.TestCaseWithTransport):
         self.make_tree()
         self.assertEqual(
             self.underlying_tree.get_file_text('hello'),
-            'hello world')
+            b'hello world')
         self.assertEqual(
             self.filter_tree.get_file_text('hello'),
-            'HELLO WORLD')
+            b'HELLO WORLD')
 
     def test_tar_export_content_filter_tree(self):
         # TODO: this could usefully be run generically across all exporters.

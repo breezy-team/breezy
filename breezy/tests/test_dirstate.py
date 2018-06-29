@@ -974,7 +974,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # in case the default tree format uses a different root id
         mt.set_root_id(b'TREE_ROOT')
         mt.commit('foo', rev_id=b'parent-revid')
-        rt = mt.branch.repository.revision_tree('parent-revid')
+        rt = mt.branch.repository.revision_tree(b'parent-revid')
         state = dirstate.DirState.initialize('dirstate')
         state._validate()
         try:
@@ -1105,7 +1105,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree1.add('')
             tree1.add(['a file'], [b'file-id'], ['file'])
-            tree1.put_file_bytes_non_atomic('a file', 'file-content')
+            tree1.put_file_bytes_non_atomic('a file', b'file-content')
             revid1 = tree1.commit('foo')
         finally:
             tree1.unlock()
@@ -1113,7 +1113,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree2 = memorytree.MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         try:
-            tree2.put_file_bytes_non_atomic('a file', 'new file-content')
+            tree2.put_file_bytes_non_atomic('a file', b'new file-content')
             revid2 = tree2.commit('foo')
             root_id = tree2.get_root_id()
         finally:

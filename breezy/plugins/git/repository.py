@@ -688,3 +688,13 @@ class GitRepositoryFormat(repository.RepositoryFormat):
 
     def network_name(self):
         return "git"
+
+
+def get_extra_interrepo_test_combinations():
+    from ...bzr.groupcompress_repo import RepositoryFormat2a
+    from . import interrepo
+    return [
+            (interrepo.InterLocalGitNonGitRepository, GitRepositoryFormat(), RepositoryFormat2a()),
+            (interrepo.InterLocalGitLocalGitRepository, GitRepositoryFormat(), GitRepositoryFormat()),
+            (interrepo.InterToLocalGitRepository, RepositoryFormat2a(), GitRepositoryFormat()),
+        ]

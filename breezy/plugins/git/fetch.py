@@ -55,6 +55,7 @@ from ...repository import (
 from ...revision import (
     NULL_REVISION,
     )
+from ...sixish import text_type
 from ...bzr.inventorytree import InventoryRevisionTree
 from ...testament import (
     StrictTestament3,
@@ -223,7 +224,7 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree, existing_childre
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
-    if type(path) is not unicode:
+    if not isinstance(path, text_type):
         raise TypeError(path)
     ret = []
     for name, mode, hexsha in base_tree.iteritems():
@@ -375,7 +376,7 @@ def ensure_inventories_in_repo(repo, trees):
     for t in trees:
         revid = t.get_revision_id()
         if not real_inv_vf.get_parent_map([(revid, )]):
-            repo.add_inventory(revid, t.inventory, t.get_parent_ids())
+            repo.add_inventory(revid, t.root_inventory, t.get_parent_ids())
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
@@ -409,8 +410,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
             None, rev.revision_id, parent_trees,
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             tree_supplement.lookup_file_id,
-            allow_submodules=getattr(repo._format, "supports_tree_reference",
-                False))
+            allow_submodules=repo._format.supports_tree_reference)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
@@ -421,10 +421,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         basis_id = NULL_REVISION
         base_bzr_inventory = None
     else:
-        try:
-            base_bzr_inventory = base_bzr_tree.root_inventory
-        except AttributeError: # bzr < 2.6
-            base_bzr_inventory = base_bzr_tree.inventory
+        base_bzr_inventory = base_bzr_tree.root_inventory
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids,
               base_bzr_inventory)

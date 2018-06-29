@@ -870,7 +870,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_bzrdir_passing_rev_not_source_branch_copies_tags(self):
-        # dir.sprout(..., revision_id='rev1') copies rev1, and all the tags of
+        # dir.sprout(..., revision_id=b'rev1') copies rev1, and all the tags of
         # the branch at that bzrdir, the ancestry of all of those, but no other
         # revs (not even the tip of the source branch).
         builder = self.make_branch_builder('source')
@@ -1293,7 +1293,7 @@ class TestControlDir(TestCaseWithControlDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
 
     def test_create_repository_shared(self):

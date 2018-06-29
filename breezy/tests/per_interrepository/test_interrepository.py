@@ -31,6 +31,7 @@ from breezy.tests.matchers import MatchesAncestry
 from breezy.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
+from breezy.workingtree import WorkingTree
 
 
 def check_repo_format_for_funky_id_on_win32(repo):
@@ -66,21 +67,15 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # add a corrupt inventory 'orphan'
         tree_a.branch.repository.lock_write()
         tree_a.branch.repository.start_write_group()
-        inv_file = tree_a.branch.repository.inventories
-        inv_file.add_lines(('orphan',), [], [])
+        if tree_a.branch.repository._format.supports_ghosts:
+            inv_file = tree_a.branch.repository.inventories
+            inv_file.add_lines(('orphan',), [], [])
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
         # add a real revision 'rev1'
-        tree_a.commit('rev1', rev_id=b'rev1', allow_pointless=True)
+        self.rev1 = tree_a.commit('rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
-        tree_a.commit('rev2', rev_id=b'rev2', allow_pointless=True)
-        # and sign 'rev2'
-        tree_a.branch.repository.lock_write()
-        tree_a.branch.repository.start_write_group()
-        tree_a.branch.repository.sign_revision('rev2',
-            breezy.gpg.LoopbackGPGStrategy(None))
-        tree_a.branch.repository.commit_write_group()
-        tree_a.branch.repository.unlock()
+        self.rev2 = tree_a.commit('rev2', allow_pointless=True)
 
     def test_search_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
@@ -89,12 +84,15 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.controldir.open_repository()
-        repo_b.fetch(repo_a, 'rev1')
+        try:
+            repo_b.fetch(repo_a, self.rev1)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('roundtripping not supported')
         # check the test will be valid
-        self.assertFalse(repo_b.has_revision('rev2'))
+        self.assertFalse(repo_b.has_revision(self.rev2))
         result = repo_b.search_missing_revision_ids(repo_a)
-        self.assertEqual({'rev2'}, result.get_keys())
-        self.assertEqual(('search', {'rev2'}, {'rev1'}, 1),
+        self.assertEqual({self.rev2}, result.get_keys())
+        self.assertEqual(('search', {self.rev2}, {self.rev1}, 1),
             result.get_recipe())
 
     def test_absent_requested_raises(self):
@@ -103,14 +101,14 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository('target')
         repo_a = self.controldir.open_repository()
         # No pizza revisions anywhere
-        self.assertFalse(repo_a.has_revision('pizza'))
-        self.assertFalse(repo_b.has_revision('pizza'))
+        self.assertFalse(repo_a.has_revision(b'pizza'))
+        self.assertFalse(repo_b.has_revision(b'pizza'))
         # Asking specifically for an absent revision errors.
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=[b'pizza'],
             find_ghosts=True)
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=[b'pizza'],
             find_ghosts=False)
 
     def test_search_missing_rev_limited(self):
@@ -120,9 +118,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository('empty')
         repo_a = self.controldir.open_repository()
         result = repo_b.search_missing_revision_ids(
-            repo_a, revision_ids=['rev1'])
-        self.assertEqual({'rev1'}, result.get_keys())
-        self.assertEqual(('search', {'rev1'}, {NULL_REVISION}, 1),
+            repo_a, revision_ids=[self.rev1])
+        self.assertEqual({self.rev1}, result.get_keys())
+        self.assertEqual(('search', {self.rev1}, {NULL_REVISION}, 1),
             result.get_recipe())
 
     def test_search_missing_revision_ids_limit(self):
@@ -131,17 +129,38 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository('rev1_only')
         repo_a = self.controldir.open_repository()
         # check the test will be valid
-        self.assertFalse(repo_b.has_revision('rev2'))
-        result = repo_b.search_missing_revision_ids(repo_a, limit=1)
-        self.assertEqual(('search', {'rev1'}, {'null:'}, 1),
+        self.assertFalse(repo_b.has_revision(self.rev2))
+        try:
+            result = repo_b.search_missing_revision_ids(repo_a, limit=1)
+        except errors.FetchLimitUnsupported:
+            raise TestNotApplicable('interrepo does not support limited fetches')
+        self.assertEqual(('search', {self.rev1}, {b'null:'}, 1),
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
+        if not self.repository_format.supports_revision_signatures:
+            raise TestNotApplicable(
+                'from repository does not support signatures')
+        if not self.repository_format_to.supports_revision_signatures:
+            raise TestNotApplicable(
+                'to repository does not support signatures')
+        # and sign 'rev2'
+        tree_a = WorkingTree.open('a')
+        tree_a.branch.repository.lock_write()
+        tree_a.branch.repository.start_write_group()
+        tree_a.branch.repository.sign_revision(self.rev2,
+            breezy.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.commit_write_group()
+        tree_a.branch.repository.unlock()
+
         from_repo = self.controldir.open_repository()
-        from_signature = from_repo.get_signature_text('rev2')
+        from_signature = from_repo.get_signature_text(self.rev2)
         to_repo = self.make_to_repository('target')
-        to_repo.fetch(from_repo)
-        to_signature = to_repo.get_signature_text('rev2')
+        try:
+            to_repo.fetch(from_repo)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable('interrepo does not support roundtripping')
+        to_signature = to_repo.get_signature_text(self.rev2)
         self.assertEqual(from_signature, to_signature)
 
 
@@ -184,16 +203,16 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
-        add_commit(has_ghost, 'ghost', [])
-        add_commit(has_ghost, 'references', ['ghost'])
-        add_commit(missing_ghost, 'references', ['ghost'])
-        add_commit(has_ghost, 'tip', ['references'])
-        missing_ghost.fetch(has_ghost, 'tip', find_ghosts=True)
+        add_commit(has_ghost, b'ghost', [])
+        add_commit(has_ghost, b'references', [b'ghost'])
+        add_commit(missing_ghost, b'references', [b'ghost'])
+        add_commit(has_ghost, b'tip', [b'references'])
+        missing_ghost.fetch(has_ghost, b'tip', find_ghosts=True)
         # missing ghost now has tip and ghost.
-        rev = missing_ghost.get_revision('tip')
-        inv = missing_ghost.get_inventory('tip')
-        rev = missing_ghost.get_revision('ghost')
-        inv = missing_ghost.get_inventory('ghost')
+        rev = missing_ghost.get_revision(b'tip')
+        inv = missing_ghost.get_inventory(b'tip')
+        rev = missing_ghost.get_revision(b'ghost')
+        inv = missing_ghost.get_inventory(b'ghost')
         # rev must not be corrupt now
-        self.assertThat(['ghost', 'references', 'tip'],
-            MatchesAncestry(missing_ghost, 'tip'))
+        self.assertThat([b'ghost', b'references', b'tip'],
+            MatchesAncestry(missing_ghost, b'tip'))

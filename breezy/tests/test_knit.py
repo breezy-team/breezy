@@ -419,7 +419,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             ], revision_id=b'rev-1')
         builder.build_snapshot([b'rev-1'], [
             ('modify', ('file', b'content\nrev 2\n')),
-            ], revision_id='rev-2')
+            ], revision_id=b'rev-2')
         builder.build_snapshot([b'rev-2'], [
             ('modify', ('file', b'content\nrev 3\n')),
             ], revision_id=b'rev-3')
@@ -2333,12 +2333,16 @@ class TestStacking(KnitTests):
             self.assertEqual(record.get_bytes_as('fulltext'), result[3])
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
-        self.assertEqual([
-            ("get_parent_map", {key_basis, key_basis_2, key_missing}),
-            # topological is requested from the fallback, because that is what
-            # was requested at the top level.
-            ("get_record_stream", [key_basis_2, key_basis], 'topological', True)],
-            calls)
+        self.assertEqual(2, len(calls))
+        self.assertEqual(
+                ("get_parent_map", {key_basis, key_basis_2, key_missing}),
+                calls[0])
+        # topological is requested from the fallback, because that is what
+        # was requested at the top level.
+        self.assertIn(
+                calls[1], [
+                ("get_record_stream", [key_basis_2, key_basis], 'topological', True),
+                ("get_record_stream", [key_basis, key_basis_2], 'topological', True)])
 
     def test_get_record_stream_unordered_deltas(self):
         # records from the test knit are answered without asking the basis:

@@ -30,7 +30,10 @@ from . import (
     msgeditor,
     osutils,
     urlutils,
-    registry
+    registry,
+    )
+from .sixish import (
+    text_type,
     )
 
 mail_client_registry = registry.Registry()
@@ -232,7 +235,7 @@ class BodyExternalMailClient(MailClient):
         :param  u:  possible unicode string.
         :return:    encoded string if u is unicode, u itself otherwise.
         """
-        if isinstance(u, unicode):
+        if isinstance(u, text_type):
             return u.encode(osutils.get_user_encoding(), 'replace')
         return u
 
@@ -245,7 +248,7 @@ class BodyExternalMailClient(MailClient):
                         path itself otherwise.
         :raise:         UnableEncodePath.
         """
-        if isinstance(path, unicode):
+        if isinstance(path, text_type):
             try:
                 return path.encode(osutils.get_user_encoding())
             except UnicodeEncodeError:

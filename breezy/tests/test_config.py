@@ -44,6 +44,7 @@ from ..bzr import (
     )
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from ..transport import remote as transport_remote
 from . import (
@@ -522,7 +523,7 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.config_dir(), self.brz_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(config.config_dir(), unicode)
+        self.assertIsInstance(config.config_dir(), text_type)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
@@ -554,7 +555,7 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
         self.assertEqual(config.config_dir(), self.bzr_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(config.config_dir(), unicode)
+        self.assertIsInstance(config.config_dir(), text_type)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),

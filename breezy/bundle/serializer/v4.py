@@ -101,9 +101,8 @@ class BundleWriter(object):
 
     def begin(self):
         """Start writing the bundle"""
-        self._fileobj.write(bundle_serializer._get_bundle_header(
-            bundle_serializer.v4_string))
-        self._fileobj.write('#\n')
+        self._fileobj.write(bundle_serializer._get_bundle_header('4'))
+        self._fileobj.write(b'#\n')
         self._container.begin()
 
     def end(self):

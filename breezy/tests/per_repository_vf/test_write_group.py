@@ -59,7 +59,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         tree = self.make_branch_and_memory_tree('branch')
         trunk_repo.lock_read()
         self.addCleanup(trunk_repo.unlock)
-        tree.branch.repository.fetch(trunk_repo, revision_id='rev-1')
+        tree.branch.repository.fetch(trunk_repo, revision_id=b'rev-1')
         tree.set_parent_ids(['rev-1'])
         return tree 
 
@@ -193,13 +193,13 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual(set(),
                 repo.inventories.get_missing_compression_parent_keys())
         self.assertEqual(
-            {('inventories', b'rev-1')},
+            {(b'inventories', b'rev-1')},
             repo.get_missing_parent_inventories())
         # Resuming the write group does not affect
         # get_missing_parent_inventories.
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
         self.assertEqual(
-            {('inventories', b'rev-1')},
+            {(b'inventories', b'rev-1')},
             reopened_repo.get_missing_parent_inventories())
         # Adding the parent inventory satisfies get_missing_parent_inventories.
         reopened_repo.inventories.insert_record_stream(
@@ -211,10 +211,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def test_get_missing_parent_inventories_check(self):
         builder = self.make_branch_builder('test')
-        builder.build_snapshot(['ghost-parent-id'], [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
-            allow_leftmost_as_ghost=True, revision_id='A-id')
+        builder.build_snapshot([b'ghost-parent-id'], [
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
+            allow_leftmost_as_ghost=True, revision_id=b'A-id')
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -224,17 +224,17 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo.start_write_group()
         self.addCleanup(repo.abort_write_group)
         # Now, add the objects manually
-        text_keys = [('file-id', 'A-id')]
+        text_keys = [(b'file-id', b'A-id')]
         if repo.supports_rich_root():
-            text_keys.append(('root-id', 'A-id'))
+            text_keys.append((b'root-id', b'A-id'))
         # Directly add the texts, inventory, and revision object for 'A-id'
         repo.texts.insert_record_stream(b.repository.texts.get_record_stream(
             text_keys, 'unordered', True))
-        repo.add_revision('A-id', b.repository.get_revision('A-id'),
-                          b.repository.get_inventory('A-id'))
+        repo.add_revision(b'A-id', b.repository.get_revision(b'A-id'),
+                          b.repository.get_inventory(b'A-id'))
         get_missing = repo.get_missing_parent_inventories
         if repo._format.supports_external_lookups:
-            self.assertEqual({('inventories', 'ghost-parent-id')},
+            self.assertEqual({('inventories', b'ghost-parent-id')},
                 get_missing(check_for_missing_texts=False))
             self.assertEqual(set(), get_missing(check_for_missing_texts=True))
             self.assertEqual(set(), get_missing())

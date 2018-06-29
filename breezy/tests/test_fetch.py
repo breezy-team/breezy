@@ -149,14 +149,14 @@ class TestFetch(TestCaseWithTransport):
         Convert(tree.basedir, knit2_format)
         tree = WorkingTree.open(tree.basedir)
         branch = self.make_branch('branch', format=knit2_format)
-        branch.pull(tree.branch, stop_revision='rev1')
+        branch.pull(tree.branch, stop_revision=b'rev1')
         repo = branch.repository
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({('tree-root', 'rev1'):()},
+            self.assertEqual({(b'tree-root', b'rev1'):()},
                 repo.texts.get_parent_map(
-                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+                    [(b'tree-root', b'rev1'), (b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
         branch.pull(tree.branch)
@@ -165,8 +165,8 @@ class TestFetch(TestCaseWithTransport):
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
-                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+            self.assertEqual({(b'tree-root', b'rev2'):((b'tree-root', b'rev1'),)},
+                repo.texts.get_parent_map([(b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
 
@@ -245,10 +245,10 @@ class TestMergeFileHistory(TestCaseWithTransport):
         wt2 = WorkingTree.open('br2').merge_from_branch(br1)
         br2.lock_read()
         self.addCleanup(br2.unlock)
-        for rev_id, text in [('1-2', 'original from 1\n'),
-                             ('1-3', 'agreement\n'),
-                             ('2-1', 'contents in 2\n'),
-                             ('2-2', 'agreement\n')]:
+        for rev_id, text in [(b'1-2', b'original from 1\n'),
+                             (b'1-3', b'agreement\n'),
+                             (b'2-1', b'contents in 2\n'),
+                             (b'2-2', b'agreement\n')]:
             self.assertEqualDiff(
                 br2.repository.revision_tree(
                     rev_id).get_file_text('file'), text)
@@ -289,7 +289,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                         source.inventories)
         # precondition
         self.assertTrue(target._format._fetch_uses_deltas)
-        target.fetch(source, revision_id='rev-one')
+        target.fetch(source, revision_id=b'rev-one')
         self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
@@ -329,7 +329,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                         source.inventories)
         # XXX: This won't work in general, but for the dirstate format it does.
         self.overrideAttr(target._format, '_fetch_uses_deltas', False)
-        target.fetch(source, revision_id='rev-one')
+        target.fetch(source, revision_id=b'rev-one')
         self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
@@ -373,7 +373,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         record = next(source.revisions.get_record_stream([('rev-two',)],
             'unordered', False))
         self.assertEqual('knit-delta-gz', record.storage_kind)
-        target.fetch(tree.branch.repository, revision_id='rev-two')
+        target.fetch(tree.branch.repository, revision_id=b'rev-two')
         # The record should get expanded back to a fulltext
         target.lock_read()
         self.addCleanup(target.unlock)
@@ -407,15 +407,15 @@ class TestKnitToPackFetch(TestCaseWithTransport):
             fname = 'file%03d' % (i,)
             fileid = '%s-%s' % (fname, osutils.rand_chars(64))
             to_add.append(('add', (fname, fileid, 'file', 'content\n')))
-        builder.build_snapshot(None, to_add, revision_id='A')
-        builder.build_snapshot(['A'], [], revision_id='B')
-        builder.build_snapshot(['A'], [], revision_id='C')
-        builder.build_snapshot(['C'], [], revision_id='D')
-        builder.build_snapshot(['D'], [], revision_id='E')
-        builder.build_snapshot(['E', 'B'], [], revision_id='F')
+        builder.build_snapshot(None, to_add, revision_id=b'A')
+        builder.build_snapshot(['A'], [], revision_id=b'B')
+        builder.build_snapshot(['A'], [], revision_id=b'C')
+        builder.build_snapshot(['C'], [], revision_id=b'D')
+        builder.build_snapshot(['D'], [], revision_id=b'E')
+        builder.build_snapshot(['E', 'B'], [], revision_id=b'F')
         builder.finish_series()
         source_branch = builder.get_branch()
-        source_branch.controldir.sprout('base', revision_id='B')
+        source_branch.controldir.sprout('base', revision_id=b'B')
         target_branch = self.make_branch('target', format='1.6')
         target_branch.set_stacked_on_url('../base')
         source = source_branch.repository
@@ -437,7 +437,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         target_branch.lock_write()
         self.addCleanup(target_branch.unlock)
         target = target_branch.repository
-        target.fetch(source, revision_id='F')
+        target.fetch(source, revision_id=b'F')
         # 'C' should be expanded to a fulltext, but D and E should still be
         # deltas
         stream = target.inventories.get_record_stream(

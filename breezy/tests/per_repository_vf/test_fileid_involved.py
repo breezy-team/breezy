@@ -46,9 +46,9 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-file-id', 'file', 'some content\n'))],
-            revision_id='A-id')
+            revision_id=b'A-id')
         b = builder.get_branch()
-        old_rt = b.repository.revision_tree('A-id')
+        old_rt = b.repository.revision_tree(b'A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = 'B-id'
         new_inv.get_entry('a-file-id').revision = 'ghost-id'
@@ -96,32 +96,32 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
             raise tests.TestNotApplicable('format does not support stacking')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'contents\n'))],
-            revision_id='A-id')
-        builder.build_snapshot(['A-id'], [
-            ('modify', ('file', 'new-content\n'))],
-            revision_id='B-id')
-        builder.build_snapshot(['B-id'], [
-            ('modify', ('file', 'yet more content\n'))],
-            revision_id='C-id')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'contents\n'))],
+            revision_id=b'A-id')
+        builder.build_snapshot([b'A-id'], [
+            ('modify', ('file', b'new-content\n'))],
+            revision_id=b'B-id')
+        builder.build_snapshot([b'B-id'], [
+            ('modify', ('file', b'yet more content\n'))],
+            revision_id=b'C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
         base = self.make_branch('base')
-        base.pull(source_b, stop_revision='B-id')
+        base.pull(source_b, stop_revision=b'B-id')
         stacked = self.make_branch('stacked')
         stacked.set_stacked_on_url('../base')
-        stacked.pull(source_b, stop_revision='C-id')
+        stacked.pull(source_b, stop_revision=b'C-id')
 
         stacked.lock_read()
         self.addCleanup(stacked.unlock)
         repo = stacked.repository
-        keys = {'file-id': {'A-id'}}
+        keys = {'file-id': {b'A-id'}}
         if stacked.repository.supports_rich_root():
-            keys['root-id'] = {'A-id'}
-        self.assertEqual(keys, repo.fileids_altered_by_revision_ids(['A-id']))
+            keys['root-id'] = {b'A-id'}
+        self.assertEqual(keys, repo.fileids_altered_by_revision_ids([b'A-id']))
 
 
 class FileIdInvolvedBase(TestCaseWithRepository):

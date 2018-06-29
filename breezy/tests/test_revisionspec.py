@@ -151,14 +151,14 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
     # covers that well for us
     def test_dwim_spec_revno(self):
         self.assertInHistoryIs(2, 'r2', '2')
-        self.assertAsRevisionId('alt_r2', '1.1.1')
+        self.assertAsRevisionId(b'alt_r2', '1.1.1')
 
     def test_dwim_spec_revid(self):
         self.assertInHistoryIs(2, 'r2', 'r2')
 
     def test_dwim_spec_tag(self):
         self.tree.branch.tags.set_tag('footag', 'r1')
-        self.assertAsRevisionId('r1', 'footag')
+        self.assertAsRevisionId(b'r1', 'footag')
         self.tree.branch.tags.delete_tag('footag')
         self.assertRaises(errors.InvalidRevisionSpec,
                           self.get_in_history, 'footag')
@@ -168,14 +168,14 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         # but aren't.  Tags are convenient for testing this since we can
         # make them look however we want.
         self.tree.branch.tags.set_tag('3', 'r2')
-        self.assertAsRevisionId('r2', '3')
+        self.assertAsRevisionId(b'r2', '3')
         self.build_tree(['tree/b'])
         self.tree.add(['b'])
         self.tree.commit('b', rev_id=b'r3')
-        self.assertAsRevisionId('r3', '3')
+        self.assertAsRevisionId(b'r3', '3')
 
     def test_dwim_spec_date(self):
-        self.assertAsRevisionId('r1', 'today')
+        self.assertAsRevisionId(b'r1', 'today')
 
     def test_dwim_spec_branch(self):
         self.assertInHistoryIs(None, 'alt_r2', 'tree2')
@@ -194,7 +194,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
             RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
         self.addCleanup(reset_dwim_revspecs)
         RevisionSpec_dwim.append_possible_revspec(RevisionSpec_bork)
-        self.assertAsRevisionId('r1', 'bork')
+        self.assertAsRevisionId(b'r1', 'bork')
 
     def test_append_lazy_dwim_revspec(self):
         original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
@@ -203,7 +203,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.addCleanup(reset_dwim_revspecs)
         RevisionSpec_dwim.append_possible_lazy_revspec(
             "breezy.tests.test_revisionspec", "RevisionSpec_bork")
-        self.assertAsRevisionId('r1', 'bork')
+        self.assertAsRevisionId(b'r1', 'bork')
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):
@@ -341,26 +341,26 @@ class TestRevisionSpec_revno(TestRevisionSpec):
                          spec_in_history('revno:2:b/', None))
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('null:', '0')
-        self.assertAsRevisionId('r1', '1')
-        self.assertAsRevisionId('r2', '2')
-        self.assertAsRevisionId('r1', '-2')
-        self.assertAsRevisionId('r2', '-1')
-        self.assertAsRevisionId('alt_r2', '1.1.1')
+        self.assertAsRevisionId(b'null:', '0')
+        self.assertAsRevisionId(b'r1', '1')
+        self.assertAsRevisionId(b'r2', '2')
+        self.assertAsRevisionId(b'r1', '-2')
+        self.assertAsRevisionId(b'r2', '-1')
+        self.assertAsRevisionId(b'alt_r2', '1.1.1')
 
     def test_as_tree(self):
         tree = self.get_as_tree('0')
         self.assertEqual(_mod_revision.NULL_REVISION, tree.get_revision_id())
         tree = self.get_as_tree('1')
-        self.assertEqual('r1', tree.get_revision_id())
+        self.assertEqual(b'r1', tree.get_revision_id())
         tree = self.get_as_tree('2')
-        self.assertEqual('r2', tree.get_revision_id())
+        self.assertEqual(b'r2', tree.get_revision_id())
         tree = self.get_as_tree('-2')
-        self.assertEqual('r1', tree.get_revision_id())
+        self.assertEqual(b'r1', tree.get_revision_id())
         tree = self.get_as_tree('-1')
-        self.assertEqual('r2', tree.get_revision_id())
+        self.assertEqual(b'r2', tree.get_revision_id())
         tree = self.get_as_tree('1.1.1')
-        self.assertEqual('alt_r2', tree.get_revision_id())
+        self.assertEqual(b'alt_r2', tree.get_revision_id())
 
 
 class TestRevisionSpec_revid(TestRevisionSpec):
@@ -368,15 +368,15 @@ class TestRevisionSpec_revid(TestRevisionSpec):
     def test_in_history(self):
         # We should be able to access revisions that are directly
         # in the history.
-        self.assertInHistoryIs(1, 'r1', 'revid:r1')
-        self.assertInHistoryIs(2, 'r2', 'revid:r2')
+        self.assertInHistoryIs(1, b'r1', 'revid:r1')
+        self.assertInHistoryIs(2, b'r2', 'revid:r2')
 
     def test_missing(self):
         self.assertInvalid('revid:r3', invalid_as_revision_id=False)
 
     def test_merged(self):
         """We can reach revisions in the ancestry"""
-        self.assertInHistoryIs(None, 'alt_r2', 'revid:alt_r2')
+        self.assertInHistoryIs(None, b'alt_r2', 'revid:alt_r2')
 
     def test_not_here(self):
         self.tree2.commit('alt third', rev_id=b'alt_r3')
@@ -387,31 +387,31 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         """We can get any revision id in the repository"""
         # XXX: This may change in the future, but for now, it is true
         self.tree2.commit('alt third', rev_id=b'alt_r3')
-        self.tree.branch.fetch(self.tree2.branch, 'alt_r3')
-        self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
+        self.tree.branch.fetch(self.tree2.branch, b'alt_r3')
+        self.assertInHistoryIs(None, b'alt_r3', 'revid:alt_r3')
 
     def test_unicode(self):
         """We correctly convert a unicode ui string to an encoded revid."""
         revision_id = u'\N{SNOWMAN}'.encode('utf-8')
         self.tree.commit('unicode', rev_id=revision_id)
         self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
-        self.assertInHistoryIs(3, revision_id, 'revid:' + revision_id)
+        self.assertInHistoryIs(3, revision_id, b'revid:' + revision_id)
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('r1', 'revid:r1')
-        self.assertAsRevisionId('r2', 'revid:r2')
-        self.assertAsRevisionId('alt_r2', 'revid:alt_r2')
+        self.assertAsRevisionId(b'r1', 'revid:r1')
+        self.assertAsRevisionId(b'r2', 'revid:r2')
+        self.assertAsRevisionId(b'alt_r2', 'revid:alt_r2')
 
 
 class TestRevisionSpec_last(TestRevisionSpec):
 
     def test_positive(self):
-        self.assertInHistoryIs(2, 'r2', 'last:1')
-        self.assertInHistoryIs(1, 'r1', 'last:2')
-        self.assertInHistoryIs(0, 'null:', 'last:3')
+        self.assertInHistoryIs(2, b'r2', 'last:1')
+        self.assertInHistoryIs(1, b'r1', 'last:2')
+        self.assertInHistoryIs(0, b'null:', 'last:3')
 
     def test_empty(self):
-        self.assertInHistoryIs(2, 'r2', 'last:')
+        self.assertInHistoryIs(2, b'r2', 'last:')
 
     def test_negative(self):
         self.assertInvalid('last:-1',
@@ -434,44 +434,44 @@ class TestRevisionSpec_last(TestRevisionSpec):
         self.assertInvalid('last:Y', extra='\n' + str(e))
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('r2', 'last:1')
-        self.assertAsRevisionId('r1', 'last:2')
+        self.assertAsRevisionId(b'r2', 'last:1')
+        self.assertAsRevisionId(b'r1', 'last:2')
 
 
 class TestRevisionSpec_before(TestRevisionSpec):
 
     def test_int(self):
-        self.assertInHistoryIs(1, 'r1', 'before:2')
-        self.assertInHistoryIs(1, 'r1', 'before:-1')
+        self.assertInHistoryIs(1, b'r1', 'before:2')
+        self.assertInHistoryIs(1, b'r1', 'before:-1')
 
     def test_before_one(self):
-        self.assertInHistoryIs(0, 'null:', 'before:1')
+        self.assertInHistoryIs(0, b'null:', 'before:1')
 
     def test_before_none(self):
         self.assertInvalid('before:0',
                            extra='\ncannot go before the null: revision')
 
     def test_revid(self):
-        self.assertInHistoryIs(1, 'r1', 'before:revid:r2')
+        self.assertInHistoryIs(1, b'r1', 'before:revid:r2')
 
     def test_last(self):
-        self.assertInHistoryIs(1, 'r1', 'before:last:1')
+        self.assertInHistoryIs(1, b'r1', 'before:last:1')
 
     def test_alt_revid(self):
         # This will grab the left-most ancestor for alternate histories
-        self.assertInHistoryIs(1, 'r1', 'before:revid:alt_r2')
+        self.assertInHistoryIs(1, b'r1', 'before:revid:alt_r2')
 
     def test_alt_no_parents(self):
         new_tree = self.make_branch_and_tree('new_tree')
         new_tree.commit('first', rev_id=b'new_r1')
         self.tree.branch.fetch(new_tree.branch, 'new_r1')
-        self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
+        self.assertInHistoryIs(0, b'null:', 'before:revid:new_r1')
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('r1', 'before:revid:r2')
-        self.assertAsRevisionId('r1', 'before:2')
-        self.assertAsRevisionId('r1', 'before:1.1.1')
-        self.assertAsRevisionId('r1', 'before:revid:alt_r2')
+        self.assertAsRevisionId(b'r1', 'before:revid:r2')
+        self.assertAsRevisionId(b'r1', 'before:2')
+        self.assertAsRevisionId(b'r1', 'before:1.1.1')
+        self.assertAsRevisionId(b'r1', 'before:revid:alt_r2')
 
 
 class TestRevisionSpec_tag(TestRevisionSpec):
@@ -487,10 +487,10 @@ class TestRevisionSpec_tag(TestRevisionSpec):
         self.assertEqual(spec.spec, 'bzr-0.14')
 
     def test_lookup_tag(self):
-        self.tree.branch.tags.set_tag('bzr-0.14', 'r1')
-        self.assertInHistoryIs(1, 'r1', 'tag:bzr-0.14')
-        self.tree.branch.tags.set_tag('null_rev', 'null:')
-        self.assertInHistoryIs(0, 'null:', 'tag:null_rev')
+        self.tree.branch.tags.set_tag('bzr-0.14', b'r1')
+        self.assertInHistoryIs(1, b'r1', 'tag:bzr-0.14')
+        self.tree.branch.tags.set_tag('null_rev', b'null:')
+        self.assertInHistoryIs(0, b'null:', 'tag:null_rev')
 
     def test_failed_lookup(self):
         # tags that don't exist give a specific message: arguably we should
@@ -500,11 +500,11 @@ class TestRevisionSpec_tag(TestRevisionSpec):
             'tag:some-random-tag')
 
     def test_as_revision_id(self):
-        self.tree.branch.tags.set_tag('my-tag', 'r2')
-        self.tree.branch.tags.set_tag('null_rev', 'null:')
-        self.assertAsRevisionId('r2', 'tag:my-tag')
-        self.assertAsRevisionId('null:', 'tag:null_rev')
-        self.assertAsRevisionId('r1', 'before:tag:my-tag')
+        self.tree.branch.tags.set_tag('my-tag', b'r2')
+        self.tree.branch.tags.set_tag('null_rev', b'null:')
+        self.assertAsRevisionId(b'r2', 'tag:my-tag')
+        self.assertAsRevisionId(b'null:', 'tag:null_rev')
+        self.assertAsRevisionId(b'r1', 'before:tag:my-tag')
 
 
 class TestRevisionSpec_date(TestRevisionSpec):
@@ -524,11 +524,11 @@ class TestRevisionSpec_date(TestRevisionSpec):
         self.assertInvalid('date:tomorrow')
 
     def test_today(self):
-        self.assertInHistoryIs(2, 'new_r2', 'date:today')
-        self.assertInHistoryIs(1, 'new_r1', 'before:date:today')
+        self.assertInHistoryIs(2, b'new_r2', 'date:today')
+        self.assertInHistoryIs(1, b'new_r1', 'before:date:today')
 
     def test_yesterday(self):
-        self.assertInHistoryIs(1, 'new_r1', 'date:yesterday')
+        self.assertInHistoryIs(1, b'new_r1', 'date:yesterday')
 
     def test_invalid(self):
         self.assertInvalid('date:foobar', extra='\ninvalid date')
@@ -539,11 +539,11 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
     def test_day(self):
         now = datetime.datetime.now()
-        self.assertInHistoryIs(2, 'new_r2',
+        self.assertInHistoryIs(2, b'new_r2',
             'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('new_r2', 'date:today')
+        self.assertAsRevisionId(b'new_r2', 'date:today')
 
 
 class TestRevisionSpec_ancestor(TestRevisionSpec):
@@ -556,16 +556,16 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
 
     def test_simple(self):
         # Common ancestor of trees is 'alt_r2'
-        self.assertInHistoryIs(None, 'alt_r2', 'ancestor:tree2')
+        self.assertInHistoryIs(None, b'alt_r2', 'ancestor:tree2')
 
         # Going the other way, we get a valid revno
         tmp = self.tree
         self.tree = self.tree2
         self.tree2 = tmp
-        self.assertInHistoryIs(2, 'alt_r2', 'ancestor:tree')
+        self.assertInHistoryIs(2, b'alt_r2', 'ancestor:tree')
 
     def test_self(self):
-        self.assertInHistoryIs(2, 'r2', 'ancestor:tree')
+        self.assertInHistoryIs(2, b'r2', 'ancestor:tree')
 
     def test_unrelated(self):
         new_tree = self.make_branch_and_tree('new_tree')
@@ -589,7 +589,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
                                            new_tree.branch)
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('alt_r2', 'ancestor:tree2')
+        self.assertAsRevisionId(b'alt_r2', 'ancestor:tree2')
 
     def test_default(self):
         # We don't have a parent to default to
@@ -600,7 +600,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         tree3 = self.tree.controldir.sprout('tree3').open_workingtree()
         tree3.commit('foo', rev_id=b'r3')
         self.tree = tree3
-        self.assertInHistoryIs(2, 'r2', 'ancestor:')
+        self.assertInHistoryIs(2, b'r2', 'ancestor:')
 
 
 class TestRevisionSpec_branch(TestRevisionSpec):
@@ -612,10 +612,10 @@ class TestRevisionSpec_branch(TestRevisionSpec):
                           self.get_in_history, 'branch:tree2/a')
 
     def test_simple(self):
-        self.assertInHistoryIs(None, 'alt_r2', 'branch:tree2')
+        self.assertInHistoryIs(None, b'alt_r2', 'branch:tree2')
 
     def test_self(self):
-        self.assertInHistoryIs(2, 'r2', 'branch:tree')
+        self.assertInHistoryIs(2, b'r2', 'branch:tree')
 
     def test_unrelated(self):
         new_tree = self.make_branch_and_tree('new_tree')
@@ -624,12 +624,12 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         new_tree.commit('Commit two', rev_id=b'new_r2')
         new_tree.commit('Commit three', rev_id=b'new_r3')
 
-        self.assertInHistoryIs(None, 'new_r3', 'branch:new_tree')
+        self.assertInHistoryIs(None, b'new_r3', 'branch:new_tree')
 
         # XXX: Right now, we use fetch() to make sure the remote revisions
         # have been pulled into the local branch. We may change that
         # behavior in the future.
-        self.assertTrue(self.tree.branch.repository.has_revision('new_r3'))
+        self.assertTrue(self.tree.branch.repository.has_revision(b'new_r3'))
 
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree('new_tree')
@@ -639,12 +639,12 @@ class TestRevisionSpec_branch(TestRevisionSpec):
                           self.get_as_tree, 'branch:new_tree')
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('alt_r2', 'branch:tree2')
+        self.assertAsRevisionId(b'alt_r2', 'branch:tree2')
 
     def test_as_tree(self):
         tree = self.get_as_tree('branch:tree', self.tree2)
-        self.assertEqual('r2', tree.get_revision_id())
-        self.assertFalse(self.tree2.branch.repository.has_revision('r2'))
+        self.assertEqual(b'r2', tree.get_revision_id())
+        self.assertFalse(self.tree2.branch.repository.has_revision(b'r2'))
 
 
 class TestRevisionSpec_submit(TestRevisionSpec):
@@ -654,25 +654,25 @@ class TestRevisionSpec_submit(TestRevisionSpec):
         self.assertRaises(errors.NoSubmitBranch, self.get_in_history,
                           'submit:')
         self.tree.branch.set_parent('../tree2')
-        self.assertInHistoryIs(None, 'alt_r2', 'submit:')
+        self.assertInHistoryIs(None, b'alt_r2', 'submit:')
         self.tree.branch.set_parent('bogus')
         self.assertRaises(errors.NotBranchError, self.get_in_history,
             'submit:')
         # submit branch overrides parent branch
         self.tree.branch.set_submit_branch('tree2')
-        self.assertInHistoryIs(None, 'alt_r2', 'submit:')
+        self.assertInHistoryIs(None, b'alt_r2', 'submit:')
 
     def test_as_revision_id(self):
         self.tree.branch.set_submit_branch('tree2')
-        self.assertAsRevisionId('alt_r2', 'branch:tree2')
+        self.assertAsRevisionId(b'alt_r2', 'branch:tree2')
 
 
 class TestRevisionSpec_mainline(TestRevisionSpec):
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId('r1', 'mainline:1')
-        self.assertAsRevisionId('r2', 'mainline:1.1.1')
-        self.assertAsRevisionId('r2', 'mainline:revid:alt_r2')
+        self.assertAsRevisionId(b'r1', 'mainline:1')
+        self.assertAsRevisionId(b'r2', 'mainline:1.1.1')
+        self.assertAsRevisionId(b'r2', 'mainline:revid:alt_r2')
         spec = RevisionSpec.from_string('mainline:revid:alt_r22')
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
@@ -681,7 +681,7 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
             " branch: ")
 
     def test_in_history(self):
-        self.assertInHistoryIs(2, 'r2', 'mainline:revid:alt_r2')
+        self.assertInHistoryIs(2, b'r2', 'mainline:revid:alt_r2')
 
 
 class TestRevisionSpec_annotate(TestRevisionSpec):
@@ -697,10 +697,10 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
         self.build_tree_contents([('annotate-tree/file1', b'2\n1\n3\n')])
 
     def test_as_revision_id_r1(self):
-        self.assertAsRevisionId('r1', 'annotate:annotate-tree/file1:2')
+        self.assertAsRevisionId(b'r1', 'annotate:annotate-tree/file1:2')
 
     def test_as_revision_id_r2(self):
-        self.assertAsRevisionId('r2', 'annotate:annotate-tree/file1:1')
+        self.assertAsRevisionId(b'r2', 'annotate:annotate-tree/file1:1')
 
     def test_as_revision_id_uncommitted(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:3')

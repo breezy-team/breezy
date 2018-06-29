@@ -236,7 +236,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
-        self.assertTrue(repo.has_revision('1'))
+        self.assertTrue(repo.has_revision(b'1'))
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -302,7 +302,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
-        self.assertTrue(repo.has_revision('1'))
+        self.assertTrue(repo.has_revision(b'1'))
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -430,7 +430,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
-        self.assertTrue(repo.has_revision('1'))
+        self.assertTrue(repo.has_revision(b'1'))
         try:
             self.assertTrue(
                 _mod_revision.is_null(_mod_revision.ensure_null(
@@ -458,7 +458,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             inventory_f = file(local_inventory, 'rb')
             self.addCleanup(inventory_f.close)
             self.assertContainsRe(inventory_f.read(),
-                                  '<inventory format="5">\n</inventory>\n')
+                                  b'<inventory format="5">\n</inventory>\n')
         except IOError as e:
             if e.errno != errno.ENOENT:
                 raise

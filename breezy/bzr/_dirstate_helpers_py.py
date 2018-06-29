@@ -270,9 +270,9 @@ def _read_dirblocks(state):
             next()
         # The two blocks here are deliberate: the root block and the
         # contents-of-root block.
-        state._dirblocks = [('', []), ('', [])]
+        state._dirblocks = [(b'', []), (b'', [])]
         current_block = state._dirblocks[0][1]
-        current_dirname = ''
+        current_dirname = b''
         append_entry = current_block.append
         for count in range(state._num_entries):
             dirname = next()

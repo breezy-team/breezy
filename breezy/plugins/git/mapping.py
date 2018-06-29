@@ -40,6 +40,7 @@ from ...foreign import (
 from ...revision import (
     NULL_REVISION,
     )
+from ...sixish import text_type
 from .errors import (
     NoPushSupport,
     UnknownCommitExtra,
@@ -159,7 +160,7 @@ class BzrGitMapping(foreign.VcsMapping):
         # We must just hope they are valid UTF-8..
         if path == "":
             return ROOT_ID
-        if type(path) is unicode:
+        if isinstance(path, text_type):
             path = path.encode("utf-8")
         return FILE_ID_PREFIX + escape_file_id(path)
 
@@ -336,7 +337,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 commit.message = inject_bzr_metadata(commit.message, metadata,
                                                      encoding)
             else:
-                raise NoPushSupport()
+                raise NoPushSupport(None, None, self, revision_id=rev.revision_id)
         if type(commit.message) is not str:
             raise TypeError(commit.message)
         i = 0
@@ -553,7 +554,7 @@ default_mapping = mapping_registry.get_default()()
 def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
-    if type(symlink_target) == unicode:
+    if isinstance(symlink_target, text_type):
         symlink_target = symlink_target.encode('utf-8')
     blob.data = symlink_target
     return blob

@@ -44,6 +44,7 @@ from . import (
     )
 from .inter import InterObject
 from .sixish import (
+    text_type,
     viewvalues,
     )
 
@@ -657,12 +658,10 @@ class Tree(object):
                 force_mtime=None):
         """Create an archive of this tree.
 
-        :param name: target file name
         :param format: Format name (e.g. 'tar')
+        :param name: target file name
         :param root: Root directory name (or None)
         :param subdir: Subdirectory to export (or None)
-        :param per_file_timestamps: Whether to set the timestamp
-            for each file to the last changed time.
         :return: Iterator over archive chunks
         """
         from .archive import create_archive
@@ -1165,10 +1164,10 @@ class MultiWalker(object):
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
-        if not isinstance(path1, unicode):
+        if not isinstance(path1, text_type):
             raise TypeError("'path1' must be a unicode string, not %s: %r"
                             % (type(path1), path1))
-        if not isinstance(path2, unicode):
+        if not isinstance(path2, text_type):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
         return cmp(MultiWalker._path_to_key(path1),

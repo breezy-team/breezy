@@ -346,9 +346,8 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
     if elt.tag != 'inventory':
         raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
     format = elt.get('format')
-    if format is not None:
-        format = format.encode()
-    if format != format_num:
+    if ((format is None and format_num is not None)
+            or format.encode() != format_num):
         raise errors.UnexpectedInventoryFormat('Invalid format version %r'
                                                % format)
     revision_id = elt.get('revision_id')

@@ -38,6 +38,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from . import (
     features,
@@ -405,7 +406,7 @@ class TestDateTime(tests.TestCase):
         self.assertRaises(osutils.UnsupportedTimezoneFormat,
             osutils.format_date, 0, timezone='foo')
         self.assertIsInstance(osutils.format_date(0), str)
-        self.assertIsInstance(osutils.format_local_date(0), unicode)
+        self.assertIsInstance(osutils.format_local_date(0), text_type)
         # Testing for the actual value of the local weekday without
         # duplicating the code from format_date is difficult.
         # Instead blackbox.test_locale should check for localized
@@ -1397,11 +1398,11 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # all abspaths are Unicode, and encode them back into utf8.
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
             self.assertIsInstance(dirdetail[0], str)
-            if isinstance(dirdetail[1], unicode):
+            if isinstance(dirdetail[1], text_type):
                 dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
                 dirblock = [list(info) for info in dirblock]
                 for info in dirblock:
-                    self.assertIsInstance(info[4], unicode)
+                    self.assertIsInstance(info[4], text_type)
                     info[4] = info[4].encode('utf8')
             new_dirblock = []
             for info in dirblock:
@@ -2137,13 +2138,13 @@ class TestPathFromEnviron(tests.TestCase):
     def test_is_unicode(self):
         self.overrideEnv('BRZ_TEST_PATH', './anywhere at all/')
         path = osutils.path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(path, unicode)
+        self.assertIsInstance(path, text_type)
         self.assertEqual(u'./anywhere at all/', path)
 
     def test_posix_path_env_ascii(self):
         self.overrideEnv('BRZ_TEST_PATH', '/tmp')
         home = osutils._posix_path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
         self.assertEqual(u'/tmp', home)
 
     def test_posix_path_env_unicode(self):
@@ -2164,17 +2165,17 @@ class TestGetHomeDir(tests.TestCase):
 
     def test_is_unicode(self):
         home = osutils._get_home_dir()
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
 
     def test_posix_homeless(self):
         self.overrideEnv('HOME', None)
         home = osutils._get_home_dir()
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
 
     def test_posix_home_ascii(self):
         self.overrideEnv('HOME', '/home/test')
         home = osutils._posix_get_home_dir()
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
         self.assertEqual(u'/home/test', home)
 
     def test_posix_home_unicode(self):
@@ -2193,7 +2194,7 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_is_unicode(self):
         user = osutils.getuser_unicode()
-        self.assertIsInstance(user, unicode)
+        self.assertIsInstance(user, text_type)
 
     def envvar_to_override(self):
         if sys.platform == "win32":
