@@ -1804,7 +1804,7 @@ class TestGraphIndexKnit(KnitTests):
         graph_index = self.make_g_index('missing_parent', 2,
             [((b'parent', ), b' 100 78', ([], [])),
              ((b'tip', ), b' 100 78',
-              ([(b'parent', ), ('missing-parent', )], [(b'parent', )])),
+              ([(b'parent', ), (b'missing-parent', )], [(b'parent', )])),
               ])
         return graph_index
 

@@ -648,7 +648,7 @@ class KnitPacker(Packer):
                 # ---- KnitGraphIndex.get_position
                 bits = value[1:].split(' ')
                 offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append((offset, length, (key, value[0])))
+                pack_readv_requests.append((offset, length, (key, value[0:1])))
             # linear scan up the pack
             pack_readv_requests.sort()
             # copy the data
@@ -934,7 +934,7 @@ class KnitPacker(Packer):
                 bits = value[1:].split(b' ')
                 offset, length = int(bits[0]), int(bits[1])
                 pack_readv_requests.append(
-                    ((offset, length), (key, value[0], references)))
+                    ((offset, length), (key, value[0:1], references)))
             # linear scan up the pack to maximum range combining.
             pack_readv_requests.sort()
             # split out the readv and the node data.
@@ -1121,10 +1121,10 @@ class OptimisingKnitPacker(KnitPacker):
         for key in reversed(order):
             index, value, references = by_key[key]
             # ---- KnitGraphIndex.get_position
-            bits = value[1:].split(' ')
+            bits = value[1:].split(b' ')
             offset, length = int(bits[0]), int(bits[1])
             requests.append(
-                (index, [(offset, length)], [(key, value[0], references)]))
+                (index, [(offset, length)], [(key, value[0:1], references)]))
         # TODO: combine requests in the same index that are in ascending order.
         return total, requests
 
