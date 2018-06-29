@@ -848,7 +848,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(
     tests.TestCaseWithMemoryTransport):
 
     def test_empty(self):
-        """For an empty branch, the result is ('ok', '0', 'null:')."""
+        """For an empty branch, the result is ('ok', '0', b'null:')."""
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLastRevisionInfo(backing)
         self.make_branch('.')
@@ -856,7 +856,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(
             request.execute(b''))
 
     def test_ghost(self):
-        """For an empty branch, the result is ('ok', '0', 'null:')."""
+        """For an empty branch, the result is ('ok', '0', b'null:')."""
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLastRevisionInfo(backing)
         branch = self.make_branch('.')
@@ -1104,7 +1104,7 @@ class TestSetLastRevisionVerbMixin(object):
     """Mixin test case for verbs that implement set_last_revision."""
 
     def test_set_null_to_null(self):
-        """An empty branch can have its last revision set to 'null:'."""
+        """An empty branch can have its last revision set to b'null:'."""
         self.assertRequestSucceeds(b'null:', 0)
 
     def test_NoSuchRevision(self):

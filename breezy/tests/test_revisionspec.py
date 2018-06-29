@@ -209,36 +209,36 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
 class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_positive_int(self):
-        self.assertInHistoryIs(0, 'null:', '0')
-        self.assertInHistoryIs(1, 'r1', '1')
-        self.assertInHistoryIs(2, 'r2', '2')
+        self.assertInHistoryIs(0, b'null:', '0')
+        self.assertInHistoryIs(1, b'r1', '1')
+        self.assertInHistoryIs(2, b'r2', '2')
         self.assertInvalid('3')
 
     def test_dotted_decimal(self):
-        self.assertInHistoryIs(None, 'alt_r2', '1.1.1')
+        self.assertInHistoryIs(None, b'alt_r2', '1.1.1')
         self.assertInvalid('1.1.123')
 
     def test_negative_int(self):
-        self.assertInHistoryIs(2, 'r2', '-1')
-        self.assertInHistoryIs(1, 'r1', '-2')
+        self.assertInHistoryIs(2, b'r2', '-1')
+        self.assertInHistoryIs(1, b'r1', '-2')
 
-        self.assertInHistoryIs(1, 'r1', '-3')
-        self.assertInHistoryIs(1, 'r1', '-4')
-        self.assertInHistoryIs(1, 'r1', '-100')
+        self.assertInHistoryIs(1, b'r1', '-3')
+        self.assertInHistoryIs(1, b'r1', '-4')
+        self.assertInHistoryIs(1, b'r1', '-100')
 
     def test_positive(self):
-        self.assertInHistoryIs(0, 'null:', 'revno:0')
-        self.assertInHistoryIs(1, 'r1', 'revno:1')
-        self.assertInHistoryIs(2, 'r2', 'revno:2')
+        self.assertInHistoryIs(0, b'null:', 'revno:0')
+        self.assertInHistoryIs(1, b'r1', 'revno:1')
+        self.assertInHistoryIs(2, b'r2', 'revno:2')
 
         self.assertInvalid('revno:3')
 
     def test_negative(self):
-        self.assertInHistoryIs(2, 'r2', 'revno:-1')
-        self.assertInHistoryIs(1, 'r1', 'revno:-2')
+        self.assertInHistoryIs(2, b'r2', 'revno:-1')
+        self.assertInHistoryIs(1, b'r1', 'revno:-2')
 
-        self.assertInHistoryIs(1, 'r1', 'revno:-3')
-        self.assertInHistoryIs(1, 'r1', 'revno:-4')
+        self.assertInHistoryIs(1, b'r1', 'revno:-3')
+        self.assertInHistoryIs(1, b'r1', 'revno:-4')
 
     def test_invalid_number(self):
         # Get the right exception text

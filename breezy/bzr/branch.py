@@ -89,7 +89,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._user_transport = self.controldir.transport.clone('..')
         if name != u"":
             self._user_transport.set_segment_parameter(
-                "branch", urlutils.escape(name).encode('utf-8'))
+                "branch", urlutils.escape(name))
         self._base = self._user_transport.base
         self.name = name
         self._format = _format

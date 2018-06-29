@@ -106,7 +106,7 @@ class TestMerge(TestCaseWithTransport):
         br1.fetch(wt2.branch)
         # merge all of branch 2 into branch 1 even though they
         # are not related.
-        wt1.merge_from_branch(wt2.branch, wt2.last_revision(), 'null:')
+        wt1.merge_from_branch(wt2.branch, wt2.last_revision(), b'null:')
         self.assertEqual([br1.last_revision(), wt2.branch.last_revision()],
             wt1.get_parent_ids())
         return (wt1, wt2.branch)

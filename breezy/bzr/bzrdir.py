@@ -835,7 +835,7 @@ class BzrDirMeta1(BzrDir):
     def _read_branch_list(self):
         """Read the branch list.
 
-        :return: List of utf-8 encoded branch names.
+        :return: List of branch names.
         """
         try:
             f = self.control_transport.get('branch-list')
@@ -845,7 +845,7 @@ class BzrDirMeta1(BzrDir):
         ret = []
         try:
             for name in f:
-                ret.append(name.rstrip(b"\n"))
+                ret.append(name.rstrip(b"\n").decode('utf-8'))
         finally:
             f.close()
         return ret
@@ -856,7 +856,7 @@ class BzrDirMeta1(BzrDir):
         :param branches: List of utf-8 branch names to write
         """
         self.transport.put_bytes('branch-list',
-            "".join([name+"\n" for name in branches]))
+            b"".join([name.encode('utf-8')+b"\n" for name in branches]))
 
     def __init__(self, _transport, _format):
         super(BzrDirMeta1, self).__init__(_transport, _format)
@@ -882,12 +882,12 @@ class BzrDirMeta1(BzrDir):
         if name is None:
             name = self._get_selected_branch()
         path = self._get_branch_path(name)
-        if name != "":
+        if name != u"":
             self.control_files.lock_write()
             try:
                 branches = self._read_branch_list()
                 try:
-                    branches.remove(name.encode("utf-8"))
+                    branches.remove(name)
                 except ValueError:
                     raise errors.NotBranchError(name)
                 self._write_branch_list(branches)
@@ -973,19 +973,18 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(branch_format, self._format)
         if name != "":
             branches = self._read_branch_list()
-            utf8_name = name.encode("utf-8")
-            if not utf8_name in branches:
+            if not name in branches:
                 self.control_files.lock_write()
                 try:
                     branches = self._read_branch_list()
-                    dirname = urlutils.dirname(utf8_name)
-                    if dirname != "" and dirname in branches:
+                    dirname = urlutils.dirname(name)
+                    if dirname != u"" and dirname in branches:
                         raise errors.ParentBranchExists(name)
                     child_branches = [
-                        b.startswith(utf8_name+"/") for b in branches]
+                        b.startswith(name+u"/") for b in branches]
                     if any(child_branches):
                         raise errors.AlreadyBranchError(name)
-                    branches.append(utf8_name)
+                    branches.append(name)
                     self._write_branch_list(branches)
                 finally:
                     self.control_files.unlock()

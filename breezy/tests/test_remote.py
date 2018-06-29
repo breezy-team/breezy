@@ -2665,9 +2665,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # Query for b'first' and b'null:'.  Because b'null:' is a parent of
         # 'first' it will be a candidate for the stop_keys of subsequent
-        # requests, and because 'null:' was queried but not returned it will be
+        # requests, and because b'null:' was queried but not returned it will be
         # cached as missing.
         self.assertEqual({b'first': (b'null:',)},
             graph.get_parent_map([b'first', b'null:']))

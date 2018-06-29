@@ -760,9 +760,8 @@ class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
         sio = BytesIO()
-        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
-        gz_file.write(text)
-        gz_file.close()
+        with gzip.GzipFile(mode='wb', fileobj=sio) as gz_file:
+            gz_file.write(text)
         return sio.getvalue()
 
     def make_multiple_records(self):

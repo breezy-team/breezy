@@ -50,7 +50,7 @@ def create_bundle_file(test_case):
 
     out = BytesIO()
     rev_ids = write_bundle(wt.branch.repository,
-                           wt.get_parent_ids()[0], 'null:', out)
+                           wt.get_parent_ids()[0], b'null:', out)
     out.seek(0)
     return out, wt
 

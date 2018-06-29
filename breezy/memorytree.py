@@ -317,7 +317,7 @@ class MemoryTree(MutableInventoryTree):
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
-            if parents_list[0][1] is None or parents_list[0][1] == 'null:':
+            if parents_list[0][1] is None or parents_list[0][1] == b'null:':
                 self._basis_tree = self.branch.repository.revision_tree(
                                        _mod_revision.NULL_REVISION)
             else:
