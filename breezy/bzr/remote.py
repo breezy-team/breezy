@@ -2867,16 +2867,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         try:
             response, handler = self._call_expecting_body(
                 b'Repository.annotate_file_revision', path,
-                revid,
-                tree_path,
-                file_id,
-                default_revision)
+                revid, tree_path, file_id, default_revision)
         except errors.UnknownSmartMethod:
             return None
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        return ((revid, line)
-                for (revid, line) in bencode.bdecode(handler.read_body_bytes()))
+        return iter(bencode.bdecode(handler.read_body_bytes()))
 
 
 class RemoteStreamSink(vf_repository.StreamSink):
