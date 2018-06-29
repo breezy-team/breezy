@@ -805,6 +805,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             if file_id is None:
                 file_id = self.path2id(path)
+            if file_id is None:
+                raise errors.NoSuchFile(path)
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
                 try:
