@@ -27,9 +27,9 @@ def main():
         for n in parse_enumeration(output):
             testids.append('python2.' + n)
 
-        output = subprocess.checkout_output(
+        output = subprocess.check_output(
             ['python3', './brz', 'selftest', '--subunit2', '--list'])
-        for n in parse_enumeration(f.read()):
+        for n in parse_enumeration(output):
             testids.append('python3.' + n)
         stream = StreamResultToBytes(sys.stdout)
         for testid in testids:
