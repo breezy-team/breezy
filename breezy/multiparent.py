@@ -202,21 +202,22 @@ class MultiParent(object):
         line_iter = iter(lines)
         hunks = []
         cur_line = None
-        while(True):
+        while True:
             try:
                 cur_line = next(line_iter)
             except StopIteration:
                 break
-            if cur_line[0:1] == b'i':
+            first_char = cur_line[0:1]
+            if first_char == b'i':
                 num_lines = int(cur_line.split(b' ')[1])
                 hunk_lines = [next(line_iter) for _ in range(num_lines)]
                 hunk_lines[-1] = hunk_lines[-1][:-1]
                 hunks.append(NewText(hunk_lines))
-            elif cur_line[0:1] == b'\n':
+            elif first_char == b'\n':
                 hunks[-1].lines[-1] += b'\n'
             else:
-                if not (cur_line[0:1] == b'c'):
-                    raise AssertionError(cur_line[0:1])
+                if not (first_char == b'c'):
+                    raise AssertionError(first_char)
                 parent, parent_pos, child_pos, num_lines =\
                     [int(v) for v in cur_line.split(b' ')[1:]]
                 hunks.append(ParentText(parent, parent_pos, child_pos,
