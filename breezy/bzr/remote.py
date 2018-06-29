@@ -61,6 +61,7 @@ from .inventorytree import InventoryRevisionTree
 from ..lockable_files import LockableFiles
 from ..sixish import (
     get_unbound_function,
+    map,
     text_type,
     viewitems,
     viewvalues,
@@ -2872,7 +2873,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return None
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        return iter(bencode.bdecode(handler.read_body_bytes()))
+        return map(tuple, bencode.bdecode(handler.read_body_bytes()))
 
 
 class RemoteStreamSink(vf_repository.StreamSink):
