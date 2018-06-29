@@ -2735,3 +2735,21 @@ class TestSmartServerRepositoryRevisionArchive(tests.TestCaseWithTransport):
         b = BytesIO(b"".join(response.body_stream))
         with tarfile.open(mode='r', fileobj=b) as tf:
             self.assertEqual(['foo/file'], tf.getnames())
+
+
+class TestSmartServerRepositoryAnnotateFileRevision(tests.TestCaseWithTransport):
+
+    def test_get(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAnnotateFileRevision(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", b"somecontents\nmorecontents\n")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
+        response = request.execute(b'', b"somerev", b"file")
+        self.assertTrue(response.is_successful())
+        self.assertEqual(response.args, (b"ok", ))
+        self.assertEqual(
+                [['somerev', 'somecontents\n'], ['somerev', 'morecontents\n']],
+                bencode.bdecode(response.body))
