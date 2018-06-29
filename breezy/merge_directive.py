@@ -225,7 +225,7 @@ class BaseMergeDirective(object):
             revno = [revno]
         else:
             try:
-                revno = branch.revision_id_to_revno(revision_id)
+                revno = branch.revision_id_to_dotted_revno(self.revision_id)
             except errors.NoSuchRevision:
                 revno = ['merge']
         nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
