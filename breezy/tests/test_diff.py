@@ -469,10 +469,10 @@ class TestDiffDates(tests.TestCaseWithTransport):
         new_tree = self.b.repository.revision_tree(b'rev-4')
         out = get_diff_as_string(old_tree, new_tree, specific_files=['dir1'],
                             working_tree=self.wt)
-        self.assertContainsRe(out, 'file1\t')
+        self.assertContainsRe(out, b'file1\t')
         out = get_diff_as_string(old_tree, new_tree, specific_files=['dir2'],
                             working_tree=self.wt)
-        self.assertNotContainsRe(out, 'file1\t')
+        self.assertNotContainsRe(out, b'file1\t')
 
 
 class TestShowDiffTrees(tests.TestCaseWithTransport):

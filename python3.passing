@@ -625,6 +625,8 @@ breezy.tests.blackbox.test_branch.TestBranch.test_branch_into_empty_dir
 breezy.tests.blackbox.test_branch.TestBranch.test_branch_no_to_location
 breezy.tests.blackbox.test_branch.TestBranch.test_branch_no_tree
 breezy.tests.blackbox.test_branch.TestBranch.test_branch_standalone
+breezy.tests.blackbox.test_branch.TestBranch.test_branch_switch_checkout
+breezy.tests.blackbox.test_branch.TestBranch.test_branch_switch_lightweight_checkout
 breezy.tests.blackbox.test_branch.TestBranch.test_branch_with_post_branch_init_hook
 breezy.tests.blackbox.test_branch.TestBranch.test_checkout_with_post_branch_init_hook
 breezy.tests.blackbox.test_branch.TestBranch.test_from_colocated
@@ -679,12 +681,15 @@ breezy.tests.blackbox.test_config.TestSmartServerConfig.test_simple_branch_confi
 breezy.tests.blackbox.test_config.TestWithoutConfig.test_config_all
 breezy.tests.blackbox.test_conflicts.TestUnicodePathsOnAsciiTerminal.test_messages
 breezy.tests.blackbox.test_conflicts.TestUnicodePathsOnAsciiTerminal.test_text_conflict_paths
+breezy.tests.blackbox.test_debug.TestDebugBytes.test_bytes_reports_activity
 breezy.tests.blackbox.test_debug.TestDebugOption.test_dash_dlock
 breezy.tests.blackbox.test_diff.TestExternalDiff.test_external_diff_options_and_using
 breezy.tests.blackbox.test_exceptions.TestDeprecationWarning.test_repository_deprecation_warning
 breezy.tests.blackbox.test_exceptions.TestDeprecationWarning.test_repository_deprecation_warning_suppressed_branch
 breezy.tests.blackbox.test_exceptions.TestDeprecationWarning.test_repository_deprecation_warning_suppressed_global
 breezy.tests.blackbox.test_exceptions.TestDeprecationWarning.test_repository_deprecation_warning_suppressed_locations
+breezy.tests.blackbox.test_export_pot.TestExportPot.test_export_pot
+breezy.tests.blackbox.test_export_pot.TestExportPot.test_export_pot_plugin
 breezy.tests.blackbox.test_fetch_ghosts.TestFetchGhosts.test_fetch_ghosts_more
 breezy.tests.blackbox.test_filesystem_cicp.TestAdd.test_add_implied
 breezy.tests.blackbox.test_filesystem_cicp.TestAdd.test_add_not_found
@@ -765,8 +770,10 @@ breezy.tests.blackbox.test_log.TestLogVerbose.test_log_long_verbose_verbose
 breezy.tests.blackbox.test_log.TestLogVerbose.test_log_short_verbose
 breezy.tests.blackbox.test_log.TestLogVerbose.test_log_short_verbose_verbose
 breezy.tests.blackbox.test_log.TestLogVerbose.test_log_s_verbose
+breezy.tests.blackbox.test_lsprof.TestLSProf.test_file
 breezy.tests.blackbox.test_ls.TestLS.test_ls_revision
 breezy.tests.blackbox.test_merge.TestMerge.test_merge_criss_cross
+breezy.tests.blackbox.test_merge.TestMerge.test_merge_from_submit
 breezy.tests.blackbox.test_merge.TestMerge.test_merge_interactive_unlocks_branch
 breezy.tests.blackbox.test_merge.TestMerge.test_merge_missing_second_revision_spec
 breezy.tests.blackbox.test_merge.TestMerge.test_merge_pull
@@ -827,6 +834,15 @@ breezy.tests.blackbox.test_pull.TestPull.test_pull_verbose_defaults_to_long
 breezy.tests.blackbox.test_pull.TestPull.test_pull_verbose_no_files
 breezy.tests.blackbox.test_pull.TestPull.test_pull_verbose_uses_default_log
 breezy.tests.blackbox.test_push.TestPushRedirect.test_push_redirects_on_mkdir
+breezy.tests.blackbox.test_push.TestPushStrictWithChanges.test_push_bogus_config_var_ignored(uncommitted)
+breezy.tests.blackbox.test_push.TestPushStrictWithChanges.test_push_default(uncommitted)
+breezy.tests.blackbox.test_push.TestPushStrictWithChanges.test_push_no_strict(out-of-sync-trees)
+breezy.tests.blackbox.test_push.TestPushStrictWithChanges.test_push_no_strict(uncommitted)
+breezy.tests.blackbox.test_push.TestPushStrictWithoutChanges.test_push_config_var_no_strict
+breezy.tests.blackbox.test_push.TestPushStrictWithoutChanges.test_push_config_var_strict
+breezy.tests.blackbox.test_push.TestPushStrictWithoutChanges.test_push_default
+breezy.tests.blackbox.test_push.TestPushStrictWithoutChanges.test_push_no_strict
+breezy.tests.blackbox.test_push.TestPushStrictWithoutChanges.test_push_strict
 breezy.tests.blackbox.test_push.TestPush.test_push_dash_d
 breezy.tests.blackbox.test_push.TestPush.test_push_does_not_change_format_with_default_if_target_cannot
 breezy.tests.blackbox.test_push.TestPush.test_push_new_branch_revision_count
@@ -942,6 +958,7 @@ breezy.tests.blackbox.test_switch.TestSwitch.test_switch_out_of_date_light_check
 breezy.tests.blackbox.test_switch.TestSwitch.test_switch_up_to_date_light_checkout
 breezy.tests.blackbox.test_switch.TestSwitch.test_switch_with_post_switch_hook
 breezy.tests.blackbox.test_switch.TestSwitchUncommitted.test_does_not_store
+breezy.tests.blackbox.test_tags.TestTagging.test_automatic_tag_name
 breezy.tests.blackbox.test_tags.TestTagging.test_branch_push_pull_merge_copies_tags
 breezy.tests.blackbox.test_tags.TestTagging.test_conflicting_tags
 breezy.tests.blackbox.test_tags.TestTagging.test_list_tags_dotted_revnos_unsupported
@@ -963,6 +980,7 @@ breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_check
 breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_log
 breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_push
 breezy.tests.blackbox.test_too_much.TestCommands.test_status
+breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_bound
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_bound_local
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_keep_tags
@@ -972,6 +990,7 @@ breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_no_history
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_nonascii
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_pending_merge
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_removes_tags
+breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit_revision
 breezy.tests.blackbox.test_unknowns.TestUnknowns.test_unknowns_directory
 breezy.tests.blackbox.test_update.TestUpdate.test_readonly_lightweight_update
 breezy.tests.blackbox.test_update.TestUpdate.test_update_quiet
@@ -983,6 +1002,7 @@ breezy.tests.blackbox.test_upgrade.TestWithUpgradableBranches.test_upgrade_dry_r
 breezy.tests.blackbox.test_upgrade.TestWithUpgradableBranches.test_upgrade_permission_check
 breezy.tests.blackbox.test_upgrade.TestWithUpgradableBranches.test_upgrade_repo
 breezy.tests.blackbox.test_upgrade.TestWithUpgradableBranches.test_upgrade_repository_scans_branches
+breezy.tests.blackbox.test_upgrade.UpgradeRecommendedTests.test_recommend_upgrade_wt4
 breezy.tests.blackbox.test_upgrade.UpgradeRecommendedTests.test_upgrade_shared_repo
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_basic
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_no_branch

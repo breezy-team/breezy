@@ -113,7 +113,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
         err = self.run_send(['--remember'], rc=3)[1]
         self.assertContainsRe(err,
-                              '--remember requires a branch to be specified.')
+                              b'--remember requires a branch to be specified.')
 
     def test_revision_branch_interaction(self):
         self.assertBundleContains(['rev3', 'rev2'], ['../grandparent'])
@@ -288,10 +288,10 @@ class TestSendStrictMixin(TestSendMixin):
     _default_command = ['send', '-o-', '../parent']
     _default_wd = 'local'
     _default_sent_revs = ['local']
-    _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \\(See brz status\\)\\.',]
-    _default_additional_error = 'Use --no-strict to force the send.\n'
-    _default_additional_warning = 'Uncommitted changes will not be sent.'
+    _default_errors = [b'Working tree ".*/local/" has uncommitted '
+                       b'changes \\(See brz status\\)\\.',]
+    _default_additional_error = b'Use --no-strict to force the send.\n'
+    _default_additional_warning = b'Uncommitted changes will not be sent.'
 
     def set_config_send_strict(self, value):
         br = branch.Branch.open('local')

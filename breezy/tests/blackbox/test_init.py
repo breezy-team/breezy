@@ -128,7 +128,7 @@ Using shared repository: %s
     def test_init_existing_branch(self):
         self.run_bzr('init')
         out, err = self.run_bzr('init', retcode=3)
-        self.assertContainsRe(err, 'Already a branch')
+        self.assertContainsRe(err, b'Already a branch')
         # don't suggest making a checkout, there's already a working tree
         self.assertFalse(re.search(br'checkout', err))
 

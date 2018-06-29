@@ -185,7 +185,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(a.last_revision(), b.last_revision())
         work = WorkingTree.open('current')
         self.assertEndsWith(work.branch.get_bound_location(), '/b/')
-        self.assertContainsRe(err, "Switched to branch: .*/b/")
+        self.assertContainsRe(err, b"Switched to branch: .*/b/")
 
     def test_branch_switch_lightweight_checkout(self):
         # Lightweight checkout in the current directory:
@@ -200,7 +200,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(a.last_revision(), b.last_revision())
         work = WorkingTree.open('current')
         self.assertEndsWith(work.branch.base, '/b/')
-        self.assertContainsRe(err, "Switched to branch: .*/b/")
+        self.assertContainsRe(err, b"Switched to branch: .*/b/")
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.
