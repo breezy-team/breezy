@@ -304,7 +304,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         tree = self.workingtree_to_test_tree(tree)
 
         revision_id = u'r\xe9v-1'.encode('utf8')
-        root_id = 'TREE_ROOT'
+        root_id = b'TREE_ROOT'
         bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
         foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
         baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
@@ -369,7 +369,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         revision_id_1 = u'r\xe9v-1'.encode('utf8')
         revision_id_2 = u'r\xe9v-2'.encode('utf8')
-        root_id = 'TREE_ROOT'
+        root_id = b'TREE_ROOT'
         bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
         foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
         baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')

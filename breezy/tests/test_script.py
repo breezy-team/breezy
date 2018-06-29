@@ -317,18 +317,18 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.build_tree_contents([('file', b'content\n')])
         retcode, out, err = self.run_command(['cat', 'file'],
                                              None, 'content\n', None)
-        self.assertEqual('content\n', out)
+        self.assertEqual(b'content\n', out)
         self.assertEqual(None, err)
 
     def test_cat_input_to_file(self):
         retcode, out, err = self.run_command(['cat', '>file'],
                                              'content\n', None, None)
-        self.assertFileEqual('content\n', 'file')
+        self.assertFileEqual(b'content\n', 'file')
         self.assertEqual(None, out)
         self.assertEqual(None, err)
         retcode, out, err = self.run_command(['cat', '>>file'],
                                              'more\n', None, None)
-        self.assertFileEqual('content\nmore\n', 'file')
+        self.assertFileEqual(b'content\nmore\n', 'file')
         self.assertEqual(None, out)
         self.assertEqual(None, err)
 
@@ -336,14 +336,14 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.build_tree_contents([('file', b'content\n')])
         retcode, out, err = self.run_command(['cat', 'file', '>file2'],
                                              None, None, None)
-        self.assertFileEqual('content\n', 'file2')
+        self.assertFileEqual(b'content\n', 'file2')
 
     def test_cat_files_to_file(self):
         self.build_tree_contents([('cat', b'cat\n')])
         self.build_tree_contents([('dog', b'dog\n')])
         retcode, out, err = self.run_command(['cat', 'cat', 'dog', '>file'],
                                              None, None, None)
-        self.assertFileEqual('cat\ndog\n', 'file')
+        self.assertFileEqual(b'cat\ndog\n', 'file')
 
     def test_cat_bogus_input_file(self):
         self.run_script("""
@@ -456,12 +456,12 @@ $ echo foo
                                              None, None, None)
         self.assertEqual(None, out)
         self.assertEqual(None, err)
-        self.assertFileEqual('hello\n', 'file')
+        self.assertFileEqual(b'hello\n', 'file')
         retcode, out, err = self.run_command(['echo', 'happy', '>>file'],
                                              None, None, None)
         self.assertEqual(None, out)
         self.assertEqual(None, err)
-        self.assertFileEqual('hello\nhappy\n', 'file')
+        self.assertFileEqual(b'hello\nhappy\n', 'file')
 
     def test_empty_line_in_output_is_respected(self):
         self.run_script("""

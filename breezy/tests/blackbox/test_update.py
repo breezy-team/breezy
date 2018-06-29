@@ -37,32 +37,32 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('update')
         self.assertEqual(
-            'Tree is up to date at revision 0 of branch %s\n' % self.test_dir,
+            b'Tree is up to date at revision 0 of branch %s\n' % self.test_dir,
             err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_update_quiet(self):
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('update --quiet')
-        self.assertEqual('', err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', err)
+        self.assertEqual(b'', out)
 
     def test_update_standalone_trivial_with_alias_up(self):
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('up')
-        self.assertEqual('Tree is up to date at revision 0 of branch %s\n'
+        self.assertEqual(b'Tree is up to date at revision 0 of branch %s\n'
                          % self.test_dir,
                          err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_update_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('checkout --lightweight branch checkout')
         out, err = self.run_bzr('update checkout')
-        self.assertEqual('Tree is up to date at revision 0 of branch %s\n'
+        self.assertEqual(b'Tree is up to date at revision 0 of branch %s\n'
                          % osutils.pathjoin(self.test_dir, 'branch'),
                          err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
@@ -84,8 +84,8 @@ $ brz update checkout
         self.run_bzr('commit -m add-file checkout')
         # now branch should be out of date
         out, err = self.run_bzr('update branch')
-        self.assertEqual('', out)
-        self.assertEqualDiff("""+N  file
+        self.assertEqual(b'', out)
+        self.assertEqualDiff(b"""+N  file
 All changes applied successfully.
 Updated to revision 1 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'branch',),
@@ -102,12 +102,12 @@ Updated to revision 1 of branch %s
         self.run_bzr('commit -m add-file checkout')
         # now checkout2 should be out of date
         out, err = self.run_bzr('update checkout2')
-        self.assertEqualDiff('''+N  file
+        self.assertEqualDiff(b'''+N  file
 All changes applied successfully.
 Updated to revision 1 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'branch',),
                          err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_update_conflicts_returns_2(self):
         self.make_branch_and_tree('branch')
@@ -126,13 +126,13 @@ Updated to revision 1 of branch %s
         with open('checkout2/file', 'wt') as a_file:
             a_file.write('Bar')
         out, err = self.run_bzr('update checkout2', retcode=1)
-        self.assertEqualDiff(''' M  file
+        self.assertEqualDiff(b''' M  file
 Text conflict in file
 1 conflicts encountered.
 Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'branch',),
                          err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_smoke_update_checkout_bound_branch_local_commits(self):
         # smoke test for doing an update of a checkout of a bound
@@ -165,8 +165,8 @@ Updated to revision 2 of branch %s
         # now, update checkout ->
         # get all three files and a pending merge.
         out, err = self.run_bzr('update checkout')
-        self.assertEqual('', out)
-        self.assertEqualDiff("""+N  file_b
+        self.assertEqual(b'', out)
+        self.assertEqualDiff(b"""+N  file_b
 All changes applied successfully.
 +N  file
 All changes applied successfully.
@@ -209,23 +209,23 @@ Your local commits will now show as pending merges with 'brz status', and can be
         os.chdir('checkout1')
         self.run_bzr('merge ../other')
 
-        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+        self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
         # At this point, 'commit' should fail, because we are out of date
-        self.run_bzr_error(["please run 'brz update'"],
+        self.run_bzr_error([b"please run 'brz update'"],
                            'commit -m merged')
 
         # This should not report about local commits being pending
         # merges, because they were real merges
         out, err = self.run_bzr('update')
-        self.assertEqual('', out)
-        self.assertEqualDiff('''+N  file3
+        self.assertEqual(b'', out)
+        self.assertEqualDiff(b'''+N  file3
 All changes applied successfully.
 Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         # The pending merges should still be there
-        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+        self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
     def test_readonly_lightweight_update(self):
         """Update a light checkout of a readonly branch"""
@@ -258,7 +258,7 @@ Updated to revision 2 of branch %s
 
         # Merge the other branch into checkout -  'start reviewing a patch'
         checkout1.merge_from_branch(other.branch)
-        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+        self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
         # Create a new commit in the master branch - 'someone else lands its'
         master.merge_from_branch(other.branch)
@@ -268,8 +268,8 @@ Updated to revision 2 of branch %s
         # merges, because they were real merges (but are now gone).
         # It should perhaps report on them.
         out, err = self.run_bzr('update', working_dir='checkout1')
-        self.assertEqual('', out)
-        self.assertEqualDiff('''All changes applied successfully.
+        self.assertEqual(b'', out)
+        self.assertEqualDiff(b'''All changes applied successfully.
 Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'master',),
                          err)
@@ -319,15 +319,15 @@ $ brz update -r 1
 
         # Switch to o2. file3 was added only in o3 and should be deleted.
         out, err = self.run_bzr('update -r revid:o2')
-        self.assertContainsRe(err, '-D\\s+file3')
-        self.assertContainsRe(err, 'All changes applied successfully\\.')
-        self.assertContainsRe(err, 'Updated to revision 1.1.1 of branch .*')
+        self.assertContainsRe(err, b'-D\\s+file3')
+        self.assertContainsRe(err, b'All changes applied successfully\\.')
+        self.assertContainsRe(err, b'Updated to revision 1.1.1 of branch .*')
 
         # Switch back to latest
         out, err = self.run_bzr('update')
-        self.assertContainsRe(err, '\\+N\\s+file3')
-        self.assertContainsRe(err, 'All changes applied successfully\\.')
-        self.assertContainsRe(err, 'Updated to revision 2 of branch .*')
+        self.assertContainsRe(err, b'\\+N\\s+file3')
+        self.assertContainsRe(err, b'All changes applied successfully\\.')
+        self.assertContainsRe(err, b'Updated to revision 2 of branch .*')
 
     def test_update_dash_r_in_master(self):
         # Test that 'brz update' works correctly when you have
@@ -380,12 +380,12 @@ $ brz update -r revid:m2
 
         # check for conflict notification
         self.assertContainsString(err,
-                                  ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+                                  b' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
         
-        self.assertEqualDiff('<<<<<<< TREE\n'
-                             'fie||||||| BASE-REVISION\n'
-                             'foo=======\n'
-                             'fee>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'<<<<<<< TREE\n'
+                             b'fie||||||| BASE-REVISION\n'
+                             b'foo=======\n'
+                             b'fee>>>>>>> MERGE-SOURCE\n',
                              open('hello').read())
 
     def test_update_checkout_prevent_double_merge(self):
@@ -418,9 +418,9 @@ $ brz update -r revid:m2
 
         # now update (and get conflicts)
         out, err = self.run_bzr('update lightweight', retcode=1)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
         # NB: these conflicts are actually in the source code
-        self.assertFileEqual('''\
+        self.assertFileEqual(b'''\
 <<<<<<< TREE
 lightweight local changes
 =======
@@ -436,9 +436,9 @@ checkout
 
         # check we get the second conflict
         out, err = self.run_bzr('update lightweight', retcode=1)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
         # NB: these conflicts are actually in the source code
-        self.assertFileEqual('''\
+        self.assertFileEqual(b'''\
 <<<<<<< TREE
 lightweight+checkout
 =======

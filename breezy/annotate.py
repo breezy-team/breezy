@@ -198,7 +198,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
             repository.iter_revisions(revision_ids)
             if entry[1] is not None)
     for origin, text in annotations:
-        text = text.rstrip('\r\n')
+        text = text.rstrip(b'\r\n')
         if origin == last_origin:
             (revno_str, author, date_str) = ('', '', '')
         else:

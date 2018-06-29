@@ -35,9 +35,9 @@ class TestTestScript(tests.TestCaseInTempDir):
         self.build_tree_contents([('script', b'')])
         out, err = self.run_bzr(['test-script', 'script'])
         out_lines = out.splitlines()
-        self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEqual('OK', out_lines[-1])
-        self.assertEqual('', err)
+        self.assertStartsWith(out_lines[-3], b'Ran 1 test in ')
+        self.assertEqual(b'OK', out_lines[-1])
+        self.assertEqual(b'', err)
 
     def test_simple_file(self):
         self.build_tree_contents([('script', b'''
@@ -46,9 +46,9 @@ hello world
 ''')])
         out, err = self.run_bzr(['test-script', 'script'])
         out_lines = out.splitlines()
-        self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEqual('OK', out_lines[-1])
-        self.assertEqual('', err)
+        self.assertStartsWith(out_lines[-3], b'Ran 1 test in ')
+        self.assertEqual(b'OK', out_lines[-1])
+        self.assertEqual(b'', err)
 
     def test_null_output(self):
         self.build_tree_contents([('script', b'''
@@ -56,9 +56,9 @@ $ echo hello world
 ''')])
         out, err = self.run_bzr(['test-script', 'script', '--null-output'])
         out_lines = out.splitlines()
-        self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEqual('OK', out_lines[-1])
-        self.assertEqual('', err)
+        self.assertStartsWith(out_lines[-3], b'Ran 1 test in ')
+        self.assertEqual(b'OK', out_lines[-1])
+        self.assertEqual(b'', err)
 
     def test_failing_script(self):
         self.build_tree_contents([('script', b'''
@@ -67,6 +67,6 @@ hello bar
 ''')])
         out, err = self.run_bzr(['test-script', 'script'], retcode=1)
         out_lines = out.splitlines()
-        self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEqual('FAILED (failures=1)', out_lines[-1])
-        self.assertEqual('', err)
+        self.assertStartsWith(out_lines[-3], b'Ran 1 test in ')
+        self.assertEqual(b'FAILED (failures=1)', out_lines[-1])
+        self.assertEqual(b'', err)

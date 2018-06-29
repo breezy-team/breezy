@@ -103,7 +103,7 @@ class TestMissing(TestCaseWithTransport):
 
         delta0 = r0.delta
         self.assertNotEqual(None, delta0)
-        self.assertEqual([('b', 'b-id', 'file')], delta0.added)
+        self.assertEqual([('b', b'b-id', 'file')], delta0.added)
         self.assertEqual([], delta0.removed)
         self.assertEqual([], delta0.renamed)
         self.assertEqual([], delta0.modified)
@@ -111,7 +111,7 @@ class TestMissing(TestCaseWithTransport):
         delta1 = r1.delta
         self.assertNotEqual(None, delta1)
         self.assertEqual([], delta1.added)
-        self.assertEqual([('a', 'a-id', 'file')], delta1.removed)
+        self.assertEqual([('a', b'a-id', 'file')], delta1.removed)
         self.assertEqual([], delta1.renamed)
         self.assertEqual([], delta1.modified)
 
@@ -120,13 +120,13 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual([], delta2.added)
         self.assertEqual([], delta2.removed)
         self.assertEqual([], delta2.renamed)
-        self.assertEqual([('b', 'b-id', 'file', True, False)], delta2.modified)
+        self.assertEqual([('b', b'b-id', 'file', True, False)], delta2.modified)
 
         delta3 = r3.delta
         self.assertNotEqual(None, delta3)
         self.assertEqual([], delta3.added)
         self.assertEqual([], delta3.removed)
-        self.assertEqual([('b', 'c', 'b-id', 'file', False, False)],
+        self.assertEqual([('b', 'c', b'b-id', 'file', False, False)],
                          delta3.renamed)
         self.assertEqual([], delta3.modified)
 

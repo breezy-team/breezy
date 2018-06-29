@@ -320,23 +320,23 @@ class TestFormatKnit1(TestCaseWithTransport):
         """
         repo = self.make_repository('.',
                 format=controldir.format_registry.get('knit')())
-        inv_xml = '<inventory format="5">\n</inventory>\n'
-        inv = repo._deserialise_inventory('test-rev-id', inv_xml)
-        self.assertEqual('test-rev-id', inv.root.revision)
+        inv_xml = b'<inventory format="5">\n</inventory>\n'
+        inv = repo._deserialise_inventory(b'test-rev-id', inv_xml)
+        self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
         """If it is set, then we re-use the global revision id"""
         repo = self.make_repository('.',
                 format=controldir.format_registry.get('knit')())
-        inv_xml = ('<inventory format="5" revision_id="other-rev-id">\n'
-                   '</inventory>\n')
+        inv_xml = (b'<inventory format="5" revision_id="other-rev-id">\n'
+                   b'</inventory>\n')
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
         self.assertRaises(AssertionError, repo._deserialise_inventory,
-            'test-rev-id', inv_xml)
-        inv = repo._deserialise_inventory('other-rev-id', inv_xml)
-        self.assertEqual('other-rev-id', inv.root.revision)
+            b'test-rev-id', inv_xml)
+        inv = repo._deserialise_inventory(b'other-rev-id', inv_xml)
+        self.assertEqual(b'other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):
         repo = self.make_repository('.',
@@ -501,7 +501,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
-        tree.commit("Dull commit", rev_id="dull")
+        tree.commit("Dull commit", rev_id=b"dull")
         revision_tree = tree.branch.repository.revision_tree(b'dull')
         revision_tree.lock_read()
         try:
@@ -834,7 +834,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         self.builder = self.make_branch_builder('source')
         self.builder.start_series()
         self.builder.build_snapshot(None,
-            [('add', ('', 'tree-root', 'directory', None))],
+            [('add', ('', b'tree-root', 'directory', None))],
             revision_id=b'initial')
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
@@ -845,19 +845,19 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
 
     def test_simple(self):
         self.builder.build_snapshot(None, [], revision_id=b'revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2')
-        rev_set = ['revid2']
-        self.assertParentIds(['revid1'], rev_set)
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2')
+        rev_set = [b'revid2']
+        self.assertParentIds([b'revid1'], rev_set)
 
     def test_not_first_parent(self):
         self.builder.build_snapshot(None, [], revision_id=b'revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2')
-        self.builder.build_snapshot(['revid2'], [], revision_id=b'revid3')
-        rev_set = ['revid3', 'revid2']
-        self.assertParentIds(['revid1'], rev_set)
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2')
+        self.builder.build_snapshot([b'revid2'], [], revision_id=b'revid3')
+        rev_set = [b'revid3', b'revid2']
+        self.assertParentIds([b'revid1'], rev_set)
 
     def test_not_null(self):
-        rev_set = ['initial']
+        rev_set = [b'initial']
         self.assertParentIds([], rev_set)
 
     def test_not_null_set(self):
@@ -867,23 +867,23 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
 
     def test_ghost(self):
         self.builder.build_snapshot(None, [], revision_id=b'revid1')
-        rev_set = ['ghost', 'revid1']
-        self.assertParentIds(['initial'], rev_set)
+        rev_set = [b'ghost', b'revid1']
+        self.assertParentIds([b'initial'], rev_set)
 
     def test_ghost_parent(self):
         self.builder.build_snapshot(None, [], revision_id=b'revid1')
-        self.builder.build_snapshot(['revid1', 'ghost'], [], revision_id=b'revid2')
-        rev_set = ['revid2', 'revid1']
-        self.assertParentIds(['ghost', 'initial'], rev_set)
+        self.builder.build_snapshot([b'revid1', b'ghost'], [], revision_id=b'revid2')
+        rev_set = [b'revid2', b'revid1']
+        self.assertParentIds([b'ghost', b'initial'], rev_set)
 
     def test_righthand_parent(self):
         self.builder.build_snapshot(None, [], revision_id=b'revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2a')
-        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2b')
-        self.builder.build_snapshot(['revid2a', 'revid2b'], [],
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2a')
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2b')
+        self.builder.build_snapshot([b'revid2a', b'revid2b'], [],
                                     revision_id=b'revid3')
-        rev_set = ['revid3', 'revid2a']
-        self.assertParentIds(['revid1', 'revid2b'], rev_set)
+        rev_set = [b'revid3', b'revid2a']
+        self.assertParentIds([b'revid1', b'revid2b'], rev_set)
 
 
 class TestWithBrokenRepo(TestCaseWithTransport):
@@ -902,41 +902,41 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             cleanups.append(repo.commit_write_group)
             # make rev1a: A well-formed revision, containing 'file1'
             inv = inventory.Inventory(revision_id=b'rev1a')
-            inv.root.revision = 'rev1a'
-            self.add_file(repo, inv, 'file1', 'rev1a', [])
-            repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
-            repo.add_inventory('rev1a', inv, [])
-            revision = _mod_revision.Revision('rev1a',
+            inv.root.revision = b'rev1a'
+            self.add_file(repo, inv, 'file1', b'rev1a', [])
+            repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
+            repo.add_inventory(b'rev1a', inv, [])
+            revision = _mod_revision.Revision(b'rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a', revision, inv)
+            repo.add_revision(b'rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
             inv = inventory.Inventory(revision_id=b'rev1b')
-            inv.root.revision = 'rev1b'
-            self.add_file(repo, inv, 'file1', 'rev1b', [])
-            repo.add_inventory('rev1b', inv, [])
+            inv.root.revision = b'rev1b'
+            self.add_file(repo, inv, 'file1', b'rev1b', [])
+            repo.add_inventory(b'rev1b', inv, [])
 
             # make rev2, with file1 and file2
             # file2 is sane
             # file1 has 'rev1b' as an ancestor, even though this is not
             # mentioned by 'rev1a', making it an unreferenced ancestor
             inv = inventory.Inventory()
-            self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
-            self.add_file(repo, inv, 'file2', 'rev2', [])
-            self.add_revision(repo, 'rev2', inv, ['rev1a'])
+            self.add_file(repo, inv, 'file1', b'rev2', [b'rev1a', b'rev1b'])
+            self.add_file(repo, inv, 'file2', b'rev2', [])
+            self.add_revision(repo, b'rev2', inv, [b'rev1a'])
 
             # make ghost revision rev1c
             inv = inventory.Inventory()
-            self.add_file(repo, inv, 'file2', 'rev1c', [])
+            self.add_file(repo, inv, 'file2', b'rev1c', [])
 
             # make rev3 with file2
             # file2 refers to 'rev1c', which is a ghost in this repository, so
             # file2 cannot have rev1c as its ancestor.
             inv = inventory.Inventory()
-            self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
-            self.add_revision(repo, 'rev3', inv, ['rev1c'])
+            self.add_file(repo, inv, 'file2', b'rev3', [b'rev1c'])
+            self.add_revision(repo, b'rev3', inv, [b'rev1c'])
             return repo
         finally:
             for cleanup in reversed(cleanups):
@@ -953,14 +953,14 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
-        file_id = filename + '-id'
-        entry = inventory.InventoryFile(file_id, filename, 'TREE_ROOT')
+        file_id = filename + b'-id'
+        entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
         entry.text_size = 0
         inv.add(entry)
         text_key = (file_id, revision)
         parent_keys = [(file_id, parent) for parent in parents]
-        repo.texts.add_lines(text_key, parent_keys, ['line\n'])
+        repo.texts.add_lines(text_key, parent_keys, [b'line\n'])
 
     def test_insert_from_broken_repo(self):
         """Inserting a data stream from a broken repository won't silently
@@ -977,8 +977,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         empty_repo.lock_read()
         self.addCleanup(empty_repo.unlock)
         text = next(empty_repo.texts.get_record_stream(
-            [('file2-id', 'rev3')], 'topological', True))
-        self.assertEqual('line\n', text.get_bytes_as('fulltext'))
+            [(b'file2-id', b'rev3')], 'topological', True))
+        self.assertEqual(b'line\n', text.get_bytes_as('fulltext'))
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1474,17 +1474,17 @@ class TestPacker(TestCaseWithTransport):
         builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('f', 'f-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('f', b'f-id', 'file', b'content\n'))],
             revision_id=b'A')
-        builder.build_snapshot(['A'],
-            [('modify', ('f', 'new-content\n'))],
+        builder.build_snapshot([b'A'],
+            [('modify', ('f', b'new-content\n'))],
             revision_id=b'B')
-        builder.build_snapshot(['B'],
-            [('modify', ('f', 'third-content\n'))],
+        builder.build_snapshot([b'B'],
+            [('modify', ('f', b'third-content\n'))],
             revision_id=b'C')
-        builder.build_snapshot(['C'],
-            [('modify', ('f', 'fourth-content\n'))],
+        builder.build_snapshot([b'C'],
+            [('modify', ('f', b'fourth-content\n'))],
             revision_id=b'D')
         b = builder.get_branch()
         b.lock_read()
@@ -1496,7 +1496,7 @@ class TestPacker(TestCaseWithTransport):
         packs = b.repository._pack_collection.packs
         packer = knitpack_repo.KnitPacker(b.repository._pack_collection,
                                   packs, 'testing',
-                                  revision_ids=['B', 'C'])
+                                  revision_ids=[b'B', b'C'])
         # Now, when we are copying the B & C revisions, their pack files should
         # be moved to the front of the stack
         # The new ordering moves B & C to the front of the .packs attribute,
@@ -1531,14 +1531,14 @@ class TestGCCHKPacker(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n')),
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n')),
             ], revision_id=b'A')
-        builder.build_snapshot(['A'], [
-            ('add', ('dir', 'dir-id', 'directory', None))],
+        builder.build_snapshot([b'A'], [
+            ('add', ('dir', b'dir-id', 'directory', None))],
             revision_id=b'B')
-        builder.build_snapshot(['B'], [
-            ('modify', ('file', 'new content\n'))],
+        builder.build_snapshot([b'B'], [
+            ('modify', ('file', b'new content\n'))],
             revision_id=b'C')
         builder.finish_series()
         return builder.get_branch()

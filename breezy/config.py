@@ -2423,7 +2423,10 @@ class Option(object):
         for var in self.override_from_env:
             try:
                 # If the env variable is defined, its value takes precedence
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                if sys.version_info[0] == 2:
+                    value = os.environ[var].decode(osutils.get_user_encoding())
+                else:
+                    value = os.environ[var]
                 break
             except KeyError:
                 continue

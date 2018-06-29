@@ -54,9 +54,9 @@ class BashCompletionMixin(object):
         input += "IFS=$'\\n'\n"
         input += 'echo "${COMPREPLY[*]}"\n'
         (out, err) = proc.communicate(input)
-        if '' != err:
+        if b'' != err:
             raise AssertionError('Unexpected error message:\n%s' % err)
-        self.assertEqual('', err, 'No messages to standard error')
+        self.assertEqual(b'', err, 'No messages to standard error')
         #import sys
         #print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
         lines = out.split('\n')

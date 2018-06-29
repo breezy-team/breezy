@@ -173,7 +173,7 @@ class TestLocalGitBranchFormat(tests.TestCase):
         self.assertEqual("Local Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
-        self.assertEqual("git", self.format.network_name())
+        self.assertEqual(b"git", self.format.network_name())
 
     def test_supports_tags(self):
         self.assertTrue(self.format.supports_tags())

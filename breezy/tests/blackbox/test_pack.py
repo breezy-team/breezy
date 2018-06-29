@@ -50,22 +50,22 @@ class TestPack(tests.TestCaseWithTransport):
         """pack command has no intrinsic output."""
         self.make_branch('.')
         out, err = self.run_bzr('pack')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_pack_accepts_branch_url(self):
         """pack command accepts the url to a branch."""
         self.make_branch('branch')
         out, err = self.run_bzr('pack branch')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_pack_accepts_repo_url(self):
         """pack command accepts the url to a branch."""
         self.make_repository('repository')
         out, err = self.run_bzr('pack repository')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_pack_clean_obsolete_packs(self):
         """Ensure --clean-obsolete-packs removes obsolete pack files

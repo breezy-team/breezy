@@ -50,7 +50,7 @@ class BranchBuilder(object):
     ...     ('add', ('filename', b'f-id', 'file', 'content\n'))],
     ...     revision_id=b'rev-id')
     'rev-id'
-    >>> builder.build_snapshot(['rev-id'],
+    >>> builder.build_snapshot([b'rev-id'],
     ...     [('modify', (b'f-id', 'new-content\n'))],
     ...     revision_id=b'rev2-id')
     'rev2-id'
@@ -187,7 +187,7 @@ class BranchBuilder(object):
         :param parent_ids: A list of parent_ids to use for the commit.
             It can be None, which indicates to use the last commit.
         :param actions: A list of actions to perform. Supported actions are:
-            ('add', ('path', 'file-id', 'kind', 'content' or None))
+            ('add', ('path', b'file-id', 'kind', 'content' or None))
             ('modify', ('path', 'new-content'))
             ('unversion', 'path')
             ('rename', ('orig-path', 'new-path'))

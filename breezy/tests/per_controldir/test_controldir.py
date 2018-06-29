@@ -836,7 +836,7 @@ class TestControlDir(TestCaseWithControlDir):
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise TestNotApplicable(
                     "Branch format does not support tags or tags "
@@ -847,7 +847,7 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.sprout(self.get_url('target'))
         # The tag is present in the target
         new_branch = target.open_branch()
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_bzrdir_passing_source_branch_with_absent_tag(self):
         # tags referencing absent revisions are copied (and those absent
@@ -856,7 +856,7 @@ class TestControlDir(TestCaseWithControlDir):
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise TestNotApplicable(
                     "Branch format does not support tags or tags "
@@ -867,7 +867,7 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.sprout(self.get_url('target'), source_branch=source)
         # The tag is present in the target
         new_branch = target.open_branch()
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_bzrdir_passing_rev_not_source_branch_copies_tags(self):
         # dir.sprout(..., revision_id=b'rev1') copies rev1, and all the tags of

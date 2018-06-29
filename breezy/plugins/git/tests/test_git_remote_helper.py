@@ -74,7 +74,7 @@ class FetchTests(TestCaseWithTransport):
 
     def test_no_wants(self):
         r = self.fetch([])
-        self.assertEqual("\n", r)
+        self.assertEqual(b"\n", r)
 
     def test_simple(self):
         self.build_tree(['remote/foo'])
@@ -82,7 +82,7 @@ class FetchTests(TestCaseWithTransport):
         revid = self.remote_tree.commit("msg")
         git_sha1 = map_to_git_sha1(self.remote_dir, revid)
         out = self.fetch([(git_sha1, 'HEAD')])
-        self.assertEqual(out, "\n")
+        self.assertEqual(out, b"\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
         self.assertEqual({
@@ -109,7 +109,7 @@ class RemoteHelperTests(TestCaseWithTransport):
     def test_option(self):
         f = BytesIO()
         self.helper.cmd_option(f, [])
-        self.assertEqual("unsupported\n", f.getvalue())
+        self.assertEqual(b"unsupported\n", f.getvalue())
 
     def test_list_basic(self):
         f = BytesIO()

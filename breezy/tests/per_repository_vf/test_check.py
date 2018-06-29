@@ -46,7 +46,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         """
         repo = self.make_repo_with_extra_ghost_index()
         self.assertEqual(
-            [('revision-id', ('incorrect-parent',), ())],
+            [(b'revision-id', (b'incorrect-parent',), ())],
             list(repo._find_inconsistent_revision_parents()))
 
     def test__check_for_inconsistent_revision_parents(self):

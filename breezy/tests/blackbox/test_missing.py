@@ -43,8 +43,8 @@ class TestMissing(tests.TestCaseWithTransport):
         a_tree.commit(message='initial')
 
         out, err = self.run_bzr('missing -q .')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_missing(self):
         missing_one = "You are missing 1 revision:"
@@ -65,7 +65,7 @@ class TestMissing(tests.TestCaseWithTransport):
             out, err = self.run_bzr(['missing'] + args,
                                     retcode=retcode, working_dir=working_dir)
             # we do not expect any error output.
-            self.assertEqual('', err)
+            self.assertEqual(b'', err)
             return out.splitlines()
 
         def run_missing_a(args, retcode=1):
@@ -214,7 +214,7 @@ class TestMissing(tests.TestCaseWithTransport):
         self.assertEqual('Using saved parent location: %s\n'
                          'Branches are up to date.\n' % location,
                          lines)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
     def test_missing_directory(self):
         """Test --directory option"""

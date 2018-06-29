@@ -38,8 +38,8 @@ class TestMkdir(TestCaseWithWorkingTree):
         if not t.supports_setting_file_ids():
             self.assertRaises(
                 SettingFileIdUnsupported,
-                t.mkdir, 'path', 'my-id')
+                t.mkdir, 'path', b'my-id')
         else:
-            file_id = t.mkdir('path', 'my-id')
-            self.assertEqual('my-id', file_id)
+            file_id = t.mkdir('path', b'my-id')
+            self.assertEqual(b'my-id', file_id)
             self.assertEqual('directory', t.kind('path', file_id))

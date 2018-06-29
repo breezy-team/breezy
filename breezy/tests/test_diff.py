@@ -220,36 +220,36 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_iso_8859_1(self):
         output = BytesIO()
-        diff.internal_diff(u'old_\xb5', ['old_text\n'],
-                           u'new_\xe5', ['new_text\n'], output,
+        diff.internal_diff(u'old_\xb5', [b'old_text\n'],
+                           u'new_\xe5', [b'new_text\n'], output,
                            path_encoding='iso-8859-1')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEqual(['--- old_\xb5\n',
-                           '+++ new_\xe5\n',
-                           '@@ -1,1 +1,1 @@\n',
-                           '-old_text\n',
-                           '+new_text\n',
-                           '\n',
+        self.assertEqual([b'--- old_\xb5\n',
+                          b'+++ new_\xe5\n',
+                          b'@@ -1,1 +1,1 @@\n',
+                          b'-old_text\n',
+                          b'+new_text\n',
+                          b'\n',
                           ]
                           , lines)
 
     def test_internal_diff_no_content(self):
         output = BytesIO()
         diff.internal_diff(u'old', [], u'new', [], output)
-        self.assertEqual('', output.getvalue())
+        self.assertEqual(b'', output.getvalue())
 
     def test_internal_diff_no_changes(self):
         output = BytesIO()
-        diff.internal_diff(u'old', ['text\n', 'contents\n'],
-                           u'new', ['text\n', 'contents\n'],
+        diff.internal_diff(u'old', [b'text\n', b'contents\n'],
+                           u'new', [b'text\n', b'contents\n'],
                            output)
-        self.assertEqual('', output.getvalue())
+        self.assertEqual(b'', output.getvalue())
 
     def test_internal_diff_returns_bytes(self):
         output = StubO()
-        diff.internal_diff(u'old_\xb5', ['old_text\n'],
-                            u'new_\xe5', ['new_text\n'], output)
+        diff.internal_diff(u'old_\xb5', [b'old_text\n'],
+                            u'new_\xe5', [b'new_text\n'], output)
         output.check_types(self, bytes)
 
     def test_internal_diff_default_context(self):
@@ -311,8 +311,6 @@ class TestDiff(tests.TestCase):
                            '\n',
                           ]
                           , lines)
-
-
 
 
 
@@ -564,20 +562,20 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
 
         tt = transform.TreeTransform(tree)
-        tt.new_file('a', tt.root, ['contents\n'], b'a-id', True)
-        tt.new_file('b', tt.root, ['contents\n'], b'b-id', False)
-        tt.new_file('c', tt.root, ['contents\n'], b'c-id', True)
-        tt.new_file('d', tt.root, ['contents\n'], b'd-id', False)
-        tt.new_file('e', tt.root, ['contents\n'], b'control-e-id', True)
-        tt.new_file('f', tt.root, ['contents\n'], b'control-f-id', False)
+        tt.new_file('a', tt.root, [b'contents\n'], b'a-id', True)
+        tt.new_file('b', tt.root, [b'contents\n'], b'b-id', False)
+        tt.new_file('c', tt.root, [b'contents\n'], b'c-id', True)
+        tt.new_file('d', tt.root, [b'contents\n'], b'd-id', False)
+        tt.new_file('e', tt.root, [b'contents\n'], b'control-e-id', True)
+        tt.new_file('f', tt.root, [b'contents\n'], b'control-f-id', False)
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 
         tt = transform.TreeTransform(tree)
-        tt.set_executability(False, tt.trans_id_file_id('a-id'))
-        tt.set_executability(True, tt.trans_id_file_id('b-id'))
-        tt.set_executability(False, tt.trans_id_file_id('c-id'))
-        tt.set_executability(True, tt.trans_id_file_id('d-id'))
+        tt.set_executability(False, tt.trans_id_file_id(b'a-id'))
+        tt.set_executability(True, tt.trans_id_file_id(b'b-id'))
+        tt.set_executability(False, tt.trans_id_file_id(b'c-id'))
+        tt.set_executability(True, tt.trans_id_file_id(b'd-id'))
         tt.apply()
         tree.rename_one('c', 'new-c')
         tree.rename_one('d', 'new-d')
@@ -788,7 +786,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', b'file-id')
-        self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
+        self.differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -804,7 +802,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         os.symlink('new', 'new-tree/newdir/newfile')
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', b'file-id')
-        self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
+        self.differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
@@ -837,7 +835,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
             differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO())
         finally:
             diff.DiffTree.diff_factories = old_diff_factories
-        differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
+        differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -849,7 +847,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.create_old_new()
         differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO(),
                                extra_factories=[DiffWasIs.from_diff_tree])
-        differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
+        differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -1576,7 +1574,7 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
         tree.add('file', b'file-id')
         tree.commit('old tree', timestamp=0, rev_id=b"old-id")
         self.build_tree_contents([('tree/file', b'newcontent')])
-        tree.commit('new tree', timestamp=0, rev_id="new-id")
+        tree.commit('new tree', timestamp=0, rev_id=b"new-id")
 
         revisions = [revisionspec.RevisionSpec.from_string('1'),
                      revisionspec.RevisionSpec.from_string('2')]
@@ -1586,9 +1584,9 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
             ['tree'], revisions, None, None)
 
         self.assertIsInstance(old_tree, revisiontree.RevisionTree)
-        self.assertEqual("old-id", old_tree.get_revision_id())
+        self.assertEqual(b"old-id", old_tree.get_revision_id())
         self.assertIsInstance(new_tree, revisiontree.RevisionTree)
-        self.assertEqual("new-id", new_tree.get_revision_id())
+        self.assertEqual(b"new-id", new_tree.get_revision_id())
         self.assertEqual(tree.branch.base, old_branch.base)
         self.assertEqual(tree.branch.base, new_branch.base)
         self.assertIs(None, specific_files)

@@ -41,34 +41,34 @@ class TestModified(TestCaseWithTransport):
                 command += ' --null'
             out, err = self.run_bzr(command)
             self.assertEqual(out, expected)
-            self.assertEqual(err, '')
+            self.assertEqual(err, b'')
 
         # in empty directory, nothing modified
         tree = self.make_branch_and_tree('.')
-        check_modified('')
+        check_modified(b'')
 
         # with unknown file, still nothing modified
         self.build_tree_contents([(name, b'contents of %s\n' % (name))])
-        check_modified('')
+        check_modified(b'')
 
         # after add, not modified
         tree.add(name)
-        check_modified('')
+        check_modified(b'')
 
         # after commit, not modified
         tree.commit(message='add %s' % output)
-        check_modified('')
+        check_modified(b'')
 
         # modify the file
         self.build_tree_contents([(name, b'changed\n')])
-        check_modified(output + '\n')
+        check_modified(output + b'\n')
 
         # check null seps - use the unquoted raw name here
-        check_modified(name + '\0', null=True)
+        check_modified(name.encode('utf-8') + b'\0', null=True)
 
         # now commit the file and it's no longer modified
         tree.commit(message='modified %s' %(name))
-        check_modified('')
+        check_modified(b'')
 
     def test_modified_directory(self):
         """Test --directory option"""
@@ -78,4 +78,4 @@ class TestModified(TestCaseWithTransport):
         tree.commit('r1')
         self.build_tree_contents([('a/README', b'changed\n')])
         out, err = self.run_bzr(['modified', '--directory=a'])
-        self.assertEqual('README\n', out)
+        self.assertEqual(b'README\n', out)

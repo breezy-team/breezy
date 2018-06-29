@@ -39,19 +39,19 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     module = None # Set by load_tests
 
-    fa_key = ('f-id', 'a-id')
-    fb_key = ('f-id', 'b-id')
-    fc_key = ('f-id', 'c-id')
-    fd_key = ('f-id', 'd-id')
-    fe_key = ('f-id', 'e-id')
-    ff_key = ('f-id', 'f-id')
+    fa_key = (b'f-id', b'a-id')
+    fb_key = (b'f-id', b'b-id')
+    fc_key = (b'f-id', b'c-id')
+    fd_key = (b'f-id', b'd-id')
+    fe_key = (b'f-id', b'e-id')
+    ff_key = (b'f-id', b'f-id')
 
     def make_no_graph_texts(self):
         factory = knit.make_pack_factory(False, False, 2)
         self.vf = factory(self.get_transport())
         self.ann = self.module.Annotator(self.vf)
-        self.vf.add_lines(self.fa_key, (), ['simple\n', 'content\n'])
-        self.vf.add_lines(self.fb_key, (), ['simple\n', 'new content\n'])
+        self.vf.add_lines(self.fa_key, (), [b'simple\n', b'content\n'])
+        self.vf.add_lines(self.fb_key, (), [b'simple\n', b'new content\n'])
 
     def make_simple_text(self):
         # TODO: all we really need is a VersionedFile instance, we'd like to
@@ -64,9 +64,9 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #  A    'simple|content|'
         #  |
         #  B    'simple|new content|'
-        self.vf.add_lines(self.fa_key, [], ['simple\n', 'content\n'])
+        self.vf.add_lines(self.fa_key, [], [b'simple\n', b'content\n'])
         self.vf.add_lines(self.fb_key, [self.fa_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
 
     def make_merge_text(self):
         self.make_simple_text()
@@ -78,10 +78,10 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #  |/
         #  D    'simple|from c|new content|introduced in merge|'
         self.vf.add_lines(self.fc_key, [self.fa_key],
-                          ['simple\n', 'from c\n', 'content\n'])
+                          [b'simple\n', b'from c\n', b'content\n'])
         self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
-                          ['simple\n', 'from c\n', 'new content\n',
-                           'introduced in merge\n'])
+                          [b'simple\n', b'from c\n', b'new content\n',
+                           b'introduced in merge\n'])
 
     def make_common_merge_text(self):
         """Both sides of the merge will have introduced a line."""
@@ -94,9 +94,9 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #  |/
         #  D    'simple|new content|'
         self.vf.add_lines(self.fc_key, [self.fa_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
         self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
 
     def make_many_way_common_merge_text(self):
         self.make_simple_text()
@@ -112,13 +112,13 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #  |  /
         #  F-'    'simple|new content|'
         self.vf.add_lines(self.fc_key, [self.fa_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
         self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
         self.vf.add_lines(self.fe_key, [self.fa_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
         self.vf.add_lines(self.ff_key, [self.fd_key, self.fe_key],
-                          ['simple\n', 'new content\n'])
+                          [b'simple\n', b'new content\n'])
 
     def make_merge_and_restored_text(self):
         self.make_simple_text()
@@ -131,10 +131,10 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #    D  'simple|content|'
         # c reverts back to 'a' for the new content line
         self.vf.add_lines(self.fc_key, [self.fb_key],
-                          ['simple\n', 'content\n'])
+                          [b'simple\n', b'content\n'])
         # d merges 'a' and 'c', to find both claim last modified
         self.vf.add_lines(self.fd_key, [self.fa_key, self.fc_key],
-                          ['simple\n', 'content\n'])
+                          [b'simple\n', b'content\n'])
 
     def assertAnnotateEqual(self, expected_annotation, key, exp_text=None):
         annotation, lines = self.ann.annotate(key)
@@ -142,12 +142,12 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         if exp_text is None:
             record = next(self.vf.get_record_stream([key], 'unordered', True))
             exp_text = record.get_bytes_as('fulltext')
-        self.assertEqualDiff(exp_text, ''.join(lines))
+        self.assertEqualDiff(exp_text, b''.join(lines))
 
     def test_annotate_missing(self):
         self.make_simple_text()
         self.assertRaises(errors.RevisionNotPresent,
-                          self.ann.annotate, ('not', 'present'))
+                          self.ann.annotate, (b'not', b'present'))
 
     def test_annotate_simple(self):
         self.make_simple_text()
@@ -178,32 +178,32 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     def test_annotate_flat_simple(self):
         self.make_simple_text()
-        self.assertEqual([(self.fa_key, 'simple\n'),
-                          (self.fa_key, 'content\n'),
+        self.assertEqual([(self.fa_key, b'simple\n'),
+                          (self.fa_key, b'content\n'),
                          ], self.ann.annotate_flat(self.fa_key))
-        self.assertEqual([(self.fa_key, 'simple\n'),
-                          (self.fb_key, 'new content\n'),
+        self.assertEqual([(self.fa_key, b'simple\n'),
+                          (self.fb_key, b'new content\n'),
                          ], self.ann.annotate_flat(self.fb_key))
 
     def test_annotate_flat_merge_and_restored_text(self):
         self.make_merge_and_restored_text()
         # fc is a simple dominator of fa
-        self.assertEqual([(self.fa_key, 'simple\n'),
-                          (self.fc_key, 'content\n'),
+        self.assertEqual([(self.fa_key, b'simple\n'),
+                          (self.fc_key, b'content\n'),
                          ], self.ann.annotate_flat(self.fd_key))
 
     def test_annotate_common_merge_text(self):
         self.make_common_merge_text()
         # there is no common point, so we just pick the lexicographical lowest
-        # and 'b-id' comes before 'c-id'
-        self.assertEqual([(self.fa_key, 'simple\n'),
-                          (self.fb_key, 'new content\n'),
+        # and b'b-id' comes before b'c-id'
+        self.assertEqual([(self.fa_key, b'simple\n'),
+                          (self.fb_key, b'new content\n'),
                          ], self.ann.annotate_flat(self.fd_key))
 
     def test_annotate_many_way_common_merge_text(self):
         self.make_many_way_common_merge_text()
-        self.assertEqual([(self.fa_key, 'simple\n'),
-                         (self.fb_key, 'new content\n')],
+        self.assertEqual([(self.fa_key, b'simple\n'),
+                         (self.fb_key, b'new content\n')],
                          self.ann.annotate_flat(self.ff_key))
 
     def test_annotate_flat_respects_break_ann_tie(self):
@@ -214,10 +214,10 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                 self.assertEqual(2, len(annotated_lines))
                 left = annotated_lines[0]
                 self.assertEqual(2, len(left))
-                self.assertEqual('new content\n', left[1])
+                self.assertEqual(b'new content\n', left[1])
                 right = annotated_lines[1]
                 self.assertEqual(2, len(right))
-                self.assertEqual('new content\n', right[1])
+                self.assertEqual(b'new content\n', right[1])
                 calls.append((left[0], right[0]))
                 # Our custom tiebreaker takes the *largest* value, rather than
                 # the *smallest* value
@@ -227,8 +227,8 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                     return left
             annotate._break_annotation_tie = custom_tiebreaker
             self.make_many_way_common_merge_text()
-            self.assertEqual([(self.fa_key, 'simple\n'),
-                             (self.fe_key, 'new content\n')],
+            self.assertEqual([(self.fa_key, b'simple\n'),
+                             (self.fe_key, b'new content\n')],
                              self.ann.annotate_flat(self.ff_key))
             self.assertEqual([(self.fe_key, self.fc_key),
                               (self.fe_key, self.fb_key)], calls)
@@ -261,8 +261,8 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     def test_needed_keys_with_special_text(self):
         self.make_many_way_common_merge_text()
-        spec_key = ('f-id', revision.CURRENT_REVISION)
-        spec_text = 'simple\nnew content\nlocally modified\n'
+        spec_key = (b'f-id', revision.CURRENT_REVISION)
+        spec_text = b'simple\nnew content\nlocally modified\n'
         self.ann.add_special_text(spec_key, [self.fd_key, self.fe_key],
                                   spec_text)
         keys, ann_keys = self.ann._get_needed_keys(spec_key)
@@ -281,13 +281,13 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #  |  /
         #  F-'    'simple|new content|'
         self.ann._parent_map[self.fd_key] = (self.fb_key, self.fc_key)
-        self.ann._text_cache[self.fd_key] = ['simple\n', 'new content\n']
+        self.ann._text_cache[self.fd_key] = [b'simple\n', b'new content\n']
         self.ann._annotations_cache[self.fd_key] = [
             (self.fa_key,),
             (self.fb_key, self.fc_key),
             ]
         self.ann._parent_map[self.fe_key] = (self.fa_key,)
-        self.ann._text_cache[self.fe_key] = ['simple\n', 'new content\n']
+        self.ann._text_cache[self.fe_key] = [b'simple\n', b'new content\n']
         self.ann._annotations_cache[self.fe_key] = [
             (self.fa_key,),
             (self.fe_key,),
@@ -358,8 +358,8 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         #  |   E  'simple|new content|'
         #  |  /
         #  SPEC   'simple|new content|locally modified|'
-        spec_key = ('f-id', revision.CURRENT_REVISION)
-        spec_text = 'simple\nnew content\nlocally modified\n'
+        spec_key = (b'f-id', revision.CURRENT_REVISION)
+        spec_text = b'simple\nnew content\nlocally modified\n'
         self.ann.add_special_text(spec_key, [self.fd_key, self.fe_key],
                                   spec_text)
         self.assertAnnotateEqual([(self.fa_key,),

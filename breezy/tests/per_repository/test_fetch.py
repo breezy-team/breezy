@@ -176,18 +176,18 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((ROOT_ID, b'left'), (ROOT_ID, b'right')),
             [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-             ('left', None, []),
+             (b'left', None, []),
              (b'right', [b'base'], []),
-             (b'tip', ['left', b'right'], []),
+             (b'tip', [b'left', b'right'], []),
             ])
 
     def test_fetch_to_rich_root_set_parent_2_parents_1_head(self):
         # 2 parents one head -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((ROOT_ID, b'right'),),
-            [('left', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+            [(b'left', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              (b'right', None, []),
-             (b'tip', ['left', b'right'], []),
+             (b'tip', [b'left', b'right'], []),
             ])
 
     def test_fetch_to_rich_root_set_parent_1_parent_different_id_gone(self):
@@ -205,7 +205,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # (and that parent honours the changing revid of the other location)
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((b'my-root', b'origin'),),
-            [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
+            [(b'origin', None, [('add', ('', ROOT_ID, 'directory', '')),
                              ('add', ('child', b'my-root', 'directory', ''))]),
              (b'base', None, []),
              (b'tip', None, [('unversion', 'child'),
@@ -233,7 +233,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((b'my-root', b'right'),),
             # b'my-root' at 'child'.
-            [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
+            [(b'origin', None, [('add', ('', ROOT_ID, 'directory', '')),
                              ('add', ('child', b'my-root', 'directory', ''))]),
              (b'base', None, []),
             # b'my-root' at root

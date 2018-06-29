@@ -83,7 +83,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
             wt.commit("base", rev_id=b'A', allow_pointless=True)
             self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
                              b'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
-                             branch.repository.get_signature_text('A'))
+                             branch.repository.get_signature_text(b'A'))
 
     def test_clone_preserves_signatures(self):
         wt = self.make_branch_and_tree('source')
@@ -153,7 +153,7 @@ class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "repository supports signing revisions")
         wt = self.make_branch_and_tree('source')
-        a = wt.commit(b'A', allow_pointless=True)
+        a = wt.commit('A', allow_pointless=True)
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()

@@ -135,7 +135,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
                 except errors.NonAsciiRevisionId:
-                    revision_id = 'abc'
+                    revision_id = b'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
             except repository.CannotSetRevisionId:

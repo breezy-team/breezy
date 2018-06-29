@@ -172,8 +172,8 @@ class TestRevert(TestCaseWithTransport):
         self.build_tree(['file'])
         tree.add(['file'])
         out, err = self.run_bzr('revert')
-        self.assertEqual('', out)
-        self.assertEqual('-   file\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'-   file\n', err)
 
     def test_revert_removing_file(self):
         # this tests the UI reports reverting a file which has been committed
@@ -184,8 +184,8 @@ class TestRevert(TestCaseWithTransport):
         tree.add(['file'])
         tree.commit('add file')
         out, err = self.run_bzr('revert -r -2')
-        self.assertEqual('', out)
-        self.assertEqual('-D  file\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'-D  file\n', err)
 
     def test_revert_forget_merges(self):
         # revert --forget-merges removes any pending merges into the tree, but

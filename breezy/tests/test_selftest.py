@@ -2302,10 +2302,10 @@ class TestRunBzr(tests.TestCase):
         self.assertEqual(err, self.err)
 
     def test_run_bzr_error_regexes(self):
-        self.out = ''
-        self.err = "bzr: ERROR: foobarbaz is not versioned"
+        self.out = b''
+        self.err = b"bzr: ERROR: foobarbaz is not versioned"
         out, err = self.run_bzr_error(
-            ["bzr: ERROR: foobarbaz is not versioned"],
+            [b"bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
 
     def test_encoding(self):

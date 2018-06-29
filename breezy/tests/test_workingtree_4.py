@@ -578,7 +578,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # a diff against the basis should give us a directory and the root (as
         # the root is new too).
         tree.lock_read()
-        expected = [('dir-id',
+        expected = [(b'dir-id',
             (None, u'dir'),
             True,
             (False, True),
@@ -598,7 +598,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         os.rename('dir', 'also-dir')
         # now the diff will use the fast path
         tree.lock_read()
-        expected = [('dir-id',
+        expected = [(b'dir-id',
             (u'dir', u'dir'),
             True,
             (True, True),
@@ -777,7 +777,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
             state = tree.current_dirstate()
             state._read_dirblocks_if_needed()
             # Now add in an invalid entry, a rename with a dangling pointer
-            state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
+            state._dirblocks[1][1].append((('', 'foo', b'foo-id'),
                                             [('f', '', 0, False, ''),
                                              ('r', 'bar', 0, False, '')]))
             self.assertListRaises(dirstate.DirstateCorrupt,

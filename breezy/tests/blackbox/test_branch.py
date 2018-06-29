@@ -83,18 +83,18 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(
             """Created a standalone tree (format: development-colo)\n""",
             out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         out, err = self.run_bzr(
             'branch a file:b,branch=thiswasa')
-        self.assertEqual('', out)
-        self.assertEqual('Branched 2 revisions.\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'Branched 2 revisions.\n', err)
         out, err = self.run_bzr('branches b')
-        self.assertEqual("  orig\n  thiswasa\n", out)
-        self.assertEqual('', err)
+        self.assertEqual(b"  orig\n  thiswasa\n", out)
+        self.assertEqual(b'', err)
         out, err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
         self.assertEqual(
-            'brz: ERROR: Already a branch: "file:b,branch=orig".\n', err)
+            b'brz: ERROR: Already a branch: "file:b,branch=orig".\n', err)
 
     def test_from_colocated(self):
         """Branch from a colocated branch into a regular branch."""
@@ -102,8 +102,8 @@ class TestBranch(tests.TestCaseWithTransport):
         tree.controldir.create_branch(name='somecolo')
         out, err = self.run_bzr('branch %s,branch=somecolo' %
             local_path_to_url('a'))
-        self.assertEqual('', out)
-        self.assertEqual('Branched 0 revisions.\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'Branched 0 revisions.\n', err)
         self.assertPathExists("somecolo")
 
     def test_branch_broken_pack(self):
@@ -119,12 +119,12 @@ class TestBranch(tests.TestCaseWithTransport):
             c = f.read(1)
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
-            if c == '\xFF':
-                corrupt = '\x00'
+            if c == b'\xFF':
+                corrupt = 'b\x00'
             else:
-                corrupt = '\xFF'
+                corrupt = b'\xFF'
             f.write(corrupt) # make sure we corrupt something
-        self.run_bzr_error(['Corruption while decompressing repository file'],
+        self.run_bzr_error([b'Corruption while decompressing repository file'],
                             'branch a b', retcode=3)
 
     def test_branch_switch_no_branch(self):
@@ -132,7 +132,7 @@ class TestBranch(tests.TestCaseWithTransport):
         #  => new branch will be created, but switch fails
         self.example_branch('a')
         self.make_repository('current')
-        self.run_bzr_error(['No WorkingTree exists for'],
+        self.run_bzr_error([b'No WorkingTree exists for'],
             'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
@@ -144,7 +144,7 @@ class TestBranch(tests.TestCaseWithTransport):
         #     branch is unmodified
         self.example_branch('a')
         self.make_branch('current')
-        self.run_bzr_error(['No WorkingTree exists for'],
+        self.run_bzr_error([b'No WorkingTree exists for'],
             'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
@@ -159,7 +159,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.example_branch('a')
         tree = self.make_branch_and_tree('current')
         c1 = tree.commit('some diverged change')
-        self.run_bzr_error(['Cannot switch a branch, only a checkout'],
+        self.run_bzr_error([b'Cannot switch a branch, only a checkout'],
             'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
@@ -296,8 +296,8 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree_contents([('b/goodbye', b'baz')])# same content
         # fails without --use-existing-dir
         out, err = self.run_bzr('branch a b', retcode=3)
-        self.assertEqual('', out)
-        self.assertEqual('brz: ERROR: Target directory "b" already exists.\n',
+        self.assertEqual(b'', out)
+        self.assertEqual(b'brz: ERROR: Target directory "b" already exists.\n',
             err)
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
@@ -306,13 +306,13 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
         out, err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
-        self.assertEqual('', out)
-        self.assertEqual('brz: ERROR: Already a branch: "b".\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'brz: ERROR: Already a branch: "b".\n', err)
 
     def test_branch_bind(self):
         self.example_branch('a')
         out, err = self.run_bzr('branch a b --bind')
-        self.assertEndsWith(err, "New branch bound to a\n")
+        self.assertEndsWith(err, b"New branch bound to a\n")
         b = branch.Branch.open('b')
         self.assertEndsWith(b.get_bound_location(), '/a/')
 
@@ -394,8 +394,8 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # branching our local branch gives us a new stacked branch pointing at
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
-        self.assertEqual('', out)
-        self.assertEqual('Branched 2 revisions.\n',
+        self.assertEqual(b'', out)
+        self.assertEqual(b'Branched 2 revisions.\n',
             err)
         # it should have preserved the branch format, and so it should be
         # capable of supporting stacking, but not actually have a stacked_on
@@ -419,9 +419,9 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         work_tree.branch.push(branch_tree.branch)
         # you can chain branches on from there
         out, err = self.run_bzr(['branch', 'branch', '--stacked', 'branch2'])
-        self.assertEqual('', out)
-        self.assertEqual('Created new stacked branch referring to %s.\n' %
-            branch_tree.branch.base, err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'Created new stacked branch referring to %s.\n' %
+            branch_tree.branch.base.encode('utf-8'), err)
         self.assertEqual(branch_tree.branch.base,
             branch.Branch.open('branch2').get_stacked_on_url())
         branch2_tree = WorkingTree.open('branch2')
@@ -441,9 +441,9 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # and a branch from it which is stacked
         out, err = self.run_bzr(['branch', '--stacked', 'mainline',
             'newbranch'])
-        self.assertEqual('', out)
-        self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base.encode('utf-8'), err)
         self.assertRevisionNotInRepository('newbranch', original_revid)
         new_branch = branch.Branch.open('newbranch')
         self.assertEqual(trunk_tree.branch.base,
@@ -463,13 +463,14 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             ['branch', '--stacked', 'trunk', 'shallow'])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
-            'Source repository format does not support stacking, using format:\n'
-            '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
-            'Source branch format does not support stacking, using format:\n'
-            '  Branch format 7\n'
-            'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
-            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            b'Source repository format does not support stacking, using format:\n'
+            b'  Packs 5 (adds stacking support, requires bzr 1.6)\n'
+            b'Source branch format does not support stacking, using format:\n'
+            b'  Branch format 7\n'
+            b'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
+            b'This may take some time. Upgrade the repositories to the same format for better performance.\n'
+            b'Created new stacked branch referring to %s.\n' %
+            (trunk.base.encode('utf-8'),),
             err)
 
     def test_branch_stacked_from_rich_root_non_stackable(self):
@@ -478,13 +479,13 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             ['branch', '--stacked', 'trunk', 'shallow'])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
-            'Source repository format does not support stacking, using format:\n'
-            '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
-            'Source branch format does not support stacking, using format:\n'
-            '  Branch format 7\n'
-            'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
-            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            b'Source repository format does not support stacking, using format:\n'
+            b'  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
+            b'Source branch format does not support stacking, using format:\n'
+            b'  Branch format 7\n'
+            b'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
+            b'This may take some time. Upgrade the repositories to the same format for better performance.\n'
+            b'Created new stacked branch referring to %s.\n' % (trunk.base.encode('utf-8'),),
             err)
 
 

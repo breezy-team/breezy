@@ -35,14 +35,14 @@ class TestAliases(TestCaseWithTransport):
             return self.run_bzr(args, **kwargs)[1]
 
 
-        conf = config.GlobalConfig.from_string('''[ALIASES]
+        conf = config.GlobalConfig.from_string(b'''[ALIASES]
 c=cat
 c1=cat -r 1
 c2=cat -r 1 -r2
 ''', save=True)
 
-        str1 = 'foo\n'
-        str2 = 'bar\n'
+        str1 = b'foo\n'
+        str2 = b'bar\n'
 
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', str1)])

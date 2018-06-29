@@ -419,10 +419,10 @@ class MergeDirective(BaseMergeDirective):
         :return: a MergeRequest
         """
         line_iter = iter(lines)
-        firstline = ""
+        firstline = b""
         for line in line_iter:
-            if line.startswith('# Bazaar merge directive format '):
-                return _format_registry.get(line[2:].rstrip())._from_lines(
+            if line.startswith(b'# Bazaar merge directive format '):
+                return _format_registry.get(line[2:].rstrip().decode('utf-8', 'replace'))._from_lines(
                     line_iter)
             firstline = firstline or line.strip()
         raise errors.NotAMergeDirective(firstline)
@@ -590,7 +590,7 @@ class MergeDirective2(BaseMergeDirective):
             repository.lock_write()
             locked.append(repository)
             t_revision_id = revision_id
-            if revision_id == 'null:':
+            if revision_id == b'null:':
                 t_revision_id = None
             t = testament.StrictTestament3.from_revision(repository,
                 t_revision_id)

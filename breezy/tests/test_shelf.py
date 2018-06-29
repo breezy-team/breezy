@@ -124,7 +124,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_change_handles_move(self):
         creator, tree = self.prepare_shelve_move()
-        creator.shelve_change(('rename', 'baz-id', 'foo/baz', 'bar/baz'))
+        creator.shelve_change(('rename', b'baz-id', 'foo/baz', 'bar/baz'))
         self.check_shelve_move(creator, tree)
 
     def test_shelve_changed_root_id(self):

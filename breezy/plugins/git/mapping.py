@@ -99,17 +99,17 @@ def unescape_file_id(file_id):
 
 
 def fix_person_identifier(text):
-    if not "<" in text and not ">" in text:
+    if not b"<" in text and not b">" in text:
         username = text
         email = text
     else:
-        if text.rindex(">") < text.rindex("<"):
+        if text.rindex(b">") < text.rindex(b"<"):
             raise ValueError(text)
-        username, email = text.split("<", 2)[-2:]
-        email = email.split(">", 1)[0]
-        if username.endswith(" "):
+        username, email = text.split(b"<", 2)[-2:]
+        email = email.split(b">", 1)[0]
+        if username.endswith(b" "):
             username = username[:-1]
-    return "%s <%s>" % (username, email)
+    return b"%s <%s>" % (username, email)
 
 
 def warn_escaped(commit, num_escaped):
@@ -211,7 +211,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     rev.properties[u'hg:renames']))
             # TODO: Export other properties as 'bzr:' extras?
         ret = format_hg_metadata(renames, branch, extra)
-        if type(ret) is not str:
+        if not isinstance(ret, bytes):
             raise TypeError(ret)
         return ret
 
@@ -317,7 +317,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode('ascii')
         commit.message = self._encode_commit_message(rev, rev.message,
             encoding)
-        if type(commit.message) is not str:
+        if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         if metadata is not None:
             try:
@@ -338,7 +338,7 @@ class BzrGitMapping(foreign.VcsMapping):
                                                      encoding)
             else:
                 raise NoPushSupport()
-        if type(commit.message) is not str:
+        if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         i = 0
         propname = u'git-mergetag-0'
@@ -498,9 +498,9 @@ class GitMappingRegistry(VcsMappingRegistry):
         if bzr_revid == NULL_REVISION:
             from dulwich.protocol import ZERO_SHA
             return ZERO_SHA, None
-        if not bzr_revid.startswith("git-"):
+        if not bzr_revid.startswith(b"git-"):
             raise errors.InvalidRevisionId(bzr_revid, None)
-        (mapping_version, git_sha) = bzr_revid.split(":", 1)
+        (mapping_version, git_sha) = bzr_revid.split(b":", 1)
         mapping = self.get(mapping_version)
         return mapping.revision_id_bzr_to_foreign(bzr_revid)
 
@@ -640,20 +640,16 @@ class GitFileIdMap(object):
         return self.file_ids.values()
 
     def set_file_id(self, path, file_id):
-        if type(path) is not str:
-            raise TypeError(path)
-        if type(file_id) is not str:
+        if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         self.file_ids[path] = file_id
 
     def lookup_file_id(self, path):
-        if type(path) is not str:
-            raise TypeError(path)
         try:
             file_id = self.file_ids[path]
         except KeyError:
             file_id = self.mapping.generate_file_id(path)
-        if type(file_id) is not str:
+        if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         return file_id
 
@@ -667,7 +663,7 @@ class GitFileIdMap(object):
         except KeyError:
             return self.mapping.parse_file_id(file_id)
         else:
-            if type(path) is not str:
+            if not isinstance(path, bytes):
                 raise TypeError(path)
             return path
 

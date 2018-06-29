@@ -1770,7 +1770,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
 class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
 
     def test_set_last_revision_info(self):
-        # set_last_revision_info(num, 'rev-id') is translated to calling
+        # set_last_revision_info(num, b'rev-id') is translated to calling
         # Branch.set_last_revision_info(num, 'rev-id') on the wire.
         transport = MemoryTransport()
         transport.mkdir('branch')
@@ -3402,7 +3402,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             yield ('inventory-deltas', inventory_delta_substream())
             yield ('texts', [
                 versionedfile.FulltextContentFactory(
-                    (b'some-rev', 'some-file'), (), None, 'content')])
+                    (b'some-rev', b'some-file'), (), None, b'content')])
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
             text = fmt._serializer.write_inventory_to_string(inv)
@@ -3413,7 +3413,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
                 'directory', 'newdir', inv.root.file_id, b'newdir-id')
-            entry.revision = 'ghost'
+            entry.revision = b'ghost'
             delta = [(None, 'newdir', b'newdir-id', entry)]
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False)

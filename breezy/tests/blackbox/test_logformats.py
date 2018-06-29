@@ -100,8 +100,8 @@ log_format=line
 
         log, err = self.run_bzr(['log', '--log-format', 'gnu-changelog',
                                  '--timezone=utc'])
-        self.assertEqual('', err)
-        expected = """2009-03-03  Joe Foo  <joe@foo.com>
+        self.assertEqual(b'', err)
+        expected = b"""2009-03-03  Joe Foo  <joe@foo.com>
 
 \tfirst revision
 

@@ -30,6 +30,10 @@ import difflib
 import doctest
 import errno
 import functools
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import itertools
 import logging
 import math
@@ -91,7 +95,6 @@ except ImportError:
     # lsprof not available
     pass
 from ..sixish import (
-    BytesIO,
     PY3,
     string_types,
     text_type,
@@ -275,10 +278,10 @@ class ExtendedTestResult(testtools.TextTestResult):
                 except IndexError:
                     # XXX: if this is a brand new tree, do the same as if there
                     # is no branch.
-                    revision_id = ''
+                    revision_id = b''
             else:
                 # XXX: If there's no branch, what should we do?
-                revision_id = ''
+                revision_id = b''
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
         self.ui = ui.ui_factory
@@ -2041,12 +2044,12 @@ class TestCase(testtools.TestCase):
         Examples of use::
 
             # Make sure that commit is failing because there is nothing to do
-            self.run_bzr_error(['no changes to commit'],
+            self.run_bzr_error([b'no changes to commit'],
                                ['commit', '-m', 'my commit comment'])
             # Make sure --strict is handling an unknown file, rather than
             # giving us the 'nothing to do' error
             self.build_tree(['unknown'])
-            self.run_bzr_error(['Commit refused because there are unknown files'],
+            self.run_bzr_error([b'Commit refused because there are unknown files'],
                                ['commit', --strict', '-m', 'my commit comment'])
         """
         kwargs.setdefault('retcode', 3)
@@ -2284,12 +2287,18 @@ class TestCase(testtools.TestCase):
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
-                stdout = BytesIO()
+                if sys.version_info[0] == 2:
+                    stdout = BytesIO()
+                else:
+                    stdout = StringIO()
         if stderr is None:
             if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
-                stderr = BytesIO()
+                if sys.version_info[0] == 2:
+                    stderr = BytesIO()
+                else:
+                    stderr = StringIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
