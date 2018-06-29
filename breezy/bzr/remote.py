@@ -1509,6 +1509,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         with self.lock_read():
             revision_graph = dict(((key, value) for key, value in
                 self.get_graph().iter_ancestry(revision_ids) if value is not None))
+            revision_graph = _mod_repository._strip_NULL_ghosts(revision_graph)
             return graph.KnownGraph(revision_graph)
 
     def gather_stats(self, revid=None, committers=None):
