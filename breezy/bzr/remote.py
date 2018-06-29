@@ -1507,10 +1507,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """Return the known graph for a set of revision ids and their ancestors.
         """
         with self.lock_read():
-            st = static_tuple.StaticTuple
-            revision_keys = [st(r_id).intern() for r_id in revision_ids]
-            known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
-            return graph.GraphThunkIdsToKeys(known_graph)
+            revision_graph = dict(((key, value) for key, value in
+                self.get_graph().iter_ancestry(revision_ids) if value is not None))
+            return graph.KnownGraph(revision_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""

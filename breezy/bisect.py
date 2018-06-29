@@ -57,8 +57,7 @@ class BisectCurrent(object):
 
     def get_current_revno(self):
         """Return the current revision number as a tuple."""
-        revdict = self._branch.get_revision_id_to_revno_map()
-        return revdict[self.get_current_revid()]
+        return self._branch.revision_id_to_dotted_revno()
 
     def get_parent_revids(self):
         """Return the IDs of the current revision's predecessors."""
