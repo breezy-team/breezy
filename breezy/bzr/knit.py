@@ -3098,11 +3098,11 @@ class _KnitGraphIndex(object):
 
     def _get_method(self, node):
         if not self._deltas:
-            return b'fulltext'
+            return 'fulltext'
         if self._compression_parent(node):
-            return b'line-delta'
+            return 'line-delta'
         else:
-            return b'fulltext'
+            return 'fulltext'
 
     def _get_node(self, key):
         try:
