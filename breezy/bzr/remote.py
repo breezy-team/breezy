@@ -2992,7 +2992,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         try:
             response, handler = self.from_repository._call_with_body_bytes_expecting_body(
                 b'Repository.get_stream_for_missing_keys', args, search_bytes)
-        except errors.UnknownSmartMethod:
+        except (errors.UnknownSmartMethod, errors.UnknownFormatError):
             self.from_repository._ensure_real()
             real_repo = self.from_repository._real_repository
             real_source = real_repo._get_source(self.to_format)
@@ -4322,6 +4322,9 @@ no_context_error_translators.register(b'FileExists',
     lambda err: errors.FileExists(err.error_args[0].decode('utf-8')))
 no_context_error_translators.register(b'DirectoryNotEmpty',
     lambda err: errors.DirectoryNotEmpty(err.error_args[0].decode('utf-8')))
+no_context_error_translators.register(b'UnknownFormat',
+    lambda err: errors.UnknownFormatError(
+        err.error_args[0].decode('ascii'), err.error_args[0].decode('ascii')))
 
 def _translate_short_readv_error(err):
     args = err.error_args

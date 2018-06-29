@@ -2734,6 +2734,16 @@ class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
         stream_bytes = b''.join(response.body_stream)
         self.assertStartsWith(stream_bytes, b'Bazaar pack format 1')
 
+    def test_unknown_format(self):
+        """The format may not be known by the remote server."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStreamForMissingKeys(
+            backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        request.execute(b'', b'yada yada yada')
+        expected = smart_req.FailedSmartServerResponse(
+            (b'UnknownFormat', b'repository', b'yada yada yada'))
+
 
 class TestSmartServerRepositoryRevisionArchive(tests.TestCaseWithTransport):
     def test_get(self):

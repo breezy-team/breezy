@@ -1285,7 +1285,11 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
         :param to_network_name: The network name of the format of the target
             repository.
         """
-        self._to_format = network_format_registry.get(to_network_name)
+        try:
+            self._to_format = network_format_registry.get(to_network_name)
+        except KeyError:
+            return FailedSmartServerResponse(
+                (b'UnknownFormat', b'repository', to_network_name))
         return None # Signal that we want a body.
 
     def do_body(self, body_bytes):
