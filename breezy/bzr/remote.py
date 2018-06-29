@@ -1868,10 +1868,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        if self._format.rich_root_data:
-            commit_builder_kls = vf_repository.VersionedFileRootCommitBuilder
-        else:
-            commit_builder_kls = vf_repository.VersionedFileCommitBuilder
+        commit_builder_kls = vf_repository.VersionedFileCommitBuilder
         result = commit_builder_kls(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
