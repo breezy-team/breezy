@@ -89,7 +89,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     def create_dirstate_with_root(self):
         """Return a write-locked state with a single root entry."""
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry_direntry = ('', '', 'a-root-value'), [
+        root_entry_direntry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat),
             ]
         dirblocks = []
@@ -139,31 +139,31 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         """
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         null_sha = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-        root_entry = ('', '', 'a-root-value'), [
+        root_entry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat),
             ]
-        a_entry = ('', 'a', 'a-dir'), [
+        a_entry = ('', 'a', b'a-dir'), [
             ('d', '', 0, False, packed_stat),
             ]
-        b_entry = ('', 'b', 'b-dir'), [
+        b_entry = ('', 'b', b'b-dir'), [
             ('d', '', 0, False, packed_stat),
             ]
-        c_entry = ('', 'c', 'c-file'), [
+        c_entry = ('', 'c', b'c-file'), [
             ('f', null_sha, 10, False, packed_stat),
             ]
-        d_entry = ('', 'd', 'd-file'), [
+        d_entry = ('', 'd', b'd-file'), [
             ('f', null_sha, 20, False, packed_stat),
             ]
-        e_entry = ('a', 'e', 'e-dir'), [
+        e_entry = ('a', 'e', b'e-dir'), [
             ('d', '', 0, False, packed_stat),
             ]
-        f_entry = ('a', 'f', 'f-file'), [
+        f_entry = ('a', 'f', b'f-file'), [
             ('f', null_sha, 30, False, packed_stat),
             ]
-        g_entry = ('b', 'g', 'g-file'), [
+        g_entry = ('b', 'g', b'g-file'), [
             ('f', null_sha, 30, False, packed_stat),
             ]
-        h_entry = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file'), [
+        h_entry = ('b', 'h\xc3\xa5', b'h-\xc3\xa5-file'), [
             ('f', null_sha, 40, False, packed_stat),
             ]
         dirblocks = []
@@ -225,12 +225,12 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('tree')
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'b-c', 'f']
-        file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'b-c-id', 'f-id']
+        file_ids = [b'a-id', b'b-id', b'c-id', b'd-id', b'e-id', b'b-c-id', b'f-id']
         self.build_tree(['tree/' + p for p in paths])
         tree.set_root_id(b'TREE_ROOT')
         tree.add([p.rstrip('/') for p in paths], file_ids)
         tree.commit('initial', rev_id=b'rev-1')
-        revision_id = 'rev-1'
+        revision_id = b'rev-1'
         # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
         t = self.get_transport('tree')
         a_text = t.get_bytes('a')
@@ -255,35 +255,35 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         f_len = len(f_text)
         null_stat = dirstate.DirState.NULLSTAT
         expected = {
-            '': (('', '', 'TREE_ROOT'), [
+            '': (('', '', b'TREE_ROOT'), [
                   ('d', '', 0, False, null_stat),
                   ('d', '', 0, False, revision_id),
                 ]),
-            'a': (('', 'a', 'a-id'), [
+            'a': (('', 'a', b'a-id'), [
                    ('f', '', 0, False, null_stat),
                    ('f', a_sha, a_len, False, revision_id),
                  ]),
-            'b': (('', 'b', 'b-id'), [
+            'b': (('', 'b', b'b-id'), [
                   ('d', '', 0, False, null_stat),
                   ('d', '', 0, False, revision_id),
                  ]),
-            'b/c': (('b', 'c', 'c-id'), [
+            'b/c': (('b', 'c', b'c-id'), [
                     ('f', '', 0, False, null_stat),
                     ('f', c_sha, c_len, False, revision_id),
                    ]),
-            'b/d': (('b', 'd', 'd-id'), [
+            'b/d': (('b', 'd', b'd-id'), [
                     ('d', '', 0, False, null_stat),
                     ('d', '', 0, False, revision_id),
                    ]),
-            'b/d/e': (('b/d', 'e', 'e-id'), [
+            'b/d/e': (('b/d', 'e', b'e-id'), [
                       ('f', '', 0, False, null_stat),
                       ('f', e_sha, e_len, False, revision_id),
                      ]),
-            'b-c': (('', 'b-c', 'b-c-id'), [
+            'b-c': (('', 'b-c', b'b-c-id'), [
                       ('f', '', 0, False, null_stat),
                       ('f', b_c_sha, b_c_len, False, revision_id),
                      ]),
-            'f': (('', 'f', 'f-id'), [
+            'f': (('', 'f', b'f-id'), [
                   ('f', '', 0, False, null_stat),
                   ('f', f_sha, f_len, False, revision_id),
                  ]),
@@ -317,7 +317,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         # per entry. Unversion in reverse order so we handle subdirs
         tree.unversion(['f', 'b-c', 'b/d/e', 'b/d', 'b/c', 'b', 'a'])
         tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f'],
-                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'b-c-id2', 'f-id2'])
+                 [b'a-id2', b'b-id2', b'c-id2', b'd-id2', b'e-id2', b'b-c-id2', b'f-id2'])
 
         # Update the expected dictionary.
         for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f']:
@@ -359,17 +359,17 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
 
         old_a = expected['a']
         expected['a'] = (old_a[0], [('r', 'b/g', 0, False, ''), old_a[1][1]])
-        expected['b/g'] = (('b', 'g', 'a-id'), [old_a[1][0],
+        expected['b/g'] = (('b', 'g', b'a-id'), [old_a[1][0],
                                                 ('r', 'a', 0, False, '')])
         old_d = expected['b/d']
         expected['b/d'] = (old_d[0], [('r', 'h', 0, False, ''), old_d[1][1]])
-        expected['h'] = (('', 'h', 'd-id'), [old_d[1][0],
+        expected['h'] = (('', 'h', b'd-id'), [old_d[1][0],
                                              ('r', 'b/d', 0, False, '')])
 
         old_e = expected['b/d/e']
         expected['b/d/e'] = (old_e[0], [('r', 'h/e', 0, False, ''),
                              old_e[1][1]])
-        expected['h/e'] = (('h', 'e', 'e-id'), [old_e[1][0],
+        expected['h/e'] = (('h', 'e', b'e-id'), [old_e[1][0],
                                                 ('r', 'b/d/e', 0, False, '')])
 
         state.unlock()
@@ -391,8 +391,8 @@ class TestTreeToDirState(TestCaseWithDirState):
         # There are no files on disk and no parents
         tree = self.make_branch_and_tree('tree')
         expected_result = ([], [
-            (('', '', tree.get_root_id()), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
+            ((b'', b'', tree.get_root_id()), # common details
+             [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         state._validate()
@@ -404,9 +404,9 @@ class TestTreeToDirState(TestCaseWithDirState):
         rev_id = tree.commit('first post').encode('utf8')
         root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
         expected_result = ([rev_id], [
-            (('', '', tree.get_root_id()), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
-              ('d', '', 0, False, rev_id), # first parent details
+            ((b'', b'', tree.get_root_id()), # common details
+             [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT), # current tree
+              (b'd', b'', 0, False, rev_id), # first parent details
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -424,10 +424,10 @@ class TestTreeToDirState(TestCaseWithDirState):
         rev_id2 = tree2.commit('second post', allow_pointless=True)
         tree.merge_from_branch(tree2.branch)
         expected_result = ([rev_id, rev_id2], [
-            (('', '', tree.get_root_id()), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
-              ('d', '', 0, False, rev_id), # first parent details
-              ('d', '', 0, False, rev_id), # second parent details
+            ((b'', b'', tree.get_root_id()), # common details
+             [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT), # current tree
+              (b'd', b'', 0, False, rev_id), # first parent details
+              (b'd', b'', 0, False, rev_id), # second parent details
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -443,8 +443,8 @@ class TestTreeToDirState(TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/unknown'])
         expected_result = ([], [
-            (('', '', tree.get_root_id()), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
+            ((b'', b'', tree.get_root_id()), # common details
+             [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -460,11 +460,11 @@ class TestTreeToDirState(TestCaseWithDirState):
         # There are files on disk and no parents
         tree = self.get_tree_with_a_file()
         expected_result = ([], [
-            (('', '', tree.get_root_id()), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
+            ((b'', b'', tree.get_root_id()), # common details
+             [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a file', 'a-file-id'), # common
-             [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
+            ((b'', b'a file', b'a-file-id'), # common
+             [(b'f', b'', 0, False, dirstate.DirState.NULLSTAT), # current
              ]),
             ])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -473,18 +473,18 @@ class TestTreeToDirState(TestCaseWithDirState):
     def test_1_parents_not_empty_to_dirstate(self):
         # create a parent by doing a commit
         tree = self.get_tree_with_a_file()
-        rev_id = tree.commit('first post').encode('utf8')
+        rev_id = tree.commit('first post')
         # change the current content to be different this will alter stat, sha
         # and length:
         self.build_tree_contents([('tree/a file', b'new content\n')])
         expected_result = ([rev_id], [
-            (('', '', tree.get_root_id()), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
-              ('d', '', 0, False, rev_id), # first parent details
+            ((b'', b'', tree.get_root_id()), # common details
+             [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT), # current tree
+              (b'd', b'', 0, False, rev_id), # first parent details
              ]),
-            (('', 'a file', b'a-file-id'), # common
-             [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
-              ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
+            ((b'', b'a file', b'a-file-id'), # common
+             [(b'f', b'', 0, False, dirstate.DirState.NULLSTAT), # current
+              (b'f', b'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
                rev_id), # first parent
              ]),
             ])
@@ -494,12 +494,12 @@ class TestTreeToDirState(TestCaseWithDirState):
     def test_2_parents_not_empty_to_dirstate(self):
         # create a parent by doing a commit
         tree = self.get_tree_with_a_file()
-        rev_id = tree.commit('first post').encode('utf8')
+        rev_id = tree.commit('first post')
         tree2 = tree.controldir.sprout('tree2').open_workingtree()
         # change the current content to be different this will alter stat, sha
         # and length:
-        self.build_tree_contents([('tree2/a file', 'merge content\n')])
-        rev_id2 = tree2.commit('second post').encode('utf8')
+        self.build_tree_contents([('tree2/a file', b'merge content\n')])
+        rev_id2 = tree2.commit('second post')
         tree.merge_from_branch(tree2.branch)
         # change the current content to be different this will alter stat, sha
         # and length again, giving us three distinct values:
@@ -510,7 +510,7 @@ class TestTreeToDirState(TestCaseWithDirState):
               ('d', '', 0, False, rev_id), # first parent details
               ('d', '', 0, False, rev_id), # second parent details
              ]),
-            (('', 'a file', 'a-file-id'), # common
+            (('', 'a file', b'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
               ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
                rev_id), # first parent
@@ -530,8 +530,8 @@ class TestTreeToDirState(TestCaseWithDirState):
         for i in range(7):
             tree = self.make_branch_and_tree('tree%d' % i)
             self.build_tree(['tree%d/name' % i,])
-            tree.add(['name'], ['file-id%d' % i])
-            revision_id = 'revid-%d' % i
+            tree.add(['name'], [b'file-id%d' % i])
+            revision_id = b'revid-%d' % i
             tree.commit('message', rev_id=revision_id)
             parents.append((revision_id,
                 tree.branch.repository.revision_tree(revision_id)))
@@ -625,7 +625,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
         try:
-            entry = state._get_entry(0, path_utf8='a-file')
+            entry = state._get_entry(0, path_utf8=b'a-file')
             self.assertEqual(st.st_size, entry[1][0][2])
         finally:
             state.unlock()
@@ -634,7 +634,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         """If dirstate is locked, save will fail without complaining."""
         state = self.create_updated_dirstate()
         try:
-            entry = state._get_entry(0, path_utf8='a-file')
+            entry = state._get_entry(0, path_utf8=b'a-file')
             # No cached sha1 yet.
             self.assertEqual('', entry[1][0][1])
             # Set the cutoff-time into the future, so things look cacheable
@@ -671,7 +671,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
         try:
-            entry = state._get_entry(0, path_utf8='a-file')
+            entry = state._get_entry(0, path_utf8=b'a-file')
             self.assertEqual('', entry[1][0][1])
         finally:
             state.unlock()
@@ -720,7 +720,7 @@ class TestDirStateInitialize(TestCaseWithDirState):
 
     def test_initialize(self):
         expected_result = ([], [
-            (('', '', 'TREE_ROOT'), # common details
+            (('', '', b'TREE_ROOT'), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ])
             ])
@@ -837,8 +837,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
         tree = self.make_branch_and_tree('.')
         # depends on the default format using dirstate...
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # make a dirstate with some valid hashcache data
             # file on disk, but that's not needed for this test
             foo_contents = b'contents of foo'
@@ -852,19 +851,19 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
             # should not be cached yet, because the file's too fresh
             self.assertEqual(
-                (('', 'foo', 'foo-id',),
+                (('', 'foo', b'foo-id',),
                  [('f', '', 0, False, dirstate.DirState.NULLSTAT)]),
-                tree._dirstate._get_entry(0, 'foo-id'))
+                tree._dirstate._get_entry(0, b'foo-id'))
             # poke in some hashcache information - it wouldn't normally be
             # stored because it's too fresh
             tree._dirstate.update_minimal(
-                ('', 'foo', 'foo-id'),
+                ('', 'foo', b'foo-id'),
                 'f', False, foo_sha, foo_packed, foo_size, 'foo')
             # now should be cached
             self.assertEqual(
-                (('', 'foo', 'foo-id',),
+                (('', 'foo', b'foo-id',),
                  [('f', foo_sha, foo_size, False, foo_packed)]),
-                tree._dirstate._get_entry(0, 'foo-id'))
+                tree._dirstate._get_entry(0, b'foo-id'))
 
             # extract the inventory, and add something to it
             inv = tree._get_root_inventory()
@@ -876,22 +875,17 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # this used to cause it to lose its hashcache
             tree._dirstate.set_state_from_inventory(inv)
             tree._dirstate._validate()
-        finally:
-            tree.unlock()
 
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             # now check that the state still has the original hashcache value
             state = tree._dirstate
             state._validate()
             foo_tuple = state._get_entry(0, path_utf8='foo')
             self.assertEqual(
-                (('', 'foo', 'foo-id',),
+                (('', 'foo', b'foo-id',),
                  [('f', foo_sha, len(foo_contents), False,
                    dirstate.pack_stat(foo_stat))]),
                 foo_tuple)
-        finally:
-            tree.unlock()
 
     def test_set_state_from_inventory_mixed_paths(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -900,23 +894,23 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree1.lock_write()
         try:
             tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
-                      ['a-id', 'b-id', 'a-b-id', 'foo-id', 'bar-id'])
+                      [b'a-id', b'b-id', b'a-b-id', b'foo-id', b'bar-id'])
             tree1.commit('rev1', rev_id=b'rev1')
             root_id = tree1.get_root_id()
             inv = tree1.root_inventory
         finally:
             tree1.unlock()
         expected_result1 = [('', '', root_id, 'd'),
-                            ('', 'a', 'a-id', 'd'),
-                            ('', 'a-b', 'a-b-id', 'd'),
-                            ('a', 'b', 'b-id', 'd'),
-                            ('a/b', 'foo', 'foo-id', 'f'),
-                            ('a-b', 'bar', 'bar-id', 'f'),
+                            ('', 'a', b'a-id', 'd'),
+                            ('', 'a-b', b'a-b-id', 'd'),
+                            ('a', 'b', b'b-id', 'd'),
+                            ('a/b', 'foo', b'foo-id', 'f'),
+                            ('a-b', 'bar', b'bar-id', 'f'),
                            ]
         expected_result2 = [('', '', root_id, 'd'),
-                            ('', 'a', 'a-id', 'd'),
-                            ('', 'a-b', 'a-b-id', 'd'),
-                            ('a-b', 'bar', 'bar-id', 'f'),
+                            ('', 'a', b'a-id', 'd'),
+                            ('', 'a-b', b'a-b-id', 'd'),
+                            ('a-b', 'bar', b'bar-id', 'f'),
                            ]
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -925,7 +919,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             for entry in state._iter_entries():
                 values.append(entry[0] + entry[1][0][:1])
             self.assertEqual(expected_result1, values)
-            inv.delete('b-id')
+            inv.delete(b'b-id')
             state.set_state_from_inventory(inv)
             values = []
             for entry in state._iter_entries():
@@ -939,23 +933,23 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             # check precondition to be sure the state does change appropriately.
-            root_entry = (('', '', 'TREE_ROOT'), [('d', '', 0, False, 'x'*32)])
+            root_entry = (('', '', b'TREE_ROOT'), [('d', '', 0, False, 'x'*32)])
             self.assertEqual([root_entry], list(state._iter_entries()))
             self.assertEqual(root_entry, state._get_entry(0, path_utf8=''))
             self.assertEqual(root_entry,
-                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+                             state._get_entry(0, fileid_utf8=b'TREE_ROOT'))
             self.assertEqual((None, None),
-                             state._get_entry(0, fileid_utf8='second-root-id'))
-            state.set_path_id('', 'second-root-id')
-            new_root_entry = (('', '', 'second-root-id'),
+                             state._get_entry(0, fileid_utf8=b'second-root-id'))
+            state.set_path_id('', b'second-root-id')
+            new_root_entry = (('', '', b'second-root-id'),
                               [('d', '', 0, False, 'x'*32)])
             expected_rows = [new_root_entry]
             self.assertEqual(expected_rows, list(state._iter_entries()))
             self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
             self.assertEqual(new_root_entry, 
-                             state._get_entry(0, fileid_utf8='second-root-id'))
+                             state._get_entry(0, fileid_utf8=b'second-root-id'))
             self.assertEqual((None, None),
-                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+                             state._get_entry(0, fileid_utf8=b'TREE_ROOT'))
             # should work across save too
             state.save()
         finally:
@@ -978,37 +972,37 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         state._validate()
         try:
-            state.set_parent_trees([('parent-revid', rt)], ghosts=[])
-            root_entry = (('', '', 'TREE_ROOT'),
+            state.set_parent_trees([(b'parent-revid', rt)], ghosts=[])
+            root_entry = (('', '', b'TREE_ROOT'),
                           [('d', '', 0, False, 'x'*32),
-                           ('d', '', 0, False, 'parent-revid')])
+                           ('d', '', 0, False, b'parent-revid')])
             self.assertEqual(root_entry, state._get_entry(0, path_utf8=''))
             self.assertEqual(root_entry,
-                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+                             state._get_entry(0, fileid_utf8=b'TREE_ROOT'))
             self.assertEqual((None, None),
-                             state._get_entry(0, fileid_utf8='Asecond-root-id'))
-            state.set_path_id('', 'Asecond-root-id')
+                             state._get_entry(0, fileid_utf8=b'Asecond-root-id'))
+            state.set_path_id('', b'Asecond-root-id')
             state._validate()
             # now see that it is what we expected
-            old_root_entry = (('', '', 'TREE_ROOT'),
+            old_root_entry = (('', '', b'TREE_ROOT'),
                               [('a', '', 0, False, ''),
-                               ('d', '', 0, False, 'parent-revid')])
-            new_root_entry = (('', '', 'Asecond-root-id'),
+                               ('d', '', 0, False, b'parent-revid')])
+            new_root_entry = (('', '', b'Asecond-root-id'),
                               [('d', '', 0, False, ''),
                                ('a', '', 0, False, '')])
             expected_rows = [new_root_entry, old_root_entry]
             state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
-            self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
-            self.assertEqual(old_root_entry, state._get_entry(1, path_utf8=''))
+            self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=b''))
+            self.assertEqual(old_root_entry, state._get_entry(1, path_utf8=b''))
             self.assertEqual((None, None),
-                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+                             state._get_entry(0, fileid_utf8=b'TREE_ROOT'))
             self.assertEqual(old_root_entry,
-                             state._get_entry(1, fileid_utf8='TREE_ROOT'))
+                             state._get_entry(1, fileid_utf8=b'TREE_ROOT'))
             self.assertEqual(new_root_entry,
-                             state._get_entry(0, fileid_utf8='Asecond-root-id'))
+                             state._get_entry(0, fileid_utf8=b'Asecond-root-id'))
             self.assertEqual((None, None),
-                             state._get_entry(1, fileid_utf8='Asecond-root-id'))
+                             state._get_entry(1, fileid_utf8=b'Asecond-root-id'))
             # should work across save too
             state.save()
         finally:
@@ -1025,7 +1019,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state.lock_write()
         try:
             state._validate()
-            state.set_path_id('', 'tree-root-2')
+            state.set_path_id('', b'tree-root-2')
             state._validate()
         finally:
             state.unlock()
@@ -1053,8 +1047,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.set_parent_trees(
                 ((revid1, tree1.branch.repository.revision_tree(revid1)),
                  (revid2, tree2.branch.repository.revision_tree(revid2)),
-                 ('ghost-rev', None)),
-                ['ghost-rev'])
+                 (b'ghost-rev', None)),
+                [b'ghost-rev'])
             # check we can reopen and use the dirstate after setting parent
             # trees.
             state._validate()
@@ -1065,26 +1059,26 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.on_file('dirstate')
         state.lock_write()
         try:
-            self.assertEqual([revid1, revid2, 'ghost-rev'],
+            self.assertEqual([revid1, revid2, b'ghost-rev'],
                              state.get_parent_ids())
             # iterating the entire state ensures that the state is parsable.
             list(state._iter_entries())
             # be sure that it sets not appends - change it
             state.set_parent_trees(
                 ((revid1, tree1.branch.repository.revision_tree(revid1)),
-                 ('ghost-rev', None)),
-                ['ghost-rev'])
+                 (b'ghost-rev', None)),
+                [b'ghost-rev'])
             # and now put it back.
             state.set_parent_trees(
                 ((revid1, tree1.branch.repository.revision_tree(revid1)),
                  (revid2, tree2.branch.repository.revision_tree(revid2)),
-                 ('ghost-rev', tree2.branch.repository.revision_tree(
+                 (b'ghost-rev', tree2.branch.repository.revision_tree(
                                    _mod_revision.NULL_REVISION))),
-                ['ghost-rev'])
-            self.assertEqual([revid1, revid2, 'ghost-rev'],
+                [b'ghost-rev'])
+            self.assertEqual([revid1, revid2, b'ghost-rev'],
                              state.get_parent_ids())
             # the ghost should be recorded as such by set_parent_trees.
-            self.assertEqual(['ghost-rev'], state.get_ghosts())
+            self.assertEqual([b'ghost-rev'], state.get_ghosts())
             self.assertEqual(
                 [(('', '', root_id), [
                   ('d', '', 0, False, dirstate.DirState.NULLSTAT),
@@ -1125,7 +1119,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
              ('d', '', 0, False, revid1.encode('utf8')),
              ('d', '', 0, False, revid1.encode('utf8'))
              ]),
-            (('', 'a file', 'file-id'), [
+            (('', 'a file', b'file-id'), [
              ('a', '', 0, False, ''),
              ('f', '2439573625385400f2a669657a7db6ae7515d371', 12, False,
               revid1.encode('utf8')),
@@ -1189,7 +1183,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         self.assertRaises(errors.NotVersionedError, state.add,
-                          'unversioned/a file', 'a-file-id', 'file', None, None)
+                          'unversioned/a file', b'a-file-id', 'file', None, None)
 
     def test_add_directory_to_root_no_parents_all_data(self):
         # The most trivial addition of a dir is when there are no parents and
@@ -1197,16 +1191,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.build_tree(['a dir/'])
         stat = os.lstat('a dir')
         expected_entries = [
-            (('', '', 'TREE_ROOT'), [
+            (('', '', b'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a dir', 'a dir id'), [
+            (('', 'a dir', b'a dir id'), [
              ('d', '', 0, False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a dir', 'a dir id', 'directory', stat, None)
+            state.add('a dir', b'a dir id', 'directory', stat, None)
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1227,17 +1221,17 @@ class TestDirStateManipulations(TestCaseWithDirState):
         os.symlink(target, link_name)
         stat = os.lstat(link_name)
         expected_entries = [
-            (('', '', 'TREE_ROOT'), [
+            (('', '', b'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', link_name.encode('UTF-8'), 'a link id'), [
+            (('', link_name.encode('UTF-8'), b'a link id'), [
              ('l', target.encode('UTF-8'), stat[6],
               False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add(link_name, 'a link id', 'symlink', stat,
+            state.add(link_name, b'a link id', 'symlink', stat,
                       target.encode('UTF-8'))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
@@ -1264,13 +1258,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
         dirstat = os.lstat('a dir')
         filestat = os.lstat('a dir/a file')
         expected_entries = [
-            (('', '', 'TREE_ROOT'), [
+            (('', '', b'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a dir', 'a dir id'), [
+            (('', 'a dir', b'a dir id'), [
              ('d', '', 0, False, dirstate.pack_stat(dirstat)), # current tree
              ]),
-            (('a dir', 'a file', 'a-file-id'), [
+            (('a dir', 'a file', b'a-file-id'), [
              ('f', '1'*20, 25, False,
               dirstate.pack_stat(filestat)), # current tree details
              ]),
@@ -1321,9 +1315,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         self.assertRaises(errors.BzrError,
-            state.add, '.', 'ass-id', 'directory', None, None)
+            state.add, '.', b'ass-id', 'directory', None, None)
         self.assertRaises(errors.BzrError,
-            state.add, '..', 'ass-id', 'directory', None, None)
+            state.add, '..', b'ass-id', 'directory', None, None)
 
     def test_set_state_with_rename_b_a_bug_395556(self):
         # bug 395556 uncovered a bug where the dirstate ends up with a false
@@ -1342,11 +1336,11 @@ class TestDirStateManipulations(TestCaseWithDirState):
             try:
                 # Set the initial state with 'b'
                 state.set_state_from_inventory(inv)
-                inv.rename('b-id', root_id, 'a')
+                inv.rename(b'b-id', root_id, 'a')
                 # Set the new state with 'a', which currently corrupts.
                 state.set_state_from_inventory(inv)
                 expected_result1 = [('', '', root_id, 'd'),
-                                    ('', 'a', 'b-id', 'f'),
+                                    ('', 'a', b'b-id', 'f'),
                                    ]
                 values = []
                 for entry in state._iter_entries():
@@ -1419,15 +1413,15 @@ class TestGetLines(TestCaseWithDirState):
     def test_get_line_with_2_rows(self):
         state = self.create_dirstate_with_root_and_subdir()
         try:
-            self.assertEqual(['#bazaar dirstate flat format 3\n',
-                'crc32: 41262208\n',
-                'num_entries: 2\n',
-                '0\x00\n\x00'
-                '0\x00\n\x00'
-                '\x00\x00a-root-value\x00'
-                'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'
-                '\x00subdir\x00subdir-id\x00'
-                'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'
+            self.assertEqual([b'#bazaar dirstate flat format 3\n',
+                b'crc32: 41262208\n',
+                b'num_entries: 2\n',
+                b'0\x00\n\x00'
+                b'0\x00\n\x00'
+                b'\x00\x00a-root-value\x00'
+                b'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'
+                b'\x00subdir\x00subdir-id\x00'
+                b'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'
                 ], state.get_lines())
         finally:
             state.unlock()
@@ -1436,15 +1430,15 @@ class TestGetLines(TestCaseWithDirState):
         state = self.create_dirstate_with_root()
         try:
             self.assertEqual(
-                '\x00\x00a-root-value\x00d\x00\x000\x00n'
-                '\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk',
+                b'\x00\x00a-root-value\x00d\x00\x000\x00n'
+                b'\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk',
                 state._entry_to_line(state._dirblocks[0][1][0]))
         finally:
             state.unlock()
 
     def test_entry_to_line_with_parent(self):
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry = ('', '', 'a-root-value'), [
+        root_entry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat), # current tree details
              # first: a pointer to the current location
             ('a', 'dirname/basename', 0, False, ''),
@@ -1452,9 +1446,9 @@ class TestGetLines(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             self.assertEqual(
-                '\x00\x00a-root-value\x00'
-                'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00'
-                'a\x00dirname/basename\x000\x00n\x00',
+                b'\x00\x00a-root-value\x00'
+                b'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00'
+                b'a\x00dirname/basename\x000\x00n\x00',
                 state._entry_to_line(root_entry))
         finally:
             state.unlock()
@@ -1462,19 +1456,19 @@ class TestGetLines(TestCaseWithDirState):
     def test_entry_to_line_with_two_parents_at_different_paths(self):
         # / in the tree, at / in one parent and /dirname/basename in the other.
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry = ('', '', 'a-root-value'), [
+        root_entry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat), # current tree details
-            ('d', '', 0, False, 'rev_id'), # first parent details
+            ('d', '', 0, False, b'rev_id'), # first parent details
              # second: a pointer to the current location
             ('a', 'dirname/basename', 0, False, ''),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
             self.assertEqual(
-                '\x00\x00a-root-value\x00'
-                'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00'
-                'd\x00\x000\x00n\x00rev_id\x00'
-                'a\x00dirname/basename\x000\x00n\x00',
+                b'\x00\x00a-root-value\x00'
+                b'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00'
+                b'd\x00\x000\x00n\x00rev_id\x00'
+                b'a\x00dirname/basename\x000\x00n\x00',
                 state._entry_to_line(root_entry))
         finally:
             state.unlock()
@@ -1484,20 +1478,20 @@ class TestGetLines(TestCaseWithDirState):
         # this is for get_lines to be easy to read.
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         dirblocks = []
-        root_entries = [(('', '', 'a-root-value'), [
+        root_entries = [(('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat), # current tree details
             ])]
         dirblocks.append(('', root_entries))
         # add two files in the root
-        subdir_entry = ('', 'subdir', 'subdir-id'), [
+        subdir_entry = ('', 'subdir', b'subdir-id'), [
             ('d', '', 0, False, packed_stat), # current tree details
             ]
-        afile_entry = ('', 'afile', 'afile-id'), [
+        afile_entry = ('', 'afile', b'afile-id'), [
             ('f', 'sha1value', 34, False, packed_stat), # current tree details
             ]
         dirblocks.append(('', [subdir_entry, afile_entry]))
         # and one in subdir
-        file_entry2 = ('subdir', '2file', '2file-id'), [
+        file_entry2 = ('subdir', '2file', b'2file-id'), [
             ('f', 'sha1value', 23, False, packed_stat), # current tree details
             ]
         dirblocks.append(('subdir', [file_entry2]))
@@ -1583,8 +1577,8 @@ class TestGetEntry(TestCaseWithDirState):
     def test_simple_structure(self):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
-        self.assertEntryEqual('', '', 'a-root-value', state, '', 0)
-        self.assertEntryEqual('', 'subdir', 'subdir-id', state, 'subdir', 0)
+        self.assertEntryEqual('', '', b'a-root-value', state, '', 0)
+        self.assertEntryEqual('', 'subdir', b'subdir-id', state, 'subdir', 0)
         self.assertEntryEqual(None, None, None, state, 'missing', 0)
         self.assertEntryEqual(None, None, None, state, 'missing/foo', 0)
         self.assertEntryEqual(None, None, None, state, 'subdir/foo', 0)
@@ -1592,15 +1586,15 @@ class TestGetEntry(TestCaseWithDirState):
     def test_complex_structure_exists(self):
         state = self.create_complex_dirstate()
         self.addCleanup(state.unlock)
-        self.assertEntryEqual('', '', 'a-root-value', state, '', 0)
-        self.assertEntryEqual('', 'a', 'a-dir', state, 'a', 0)
-        self.assertEntryEqual('', 'b', 'b-dir', state, 'b', 0)
-        self.assertEntryEqual('', 'c', 'c-file', state, 'c', 0)
-        self.assertEntryEqual('', 'd', 'd-file', state, 'd', 0)
-        self.assertEntryEqual('a', 'e', 'e-dir', state, 'a/e', 0)
-        self.assertEntryEqual('a', 'f', 'f-file', state, 'a/f', 0)
-        self.assertEntryEqual('b', 'g', 'g-file', state, 'b/g', 0)
-        self.assertEntryEqual('b', 'h\xc3\xa5', 'h-\xc3\xa5-file', state,
+        self.assertEntryEqual('', '', b'a-root-value', state, '', 0)
+        self.assertEntryEqual('', 'a', b'a-dir', state, 'a', 0)
+        self.assertEntryEqual('', 'b', b'b-dir', state, 'b', 0)
+        self.assertEntryEqual('', 'c', b'c-file', state, 'c', 0)
+        self.assertEntryEqual('', 'd', b'd-file', state, 'd', 0)
+        self.assertEntryEqual('a', 'e', b'e-dir', state, 'a/e', 0)
+        self.assertEntryEqual('a', 'f', b'f-file', state, 'a/f', 0)
+        self.assertEntryEqual('b', 'g', b'g-file', state, 'b/g', 0)
+        self.assertEntryEqual('b', 'h\xc3\xa5', b'h-\xc3\xa5-file', state,
                               'b/h\xc3\xa5', 0)
 
     def test_complex_structure_missing(self):
@@ -1626,7 +1620,7 @@ class TestGetEntry(TestCaseWithDirState):
                              state._header_state)
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
-            self.assertEntryEqual('', '', 'a-root-value', state, '', 0)
+            self.assertEntryEqual('', '', b'a-root-value', state, '', 0)
         finally:
             state.unlock()
 
@@ -1659,53 +1653,53 @@ class TestIterChildEntries(TestCaseWithDirState):
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         null_sha = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
         NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
-        root_entry = ('', '', 'a-root-value'), [
+        root_entry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat),
-            ('d', '', 0, False, 'parent-revid'),
+            ('d', '', 0, False, b'parent-revid'),
             ]
-        a_entry = ('', 'a', 'a-dir'), [
+        a_entry = ('', 'a', b'a-dir'), [
             ('d', '', 0, False, packed_stat),
-            ('d', '', 0, False, 'parent-revid'),
+            ('d', '', 0, False, b'parent-revid'),
             ]
-        b_entry = ('', 'b', 'b-dir'), [
+        b_entry = ('', 'b', b'b-dir'), [
             ('d', '', 0, False, packed_stat),
-            ('d', '', 0, False, 'parent-revid'),
+            ('d', '', 0, False, b'parent-revid'),
             ]
-        c_entry = ('', 'c', 'c-file'), [
+        c_entry = ('', 'c', b'c-file'), [
             ('f', null_sha, 10, False, packed_stat),
             ('r', 'b/j', 0, False, ''),
             ]
-        d_entry = ('', 'd', 'd-file'), [
+        d_entry = ('', 'd', b'd-file'), [
             ('f', null_sha, 20, False, packed_stat),
-            ('f', 'd', 20, False, 'parent-revid'),
+            ('f', 'd', 20, False, b'parent-revid'),
             ]
-        e_entry = ('a', 'e', 'e-dir'), [
+        e_entry = ('a', 'e', b'e-dir'), [
             ('d', '', 0, False, packed_stat),
-            ('d', '', 0, False, 'parent-revid'),
+            ('d', '', 0, False, b'parent-revid'),
             ]
-        f_entry = ('a', 'f', 'f-file'), [
+        f_entry = ('a', 'f', b'f-file'), [
             ('f', null_sha, 30, False, packed_stat),
-            ('f', 'f', 20, False, 'parent-revid'),
+            ('f', 'f', 20, False, b'parent-revid'),
             ]
-        g_entry = ('b', 'g', 'g-file'), [
+        g_entry = ('b', 'g', b'g-file'), [
             ('f', null_sha, 30, False, packed_stat),
             NULL_PARENT_DETAILS,
             ]
-        h_entry1 = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file1'), [
+        h_entry1 = ('b', 'h\xc3\xa5', b'h-\xc3\xa5-file1'), [
             ('f', null_sha, 40, False, packed_stat),
             NULL_PARENT_DETAILS,
             ]
-        h_entry2 = ('b', 'h\xc3\xa5', 'h-\xc3\xa5-file2'), [
+        h_entry2 = ('b', 'h\xc3\xa5', b'h-\xc3\xa5-file2'), [
             NULL_PARENT_DETAILS,
-            ('f', 'h', 20, False, 'parent-revid'),
+            ('f', 'h', 20, False, b'parent-revid'),
             ]
         i_entry = ('b', 'i', 'i-file'), [
             NULL_PARENT_DETAILS,
-            ('f', 'h', 20, False, 'parent-revid'),
+            ('f', 'h', 20, False, b'parent-revid'),
             ]
         j_entry = ('b', 'j', 'c-file'), [
             ('r', 'c', 0, False, ''),
-            ('f', 'j', 20, False, 'parent-revid'),
+            ('f', 'j', 20, False, b'parent-revid'),
             ]
         dirblocks = []
         dirblocks.append(('', [root_entry]))
@@ -1766,9 +1760,9 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 
         fake_stat = os.stat('dirstate')
         for d in dirs:
-            d_id = d.replace('/', '_')+'-id'
+            d_id = d.replace(b'/', b'_')+b'-id'
             file_path = d + '/f'
-            file_id = file_path.replace('/', '_')+'-id'
+            file_id = file_path.replace(b'/', b'_')+b'-id'
             state.add(d, d_id, 'directory', fake_stat, null_sha)
             state.add(file_path, file_id, 'file', fake_stat, null_sha)
 
@@ -1879,25 +1873,25 @@ class TestPackStat(tests.TestCaseWithTransport):
     def test_pack_stat_int(self):
         st = _FakeStat(6859, 1172758614, 1172758617, 777, 6499538, 0o100644)
         # Make sure that all parameters have an impact on the packed stat.
-        self.assertPackStat('AAAay0Xm4FZF5uBZAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAay0Xm4FZF5uBZAAADCQBjLNIAAIGk', st)
         st.st_size = 7000
         #                ay0 => bWE
-        self.assertPackStat('AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
         st.st_mtime = 1172758620
         #                     4FZ => 4Fx
-        self.assertPackStat('AAAbWEXm4FxF5uBZAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBZAAADCQBjLNIAAIGk', st)
         st.st_ctime = 1172758630
         #                          uBZ => uBm
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
         st.st_dev = 888
         #                                DCQ => DeA
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADeABjLNIAAIGk', st)
         st.st_ino = 6499540
         #                                     LNI => LNQ
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNQAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADeABjLNQAAIGk', st)
         st.st_mode = 0o100744
         #                                          IGk => IHk
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNQAAIHk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADeABjLNQAAIHk', st)
 
     def test_pack_stat_float(self):
         """On some platforms mtime and ctime are floats.
@@ -1908,18 +1902,18 @@ class TestPackStat(tests.TestCaseWithTransport):
         st = _FakeStat(7000, 1172758614.0, 1172758617.0,
                        777, 6499538, 0o100644)
         # These should all be the same as the integer counterparts
-        self.assertPackStat('AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
         st.st_mtime = 1172758620.0
         #                     FZF5 => FxF5
-        self.assertPackStat('AAAbWEXm4FxF5uBZAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBZAAADCQBjLNIAAIGk', st)
         st.st_ctime = 1172758630.0
         #                          uBZ => uBm
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
         # fractional seconds are discarded, so no change from above
         st.st_mtime = 1172758620.453
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
         st.st_ctime = 1172758630.228
-        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        self.assertPackStat(b'AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
 
 
 class TestBisect(TestCaseWithDirState):
@@ -2181,7 +2175,7 @@ class TestDirstateValidation(TestCaseWithDirState):
         # we're appending to the dirblock, but this name comes before some of
         # the existing names; that's wrong
         last_dirblock[1].append(
-            (('h', 'aaaa', 'a-id'),
+            (('h', 'aaaa', b'a-id'),
              [('a', '', 0, False, ''),
               ('a', '', 0, False, '')]))
         e = self.assertRaises(AssertionError,
@@ -2194,7 +2188,7 @@ class TestDirstateValidation(TestCaseWithDirState):
         last_dirblock = state._dirblocks[-1]
         # add an entry with the wrong directory name
         last_dirblock[1].append(
-            (('', 'z', 'a-id'),
+            (('', 'z', b'a-id'),
              [('a', '', 0, False, ''),
               ('a', '', 0, False, '')]))
         e = self.assertRaises(AssertionError,
@@ -2209,7 +2203,7 @@ class TestDirstateValidation(TestCaseWithDirState):
         # make another entry for a-id, without a correct 'r' pointer to
         # the real occurrence in the working tree
         last_dirblock[1].append(
-            (('h', 'z', 'a-id'),
+            (('h', 'z', b'a-id'),
              [('a', '', 0, False, ''),
               ('a', '', 0, False, '')]))
         e = self.assertRaises(AssertionError,
@@ -2250,7 +2244,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
     def test_discard_one_parent(self):
         # No-op
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry_direntry = ('', '', 'a-root-value'), [
+        root_entry_direntry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat),
             ('d', '', 0, False, packed_stat),
             ]
@@ -2270,12 +2264,12 @@ class TestDiscardMergeParents(TestCaseWithDirState):
     def test_discard_simple(self):
         # No-op
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry_direntry = ('', '', 'a-root-value'), [
+        root_entry_direntry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat),
             ('d', '', 0, False, packed_stat),
             ('d', '', 0, False, packed_stat),
             ]
-        expected_root_entry_direntry = ('', '', 'a-root-value'), [
+        expected_root_entry_direntry = ('', '', b'a-root-value'), [
             ('d', '', 0, False, packed_stat),
             ('d', '', 0, False, packed_stat),
             ]
@@ -2285,7 +2279,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
 
         state = self.create_empty_dirstate()
         self.addCleanup(state.unlock)
-        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._set_data([b'parent-id', b'merged-id'], dirblocks[:])
         state._validate()
 
         # This should strip of the extra column
@@ -2300,9 +2294,9 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         present_dir = ('d', '', 0, False, null_stat)
         present_file = ('f', '', 0, False, null_stat)
         absent = dirstate.DirState.NULL_PARENT_DETAILS
-        root_key = ('', '', 'a-root-value')
-        file_in_root_key = ('', 'file-in-root', 'a-file-id')
-        file_in_merged_key = ('', 'file-in-merged', 'b-file-id')
+        root_key = ('', '', b'a-root-value')
+        file_in_root_key = ('', 'file-in-root', b'a-file-id')
+        file_in_merged_key = ('', 'file-in-merged', b'b-file-id')
         dirblocks = [('', [(root_key, [present_dir, present_dir, present_dir])]),
                      ('', [(file_in_merged_key,
                             [absent, absent, present_file]),
@@ -2313,7 +2307,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
 
         state = self.create_empty_dirstate()
         self.addCleanup(state.unlock)
-        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._set_data([b'parent-id', b'merged-id'], dirblocks[:])
         state._validate()
 
         exp_dirblocks = [('', [(root_key, [present_dir, present_dir])]),
@@ -2330,27 +2324,27 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         present_dir = ('d', '', 0, False, null_stat)
         present_file = ('f', '', 0, False, null_stat)
         absent = dirstate.DirState.NULL_PARENT_DETAILS
-        root_key = ('', '', 'a-root-value')
-        file_in_root_key = ('', 'file-in-root', 'a-file-id')
+        root_key = ('', '', b'a-root-value')
+        file_in_root_key = ('', 'file-in-root', b'a-file-id')
         # Renamed relative to parent
-        file_rename_s_key = ('', 'file-s', 'b-file-id')
-        file_rename_t_key = ('', 'file-t', 'b-file-id')
+        file_rename_s_key = ('', 'file-s', b'b-file-id')
+        file_rename_t_key = ('', 'file-t', b'b-file-id')
         # And one that is renamed between the parents, but absent in this
-        key_in_1 = ('', 'file-in-1', 'c-file-id')
-        key_in_2 = ('', 'file-in-2', 'c-file-id')
+        key_in_1 = ('', 'file-in-1', b'c-file-id')
+        key_in_2 = ('', 'file-in-2', b'c-file-id')
 
         dirblocks = [
             ('', [(root_key, [present_dir, present_dir, present_dir])]),
             ('', [(key_in_1,
-                   [absent, present_file, ('r', 'file-in-2', 'c-file-id')]),
+                   [absent, present_file, ('r', 'file-in-2', b'c-file-id')]),
                   (key_in_2,
-                   [absent, ('r', 'file-in-1', 'c-file-id'), present_file]),
+                   [absent, ('r', 'file-in-1', b'c-file-id'), present_file]),
                   (file_in_root_key,
                    [present_file, present_file, present_file]),
                   (file_rename_s_key,
-                   [('r', 'file-t', 'b-file-id'), absent, present_file]),
+                   [('r', 'file-t', b'b-file-id'), absent, present_file]),
                   (file_rename_t_key,
-                   [present_file, absent, ('r', 'file-s', 'b-file-id')]),
+                   [present_file, absent, ('r', 'file-s', b'b-file-id')]),
                  ]),
         ]
         exp_dirblocks = [
@@ -2362,7 +2356,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         ]
         state = self.create_empty_dirstate()
         self.addCleanup(state.unlock)
-        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._set_data([b'parent-id', b'merged-id'], dirblocks[:])
         state._validate()
 
         state._discard_merge_parents()
@@ -2374,11 +2368,11 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         present_dir = ('d', '', 0, False, null_stat)
         present_file = ('f', '', 0, False, null_stat)
         absent = dirstate.DirState.NULL_PARENT_DETAILS
-        root_key = ('', '', 'a-root-value')
-        subdir_key = ('', 'sub', 'dir-id')
-        child1_key = ('sub', 'child1', 'child1-id')
-        child2_key = ('sub', 'child2', 'child2-id')
-        child3_key = ('sub', 'child3', 'child3-id')
+        root_key = ('', '', b'a-root-value')
+        subdir_key = ('', 'sub', b'dir-id')
+        child1_key = ('sub', 'child1', b'child1-id')
+        child2_key = ('sub', 'child2', b'child2-id')
+        child3_key = ('sub', 'child3', b'child3-id')
 
         dirblocks = [
             ('', [(root_key, [present_dir, present_dir, present_dir])]),
@@ -2395,7 +2389,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         ]
         state = self.create_empty_dirstate()
         self.addCleanup(state.unlock)
-        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._set_data([b'parent-id', b'merged-id'], dirblocks[:])
         state._validate()
 
         state._discard_merge_parents()
@@ -2411,19 +2405,19 @@ class Test_InvEntryToDetails(tests.TestCase):
         # details should always allow join() and always be a plain str when
         # finished
         (minikind, fingerprint, size, executable, tree_data) = details
-        self.assertIsInstance(minikind, str)
-        self.assertIsInstance(fingerprint, str)
-        self.assertIsInstance(tree_data, str)
+        self.assertIsInstance(minikind, bytes)
+        self.assertIsInstance(fingerprint, bytes)
+        self.assertIsInstance(tree_data, bytes)
 
     def test_unicode_symlink(self):
-        inv_entry = inventory.InventoryLink('link-file-id',
+        inv_entry = inventory.InventoryLink(b'link-file-id',
                                             u'nam\N{Euro Sign}e',
-                                            'link-parent-id')
-        inv_entry.revision = 'link-revision-id'
+                                            b'link-parent-id')
+        inv_entry.revision = b'link-revision-id'
         target = u'link-targ\N{Euro Sign}t'
         inv_entry.symlink_target = target
-        self.assertDetails(('l', target.encode('UTF-8'), 0, False,
-                            'link-revision-id'), inv_entry)
+        self.assertDetails((b'l', target.encode('UTF-8'), 0, False,
+                            b'link-revision-id'), inv_entry)
 
 
 class TestSHA1Provider(tests.TestCaseInTempDir):
@@ -2477,20 +2471,20 @@ class TestUpdateBasisByDelta(tests.TestCase):
         try:
             dir_id = dir_ids[dirname]
         except KeyError:
-            dir_id = osutils.basename(dirname) + '-id'
+            dir_id = osutils.basename(dirname) + b'-id'
         if is_dir:
             ie = inventory.InventoryDirectory(file_id, basename, dir_id)
             dir_ids[path] = file_id
         else:
             ie = inventory.InventoryFile(file_id, basename, dir_id)
             ie.text_size = 0
-            ie.text_sha1 = ''
+            ie.text_sha1 = b''
         ie.revision = rev_id
         return ie
 
     def create_tree_from_shape(self, rev_id, shape):
-        dir_ids = {'': 'root-id'}
-        inv = inventory.Inventory('root-id', rev_id)
+        dir_ids = {'': b'root-id'}
+        inv = inventory.Inventory(b'root-id', rev_id)
         for info in shape:
             if len(info) == 2:
                 path, file_id = info
@@ -2517,7 +2511,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
 
     def create_inv_delta(self, delta, rev_id):
         """Translate a 'delta shape' into an actual InventoryDelta"""
-        dir_ids = {'': 'root-id'}
+        dir_ids = {'': b'root-id'}
         inv_delta = []
         for old_path, new_path, file_id in delta:
             if old_path is not None and old_path.endswith('/'):
@@ -2539,18 +2533,18 @@ class TestUpdateBasisByDelta(tests.TestCase):
         and assert that the DirState is still valid, and that its stored
         content matches the target_shape.
         """
-        active_tree = self.create_tree_from_shape('active', active)
-        basis_tree = self.create_tree_from_shape('basis', basis)
-        target_tree = self.create_tree_from_shape('target', target)
+        active_tree = self.create_tree_from_shape(b'active', active)
+        basis_tree = self.create_tree_from_shape(b'basis', basis)
+        target_tree = self.create_tree_from_shape(b'target', target)
         state = self.create_empty_dirstate()
         state.set_state_from_scratch(active_tree.root_inventory,
-            [('basis', basis_tree)], [])
+            [(b'basis', basis_tree)], [])
         delta = target_tree.root_inventory._make_delta(
             basis_tree.root_inventory)
-        state.update_basis_by_delta(delta, 'target')
+        state.update_basis_by_delta(delta, b'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
-            'target', _Repo())
+            b'target', _Repo())
         # The target now that delta has been applied should match the
         # RevisionTree
         self.assertEqual([], list(dirstate_tree.iter_changes(target_tree)))
@@ -2558,7 +2552,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         # it from scratch.
         state2 = self.create_empty_dirstate()
         state2.set_state_from_scratch(active_tree.root_inventory,
-            [('target', target_tree)], [])
+            [(b'target', target_tree)], [])
         self.assertEqual(state2._dirblocks, state._dirblocks)
         return state
 
@@ -2569,9 +2563,9 @@ class TestUpdateBasisByDelta(tests.TestCase):
         :param basis: The basis tree shape
         :param delta: A description of the delta to apply. Similar to the form
             for regular inventory deltas, but omitting the InventoryEntry.
-            So adding a file is: (None, 'path', 'file-id')
-            Adding a directory is: (None, 'path/', 'dir-id')
-            Renaming a dir is: ('old/', 'new/', 'dir-id')
+            So adding a file is: (None, 'path', b'file-id')
+            Adding a directory is: (None, 'path/', b'dir-id')
+            Renaming a dir is: ('old/', 'new/', b'dir-id')
             etc.
         """
         active_tree = self.create_tree_from_shape('active', active)
@@ -2593,313 +2587,313 @@ class TestUpdateBasisByDelta(tests.TestCase):
     def test_remove_file_matching_active_state(self):
         state = self.assertUpdate(
             active=[],
-            basis =[('file', 'file-id')],
+            basis =[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_present_in_active_state(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id')],
-            basis =[('file', 'file-id')],
+            active=[('file', b'file-id')],
+            basis =[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_present_elsewhere_in_active_state(self):
         state = self.assertUpdate(
-            active=[('other-file', 'file-id')],
-            basis =[('file', 'file-id')],
+            active=[('other-file', b'file-id')],
+            basis =[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_active_state_has_diff_file(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id-2')],
-            basis =[('file', 'file-id')],
+            active=[('file', b'file-id-2')],
+            basis =[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_active_state_has_diff_file_and_file_elsewhere(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id-2'),
-                    ('other-file', 'file-id')],
-            basis =[('file', 'file-id')],
+            active=[('file', b'file-id-2'),
+                    ('other-file', b'file-id')],
+            basis =[('file', b'file-id')],
             target=[],
             )
 
     def test_add_file_matching_active_state(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id')],
+            active=[(b'file', b'file-id')],
             basis =[],
-            target=[('file', 'file-id')],
+            target=[(b'file', b'file-id')],
             )
 
     def test_add_file_in_empty_dir_not_matching_active_state(self):
         state = self.assertUpdate(
                 active=[],
-                basis=[('dir/', 'dir-id')],
-                target=[('dir/', 'dir-id', 'basis'), ('dir/file', 'file-id')],
+                basis=[(b'dir/', b'dir-id')],
+                target=[(b'dir/', b'dir-id', b'basis'), (b'dir/file', b'file-id')],
                 )
 
     def test_add_file_missing_in_active_state(self):
         state = self.assertUpdate(
             active=[],
             basis =[],
-            target=[('file', 'file-id')],
+            target=[(b'file', b'file-id')],
             )
 
     def test_add_file_elsewhere_in_active_state(self):
         state = self.assertUpdate(
-            active=[('other-file', 'file-id')],
+            active=[(b'other-file', b'file-id')],
             basis =[],
-            target=[('file', 'file-id')],
+            target=[(b'file', b'file-id')],
             )
 
     def test_add_file_active_state_has_diff_file_and_file_elsewhere(self):
         state = self.assertUpdate(
-            active=[('other-file', 'file-id'),
-                    ('file', 'file-id-2')],
+            active=[(b'other-file', b'file-id'),
+                    (b'file', b'file-id-2')],
             basis =[],
-            target=[('file', 'file-id')],
+            target=[(b'file', b'file-id')],
             )
 
     def test_rename_file_matching_active_state(self):
         state = self.assertUpdate(
-            active=[('other-file', 'file-id')],
-            basis =[('file', 'file-id')],
-            target=[('other-file', 'file-id')],
+            active=[(b'other-file', b'file-id')],
+            basis =[(b'file', b'file-id')],
+            target=[(b'other-file', b'file-id')],
             )
 
     def test_rename_file_missing_in_active_state(self):
         state = self.assertUpdate(
             active=[],
-            basis =[('file', 'file-id')],
-            target=[('other-file', 'file-id')],
+            basis =[(b'file', b'file-id')],
+            target=[(b'other-file', b'file-id')],
             )
 
     def test_rename_file_present_elsewhere_in_active_state(self):
         state = self.assertUpdate(
-            active=[('third', 'file-id')],
-            basis =[('file', 'file-id')],
-            target=[('other-file', 'file-id')],
+            active=[(b'third', b'file-id')],
+            basis =[(b'file', b'file-id')],
+            target=[(b'other-file', b'file-id')],
             )
 
     def test_rename_file_active_state_has_diff_source_file(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id-2')],
-            basis =[('file', 'file-id')],
-            target=[('other-file', 'file-id')],
+            active=[(b'file', b'file-id-2')],
+            basis =[(b'file', b'file-id')],
+            target=[(b'other-file', b'file-id')],
             )
 
     def test_rename_file_active_state_has_diff_target_file(self):
         state = self.assertUpdate(
-            active=[('other-file', 'file-id-2')],
-            basis =[('file', 'file-id')],
-            target=[('other-file', 'file-id')],
+            active=[(b'other-file', b'file-id-2')],
+            basis =[(b'file', b'file-id')],
+            target=[(b'other-file', b'file-id')],
             )
 
     def test_rename_file_active_has_swapped_files(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id'),
-                    ('other-file', 'file-id-2')],
-            basis= [('file', 'file-id'),
-                    ('other-file', 'file-id-2')],
-            target=[('file', 'file-id-2'),
-                    ('other-file', 'file-id')])
+            active=[(b'file', b'file-id'),
+                    (b'other-file', b'file-id-2')],
+            basis= [(b'file', b'file-id'),
+                    (b'other-file', b'file-id-2')],
+            target=[(b'file', b'file-id-2'),
+                    (b'other-file', b'file-id')])
 
     def test_rename_file_basis_has_swapped_files(self):
         state = self.assertUpdate(
-            active=[('file', 'file-id'),
-                    ('other-file', 'file-id-2')],
-            basis= [('file', 'file-id-2'),
-                    ('other-file', 'file-id')],
-            target=[('file', 'file-id'),
-                    ('other-file', 'file-id-2')])
+            active=[(b'file', b'file-id'),
+                    (b'other-file', b'file-id-2')],
+            basis= [(b'file', b'file-id-2'),
+                    (b'other-file', b'file-id')],
+            target=[(b'file', b'file-id'),
+                    (b'other-file', b'file-id-2')])
 
     def test_rename_directory_with_contents(self):
         state = self.assertUpdate( # active matches basis
-            active=[('dir1/', 'dir-id'),
-                    ('dir1/file', 'file-id')],
-            basis= [('dir1/', 'dir-id'),
-                    ('dir1/file', 'file-id')],
-            target=[('dir2/', 'dir-id'),
-                    ('dir2/file', 'file-id')])
+            active=[(b'dir1/', b'dir-id'),
+                    (b'dir1/file', b'file-id')],
+            basis= [(b'dir1/', b'dir-id'),
+                    (b'dir1/file', b'file-id')],
+            target=[(b'dir2/', b'dir-id'),
+                    (b'dir2/file', b'file-id')])
         state = self.assertUpdate( # active matches target
-            active=[('dir2/', 'dir-id'),
-                    ('dir2/file', 'file-id')],
-            basis= [('dir1/', 'dir-id'),
-                    ('dir1/file', 'file-id')],
-            target=[('dir2/', 'dir-id'),
-                    ('dir2/file', 'file-id')])
+            active=[(b'dir2/', b'dir-id'),
+                    (b'dir2/file', b'file-id')],
+            basis= [(b'dir1/', b'dir-id'),
+                    (b'dir1/file', b'file-id')],
+            target=[(b'dir2/', b'dir-id'),
+                    (b'dir2/file', b'file-id')])
         state = self.assertUpdate( # active empty
             active=[],
-            basis= [('dir1/', 'dir-id'),
-                    ('dir1/file', 'file-id')],
-            target=[('dir2/', 'dir-id'),
-                    ('dir2/file', 'file-id')])
+            basis= [(b'dir1/', b'dir-id'),
+                    (b'dir1/file', b'file-id')],
+            target=[(b'dir2/', b'dir-id'),
+                    (b'dir2/file', b'file-id')])
         state = self.assertUpdate( # active present at other location
-            active=[('dir3/', 'dir-id'),
-                    ('dir3/file', 'file-id')],
-            basis= [('dir1/', 'dir-id'),
-                    ('dir1/file', 'file-id')],
-            target=[('dir2/', 'dir-id'),
-                    ('dir2/file', 'file-id')])
+            active=[(b'dir3/', b'dir-id'),
+                    (b'dir3/file', b'file-id')],
+            basis= [(b'dir1/', b'dir-id'),
+                    (b'dir1/file', b'file-id')],
+            target=[(b'dir2/', b'dir-id'),
+                    (b'dir2/file', b'file-id')])
         state = self.assertUpdate( # active has different ids
-            active=[('dir1/', 'dir1-id'),
-                    ('dir1/file', 'file1-id'),
-                    ('dir2/', 'dir2-id'),
-                    ('dir2/file', 'file2-id')],
-            basis= [('dir1/', 'dir-id'),
-                    ('dir1/file', 'file-id')],
-            target=[('dir2/', 'dir-id'),
-                    ('dir2/file', 'file-id')])
+            active=[(b'dir1/', b'dir1-id'),
+                    (b'dir1/file', b'file1-id'),
+                    (b'dir2/', b'dir2-id'),
+                    (b'dir2/file', b'file2-id')],
+            basis= [(b'dir1/', b'dir-id'),
+                    (b'dir1/file', b'file-id')],
+            target=[(b'dir2/', b'dir-id'),
+                    (b'dir2/file', b'file-id')])
 
     def test_invalid_file_not_present(self):
         state = self.assertBadDelta(
-            active=[('file', 'file-id')],
-            basis= [('file', 'file-id')],
-            delta=[('other-file', 'file', 'file-id')])
+            active=[(b'file', b'file-id')],
+            basis= [(b'file', b'file-id')],
+            delta=[(b'other-file', 'file', b'file-id')])
 
     def test_invalid_new_id_same_path(self):
         # The bad entry comes after
         state = self.assertBadDelta(
-            active=[('file', 'file-id')],
-            basis= [('file', 'file-id')],
-            delta=[(None, 'file', 'file-id-2')])
+            active=[(b'file', b'file-id')],
+            basis= [(b'file', b'file-id')],
+            delta=[(None, b'file', b'file-id-2')])
         # The bad entry comes first
         state = self.assertBadDelta(
-            active=[('file', 'file-id-2')],
-            basis=[('file', 'file-id-2')],
-            delta=[(None, 'file', 'file-id')])
+            active=[(b'file', b'file-id-2')],
+            basis=[(b'file', b'file-id-2')],
+            delta=[(None, b'file', b'file-id')])
 
     def test_invalid_existing_id(self):
         state = self.assertBadDelta(
-            active=[('file', 'file-id')],
-            basis= [('file', 'file-id')],
-            delta=[(None, 'file', 'file-id')])
+            active=[(b'file', b'file-id')],
+            basis= [(b'file', b'file-id')],
+            delta=[(None, b'file', b'file-id')])
 
     def test_invalid_parent_missing(self):
         state = self.assertBadDelta(
             active=[],
             basis= [],
-            delta=[(None, 'path/path2', 'file-id')])
+            delta=[(None, 'path/path2', b'file-id')])
         # Note: we force the active tree to have the directory, by knowing how
         #       path_to_ie handles entries with missing parents
         state = self.assertBadDelta(
-            active=[('path/', 'path-id')],
+            active=[('path/', b'path-id')],
             basis= [],
-            delta=[(None, 'path/path2', 'file-id')])
+            delta=[(None, 'path/path2', b'file-id')])
         state = self.assertBadDelta(
-            active=[('path/', 'path-id'),
-                    ('path/path2', 'file-id')],
+            active=[('path/', b'path-id'),
+                    ('path/path2', b'file-id')],
             basis= [],
-            delta=[(None, 'path/path2', 'file-id')])
+            delta=[(None, 'path/path2', b'file-id')])
 
     def test_renamed_dir_same_path(self):
         # We replace the parent directory, with another parent dir. But the C
         # file doesn't look like it has been moved.
         state = self.assertUpdate(# Same as basis
-            active=[('dir/', 'A-id'),
-                    ('dir/B', 'B-id')],
-            basis= [('dir/', 'A-id'),
-                    ('dir/B', 'B-id')],
-            target=[('dir/', 'C-id'),
-                    ('dir/B', 'B-id')])
+            active=[('dir/', b'A-id'),
+                    ('dir/B', b'B-id')],
+            basis= [('dir/', b'A-id'),
+                    ('dir/B', b'B-id')],
+            target=[('dir/', b'C-id'),
+                    ('dir/B', b'B-id')])
         state = self.assertUpdate(# Same as target
-            active=[('dir/', 'C-id'),
-                    ('dir/B', 'B-id')],
-            basis= [('dir/', 'A-id'),
-                    ('dir/B', 'B-id')],
-            target=[('dir/', 'C-id'),
-                    ('dir/B', 'B-id')])
+            active=[('dir/', b'C-id'),
+                    ('dir/B', b'B-id')],
+            basis= [('dir/', b'A-id'),
+                    ('dir/B', b'B-id')],
+            target=[('dir/', b'C-id'),
+                    ('dir/B', b'B-id')])
         state = self.assertUpdate(# empty active
             active=[],
-            basis= [('dir/', 'A-id'),
-                    ('dir/B', 'B-id')],
-            target=[('dir/', 'C-id'),
-                    ('dir/B', 'B-id')])
+            basis= [('dir/', b'A-id'),
+                    ('dir/B', b'B-id')],
+            target=[('dir/', b'C-id'),
+                    ('dir/B', b'B-id')])
         state = self.assertUpdate(# different active
-            active=[('dir/', 'D-id'),
-                    ('dir/B', 'B-id')],
-            basis= [('dir/', 'A-id'),
-                    ('dir/B', 'B-id')],
-            target=[('dir/', 'C-id'),
-                    ('dir/B', 'B-id')])
+            active=[('dir/', b'D-id'),
+                    ('dir/B', b'B-id')],
+            basis= [('dir/', b'A-id'),
+                    ('dir/B', b'B-id')],
+            target=[('dir/', b'C-id'),
+                    ('dir/B', b'B-id')])
 
     def test_parent_child_swap(self):
         state = self.assertUpdate(# Same as basis
-            active=[('A/', 'A-id'),
-                    ('A/B/', 'B-id'),
-                    ('A/B/C', 'C-id')],
-            basis= [('A/', 'A-id'),
-                    ('A/B/', 'B-id'),
-                    ('A/B/C', 'C-id')],
-            target=[('A/', 'B-id'),
-                    ('A/B/', 'A-id'),
-                    ('A/B/C', 'C-id')])
+            active=[('A/', b'A-id'),
+                    ('A/B/', b'B-id'),
+                    ('A/B/C', b'C-id')],
+            basis= [('A/', b'A-id'),
+                    ('A/B/', b'B-id'),
+                    ('A/B/C', b'C-id')],
+            target=[('A/', b'B-id'),
+                    ('A/B/', b'A-id'),
+                    ('A/B/C', b'C-id')])
         state = self.assertUpdate(# Same as target
-            active=[('A/', 'B-id'),
-                    ('A/B/', 'A-id'),
-                    ('A/B/C', 'C-id')],
-            basis= [('A/', 'A-id'),
-                    ('A/B/', 'B-id'),
-                    ('A/B/C', 'C-id')],
-            target=[('A/', 'B-id'),
-                    ('A/B/', 'A-id'),
-                    ('A/B/C', 'C-id')])
+            active=[('A/', b'B-id'),
+                    ('A/B/', b'A-id'),
+                    ('A/B/C', b'C-id')],
+            basis= [('A/', b'A-id'),
+                    ('A/B/', b'B-id'),
+                    ('A/B/C', b'C-id')],
+            target=[('A/', b'B-id'),
+                    ('A/B/', b'A-id'),
+                    ('A/B/C', b'C-id')])
         state = self.assertUpdate(# empty active
             active=[],
-            basis= [('A/', 'A-id'),
-                    ('A/B/', 'B-id'),
-                    ('A/B/C', 'C-id')],
-            target=[('A/', 'B-id'),
-                    ('A/B/', 'A-id'),
-                    ('A/B/C', 'C-id')])
+            basis= [('A/', b'A-id'),
+                    ('A/B/', b'B-id'),
+                    ('A/B/C', b'C-id')],
+            target=[('A/', b'B-id'),
+                    ('A/B/', b'A-id'),
+                    ('A/B/C', b'C-id')])
         state = self.assertUpdate(# different active
-            active=[('D/', 'A-id'),
-                    ('D/E/', 'B-id'),
-                    ('F', 'C-id')],
-            basis= [('A/', 'A-id'),
-                    ('A/B/', 'B-id'),
-                    ('A/B/C', 'C-id')],
-            target=[('A/', 'B-id'),
-                    ('A/B/', 'A-id'),
-                    ('A/B/C', 'C-id')])
+            active=[('D/', b'A-id'),
+                    ('D/E/', b'B-id'),
+                    ('F', b'C-id')],
+            basis= [('A/', b'A-id'),
+                    ('A/B/', b'B-id'),
+                    ('A/B/C', b'C-id')],
+            target=[('A/', b'B-id'),
+                    ('A/B/', b'A-id'),
+                    ('A/B/C', b'C-id')])
 
     def test_change_root_id(self):
         state = self.assertUpdate( # same as basis
-            active=[('', 'root-id'),
-                    ('file', 'file-id')],
-            basis= [('', 'root-id'),
-                    ('file', 'file-id')],
-            target=[('', 'target-root-id'),
-                    ('file', 'file-id')])
+            active=[('', b'root-id'),
+                    ('file', b'file-id')],
+            basis= [('', b'root-id'),
+                    ('file', b'file-id')],
+            target=[('', b'target-root-id'),
+                    ('file', b'file-id')])
         state = self.assertUpdate( # same as target
-            active=[('', 'target-root-id'),
-                    ('file', 'file-id')],
-            basis= [('', 'root-id'),
-                    ('file', 'file-id')],
-            target=[('', 'target-root-id'),
-                    ('file', 'root-id')])
+            active=[('', b'target-root-id'),
+                    ('file', b'file-id')],
+            basis= [('', b'root-id'),
+                    ('file', b'file-id')],
+            target=[('', b'target-root-id'),
+                    ('file', b'root-id')])
         state = self.assertUpdate( # all different
-            active=[('', 'active-root-id'),
-                    ('file', 'file-id')],
-            basis= [('', 'root-id'),
-                    ('file', 'file-id')],
-            target=[('', 'target-root-id'),
-                    ('file', 'root-id')])
+            active=[('', b'active-root-id'),
+                    ('file', b'file-id')],
+            basis= [('', b'root-id'),
+                    ('file', b'file-id')],
+            target=[('', b'target-root-id'),
+                    ('file', b'root-id')])
 
     def test_change_file_absent_in_active(self):
         state = self.assertUpdate(
             active=[],
-            basis= [('file', 'file-id')],
-            target=[('file', 'file-id')])
+            basis= [(b'file', b'file-id')],
+            target=[(b'file', b'file-id')])
 
     def test_invalid_changed_file(self):
         state = self.assertBadDelta( # Not present in basis
-            active=[('file', 'file-id')],
+            active=[('file', b'file-id')],
             basis= [],
-            delta=[('file', 'file', 'file-id')])
+            delta=[('file', 'file', b'file-id')])
         state = self.assertBadDelta( # present at another location in basis
-            active=[('file', 'file-id')],
-            basis= [('other-file', 'file-id')],
-            delta=[('file', 'file', 'file-id')])
+            active=[('file', b'file-id')],
+            basis= [('other-file', b'file-id')],
+            delta=[('file', 'file', b'file-id')])

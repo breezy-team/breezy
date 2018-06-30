@@ -512,7 +512,7 @@ class DirState(object):
                 if file_id_entry[0] != (dirname, basename, file_id):
                     # set the old name's current operation to rename
                     self.update_minimal(file_id_entry[0],
-                        'r',
+                        b'r',
                         path_utf8='',
                         packed_stat='',
                         fingerprint=utf8path
@@ -970,7 +970,7 @@ class DirState(object):
         directories. (and renames?)
 
         :param paths: A sorted list of (dir, name) pairs
-             eg: [('', 'a'), ('', 'f'), ('a/b', 'c')]
+             eg: [('', b'a'), ('', b'f'), ('a/b', b'c')]
         :return: A dictionary mapping (dir, name, file_id) => [tree_info]
         """
         # Map from (dir, name, file_id) => [tree_info]
@@ -1763,11 +1763,11 @@ class DirState(object):
                         active_path = active_name
                     active_entry[1][1] = st('r', new_path, 0, False, '')
                     entry[1][0] = st('r', active_path, 0, False, '')
-            elif active_kind == 'r':
+            elif active_kind == b'r':
                 raise NotImplementedError()
 
             new_kind = new_details[0]
-            if new_kind == 'd':
+            if new_kind == b'd':
                 self._ensure_block(block_index, entry_index, new_path)
 
     def _update_basis_apply_changes(self, changes):
@@ -1894,12 +1894,12 @@ class DirState(object):
         except KeyError:
             # Unhandled kind
             return None
-        if minikind == 'f':
+        if minikind == b'f':
             if self._cutoff_time is None:
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
                 and stat_value.st_ctime < self._cutoff_time):
-                entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
+                entry[1][0] = (b'f', sha1, stat_value.st_size, entry[1][0][3],
                                pack_stat(stat_value))
                 self._mark_modified([entry])
 
@@ -2004,7 +2004,7 @@ class DirState(object):
                         fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
-                        fields[6] == 'y',         # executable
+                        fields[6] == b'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     )])
             return fields_to_entry_0_parents
@@ -2016,14 +2016,14 @@ class DirState(object):
                         fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
-                        fields[6] == 'y',         # executable
+                        fields[6] == b'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     ),
                     ( # Parent 1
                         fields[8],                # minikind
                         fields[9],                # fingerprint
                         _int(fields[10]),         # size
-                        fields[11] == 'y',        # executable
+                        fields[11] == b'y',        # executable
                         fields[12],               # packed_stat or revision_id
                     ),
                     ])
@@ -2036,21 +2036,21 @@ class DirState(object):
                         fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
-                        fields[6] == 'y',         # executable
+                        fields[6] == b'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     ),
                     ( # Parent 1
                         fields[8],                # minikind
                         fields[9],                # fingerprint
                         _int(fields[10]),         # size
-                        fields[11] == 'y',        # executable
+                        fields[11] == b'y',        # executable
                         fields[12],               # packed_stat or revision_id
                     ),
                     ( # Parent 2
                         fields[13],               # minikind
                         fields[14],               # fingerprint
                         _int(fields[15]),         # size
-                        fields[16] == 'y',        # executable
+                        fields[16] == b'y',        # executable
                         fields[17],               # packed_stat or revision_id
                     ),
                     ])
@@ -2061,7 +2061,7 @@ class DirState(object):
                 trees = [(fields[cur],                # minikind
                           fields[cur+1],              # fingerprint
                           _int(fields[cur+2]),        # size
-                          fields[cur+3] == 'y',       # executable
+                          fields[cur+3] == b'y',       # executable
                           fields[cur+4],              # stat or revision_id
                          ) for cur in range(3, len(fields)-1, 5)]
                 return path_name_file_id_key, trees
@@ -2265,7 +2265,7 @@ class DirState(object):
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
 
-        This only returns entries that are present (not in 'a', 'r') in
+        This only returns entries that are present (not in b'a', b'r') in
         tree_index. tree_index data is not refreshed, so if tree 0 is used,
         results may differ from that obtained if paths were statted to
         determine what ones were directories.
