@@ -339,7 +339,7 @@ class TestInventoryUpdates(TestCase):
         inv.add(InventoryFile(b'a-id', u'\u1234', b'tree-root'))
         e = self.assertRaises(errors.InconsistentDelta, inv.add,
             InventoryFile(b'b-id', u'\u1234', b'tree-root'))
-        self.assertContainsRe(str(e), '\u1234')
+        self.assertContainsRe(str(e), '\\u1234')
 
     def test_add_recursive(self):
         parent = InventoryDirectory(b'src-id', 'src', b'tree-root')

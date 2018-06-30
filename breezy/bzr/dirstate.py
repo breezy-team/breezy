@@ -1320,11 +1320,11 @@ class DirState(object):
 
     def _check_delta_is_valid(self, delta):
         delta = list(inventory._check_delta_unique_ids(
-                    inventory._check_delta_unique_old_paths(
-                    inventory._check_delta_unique_new_paths(
-                    inventory._check_delta_ids_match_entry(
-                    inventory._check_delta_ids_are_valid(
-                    inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+                     inventory._check_delta_unique_old_paths(
+                     inventory._check_delta_unique_new_paths(
+                     inventory._check_delta_ids_match_entry(
+                     inventory._check_delta_ids_are_valid(
+                     inventory._check_delta_new_path_entry_both_or_None(delta)))))))
         def delta_key(d):
             (old_path, new_path, file_id, new_entry) = d
             if old_path is None:
@@ -1332,7 +1332,8 @@ class DirState(object):
             if new_path is None:
                 new_path = ''
             return (old_path, new_path, file_id, new_entry)
-        return sorted(delta, key=delta_key, reverse=True)
+        delta.sort(key=delta_key, reverse=True)
+        return delta
 
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0
