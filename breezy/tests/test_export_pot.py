@@ -221,7 +221,7 @@ class TestModuleContext(tests.TestCase):
         self.check_context(context2A, path, 4)
         context2B = context1.from_string("not there")
         self.check_context(context2B, path, 21)
-        self.assertContainsRe(self.get_log(), "String 'not there' not found")
+        self.assertContainsRe(self.get_log(), "String b?'not there' not found")
 
 
 class TestWriteOption(tests.TestCase):
