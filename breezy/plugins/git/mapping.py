@@ -337,7 +337,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 commit.message = inject_bzr_metadata(commit.message, metadata,
                                                      encoding)
             else:
-                raise NoPushSupport()
+                raise NoPushSupport(None, None, self, revision_id=rev.revision_id)
         if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         i = 0
