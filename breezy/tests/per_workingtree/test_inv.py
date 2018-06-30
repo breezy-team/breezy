@@ -156,8 +156,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
         root_id = wt.get_root_id()
         wt.apply_inventory_delta([('', None, root_id, None),
-            (None, '', 'root-id',
-             inventory.InventoryDirectory('root-id', '', None))])
+            (None, '', b'root-id',
+             inventory.InventoryDirectory(b'root-id', '', None))])
 
 
 class TestTreeReference(TestCaseWithWorkingTree):

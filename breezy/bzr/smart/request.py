@@ -693,6 +693,9 @@ request_handlers.register_lazy(
     b'Repository.add_signature_text', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAddSignatureText', info='idem')
 request_handlers.register_lazy(
+    b'Repository.annotate_file_revision', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryAnnotateFileRevision', info='read')
+request_handlers.register_lazy(
     b'Repository.all_revision_ids', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAllRevisionIds', info='read')
 request_handlers.register_lazy(
@@ -758,6 +761,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     b'Repository.get_stream_1.19', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
+request_handlers.register_lazy(
+    b'Repository.get_stream_for_missing_keys', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryGetStreamForMissingKeys', info='read')
 request_handlers.register_lazy(
     b'Repository.iter_revisions', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIterRevisions', info='read')

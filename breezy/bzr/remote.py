@@ -61,6 +61,7 @@ from .inventorytree import InventoryRevisionTree
 from ..lockable_files import LockableFiles
 from ..sixish import (
     get_unbound_function,
+    map,
     text_type,
     viewitems,
     viewvalues,
@@ -943,6 +944,25 @@ class RemoteInventoryTree(InventoryRevisionTree):
                 format, name, root, subdir, force_mtime=force_mtime)
         return ret
 
+    def annotate_iter(self, path, file_id=None,
+                      default_revision=_mod_revision.CURRENT_REVISION):
+        """Return an iterator of revision_id, line tuples.
+
+        For working trees (and mutable trees in general), the special
+        revision_id 'current:' will be used for lines that are new in this
+        tree, e.g. uncommitted changes.
+        :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
+        """
+        ret = self._repository._annotate_file_revision(
+                    self.get_revision_id(), path, file_id, default_revision)
+        if ret is None:
+            return super(RemoteInventoryTree, self).annotate_iter(
+                path, file_id, default_revision=default_revision)
+        return ret
+
 
 class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
@@ -1488,10 +1508,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """Return the known graph for a set of revision ids and their ancestors.
         """
         with self.lock_read():
-            st = static_tuple.StaticTuple
-            revision_keys = [st(r_id).intern() for r_id in revision_ids]
-            known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
-            return graph.GraphThunkIdsToKeys(known_graph)
+            revision_graph = dict(((key, value) for key, value in
+                self.get_graph().iter_ancestry(revision_ids) if value is not None))
+            revision_graph = _mod_repository._strip_NULL_ghosts(revision_graph)
+            return graph.KnownGraph(revision_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -1868,10 +1888,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        if self._format.rich_root_data:
-            commit_builder_kls = vf_repository.VersionedFileRootCommitBuilder
-        else:
-            commit_builder_kls = vf_repository.VersionedFileCommitBuilder
+        commit_builder_kls = vf_repository.VersionedFileCommitBuilder
         result = commit_builder_kls(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
@@ -2840,6 +2857,21 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return iter([protocol.read_body_bytes()])
         raise errors.UnexpectedSmartServerResponse(response)
 
+    def _annotate_file_revision(self, revid, tree_path, file_id, default_revision):
+        path = self.controldir._path_for_remote_call(self._client)
+        tree_path = tree_path.encode('utf-8')
+        file_id = file_id or b''
+        default_revision = default_revision or b''
+        try:
+            response, handler = self._call_expecting_body(
+                b'Repository.annotate_file_revision', path,
+                revid, tree_path, file_id, default_revision)
+        except errors.UnknownSmartMethod:
+            return None
+        if response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return map(tuple, bencode.bdecode(handler.read_body_bytes()))
+
 
 class RemoteStreamSink(vf_repository.StreamSink):
 
@@ -2850,6 +2882,17 @@ class RemoteStreamSink(vf_repository.StreamSink):
         if not result:
             self.target_repo.autopack()
         return result
+
+    def insert_missing_keys(self, source, missing_keys):
+        if (isinstance(source, RemoteStreamSource) and
+                source.from_repository._client._medium == self.target_repo._client._medium):
+            # Streaming from and to the same medium is tricky, since we don't support
+            # more than one concurrent request. For now, just force VFS.
+            stream = source._get_real_stream_for_missing_keys(missing_keys)
+        else:
+            stream = source.get_stream_for_missing_keys(missing_keys)
+        return self.insert_stream_without_locking(stream,
+            self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
@@ -2978,11 +3021,37 @@ class RemoteStreamSource(vf_repository.StreamSource):
             sources.append(repo)
         return self.missing_parents_chain(search, sources)
 
-    def get_stream_for_missing_keys(self, missing_keys):
+    def _get_real_stream_for_missing_keys(self, missing_keys):
         self.from_repository._ensure_real()
         real_repo = self.from_repository._real_repository
         real_source = real_repo._get_source(self.to_format)
         return real_source.get_stream_for_missing_keys(missing_keys)
+
+    def get_stream_for_missing_keys(self, missing_keys):
+        if not isinstance(self.from_repository, RemoteRepository):
+            return self._get_real_stream_for_missing_keys(missing_keys)
+        client = self.from_repository._client
+        medium = client._medium
+        if medium._is_remote_before((3, 0)):
+            return self._get_real_stream_for_missing_keys(missing_keys)
+        path = self.from_repository.controldir._path_for_remote_call(client)
+        args = (path, self.to_format.network_name())
+        search_bytes = b'\n'.join([b'\t'.join(key) for key in missing_keys])
+        try:
+            response, handler = self.from_repository._call_with_body_bytes_expecting_body(
+                b'Repository.get_stream_for_missing_keys', args, search_bytes)
+        except (errors.UnknownSmartMethod, errors.UnknownFormatError):
+            return self._get_real_stream_for_missing_keys(missing_keys)
+        if response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        byte_stream = handler.read_streamed_body()
+        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream,
+            self._record_counter)
+        if src_format.network_name() != self.from_repository._format.network_name():
+            raise AssertionError(
+                "Mismatched RemoteRepository and stream src %r, %r" % (
+                src_format.network_name(), repo._format.network_name()))
+        return stream
 
     def _real_stream(self, repo, search):
         """Get a stream for search from repo.
@@ -4298,6 +4367,9 @@ no_context_error_translators.register(b'FileExists',
     lambda err: errors.FileExists(err.error_args[0].decode('utf-8')))
 no_context_error_translators.register(b'DirectoryNotEmpty',
     lambda err: errors.DirectoryNotEmpty(err.error_args[0].decode('utf-8')))
+no_context_error_translators.register(b'UnknownFormat',
+    lambda err: errors.UnknownFormatError(
+        err.error_args[0].decode('ascii'), err.error_args[0].decode('ascii')))
 
 def _translate_short_readv_error(err):
     args = err.error_args

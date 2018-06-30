@@ -50,7 +50,6 @@ from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
-    VersionedFileRootCommitBuilder,
     )
 
 
@@ -398,7 +397,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = VersionedFileRootCommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -441,7 +440,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = VersionedFileRootCommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property

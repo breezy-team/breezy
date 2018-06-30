@@ -60,32 +60,32 @@ class TestGitShaMap:
 
     def _get_test_commit(self):
         c = Commit()
-        c.committer = "Jelmer <jelmer@samba.org>"
+        c.committer = b"Jelmer <jelmer@samba.org>"
         c.commit_time = 0
         c.commit_timezone = 0
-        c.author = "Jelmer <jelmer@samba.org>"
+        c.author = b"Jelmer <jelmer@samba.org>"
         c.author_time = 0
         c.author_timezone = 0
-        c.message = "Teh foo bar"
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Teh foo bar"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
         return c
 
     def test_commit(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision("myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid"))
         c = self._get_test_commit()
         updater.add_object(c, {
-            "testament3-sha1": "cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
+            "testament3-sha1": b"cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
             None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEqual(
-            [("commit", ("myrevid",
-                "cc9462f7f8263ef5adfbeff2fb936bb36b504cba",
-                {"testament3-sha1": "cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
+            [("commit", (b"myrevid",
+                b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba",
+                {"testament3-sha1": b"cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
                 ))],
             list(self.map.lookup_git_sha(c.id)))
-        self.assertEqual(c.id, self.map.lookup_commit("myrevid"))
+        self.assertEqual(c.id, self.map.lookup_commit(b"myrevid"))
 
     def test_lookup_notfound(self):
         self.assertRaises(KeyError, list,
@@ -166,8 +166,7 @@ class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
     def setUp(self):
         TestCaseInTempDir.setUp(self)
         try:
-            self.cache = TdbBzrGitCache(
-                os.path.join(self.test_dir, 'foo.tdb').encode(osutils._fs_enc))
+            self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
         except ImportError:
             raise UnavailableFeature("Missing tdb")
         self.map = self.cache.idmap

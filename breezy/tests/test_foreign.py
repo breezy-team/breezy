@@ -123,7 +123,7 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         return (revno, revid)
 
 
-class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
+class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
 
     def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
