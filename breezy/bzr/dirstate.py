@@ -78,27 +78,27 @@ in memory root row is now::
 
 and the entries in there are::
 
-    entries[0][0]: ''
-    entries[0][1]: ''
+    entries[0][0]: b''
+    entries[0][1]: b''
     entries[0][2]: file_id
     entries[1][0]: The tree data for the current tree for this fileid at /
     etc.
 
 Kinds::
 
-    'r' is a relocated entry: This path is not present in this tree with this
+   b'r' is a relocated entry: This path is not present in this tree with this
         id, but the id can be found at another location. The fingerprint is
         used to point to the target location.
-    'a' is an absent entry: In that tree the id is not present at this path.
-    'd' is a directory entry: This path in this tree is a directory with the
+   b'a' is an absent entry: In that tree the id is not present at this path.
+   b'd' is a directory entry: This path in this tree is a directory with the
         current file id. There is no fingerprint for directories.
-    'f' is a file entry: As for directory, but it's a file. The fingerprint is
+   b'f' is a file entry: As for directory, but it's a file. The fingerprint is
         the sha1 value of the file's canonical form, i.e. after any read
         filters have been applied to the convenience form stored in the working
         tree.
-    'l' is a symlink entry: As for directory, but a symlink. The fingerprint is
+   b'l' is a symlink entry: As for directory, but a symlink. The fingerprint is
         the link target.
-    't' is a reference to a nested subtree; the fingerprint is the referenced
+   b't' is a reference to a nested subtree; the fingerprint is the referenced
         revision.
 
 Ordering:
@@ -462,7 +462,7 @@ class DirState(object):
     def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
 
-        :param path: The path within the dirstate - '' is the root, 'foo' is the
+        :param path: The path within the dirstate - b'' is the root, 'foo' is the
             path foo within the root, 'foo/bar' is the path bar within foo
             within the root.
         :param file_id: The file id of the path being added.
@@ -473,7 +473,7 @@ class DirState(object):
             after any read filters have been applied),
             or the target of a symlink,
             or the referenced revision id for tree-references,
-            or '' for directories.
+            or b'' for directories.
         """
         # adding a file:
         # find the block its in.
@@ -523,7 +523,7 @@ class DirState(object):
                 kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
                 info = '%s:%s' % (kind, path)
                 raise errors.DuplicateFileId(file_id, info)
-        first_key = (dirname, basename, '')
+        first_key = (dirname, basename, b'')
         block_index, present = self._find_block_index_from_key(first_key)
         if present:
             # check the path is not in the tree
@@ -557,7 +557,7 @@ class DirState(object):
         minikind = DirState._kind_to_minikind[kind]
         if rename_from is not None:
             if rename_from[0]:
-                old_path_utf8 = '%s/%s' % rename_from
+                old_path_utf8 = b'%s/%s' % rename_from
             else:
                 old_path_utf8 = rename_from[1]
             parent_info[0] = (b'r', old_path_utf8, 0, False, b'')
@@ -619,7 +619,7 @@ class DirState(object):
         file_size = os.fstat(state_file.fileno()).st_size
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
-        # '' which ensures that we start after the previous '\n'
+        # b'' which ensures that we start after the previous '\n'
         entry_field_count = self._fields_per_entry() + 1
 
         low = self._end_of_header
@@ -811,7 +811,7 @@ class DirState(object):
         file_size = os.fstat(state_file.fileno()).st_size
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
-        # '' which ensures that we start after the previous '\n'
+        # b'' which ensures that we start after the previous '\n'
         entry_field_count = self._fields_per_entry() + 1
 
         low = self._end_of_header
@@ -1247,9 +1247,9 @@ class DirState(object):
                                       cache=self._split_path_cache)
         # _right returns one-past-where-key is so we have to subtract
         # one to use it. we use _right here because there are two
-        # '' blocks - the root, and the contents of root
+        # b'' blocks - the root, and the contents of root
         # we always have a minimum of 2 in self._dirblocks: root and
-        # root-contents, and for '', we get 2 back, so this is
+        # root-contents, and for b'', we get 2 back, so this is
         # simple and correct:
         present = (block_index < len(self._dirblocks) and
             self._dirblocks[block_index][0] == key[0])
@@ -1351,7 +1351,7 @@ class DirState(object):
         # be executed and validated.
         delta = sorted(self._check_delta_is_valid(delta), reverse=True)
         for old_path, new_path, file_id, inv_entry in delta:
-            if file_id.__class__ is not bytes:
+            if not isinstance(file_id, bytes):
                 raise AssertionError(
                     "must be a utf8 file_id not %s" % (type(file_id), ))
             if (file_id in insertions) or (file_id in removals):
@@ -1761,8 +1761,8 @@ class DirState(object):
                         active_path = active_dir + '/' + active_name
                     else:
                         active_path = active_name
-                    active_entry[1][1] = st('r', new_path, 0, False, '')
-                    entry[1][0] = st('r', active_path, 0, False, '')
+                    active_entry[1][1] = st('r', new_path, 0, False, b'')
+                    entry[1][0] = st('r', active_path, 0, False, b'')
             elif active_kind == b'r':
                 raise NotImplementedError()
 
@@ -1828,7 +1828,7 @@ class DirState(object):
                     if active_entry[1][1][0] != b'r':
                         self._raise_invalid(old_path, file_id,
                             "Dirstate did not have matching rename entries")
-                    elif active_entry[1][0][0] in 'ar':
+                    elif active_entry[1][0][0] in b'ar':
                         self._raise_invalid(old_path, file_id,
                             "Dirstate had a rename pointing at an inactive"
                             " tree0")
@@ -1840,7 +1840,7 @@ class DirState(object):
                     # exist. Remove its dirblock if present
                     (dir_block_index,
                      present) = self._find_block_index_from_key(
-                        (old_path, '', ''))
+                        (old_path, b'', b''))
                     if present:
                         dir_block = self._dirblocks[dir_block_index][1]
                         if not dir_block:
@@ -1851,12 +1851,12 @@ class DirState(object):
                 # removed.
                 entry[1][1] = null
                 block_i, entry_i, d_present, f_present = \
-                    self._get_block_entry_index(old_path, '', 1)
+                    self._get_block_entry_index(old_path, b'', 1)
                 if d_present:
                     dir_block = self._dirblocks[block_i][1]
             for child_entry in dir_block:
                 child_basis_kind = child_entry[1][1][0]
-                if child_basis_kind not in 'ar':
+                if child_basis_kind not in b'ar':
                     self._raise_invalid(old_path, file_id,
                         "The file id was deleted but its children were "
                         "not deleted.")
@@ -2575,7 +2575,7 @@ class DirState(object):
     def set_path_id(self, path, new_id):
         """Change the id of path to new_id in the current working tree.
 
-        :param path: The path inside the tree to set - '' is the root, 'foo'
+        :param path: The path inside the tree to set - b'' is the root, 'foo'
             is the path foo in the root.
         :param new_id: The new id to assign to the path. This must be a utf8
             file id (not unicode, and not None).
@@ -3003,7 +3003,7 @@ class DirState(object):
         block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
-        # XXX: Some callers pass '' as the packed_stat, and it seems to be
+        # XXX: Some callers pass b'' as the packed_stat, and it seems to be
         # sometimes present in the dirstate - this seems oddly inconsistent.
         # mbp 20071008
         entry_index, present = self._find_entry_index(key, block)
