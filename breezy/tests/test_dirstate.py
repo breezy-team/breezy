@@ -320,7 +320,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
                  [b'a-id2', b'b-id2', b'c-id2', b'd-id2', b'e-id2', b'b-c-id2', b'f-id2'])
 
         # Update the expected dictionary.
-        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f']:
+        for path in [b'a', b'b', b'b/c', b'b/d', b'b/d/e', b'b-c', b'f']:
             orig = expected[path]
             path2 = path + b'2'
             # This record was deleted in the current tree
@@ -401,7 +401,7 @@ class TestTreeToDirState(TestCaseWithDirState):
     def test_1_parents_empty_to_dirstate(self):
         # create a parent by doing a commit
         tree = self.make_branch_and_tree('tree')
-        rev_id = tree.commit('first post').encode('utf8')
+        rev_id = tree.commit('first post')
         root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
         expected_result = ([rev_id], [
             ((b'', b'', tree.get_root_id()), # common details
@@ -981,7 +981,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                              state._get_entry(0, fileid_utf8=b'TREE_ROOT'))
             self.assertEqual((None, None),
                              state._get_entry(0, fileid_utf8=b'Asecond-root-id'))
-            state.set_path_id('', b'Asecond-root-id')
+            state.set_path_id(b'', b'Asecond-root-id')
             state._validate()
             # now see that it is what we expected
             old_root_entry = ((b'', b'', b'TREE_ROOT'),
@@ -1019,7 +1019,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state.lock_write()
         try:
             state._validate()
-            state.set_path_id('', b'tree-root-2')
+            state.set_path_id(b'', b'tree-root-2')
             state._validate()
         finally:
             state.unlock()
@@ -1043,7 +1043,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             tree2.unlock()
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.set_path_id('', root_id)
+            state.set_path_id(b'', root_id)
             state.set_parent_trees(
                 ((revid1, tree1.branch.repository.revision_tree(revid1)),
                  (revid2, tree2.branch.repository.revision_tree(revid2)),
@@ -1129,7 +1129,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.set_path_id('', root_id)
+            state.set_path_id(b'', root_id)
             state.set_parent_trees(
                 ((revid1, tree1.branch.repository.revision_tree(revid1)),
                  (revid2, tree2.branch.repository.revision_tree(revid2)),
@@ -1304,7 +1304,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state.lock_read()
         self.addCleanup(state.unlock)
         state._validate()
-        entry2 = state._get_entry(0, b'subdir-id', 'subdir')
+        entry2 = state._get_entry(0, b'subdir-id', b'subdir')
         self.assertEqual(entry, entry2)
         self.assertEqual(entry, expected_entry)
         # and lookup by id should work too
@@ -1339,8 +1339,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 inv.rename(b'b-id', root_id, 'a')
                 # Set the new state with 'a', which currently corrupts.
                 state.set_state_from_inventory(inv)
-                expected_result1 = [('', '', root_id, 'd'),
-                                    ('', 'a', b'b-id', 'f'),
+                expected_result1 = [(b'', b'', root_id, b'd'),
+                                    (b'', b'a', b'b-id', b'f'),
                                    ]
                 values = []
                 for entry in state._iter_entries():
@@ -1438,10 +1438,10 @@ class TestGetLines(TestCaseWithDirState):
 
     def test_entry_to_line_with_parent(self):
         packed_stat = b'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry = ('', '', b'a-root-value'), [
-            ('d', '', 0, False, packed_stat), # current tree details
+        root_entry = (b'', b'', b'a-root-value'), [
+            (b'd', b'', 0, False, packed_stat), # current tree details
              # first: a pointer to the current location
-            ('a', 'dirname/basename', 0, False, ''),
+            (b'a', b'dirname/basename', 0, False, b''),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -1760,15 +1760,15 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 
         fake_stat = os.stat('dirstate')
         for d in dirs:
-            d_id = d.replace(b'/', b'_')+b'-id'
+            d_id = d.encode('utf-8').replace(b'/', b'_')+b'-id'
             file_path = d + '/f'
-            file_id = file_path.replace(b'/', b'_')+b'-id'
+            file_id = file_path.encode('utf-8').replace(b'/', b'_')+b'-id'
             state.add(d, d_id, 'directory', fake_stat, null_sha)
             state.add(file_path, file_id, 'file', fake_stat, null_sha)
 
-        expected = ['', '', 'a',
-                'a/a', 'a/a/a', 'a/a/a/a',
-                'a/a/a/a-a', 'a/a/a-a', 'a/a-a', 'a-a',
+        expected = [b'', b'', b'a',
+                b'a/a', b'a/a/a', b'a/a/a/a',
+                b'a/a/a/a-a', b'a/a/a-a', b'a/a-a', b'a-a',
                ]
         split = lambda p:p.split('/')
         self.assertEqual(sorted(expected, key=split), expected)
@@ -1784,13 +1784,13 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 
         fake_stat = os.stat('dirstate')
         for d in dirs:
-            d_id = d.replace(b'/', b'_')+b'-id'
+            d_id = d.encode('utf-8').replace(b'/', b'_')+b'-id'
             file_path = d + '/f'
-            file_id = file_path.replace(b'/', b'_')+b'-id'
+            file_id = file_path.encode('utf-8').replace(b'/', b'_')+b'-id'
             state.add(d, d_id, 'directory', fake_stat, null_sha)
             state.add(file_path, file_id, 'file', fake_stat, null_sha)
 
-        expected = ['', '', 'a', 'a/a', 'a-a']
+        expected = [b'', b'', b'a', b'a/a', b'a-a']
         dirblock_names = [d[0] for d in state._dirblocks]
         self.assertEqual(expected, dirblock_names)
 
@@ -1997,162 +1997,162 @@ class TestBisect(TestCaseWithDirState):
         tree, state, expected = self.create_basic_dirstate()
 
         # Bisect should return the rows for the specified files.
-        self.assertBisect(expected, [['']], state, [''])
-        self.assertBisect(expected, [['a']], state, ['a'])
-        self.assertBisect(expected, [['b']], state, ['b'])
-        self.assertBisect(expected, [['b/c']], state, ['b/c'])
-        self.assertBisect(expected, [['b/d']], state, ['b/d'])
-        self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
-        self.assertBisect(expected, [['b-c']], state, ['b-c'])
-        self.assertBisect(expected, [['f']], state, ['f'])
+        self.assertBisect(expected, [[b'']], state, [b''])
+        self.assertBisect(expected, [[b'a']], state, [b'a'])
+        self.assertBisect(expected, [[b'b']], state, [b'b'])
+        self.assertBisect(expected, [[b'b/c']], state, [b'b/c'])
+        self.assertBisect(expected, [[b'b/d']], state, [b'b/d'])
+        self.assertBisect(expected, [[b'b/d/e']], state, [b'b/d/e'])
+        self.assertBisect(expected, [[b'b-c']], state, [b'b-c'])
+        self.assertBisect(expected, [[b'f']], state, [b'f'])
 
     def test_bisect_multi(self):
         """Bisect can be used to find multiple records at the same time."""
         tree, state, expected = self.create_basic_dirstate()
         # Bisect should be capable of finding multiple entries at the same time
-        self.assertBisect(expected, [['a'], ['b'], ['f']],
-                          state, ['a', 'b', 'f'])
-        self.assertBisect(expected, [['f'], ['b/d'], ['b/d/e']],
-                          state, ['f', 'b/d', 'b/d/e'])
-        self.assertBisect(expected, [['b'], ['b-c'], ['b/c']],
-                          state, ['b', 'b-c', 'b/c'])
+        self.assertBisect(expected, [[b'a'], [b'b'], [b'f']],
+                          state, [b'a', b'b', b'f'])
+        self.assertBisect(expected, [[b'f'], [b'b/d'], [b'b/d/e']],
+                          state, [b'f', b'b/d', b'b/d/e'])
+        self.assertBisect(expected, [[b'b'], [b'b-c'], [b'b/c']],
+                          state, [b'b', b'b-c', b'b/c'])
 
     def test_bisect_one_page(self):
         """Test bisect when there is only 1 page to read"""
         tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 5000
-        self.assertBisect(expected, [['']], state, [''])
-        self.assertBisect(expected, [['a']], state, ['a'])
-        self.assertBisect(expected, [['b']], state, ['b'])
-        self.assertBisect(expected, [['b/c']], state, ['b/c'])
-        self.assertBisect(expected, [['b/d']], state, ['b/d'])
-        self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
-        self.assertBisect(expected, [['b-c']], state, ['b-c'])
-        self.assertBisect(expected, [['f']], state, ['f'])
-        self.assertBisect(expected, [['a'], ['b'], ['f']],
-                          state, ['a', 'b', 'f'])
-        self.assertBisect(expected, [['b/d'], ['b/d/e'], ['f']],
-                          state, ['b/d', 'b/d/e', 'f'])
-        self.assertBisect(expected, [['b'], ['b/c'], ['b-c']],
-                          state, ['b', 'b/c', 'b-c'])
+        self.assertBisect(expected, [[b'']], state, [b''])
+        self.assertBisect(expected, [[b'a']], state, [b'a'])
+        self.assertBisect(expected, [[b'b']], state, [b'b'])
+        self.assertBisect(expected, [[b'b/c']], state, [b'b/c'])
+        self.assertBisect(expected, [[b'b/d']], state, [b'b/d'])
+        self.assertBisect(expected, [[b'b/d/e']], state, [b'b/d/e'])
+        self.assertBisect(expected, [[b'b-c']], state, [b'b-c'])
+        self.assertBisect(expected, [[b'f']], state, [b'f'])
+        self.assertBisect(expected, [[b'a'], [b'b'], [b'f']],
+                          state, [b'a', b'b', b'f'])
+        self.assertBisect(expected, [[b'b/d'], [b'b/d/e'], [b'f']],
+                          state, [b'b/d', b'b/d/e', b'f'])
+        self.assertBisect(expected, [[b'b'], [b'b/c'], [b'b-c']],
+                          state, [b'b', b'b/c', b'b-c'])
 
     def test_bisect_duplicate_paths(self):
         """When bisecting for a path, handle multiple entries."""
         tree, state, expected = self.create_duplicated_dirstate()
 
         # Now make sure that both records are properly returned.
-        self.assertBisect(expected, [['']], state, [''])
-        self.assertBisect(expected, [['a', 'a2']], state, ['a'])
-        self.assertBisect(expected, [['b', 'b2']], state, ['b'])
-        self.assertBisect(expected, [['b/c', 'b/c2']], state, ['b/c'])
-        self.assertBisect(expected, [['b/d', 'b/d2']], state, ['b/d'])
-        self.assertBisect(expected, [['b/d/e', 'b/d/e2']],
-                          state, ['b/d/e'])
-        self.assertBisect(expected, [['b-c', 'b-c2']], state, ['b-c'])
-        self.assertBisect(expected, [['f', 'f2']], state, ['f'])
+        self.assertBisect(expected, [[b'']], state, [b''])
+        self.assertBisect(expected, [[b'a', b'a2']], state, [b'a'])
+        self.assertBisect(expected, [[b'b', b'b2']], state, [b'b'])
+        self.assertBisect(expected, [[b'b/c', b'b/c2']], state, [b'b/c'])
+        self.assertBisect(expected, [[b'b/d', b'b/d2']], state, [b'b/d'])
+        self.assertBisect(expected, [[b'b/d/e', b'b/d/e2']],
+                          state, [b'b/d/e'])
+        self.assertBisect(expected, [[b'b-c', b'b-c2']], state, [b'b-c'])
+        self.assertBisect(expected, [[b'f', b'f2']], state, [b'f'])
 
     def test_bisect_page_size_too_small(self):
         """If the page size is too small, we will auto increase it."""
         tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 50
-        self.assertBisect(expected, [None], state, ['b/e'])
-        self.assertBisect(expected, [['a']], state, ['a'])
-        self.assertBisect(expected, [['b']], state, ['b'])
-        self.assertBisect(expected, [['b/c']], state, ['b/c'])
-        self.assertBisect(expected, [['b/d']], state, ['b/d'])
-        self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
-        self.assertBisect(expected, [['b-c']], state, ['b-c'])
-        self.assertBisect(expected, [['f']], state, ['f'])
+        self.assertBisect(expected, [None], state, [b'b/e'])
+        self.assertBisect(expected, [[b'a']], state, [b'a'])
+        self.assertBisect(expected, [[b'b']], state, [b'b'])
+        self.assertBisect(expected, [[b'b/c']], state, [b'b/c'])
+        self.assertBisect(expected, [[b'b/d']], state, [b'b/d'])
+        self.assertBisect(expected, [[b'b/d/e']], state, [b'b/d/e'])
+        self.assertBisect(expected, [[b'b-c']], state, [b'b-c'])
+        self.assertBisect(expected, [[b'f']], state, [b'f'])
 
     def test_bisect_missing(self):
         """Test that bisect return None if it cannot find a path."""
         tree, state, expected = self.create_basic_dirstate()
-        self.assertBisect(expected, [None], state, ['foo'])
-        self.assertBisect(expected, [None], state, ['b/foo'])
-        self.assertBisect(expected, [None], state, ['bar/foo'])
-        self.assertBisect(expected, [None], state, ['b-c/foo'])
+        self.assertBisect(expected, [None], state, [b'foo'])
+        self.assertBisect(expected, [None], state, [b'b/foo'])
+        self.assertBisect(expected, [None], state, [b'bar/foo'])
+        self.assertBisect(expected, [None], state, [b'b-c/foo'])
 
-        self.assertBisect(expected, [['a'], None, ['b/d']],
-                          state, ['a', 'foo', 'b/d'])
+        self.assertBisect(expected, [[b'a'], None, [b'b/d']],
+                          state, [b'a', b'foo', b'b/d'])
 
     def test_bisect_rename(self):
         """Check that we find a renamed row."""
         tree, state, expected = self.create_renamed_dirstate()
 
         # Search for the pre and post renamed entries
-        self.assertBisect(expected, [['a']], state, ['a'])
-        self.assertBisect(expected, [['b/g']], state, ['b/g'])
-        self.assertBisect(expected, [['b/d']], state, ['b/d'])
-        self.assertBisect(expected, [['h']], state, ['h'])
+        self.assertBisect(expected, [[b'a']], state, [b'a'])
+        self.assertBisect(expected, [[b'b/g']], state, [b'b/g'])
+        self.assertBisect(expected, [[b'b/d']], state, [b'b/d'])
+        self.assertBisect(expected, [[b'h']], state, [b'h'])
 
         # What about b/d/e? shouldn't that also get 2 directory entries?
-        self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
-        self.assertBisect(expected, [['h/e']], state, ['h/e'])
+        self.assertBisect(expected, [[b'b/d/e']], state, [b'b/d/e'])
+        self.assertBisect(expected, [[b'h/e']], state, [b'h/e'])
 
     def test_bisect_dirblocks(self):
         tree, state, expected = self.create_duplicated_dirstate()
         self.assertBisectDirBlocks(expected,
-            [['', 'a', 'a2', 'b', 'b2', 'b-c', 'b-c2', 'f', 'f2']],
-            state, [''])
+            [[b'', b'a', b'a2', b'b', b'b2', b'b-c', b'b-c2', b'f', b'f2']],
+            state, [b''])
         self.assertBisectDirBlocks(expected,
-            [['b/c', 'b/c2', 'b/d', 'b/d2']], state, ['b'])
+            [[b'b/c', b'b/c2', b'b/d', b'b/d2']], state, [b'b'])
         self.assertBisectDirBlocks(expected,
-            [['b/d/e', 'b/d/e2']], state, ['b/d'])
+            [[b'b/d/e', b'b/d/e2']], state, [b'b/d'])
         self.assertBisectDirBlocks(expected,
-            [['', 'a', 'a2', 'b', 'b2', 'b-c', 'b-c2', 'f', 'f2'],
-             ['b/c', 'b/c2', 'b/d', 'b/d2'],
-             ['b/d/e', 'b/d/e2'],
-            ], state, ['', 'b', 'b/d'])
+            [[b'', b'a', b'a2', b'b', b'b2', b'b-c', b'b-c2', b'f', b'f2'],
+             [b'b/c', b'b/c2', b'b/d', b'b/d2'],
+             [b'b/d/e', b'b/d/e2'],
+            ], state, [b'', b'b', b'b/d'])
 
     def test_bisect_dirblocks_missing(self):
         tree, state, expected = self.create_basic_dirstate()
-        self.assertBisectDirBlocks(expected, [['b/d/e'], None],
-            state, ['b/d', 'b/e'])
+        self.assertBisectDirBlocks(expected, [[b'b/d/e'], None],
+            state, [b'b/d', b'b/e'])
         # Files don't show up in this search
-        self.assertBisectDirBlocks(expected, [None], state, ['a'])
-        self.assertBisectDirBlocks(expected, [None], state, ['b/c'])
-        self.assertBisectDirBlocks(expected, [None], state, ['c'])
-        self.assertBisectDirBlocks(expected, [None], state, ['b/d/e'])
-        self.assertBisectDirBlocks(expected, [None], state, ['f'])
+        self.assertBisectDirBlocks(expected, [None], state, [b'a'])
+        self.assertBisectDirBlocks(expected, [None], state, [b'b/c'])
+        self.assertBisectDirBlocks(expected, [None], state, [b'c'])
+        self.assertBisectDirBlocks(expected, [None], state, [b'b/d/e'])
+        self.assertBisectDirBlocks(expected, [None], state, [b'f'])
 
     def test_bisect_recursive_each(self):
         tree, state, expected = self.create_basic_dirstate()
-        self.assertBisectRecursive(expected, ['a'], state, ['a'])
-        self.assertBisectRecursive(expected, ['b/c'], state, ['b/c'])
-        self.assertBisectRecursive(expected, ['b/d/e'], state, ['b/d/e'])
-        self.assertBisectRecursive(expected, ['b-c'], state, ['b-c'])
-        self.assertBisectRecursive(expected, ['b/d', 'b/d/e'],
-                                   state, ['b/d'])
-        self.assertBisectRecursive(expected, ['b', 'b/c', 'b/d', 'b/d/e'],
-                                   state, ['b'])
-        self.assertBisectRecursive(expected, ['', 'a', 'b', 'b-c', 'f', 'b/c',
-                                              'b/d', 'b/d/e'],
-                                   state, [''])
+        self.assertBisectRecursive(expected, [b'a'], state, [b'a'])
+        self.assertBisectRecursive(expected, [b'b/c'], state, [b'b/c'])
+        self.assertBisectRecursive(expected, [b'b/d/e'], state, [b'b/d/e'])
+        self.assertBisectRecursive(expected, [b'b-c'], state, [b'b-c'])
+        self.assertBisectRecursive(expected, [b'b/d', b'b/d/e'],
+                                   state, [b'b/d'])
+        self.assertBisectRecursive(expected, [b'b', b'b/c', b'b/d', b'b/d/e'],
+                                   state, [b'b'])
+        self.assertBisectRecursive(expected, [b'', b'a', b'b', b'b-c', b'f', b'b/c',
+                                              b'b/d', b'b/d/e'],
+                                   state, [b''])
 
     def test_bisect_recursive_multiple(self):
         tree, state, expected = self.create_basic_dirstate()
-        self.assertBisectRecursive(expected, ['a', 'b/c'], state, ['a', 'b/c'])
-        self.assertBisectRecursive(expected, ['b/d', 'b/d/e'],
-                                   state, ['b/d', 'b/d/e'])
+        self.assertBisectRecursive(expected, [b'a', b'b/c'], state, [b'a', b'b/c'])
+        self.assertBisectRecursive(expected, [b'b/d', b'b/d/e'],
+                                   state, [b'b/d', b'b/d/e'])
 
     def test_bisect_recursive_missing(self):
         tree, state, expected = self.create_basic_dirstate()
-        self.assertBisectRecursive(expected, [], state, ['d'])
-        self.assertBisectRecursive(expected, [], state, ['b/e'])
-        self.assertBisectRecursive(expected, [], state, ['g'])
-        self.assertBisectRecursive(expected, ['a'], state, ['a', 'g'])
+        self.assertBisectRecursive(expected, [], state, [b'd'])
+        self.assertBisectRecursive(expected, [], state, [b'b/e'])
+        self.assertBisectRecursive(expected, [], state, [b'g'])
+        self.assertBisectRecursive(expected, [b'a'], state, [b'a', b'g'])
 
     def test_bisect_recursive_renamed(self):
         tree, state, expected = self.create_renamed_dirstate()
 
         # Looking for either renamed item should find the other
-        self.assertBisectRecursive(expected, ['a', 'b/g'], state, ['a'])
-        self.assertBisectRecursive(expected, ['a', 'b/g'], state, ['b/g'])
+        self.assertBisectRecursive(expected, [b'a', b'b/g'], state, [b'a'])
+        self.assertBisectRecursive(expected, [b'a', b'b/g'], state, [b'b/g'])
         # Looking in the containing directory should find the rename target,
         # and anything in a subdir of the renamed target.
-        self.assertBisectRecursive(expected, ['a', 'b', 'b/c', 'b/d',
-                                              'b/d/e', 'b/g', 'h', 'h/e'],
-                                   state, ['b'])
+        self.assertBisectRecursive(expected, [b'a', b'b', b'b/c', b'b/d',
+                                              'b/d/e', b'b/g', b'h', b'h/e'],
+                                   state, [b'b'])
 
 
 class TestDirstateValidation(TestCaseWithDirState):
@@ -2175,9 +2175,9 @@ class TestDirstateValidation(TestCaseWithDirState):
         # we're appending to the dirblock, but this name comes before some of
         # the existing names; that's wrong
         last_dirblock[1].append(
-            (('h', 'aaaa', b'a-id'),
-             [('a', '', 0, False, ''),
-              ('a', '', 0, False, '')]))
+            ((b'h', b'aaaa', b'a-id'),
+             [(b'a', b'', 0, False, b''),
+              (b'a', b'', 0, False, b'')]))
         e = self.assertRaises(AssertionError,
             state._validate)
         self.assertContainsRe(str(e), 'not sorted')
@@ -2188,9 +2188,9 @@ class TestDirstateValidation(TestCaseWithDirState):
         last_dirblock = state._dirblocks[-1]
         # add an entry with the wrong directory name
         last_dirblock[1].append(
-            (('', 'z', b'a-id'),
-             [('a', '', 0, False, ''),
-              ('a', '', 0, False, '')]))
+            ((b'', b'z', b'a-id'),
+             [(b'a', b'', 0, False, b''),
+              (b'a', b'', 0, False, b'')]))
         e = self.assertRaises(AssertionError,
             state._validate)
         self.assertContainsRe(str(e),
@@ -2203,9 +2203,9 @@ class TestDirstateValidation(TestCaseWithDirState):
         # make another entry for a-id, without a correct 'r' pointer to
         # the real occurrence in the working tree
         last_dirblock[1].append(
-            (('h', 'z', b'a-id'),
-             [('a', '', 0, False, ''),
-              ('a', '', 0, False, '')]))
+            ((b'h', b'z', b'a-id'),
+             [(b'a', b'', 0, False, b''),
+              (b'a', b'', 0, False, b'')]))
         e = self.assertRaises(AssertionError,
             state._validate)
         self.assertContainsRe(str(e),
@@ -2471,7 +2471,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         try:
             dir_id = dir_ids[dirname]
         except KeyError:
-            dir_id = osutils.basename(dirname) + b'-id'
+            dir_id = osutils.basename(dirname).encode('utf-8') + b'-id'
         if is_dir:
             ie = inventory.InventoryDirectory(file_id, basename, dir_id)
             dir_ids[path] = file_id
@@ -2638,7 +2638,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state = self.assertUpdate(
             active=[],
             basis =[],
-            target=[(b'file', b'file-id')],
+            target=[('file', b'file-id')],
             )
 
     def test_add_file_elsewhere_in_active_state(self):

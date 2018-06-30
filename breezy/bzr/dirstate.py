@@ -307,6 +307,38 @@ class DefaultSHA1Provider(SHA1Provider):
         return statvalue, sha1
 
 
+def is_inside(dir, fname):
+    """True if fname is inside dir.
+
+    The parameters should typically be passed to osutils.normpath first, so
+    that . and .. and repeated slashes are eliminated, and the separators
+    are canonical for the platform.
+
+    The empty string as a dir name is taken as top-of-tree and matches
+    everything.
+
+    This is based on breezy.osutils.is_inside, which uses filesystem strings.
+    """
+    if dir == fname:
+        return True
+
+    if dir == b'':
+        return True
+
+    if not dir.endswith(b'/'):
+        dir += b'/'
+
+    return fname.startswith(dir)
+
+
+def is_inside_any(dir_list, fname):
+    """True if fname is inside any of given dirs."""
+    for dirname in dir_list:
+        if is_inside(dirname, fname):
+            return True
+    return False
+
+
 class DirState(object):
     """Record directory and metadata state for fast access.
 
@@ -513,8 +545,8 @@ class DirState(object):
                     # set the old name's current operation to rename
                     self.update_minimal(file_id_entry[0],
                         b'r',
-                        path_utf8='',
-                        packed_stat='',
+                        path_utf8=b'',
+                        packed_stat=b'',
                         fingerprint=utf8path
                     )
                     rename_from = file_id_entry[0][0:2]
@@ -653,7 +685,7 @@ class DirState(object):
             if count > max_count:
                 raise errors.BzrError('Too many seeks, most likely a bug.')
 
-            mid = max(low, (low+high-page_size)/2)
+            mid = max(low, (low+high-page_size)//2)
 
             state_file.seek(mid)
             # limit the read size, so we don't end up reading data that we have
@@ -845,7 +877,7 @@ class DirState(object):
             if count > max_count:
                 raise errors.BzrError('Too many seeks, most likely a bug.')
 
-            mid = max(low, (low+high-page_size)/2)
+            mid = max(low, (low+high-page_size)//2)
 
             state_file.seek(mid)
             # limit the read size, so we don't end up reading data that we have
@@ -1634,7 +1666,7 @@ class DirState(object):
                 if entry[0][2] != file_id:
                     # Different file_id, so not what we want.
                     continue
-                self._raise_invalid(("%s/%s" % key[0:2]).decode('utf8'), file_id,
+                self._raise_invalid((b"%s/%s" % key[0:2]).decode('utf8'), file_id,
                     "This file_id is new in the delta but already present in "
                     "the target")
 
@@ -1758,7 +1790,7 @@ class DirState(object):
                     # rename records.
                     active_dir, active_name = active_entry[0][:2]
                     if active_dir:
-                        active_path = active_dir + '/' + active_name
+                        active_path = active_dir + b'/' + active_name
                     else:
                         active_path = active_name
                     active_entry[1][1] = st('r', new_path, 0, False, b'')
@@ -2527,7 +2559,7 @@ class DirState(object):
                 self._state_file = self._lock_token.f
                 # TODO: jam 20070315 We should validate the disk file has
                 #       not changed contents. Since restore_read_lock may
-                #       not be an atomic operation.                
+                #       not be an atomic operation.
 
     def _maybe_fdatasync(self):
         """Flush to disk if possible and if not configured off."""
@@ -3579,7 +3611,7 @@ class ProcessEntryPython(object):
             if source_minikind == b'r':
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
-                if not osutils.is_inside_any(self.searched_specific_files,
+                if not is_inside_any(self.searched_specific_files,
                                              source_details[1]):
                     self.search_specific_files.add(source_details[1])
                 # generate the old path; this is needed for stating later
@@ -3789,7 +3821,7 @@ class ProcessEntryPython(object):
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
-            if not osutils.is_inside_any(self.searched_specific_files, target_details[1]):
+            if not is_inside_any(self.searched_specific_files, target_details[1]):
                 self.search_specific_files.add(target_details[1])
         elif source_minikind in _ra and target_minikind in _ra:
             # neither of the selected trees contain this file,
@@ -3963,7 +3995,7 @@ class ProcessEntryPython(object):
             # walk until both the directory listing and the versioned metadata
             # are exhausted.
             if (block_index < len(self.state._dirblocks) and
-                osutils.is_inside(current_root, self.state._dirblocks[block_index][0])):
+                is_inside(current_root, self.state._dirblocks[block_index][0])):
                 current_block = self.state._dirblocks[block_index]
             else:
                 current_block = None
@@ -4033,7 +4065,7 @@ class ProcessEntryPython(object):
                                     yield result
                         block_index +=1
                         if (block_index < len(self.state._dirblocks) and
-                            osutils.is_inside(current_root,
+                            is_inside(current_root,
                                               self.state._dirblocks[block_index][0])):
                             current_block = self.state._dirblocks[block_index]
                         else:
@@ -4157,7 +4189,7 @@ class ProcessEntryPython(object):
                 if current_block is not None:
                     block_index += 1
                     if (block_index < len(self.state._dirblocks) and
-                        osutils.is_inside(current_root, self.state._dirblocks[block_index][0])):
+                        is_inside(current_root, self.state._dirblocks[block_index][0])):
                         current_block = self.state._dirblocks[block_index]
                     else:
                         current_block = None
@@ -4176,7 +4208,7 @@ class ProcessEntryPython(object):
             # Even in extremely large trees this should be modest, so currently
             # no attempt is made to optimise.
             path_utf8 = self.search_specific_file_parents.pop()
-            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
+            if is_inside_any(self.searched_specific_files, path_utf8):
                 # We've examined this path.
                 continue
             if path_utf8 in self.searched_exact_paths:
@@ -4242,7 +4274,7 @@ class ProcessEntryPython(object):
                         current_block = None
                         if block_index < len(self.state._dirblocks):
                             current_block = self.state._dirblocks[block_index]
-                            if not osutils.is_inside(
+                            if not is_inside(
                                 entry_path_utf8, current_block[0]):
                                 # No entries for this directory at all.
                                 current_block = None
