@@ -253,7 +253,7 @@ class BaseMergeDirective(object):
         :return: a string
         """
         my_gpg = gpg.GPGStrategy(branch.get_config_stack())
-        return my_gpg.sign(''.join(self.to_lines()), gpg.MODE_CLEAR)
+        return my_gpg.sign(b''.join(self.to_lines()), gpg.MODE_CLEAR)
 
     def to_email(self, mail_to, branch, sign=False):
         """Serialize as an email message.
@@ -273,7 +273,7 @@ class BaseMergeDirective(object):
         if sign:
             body = self.to_signed(branch)
         else:
-            body = ''.join(self.to_lines())
+            body = b''.join(self.to_lines())
         message = email_message.EmailMessage(mail_from, mail_to, subject,
             body)
         return message
@@ -349,7 +349,7 @@ class BaseMergeDirective(object):
                           ' client %s does not support message bodies.',
                         mail_client.__class__.__name__)
         mail_client.compose_merge_request(to, subject,
-                                          ''.join(self.to_lines()),
+                                          b''.join(self.to_lines()),
                                           basename, body)
 
 
@@ -437,7 +437,7 @@ class MergeDirective(BaseMergeDirective):
             patch = None
             patch_type = None
         else:
-            patch = ''.join(patch_lines)
+            patch = b''.join(patch_lines)
             try:
                 bundle_serializer.read_bundle(BytesIO(patch))
             except (errors.NotABundle, errors.BundleNotSupported,
@@ -522,19 +522,19 @@ class MergeDirective2(BaseMergeDirective):
         except StopIteration:
             pass
         else:
-            if start.startswith('# Begin patch'):
+            if start.startswith(b'# Begin patch'):
                 patch_lines = []
                 for line in line_iter:
-                    if line.startswith('# Begin bundle'):
+                    if line.startswith(b'# Begin bundle'):
                         start = line
                         break
                     patch_lines.append(line)
                 else:
                     start = None
-                patch = ''.join(patch_lines)
+                patch = b''.join(patch_lines)
             if start is not None:
-                if start.startswith('# Begin bundle'):
-                    bundle = ''.join(line_iter)
+                if start.startswith(b'# Begin bundle'):
+                    bundle = b''.join(line_iter)
                 else:
                     raise errors.IllegalMergeDirectivePayload(start)
         time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))

@@ -2750,13 +2750,10 @@ class _KndxIndex(object):
                 self._filename = prefix
                 try:
                     path = self._mapper.map(prefix) + '.kndx'
-                    fp = self._transport.get(path)
-                    try:
+                    with self._transport.get(path) as fp:
                         # _load_data may raise NoSuchFile if the target knit is
                         # completely empty.
                         _load_data(self, fp)
-                    finally:
-                        fp.close()
                     self._kndx_cache[prefix] = (self._cache, self._history)
                     del self._cache
                     del self._filename
@@ -2917,17 +2914,17 @@ class _KnitGraphIndex(object):
                 if key_dependencies is not None:
                     key_dependencies.add_references(key, parents)
             index, pos, size = access_memo
-            if 'no-eol' in options:
-                value = 'N'
+            if b'no-eol' in options:
+                value = b'N'
             else:
-                value = ' '
-            value += "%d %d" % (pos, size)
+                value = b' '
+            value += b"%d %d" % (pos, size)
             if not self._deltas:
-                if 'line-delta' in options:
+                if b'line-delta' in options:
                     raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
             if self._parents:
                 if self._deltas:
-                    if 'line-delta' in options:
+                    if b'line-delta' in options:
                         node_refs = (parents, (parents[0],))
                         if missing_compression_parents:
                             compression_parents.add(parents[0])
@@ -2949,7 +2946,7 @@ class _KnitGraphIndex(object):
                 # Sometimes these are passed as a list rather than a tuple
                 passed = static_tuple.as_tuples(keys[key])
                 passed_parents = passed[1][:1]
-                if (value[0] != keys[key][0][0] or
+                if (value[0:1] != keys[key][0][0:1] or
                     parents != passed_parents):
                     node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(self, "inconsistent details in add_records"

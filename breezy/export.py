@@ -91,7 +91,7 @@ def export(tree, dest, format=None, root=None, subdir=None,
         else:
             with open(dest, 'wb') as f:
                 for chunk in chunks:
-                    f.writelines(chunk)
+                    f.write(chunk)
 
 
 def guess_format(filename, default='dir'):

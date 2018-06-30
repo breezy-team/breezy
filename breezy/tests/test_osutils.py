@@ -1018,7 +1018,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
             osutils._win32_rename('b', 'a')
         except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
-        self.assertFileEqual('foo\n', 'a')
+        self.assertFileEqual(b'foo\n', 'a')
 
     def test_rename_missing_dir(self):
         os.mkdir('a')

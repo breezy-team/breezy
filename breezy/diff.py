@@ -990,7 +990,8 @@ class DiffTree(object):
             properties_changed.extend(get_executable_change(executable[0], executable[1]))
 
             if properties_changed:
-                prop_str = b" (properties changed: %s)" % (", ".join(properties_changed),)
+                prop_str = b" (properties changed: %s)" % (
+                        b", ".join(properties_changed),)
             else:
                 prop_str = b""
 

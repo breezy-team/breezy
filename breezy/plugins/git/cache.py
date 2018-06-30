@@ -529,10 +529,10 @@ class TdbCacheUpdater(CacheUpdater):
             (type_name, hexsha) = obj
             sha = hex_to_sha(hexsha)
         else:
-            type_name = obj.type_name
+            type_name = obj.type_name.decode('ascii')
             sha = obj.sha().digest()
         if type_name == "commit":
-            self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
+            self.db[b"commit\0" + self.revid] = b"\0".join((sha, obj.tree))
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
             type_data = (self.revid, obj.tree)
@@ -544,7 +544,7 @@ class TdbCacheUpdater(CacheUpdater):
         elif type_name == "blob":
             if bzr_key_data is None:
                 return
-            self.db["\0".join(("blob", bzr_key_data[0], bzr_key_data[1]))] = sha
+            self.db[b"\0".join((b"blob", bzr_key_data[0], bzr_key_data[1]))] = sha
             type_data = bzr_key_data
         elif type_name == "tree":
             if bzr_key_data is None:
@@ -552,17 +552,17 @@ class TdbCacheUpdater(CacheUpdater):
             type_data = bzr_key_data
         else:
             raise AssertionError
-        entry = "\0".join((type_name, ) + type_data) + "\n"
-        key = "git\0" + sha
+        entry = b"\0".join((type_name.encode('ascii'), ) + type_data) + b"\n"
+        key = b"git\0" + sha
         try:
             oldval = self.db[key]
         except KeyError:
             self.db[key] = entry
         else:
-            if oldval[-1] != "\n":
-                self.db[key] = "".join([oldval, "\n", entry])
+            if not oldval.endswith(b'\n'):
+                self.db[key] = b"".join([oldval, b"\n", entry])
             else:
-                self.db[key] = "".join([oldval, entry])
+                self.db[key] = b"".join([oldval, entry])
 
     def finish(self):
         if self._commit is None:
@@ -619,13 +619,13 @@ class TdbGitShaMap(GitShaMap):
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]
         try:
-            if int(self.db["version"]) not in (2, 3):
+            if int(self.db[b"version"]) not in (2, 3):
                 trace.warning("SHA Map is incompatible (%s -> %d), rebuilding database.",
-                              self.db["version"], self.TDB_MAP_VERSION)
+                              self.db[b"version"], self.TDB_MAP_VERSION)
                 self.db.clear()
         except KeyError:
             pass
-        self.db["version"] = str(self.TDB_MAP_VERSION)
+        self.db[b"version"] = b'%d' % self.TDB_MAP_VERSION
 
     def start_write_group(self):
         """Start writing changes."""
@@ -644,12 +644,12 @@ class TdbGitShaMap(GitShaMap):
 
     def lookup_commit(self, revid):
         try:
-            return sha_to_hex(self.db["commit\0" + revid][:20])
+            return sha_to_hex(self.db[b"commit\0" + revid][:20])
         except KeyError:
             raise KeyError("No cache entry for %r" % revid)
 
     def lookup_blob_id(self, fileid, revision):
-        return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
+        return sha_to_hex(self.db[b"\0".join(("blob", fileid, revision))])
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -662,36 +662,37 @@ class TdbGitShaMap(GitShaMap):
         """
         if len(sha) == 40:
             sha = hex_to_sha(sha)
-        value = self.db["git\0" + sha]
+        value = self.db[b"git\0" + sha]
         for data in value.splitlines():
-            data = data.split("\0")
-            if data[0] == "commit":
+            data = data.split(b"\0")
+            type_name = data[0].decode('ascii')
+            if type_name == "commit":
                 if len(data) == 3:
-                    yield (data[0], (data[1], data[2], {}))
+                    yield (type_name, (data[1], data[2], {}))
                 else:
-                    yield (data[0], (data[1], data[2], {"testament3-sha1": data[3]}))
-            elif data[0] in ("tree", "blob"):
-                yield (data[0], tuple(data[1:]))
+                    yield (type_name, (data[1], data[2], {"testament3-sha1": data[3]}))
+            elif type_name in ("tree", "blob"):
+                yield (type_name, tuple(data[1:]))
             else:
-                raise AssertionError("unknown type %r" % data[0])
+                raise AssertionError("unknown type %r" % type_name)
 
     def missing_revisions(self, revids):
         ret = set()
         for revid in revids:
-            if self.db.get("commit\0" + revid) is None:
+            if self.db.get(b"commit\0" + revid) is None:
                 ret.add(revid)
         return ret
 
     def revids(self):
         """List the revision ids known."""
         for key in self.db.iterkeys():
-            if key.startswith("commit\0"):
+            if key.startswith(b"commit\0"):
                 yield key[7:]
 
     def sha1s(self):
         """List the SHA1s."""
         for key in self.db.iterkeys():
-            if key.startswith("git\0"):
+            if key.startswith(b"git\0"):
                 yield sha_to_hex(key[4:])
 
 

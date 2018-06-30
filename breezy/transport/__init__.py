@@ -768,7 +768,7 @@ class Transport(object):
             if expansion < 0:
                 # we're asking for more than the minimum read anyway.
                 expansion = 0
-            reduction = expansion / 2
+            reduction = expansion // 2
             new_offset = offset - reduction
             new_length = length + expansion
             if new_offset < 0:

@@ -755,8 +755,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         # the pathname is chosen to fall between 'a' and 'b'.
         self.build_tree(['1/a-empty/', '2/a-empty/'])
-        tree1.add(['a-empty'], ['a-empty'])
-        tree2.add(['a-empty'], ['a-empty'])
+        tree1.add(['a-empty'], [b'a-empty'])
+        tree2.add(['a-empty'], [b'a-empty'])
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         expected = []
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))

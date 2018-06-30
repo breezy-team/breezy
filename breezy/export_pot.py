@@ -150,13 +150,14 @@ class _PotExporter(object):
         else:
             comment = "# %s\n" % comment
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
-        self.outf.write(
+        line = (
             "#: {path}:{lineno}\n"
             "{comment}"
             "msgid {msg}\n"
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
+        self.outf.write(line.encode('utf-8'))
 
     def poentry_in_context(self, context, string, comment=None):
         context = context.from_string(string)
