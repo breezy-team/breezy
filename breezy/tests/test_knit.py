@@ -1520,20 +1520,20 @@ class TestKnitIndex(KnitTests):
         idx = knit._index
         idx.add_records([(('a-1',), ['fulltext'], (('a-1',), 0, 0), [])])
         self.check_file_contents('test.kndx',
-            '# bzr knit index 8\n'
-            '\n'
-            'a-1 fulltext 0 0  :'
+            b'# bzr knit index 8\n'
+            b'\n'
+            b'a-1 fulltext 0 0  :'
             )
         idx.add_records([
             (('a-2',), ['fulltext'], (('a-2',), 0, 0), [('a-1',)]),
             (('a-3',), ['fulltext'], (('a-3',), 0, 0), [('a-2',)]),
             ])
         self.check_file_contents('test.kndx',
-            '# bzr knit index 8\n'
-            '\n'
-            'a-1 fulltext 0 0  :\n'
-            'a-2 fulltext 0 0 0 :\n'
-            'a-3 fulltext 0 0 1 :'
+            b'# bzr knit index 8\n'
+            b'\n'
+            b'a-1 fulltext 0 0  :\n'
+            b'a-2 fulltext 0 0 0 :\n'
+            b'a-3 fulltext 0 0 1 :'
             )
         self.assertEqual({('a-3',), ('a-1',), ('a-2',)}, idx.keys())
         self.assertEqual({

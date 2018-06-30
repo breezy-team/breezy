@@ -1457,7 +1457,7 @@ orphaning_registry.register(
 orphaning_registry.register(
     'move', move_orphan,
     'Move orphans into the brz-orphans directory.')
-orphaning_registry._set_default_key('conflict')
+orphaning_registry._set_default_key(u'conflict')
 
 
 opt_transform_orphan = _mod_config.RegistryOption(

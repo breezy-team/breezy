@@ -60,7 +60,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         trunk_repo.lock_read()
         self.addCleanup(trunk_repo.unlock)
         tree.branch.repository.fetch(trunk_repo, revision_id=b'rev-1')
-        tree.set_parent_ids(['rev-1'])
+        tree.set_parent_ids([b'rev-1'])
         return tree
 
     def make_first_commit(self, repo):
@@ -501,8 +501,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.commit_write_group()
         self.assertEqual([text_key], list(same_repo.texts.keys()))
         self.assertEqual(
-            b'lines', same_repo.texts.get_record_stream([text_key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            b'lines', next(same_repo.texts.get_record_stream([text_key],
+                'unordered', True)).get_bytes_as('fulltext'))
         self.assertRaises(
             errors.UnresumableWriteGroup, same_repo.resume_write_group,
             wg_tokens)
@@ -525,11 +525,11 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.assertEqual(
             {first_key, second_key}, set(same_repo.texts.keys()))
         self.assertEqual(
-            b'lines', same_repo.texts.get_record_stream([first_key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            b'lines', next(same_repo.texts.get_record_stream([first_key],
+                'unordered', True)).get_bytes_as('fulltext'))
         self.assertEqual(
-            b'more lines', same_repo.texts.get_record_stream([second_key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            b'more lines', next(same_repo.texts.get_record_stream([second_key],
+                'unordered', True)).get_bytes_as('fulltext'))
 
     def make_source_with_delta_record(self):
         # Make a source repository with a delta record in it.

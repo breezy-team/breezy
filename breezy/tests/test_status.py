@@ -36,7 +36,7 @@ class TestStatus(TestCaseWithTransport):
         tree.commit('empty commit')
         tree2 = self.make_branch_and_tree('b')
         # set a left most parent that is not a present commit
-        tree2.add_parent_tree_id('some-ghost', allow_leftmost_as_ghost=True)
+        tree2.add_parent_tree_id(b'some-ghost', allow_leftmost_as_ghost=True)
         # do a merge
         tree2.merge_from_branch(tree.branch)
         output = BytesIO()
@@ -92,7 +92,7 @@ class TestStatus(TestCaseWithTransport):
         """Test when a pending merge is itself a ghost"""
         tree = self.make_branch_and_tree('a')
         tree.commit('first')
-        tree.add_parent_tree_id('a-ghost-revision')
+        tree.add_parent_tree_id(b'a-ghost-revision')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         output = BytesIO()
@@ -109,7 +109,7 @@ class TestStatus(TestCaseWithTransport):
         tree.commit('empty commit')
         tree2 = tree.controldir.clone('b').open_workingtree()
         tree2.commit('a non-ghost', timestamp=1196796819, timezone=0)
-        tree2.add_parent_tree_id('a-ghost-revision')
+        tree2.add_parent_tree_id(b'a-ghost-revision')
         tree2.commit('commit with ghost', timestamp=1196796819, timezone=0)
         tree2.commit('another non-ghost', timestamp=1196796819, timezone=0)
         tree.merge_from_branch(tree2.branch)

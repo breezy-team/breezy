@@ -230,26 +230,26 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['hello.txt'])
         tree.commit('create initial hello.txt')
 
-        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt', b'initial hello')
         with open('hello.txt', 'w') as f: f.write('new hello')
-        self.check_file_contents('hello.txt', 'new hello')
+        self.check_file_contents('hello.txt', b'new hello')
 
         # revert file modified since last revision
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # reverting again does not clobber the backup
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # backup files are numbered
         with open('hello.txt', 'w') as f: f.write('new hello2')
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
-        self.check_file_contents('hello.txt.~2~', 'new hello2')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
+        self.check_file_contents('hello.txt.~2~', b'new hello2')
 
     def test_revert_missing(self):
         # Revert a file that has been deleted since last commit
@@ -380,13 +380,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('source')
         # set last-revision to one not in the history
         if wt.branch.repository._format.supports_ghosts:
-            wt.set_last_revision('A')
+            wt.set_last_revision(b'A')
         # set it back to None for an empty tree.
-        wt.set_last_revision('null:')
+        wt.set_last_revision(b'null:')
         a = wt.commit('A', allow_pointless=True)
         self.assertEqual([a], wt.get_parent_ids())
         # null: is aways in the branch
-        wt.set_last_revision('null:')
+        wt.set_last_revision(b'null:')
         self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
@@ -394,10 +394,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if getattr(wt.branch, "_set_revision_history", None) is None:
             raise TestSkipped("Branch format does not permit arbitrary"
                               " history")
-        wt.branch._set_revision_history([a, 'B'])
+        wt.branch._set_revision_history([a, b'B'])
         wt.set_last_revision(a)
         self.assertEqual([a], wt.get_parent_ids())
-        self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
+        self.assertRaises(errors.ReservedId, wt.set_last_revision, b'A:')
 
     def test_set_last_revision_different_to_branch(self):
         # working tree formats from the meta-dir format and newer support

@@ -96,7 +96,7 @@ class TestUserIgnores(TestCaseInTempDir):
     def test_use_empty(self):
         ignores._set_user_ignores([])
         ignore_path = config.user_ignore_config_filename()
-        self.check_file_contents(ignore_path, '')
+        self.check_file_contents(ignore_path, b'')
 
         self.assertEqual(set([]), ignores.get_user_ignores())
 

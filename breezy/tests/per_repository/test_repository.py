@@ -539,7 +539,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('initial commit')
-        tree.add_parent_tree_id('ghost')
+        tree.add_parent_tree_id(b'ghost')
         rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map(['ghost', rev2])

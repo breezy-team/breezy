@@ -137,24 +137,24 @@ class TestRename(tests.TestCaseInTempDir):
 
     def test_fancy_rename(self):
         # This should work everywhere
-        self.create_file('a', 'something in a\n')
+        self.create_file('a', b'something in a\n')
         self._fancy_rename('a', 'b')
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
-        self.check_file_contents('b', 'something in a\n')
+        self.check_file_contents('b', b'something in a\n')
 
-        self.create_file('a', 'new something in a\n')
+        self.create_file('a', b'new something in a\n')
         self._fancy_rename('b', 'a')
 
-        self.check_file_contents('a', 'something in a\n')
+        self.check_file_contents('a', b'something in a\n')
 
     def test_fancy_rename_fails_source_missing(self):
         # An exception should be raised, and the target should be left in place
-        self.create_file('target', 'data in target\n')
+        self.create_file('target', b'data in target\n')
         self.assertRaises((IOError, OSError), self._fancy_rename,
                           'missingsource', 'target')
         self.assertPathExists('target')
-        self.check_file_contents('target', 'data in target\n')
+        self.check_file_contents('target', b'data in target\n')
 
     def test_fancy_rename_fails_if_source_and_target_missing(self):
         self.assertRaises((IOError, OSError), self._fancy_rename,
@@ -162,16 +162,16 @@ class TestRename(tests.TestCaseInTempDir):
 
     def test_rename(self):
         # Rename should be semi-atomic on all platforms
-        self.create_file('a', 'something in a\n')
+        self.create_file('a', b'something in a\n')
         osutils.rename('a', 'b')
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
-        self.check_file_contents('b', 'something in a\n')
+        self.check_file_contents('b', b'something in a\n')
 
-        self.create_file('a', 'new something in a\n')
+        self.create_file('a', b'new something in a\n')
         osutils.rename('b', 'a')
 
-        self.check_file_contents('a', 'something in a\n')
+        self.check_file_contents('a', b'something in a\n')
 
     # TODO: test fancy_rename using a MemoryTransport
 

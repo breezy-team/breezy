@@ -112,10 +112,10 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
         local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("# comment\n"
-                             "[%s]\n"
-                             "push_location = foo\n"
-                             "push_location:policy = norecurse\n" % local_path,
+        self.assertFileEqual(b"# comment\n"
+                             b"[%s]\n"
+                             b"push_location = foo\n"
+                             b"push_location:policy = norecurse\n" % local_path,
                              config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
@@ -522,7 +522,8 @@ class TestBranchReference(tests.TestCaseWithTransport):
         reference_url = branch.controldir.root_transport.abspath('') + '/'
         # if the api for create_checkout changes to return different checkout types
         # then this file read will fail.
-        self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
+        self.assertFileEqual(reference_url.encode('utf-8'),
+                             'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
             _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.controldir))
 
@@ -683,19 +684,19 @@ class TestPullResult(tests.TestCase):
 
     def test_report_changed(self):
         r = _mod_branch.PullResult()
-        r.old_revid = "old-revid"
+        r.old_revid = b"old-revid"
         r.old_revno = 10
-        r.new_revid = "new-revid"
+        r.new_revid = b"new-revid"
         r.new_revno = 20
         f = BytesIO()
         r.report(f)
-        self.assertEqual("Now on revision 20.\n", f.getvalue())
-        self.assertEqual("Now on revision 20.\n", f.getvalue())
+        self.assertEqual(b"Now on revision 20.\n", f.getvalue())
+        self.assertEqual(b"Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):
         r = _mod_branch.PullResult()
-        r.old_revid = "same-revid"
-        r.new_revid = "same-revid"
+        r.old_revid = b"same-revid"
+        r.new_revid = b"same-revid"
         f = BytesIO()
         r.report(f)
-        self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
+        self.assertEqual(b"No revisions or tags to pull.\n", f.getvalue())

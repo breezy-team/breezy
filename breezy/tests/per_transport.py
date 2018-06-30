@@ -680,17 +680,17 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.append_bytes, 'a', 'add\nsome\nmore\ncontents\n')
+                    t.append_bytes, 'a', b'add\nsome\nmore\ncontents\n')
             return
 
-        self.assertEqual(0, t.append_bytes('a', 'diff\ncontents for\na\n'))
-        self.assertEqual(0, t.append_bytes('b', 'contents\nfor b\n'))
+        self.assertEqual(0, t.append_bytes('a', b'diff\ncontents for\na\n'))
+        self.assertEqual(0, t.append_bytes('b', b'contents\nfor b\n'))
 
         self.assertEqual(20,
-            t.append_bytes('a', 'add\nsome\nmore\ncontents\n'))
+            t.append_bytes('a', b'add\nsome\nmore\ncontents\n'))
 
         self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            b'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
 
         # a file with no parent should fail..

@@ -1267,7 +1267,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.make_branch_with_divergent_history()
         self.assertEqual(
             smart_req.FailedSmartServerResponse((b'Diverged',)),
-            self.set_last_revision('child-1', 2))
+            self.set_last_revision(b'child-1', 2))
         # The branch tip was not changed.
         self.assertEqual(b'child-2', self.tree.branch.last_revision())
 

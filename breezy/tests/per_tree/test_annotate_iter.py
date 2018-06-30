@@ -37,7 +37,7 @@ class TestAnnotate(TestCaseWithTree):
         self.build_tree_contents([('tree/one', b'first\ncontent\n')])
         tree.add(['one'])
         rev_1 = tree.commit('one')
-        tree.set_parent_ids([rev_1, 'ghost-one'])
+        tree.set_parent_ids([rev_1, b'ghost-one'])
         self.build_tree_contents([('tree/one', b'second\ncontent\n')])
         rev_2 = tree.commit('two')
         return self._convert_tree(tree), [rev_1, rev_2]
