@@ -33,7 +33,6 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    serializer as _mod_serializer,
     static_tuple,
     tsort,
     ui,

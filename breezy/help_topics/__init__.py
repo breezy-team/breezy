@@ -221,20 +221,13 @@ def _help_on_transport(name):
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
 
-    def sort_func(a, b):
-        a1 = a[:a.rfind("://")]
-        b1 = b[:b.rfind("://")]
-        if a1>b1:
-            return +1
-        elif a1<b1:
-            return -1
-        else:
-            return 0
+    def key_func(a):
+        return a[:a.rfind("://")]
 
     protl = []
     decl = []
     protos = transport_list_registry.keys()
-    protos.sort(sort_func)
+    protos.sort(key=key_func)
     for proto in protos:
         shorthelp = transport_list_registry.get_help(proto)
         if not shorthelp:

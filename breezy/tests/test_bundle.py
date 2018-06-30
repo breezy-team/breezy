@@ -1003,7 +1003,7 @@ class BundleTester(object):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add([''], [b'TREE_ROOT'])
-        tree.commit('One', revprops={'one': 'two', 'empty': ''}, rev_id=b'rev1')
+        tree.commit('One', revprops={u'one': 'two', u'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
@@ -1021,7 +1021,7 @@ class BundleTester(object):
 
         tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
-                    revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
+                    revprops={u'a':'4', u'b':'3', u'c':'2', u'd':'1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
@@ -1044,7 +1044,7 @@ class BundleTester(object):
         # However, Testaments assert than they are str(), and thus should not
         # be Unicode.
         tree.commit('One', rev_id=b'rev1',
-                    revprops={'omega':u'\u03a9', 'alpha':u'\u03b1'})
+                    revprops={u'omega':u'\u03a9', u'alpha':u'\u03b1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
@@ -1200,7 +1200,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add([''], [b'TREE_ROOT'])
-        tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id=b'rev1')
+        tree.commit('One', revprops={u'one':'two', u'empty':''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
@@ -1232,7 +1232,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add([''], [b'TREE_ROOT'])
-        tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id=b'rev1')
+        tree.commit('One', revprops={u'one':'two', u'empty':''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         txt = bundle_sio.getvalue()
@@ -1261,7 +1261,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         tree.add([''], [b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
-                    revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
+                    revprops={u'a':'4', u'b':'3', u'c':'2', u'd':'1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
@@ -1292,7 +1292,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         # However, Testaments assert than they are str(), and thus should not
         # be Unicode.
         tree.commit('One', rev_id=b'rev1',
-                    revprops={'omega':u'\u03a9', 'alpha':u'\u03b1'})
+                    revprops={u'omega':u'\u03a9', u'alpha':u'\u03b1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
@@ -1687,7 +1687,7 @@ class MungedBundleTester(object):
         self.build_tree(['b1/two'])
         wt.add('two')
         wt.commit('add two', rev_id=b'a@cset-0-2',
-                  revprops={'branch-nick':'test'})
+                  revprops={u'branch-nick':'test'})
 
         bundle_txt = BytesIO()
         rev_ids = write_bundle(wt.branch.repository, b'a@cset-0-2',

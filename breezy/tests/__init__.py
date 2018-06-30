@@ -2166,7 +2166,7 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=stderr)
+                                  stderr=stderr, bufsize=0)
         finally:
             restore_environment()
             if cwd is not None:

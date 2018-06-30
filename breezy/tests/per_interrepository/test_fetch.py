@@ -115,16 +115,16 @@ class TestInterRepository(TestCaseWithInterRepository):
             # We need two revisions: OLD and NEW. NEW will claim to need a file
             # 'FOO' changed in 'OLD'. OLD will not have that file at all.
             source.texts.insert_record_stream([
-                versionedfile.FulltextContentFactory(('foo', revid), (), None,
-                'contents')])
+                versionedfile.FulltextContentFactory((b'foo', revid), (), None,
+                b'contents')])
             basis = source.revision_tree(revid)
             parent_id = basis.path2id('')
-            entry = inventory.make_entry('file', 'foo-path', parent_id, 'foo')
+            entry = inventory.make_entry('file', 'foo-path', parent_id, b'foo')
             entry.revision = revid
             entry.text_size = len('contents')
             entry.text_sha1 = osutils.sha_string('contents')
             inv_sha1, _ = source.add_inventory_by_delta(revid, [
-                (None, 'foo-path', 'foo', entry)], 'new', [revid])
+                (None, 'foo-path', b'foo', entry)], b'new', [revid])
             rev = Revision(timestamp=0,
                            timezone=None,
                            committer="Foo Bar <foo@example.com>",
@@ -138,11 +138,11 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise
         else:
             source.commit_write_group()
-        to_repo.fetch(source, 'new')
+        to_repo.fetch(source, b'new')
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
-        self.assertEqual('contents',
-            to_repo.texts.get_record_stream([('foo', revid)],
+        self.assertEqual(b'contents',
+            to_repo.texts.get_record_stream([(b'foo', revid)],
             'unordered', True).next().get_bytes_as('fulltext'))
 
     def test_fetch_from_stacked_smart(self):

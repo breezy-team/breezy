@@ -80,7 +80,7 @@ class DarcsProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([DarcsDirFormat()])
+        return [DarcsDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(DarcsProber)

@@ -67,7 +67,7 @@ class TestCheckout(TestCaseWithTransport):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
+        self.assertEqual([b'1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
@@ -76,7 +76,7 @@ class TestCheckout(TestCaseWithTransport):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
+        self.assertEqual([b'1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_into_empty_dir(self):
@@ -145,10 +145,10 @@ class TestCheckout(TestCaseWithTransport):
         branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 1', working_dir='branch')
         tree = workingtree.WorkingTree.open('branch')
-        self.assertEqual('1', tree.last_revision())
+        self.assertEqual(b'1', tree.last_revision())
         branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 0', working_dir='branch')
-        self.assertEqual('null:', tree.last_revision())
+        self.assertEqual(b'null:', tree.last_revision())
 
     def test_checkout_files_from(self):
         branch = _mod_branch.Branch.open('branch')

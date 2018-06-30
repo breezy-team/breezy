@@ -75,7 +75,7 @@ class MonotoneProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([MonotoneDirFormat()])
+        return [MonotoneDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(MonotoneProber)

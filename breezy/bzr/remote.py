@@ -183,9 +183,9 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
     def parse_NoneTrueFalse(self, arg):
         if not arg:
             return None
-        if arg == 'False':
+        if arg == b'False':
             return False
-        if arg == 'True':
+        if arg == b'True':
             return True
         raise AssertionError("invalid arg %r" % arg)
 

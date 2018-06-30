@@ -43,9 +43,7 @@ from ..sixish import (
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
     # Cast the utf8 properties into Unicode 'in place'
-    for key, value in props.items():
-        props[key] = _decode(value)[0]
-    return props
+    return {_decode(key)[0]: _decode(value)[0] for key, value in props.items()}
 
 
 def _is_format_10(value):

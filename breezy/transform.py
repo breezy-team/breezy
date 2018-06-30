@@ -1117,7 +1117,7 @@ class TreeTransformBase(object):
             b'_non_present_ids': self._non_present_ids,
             }
         yield serializer.bytes_record(bencode.bencode(attribs),
-                                      (('attribs',),))
+                                      ((b'attribs',),))
         for trans_id, kind in viewitems(self._new_contents):
             if kind == 'file':
                 with open(self._limbo_name(trans_id), 'rb') as cur_file:
