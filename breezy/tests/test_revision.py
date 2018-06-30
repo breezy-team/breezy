@@ -92,27 +92,27 @@ class TestIsAncestor(TestCaseWithTransport):
     def test_recorded_ancestry(self):
         """Test that commit records all ancestors"""
         br1, br2 = make_branches(self)
-        d = [('a@u-0-0', ['a@u-0-0']),
-             ('a@u-0-1', ['a@u-0-0', 'a@u-0-1']),
-             ('a@u-0-2', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2']),
-             ('b@u-0-3', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3']),
-             ('b@u-0-4', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3',
-                          'b@u-0-4']),
-             ('a@u-0-3', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4',
-                          'a@u-0-3']),
-             ('a@u-0-4', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4',
-                          'a@u-0-3', 'a@u-0-4']),
-             ('b@u-0-5', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4',
-                          'b@u-0-5']),
-             ('a@u-0-5', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4',
-                          'b@u-0-3', 'b@u-0-4',
-                          'b@u-0-5', 'a@u-0-5']),
-             ('b@u-0-6', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-4',
-                          'b@u-0-3', 'b@u-0-4',
-                          'b@u-0-5', 'b@u-0-6']),
+        d = [(b'a@u-0-0', [b'a@u-0-0']),
+             (b'a@u-0-1', [b'a@u-0-0', b'a@u-0-1']),
+             (b'a@u-0-2', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2']),
+             (b'b@u-0-3', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3']),
+             (b'b@u-0-4', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3',
+                           b'b@u-0-4']),
+             (b'a@u-0-3', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
+                           b'a@u-0-3']),
+             (b'a@u-0-4', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
+                           b'a@u-0-3', b'a@u-0-4']),
+             (b'b@u-0-5', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
+                           b'b@u-0-5']),
+             (b'a@u-0-5', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'a@u-0-3', b'a@u-0-4',
+                           b'b@u-0-3', b'b@u-0-4',
+                           b'b@u-0-5', b'a@u-0-5']),
+             (b'b@u-0-6', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'a@u-0-4',
+                           b'b@u-0-3', b'b@u-0-4',
+                           b'b@u-0-5', b'b@u-0-6']),
              ]
-        br1_only = ('a@u-0-3', 'a@u-0-4', 'a@u-0-5')
-        br2_only = ('b@u-0-6',)
+        br1_only = (b'a@u-0-3', b'a@u-0-4', b'a@u-0-5')
+        br2_only = (b'b@u-0-6',)
         for branch in br1, br2:
             for rev_id, anc in d:
                 if rev_id in br1_only and not branch is br1:
@@ -185,10 +185,10 @@ class TestReservedId(TestCase):
         self.assertEqual(True, revision.is_reserved_id(NULL_REVISION))
         self.assertEqual(True, revision.is_reserved_id(
             revision.CURRENT_REVISION))
-        self.assertEqual(True, revision.is_reserved_id('arch:'))
-        self.assertEqual(False, revision.is_reserved_id('null'))
+        self.assertEqual(True, revision.is_reserved_id(b'arch:'))
+        self.assertEqual(False, revision.is_reserved_id(b'null'))
         self.assertEqual(False, revision.is_reserved_id(
-            'arch:a@example.com/c--b--v--r'))
+            b'arch:a@example.com/c--b--v--r'))
         self.assertEqual(False, revision.is_reserved_id(None))
 
 

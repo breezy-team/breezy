@@ -969,7 +969,7 @@ class InterTree(InterObject):
         # No inventory available.
         try:
             iterator = tree.iter_entries_by_dir(specific_files=[path])
-            return iterator.next()[1]
+            return next(iterator)[1]
         except StopIteration:
             return None
 

@@ -232,7 +232,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         format = repo._format
         network_name = format.network_name()
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
         # We want to test that the network_name matches the actual format on
         # disk.  For local repositories, that means that using network_name as
         # a key in the registry gives back the same format.  For remote
@@ -539,7 +539,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('initial commit')
-        tree.add_parent_tree_id('ghost')
+        tree.add_parent_tree_id(b'ghost')
         rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map(['ghost', rev2])

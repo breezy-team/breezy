@@ -84,10 +84,10 @@ class TestMerge(TestCaseWithTransport):
         tip = wt1.commit('empty commit')
         wt2 = self.make_branch_and_tree('branch2')
         wt2.pull(wt1.branch)
-        with file('branch1/foo', 'wb') as f:
-            f.write('foo')
-        with file('branch1/bar', 'wb') as f:
-            f.write('bar')
+        with open('branch1/foo', 'wb') as f:
+            f.write(b'foo')
+        with open('branch1/bar', 'wb') as f:
+            f.write(b'bar')
         wt1.add('foo')
         wt1.add('bar')
         wt1.commit('add foobar')
@@ -153,7 +153,7 @@ class TestMerge(TestCaseWithTransport):
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
-        with file('name1', 'wb') as f: f.write('Hello')
+        with open('name1', 'wb') as f: f.write(b'Hello')
         tree.add('name1')
         tree.commit(message="hello")
         tree.rename_one('name1', 'name2')
@@ -166,7 +166,7 @@ class TestMerge(TestCaseWithTransport):
         os.mkdir('dirname1')
         tree.add('dirname1')
         filename = pathjoin('dirname1', 'name1')
-        with file(filename, 'wb') as f: f.write('Hello')
+        with open(filename, 'wb') as f: f.write(b'Hello')
         tree.add(filename)
         tree.commit(message="hello")
         filename2 = pathjoin('dirname1', 'name2')
@@ -2764,13 +2764,13 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Now create a criss-cross merge in the parent, without modifying the
         # subtree
         wt.commit('B', rev_id=b'B-id', recursive=None)
-        wt.set_last_revision('A-id')
-        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.set_last_revision(b'A-id')
+        wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
         wt.merge_from_branch(wt.branch, to_revision='B-id')
         wt.commit('E', rev_id=b'E-id', recursive=None)
-        wt.set_parent_ids(['B-id', 'C-id'])
-        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.set_parent_ids([b'B-id', b'C-id'])
+        wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
         merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
@@ -2798,18 +2798,18 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Now create a criss-cross merge in the parent, without modifying the
         # subtree
         wt.commit('B', rev_id=b'B-id', recursive=None)
-        wt.set_last_revision('A-id')
-        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.set_last_revision(b'A-id')
+        wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
         wt.merge_from_branch(wt.branch, to_revision='B-id')
         self.build_tree_contents([('tree/sub/file', b'text2')])
         sub_tree.commit('modify contents', rev_id=b'sub-B-id')
         wt.commit('E', rev_id=b'E-id', recursive=None)
-        wt.set_parent_ids(['B-id', 'C-id'])
-        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.set_parent_ids(['B-id', b'C-id'])
+        wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, b'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
@@ -2836,16 +2836,16 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Now create a criss-cross merge in the parent, without modifying the
         # subtree
         wt.commit('B', rev_id=b'B-id', recursive=None)
-        wt.set_last_revision('A-id')
-        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.set_last_revision(b'A-id')
+        wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
-        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        wt.merge_from_branch(wt.branch, to_revision=b'B-id')
         wt.rename_one('sub', 'alt_sub')
         wt.commit('E', rev_id=b'E-id', recursive=None)
-        wt.set_last_revision('B-id')
+        wt.set_last_revision(b'B-id')
         wt.revert()
-        wt.set_parent_ids(['B-id', 'C-id'])
-        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.set_parent_ids([b'B-id', b'C-id'])
+        wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
         merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
@@ -2879,25 +2879,25 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Now create a criss-cross merge in the parent, without modifying the
         # subtree
         wt.commit('B', rev_id=b'B-id', recursive=None)
-        wt.set_last_revision('A-id')
-        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.set_last_revision(b'A-id')
+        wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
         wt.merge_from_branch(wt.branch, to_revision='B-id')
         self.build_tree_contents([('tree/sub/file', b'text2')])
         sub_tree.commit('modify contents', rev_id=b'sub-B-id')
         wt.rename_one('sub', 'alt_sub')
         wt.commit('E', rev_id=b'E-id', recursive=None)
-        wt.set_last_revision('B-id')
+        wt.set_last_revision(b'B-id')
         wt.revert()
-        wt.set_parent_ids(['B-id', 'C-id'])
-        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.set_parent_ids([b'B-id', b'C-id'])
+        wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
-        merger = _mod_merge.Merger.from_revision_ids(wt, 'E-id')
+        merger = _mod_merge.Merger.from_revision_ids(wt, b'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
+        root_id = b'a-root-id'
         self.assertEqual([('sub-tree-root', False,
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),

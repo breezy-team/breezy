@@ -147,7 +147,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.lock_write()
         tree.add(['', 'foo'], kinds=['directory', 'file'])
         tree.unversion(['foo'])
-        self.assertFalse(tree.has_id('foo-id'))
+        self.assertFalse(tree.has_id(b'foo-id'))
         tree.unlock()
 
     def test_last_revision(self):

@@ -74,7 +74,7 @@ class TestApiUsage(TestSourceHelper):
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
-        source = file(filename, 'r')
+        source = open(filename, 'r')
         for line in source:
             if line.find(rule) > -1:
                 occurences += 1

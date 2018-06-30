@@ -109,15 +109,15 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
         wt.add('')
         self.wt_commit(wt, 'rev-1', rev_id=b'rev-1')
         self.wt_commit(wt, 'rev-merged', rev_id=b'rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.set_parent_ids([b'rev-1', b'rev-2a'])
+        wt.branch.set_last_revision_info(1, b'rev-1')
         self.wt_commit(wt, 'rev-2', rev_id=b'rev-2b')
         if with_tags:
             branch = wt.branch
-            branch.tags.set_tag('v0.2', 'rev-2b')
+            branch.tags.set_tag('v0.2', b'rev-2b')
             self.wt_commit(wt, 'rev-3', rev_id=b'rev-3')
-            branch.tags.set_tag('v1.0rc1', 'rev-3')
-            branch.tags.set_tag('v1.0', 'rev-3')
+            branch.tags.set_tag('v1.0rc1', b'rev-3')
+            branch.tags.set_tag('v1.0', b'rev-3')
         return wt
 
 
@@ -254,7 +254,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        with file('child/file2', 'wb') as f: f.write('hello\n')
+        with open('child/file2', 'wb') as f: f.write(b'hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -388,8 +388,8 @@ Use --include-merged or -n0 to see merged revisions.
     def test_short_log_with_merges_and_range(self):
         wt = self._prepare_tree_with_merges()
         self.wt_commit(wt, 'rev-3a', rev_id=b'rev-3a')
-        wt.branch.set_last_revision_info(2, 'rev-2b')
-        wt.set_parent_ids(['rev-2b', 'rev-3a'])
+        wt.branch.set_last_revision_info(2, b'rev-2b')
+        wt.set_parent_ids([b'rev-2b', b'rev-3a'])
         self.wt_commit(wt, 'rev-3b', rev_id=b'rev-3b')
         self.assertFormatterResult("""\
     3 Joe Foo\t2005-11-22 [merge]
@@ -1161,8 +1161,8 @@ class TestHistoryChange(tests.TestCaseWithTransport):
 
     def setup_ab_tree(self):
         tree = self.setup_a_tree()
-        tree.set_last_revision('1a')
-        tree.branch.set_last_revision_info(1, '1a')
+        tree.set_last_revision(b'1a')
+        tree.branch.set_last_revision_info(1, b'1a')
         tree.commit('2b', rev_id=b'2b')
         tree.commit('3b', rev_id=b'3b')
         return tree
@@ -1238,7 +1238,7 @@ class TestHistoryChange(tests.TestCaseWithTransport):
 
     def test_show_branch_change_no_new(self):
         tree = self.setup_ab_tree()
-        tree.branch.set_last_revision_info(2, '2b')
+        tree.branch.set_last_revision_info(2, b'2b')
         s = BytesIO()
         log.show_branch_change(tree.branch, s, 3, '3b')
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
@@ -1263,8 +1263,8 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
 
     def setup_ab_tree(self):
         tree = self.setup_a_tree()
-        tree.set_last_revision('1a')
-        tree.branch.set_last_revision_info(1, '1a')
+        tree.set_last_revision(b'1a')
+        tree.branch.set_last_revision_info(1, b'1a')
         kwargs = {
             'committer': 'Joe Foo <joe@foo.com>',
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000

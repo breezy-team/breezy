@@ -104,7 +104,7 @@ class TestFileIds(tests.TestCase):
     def test_gen_root_id(self):
         # Mostly just make sure gen_root_id() exists
         root_id = generate_ids.gen_root_id()
-        self.assertStartsWith(root_id, 'tree_root-')
+        self.assertStartsWith(root_id, b'tree_root-')
 
 
 class TestGenRevisionId(tests.TestCase):

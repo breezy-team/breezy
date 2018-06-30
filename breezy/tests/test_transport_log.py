@@ -56,6 +56,9 @@ class TestTransportLog(TestCaseWithMemoryTransport):
             'log+dummy:///', _decorated=base_transport)
 
         result = base_transport.readv('foo', [(0, 10)])
+        # sadly there's no types.IteratorType, and GeneratorType is too
+        # specific
+        next(result)
 
         result = logging_transport.readv('foo', [(0, 10)])
         self.assertEqual(list(result),

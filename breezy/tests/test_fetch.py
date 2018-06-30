@@ -488,18 +488,18 @@ class Test1To2Fetch(TestCaseWithTransport):
     def test_fetch_ghosts(self):
         self.make_tree_and_repo()
         self.tree.commit('first commit', rev_id=b'left-parent')
-        self.tree.add_parent_tree_id('ghost-parent')
-        fork = self.tree.controldir.sprout('fork', 'null:').open_workingtree()
+        self.tree.add_parent_tree_id(b'ghost-parent')
+        fork = self.tree.controldir.sprout('fork', b'null:').open_workingtree()
         fork.commit('not a ghost', rev_id=b'not-ghost-parent')
         self.tree.branch.repository.fetch(fork.branch.repository,
-                                     'not-ghost-parent')
-        self.tree.add_parent_tree_id('not-ghost-parent')
+                                     b'not-ghost-parent')
+        self.tree.add_parent_tree_id(b'not-ghost-parent')
         self.tree.commit('second commit', rev_id=b'second-id')
-        self.repo.fetch(self.tree.branch.repository, 'second-id')
+        self.repo.fetch(self.tree.branch.repository, b'second-id')
         root_id = self.tree.get_root_id()
         self.assertEqual(
-            ((root_id, 'left-parent'), (root_id, 'not-ghost-parent')),
-            self.get_parents(root_id, 'second-id'))
+            ((root_id, b'left-parent'), (root_id, b'not-ghost-parent')),
+            self.get_parents(root_id, b'second-id'))
 
     def make_two_commits(self, change_root, fetch_twice):
         self.make_tree_and_repo()
@@ -508,12 +508,12 @@ class Test1To2Fetch(TestCaseWithTransport):
             self.tree.set_root_id(b'unique-id')
         self.tree.commit('second commit', rev_id=b'second-id')
         if fetch_twice:
-            self.repo.fetch(self.tree.branch.repository, 'first-id')
-        self.repo.fetch(self.tree.branch.repository, 'second-id')
+            self.repo.fetch(self.tree.branch.repository, b'first-id')
+        self.repo.fetch(self.tree.branch.repository, b'second-id')
 
     def test_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=False)
-        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+        self.assertEqual((), self.get_parents(b'unique-id', b'second-id'))
 
     def test_two_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=True)

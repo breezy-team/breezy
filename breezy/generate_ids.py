@@ -82,7 +82,7 @@ def gen_file_id(name):
     #    filesystems
     # 4) Removing starting '.' characters to prevent the file ids from
     #    being considered hidden.
-    ascii_word_only = _file_id_chars_re.sub('', name.lower()).encode('ascii')
+    ascii_word_only = _file_id_chars_re.sub('', name.lower()).encode('ascii', 'replace')
     short_no_dots = ascii_word_only.lstrip(b'.')[:20]
     return short_no_dots + _next_id_suffix()
 

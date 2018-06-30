@@ -40,7 +40,7 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         else:
             f = open(dirstate_path, 'ab')
         try:
-            f.write('garbage-at-end-of-file\n')
+            f.write(b'garbage-at-end-of-file\n')
         finally:
             f.close()
 

@@ -52,7 +52,7 @@ from .matchers import MatchesAncestry
 class MustSignConfig(config.MemoryStack):
 
     def __init__(self):
-        super(MustSignConfig, self).__init__('''
+        super(MustSignConfig, self).__init__(b'''
 create_signatures=always
 ''')
 
@@ -219,7 +219,7 @@ class TestCommit(TestCaseWithTransport):
         with open('hello', 'w') as f: f.write('hello')
         with open('buongia', 'w') as f: f.write('buongia')
         wt.add(['hello', 'buongia'],
-              ['hello-id', 'buongia-id'])
+              [b'hello-id', b'buongia-id'])
         wt.commit(message='add files',
                  rev_id=b'test@rev-1')
 
@@ -428,7 +428,7 @@ class TestCommit(TestCaseWithTransport):
             from ..testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack('''
+            conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
             commit.Commit(config_stack=conf).commit(
@@ -454,7 +454,7 @@ create_signatures=always
         try:
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
-            conf = config.MemoryStack('''
+            conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
             self.assertRaises(breezy.gpg.SigningFailed,
@@ -478,7 +478,7 @@ create_signatures=always
             calls.append('called')
         breezy.ahook = called
         try:
-            conf = config.MemoryStack('post_commit=breezy.ahook breezy.ahook')
+            conf = config.MemoryStack(b'post_commit=breezy.ahook breezy.ahook')
             commit.Commit(config_stack=conf).commit(
                 message = "base", allow_pointless=True, rev_id=b'A',
                 working_tree = wt)
@@ -758,7 +758,7 @@ create_signatures=always
         tree = self.make_branch_and_tree('foo')
         # pending merge would turn into a left parent
         tree.commit('commit 1')
-        tree.add_parent_tree_id('example')
+        tree.add_parent_tree_id(b'example')
         self.build_tree(['foo/bar', 'foo/baz'])
         tree.add(['bar', 'baz'])
         err = self.assertRaises(CannotCommitSelectedFileMerge,

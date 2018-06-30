@@ -213,7 +213,7 @@ class GPGStrategy(object):
             keyname = config.extract_email_address(self._config_stack.get('email'))
         possible_keys = self.context.keylist(keyname, secret=True)
         try:
-            return [possible_keys.next()]
+            return [next(possible_keys)]
         except StopIteration:
             return []
 

@@ -509,8 +509,8 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         stack_on_pwd = self.parse_NoneString(stack_on_pwd)
         make_working_trees = self.parse_NoneTrueFalse(make_working_trees)
         shared_repo = self.parse_NoneTrueFalse(shared_repo)
-        if stack_on_pwd == '.':
-            stack_on_pwd = target_transport.base
+        if stack_on_pwd == b'.':
+            stack_on_pwd = target_transport.base.encode('utf-8')
         repo_format_name = self.parse_NoneString(repo_format_name)
         repo, bzrdir, stacking, repository_policy = \
             format.initialize_on_transport_ex(target_transport,
@@ -520,12 +520,12 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             make_working_trees=make_working_trees, shared_repo=shared_repo)
         if repo is None:
             repo_path = ''
-            repo_name = ''
-            rich_root = tree_ref = external_lookup = ''
-            repo_bzrdir_name = ''
+            repo_name = b''
+            rich_root = tree_ref = external_lookup = b''
+            repo_bzrdir_name = b''
             final_stack = None
             final_stack_pwd = None
-            repo_lock_token = ''
+            repo_lock_token = b''
         else:
             repo_path = self._repo_relpath(bzrdir.root_transport, repo)
             if repo_path == '':
@@ -558,11 +558,11 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
                 self._root_client_path, client_path)
             final_stack_pwd = '.'
 
-        return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
-            external_lookup, repo_name, repo_bzrdir_name,
+        return SuccessfulSmartServerResponse((repo_path.encode('utf-8'),
+            rich_root, tree_ref, external_lookup, repo_name, repo_bzrdir_name,
             bzrdir._format.network_name(),
-            self._serialize_NoneTrueFalse(stacking), final_stack,
-            final_stack_pwd, repo_lock_token))
+            self._serialize_NoneTrueFalse(stacking), final_stack.encode('utf-8'),
+            final_stack_pwd.encode('utf-8'), repo_lock_token))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
@@ -589,7 +589,7 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
                 format = br._format.network_name()
                 return SuccessfulSmartServerResponse((b'branch', format))
             else:
-                return SuccessfulSmartServerResponse((b'ref', reference_url))
+                return SuccessfulSmartServerResponse((b'ref', reference_url.encode('utf-8')))
         except errors.NotBranchError as e:
             return FailedSmartServerResponse((b'nobranch',))
 
@@ -613,7 +613,7 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
                 format = br._format.network_name()
                 return SuccessfulSmartServerResponse((b'branch', format))
             else:
-                return SuccessfulSmartServerResponse((b'ref', reference_url))
+                return SuccessfulSmartServerResponse((b'ref', reference_url.encode('utf-8')))
         except errors.NotBranchError as e:
             # Stringify the exception so that its .detail attribute will be
             # filled out.

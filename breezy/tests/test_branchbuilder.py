@@ -153,12 +153,12 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
     def test_add_empty_dir(self):
         builder = self.build_a_rev()
         rev_id2 = builder.build_snapshot(None,
-            [('add', ('b', 'b-id', 'directory', None))],
+            [('add', ('b', b'b-id', 'directory', None))],
             revision_id=b'B-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
-                              (u'a', 'a-id', 'file'),
-                              (u'b', 'b-id', 'directory'),
+        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
+                              (u'a', b'a-id', 'file'),
+                              (u'b', b'b-id', 'directory'),
                              ], rev_tree)
 
     def test_commit_timestamp(self):
@@ -420,7 +420,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
             revision_id=b'rev-2')
         builder.finish_series()
         rev_tree = builder.get_branch().repository.revision_tree(b'rev-2')
-        self.assertTreeShape([(u'', 'my-root', 'directory')], rev_tree)
+        self.assertTreeShape([(u'', b'my-root', 'directory')], rev_tree)
 
     def test_empty_flush(self):
         """A flush with no actions before it is a no-op."""
@@ -442,7 +442,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None,
             [('add', (u'', b'a-root-id', 'directory', None)),
-             ('add', (u'a', b'a-id', 'file', 'content\n'))],
+             ('add', (u'a', b'a-id', 'file', b'content\n'))],
             revision_id=b'A-id')
         builder.build_snapshot(None,
             [('unversion', 'a'),

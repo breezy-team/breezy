@@ -217,9 +217,8 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
         tree_a.commit('commit a-1', rev_id=b'a-1')
-        f = open('repo/a/file', 'ab')
-        f.write('more stuff\n')
-        f.close()
+        with open('repo/a/file', 'ab') as f:
+            f.write(b'more stuff\n')
         tree_a.commit('commit a-2', rev_id=b'a-2')
 
         tree_b = make_shared_tree('b')

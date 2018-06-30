@@ -102,8 +102,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
                     errors.GhostTagsNotSupported,
                     b.tags.set_tag, "ghost", "idontexist")
         else:
-            b.tags.set_tag("ghost", "idontexist")
-            self.assertEqual("idontexist", b.tags.lookup_tag("ghost"))
+            b.tags.set_tag("ghost", b"idontexist")
+            self.assertEqual(b"idontexist", b.tags.lookup_tag("ghost"))
 
     def test_no_such_tag(self):
         b = self.make_branch('b')

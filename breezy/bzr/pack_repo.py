@@ -71,7 +71,6 @@ from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
-    VersionedFileRootCommitBuilder,
     )
 from ..trace import (
     mutter,
@@ -93,28 +92,6 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
         VersionedFileCommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
             revprops=revprops, revision_id=revision_id, lossy=lossy)
-        self._file_graph = graph.Graph(
-            repository._pack_collection.text_index.combined_index)
-
-    def _heads(self, file_id, revision_ids):
-        keys = [(file_id, revision_id) for revision_id in revision_ids]
-        return {key[1] for key in self._file_graph.heads(keys)}
-
-
-class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
-    """A subclass of RootCommitBuilder to add texts with pack semantics.
-
-    Specifically this uses one knit object rather than one knit object per
-    added text, reducing memory and object pressure.
-    """
-
-    def __init__(self, repository, parents, config, timestamp=None,
-                 timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
-        super(PackRootCommitBuilder, self).__init__(repository, parents,
-            config, timestamp=timestamp, timezone=timezone,
-            committer=committer, revprops=revprops, revision_id=revision_id,
-            lossy=lossy)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
@@ -929,11 +906,11 @@ class RepositoryPackCollection(object):
         num_revs_affected = sum([po[0] for po in pack_operations])
         mutter('Auto-packing repository %s, which has %d pack files, '
             'containing %d revisions. Packing %d files into %d affecting %d'
-            ' revisions', self, total_packs, total_revisions, num_old_packs,
+            ' revisions', str(self), total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
         result = self._execute_pack_operations(pack_operations, packer_class=self.normal_packer_class,
                                       reload_func=self._restart_autopack)
-        mutter('Auto-packing repository %s completed', self)
+        mutter('Auto-packing repository %s completed', str(self))
         return result
 
     def _execute_pack_operations(self, pack_operations, packer_class,

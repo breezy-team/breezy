@@ -240,7 +240,7 @@ class TestPackRepository(TestCaseWithTransport):
             # clean way to test both the autopack logic and the normal code
             # path without doing this loop.
             for pos in range(10):
-                revid = str(pos)
+                revid = b'%d' % pos
                 repo.start_write_group()
                 try:
                     inv = inventory.Inventory(revision_id=revid)
@@ -387,8 +387,8 @@ class TestPackRepository(TestCaseWithTransport):
 
     def _add_text(self, repo, fileid):
         """Add a text to the repository within a write group."""
-        repo.texts.add_lines((fileid, 'samplerev+'+fileid), [],
-            ['smaplerev+'+fileid])
+        repo.texts.add_lines((fileid, b'samplerev+'+fileid), [],
+            [b'smaplerev+'+fileid])
 
     def test_concurrent_writers_merge_new_packs(self):
         format = self.get_format()
@@ -407,8 +407,8 @@ class TestPackRepository(TestCaseWithTransport):
                 try:
                     r2.start_write_group()
                     try:
-                        self._add_text(r1, 'fileidr1')
-                        self._add_text(r2, 'fileidr2')
+                        self._add_text(r1, b'fileidr1')
+                        self._add_text(r2, b'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
@@ -447,7 +447,7 @@ class TestPackRepository(TestCaseWithTransport):
         try:
             r1.start_write_group()
             try:
-                self._add_text(r1, 'fileidr1')
+                self._add_text(r1, b'fileidr1')
             except:
                 r1.abort_write_group()
                 raise
@@ -473,7 +473,7 @@ class TestPackRepository(TestCaseWithTransport):
                         r1._pack_collection._remove_pack_from_memory(
                             r1._pack_collection.get_pack_by_name(name_to_drop))
                         # in r2, add a pack
-                        self._add_text(r2, 'fileidr2')
+                        self._add_text(r2, b'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
@@ -782,7 +782,7 @@ class TestPackRepository(TestCaseWithTransport):
             raise TestNotApplicable('no chk_bytes for this repository')
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text = 'a bit of text\n'
+        text = b'a bit of text\n'
         key = ('sha1:' + osutils.sha_string(text),)
         repo.chk_bytes.add_lines(key, (), [text])
         wg_tokens = repo.suspend_write_group()
@@ -803,8 +803,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
         same_repo = repo.controldir.open_repository()
@@ -823,8 +823,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
         same_repo = repo.controldir.open_repository()
@@ -851,8 +851,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())

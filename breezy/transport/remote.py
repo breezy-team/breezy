@@ -24,6 +24,8 @@ from __future__ import absolute_import
 
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
+from io import BytesIO
+
 from .. import (
     config,
     debug,
@@ -34,9 +36,6 @@ from .. import (
     )
 from ..bzr import (
     remote,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from ..bzr.smart import client, medium
 

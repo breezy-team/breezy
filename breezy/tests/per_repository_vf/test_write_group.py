@@ -60,8 +60,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         trunk_repo.lock_read()
         self.addCleanup(trunk_repo.unlock)
         tree.branch.repository.fetch(trunk_repo, revision_id=b'rev-1')
-        tree.set_parent_ids(['rev-1'])
-        return tree 
+        tree.set_parent_ids([b'rev-1'])
+        return tree
 
     def make_first_commit(self, repo):
         trunk = repo.controldir.create_branch()
@@ -335,7 +335,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        repo.texts.add_lines((b'file-id', b'revid'), (), [b'lines'])
         try:
             wg_tokens = repo.suspend_write_group()
         except errors.UnsuspendableWriteGroup:
@@ -359,8 +359,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         try:
             wg_tokens = repo.suspend_write_group()
         except errors.UnsuspendableWriteGroup:
@@ -386,14 +386,14 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        first_key = ('file-id', 'revid')
-        repo.texts.add_lines(first_key, (), ['lines'])
+        first_key = (b'file-id', b'revid')
+        repo.texts.add_lines(first_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         self.assertTrue(same_repo.is_in_write_group())
-        second_key = ('file-id', 'second-revid')
-        same_repo.texts.add_lines(second_key, (first_key,), ['more lines'])
+        second_key = (b'file-id', b'second-revid')
+        same_repo.texts.add_lines(second_key, (first_key,), [b'more lines'])
         try:
             new_wg_tokens = same_repo.suspend_write_group()
         except:
@@ -414,8 +414,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
@@ -433,8 +433,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         self.assertEqual([], list(repo.texts.keys()))
 
@@ -445,8 +445,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
@@ -460,8 +460,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
@@ -475,8 +475,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
@@ -493,16 +493,16 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.commit_write_group()
         self.assertEqual([text_key], list(same_repo.texts.keys()))
         self.assertEqual(
-            'lines', same_repo.texts.get_record_stream([text_key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            b'lines', next(same_repo.texts.get_record_stream([text_key],
+                'unordered', True)).get_bytes_as('fulltext'))
         self.assertRaises(
             errors.UnresumableWriteGroup, same_repo.resume_write_group,
             wg_tokens)
@@ -514,34 +514,34 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        first_key = ('file-id', 'revid')
-        repo.texts.add_lines(first_key, (), ['lines'])
+        first_key = (b'file-id', b'revid')
+        repo.texts.add_lines(first_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
-        second_key = ('file-id', 'second-revid')
-        same_repo.texts.add_lines(second_key, (first_key,), ['more lines'])
+        second_key = (b'file-id', b'second-revid')
+        same_repo.texts.add_lines(second_key, (first_key,), [b'more lines'])
         same_repo.commit_write_group()
         self.assertEqual(
             {first_key, second_key}, set(same_repo.texts.keys()))
         self.assertEqual(
-            'lines', same_repo.texts.get_record_stream([first_key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            b'lines', next(same_repo.texts.get_record_stream([first_key],
+                'unordered', True)).get_bytes_as('fulltext'))
         self.assertEqual(
-            'more lines', same_repo.texts.get_record_stream([second_key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            b'more lines', next(same_repo.texts.get_record_stream([second_key],
+                'unordered', True)).get_bytes_as('fulltext'))
 
     def make_source_with_delta_record(self):
         # Make a source repository with a delta record in it.
         source_repo = self.make_write_locked_repo('source')
         source_repo.start_write_group()
-        key_base = ('file-id', 'base')
-        key_delta = ('file-id', 'delta')
+        key_base = (b'file-id', b'base')
+        key_delta = (b'file-id', b'delta')
         def text_stream():
             yield versionedfile.FulltextContentFactory(
-                key_base, (), None, 'lines\n')
+                key_base, (), None, b'lines\n')
             yield versionedfile.FulltextContentFactory(
-                key_delta, (key_base,), None, 'more\nlines\n')
+                key_delta, (key_base,), None, b'more\nlines\n')
         source_repo.texts.insert_record_stream(text_stream())
         source_repo.commit_write_group()
         return source_repo
@@ -550,8 +550,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
         source_repo = self.make_source_with_delta_record()
-        key_base = ('file-id', 'base')
-        key_delta = ('file-id', 'delta')
+        key_base = (b'file-id', b'base')
+        key_delta = (b'file-id', b'delta')
         # Start a write group, insert just a delta.
         repo = self.make_write_locked_repo()
         repo.start_write_group()
@@ -570,7 +570,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             same_repo.lock_read()
             record = next(same_repo.texts.get_record_stream([key_delta],
                                                        'unordered', True))
-            self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
+            self.assertEqual(b'more\nlines\n', record.get_bytes_as('fulltext'))
             return
         # Merely suspending and resuming doesn't make it commitable either.
         wg_tokens = repo.suspend_write_group()
@@ -584,15 +584,15 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
         source_repo = self.make_source_with_delta_record()
-        key_base = ('file-id', 'base')
-        key_delta = ('file-id', 'delta')
+        key_base = (b'file-id', b'base')
+        key_delta = (b'file-id', b'delta')
         # Start a write group.
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         # Suspend it, then resume it.
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
@@ -614,7 +614,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             same_repo.lock_read()
             record = next(same_repo.texts.get_record_stream([key_delta],
                                                        'unordered', True))
-            self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
+            self.assertEqual(b'more\nlines\n', record.get_bytes_as('fulltext'))
             return
         same_repo.abort_write_group()
 
@@ -622,8 +622,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
         source_repo = self.make_source_with_delta_record()
-        key_base = ('file-id', 'base')
-        key_delta = ('file-id', 'delta')
+        key_base = (b'file-id', b'base')
+        key_delta = (b'file-id', b'delta')
         # Start a write group, insert just a delta.
         repo = self.make_write_locked_repo()
         repo.start_write_group()

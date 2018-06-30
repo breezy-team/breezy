@@ -42,7 +42,7 @@ class _Serializer_v4(XMLSerializer):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
         e.set('name', ie.name)
-        e.set('file_id', ie.file_id)
+        e.set('file_id', ie.file_id.decode('ascii'))
         e.set('kind', ie.kind)
 
         if ie.text_size is not None:
@@ -70,7 +70,8 @@ class _Serializer_v4(XMLSerializer):
 
         :param revision_id: Ignored parameter used by xml5.
         """
-        root_id = elt.get('file_id') or ROOT_ID
+        root_id = elt.get('file_id')
+        root_id = (root_id.encode('ascii') if root_id else ROOT_ID)
         inv = Inventory(root_id)
         for e in elt:
             ie = self._unpack_entry(e, entry_cache=entry_cache,
@@ -86,24 +87,26 @@ class _Serializer_v4(XMLSerializer):
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
         parent_id = elt.get('parent_id')
-        if parent_id is None:
-            parent_id = ROOT_ID
+        parent_id = (parent_id.encode('ascii') if parent_id else ROOT_ID)
 
+        file_id = elt.get('file_id').encode('ascii')
         kind = elt.get('kind')
         if kind == 'directory':
-            ie = inventory.InventoryDirectory(elt.get('file_id'),
+            ie = inventory.InventoryDirectory(file_id,
                                               elt.get('name'),
                                               parent_id)
         elif kind == 'file':
-            ie = inventory.InventoryFile(elt.get('file_id'),
+            ie = inventory.InventoryFile(file_id,
                                          elt.get('name'),
                                          parent_id)
             ie.text_id = elt.get('text_id')
             ie.text_sha1 = elt.get('text_sha1')
+            if ie.text_sha1 is not None:
+                ie.text_sha1 = ie.text_sha1.encode('ascii')
             v = elt.get('text_size')
             ie.text_size = v and int(v)
         elif kind == 'symlink':
-            ie = inventory.InventoryLink(elt.get('file_id'),
+            ie = inventory.InventoryLink(file_id,
                                          elt.get('name'),
                                          parent_id)
             ie.symlink_target = elt.get('symlink_target')

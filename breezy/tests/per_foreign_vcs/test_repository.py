@@ -32,7 +32,7 @@ class TestRepositoryFormat(TestCase):
 
     def test_network_name(self):
         self.assertIsInstance(self.repository_format.network_name(),
-            str)
+            bytes)
 
     def test_format_description(self):
         self.assertIsInstance(self.repository_format.get_format_description(),
