@@ -16,14 +16,13 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from .. import (
     cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from .xml_serializer import (
     Element,
@@ -54,12 +53,12 @@ def _unescaper(match, _map=_xml_unescape_map):
     try:
         return _map[code]
     except KeyError:
-        if not code.startswith('#'):
+        if not code.startswith(b'#'):
             raise
         return unichr(int(code[1:])).encode('utf8')
 
 
-_unescape_re = lazy_regex.lazy_compile('\\&([^;]*);')
+_unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
 
 def _unescape_xml(data):
     """Unescape predefined XML entities in a string of data."""
@@ -86,8 +85,8 @@ class Serializer_v8(XMLSerializer):
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
     _file_ids_altered_regex = lazy_regex.lazy_compile(
-        r'file_id="(?P<file_id>[^"]+)"'
-        r'.* revision="(?P<revision_id>[^"]+)"'
+        b'file_id="(?P<file_id>[^"]+)"'
+        b'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def _check_revisions(self, inv):
@@ -194,7 +193,7 @@ class Serializer_v8(XMLSerializer):
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
                        revision_id = decode_utf8(revision_id),
-                       inventory_sha1 = rev.inventory_sha1,
+                       inventory_sha1 = rev.inventory_sha1.decode('ascii'),
                        format=format_num.decode(),
                        )
         if rev.timezone is not None:
@@ -251,7 +250,7 @@ class Serializer_v8(XMLSerializer):
         rev = Revision(committer = elt.get('committer'),
                        timestamp = float(elt.get('timestamp')),
                        revision_id = get_cached(elt.get('revision_id')),
-                       inventory_sha1 = elt.get('inventory_sha1')
+                       inventory_sha1 = elt.get('inventory_sha1').encode('ascii')
                        )
         parents = elt.find('parents') or []
         for p in parents:

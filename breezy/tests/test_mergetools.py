@@ -146,9 +146,8 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._exe = exe
             self._args = args
             self.assertPathExists(args[0])
-            f = open(args[0], 'wt')
-            f.write('temp stuff')
-            f.close()
+            with open(args[0], 'wt') as f:
+                f.write('temp stuff')
             cleanup(0)
             return 0
         retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
@@ -164,10 +163,9 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._args = args
             self.assertPathExists(args[0])
             self.log(repr(args))
-            f = open(args[0], 'wt')
-            self.log(repr(f))
-            f.write('temp stuff')
-            f.close()
+            with open(args[0], 'wt') as f:
+                self.log(repr(f))
+                f.write('temp stuff')
             cleanup(1)
             return 1
         retcode = mergetools.invoke('tool {this_temp}', 'test.txt',

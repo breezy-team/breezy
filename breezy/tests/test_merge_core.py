@@ -552,12 +552,12 @@ class FunctionalMergeTest(TestCaseWithTransport):
         """Sucessfully merges unrelated branches with no common names"""
         wta = self.make_branch_and_tree('a')
         a = wta.branch
-        with file('a/a_file', 'wb') as f: f.write('contents\n')
+        with open('a/a_file', 'wb') as f: f.write(b'contents\n')
         wta.add('a_file')
         wta.commit('a_revision', allow_pointless=False)
         wtb = self.make_branch_and_tree('b')
         b = wtb.branch
-        with file('b/b_file', 'wb') as f: f.write('contents\n')
+        with open('b/b_file', 'wb') as f: f.write(b'contents\n')
         wtb.add('b_file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
         wta.merge_from_branch(wtb.branch, b_rev, 'null:')
@@ -568,12 +568,12 @@ class FunctionalMergeTest(TestCaseWithTransport):
         """Sucessfully merges unrelated branches with common names"""
         wta = self.make_branch_and_tree('a')
         a = wta.branch
-        with file('a/file', 'wb') as f: f.write('contents\n')
+        with open('a/file', 'wb') as f: f.write(b'contents\n')
         wta.add('file')
         wta.commit('a_revision', allow_pointless=False)
         wtb = self.make_branch_and_tree('b')
         b = wtb.branch
-        with file('b/file', 'wb') as f: f.write('contents\n')
+        with open('b/file', 'wb') as f: f.write(b'contents\n')
         wtb.add('file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
         wta.merge_from_branch(wtb.branch, b_rev, 'null:')
@@ -583,13 +583,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_merge_deleted_conflicts(self):
         wta = self.make_branch_and_tree('a')
-        with file('a/file', 'wb') as f: f.write('contents\n')
+        with open('a/file', 'wb') as f: f.write(b'contents\n')
         wta.add('file')
         wta.commit('a_revision', allow_pointless=False)
         self.run_bzr('branch a b')
         os.remove('a/file')
         wta.commit('removed file', allow_pointless=False)
-        with file('b/file', 'wb') as f: f.write('changed contents\n')
+        with open('b/file', 'wb') as f: f.write(b'changed contents\n')
         wtb = WorkingTree.open('b')
         wtb.commit('changed file', allow_pointless=False)
         wtb.merge_from_branch(wta.branch, wta.branch.last_revision(),
@@ -599,7 +599,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
     def test_merge_metadata_vs_deletion(self):
         """Conflict deletion vs metadata change"""
         a_wt = self.make_branch_and_tree('a')
-        with file('a/file', 'wb') as f: f.write('contents\n')
+        with open('a/file', 'wb') as f: f.write(b'contents\n')
         a_wt.add('file')
         a_wt.commit('r0')
         self.run_bzr('branch a b')
@@ -615,8 +615,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_merge_swapping_renames(self):
         a_wt = self.make_branch_and_tree('a')
-        with file('a/un', 'wb') as f: f.write('UN')
-        with file('a/deux', 'wb') as f: f.write('DEUX')
+        with open('a/un', 'wb') as f: f.write(b'UN')
+        with open('a/deux', 'wb') as f: f.write(b'DEUX')
         a_wt.add('un', b'un-id')
         a_wt.add('deux', b'deux-id')
         a_wt.commit('r0', rev_id=b'r0')
@@ -631,25 +631,28 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertPathExists('a/un')
         self.assertTrue('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))
-        self.assertEqual(file('a/un').read(), 'DEUX')
-        self.assertEqual(file('a/deux').read(), 'UN')
+        with open('a/un', 'r') as f:
+            self.assertEqual(f.read(), 'DEUX')
+        with open('a/deux', 'r') as f:
+            self.assertEqual(f.read(), 'UN')
 
     def test_merge_delete_and_add_same(self):
         a_wt = self.make_branch_and_tree('a')
-        with file('a/file', 'wb') as f: f.write('THIS')
+        with open('a/file', 'wb') as f: f.write(b'THIS')
         a_wt.add('file')
         a_wt.commit('r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.remove('b/file')
         b_wt.commit('r1')
-        with file('b/file', 'wb') as f: f.write('THAT')
+        with open('b/file', 'wb') as f: f.write(b'THAT')
         b_wt.add('file')
         b_wt.commit('r2')
         a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
                                b_wt.branch.get_rev_id(1))
         self.assertTrue(os.path.exists('a/file'))
-        self.assertEqual(file('a/file').read(), 'THAT')
+        with open('a/file', 'r') as f:
+            self.assertEqual(f.read(), 'THAT')
 
     def test_merge_rename_before_create(self):
         """rename before create
@@ -666,13 +669,14 @@ class FunctionalMergeTest(TestCaseWithTransport):
         $ bzr commit
         """
         a_wt = self.make_branch_and_tree('a')
-        with file('a/foo', 'wb') as f: f.write('A/FOO')
+        with open('a/foo', 'wb') as f: f.write(b'A/FOO')
         a_wt.add('foo')
         a_wt.commit('added foo')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('foo', 'bar')
-        with file('b/foo', 'wb') as f: f.write('B/FOO')
+        with open('b/foo', 'wb') as f:
+            f.write(b'B/FOO')
         b_wt.add('foo')
         b_wt.commit('moved foo to bar, added new foo')
         a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
@@ -695,7 +699,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         """
         os.mkdir('a')
         a_wt = self.make_branch_and_tree('a')
-        with file('a/foo', 'wb') as f: f.write('A/FOO')
+        with open('a/foo', 'wb') as f: f.write(b'A/FOO')
         a_wt.add('foo')
         a_wt.commit('added foo')
         self.run_bzr('branch a b')
@@ -724,7 +728,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         """
         a_wt = self.make_branch_and_tree('a')
         os.mkdir('a/foo')
-        with file('a/foo/bar', 'wb') as f: f.write('A/FOO/BAR')
+        with open('a/foo/bar', 'wb') as f: f.write(b'A/FOO/BAR')
         a_wt.add('foo')
         a_wt.add('foo/bar')
         a_wt.commit('added foo/bar')
@@ -753,8 +757,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
         $ bzr commit
         """
         a_wt = self.make_branch_and_tree('a')
-        with file('a/foo', 'wb') as f: f.write('A/FOO')
-        with file('a/bar', 'wb') as f: f.write('A/BAR')
+        with open('a/foo', 'wb') as f: f.write(b'A/FOO')
+        with open('a/bar', 'wb') as f: f.write(b'A/BAR')
         a_wt.add('foo')
         a_wt.add('bar')
         a_wt.commit('added foo and bar')

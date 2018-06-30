@@ -719,7 +719,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
         f = open('dirstate', 'ab')
         try:
             # Add bogus trailing garbage
-            f.write('bogus\n')
+            f.write(b'bogus\n')
         finally:
             f.close()
             state.lock_read()
@@ -1267,13 +1267,10 @@ class UppercaseSHA1Provider(dirstate.SHA1Provider):
         return self.stat_and_sha1(abspath)[1]
 
     def stat_and_sha1(self, abspath):
-        file_obj = file(abspath, 'rb')
-        try:
+        with open(abspath, 'rb') as file_obj:
             statvalue = os.fstat(file_obj.fileno())
-            text = ''.join(file_obj.readlines())
+            text = b''.join(file_obj.readlines())
             sha1 = osutils.sha_string(text.upper() + "foo")
-        finally:
-            file_obj.close()
         return statvalue, sha1
 
 

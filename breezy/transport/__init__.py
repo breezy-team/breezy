@@ -246,6 +246,13 @@ class FileStream(object):
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.close()
+        return False
+
     def close(self, want_fdatasync=False):
         if want_fdatasync:
             try:

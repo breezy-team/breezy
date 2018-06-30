@@ -29,7 +29,7 @@ def import_marks(filename):
     """
     # Check that the file is readable and in the right format
     try:
-        f = file(filename)
+        f = open(filename)
     except IOError:
         warning("Could not import marks file %s - not importing marks",
             filename)
@@ -67,7 +67,7 @@ def export_marks(filename, revision_ids):
     :param revision_ids: dictionary mapping marks -> bzr revision-ids
     """
     try:
-        f = file(filename, 'w')
+        f = open(filename, 'w')
     except IOError:
         warning("Could not open export-marks file %s - not exporting marks",
             filename)

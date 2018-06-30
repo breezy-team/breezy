@@ -326,8 +326,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
         cmd = ['diff', '-u', '--binary', 'old', 'new']
-        with open('old', 'wb') as f: f.write('\x00foobar\n')
-        with open('new', 'wb') as f: f.write('foo\x00bar\n')
+        with open('old', 'wb') as f: f.write(b'\x00foobar\n')
+        with open('new', 'wb') as f: f.write(b'foo\x00bar\n')
         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                      stdin=subprocess.PIPE)
         out, err = pipe.communicate()

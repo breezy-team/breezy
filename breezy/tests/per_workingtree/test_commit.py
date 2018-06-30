@@ -475,9 +475,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b', 'c'])
         tree.add(['a', 'b', 'c'])
         tree.commit('first post')
-        f = file('b', 'wt')
-        f.write('new content')
-        f.close()
+        with open('b', 'wt') as f:
+            f.write('new content')
         # set a progress bar that captures the calls so we can see what is
         # emitted
         factory = ProgressRecordingUIFactory()

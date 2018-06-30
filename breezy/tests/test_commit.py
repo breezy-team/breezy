@@ -52,7 +52,7 @@ from .matchers import MatchesAncestry
 class MustSignConfig(config.MemoryStack):
 
     def __init__(self):
-        super(MustSignConfig, self).__init__('''
+        super(MustSignConfig, self).__init__(b'''
 create_signatures=always
 ''')
 

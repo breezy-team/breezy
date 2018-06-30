@@ -693,7 +693,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         e = self.assertRaises(errors.PathsNotVersionedError,
             tree_iter_changes, tree, [u'\xa7', u'\u03c0'])
-        self.assertEqual(e.paths, [u'\xa7', u'\u03c0'])
+        self.assertEqual(set(e.paths), set([u'\xa7', u'\u03c0']))
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')
@@ -865,8 +865,8 @@ class TestInventoryCoherency(TestCaseWithTransport):
         # Force access to the in memory inventory to trigger bug #494221: try
         # maintaining the in-memory inventory
         inv = tree.root_inventory
-        self.assertTrue(inv.has_id('a-id'))
-        self.assertTrue(inv.has_id('b-id'))
+        self.assertTrue(inv.has_id(b'a-id'))
+        self.assertTrue(inv.has_id(b'b-id'))
         tree.unversion(['a', 'a/b'])
-        self.assertFalse(inv.has_id('a-id'))
-        self.assertFalse(inv.has_id('b-id'))
+        self.assertFalse(inv.has_id(b'a-id'))
+        self.assertFalse(inv.has_id(b'b-id'))

@@ -514,7 +514,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
-            token = ''
+            token = b''
         return SuccessfulSmartServerResponse((b'ok', token))
 
 
@@ -537,7 +537,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         self._to_format = network_format_registry.get(to_network_name)
         if self._should_fake_unknown():
             return FailedSmartServerResponse(
-                ('UnknownMethod', 'Repository.get_stream'))
+                (b'UnknownMethod', b'Repository.get_stream'))
         return None # Signal that we want a body.
 
     def _should_fake_unknown(self):
@@ -623,7 +623,7 @@ def _stream_to_byte_stream(stream, src_format):
     """Convert a record stream to a self delimited byte stream."""
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
-    yield pack_writer.bytes_record(src_format.network_name(), '')
+    yield pack_writer.bytes_record(src_format.network_name(), b'')
     for substream_type, substream in stream:
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
@@ -636,7 +636,7 @@ def _stream_to_byte_stream(stream, src_format):
                 # Some streams embed the whole stream into the wire
                 # representation of the first record, which means that
                 # later records have no wire representation: we skip them.
-                yield pack_writer.bytes_record(serialised, [(substream_type,)])
+                yield pack_writer.bytes_record(serialised, [(substream_type.encode('ascii'),)])
     yield pack_writer.end()
 
 

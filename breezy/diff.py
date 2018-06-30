@@ -86,12 +86,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     # In the meantime we at least make sure the patch isn't
     # mangled.
 
-
-    # Special workaround for Python2.3, where difflib fails if
-    # both sequences are empty.
-    if not oldlines and not newlines:
-        return
-
     if allow_binary is False:
         textfile.check_text_lines(oldlines)
         textfile.check_text_lines(newlines)

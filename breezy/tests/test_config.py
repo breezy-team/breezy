@@ -2592,7 +2592,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     loaded. We need to issue proper error messages in this case.
     """
 
-    invalid_utf8_char = '\xff'
+    invalid_utf8_char = b'\xff'
 
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
@@ -2609,14 +2609,14 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     def test_load_badly_encoded_content(self):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         with open('foo.conf', 'wb') as f:
-            f.write('user=foo\n#%s\n' % (self.invalid_utf8_char,))
+            f.write(b'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         conf = config.IniBasedConfig(file_name='foo.conf')
         self.assertRaises(config.ConfigContentError, conf._get_parser)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         with open('foo.conf', 'wb') as f:
-            f.write('[open_section\n')
+            f.write(b'[open_section\n')
         conf = config.IniBasedConfig(file_name='foo.conf')
         self.assertRaises(config.ParseConfigError, conf._get_parser)
 
@@ -4700,29 +4700,20 @@ class TestDefaultMailDomain(tests.TestCaseInTempDir):
     """Test retrieving default domain from mailname file"""
 
     def test_default_mail_domain_simple(self):
-        f = file('simple', 'w')
-        try:
+        with open('simple', 'w') as f:
             f.write("domainname.com\n")
-        finally:
-            f.close()
         r = config._get_default_mail_domain('simple')
         self.assertEqual('domainname.com', r)
 
     def test_default_mail_domain_no_eol(self):
-        f = file('no_eol', 'w')
-        try:
+        with open('no_eol', 'w') as f:
             f.write("domainname.com")
-        finally:
-            f.close()
         r = config._get_default_mail_domain('no_eol')
         self.assertEqual('domainname.com', r)
 
     def test_default_mail_domain_multiple_lines(self):
-        f = file('multiple_lines', 'w')
-        try:
+        with open('multiple_lines', 'w') as f:
             f.write("domainname.com\nsome other text\n")
-        finally:
-            f.close()
         r = config._get_default_mail_domain('multiple_lines')
         self.assertEqual('domainname.com', r)
 

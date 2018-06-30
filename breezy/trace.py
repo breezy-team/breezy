@@ -424,7 +424,7 @@ _short_fields = ('VmPeak', 'VmSize', 'VmRSS')
 
 def _debug_memory_proc(message='', short=True):
     try:
-        status_file = file('/proc/%s/status' % os.getpid(), 'rb')
+        status_file = open('/proc/%s/status' % os.getpid(), 'rb')
     except IOError:
         return
     try:
@@ -539,7 +539,7 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write(("brz: ERROR: %s\n" % (exc_info[1],)))
+    err_file.write(("brz: ERROR: %s\n" % (str(exc_info[1]),)))
     if advice:
         err_file.write(("%s\n" % advice))
 

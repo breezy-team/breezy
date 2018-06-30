@@ -277,7 +277,7 @@ from ...repository import (
     format_registry as repository_format_registry,
     network_format_registry as repository_network_format_registry,
     )
-repository_network_format_registry.register_lazy('git',
+repository_network_format_registry.register_lazy(b'git',
     __name__ + '.repository', 'GitRepositoryFormat')
 
 register_extra_lazy_repository_format = getattr(repository_format_registry,
@@ -288,7 +288,7 @@ register_extra_lazy_repository_format(__name__ + '.repository',
 from ...branch import (
     network_format_registry as branch_network_format_registry,
     )
-branch_network_format_registry.register_lazy('git',
+branch_network_format_registry.register_lazy(b'git',
     __name__ + '.branch', 'LocalGitBranchFormat')
 
 

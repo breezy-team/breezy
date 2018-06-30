@@ -239,28 +239,19 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_write_stream('foo')
-        try:
-            handle.write('b')
-            self.assertEqual('b', t.get_bytes('foo'))
-        finally:
-            handle.close()
+        with t.open_write_stream('foo') as handle:
+            handle.write(b'b')
+            self.assertEqual(b'b', t.get_bytes('foo'))
 
     def test_get_bytes_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_write_stream('foo')
-        try:
-            handle.write('b')
-            self.assertEqual('b', t.get_bytes('foo'))
-            f = t.get('foo')
-            try:
-                self.assertEqual('b', f.read())
-            finally:
-                f.close()
-        finally:
-            handle.close()
+        with t.open_write_stream('foo') as handle:
+            handle.write(b'b')
+            self.assertEqual(b'b', t.get_bytes('foo'))
+            with t.get('foo') as f:
+                self.assertEqual(b'b', f.read())
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -1505,7 +1496,7 @@ class TransportTests(TestTransportImplementation):
         """
         transport = self.get_transport()
         if transport.is_readonly():
-            file('lock', 'w').close()
+            open('lock', 'w').close()
         else:
             transport.put_bytes('lock', b'')
         try:
@@ -1519,7 +1510,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('0123456789')
+            with open('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', b'0123456789')
 
@@ -1535,7 +1526,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv_out_of_order(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('0123456789')
+            with open('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', b'01234567890')
 
@@ -1613,7 +1604,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('a'*1024*1024)
+            with open('a', 'w') as f: f.write('a'*1024*1024)
         else:
             transport.put_bytes('a', b'a'*1024*1024)
         broken_vector = [(465219, 800), (225221, 800), (445548, 800),
@@ -1632,12 +1623,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_write_stream('foo')
-        try:
-            handle.write('bcd')
-            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0, 1), (2, 1)))))
-        finally:
-            handle.close()
+        with t.open_write_stream('foo') as handle:
+            handle.write(b'bcd')
+            self.assertEqual([(0, b'b'), (2, b'd')], list(t.readv('foo', ((0, 1), (2, 1)))))
 
     def test_get_smart_medium(self):
         """All transports must either give a smart medium, or know they can't.
@@ -1653,7 +1641,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv_short_read(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('0123456789')
+            with open('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', b'01234567890')
 

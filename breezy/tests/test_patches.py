@@ -45,7 +45,7 @@ class PatchesTester(TestCase):
     def datafile(self, filename):
         data_path = os.path.join(os.path.dirname(__file__),
                                  "test_patches_data", filename)
-        return file(data_path, "rb")
+        return open(data_path, "rb")
 
     def data_lines(self, filename):
         datafile = self.datafile(filename)

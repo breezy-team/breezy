@@ -159,7 +159,7 @@ def main():
     if start_brz:
         fname = os.path.join(brz_dir, "start_brz.bat")
         if os.path.isfile(fname):
-            with file(fname, "r") as f:
+            with open(fname, "r") as f:
                 content = f.readlines()
         else:
             content = ["brz.exe help\n"]
@@ -181,7 +181,7 @@ def main():
             print("*** File content:")
             print(''.join(content))
         else:
-            with file(fname, 'w') as f:
+            with open(fname, 'w') as f:
                 f.write(''.join(content))
 
     if (add_path or delete_path) and winver == 'Windows NT':
@@ -266,7 +266,7 @@ def main():
         pattern = 'SET PATH=%PATH%;' + brz_dir_8_3
 
         # search pattern
-        with file(abat, 'r') as f:
+        with open(abat, 'r') as f:
             lines = f.readlines()
         found = False
         for i in lines:
@@ -277,7 +277,7 @@ def main():
         if delete_path and found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
-                with file(abat, 'w') as f:
+                with open(abat, 'w') as f:
                     for i in lines:
                         if i.rstrip('\r\n') != pattern:
                             f.write(i)
@@ -287,7 +287,7 @@ def main():
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
-                with file(abat, 'a') as f:
+                with open(abat, 'a') as f:
                     f.write(pattern)
                     f.write('\n')
             else:

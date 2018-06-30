@@ -869,9 +869,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # extract the inventory, and add something to it
             inv = tree._get_root_inventory()
             # should see the file we poked in...
-            self.assertTrue(inv.has_id('foo-id'))
+            self.assertTrue(inv.has_id(b'foo-id'))
             self.assertTrue(inv.has_filename('foo'))
-            inv.add_path('bar', 'file', 'bar-id')
+            inv.add_path('bar', 'file', b'bar-id')
             tree._dirstate._validate()
             # this used to cause it to lose its hashcache
             tree._dirstate.set_state_from_inventory(inv)

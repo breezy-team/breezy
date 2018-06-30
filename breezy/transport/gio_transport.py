@@ -26,6 +26,7 @@ supported by gio.
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import os
 import random
 import stat
@@ -50,7 +51,6 @@ from .. import (
     ui,
     )
 from ..sixish import (
-    BytesIO,
     text_type,
     )
 from ..trace import mutter
@@ -294,8 +294,7 @@ class GioTransport(ConnectedTransport):
             fin = f.read()
             buf = fin.read()
             fin.close()
-            ret = BytesIO(buf)
-            return ret
+            return BytesIO(buf)
         except gio.Error as e:
             #If we get a not mounted here it might mean
             #that a bad path has been entered (or that mount failed)

@@ -687,7 +687,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return ForeignTestsRepositoryFactory()
 
     def network_name(self):
-        return "git"
+        return b"git"
 
 
 def get_extra_interrepo_test_combinations():

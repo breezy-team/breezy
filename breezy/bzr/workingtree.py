@@ -507,9 +507,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
             xml = self.branch.repository._get_inventory_xml(new_revision)
-            firstline = xml.split('\n', 1)[0]
-            if (not 'revision_id="' in firstline or
-                'format="7"' not in firstline):
+            firstline = xml.split(b'\n', 1)[0]
+            if (not b'revision_id="' in firstline or
+                b'format="7"' not in firstline):
                 inv = self.branch.repository._serializer.read_inventory_from_string(
                     xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)

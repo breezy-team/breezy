@@ -1441,14 +1441,14 @@ class VersionedFileRepository(Repository):
                 if order_as_requested:
                     text_chunks[record.key] = chunks
                 else:
-                    yield ''.join(chunks), record.key[-1]
+                    yield b''.join(chunks), record.key[-1]
             else:
                 yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
                 while next_key in text_chunks:
                     chunks = text_chunks.pop(next_key)
-                    yield ''.join(chunks), next_key[-1]
+                    yield b''.join(chunks), next_key[-1]
                     try:
                         next_key = next(key_iter)
                     except StopIteration:
@@ -2175,7 +2175,7 @@ class StreamSource(object):
                 delta = inv._make_delta(null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
-            delta_serialized = ''.join(
+            delta_serialized = b''.join(
                 serializer.delta_to_lines(basis_id, key[-1], delta))
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, delta_serialized)

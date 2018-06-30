@@ -47,7 +47,7 @@ serializer_registry = registry.Registry()
 
 
 def _get_bundle_header(version):
-    return b''.join([BUNDLE_HEADER, version, b'\n'])
+    return b''.join([BUNDLE_HEADER, version.encode('ascii'), b'\n'])
 
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')
@@ -63,7 +63,7 @@ def read_bundle(f):
     for line in f:
         m = BUNDLE_HEADER_RE.match(line)
         if m:
-            if m.group('lineending') != '':
+            if m.group('lineending') != b'':
                 raise errors.UnsupportedEOLMarker()
             version = m.group('version')
             break
@@ -79,7 +79,7 @@ def read_bundle(f):
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
 
-    return get_serializer(version).read(f)
+    return get_serializer(version.decode('ascii')).read(f)
 
 
 def get_serializer(version):

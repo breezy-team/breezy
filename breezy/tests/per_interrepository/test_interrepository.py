@@ -69,7 +69,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a.branch.repository.start_write_group()
         if tree_a.branch.repository._format.supports_ghosts:
             inv_file = tree_a.branch.repository.inventories
-            inv_file.add_lines(('orphan',), [], [])
+            inv_file.add_lines((b'orphan',), [], [])
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
         # add a real revision 'rev1'

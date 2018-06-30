@@ -34,16 +34,16 @@ class TextFile(TestCase):
         self.assertEqual(text_file(s).read(), s.getvalue())
 
     def test_check_text_lines(self):
-        lines = ['ab' * 2048]
+        lines = [b'ab' * 2048]
         check_text_lines(lines)
-        lines = ['a' * 1023 + '\x00']
+        lines = [b'a' * 1023 + b'\x00']
         self.assertRaises(BinaryFile, check_text_lines, lines)
 
 
 class TextPath(TestCaseInTempDir):
 
     def test_text_file(self):
-        with file('boo', 'wb') as f: f.write('ab' * 2048)
+        with open('boo', 'wb') as f: f.write(b'ab' * 2048)
         check_text_path('boo')
-        with file('boo', 'wb') as f: f.write('a' * 1023 + '\x00')
+        with open('boo', 'wb') as f: f.write(b'a' * 1023 + b'\x00')
         self.assertRaises(BinaryFile, check_text_path, 'boo')

@@ -232,7 +232,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         format = repo._format
         network_name = format.network_name()
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
         # We want to test that the network_name matches the actual format on
         # disk.  For local repositories, that means that using network_name as
         # a key in the registry gives back the same format.  For remote

@@ -411,7 +411,7 @@ class WorkingTree(mutabletree.MutableTree,
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
-                revision_id = l.rstrip('\n')
+                revision_id = l.rstrip(b'\n')
                 parents.append(revision_id)
         return parents
 

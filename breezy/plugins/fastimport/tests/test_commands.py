@@ -152,28 +152,34 @@ class TestFastExport(ExternalBase):
         tree = self.make_branch_and_tree("bl")
 
         # Revision 1
-        file('bl/a', 'w').write('test 1')
+        with open('bl/a', 'w') as f:
+            f.write('test 1')
         tree.add('a')
         tree.commit(message='add a')
 
         # Revision 2
-        file('bl/b', 'w').write('test 2')
-        file('bl/a', 'a').write('\ntest 3')
+        with open('bl/b', 'w') as f:
+            f.write('test 2')
+        with open('bl/a', 'a') as f:
+            f.write('\ntest 3')
         tree.add('b')
         tree.commit(message='add b, modify a')
 
         # Revision 3
-        file('bl/c', 'w').write('test 4')
+        with open('bl/c', 'w') as f:
+            f.write('test 4')
         tree.add('c')
         tree.remove('b')
         tree.commit(message='add c, remove b')
 
         # Revision 4
-        file('bl/a', 'a').write('\ntest 5')
+        with open('bl/a', 'a') as f:
+            f.write('\ntest 5')
         tree.commit(message='modify a again')
 
         # Revision 5
-        file('bl/d', 'w').write('test 6')
+        with open('bl/d', 'w') as f:
+            f.write('test 6')
         tree.add('d')
         tree.commit(message='add d')
 

@@ -210,6 +210,7 @@ class _SmartClientRequest(object):
         We do this by placing a request in the most recent protocol, and
         handling the UnexpectedProtocolVersionMarker from the server.
         """
+        last_err = None
         for protocol_version in [3, 2]:
             if protocol_version == 2:
                 # If v3 doesn't work, the remote side is older than 1.6.
@@ -224,6 +225,7 @@ class _SmartClientRequest(object):
                     ' reconnecting.  (Upgrade the server to avoid this.)'
                     % (protocol_version,))
                 self.client._medium.disconnect()
+                last_err = err
                 continue
             except errors.ErrorFromSmartServer:
                 # If we received an error reply from the server, then it
@@ -234,7 +236,7 @@ class _SmartClientRequest(object):
                 self.client._medium._protocol_version = protocol_version
                 return response_tuple, response_handler
         raise errors.SmartProtocolError(
-            'Server is not a Bazaar server: ' + str(err))
+            'Server is not a Bazaar server: ' + str(last_err))
 
     def _construct_protocol(self, version):
         """Build the encoding stack for a given protocol version."""
