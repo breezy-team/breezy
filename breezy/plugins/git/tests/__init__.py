@@ -142,7 +142,7 @@ class GitBranchBuilder(object):
             commit.
         """
         self._counter += 1
-        mark = bytes(self._counter)
+        mark = b'%d' % self._counter
         if timestamp is None:
             timestamp = int(time.time())
         self._write(b'commit %s\n' % (self._branch,))
