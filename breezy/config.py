@@ -2423,10 +2423,9 @@ class Option(object):
         for var in self.override_from_env:
             try:
                 # If the env variable is defined, its value takes precedence
-                if sys.version_info[0] == 2:
-                    value = os.environ[var].decode(osutils.get_user_encoding())
-                else:
-                    value = os.environ[var]
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue

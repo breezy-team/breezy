@@ -142,7 +142,7 @@ class GitBranchBuilder(object):
             commit.
         """
         self._counter += 1
-        mark = bytes(self._counter)
+        mark = b'%d' % self._counter
         if timestamp is None:
             timestamp = int(time.time())
         self._write(b'commit %s\n' % (self._branch,))
@@ -187,10 +187,20 @@ class GitBranchBuilder(object):
             return importer.import_stream(self.stream)
 
 
+class MissingFeature(tests.TestCase):
+
+    def test_dulwich(self):
+        self.requireFeature(DulwichFeature)
+
+
 def test_suite():
     loader = tests.TestUtil.TestLoader()
 
     suite = tests.TestUtil.TestSuite()
+
+    if not DulwichFeature.available():
+        suite.addTests(loader.loadTestsFromTestCase(MissingFeature))
+        return suite
 
     testmod_names = [
         'test_blackbox',

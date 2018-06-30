@@ -2946,7 +2946,7 @@ class _KnitGraphIndex(object):
                 # Sometimes these are passed as a list rather than a tuple
                 passed = static_tuple.as_tuples(keys[key])
                 passed_parents = passed[1][:1]
-                if (value[0:1] != keys[key][0][0] or
+                if (value[0:1] != keys[key][0][0:1] or
                     parents != passed_parents):
                     node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(self, "inconsistent details in add_records"

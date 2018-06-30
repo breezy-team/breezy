@@ -1744,6 +1744,13 @@ class InMemoryGraphIndex(GraphIndexBuilder):
     def validate(self):
         """In memory index's have no known corruption at the moment."""
 
+    def __lt__(self, other):
+        # We don't really care about the order, just that there is an order.
+        if (not isinstance(other, GraphIndex) and
+            not isinstance(other, InMemoryGraphIndex)):
+            raise TypeError(other)
+        return hash(self) < hash(other)
+
 
 class GraphIndexPrefixAdapter(object):
     """An adapter between GraphIndex with different key lengths.

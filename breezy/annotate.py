@@ -162,6 +162,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
     :param branch: A locked branch to query for revision details.
     """
     repository = branch.repository
+    revision_ids = set(o for o, t in annotations)
     if current_rev is not None:
         # This can probably become a function on MutableTree, get_revno_map
         # there, or something.
@@ -185,9 +186,11 @@ def _expand_annotations(annotations, branch, current_rev=None):
             for seq_num, rev_id, depth, revno, end_of_merge in
                 merge_sorted_revisions)
     else:
+        # TODO(jelmer): Only look up the revision ids that we need (i.e. those
+        # in revision_ids). Possibly add a HPSS call that can look those up
+        # in bulk over HPSS.
         revision_id_to_revno = branch.get_revision_id_to_revno_map()
     last_origin = None
-    revision_ids = set(o for o, t in annotations)
     revisions = {}
     if CURRENT_REVISION in revision_ids:
         revision_id_to_revno[CURRENT_REVISION] = (

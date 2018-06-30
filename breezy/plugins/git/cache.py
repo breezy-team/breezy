@@ -559,7 +559,7 @@ class TdbCacheUpdater(CacheUpdater):
         except KeyError:
             self.db[key] = entry
         else:
-            if oldval[-1:] != b"\n":
+            if not oldval.endswith(b'\n'):
                 self.db[key] = b"".join([oldval, b"\n", entry])
             else:
                 self.db[key] = b"".join([oldval, entry])
@@ -614,8 +614,6 @@ class TdbGitShaMap(GitShaMap):
         if path is None:
             self.db = {}
         else:
-            if not isinstance(path, str):
-                raise TypeError(path)
             if path not in mapdbs():
                 mapdbs()[path] = tdb.Tdb(path, self.TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)

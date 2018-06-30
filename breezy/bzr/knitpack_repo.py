@@ -66,7 +66,6 @@ from .pack_repo import (
     Packer,
     PackCommitBuilder,
     PackRepository,
-    PackRootCommitBuilder,
     RepositoryPackCollection,
     )
 from ..sixish import (
@@ -188,7 +187,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -228,7 +227,7 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property
@@ -306,7 +305,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
@@ -350,7 +349,7 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
 
@@ -430,7 +429,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
@@ -470,7 +469,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
