@@ -79,25 +79,25 @@ class TestSetParents(TestParents):
 
     def test_set_null_parent(self):
         t = self.make_branch_and_tree('.')
-        self.assertRaises(errors.ReservedId, t.set_parent_ids, ['null:'],
+        self.assertRaises(errors.ReservedId, t.set_parent_ids, [b'null:'],
                           allow_leftmost_as_ghost=True)
         self.assertRaises(errors.ReservedId, t.set_parent_trees,
-                          [('null:', None)], allow_leftmost_as_ghost=True)
+                          [(b'null:', None)], allow_leftmost_as_ghost=True)
 
     def test_set_one_ghost_parent_rejects(self):
         t = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
-            t.set_parent_trees, [('missing-revision-id', None)])
+            t.set_parent_trees, [(b'missing-revision-id', None)])
 
     def test_set_one_ghost_parent_force(self):
         t = self.make_branch_and_tree('.')
         if t._format.supports_leftmost_parent_id_as_ghost:
-            t.set_parent_trees([('missing-revision-id', None)],
+            t.set_parent_trees([(b'missing-revision-id', None)],
                 allow_leftmost_as_ghost=True)
-            self.assertConsistentParents(['missing-revision-id'], t)
+            self.assertConsistentParents([b'missing-revision-id'], t)
         else:
             self.assertRaises(errors.GhostRevisionUnusableHere,
-                t.set_parent_trees, [('missing-revision-id', None)])
+                t.set_parent_trees, [(b'missing-revision-id', None)])
             self.assertConsistentParents([], t)
 
     def test_set_two_parents_one_ghost(self):
@@ -108,12 +108,12 @@ class TestSetParents(TestParents):
         rev_tree = t.branch.repository.revision_tree(revision_in_repo)
         if t._format.supports_righthand_parent_id_as_ghost:
             t.set_parent_trees([(revision_in_repo, rev_tree),
-                ('another-missing', None)])
-            self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+                (b'another-missing', None)])
+            self.assertConsistentParents([revision_in_repo, b'another-missing'], t)
         else:
             self.assertRaises(errors.GhostRevisionUnusableHere,
                 t.set_parent_trees, [(revision_in_repo, rev_tree),
-                ('another-missing', None)])
+                (b'another-missing', None)])
 
     def test_set_three_parents(self):
         t = self.make_branch_and_tree('.')
@@ -144,7 +144,7 @@ class TestSetParents(TestParents):
     def test_set_one_ghost_parent_ids_rejects(self):
         t = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
-            t.set_parent_ids, ['missing-revision-id'])
+            t.set_parent_ids, [b'missing-revision-id'])
 
     def test_set_one_ghost_parent_ids_force(self):
         t = self.make_branch_and_tree('.')
@@ -488,9 +488,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def add_new_root(self, new_shape, old_revid, new_revid):
         if self.bzrdir_format.repository_format.rich_root_data:
-            self.add_dir(new_shape, old_revid, 'root-id', None, '')
+            self.add_dir(new_shape, old_revid, b'root-id', None, '')
         else:
-            self.add_dir(new_shape, new_revid, 'root-id', None, '')
+            self.add_dir(new_shape, new_revid, b'root-id', None, '')
 
     def assertTransitionFromBasisToShape(self, basis_shape, basis_revid,
         new_shape, new_revid, extra_parent=None, set_current_inventory=True):
@@ -533,66 +533,66 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     def test_no_parents_full_tree(self):
         """Test doing a regular initial commit with files and dirs."""
         basis_shape = Inventory(root_id=None) # empty tree
-        revid = 'new-parent'
+        revid = b'new-parent'
         new_shape = Inventory(root_id=None)
-        self.add_dir(new_shape, revid, 'root-id', None, '')
-        self.add_link(new_shape, revid, 'link-id', 'root-id', 'link', 'target')
-        self.add_file(new_shape, revid, 'file-id', 'root-id', 'file', '1' * 32,
+        self.add_dir(new_shape, revid, b'root-id', None, '')
+        self.add_link(new_shape, revid, b'link-id', b'root-id', 'link', 'target')
+        self.add_file(new_shape, revid, b'file-id', b'root-id', 'file', '1' * 32,
             12)
-        self.add_dir(new_shape, revid, 'dir-id', 'root-id', 'dir')
-        self.add_file(new_shape, revid, 'subfile-id', 'dir-id', 'subfile',
+        self.add_dir(new_shape, revid, b'dir-id', b'root-id', 'dir')
+        self.add_file(new_shape, revid, b'subfile-id', b'dir-id', 'subfile',
             '2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, None, new_shape,
             revid)
 
     def test_file_content_change(self):
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_file(basis_shape, old_revid, 'file-id', 'root-id', 'file',
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_file(basis_shape, old_revid, b'file-id', b'root-id', 'file',
             '1' * 32, 12)
-        new_revid = 'new-parent'
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_file(new_shape, new_revid, 'file-id', 'root-id', 'file',
+        self.add_file(new_shape, new_revid, b'file-id', b'root-id', 'file',
             '2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_link_content_change(self):
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_link(basis_shape, old_revid, 'link-id', 'root-id', 'link',
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_link(basis_shape, old_revid, b'link-id', b'root-id', 'link',
             'old-target')
-        new_revid = 'new-parent'
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_link(new_shape, new_revid, 'link-id', 'root-id', 'link',
+        self.add_link(new_shape, new_revid, b'link-id', b'root-id', 'link',
             'new-target')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_kind_changes(self):
         def do_file(inv, revid):
-            self.add_file(inv, revid, 'path-id', 'root-id', 'path', '1' * 32,
+            self.add_file(inv, revid, b'path-id', b'root-id', 'path', '1' * 32,
                 12)
 
         def do_link(inv, revid):
-            self.add_link(inv, revid, 'path-id', 'root-id', 'path', 'target')
+            self.add_link(inv, revid, b'path-id', b'root-id', 'path', 'target')
 
         def do_dir(inv, revid):
-            self.add_dir(inv, revid, 'path-id', 'root-id', 'path')
+            self.add_dir(inv, revid, b'path-id', b'root-id', 'path')
 
         for old_factory in (do_file, do_link, do_dir):
             for new_factory in (do_file, do_link, do_dir):
                 if old_factory == new_factory:
                     continue
-                old_revid = 'old-parent'
+                old_revid = b'old-parent'
                 basis_shape = Inventory(root_id=None)
-                self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+                self.add_dir(basis_shape, old_revid, b'root-id', None, '')
                 old_factory(basis_shape, old_revid)
-                new_revid = 'new-parent'
+                new_revid = b'new-parent'
                 new_shape = Inventory(root_id=None)
                 self.add_new_root(new_shape, old_revid, new_revid)
                 new_factory(new_shape, new_revid)
@@ -602,23 +602,23 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     def test_content_from_second_parent_is_dropped(self):
         left_revid = 'left-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, left_revid, 'root-id', None, '')
-        self.add_link(basis_shape, left_revid, 'link-id', 'root-id', 'link',
+        self.add_dir(basis_shape, left_revid, b'root-id', None, '')
+        self.add_link(basis_shape, left_revid, b'link-id', b'root-id', 'link',
             'left-target')
         # the right shape has content - file, link, subdir with a child,
         # that should all be discarded by the call.
         right_revid = 'right-parent'
         right_shape = Inventory(root_id=None)
-        self.add_dir(right_shape, left_revid, 'root-id', None, '')
-        self.add_link(right_shape, right_revid, 'link-id', 'root-id', 'link',
+        self.add_dir(right_shape, left_revid, b'root-id', None, '')
+        self.add_link(right_shape, right_revid, b'link-id', b'root-id', 'link',
             'some-target')
-        self.add_dir(right_shape, right_revid, 'subdir-id', 'root-id', 'dir')
-        self.add_file(right_shape, right_revid, 'file-id', 'subdir-id', 'file',
+        self.add_dir(right_shape, right_revid, b'subdir-id', b'root-id', 'dir')
+        self.add_file(right_shape, right_revid, b'file-id', b'subdir-id', 'file',
             '2' * 32, 24)
-        new_revid = 'new-parent'
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, left_revid, new_revid)
-        self.add_link(new_shape, new_revid, 'link-id', 'root-id', 'link',
+        self.add_link(new_shape, new_revid, b'link-id', b'root-id', 'link',
             'new-target')
         self.assertTransitionFromBasisToShape(basis_shape, left_revid,
             new_shape, new_revid, right_revid)
@@ -626,123 +626,123 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     def test_parent_id_changed(self):
         # test that when the only change to an entry is its parent id changing
         # that it is handled correctly (that is it keeps the same path)
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'orig-parent-id', 'root-id', 'dir')
-        self.add_dir(basis_shape, old_revid, 'dir-id', 'orig-parent-id', 'dir')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'orig-parent-id', b'root-id', 'dir')
+        self.add_dir(basis_shape, old_revid, b'dir-id', b'orig-parent-id', 'dir')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'new-parent-id', 'root-id', 'dir')
-        self.add_dir(new_shape, new_revid, 'dir-id', 'new-parent-id', 'dir')
+        self.add_dir(new_shape, new_revid, b'new-parent-id', b'root-id', 'dir')
+        self.add_dir(new_shape, new_revid, b'dir-id', b'new-parent-id', 'dir')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_name_changed(self):
         # test that when the only change to an entry is its name changing that
         # it is handled correctly (that is it keeps the same parent id)
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'parent-id', 'root-id', 'origdir')
-        self.add_dir(basis_shape, old_revid, 'dir-id', 'parent-id', 'olddir')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'parent-id', b'root-id', 'origdir')
+        self.add_dir(basis_shape, old_revid, b'dir-id', b'parent-id', 'olddir')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'parent-id', 'root-id', 'newdir')
-        self.add_dir(new_shape, new_revid, 'dir-id', 'parent-id', 'newdir')
+        self.add_dir(new_shape, new_revid, b'parent-id', b'root-id', 'newdir')
+        self.add_dir(new_shape, new_revid, b'dir-id', b'parent-id', 'newdir')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_parent_child_swap(self):
         # test a A->A/B and A/B->A path swap.
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
-        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, b'dir-id-B', b'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, b'link-id-C', b'dir-id-B', 'C', 'C')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
-        self.add_dir(new_shape, new_revid, 'dir-id-A', 'dir-id-B', 'B')
-        self.add_link(new_shape, new_revid, 'link-id-C', 'dir-id-A', 'C', 'C')
+        self.add_dir(new_shape, new_revid, b'dir-id-B', b'root-id', 'A')
+        self.add_dir(new_shape, new_revid, b'dir-id-A', b'dir-id-B', 'B')
+        self.add_link(new_shape, new_revid, b'link-id-C', b'dir-id-A', 'C', 'C')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_parent_deleted_child_renamed(self):
         # test a A->None and A/B->A.
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
-        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, b'dir-id-B', b'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, b'link-id-C', b'dir-id-B', 'C', 'C')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
-        self.add_link(new_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        self.add_dir(new_shape, new_revid, b'dir-id-B', b'root-id', 'A')
+        self.add_link(new_shape, old_revid, b'link-id-C', b'dir-id-B', 'C', 'C')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_dir_to_root(self):
         # test a A->''.
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_link(basis_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_link(basis_shape, old_revid, b'link-id-B', b'dir-id-A', 'B', 'B')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
-        self.add_dir(new_shape, new_revid, 'dir-id-A', None, '')
-        self.add_link(new_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
+        self.add_dir(new_shape, new_revid, b'dir-id-A', None, '')
+        self.add_link(new_shape, old_revid, b'link-id-B', b'dir-id-A', 'B', 'B')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_path_swap(self):
         # test a A->B and B->A path swap.
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'root-id', 'B')
-        self.add_link(basis_shape, old_revid, 'link-id-C', 'root-id', 'C', 'C')
-        self.add_link(basis_shape, old_revid, 'link-id-D', 'root-id', 'D', 'D')
-        self.add_file(basis_shape, old_revid, 'file-id-E', 'root-id', 'E',
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, b'dir-id-B', b'root-id', 'B')
+        self.add_link(basis_shape, old_revid, b'link-id-C', b'root-id', 'C', 'C')
+        self.add_link(basis_shape, old_revid, b'link-id-D', b'root-id', 'D', 'D')
+        self.add_file(basis_shape, old_revid, b'file-id-E', b'root-id', 'E',
             '1' * 32, 12)
-        self.add_file(basis_shape, old_revid, 'file-id-F', 'root-id', 'F',
+        self.add_file(basis_shape, old_revid, b'file-id-F', b'root-id', 'F',
             '2' * 32, 24)
-        new_revid = 'new-parent'
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'dir-id-A', 'root-id', 'B')
-        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
-        self.add_link(new_shape, new_revid, 'link-id-C', 'root-id', 'D', 'C')
-        self.add_link(new_shape, new_revid, 'link-id-D', 'root-id', 'C', 'D')
-        self.add_file(new_shape, new_revid, 'file-id-E', 'root-id', 'F',
+        self.add_dir(new_shape, new_revid, b'dir-id-A', b'root-id', 'B')
+        self.add_dir(new_shape, new_revid, b'dir-id-B', b'root-id', 'A')
+        self.add_link(new_shape, new_revid, b'link-id-C', b'root-id', 'D', 'C')
+        self.add_link(new_shape, new_revid, b'link-id-D', b'root-id', 'C', 'D')
+        self.add_file(new_shape, new_revid, b'file-id-E', b'root-id', 'F',
             '1' * 32, 12)
-        self.add_file(new_shape, new_revid, 'file-id-F', 'root-id', 'E',
+        self.add_file(new_shape, new_revid, b'file-id-F', b'root-id', 'E',
             '2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_adds(self):
         # test adding paths and dirs, including adding to a newly added dir.
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
         # with a root, so its a commit after the first.
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_link(new_shape, new_revid, 'link-id-B', 'root-id', 'B', 'C')
-        self.add_file(new_shape, new_revid, 'file-id-C', 'root-id', 'C',
+        self.add_dir(new_shape, new_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_link(new_shape, new_revid, b'link-id-B', b'root-id', 'B', 'C')
+        self.add_file(new_shape, new_revid, b'file-id-C', b'root-id', 'C',
             '1' * 32, 12)
-        self.add_file(new_shape, new_revid, 'file-id-D', 'dir-id-A', 'D',
+        self.add_file(new_shape, new_revid, b'file-id-D', b'dir-id-A', 'D',
             '2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
@@ -750,75 +750,75 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     def test_removes(self):
         # test removing paths, including paths that are within other also
         # removed paths.
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_link(basis_shape, old_revid, 'link-id-B', 'root-id', 'B', 'C')
-        self.add_file(basis_shape, old_revid, 'file-id-C', 'root-id', 'C',
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_link(basis_shape, old_revid, b'link-id-B', b'root-id', 'B', 'C')
+        self.add_file(basis_shape, old_revid, b'file-id-C', b'root-id', 'C',
             '1' * 32, 12)
-        self.add_file(basis_shape, old_revid, 'file-id-D', 'dir-id-A', 'D',
+        self.add_file(basis_shape, old_revid, b'file-id-D', b'dir-id-A', 'D',
             '2' * 32, 24)
-        new_revid = 'new-parent'
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_move_to_added_dir(self):
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_link(basis_shape, old_revid, 'link-id-B', 'root-id', 'B', 'C')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_link(basis_shape, old_revid, b'link-id-B', b'root-id', 'B', 'C')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, new_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_link(new_shape, new_revid, 'link-id-B', 'dir-id-A', 'B', 'C')
+        self.add_dir(new_shape, new_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_link(new_shape, new_revid, b'link-id-B', b'dir-id-A', 'B', 'C')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_move_from_removed_dir(self):
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_link(basis_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'C')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_link(basis_shape, old_revid, b'link-id-B', b'dir-id-A', 'B', 'C')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_link(new_shape, new_revid, 'link-id-B', 'root-id', 'B', 'C')
+        self.add_link(new_shape, new_revid, b'link-id-B', b'root-id', 'B', 'C')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_move_moves_children_recursively(self):
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
-        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'D')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, b'dir-id-B', b'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, b'link-id-C', b'dir-id-B', 'C', 'D')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
         # the moved path:
-        self.add_dir(new_shape, new_revid, 'dir-id-A', 'root-id', 'B')
+        self.add_dir(new_shape, new_revid, b'dir-id-A', b'root-id', 'B')
         # unmoved children.
-        self.add_dir(new_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
-        self.add_link(new_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'D')
+        self.add_dir(new_shape, old_revid, b'dir-id-B', b'dir-id-A', 'B')
+        self.add_link(new_shape, old_revid, b'link-id-C', b'dir-id-B', 'C', 'D')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
     def test_add_files_to_empty_directory(self):
-        old_revid = 'old-parent'
+        old_revid = b'old-parent'
         basis_shape = Inventory(root_id=None)
-        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
-        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        new_revid = 'new-parent'
+        self.add_dir(basis_shape, old_revid, b'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
-        self.add_dir(new_shape, old_revid, 'dir-id-A', 'root-id', 'A')
-        self.add_file(new_shape, new_revid, 'file-id-B', 'dir-id-A', 'B',
+        self.add_dir(new_shape, old_revid, b'dir-id-A', b'root-id', 'A')
+        self.add_file(new_shape, new_revid, b'file-id-B', b'dir-id-A', 'B',
             '1' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
                 new_shape, new_revid, set_current_inventory=False)

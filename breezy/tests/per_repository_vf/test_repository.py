@@ -330,7 +330,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
             tree_a.branch.repository.start_write_group()
             try:
                 inv_file = tree_a.branch.repository.inventories
-                inv_file.add_lines(('orphan',), [], [])
+                inv_file.add_lines((b'orphan',), [], [])
             except:
                 tree_a.branch.repository.commit_write_group()
                 raise
@@ -370,7 +370,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repository.lock_read()
         self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in
-                     ['rev1', 'rev2', 'rev3', 'rev4']]
+                     [b'rev1', b'rev2', b'rev3', b'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
         deltas2 = [repository.get_revision_delta(r.revision_id) for r in
                    revisions]
@@ -378,7 +378,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual({'rev1', 'rev2', 'rev3', 'rev4'},
+        self.assertEqual({b'rev1', b'rev2', b'rev3', b'rev4'},
             set(self.controldir.open_repository().all_revision_ids()))
 
     def test_reserved_id(self):
@@ -387,11 +387,11 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repo.start_write_group()
         try:
             self.assertRaises(errors.ReservedId, repo.add_inventory,
-                'reserved:', None, None)
+                b'reserved:', None, None)
             self.assertRaises(errors.ReservedId, repo.add_inventory_by_delta,
-                "foo", [], 'reserved:', None)
+                "foo", [], b'reserved:', None)
             self.assertRaises(errors.ReservedId, repo.add_revision,
-                'reserved:', None)
+                b'reserved:', None)
         finally:
             repo.abort_write_group()
             repo.unlock()
@@ -408,37 +408,37 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo = self.make_repository('inventory_with_unnecessary_ghost')
         repo.lock_write()
         repo.start_write_group()
-        inv = inventory.Inventory(revision_id = 'ghost')
-        inv.root.revision = 'ghost'
+        inv = inventory.Inventory(revision_id = b'ghost')
+        inv.root.revision = b'ghost'
         if repo.supports_rich_root():
             root_id = inv.root.file_id
-            repo.texts.add_lines((root_id, 'ghost'), [], [])
-        sha1 = repo.add_inventory('ghost', inv, [])
+            repo.texts.add_lines((root_id, b'ghost'), [], [])
+        sha1 = repo.add_inventory(b'ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
             message="Message", inventory_sha1=sha1, revision_id=b'ghost')
-        rev.parent_ids = ['the_ghost']
+        rev.parent_ids = [b'the_ghost']
         try:
-            repo.add_revision('ghost', rev)
+            repo.add_revision(b'ghost', rev)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format.")
 
-        inv = inventory.Inventory(revision_id = 'the_ghost')
-        inv.root.revision = 'the_ghost'
+        inv = inventory.Inventory(revision_id = b'the_ghost')
+        inv.root.revision = b'the_ghost'
         if repo.supports_rich_root():
             root_id = inv.root.file_id
-            repo.texts.add_lines((root_id, 'the_ghost'), [], [])
-        sha1 = repo.add_inventory('the_ghost', inv, [])
+            repo.texts.add_lines((root_id, b'the_ghost'), [], [])
+        sha1 = repo.add_inventory(b'the_ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
             message="Message", inventory_sha1=sha1, revision_id=b'the_ghost')
         rev.parent_ids = []
-        repo.add_revision('the_ghost', rev)
+        repo.add_revision(b'the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.inventories
-        possible_parents = (None, (('ghost',),))
-        self.assertSubset(inv_weave.get_parent_map([('ghost',)])[('ghost',)],
+        possible_parents = (None, ((b'ghost',),))
+        self.assertSubset(inv_weave.get_parent_map([(b'ghost',)])[(b'ghost',)],
             possible_parents)
         repo.commit_write_group()
         repo.unlock()
@@ -446,19 +446,19 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
         repo = _mod_repository.Repository.open(repo_url)
-        m = MatchesAncestry(repo, 'ghost')
+        m = MatchesAncestry(repo, b'ghost')
         reported_wrong = False
         try:
-            if m.match(['the_ghost', 'ghost']) is not None:
+            if m.match([b'the_ghost', b'ghost']) is not None:
                 reported_wrong = True
         except errors.CorruptRepository:
             # caught the bad data:
             return
         if not reported_wrong:
             return
-        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+        self.assertRaises(errors.CorruptRepository, repo.get_revision, b'ghost')
 
     def test_corrupt_revision_get_revision_reconcile(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
         repo = _mod_repository.Repository.open(repo_url)
-        repo.get_revision_reconcile('ghost')
+        repo.get_revision_reconcile(b'ghost')

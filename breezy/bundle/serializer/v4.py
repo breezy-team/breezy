@@ -468,13 +468,10 @@ class BundleInfoV4(object):
             all into memory at once.  Reading it into memory all at once is
             (currently) faster.
         """
-        repository.lock_write()
-        try:
+        with repository.lock_write():
             ri = RevisionInstaller(self.get_bundle_reader(stream_input),
                                    self._serializer, repository)
             return ri.install()
-        finally:
-            repository.unlock()
 
     def get_merge_request(self, target_repo):
         """Provide data for performing a merge

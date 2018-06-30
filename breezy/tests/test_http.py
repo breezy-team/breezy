@@ -1203,11 +1203,11 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def assertProxied(self):
         t = self.get_readonly_transport()
-        self.assertEqual('proxied contents of foo\n', t.get('foo').read())
+        self.assertEqual(b'proxied contents of foo\n', t.get('foo').read())
 
     def assertNotProxied(self):
         t = self.get_readonly_transport()
-        self.assertEqual('contents of foo\n', t.get('foo').read())
+        self.assertEqual(b'contents of foo\n', t.get('foo').read())
 
     def test_http_proxy(self):
         self.overrideEnv('http_proxy', self.proxy_url)
@@ -1810,12 +1810,12 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         httpd = self.http_server.server
 
         socket = SampleSocket(
-            'POST /.bzr/smart %s \r\n' % self._protocol_version
+            b'POST /.bzr/smart %s \r\n' % self._protocol_version.encode('ascii')
             # HTTP/1.1 posts must have a Content-Length (but it doesn't hurt
             # for 1.0)
-            + 'Content-Length: 6\r\n'
-            '\r\n'
-            'hello\n')
+            + b'Content-Length: 6\r\n'
+            b'\r\n'
+            b'hello\n')
         # Beware: the ('localhost', 80) below is the
         # client_address parameter, but we don't have one because
         # we have defined a socket which is not bound to an
@@ -1827,7 +1827,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         response = socket.writefile.getvalue()
         self.assertStartsWith(response, '%s 200 ' % self._protocol_version)
         # This includes the end of the HTTP headers, and all the body.
-        expected_end_of_response = '\r\n\r\nok\x012\n'
+        expected_end_of_response = b'\r\n\r\nok\x012\n'
         self.assertEndsWith(response, expected_end_of_response)
 
 

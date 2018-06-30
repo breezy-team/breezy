@@ -517,9 +517,9 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def test_two_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=True)
-        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+        self.assertEqual((), self.get_parents(b'unique-id', b'second-id'))
 
     def test_two_fetches(self):
         self.make_two_commits(change_root=False, fetch_twice=True)
-        self.assertEqual((('TREE_ROOT', 'first-id'),),
-            self.get_parents('TREE_ROOT', 'second-id'))
+        self.assertEqual(((b'TREE_ROOT', b'first-id'),),
+            self.get_parents(b'TREE_ROOT', b'second-id'))

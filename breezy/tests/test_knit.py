@@ -1849,10 +1849,10 @@ class TestGraphIndexKnit(KnitTests):
             add_callback=self.catch_add, track_external_parent_refs=True)
         self.caught_entries = []
         index.add_records([
-            (('new-key',), 'fulltext,no-eol', (None, 50, 60),
-             [('parent-1',), ('parent-2',)])])
+            ((b'new-key',), b'fulltext,no-eol', (None, 50, 60),
+             [(b'parent-1',), (b'parent-2',)])])
         self.assertEqual(
-            frozenset([('parent-1',), ('parent-2',)]),
+            frozenset([(b'parent-1',), (b'parent-2',)]),
             index.get_missing_parents())
 
     def test_add_unvalidated_index_with_present_external_references(self):
@@ -1866,10 +1866,10 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual(frozenset(), index.get_missing_compression_parents())
 
     def make_new_missing_parent_g_index(self, name):
-        missing_parent = name + '-missing-parent'
+        missing_parent = name.encode('ascii') + b'-missing-parent'
         graph_index = self.make_g_index(name, 2,
-            [((name + 'tip', ), ' 100 78',
-              ([(missing_parent, ), ('ghost', )], [(missing_parent, )]))])
+            [((name + b'tip', ), ' 100 78',
+              ([(missing_parent, ), (b'ghost', )], [(missing_parent, )]))])
         return graph_index
 
     def test_add_mulitiple_unvalidated_indices_with_missing_parents(self):
@@ -1880,18 +1880,18 @@ class TestGraphIndexKnit(KnitTests):
         index.scan_unvalidated_index(g_index_1)
         index.scan_unvalidated_index(g_index_2)
         self.assertEqual(
-            frozenset([('one-missing-parent',), ('two-missing-parent',)]),
+            frozenset([(b'one-missing-parent',), (b'two-missing-parent',)]),
             index.get_missing_compression_parents())
 
     def test_add_mulitiple_unvalidated_indices_with_mutual_dependencies(self):
         graph_index_a = self.make_g_index('one', 2,
-            [(('parent-one', ), ' 100 78', ([('non-compression-parent',)], [])),
-             (('child-of-two', ), ' 100 78',
-              ([('parent-two',)], [('parent-two',)]))])
+            [((b'parent-one', ), b' 100 78', ([(b'non-compression-parent',)], [])),
+             ((b'child-of-two', ), b' 100 78',
+              ([(b'parent-two',)], [(b'parent-two',)]))])
         graph_index_b = self.make_g_index('two', 2,
-            [(('parent-two', ), ' 100 78', ([('non-compression-parent',)], [])),
-             (('child-of-one', ), ' 100 78',
-              ([('parent-one',)], [('parent-one',)]))])
+            [((b'parent-two', ), b' 100 78', ([(b'non-compression-parent',)], [])),
+             ((b'child-of-one', ), b' 100 78',
+              ([(b'parent-one',)], [(b'parent-one',)]))])
         combined = CombinedGraphIndex([graph_index_a, graph_index_b])
         index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(graph_index_a)

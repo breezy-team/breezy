@@ -26,7 +26,7 @@ from .. import (
     )
 
 
-OUTPUT1 = """# Bazaar merge directive format 1
+OUTPUT1 = b"""# Bazaar merge directive format 1
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -34,7 +34,7 @@ OUTPUT1 = """# Bazaar merge directive format 1
 #\x20
 booga"""
 
-OUTPUT1_2 = """# Bazaar merge directive format 2 (Bazaar 0.90)
+OUTPUT1_2 = b"""# Bazaar merge directive format 2 (Bazaar 0.90)
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -44,7 +44,7 @@ OUTPUT1_2 = """# Bazaar merge directive format 2 (Bazaar 0.90)
 # Begin bundle
 booga"""
 
-OUTPUT2 = """# Bazaar merge directive format 1
+OUTPUT2 = b"""# Bazaar merge directive format 1
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -54,7 +54,7 @@ OUTPUT2 = """# Bazaar merge directive format 1
 #\x20
 booga"""
 
-OUTPUT2_2 = """# Bazaar merge directive format 2 (Bazaar 0.90)
+OUTPUT2_2 = b"""# Bazaar merge directive format 2 (Bazaar 0.90)
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -66,7 +66,7 @@ OUTPUT2_2 = """# Bazaar merge directive format 2 (Bazaar 0.90)
 # Begin patch
 booga"""
 
-INPUT1 = """
+INPUT1 = b"""
 I was thinking today about creating a merge directive.
 
 So I did.
@@ -88,7 +88,7 @@ Aaron
 booga""".splitlines(True)
 
 
-INPUT1_2 = """
+INPUT1_2 = b"""
 I was thinking today about creating a merge directive.
 
 So I did.
@@ -112,7 +112,7 @@ Aaron
 booga""".splitlines(True)
 
 
-INPUT1_2_OLD = """
+INPUT1_2_OLD = b"""
 I was thinking today about creating a merge directive.
 
 So I did.
@@ -136,7 +136,7 @@ Aaron
 booga""".splitlines(True)
 
 
-OLD_DIRECTIVE_2 = """# Bazaar merge directive format 2 (Bazaar 0.19)
+OLD_DIRECTIVE_2 = b"""# Bazaar merge directive format 2 (Bazaar 0.19)
 # revision_id: abentley@panoramicfeedback.com-20070807234458-\
 #   nzhkoyza56lan7z5
 # target_branch: http://panoramicfeedback.com/opensource/bzr/repo\
@@ -176,11 +176,11 @@ class TestMergeDirective(object):
         timezone = 120
         md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', patch='booga', patch_type='bundle')
-        self.assertEqualDiff(self.OUTPUT1, ''.join(md.to_lines()))
+        self.assertEqualDiff(self.OUTPUT1, b''.join(md.to_lines()))
         md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff', message="Hi mom!")
-        self.assertEqualDiff(self.OUTPUT2, ''.join(md.to_lines()))
+        self.assertEqualDiff(self.OUTPUT2, b''.join(md.to_lines()))
 
     def test_deserialize_junk(self):
         time = 501
