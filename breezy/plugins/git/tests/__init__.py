@@ -187,10 +187,20 @@ class GitBranchBuilder(object):
             return importer.import_stream(self.stream)
 
 
+class MissingFeature(tests.TestCase):
+
+    def test_dulwich(self):
+        self.requireFeature(DulwichFeature)
+
+
 def test_suite():
     loader = tests.TestUtil.TestLoader()
 
     suite = tests.TestUtil.TestSuite()
+
+    if not DulwichFeature.available():
+        suite.addTests(loader.loadTestsFromTestCase(MissingFeature))
+        return suite
 
     testmod_names = [
         'test_blackbox',
