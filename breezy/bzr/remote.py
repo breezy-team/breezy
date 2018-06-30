@@ -61,6 +61,7 @@ from .inventorytree import InventoryRevisionTree
 from ..lockable_files import LockableFiles
 from ..sixish import (
     get_unbound_function,
+    map,
     text_type,
     viewitems,
     viewvalues,
@@ -943,6 +944,25 @@ class RemoteInventoryTree(InventoryRevisionTree):
                 format, name, root, subdir, force_mtime=force_mtime)
         return ret
 
+    def annotate_iter(self, path, file_id=None,
+                      default_revision=_mod_revision.CURRENT_REVISION):
+        """Return an iterator of revision_id, line tuples.
+
+        For working trees (and mutable trees in general), the special
+        revision_id 'current:' will be used for lines that are new in this
+        tree, e.g. uncommitted changes.
+        :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
+        """
+        ret = self._repository._annotate_file_revision(
+                    self.get_revision_id(), path, file_id, default_revision)
+        if ret is None:
+            return super(RemoteInventoryTree, self).annotate_iter(
+                path, file_id, default_revision=default_revision)
+        return ret
+
 
 class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
@@ -1488,10 +1508,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """Return the known graph for a set of revision ids and their ancestors.
         """
         with self.lock_read():
-            st = static_tuple.StaticTuple
-            revision_keys = [st(r_id).intern() for r_id in revision_ids]
-            known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
-            return graph.GraphThunkIdsToKeys(known_graph)
+            revision_graph = dict(((key, value) for key, value in
+                self.get_graph().iter_ancestry(revision_ids) if value is not None))
+            revision_graph = _mod_repository._strip_NULL_ghosts(revision_graph)
+            return graph.KnownGraph(revision_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -1868,10 +1888,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        if self._format.rich_root_data:
-            commit_builder_kls = vf_repository.VersionedFileRootCommitBuilder
-        else:
-            commit_builder_kls = vf_repository.VersionedFileCommitBuilder
+        commit_builder_kls = vf_repository.VersionedFileCommitBuilder
         result = commit_builder_kls(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
@@ -2839,6 +2856,21 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if response[0] == b'ok':
             return iter([protocol.read_body_bytes()])
         raise errors.UnexpectedSmartServerResponse(response)
+
+    def _annotate_file_revision(self, revid, tree_path, file_id, default_revision):
+        path = self.controldir._path_for_remote_call(self._client)
+        tree_path = tree_path.encode('utf-8')
+        file_id = file_id or b''
+        default_revision = default_revision or b''
+        try:
+            response, handler = self._call_expecting_body(
+                b'Repository.annotate_file_revision', path,
+                revid, tree_path, file_id, default_revision)
+        except errors.UnknownSmartMethod:
+            return None
+        if response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return map(tuple, bencode.bdecode(handler.read_body_bytes()))
 
 
 class RemoteStreamSink(vf_repository.StreamSink):

@@ -614,8 +614,6 @@ class TdbGitShaMap(GitShaMap):
         if path is None:
             self.db = {}
         else:
-            if type(path) is not str:
-                raise TypeError(path)
             if path not in mapdbs():
                 mapdbs()[path] = tdb.Tdb(path, self.TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)

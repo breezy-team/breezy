@@ -658,9 +658,9 @@ class DefaultMail(MailClient):
         except MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename, body=body)
-mail_client_registry.register('default', DefaultMail,
+mail_client_registry.register(u'default', DefaultMail,
                               help=DefaultMail.__doc__)
-mail_client_registry.default_key = 'default'
+mail_client_registry.default_key = u'default'
 
 opt_mail_client = _mod_config.RegistryOption('mail_client',
         mail_client_registry, help='E-mail client to use.', invalid='error')
