@@ -1295,3 +1295,23 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
     def body_stream(self, tree, format, name, root, subdir=None, force_mtime=None):
         with tree.lock_read():
             return tree.archive(format, name, root, subdir, force_mtime)
+
+
+class SmartServerRepositoryAnnotateFileRevision(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id, tree_path,
+                              file_id=None, default_revision=None):
+        """Stream an archive file for a specific revision.
+
+        :param repository: The repository to stream from.
+        :param revision_id: Revision for which to export the tree
+        :param tree_path: The path inside the tree
+        :param file_id: Optional file_id for the file
+        :param default_revision: Default revision
+        """
+        tree = repository.revision_tree(revision_id)
+        with tree.lock_read():
+            body = bencode.bencode(list(tree.annotate_iter(
+                        tree_path.decode('utf-8'), file_id, default_revision)))
+            return SuccessfulSmartServerResponse((b'ok',),
+                body=body)

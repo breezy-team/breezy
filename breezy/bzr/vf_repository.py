@@ -111,9 +111,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
     """Commit builder implementation for versioned files based repositories.
     """
 
-    # the default CommitBuilder does not manage trees whose root is versioned.
-    _versioned_root = False
-
     def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
@@ -244,6 +241,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
         :param tree: The tree which is being committed.
         """
+        if self.repository.supports_rich_root():
+            return
         if len(self.parents) == 0:
             raise errors.RootMissing()
         entry = entry_factory['directory'](tree.path2id(''), '',
@@ -559,23 +558,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
         return self.repository.texts.add_lines(
             (file_id, self._new_revision_id), parent_keys, fileobj.readlines(),
             nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
-
-
-class VersionedFileRootCommitBuilder(VersionedFileCommitBuilder):
-    """This commitbuilder actually records the root id"""
-
-    # the root entry gets versioned properly by this builder.
-    _versioned_root = True
-
-    def _require_root_change(self, tree):
-        """Enforce an appropriate root object change.
-
-        This is called once when record_iter_changes is called, if and only if
-        the root was not in the delta calculated by record_iter_changes.
-
-        :param tree: The tree which is being committed.
-        """
-        # versioned roots do not change unless the tree found a change.
 
 
 class VersionedFileRepository(Repository):
