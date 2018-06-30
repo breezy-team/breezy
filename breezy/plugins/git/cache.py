@@ -673,8 +673,8 @@ class TdbGitShaMap(GitShaMap):
                     yield (type_name, (data[1], data[2], {}))
                 else:
                     yield (type_name, (data[1], data[2], {"testament3-sha1": data[3]}))
-            elif data[0] in ("tree", "blob"):
-                yield (data[0], tuple(data[1:]))
+            elif type_name in ("tree", "blob"):
+                yield (type_name, tuple(data[1:]))
             else:
                 raise AssertionError("unknown type %r" % type_name)
 

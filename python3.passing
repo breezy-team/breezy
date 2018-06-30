@@ -53,7 +53,12 @@ breezy.plugins.git.tests.test_branch.TestWithGitBranch.test_get_physical_lock_st
 breezy.plugins.git.tests.test_branch.TestWithGitBranch.test_get_stacked_on_url
 breezy.plugins.git.tests.test_cache.DictGitShaMapTests.test_lookup_notfound
 breezy.plugins.git.tests.test_cache.IndexGitShaMapTests.test_lookup_notfound
+breezy.plugins.git.tests.test_cache.SqliteGitShaMapTests.test_blob
+breezy.plugins.git.tests.test_cache.SqliteGitShaMapTests.test_commit
 breezy.plugins.git.tests.test_cache.SqliteGitShaMapTests.test_lookup_notfound
+breezy.plugins.git.tests.test_cache.SqliteGitShaMapTests.test_missing_revisions
+breezy.plugins.git.tests.test_cache.SqliteGitShaMapTests.test_revids
+breezy.plugins.git.tests.test_cache.SqliteGitShaMapTests.test_tree
 breezy.plugins.git.tests.test_cache.TdbGitShaMapTests.test_blob
 breezy.plugins.git.tests.test_cache.TdbGitShaMapTests.test_commit
 breezy.plugins.git.tests.test_cache.TdbGitShaMapTests.test_lookup_notfound
@@ -176,6 +181,7 @@ breezy.plugins.grep.test_grep.TestColorGrep.test_ver_basic_file
 breezy.plugins.grep.test_grep.TestColorGrep.test_ver_matching_files
 breezy.plugins.grep.test_grep.TestColorGrep.test_wtree_basic_file
 breezy.plugins.grep.test_grep.TestColorGrep.test_wtree_matching_files
+breezy.plugins.grep.test_grep.TestGrep.test_wtree_from_root_fail
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_no_ssh_keys
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_no_user
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_valid_user
@@ -501,6 +507,7 @@ breezy.plugins.weave_fmt.test_bzrdir.TestInfo.test_info_locking_oslocks
 breezy.plugins.weave_fmt.test_bzrdir.TestInit.test_init_weave
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_alt_timezone_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_binary_bundle
+breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_bundle_empty_property
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_bundle_root_id
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_bundle_same_basis
@@ -513,6 +520,7 @@ breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_crlf_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_get_merge_request
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_hide_history
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_install_revisions
+breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_last_modified
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_malformed
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_non_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_revision_id_with_slash
@@ -567,6 +575,8 @@ breezy.plugins.weave_fmt.test_store.TestTransportStore.test_get_suffixed_no_base
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test_has_simple
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test_has_suffixed
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test_has_suffixed_no_base
+breezy.plugins.weave_fmt.test_store.TestTransportStore.test___iter__
+breezy.plugins.weave_fmt.test_store.TestTransportStore.test___iter__compressed
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test___iter__no_suffix
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test___len__
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test_register_invalid_suffixes
@@ -579,6 +589,7 @@ breezy.plugins.weave_fmt.test_store.TestTransportStore.test__relpath_simple_suff
 breezy.plugins.weave_fmt.test_store.TestTransportStore.test__relpath_unregister_suffixes
 breezy.plugins.weave_fmt.test_store.TestVersionFileStore.test_get_weave_readonly_cant_write
 breezy.plugins.weave_fmt.test_store.TestVersionFileStore.test_get_weave_registers_dirty_in_write
+breezy.plugins.weave_fmt.test_store.TestVersionFileStore.test___iter__escaped
 breezy.plugins.weave_fmt.test_workingtree.TestFormat2WorkingTree.test_conflicts
 breezy.plugins.weave_fmt.test_workingtree.TestFormat2WorkingTree.test_detect_conflicts
 breezy.pyutils.get_named_object
@@ -967,17 +978,8 @@ breezy.tests.blackbox.test_tags.TestTagging.test_sort_tags_custom
 breezy.tests.blackbox.test_tags.TestTagging.test_tag_delete_quiet
 breezy.tests.blackbox.test_tags.TestTagging.test_tag_quiet
 breezy.tests.blackbox.test_too_much.HTTPTests.test_push
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_branch
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_check
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_log
 breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_push
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_branch
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_check
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_log
 breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_push
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_branch
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_check
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_log
 breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_push
 breezy.tests.blackbox.test_too_much.TestCommands.test_status
 breezy.tests.blackbox.test_uncommit.TestUncommit.test_uncommit
@@ -18903,6 +18905,7 @@ breezy.tests.test_options.OptionTests.test_lazy_registry
 breezy.tests.test_options.OptionTests.test_no_more_opts
 breezy.tests.test_options.OptionTests.test_option_callback_bool
 breezy.tests.test_options.OptionTests.test_option_callback_str
+breezy.tests.test_options.OptionTests.test_option_help_global_hidden
 breezy.tests.test_options.OptionTests.test_override
 breezy.tests.test_options.OptionTests.test_parse_args
 breezy.tests.test_options.OptionTests.test_registry_conversion
@@ -19951,13 +19954,11 @@ breezy.tests.test_sftp_transport.SFTPLatencyKnob.test_default
 breezy.tests.test_sftp_transport.SFTPLatencyKnob.test_latency_knob_slows_transport
 breezy.tests.test_sftp_transport.SFTPLockTests.test_sftp_locks
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_abspath_root_sibling_server
-breezy.tests.test_sftp_transport.SFTPNonServerTest.test_get_paramiko_vendor
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_parse_url_with_home_dir
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_relpath
 breezy.tests.test_sftp_transport.SFTPTransportTestRelativeRoot.test__remote_path_relative_root
 breezy.tests.test_sftp_transport.SFTPTransportTestRelative.test__remote_path
 breezy.tests.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_paramiko
-breezy.tests.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
 breezy.tests.test_sftp_transport.SSHVendorConnection.test_connection_paramiko
 breezy.tests.test_sftp_transport.SSHVendorConnection.test_connection_vendor
 breezy.tests.test_sftp_transport.Test_SFTPReadvHelper.test__get_requests

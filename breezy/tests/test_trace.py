@@ -64,9 +64,9 @@ class TestTrace(TestCase):
         except NotImplementedError:
             err = _format_exception()
         self.assertContainsRe(err,
-                b'^brz: ERROR: NotImplementedError: time travel')
+                '^brz: ERROR: NotImplementedError: time travel')
         self.assertContainsRe(err,
-            b'Bazaar has encountered an internal error.')
+            'Bazaar has encountered an internal error.')
 
     def test_format_interrupt_exception(self):
         try:

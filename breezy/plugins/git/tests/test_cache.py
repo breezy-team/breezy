@@ -104,7 +104,7 @@ class TestGitShaMap:
             [("blob", (b"myfileid", b"myrevid"))],
             list(self.map.lookup_git_sha(b.id)))
         self.assertEqual(b.id,
-            self.map.lookup_blob_id("myfileid", b"myrevid"))
+            self.map.lookup_blob_id(b"myfileid", b"myrevid"))
 
     def test_tree(self):
         self.map.start_write_group()

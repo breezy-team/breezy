@@ -1034,7 +1034,7 @@ class BzrDirMeta1(BzrDir):
             pass
 
         for name in self._read_branch_list():
-            ret[name] = self.open_branch(name=name.decode('utf-8'))
+            ret[name] = self.open_branch(name=name)
 
         return ret
 

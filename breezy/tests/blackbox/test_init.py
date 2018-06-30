@@ -241,6 +241,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BRZ_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
-        self.assertEqual(err, '')
+        self.assertEqual(err, b'')
         self.assertTrue(os.path.exists('foo'))
 

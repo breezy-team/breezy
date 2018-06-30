@@ -3472,11 +3472,11 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
 
     def test_pattern(self):
         out = self._run_selftest_with_suite(pattern="test_(?:pass|self_ref)$")
-        self.assertNotContainsRe(out, b"test_skip")
+        self.assertNotContainsRe(out, "test_skip")
 
     def test_exclude_pattern(self):
         out = self._run_selftest_with_suite(exclude_pattern="test_skip$")
-        self.assertNotContainsRe(out, b"test_skip")
+        self.assertNotContainsRe(out, "test_skip")
 
     def test_random_seed(self):
         self._run_selftest_with_suite(random_seed="now")
@@ -3488,7 +3488,7 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
     def test_starting_with_and_exclude(self):
         out = self._run_selftest_with_suite(starting_with=["bt."],
             exclude_pattern="test_skip$")
-        self.assertNotContainsRe(out, b"test_skip")
+        self.assertNotContainsRe(out, "test_skip")
 
     def test_additonal_decorator(self):
         out = self._run_selftest_with_suite(
