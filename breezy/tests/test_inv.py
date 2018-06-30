@@ -64,7 +64,13 @@ def delta_application_scenarios():
             scenarios.append((str(format.__name__), {
                 'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
                 'format':format}))
-    for format in workingtree.format_registry._get_all():
+    for getter in workingtree.format_registry._get_all_lazy():
+        try:
+            format = getter()
+            if callable(format):
+                format = format()
+        except ImportError:
+            pass  # Format with unmet dependency
         repo_fmt = format._matchingcontroldir.repository_format
         if not repo_fmt.supports_full_versioned_files:
             continue
@@ -357,7 +363,7 @@ class TestInventoryUpdates(TestCase):
 class TestDeltaApplication(TestCaseWithTransport):
 
     scenarios = delta_application_scenarios()
- 
+
     def get_empty_inventory(self, reference_inv=None):
         """Get an empty inventory.
 
