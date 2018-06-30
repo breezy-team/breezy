@@ -24,7 +24,6 @@ from ... import tests, osutils
 from ..._termcolor import color_string, FG
 
 from ...tests.features import (
-    ColorFeature,
     UnicodeFilenameFeature,
     )
 
@@ -1961,9 +1960,6 @@ class TestNonAscii(GrepTestBase):
 
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
-
-    # GZ 2010-06-05: Does this really require the feature? Nothing prints.
-    _test_needs_features = [ColorFeature]
 
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
     _sep = color_string(':', fg=FG.BOLD_CYAN)

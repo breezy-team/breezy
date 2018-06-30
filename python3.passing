@@ -161,11 +161,6 @@ breezy.plugins.git.tests.test_urls.TestConvertURL.test_regular
 breezy.plugins.git.tests.test_urls.TestConvertURL.test_simple
 breezy.plugins.git.tests.test_workingtree.GitWorkingTreeTests.test_conflict_list
 breezy.plugins.git.tests.test_workingtree.TreeDeltaFromGitChangesTests.test_empty
-breezy.plugins.grep.test_grep.TestColorGrep.test_color_option
-breezy.plugins.grep.test_grep.TestColorGrep.test_ver_basic_file
-breezy.plugins.grep.test_grep.TestColorGrep.test_ver_matching_files
-breezy.plugins.grep.test_grep.TestColorGrep.test_wtree_basic_file
-breezy.plugins.grep.test_grep.TestColorGrep.test_wtree_matching_files
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_no_ssh_keys
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_no_user
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_valid_user
