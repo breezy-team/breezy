@@ -2883,6 +2883,17 @@ class RemoteStreamSink(vf_repository.StreamSink):
             self.target_repo.autopack()
         return result
 
+    def insert_missing_keys(self, source, missing_keys):
+        if (isinstance(source, RemoteStreamSource) and
+                source.from_repository._client._medium == self.target_repo._client._medium):
+            # Streaming from and to the same medium is tricky, since we don't support
+            # more than one concurrent request. For now, just force VFS.
+            stream = source._get_real_stream_for_missing_keys(missing_keys)
+        else:
+            stream = source.get_stream_for_missing_keys(missing_keys)
+        return self.insert_stream_without_locking(stream,
+            self.target_repo._format)
+
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
         target._unstacked_provider.missing_keys.clear()
@@ -3010,14 +3021,19 @@ class RemoteStreamSource(vf_repository.StreamSource):
             sources.append(repo)
         return self.missing_parents_chain(search, sources)
 
+    def _get_real_stream_for_missing_keys(self, missing_keys):
+        self.from_repository._ensure_real()
+        real_repo = self.from_repository._real_repository
+        real_source = real_repo._get_source(self.to_format)
+        return real_source.get_stream_for_missing_keys(missing_keys)
+
     def get_stream_for_missing_keys(self, missing_keys):
         if not isinstance(self.from_repository, RemoteRepository):
-            self.from_repository._ensure_real()
-            real_repo = self.from_repository._real_repository
-            real_source = real_repo._get_source(self.to_format)
-            return real_source.get_stream_for_missing_keys(missing_keys)
+            return self._get_real_stream_for_missing_keys(missing_keys)
         client = self.from_repository._client
         medium = client._medium
+        if medium._is_remote_before((3, 0)):
+            return self._get_real_stream_for_missing_keys(missing_keys)
         path = self.from_repository.controldir._path_for_remote_call(client)
         args = (path, self.to_format.network_name())
         search_bytes = b'\n'.join([b'\t'.join(key) for key in missing_keys])
@@ -3025,10 +3041,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
             response, handler = self.from_repository._call_with_body_bytes_expecting_body(
                 b'Repository.get_stream_for_missing_keys', args, search_bytes)
         except (errors.UnknownSmartMethod, errors.UnknownFormatError):
-            self.from_repository._ensure_real()
-            real_repo = self.from_repository._real_repository
-            real_source = real_repo._get_source(self.to_format)
-            return real_source.get_stream_for_missing_keys(missing_keys)
+            return self._get_real_stream_for_missing_keys(missing_keys)
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         byte_stream = handler.read_streamed_body()
@@ -3740,7 +3753,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         err_context = {'token': str((branch_token, repo_token))}
         response = self._call(
             b'Branch.unlock', self._remote_path(), branch_token,
-            repo_token or '', **err_context)
+            repo_token or b'', **err_context)
         if response == (b'ok',):
             return
         raise errors.UnexpectedSmartServerResponse(response)

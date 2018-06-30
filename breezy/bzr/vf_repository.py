@@ -166,9 +166,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             fallback_repo = fallback_repos.pop()
             source = fallback_repo._get_source(self.repository._format)
             sink = self.repository._get_sink()
-            stream = source.get_stream_for_missing_keys(missing_keys)
-            missing_keys = sink.insert_stream_without_locking(stream,
-                self.repository._format)
+            missing_keys = sink.insert_missing_keys(source, missing_keys)
         if missing_keys:
             raise errors.BzrError('Unable to fill in parent inventories for a'
                                   ' stacked branch')
@@ -1717,6 +1715,17 @@ class StreamSink(object):
 
     def __init__(self, target_repo):
         self.target_repo = target_repo
+
+    def insert_missing_keys(self, source, missing_keys):
+        """Insert missing keys from another source.
+
+        :param source: StreamSource to stream from
+        :param missing_keys: Keys to insert
+        :return: keys still missing
+        """
+        stream = source.get_stream_for_missing_keys(missing_keys)
+        return self.insert_stream_without_locking(stream,
+            self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.
