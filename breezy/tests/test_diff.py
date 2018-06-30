@@ -564,12 +564,12 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
 
         tt = transform.TreeTransform(tree)
-        tt.new_file('a', tt.root, 'contents\n', 'a-id', True)
-        tt.new_file('b', tt.root, 'contents\n', 'b-id', False)
-        tt.new_file('c', tt.root, 'contents\n', 'c-id', True)
-        tt.new_file('d', tt.root, 'contents\n', 'd-id', False)
-        tt.new_file('e', tt.root, 'contents\n', 'control-e-id', True)
-        tt.new_file('f', tt.root, 'contents\n', 'control-f-id', False)
+        tt.new_file('a', tt.root, ['contents\n'], b'a-id', True)
+        tt.new_file('b', tt.root, ['contents\n'], b'b-id', False)
+        tt.new_file('c', tt.root, ['contents\n'], b'c-id', True)
+        tt.new_file('d', tt.root, ['contents\n'], b'd-id', False)
+        tt.new_file('e', tt.root, ['contents\n'], b'control-e-id', True)
+        tt.new_file('f', tt.root, ['contents\n'], b'control-f-id', False)
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 

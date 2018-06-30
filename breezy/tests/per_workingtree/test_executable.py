@@ -34,8 +34,8 @@ class TestExecutable(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
         tt = TreeTransform(wt)
-        tt.new_file('a', tt.root, b'a test\n', self.a_id, True)
-        tt.new_file('b', tt.root, b'b test\n', self.b_id, False)
+        tt.new_file('a', tt.root, [b'a test\n'], self.a_id, True)
+        tt.new_file('b', tt.root, [b'b test\n'], self.b_id, False)
         tt.apply()
 
         self.wt = wt
