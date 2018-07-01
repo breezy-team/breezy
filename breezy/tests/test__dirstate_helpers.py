@@ -1308,7 +1308,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         basis_tree = tree.basis_tree()
         def is_inside_raises(*args, **kwargs):
             raise RuntimeError('stop this')
-        self.overrideAttr(osutils, 'is_inside', is_inside_raises)
+        self.overrideAttr(dirstate, 'is_inside', is_inside_raises)
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):
