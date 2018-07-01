@@ -16,14 +16,11 @@
 
 """Tests for plugins"""
 
-try:
-    from importlib.util import module_from_spec
-except ImportError:  # python < 3
-    from imp import new_module as module_from_spec
 import importlib
 import logging
 import os
 import sys
+import types
 
 import breezy
 from .. import (
@@ -52,7 +49,7 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
         super(BaseTestPlugins, self).setUp()
         self.module_name = "breezy.testingplugins"
         self.module_prefix = self.module_name + "."
-        self.module = module_from_spec(self.module_name)
+        self.module = types.ModuleType(self.module_name)
 
         self.overrideAttr(plugin, "_MODULE_PREFIX", self.module_prefix)
         self.overrideAttr(breezy, "testingplugins", self.module)
