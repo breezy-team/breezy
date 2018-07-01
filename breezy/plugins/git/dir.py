@@ -28,7 +28,10 @@ from ... import (
     revision as _mod_revision,
     urlutils,
     )
-from ...sixish import viewitems
+from ...sixish import (
+    PY3,
+    viewitems,
+    )
 from ...transport import (
     do_catching_redirections,
     get_transport_from_path,
@@ -484,7 +487,7 @@ class LocalGitDir(GitDir):
             except ValueError:
                 params = {'ref': urlutils.quote(target_ref.decode('utf-8'), '')}
             else:
-                if branch_name != b'':
+                if branch_name != '':
                     params = {'branch': urlutils.quote(branch_name, '')}
                 else:
                     params = {}
@@ -492,6 +495,8 @@ class LocalGitDir(GitDir):
                 base_url = urlutils.local_path_to_url(self.control_transport.get_bytes('commondir')).rstrip('/.git/')+'/'
             except bzr_errors.NoSuchFile:
                 base_url = self.user_url.rstrip('/')
+            if not PY3:
+                params = {k: v.encode('utf-8') for (k, v) in viewitems(params)}
             return urlutils.join_segment_parameters(base_url, params)
         return None
 
