@@ -1723,7 +1723,7 @@ class TestIterChildEntries(TestCaseWithDirState):
         expected_result.append(dirblocks[3][1][3]) # i
         expected_result.append(dirblocks[3][1][4]) # j
         self.assertEqual(expected_result,
-            list(state._iter_child_entries(1, 'b')))
+            list(state._iter_child_entries(1, b'b')))
 
     def test_iter_child_root(self):
         state, dirblocks = self.create_dirstate_with_two_trees()
@@ -1738,7 +1738,7 @@ class TestIterChildEntries(TestCaseWithDirState):
         expected_result.append(dirblocks[3][1][3]) # i
         expected_result.append(dirblocks[3][1][4]) # j
         self.assertEqual(expected_result,
-            list(state._iter_child_entries(1, '')))
+            list(state._iter_child_entries(1, b'')))
 
 
 class TestDirstateSortOrder(tests.TestCaseWithTransport):

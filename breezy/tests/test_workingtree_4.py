@@ -126,12 +126,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree.lock_write()
         self.addCleanup(subtree.unlock)
         self.build_tree(['subdir/file-a',])
-        subtree.add(['file-a'], ['id-a'])
+        subtree.add(['file-a'], [b'id-a'])
         rev1 = subtree.commit('commit in subdir')
 
         subtree2 = subtree.controldir.sprout('subdir2').open_workingtree()
         self.build_tree(['subdir2/file-b'])
-        subtree2.add(['file-b'], ['id-b'])
+        subtree2.add(['file-b'], [b'id-b'])
         rev2 = subtree2.commit('commit in subdir2')
 
         subtree.flush()
