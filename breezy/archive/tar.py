@@ -186,8 +186,11 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
     except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
-    compressor = lzma.LZMACompressor(
-            options={"format": compression_format})
+    if sys.version_info[0] == 2:
+        compressor = lzma.LZMACompressor(
+                options={"format": compression_format})
+    else:
+        compressor = lzma.LZMACompressor(format=compression_format)
 
     for chunk in tarball_generator(
             tree, root, subdir, force_mtime=force_mtime):

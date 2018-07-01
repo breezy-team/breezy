@@ -17,7 +17,11 @@
 """Tests for directory lookup through Launchpad.net"""
 
 import os
-import xmlrpclib
+
+try:
+    from xmlrpclib import Fault
+except ImportError:  # python < 3
+    from xmlrpc.client import Fault
 
 import breezy
 from ... import (
@@ -294,7 +298,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
         # Test that XMLRPC faults get converted to InvalidURL errors.
         factory = FakeResolveFactory(self, 'apt', None)
         def submit(service):
-            raise xmlrpclib.Fault(42, 'something went wrong')
+            raise Fault(42, 'something went wrong')
         factory.submit = submit
         directory = LaunchpadDirectory()
         self.assertRaises(lp_registration.InvalidURL,

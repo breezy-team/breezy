@@ -140,8 +140,8 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         branch.Branch.hooks.install_named_hook(
             'pre_change_branch_tip', self.assertBranchHookBranchIsStacked, None)
         try:
-            result = tree.branch.create_clone_on_transport(target_transport,
-                stacked_on=trunk.base)
+            result = tree.branch.create_clone_on_transport(
+                    target_transport, stacked_on=trunk.base)
         except branch.UnstackableBranchFormat:
             if not trunk.repository._format.supports_full_versioned_files:
                 raise tests.TestNotApplicable("can not stack on format")

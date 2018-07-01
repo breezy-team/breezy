@@ -138,6 +138,16 @@ def show_error(*args, **kwargs):
     _brz_logger.error(*args, **kwargs)
 
 
+class _Bytes(str):
+    """Compat class for displaying bytes on Python 2."""
+
+    def __repr__(self):
+        return 'b' + str.__repr__(self)
+
+    def __unicode__(self):
+        return self.decode('ascii', 'replace')
+
+
 def mutter(fmt, *args):
     if _trace_file is None:
         return
@@ -146,24 +156,20 @@ def mutter(fmt, *args):
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
-    if isinstance(fmt, text_type):
-        fmt = fmt.encode('utf8')
+    # Let format strings be specified as ascii bytes to help Python 2
+    if isinstance(fmt, bytes):
+        fmt = fmt.decode('ascii', 'replace')
 
-    if len(args) > 0:
-        # It seems that if we do ascii % (unicode, ascii) we can
-        # get a unicode cannot encode ascii error, so make sure that "fmt"
-        # is a unicode string
-        real_args = []
-        for arg in args:
-            if isinstance(arg, text_type):
-                arg = arg.encode('utf8')
-            real_args.append(arg)
-        out = fmt % tuple(real_args)
+    if args:
+        if not PY3:
+            args = tuple(
+                _Bytes(arg) if isinstance(arg, bytes) else arg for arg in args)
+        out = fmt % args
     else:
         out = fmt
     now = time.time()
-    out = b'%0.3f  %s\n' % (now - _brz_log_start_time, out)
-    _trace_file.write(out)
+    out = '%0.3f  %s\n' % (now - _brz_log_start_time, out)
+    _trace_file.write(out.encode('utf-8'))
     # there's no explicit flushing; the file is typically line buffered.
 
 
@@ -296,8 +302,11 @@ def enable_default_logging():
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    stderr_handler = EncodedStreamHandler(sys.stderr,
-        osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
+    if sys.version_info[0] == 2:
+        stderr_handler = EncodedStreamHandler(sys.stderr,
+            osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
+    else:
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 
@@ -612,8 +621,8 @@ class EncodedStreamHandler(logging.Handler):
             # Try saving the details that would have been logged in some form
             msg = args = "<Unformattable>"
             try:
-                msg = repr(record.msg).encode("ascii", "backslashescape")
-                args = repr(record.args).encode("ascii", "backslashescape")
+                msg = repr(record.msg)
+                args = repr(record.args)
             except Exception:
                 pass
             # Using mutter() bypasses the logging module and writes directly

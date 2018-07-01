@@ -845,9 +845,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     def _tarball_of_dir(self, dirname, compression, ofile):
         import tarfile
         filename = os.path.basename(ofile.name)
-        tarball = tarfile.open(fileobj=ofile, name=filename,
-            mode='w|' + compression)
-        try:
+        with tarfile.open(fileobj=ofile, name=filename,
+                mode='w|' + compression) as tarball:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files
             # within the repository have ASCII names so the should be safe
@@ -858,8 +857,6 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             if not dirname.endswith('.bzr'):
                 raise ValueError(dirname)
             tarball.add(dirname, '.bzr') # recursive by default
-        finally:
-            tarball.close()
 
 
 class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
@@ -1276,12 +1273,57 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
         return None
 
 
+class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, to_network_name):
+        """Get a stream for missing keys.
+
+        :param repository: The repository to stream from.
+        :param to_network_name: The network name of the format of the target
+            repository.
+        """
+        try:
+            self._to_format = network_format_registry.get(to_network_name)
+        except KeyError:
+            return FailedSmartServerResponse(
+                (b'UnknownFormat', b'repository', to_network_name))
+        return None # Signal that we want a body.
+
+    def do_body(self, body_bytes):
+        repository = self._repository
+        repository.lock_read()
+        try:
+            source = repository._get_source(self._to_format)
+            stream = source.get_stream_for_missing_keys(
+                [tuple(k.split(b'\t')) for k in body_bytes.split(b'\n')])
+        except Exception:
+            try:
+                # On non-error, unlocking is done by the body stream handler.
+                repository.unlock()
+            finally:
+                raise
+        return SuccessfulSmartServerResponse((b'ok',),
+            body_stream=self.body_stream(stream, repository))
+
+    def body_stream(self, stream, repository):
+        byte_stream = _stream_to_byte_stream(stream, repository._format)
+        try:
+            for bytes in byte_stream:
+                yield bytes
+        except errors.RevisionNotPresent as e:
+            # This shouldn't be able to happen, but as we don't buffer
+            # everything it can in theory happen.
+            repository.unlock()
+            yield FailedSmartServerResponse((b'NoSuchRevision', e.revision_id))
+        else:
+            repository.unlock()
+
+
 class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id, format, name,
                              root, subdir=None, force_mtime=None):
         """Stream an archive file for a specific revision.
-
         :param repository: The repository to stream from.
         :param revision_id: Revision for which to export the tree
         :param format: Format (tar, tgz, tbz2, etc)

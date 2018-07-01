@@ -16,7 +16,17 @@
 
 import base64
 from io import BytesIO
-import xmlrpclib
+
+try:
+    from xmlrpc.client import (
+        loads as xmlrpc_loads,
+        Transport,
+        )
+except ImportError:  # python < 3
+    from xmlrpclib import (
+        loads as xmlrpc_loads,
+        Transport,
+        )
 
 from ...tests import TestCaseWithTransport
 
@@ -84,7 +94,7 @@ class InstrumentedXMLRPCConnection(object):
 
 
 
-class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
+class InstrumentedXMLRPCTransport(Transport):
 
     # Python 2.5's xmlrpclib looks for this.
     _use_datetime = False
@@ -101,7 +111,8 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
             raise AssertionError()
         return InstrumentedXMLRPCConnection(test)
 
-    def send_request(self, connection, handler_path, request_body):
+    def send_request(self, connection, handler_path, request_body,
+                     verbose=None):
         test = self.testcase
         self.got_request = True
 
@@ -114,7 +125,7 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
         pass
 
     def send_content(self, conn, request_body):
-        unpacked, method = xmlrpclib.loads(request_body)
+        unpacked, method = xmlrpc_loads(request_body)
         if None in unpacked:
             raise AssertionError(
                 "xmlrpc result %r shouldn't contain None" % (unpacked,))
@@ -123,7 +134,7 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
 class MockLaunchpadService(LaunchpadService):
 
-    def send_request(self, method_name, method_params):
+    def send_request(self, method_name, method_params, verbose=None):
         """Stash away the method details rather than sending them to a real server"""
         self.called_method_name = method_name
         self.called_method_params = method_params
@@ -165,7 +176,8 @@ class TestResolveLaunchpadPathRequest(TestCaseWithTransport):
     def test_mock_resolve_lp_url(self):
         test_case = self
         class MockService(MockLaunchpadService):
-            def send_request(self, method_name, method_params):
+            def send_request(self, method_name, method_params,
+                             verbose=None):
                 test_case.assertEqual(method_name, "resolve_lp_path")
                 test_case.assertEqual(list(method_params), ['bzr'])
                 return dict(urls=[

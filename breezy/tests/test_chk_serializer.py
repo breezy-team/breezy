@@ -64,14 +64,14 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual(rev.committer,
            "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
         self.assertEqual(rev.inventory_sha1,
-           "4a2c7fb50e077699242cf6eb16a61779c7b680a7")
-        self.assertEqual(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
-            "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
+           b"4a2c7fb50e077699242cf6eb16a61779c7b680a7")
+        self.assertEqual([b"pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
+            b"jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
             rev.parent_ids)
         self.assertEqual("(Jelmer) Move dpush to InterBranch.", rev.message)
-        self.assertEqual("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
+        self.assertEqual(b"pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
            rev.revision_id)
-        self.assertEqual({"branch-nick": u"+trunk"}, rev.properties)
+        self.assertEqual({u"branch-nick": u"+trunk"}, rev.properties)
         self.assertEqual(3600, rev.timezone)
 
     def test_written_form_matches(self):

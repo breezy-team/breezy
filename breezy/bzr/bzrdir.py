@@ -450,15 +450,12 @@ class BzrDir(controldir.ControlDir):
             (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
-            wt.lock_write()
-            try:
+            with wt.lock_write():
                 if not wt.is_versioned(''):
                     try:
                         wt.set_root_id(self.open_workingtree.get_root_id())
                     except errors.NoWorkingTree:
                         pass
-            finally:
-                wt.unlock()
         else:
             wt = None
         if recurse == 'down':

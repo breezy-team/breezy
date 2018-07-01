@@ -28,8 +28,8 @@ from breezy.tests.per_repository import TestCaseWithRepository
 
 class TestCaseWithStackedTarget(TestCaseWithRepository):
 
-    r1_key = ('rev1-id',)
-    r2_key = ('rev2-id',)
+    r1_key = (b'rev1-id',)
+    r2_key = (b'rev2-id',)
 
     def make_stacked_target(self):
         base_tree = self.make_branch_and_tree('base')
@@ -178,7 +178,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
     def test_commit_with_ghosts_fails(self):
         base_tree, stacked_tree = self.make_stacked_target()
         stacked_tree.set_parent_ids([stacked_tree.last_revision(),
-                                     'ghost-rev-id'])
+                                     b'ghost-rev-id'])
         self.assertRaises(errors.BzrError,
             stacked_tree.commit, 'failed_commit')
 

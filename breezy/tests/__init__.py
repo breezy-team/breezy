@@ -1524,7 +1524,8 @@ class TestCase(testtools.TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
-        with open(path, 'rb') as f:
+        
+        with open(path, 'r' + ('b' if isinstance(content, bytes) else '')) as f:
             s = f.read()
         self.assertEqualDiff(content, s)
 
@@ -2165,7 +2166,7 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=stderr)
+                                  stderr=stderr, bufsize=0)
         finally:
             restore_environment()
             if cwd is not None:

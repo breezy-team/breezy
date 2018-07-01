@@ -133,7 +133,7 @@ class LocalGitProber(Prober):
             BareLocalGitControlDirFormat,
             LocalGitControlDirFormat,
             )
-        return set([BareLocalGitControlDirFormat(), LocalGitControlDirFormat()])
+        return [BareLocalGitControlDirFormat(), LocalGitControlDirFormat()]
 
 
 def user_agent_for_github():
@@ -151,10 +151,11 @@ class RemoteGitProber(Prober):
         headers = {"Content-Type": "application/x-git-upload-pack-request"}
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                       headers=headers)
-        if req.get_host() == "github.com":
+        (scheme, user, password, host, port, path) = urlutils.parse_url(req.get_full_url())
+        if host == "github.com":
             # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
             req.add_header("User-Agent", user_agent_for_github())
-        elif req.get_host() == "bazaar.launchpad.net":
+        elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise bzr_errors.NotBranchError(transport.base)
         req.follow_redirections = True
@@ -202,7 +203,7 @@ class RemoteGitProber(Prober):
     @classmethod
     def known_formats(cls):
         from .remote import RemoteGitControlDirFormat
-        return set([RemoteGitControlDirFormat()])
+        return [RemoteGitControlDirFormat()]
 
 
 ControlDirFormat.register_prober(LocalGitProber)

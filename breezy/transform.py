@@ -1117,7 +1117,7 @@ class TreeTransformBase(object):
             b'_non_present_ids': self._non_present_ids,
             }
         yield serializer.bytes_record(bencode.bencode(attribs),
-                                      (('attribs',),))
+                                      ((b'attribs',),))
         for trans_id, kind in viewitems(self._new_contents):
             if kind == 'file':
                 with open(self._limbo_name(trans_id), 'rb') as cur_file:
@@ -1452,10 +1452,10 @@ def refuse_orphan(tt, orphan_id, parent_id):
 
 orphaning_registry = registry.Registry()
 orphaning_registry.register(
-    'conflict', refuse_orphan,
+    u'conflict', refuse_orphan,
     'Leave orphans in place and create a conflict on the directory.')
 orphaning_registry.register(
-    'move', move_orphan,
+    u'move', move_orphan,
     'Move orphans into the brz-orphans directory.')
 orphaning_registry._set_default_key(u'conflict')
 

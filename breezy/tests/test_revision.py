@@ -209,9 +209,9 @@ class TestRevisionMethods(TestCase):
         r = revision.Revision('1')
         r.committer = 'A'
         self.assertEqual(['A'], r.get_apparent_authors())
-        r.properties['author'] = 'B'
+        r.properties[u'author'] = 'B'
         self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties['authors'] = 'C\nD'
+        r.properties[u'authors'] = 'C\nD'
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
@@ -229,7 +229,7 @@ class TestRevisionBugs(TestCase):
     def test_some_bugs(self):
         r = revision.Revision(
             '1', properties={
-                'bugs': bugtracker.encode_fixes_bug_urls(
+                u'bugs': bugtracker.encode_fixes_bug_urls(
                     ['http://example.com/bugs/1',
                      'http://launchpad.net/bugs/1234'])})
         self.assertEqual(
@@ -239,17 +239,17 @@ class TestRevisionBugs(TestCase):
 
     def test_no_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1'})
+            '1', properties={u'bugs': 'http://example.com/bugs/1'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
                 r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
+            '1', properties={u'bugs': 'http://example.com/bugs/1 fixed bar'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
                 r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
+            '1', properties={u'bugs': 'http://example.com/bugs/1 faxed'})
         self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())

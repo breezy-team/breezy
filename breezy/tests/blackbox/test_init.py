@@ -197,8 +197,8 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # init on a remote url should succeed.
         out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
-            """Created a standalone branch (format: pack-0.92)\n""")
-        self.assertEqual('', err)
+            b"""Created a standalone branch (format: pack-0.92)\n""")
+        self.assertEqual(b'', err)
 
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention
@@ -241,6 +241,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BRZ_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
-        self.assertEqual(err, '')
+        self.assertEqual(err, b'')
         self.assertTrue(os.path.exists('foo'))
 

@@ -181,7 +181,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         # Reconciling when the output has no revisions would result in no
         # writes - but we want to ensure there is an inventory for
         # compatibility with older clients that don't lazy-load.
-        result.get_parent_map([('A',)])
+        result.get_parent_map([(b'A',)])
         return result
 
     def get_revision(self, revision_id):
@@ -309,9 +309,9 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
         # already exist, we do this to create files on disk for older clients.
-        result.inventories.get_parent_map([('A',)])
-        result.revisions.get_parent_map([('A',)])
-        result.signatures.get_parent_map([('A',)])
+        result.inventories.get_parent_map([(b'A',)])
+        result.revisions.get_parent_map([(b'A',)])
+        result.signatures.get_parent_map([(b'A',)])
         result.unlock()
         self._run_post_repo_init_hooks(result, a_controldir, shared)
         return result

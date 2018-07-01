@@ -65,12 +65,12 @@ class TestPlanFileMerge(TestCaseWithTree):
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
         self.assertEqual([
-            ('killed-a', 'a\n'),
-            ('killed-b', 'b\n'),
-            ('unchanged', 'c\n'),
-            ('unchanged', 'd\n'),
-            ('new-a', 'e\n'),
-            ('new-b', 'f\n'),
+            ('killed-a', b'a\n'),
+            ('killed-b', b'b\n'),
+            ('unchanged', b'c\n'),
+            ('unchanged', b'd\n'),
+            ('new-a', b'e\n'),
+            ('new-b', b'f\n'),
         ], list(tree_a.plan_file_merge(file_id, tree_b)))
 
 
@@ -115,7 +115,7 @@ class TestReference(TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         root_id = tree.get_root_id()
         if root_id is not None:
-            self.assertIsInstance(root_id, str)
+            self.assertIsInstance(root_id, bytes)
 
     def test_is_versioned(self):
         tree = self.make_branch_and_tree('tree')

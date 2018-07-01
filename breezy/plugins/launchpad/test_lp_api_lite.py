@@ -353,7 +353,7 @@ class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
     def make_simple_builder(self):
         builder = self.make_branch_builder('tip')
         builder.build_snapshot([], [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A')
         b = builder.get_branch()
         b.tags.set_tag('tip-1.0', b'A')
@@ -366,8 +366,8 @@ class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
 
     def test_get_most_recent_tag_older(self):
         builder, b, tag_dict = self.make_simple_builder()
-        builder.build_snapshot(['A'], [], revision_id=b'B')
-        self.assertEqual('B', b.last_revision())
+        builder.build_snapshot([b'A'], [], revision_id=b'B')
+        self.assertEqual(b'B', b.last_revision())
         self.assertEqual('tip-1.0',
                          lp_api_lite.get_most_recent_tag(tag_dict, b))
 
@@ -441,7 +441,7 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
         self.assertFalse(latest_pub.called)
 
     def test_verbosity_all_out_of_date_smoke(self):
-        self.branch.tags.set_tag('1.0-1ubuntu1', 'A')
+        self.branch.tags.set_tag('1.0-1ubuntu1', b'A')
         self.assertFreshnessReports('all', '1.0-1ubuntu2',
              '    INFO  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
              'Packaging branch version: 1.0-1ubuntu1\n'
@@ -460,7 +460,7 @@ class Test_GetNewestVersions(tests.TestCaseWithMemoryTransport):
 
     def assertLatestVersions(self, latest_branch_version, pub_version):
         if latest_branch_version is not None:
-            self.branch.tags.set_tag(latest_branch_version, 'A')
+            self.branch.tags.set_tag(latest_branch_version, b'A')
         latest_pub = StubLatestPublication(pub_version)
         self.assertEqual((pub_version, latest_branch_version),
             lp_api_lite._get_newest_versions(self.branch, latest_pub))

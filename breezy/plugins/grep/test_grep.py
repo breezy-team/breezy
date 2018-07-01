@@ -24,7 +24,6 @@ from ... import tests, osutils
 from ..._termcolor import color_string, FG
 
 from ...tests.features import (
-    ColorFeature,
     UnicodeFilenameFeature,
     )
 
@@ -45,14 +44,16 @@ class GrepTestBase(tests.TestCaseWithTransport):
         for i in range(total_lines):
             text += line_prefix + str(i+1) + "\n"
 
-        open(path, 'w').write(text)
+        with open(path, 'w') as f:
+            f.write(text)
         if versioned:
             self.run_bzr(['add', path])
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
         """append text to file 'path' and check it in"""
-        open(path, 'a').write(text)
+        with open(path, 'a') as f:
+            f.write(text)
         if checkin:
             self.run_bzr(['ci', path, '-m', '"' + path + '"'])
 
@@ -1960,9 +1961,6 @@ class TestNonAscii(GrepTestBase):
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
 
-    # GZ 2010-06-05: Does this really require the feature? Nothing prints.
-    _test_needs_features = [ColorFeature]
-
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
     _sep = color_string(':', fg=FG.BOLD_CYAN)
 
@@ -2205,7 +2203,8 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.build_tree_contents([('blah', b'hello world!2\n')]) # rev 4
         tree.add('blah')
         tree.commit('rev4')
-        open('hello', 'a').write('hello world!3\n')
+        with open('hello', 'a') as f:
+            f.write('hello world!3\n')
         #self.build_tree_contents([('hello', 'hello world!3\n')]) # rev 5
         tree.commit('rev5')
         out, err = self.run_bzr(['grep', '-p', '-r', '2..5', 'hello'])

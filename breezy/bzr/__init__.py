@@ -49,11 +49,11 @@ class BzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        result = set()
+        result = []
         for name, format in cls.formats.items():
             if callable(format):
                 format = format()
-            result.add(format)
+            result.append(format)
         return result
 
 
@@ -91,7 +91,7 @@ class RemoteBzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         from .remote import RemoteBzrDirFormat
-        return {RemoteBzrDirFormat()}
+        return [RemoteBzrDirFormat()]
 
 
 controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)

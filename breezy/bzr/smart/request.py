@@ -34,6 +34,10 @@ from __future__ import absolute_import
 
 
 import threading
+try:
+    from _thread import get_ident
+except ImportError:  # Python < 3
+    from thread import get_ident
 
 from ... import (
     branch as _mod_branch,
@@ -52,7 +56,6 @@ from breezy.bzr import bzrdir
 from breezy.bundle import serializer
 
 import tempfile
-import thread
 """)
 
 
@@ -307,7 +310,7 @@ class SmartServerRequestHandler(object):
         self._command = None
         if 'hpss' in debug.debug_flags:
             self._request_start_time = osutils.timer_func()
-            self._thread_id = thread.get_ident()
+            self._thread_id = get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
         # It is a bit of a shame that this functionality overlaps with that of
@@ -758,6 +761,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     b'Repository.get_stream_1.19', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
+request_handlers.register_lazy(
+    b'Repository.get_stream_for_missing_keys', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryGetStreamForMissingKeys', info='read')
 request_handlers.register_lazy(
     b'Repository.iter_revisions', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIterRevisions', info='read')

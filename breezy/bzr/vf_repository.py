@@ -33,7 +33,6 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    serializer as _mod_serializer,
     static_tuple,
     tsort,
     ui,
@@ -166,9 +165,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             fallback_repo = fallback_repos.pop()
             source = fallback_repo._get_source(self.repository._format)
             sink = self.repository._get_sink()
-            stream = source.get_stream_for_missing_keys(missing_keys)
-            missing_keys = sink.insert_stream_without_locking(stream,
-                self.repository._format)
+            missing_keys = sink.insert_missing_keys(source, missing_keys)
         if missing_keys:
             raise errors.BzrError('Unable to fill in parent inventories for a'
                                   ' stacked branch')
@@ -1278,7 +1275,7 @@ class VersionedFileRepository(Repository):
         # always a tricky proposition.
         inventory_cache = lru_cache.LRUCache(10)
         batch_size = 10 # should be ~150MB on a 55K path tree
-        batch_count = len(revision_order) / batch_size + 1
+        batch_count = len(revision_order) // batch_size + 1
         processed_texts = 0
         pb.update(gettext("Calculating text parents"), processed_texts, text_count)
         for offset in range(batch_count):
@@ -1717,6 +1714,17 @@ class StreamSink(object):
 
     def __init__(self, target_repo):
         self.target_repo = target_repo
+
+    def insert_missing_keys(self, source, missing_keys):
+        """Insert missing keys from another source.
+
+        :param source: StreamSource to stream from
+        :param missing_keys: Keys to insert
+        :return: keys still missing
+        """
+        stream = source.get_stream_for_missing_keys(missing_keys)
+        return self.insert_stream_without_locking(stream,
+            self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.

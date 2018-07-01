@@ -1351,12 +1351,21 @@ class DirState(object):
         return result
 
     def _check_delta_is_valid(self, delta):
-        return list(inventory._check_delta_unique_ids(
-                    inventory._check_delta_unique_old_paths(
-                    inventory._check_delta_unique_new_paths(
-                    inventory._check_delta_ids_match_entry(
-                    inventory._check_delta_ids_are_valid(
-                    inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+        delta = list(inventory._check_delta_unique_ids(
+                     inventory._check_delta_unique_old_paths(
+                     inventory._check_delta_unique_new_paths(
+                     inventory._check_delta_ids_match_entry(
+                     inventory._check_delta_ids_are_valid(
+                     inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+        def delta_key(d):
+            (old_path, new_path, file_id, new_entry) = d
+            if old_path is None:
+                old_path = ''
+            if new_path is None:
+                new_path = ''
+            return (old_path, new_path, file_id, new_entry)
+        delta.sort(key=delta_key, reverse=True)
+        return delta
 
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0
@@ -1381,7 +1390,7 @@ class DirState(object):
         new_ids = set()
         # This loop transforms the delta to single atomic operations that can
         # be executed and validated.
-        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
+        delta = self._check_delta_is_valid(delta)
         for old_path, new_path, file_id, inv_entry in delta:
             if not isinstance(file_id, bytes):
                 raise AssertionError(
@@ -1518,7 +1527,7 @@ class DirState(object):
 
         self._parents[0] = new_revid
 
-        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
+        delta = self._check_delta_is_valid(delta)
         adds = []
         changes = []
         deletes = []
