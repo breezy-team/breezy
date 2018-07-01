@@ -126,7 +126,7 @@ class TestSprout(TestCaseWithBranch):
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise tests.TestNotApplicable(
                 'Branch format does not support tags or tags to ghosts.')
@@ -185,7 +185,7 @@ class TestSprout(TestCaseWithBranch):
         if not tree.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable(
                 "repository format does not support ghosts in mainline")
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
         rev1 = tree.commit('msg1')
         tree.commit('msg2')

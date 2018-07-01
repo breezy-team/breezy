@@ -36,7 +36,7 @@ from . import (
 )
 from .i18n import gettext
 from .sixish import (
-    BytesIO,
+    StringIO,
     )
 
 
@@ -239,7 +239,7 @@ class Shelver(object):
             as removals, removals displayed as insertions).
         :return: A patches.Patch.
         """
-        diff_file = BytesIO()
+        diff_file = StringIO()
         if invert:
             old_tree = self.work_tree
             new_tree = self.target_tree

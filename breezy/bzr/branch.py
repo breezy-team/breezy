@@ -17,6 +17,8 @@
 
 from __future__ import absolute_import
 
+import sys
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -50,6 +52,7 @@ from ..decorators import (
 from ..lock import _RelockDebugMixin, LogicalLockResult
 from ..sixish import (
     BytesIO,
+    text_type,
     viewitems,
     )
 from ..trace import (
@@ -84,9 +87,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise ValueError('name must be supplied')
         self.controldir = a_controldir
         self._user_transport = self.controldir.transport.clone('..')
-        if name != "":
+        if name != u"":
             self._user_transport.set_segment_parameter(
-                "branch", urlutils.escape(name))
+                "branch", urlutils.escape(name).encode('utf-8'))
         self._base = self._user_transport.base
         self.name = name
         self._format = _format
@@ -260,7 +263,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self._transport.get_bytes(l).strip(b'\n')
+                return self._transport.get_bytes(l).strip(b'\n').decode('utf-8')
             except errors.NoSuchFile:
                 pass
         return None
@@ -278,6 +281,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if url is None:
             self._transport.delete('parent')
         else:
+            if isinstance(url, text_type):
+                url = url.encode('utf-8')
             self._transport.put_bytes('parent', url + b'\n',
                 mode=self.controldir._get_file_mode())
 
@@ -314,7 +319,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def get_bound_location(self):
         try:
-            return self._transport.get_bytes('bound')[:-1]
+            return self._transport.get_bytes('bound')[:-1].decode('utf-8')
         except errors.NoSuchFile:
             return None
 
@@ -617,7 +622,11 @@ class BzrBranch8(BzrBranch):
                                                 config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
-        return stacked_url.encode('utf-8')
+        # TODO(jelmer): Clean this up for pad.lv/1696545
+        if sys.version_info[0] == 2:
+            return stacked_url.encode('utf-8')
+        else:
+            return stacked_url
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -1043,13 +1052,10 @@ class Converter5to6(object):
 
         # Copy source data into target
         new_branch._write_last_revision_info(*branch.last_revision_info())
-        new_branch.lock_write()
-        try:
+        with new_branch.lock_write():
             new_branch.set_parent(branch.get_parent())
             new_branch.set_bound_location(branch.get_bound_location())
             new_branch.set_push_location(branch.get_push_location())
-        finally:
-            new_branch.unlock()
 
         # New branch has no tags by default
         new_branch.tags._set_tag_dict({})
@@ -1061,15 +1067,12 @@ class Converter5to6(object):
 
         # Clean up old files
         new_branch._transport.delete('revision-history')
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             try:
                 branch.set_parent(None)
             except errors.NoSuchFile:
                 pass
             branch.set_bound_location(None)
-        finally:
-            branch.unlock()
 
 
 class Converter6to7(object):

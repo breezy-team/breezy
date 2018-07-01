@@ -148,7 +148,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_get_blob(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
@@ -167,7 +167,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_get_raw(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.get_raw, b.id)
@@ -234,25 +234,25 @@ class DirectoryToTreeTests(TestCase):
         self.assertEqual(None, t)
 
     def test_empty_dir(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
                 allow_empty=False)
         self.assertEqual(None, t)
 
     def test_empty_dir_dummy_files(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, ".mydummy",
                 allow_empty=False)
         self.assertTrue(".mydummy" in t)
 
     def test_empty_root(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
                 allow_empty=True)
         self.assertEqual(Tree(), t)
 
     def test_with_file(self):
-        child_ie = InventoryFile('bar', 'bar', 'bar')
+        child_ie = InventoryFile(b'bar', 'bar', b'bar')
         b = Blob.from_string("bla")
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
                 allow_empty=False)
@@ -261,8 +261,8 @@ class DirectoryToTreeTests(TestCase):
         self.assertEqual(t1, t2)
 
     def test_with_gitdir(self):
-        child_ie = InventoryFile('bar', 'bar', 'bar')
-        git_file_ie = InventoryFile('gitid', '.git', 'bar')
+        child_ie = InventoryFile(b'bar', 'bar', b'bar')
+        git_file_ie = InventoryFile(b'gitid', '.git', b'bar')
         b = Blob.from_string("bla")
         t1 = directory_to_tree('', [child_ie, git_file_ie],
                 lambda p, x: b.id, {}, None,

@@ -173,7 +173,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         lastline, nlines = 0, 0
         # codecs.open() ALWAYS opens file in binary mode but we need text mode
         # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
-        f = file(msgfilename, 'rU')
+        f = open(msgfilename, 'rU')
         try:
             try:
                 for line in codecs.getreader(osutils.get_user_encoding())(f):

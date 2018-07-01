@@ -154,7 +154,7 @@ unquote = urlparse.unquote
 
 def escape(relpath):
     """Escape relpath to be a valid url."""
-    if not isinstance(relpath, str):
+    if not isinstance(relpath, str) and sys.version_info[0] == 2:
         relpath = relpath.encode('utf-8')
     return quote(relpath, safe='/~')
 
@@ -593,9 +593,9 @@ def join_segment_parameters(url, parameters):
     new_parameters.update(existing_parameters)
     for key, value in parameters.items():
         if not isinstance(key, str):
-            raise TypeError("parameter key %r is not a bytestring" % key)
+            raise TypeError("parameter key %r is not a str" % key)
         if not isinstance(value, str):
-            raise TypeError("parameter value %r for %s is not a bytestring" %
+            raise TypeError("parameter value %r for %s is not a str" %
                 (key, value))
         if "=" in key:
             raise InvalidURLJoin("= exists in parameter key", url,
@@ -878,8 +878,16 @@ class URL(object):
         :param url: URL as bytestring
         """
         # GZ 2017-06-09: Actually validate ascii-ness
-        if not isinstance(url, str):
-            raise InvalidURL('should be ascii:\n%r' % url)
+        # pad.lv/1696545: For the moment, accept both native strings and unicode.
+        if isinstance(url, str):
+            pass
+        elif isinstance(url, text_type):
+            try:
+                url = url.encode()
+            except UnicodeEncodeError:
+                raise InvalidURL(url)
+        else:
+            raise InvalidURL(url)
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         user = password = host = port = None
@@ -940,7 +948,7 @@ class URL(object):
         # pad.lv/1696545: For the moment, accept both native strings and unicode.
         if isinstance(relpath, str):
             pass
-        elif isinstance(relpath, unicode):
+        elif isinstance(relpath, text_type):
             try:
                 relpath = relpath.encode()
             except UnicodeEncodeError:

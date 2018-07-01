@@ -1524,7 +1524,8 @@ class TestCase(testtools.TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
-        with open(path, 'rb') as f:
+        
+        with open(path, 'r' + ('b' if isinstance(content, bytes) else '')) as f:
             s = f.read()
         self.assertEqualDiff(content, s)
 
@@ -1538,7 +1539,8 @@ class TestCase(testtools.TestCase):
 
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, (str, text_type)):
+        # TODO(jelmer): Clean this up for pad.lv/1696545
+        if not isinstance(path, (bytes, str, text_type)):
             for p in path:
                 self.assertPathExists(p)
         else:
@@ -2164,7 +2166,7 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=stderr)
+                                  stderr=stderr, bufsize=0)
         finally:
             restore_environment()
             if cwd is not None:
@@ -2757,7 +2759,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        with open(filename) as f:
+        with open(filename, 'rb') as f:
             contents = f.read()
         if contents != expect:
             self.log("expected: %r" % expect)

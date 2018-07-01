@@ -38,8 +38,8 @@ class TestRevisionInfo(TestCaseWithTransport):
         # Make history with a non-mainline rev
         wt.commit('Commit one', rev_id=b'a@r-0-1')
         wt.commit('Commit two', rev_id=b'a@r-0-1.1.1')
-        wt.set_parent_ids(['a@r-0-1', 'a@r-0-1.1.1'])
-        wt.branch.set_last_revision_info(1, 'a@r-0-1')
+        wt.set_parent_ids([b'a@r-0-1', b'a@r-0-1.1.1'])
+        wt.branch.set_last_revision_info(1, b'a@r-0-1')
         wt.commit('Commit three', rev_id=b'a@r-0-2')
 
         # This is expected to work even if the working tree is removed

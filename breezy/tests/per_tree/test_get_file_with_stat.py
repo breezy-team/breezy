@@ -36,7 +36,7 @@ class TestGetFileWithStat(TestCaseWithTree):
         if statvalue is not None:
             expected = os.lstat('foo')
             self.assertEqualStat(expected, statvalue)
-        self.assertEqual(["contents of foo\n"], file_obj.readlines())
+        self.assertEqual([b"contents of foo\n"], file_obj.readlines())
 
     def test_get_file_with_stat_id_and_path(self):
         work_tree = self.make_branch_and_tree('.')
@@ -50,4 +50,4 @@ class TestGetFileWithStat(TestCaseWithTree):
         if statvalue is not None:
             expected = os.lstat('foo')
             self.assertEqualStat(expected, statvalue)
-        self.assertEqual(["contents of foo\n"], file_obj.readlines())
+        self.assertEqual([b"contents of foo\n"], file_obj.readlines())

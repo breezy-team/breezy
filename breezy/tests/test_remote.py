@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import base64
 import bz2
+import tarfile
 import zlib
 
 from .. import (
@@ -2346,8 +2347,9 @@ class TestRepositoryAllRevisionIds(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(
             b'rev1\nrev2\nanotherrev\n', b'ok')
-        self.assertEqual([b"rev1", b"rev2", b"anotherrev"],
-            repo.all_revision_ids())
+        self.assertEqual(
+            set([b"rev1", b"rev2", b"anotherrev"]),
+            set(repo.all_revision_ids()))
         self.assertEqual(
             [('call_expecting_body', b'Repository.all_revision_ids',
              (b'quack/',))],
@@ -4305,3 +4307,71 @@ class TestRepositoryIterInventories(TestRemoteRepository):
             b'success', (b'ok', ), iter([]))
         self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
             [b"somerevid"]))
+
+
+class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
+    """Test Repository.iter_inventories."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_simple(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = controldir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory(b'somerevid', None, None,
+                self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+        client.add_expected_call(
+            b'VersionedFileRepository.get_inventories', (b'quack/', b'unordered'),
+            b'success', (b'ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        f = BytesIO()
+        with tarfile.open(mode='w', fileobj=f) as tf:
+            info = tarfile.TarInfo('somefile')
+            info.mtime = 432432
+            contents = b'some data'
+            info.type = tarfile.REGTYPE
+            info.mode = 0o644
+            info.size = len(contents)
+            tf.addfile(info, BytesIO(contents))
+        client.add_expected_call(
+            b'Repository.revision_archive', (b'quack/', b'somerevid', b'tar', b'foo.tar', b'', b'', None),
+            b'success', (b'ok', ),
+            f.getvalue())
+        tree = repo.revision_tree(b'somerevid')
+        self.assertEqual(f.getvalue(), b''.join(tree.archive('tar', 'foo.tar')))
+
+
+class TestRepositoryAnnotate(TestRemoteRepository):
+    """Test RemoteRevisionTree.annotate.."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_simple(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = controldir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory(b'somerevid', None, None,
+                self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+        client.add_expected_call(
+            b'VersionedFileRepository.get_inventories', (b'quack/', b'unordered'),
+            b'success', (b'ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        client.add_expected_call(
+            b'Repository.annotate_file_revision',
+            (b'quack/', b'somerevid', b'filename', b'', b'current:'),
+            b'success', (b'ok', ),
+            bencode.bencode([[b'baserevid', b'line 1\n'],
+                             [b'somerevid', b'line2\n']]))
+        tree = repo.revision_tree(b'somerevid')
+        self.assertEqual([
+            (b'baserevid', b'line 1\n'),
+            (b'somerevid', b'line2\n')],
+            list(tree.annotate_iter('filename')))

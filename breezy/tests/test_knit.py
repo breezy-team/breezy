@@ -419,7 +419,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             ], revision_id=b'rev-1')
         builder.build_snapshot([b'rev-1'], [
             ('modify', ('file', b'content\nrev 2\n')),
-            ], revision_id='rev-2')
+            ], revision_id=b'rev-2')
         builder.build_snapshot([b'rev-2'], [
             ('modify', ('file', b'content\nrev 3\n')),
             ], revision_id=b'rev-3')
@@ -1520,20 +1520,20 @@ class TestKnitIndex(KnitTests):
         idx = knit._index
         idx.add_records([(('a-1',), ['fulltext'], (('a-1',), 0, 0), [])])
         self.check_file_contents('test.kndx',
-            '# bzr knit index 8\n'
-            '\n'
-            'a-1 fulltext 0 0  :'
+            b'# bzr knit index 8\n'
+            b'\n'
+            b'a-1 fulltext 0 0  :'
             )
         idx.add_records([
             (('a-2',), ['fulltext'], (('a-2',), 0, 0), [('a-1',)]),
             (('a-3',), ['fulltext'], (('a-3',), 0, 0), [('a-2',)]),
             ])
         self.check_file_contents('test.kndx',
-            '# bzr knit index 8\n'
-            '\n'
-            'a-1 fulltext 0 0  :\n'
-            'a-2 fulltext 0 0 0 :\n'
-            'a-3 fulltext 0 0 1 :'
+            b'# bzr knit index 8\n'
+            b'\n'
+            b'a-1 fulltext 0 0  :\n'
+            b'a-2 fulltext 0 0 0 :\n'
+            b'a-3 fulltext 0 0 1 :'
             )
         self.assertEqual({('a-3',), ('a-1',), ('a-2',)}, idx.keys())
         self.assertEqual({
@@ -1849,10 +1849,10 @@ class TestGraphIndexKnit(KnitTests):
             add_callback=self.catch_add, track_external_parent_refs=True)
         self.caught_entries = []
         index.add_records([
-            (('new-key',), 'fulltext,no-eol', (None, 50, 60),
-             [('parent-1',), ('parent-2',)])])
+            ((b'new-key',), b'fulltext,no-eol', (None, 50, 60),
+             [(b'parent-1',), (b'parent-2',)])])
         self.assertEqual(
-            frozenset([('parent-1',), ('parent-2',)]),
+            frozenset([(b'parent-1',), (b'parent-2',)]),
             index.get_missing_parents())
 
     def test_add_unvalidated_index_with_present_external_references(self):
@@ -1866,10 +1866,10 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual(frozenset(), index.get_missing_compression_parents())
 
     def make_new_missing_parent_g_index(self, name):
-        missing_parent = name + '-missing-parent'
+        missing_parent = name.encode('ascii') + b'-missing-parent'
         graph_index = self.make_g_index(name, 2,
-            [((name + 'tip', ), ' 100 78',
-              ([(missing_parent, ), ('ghost', )], [(missing_parent, )]))])
+            [((name + b'tip', ), ' 100 78',
+              ([(missing_parent, ), (b'ghost', )], [(missing_parent, )]))])
         return graph_index
 
     def test_add_mulitiple_unvalidated_indices_with_missing_parents(self):
@@ -1880,18 +1880,18 @@ class TestGraphIndexKnit(KnitTests):
         index.scan_unvalidated_index(g_index_1)
         index.scan_unvalidated_index(g_index_2)
         self.assertEqual(
-            frozenset([('one-missing-parent',), ('two-missing-parent',)]),
+            frozenset([(b'one-missing-parent',), (b'two-missing-parent',)]),
             index.get_missing_compression_parents())
 
     def test_add_mulitiple_unvalidated_indices_with_mutual_dependencies(self):
         graph_index_a = self.make_g_index('one', 2,
-            [(('parent-one', ), ' 100 78', ([('non-compression-parent',)], [])),
-             (('child-of-two', ), ' 100 78',
-              ([('parent-two',)], [('parent-two',)]))])
+            [((b'parent-one', ), b' 100 78', ([(b'non-compression-parent',)], [])),
+             ((b'child-of-two', ), b' 100 78',
+              ([(b'parent-two',)], [(b'parent-two',)]))])
         graph_index_b = self.make_g_index('two', 2,
-            [(('parent-two', ), ' 100 78', ([('non-compression-parent',)], [])),
-             (('child-of-one', ), ' 100 78',
-              ([('parent-one',)], [('parent-one',)]))])
+            [((b'parent-two', ), b' 100 78', ([(b'non-compression-parent',)], [])),
+             ((b'child-of-one', ), b' 100 78',
+              ([(b'parent-one',)], [(b'parent-one',)]))])
         combined = CombinedGraphIndex([graph_index_a, graph_index_b])
         index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(graph_index_a)
@@ -2333,12 +2333,16 @@ class TestStacking(KnitTests):
             self.assertEqual(record.get_bytes_as('fulltext'), result[3])
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
-        self.assertEqual([
-            ("get_parent_map", {key_basis, key_basis_2, key_missing}),
-            # topological is requested from the fallback, because that is what
-            # was requested at the top level.
-            ("get_record_stream", [key_basis_2, key_basis], 'topological', True)],
-            calls)
+        self.assertEqual(2, len(calls))
+        self.assertEqual(
+                ("get_parent_map", {key_basis, key_basis_2, key_missing}),
+                calls[0])
+        # topological is requested from the fallback, because that is what
+        # was requested at the top level.
+        self.assertIn(
+                calls[1], [
+                ("get_record_stream", [key_basis_2, key_basis], 'topological', True),
+                ("get_record_stream", [key_basis, key_basis_2], 'topological', True)])
 
     def test_get_record_stream_unordered_deltas(self):
         # records from the test knit are answered without asking the basis:

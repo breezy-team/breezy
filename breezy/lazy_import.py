@@ -129,6 +129,9 @@ def disallow_proxying():
     ScopeReplacer._should_proxy = False
 
 
+_builtin_import = __import__
+
+
 class ImportReplacer(ScopeReplacer):
     """This is designed to replace only a portion of an import list.
 
@@ -195,12 +198,12 @@ class ImportReplacer(ScopeReplacer):
         children = object.__getattribute__(self, '_import_replacer_children')
         member = object.__getattribute__(self, '_member')
         module_path = object.__getattribute__(self, '_module_path')
-        module_python_path = '.'.join(module_path)
+        name = '.'.join(module_path)
         if member is not None:
-            module = __import__(module_python_path, scope, scope, [member], level=0)
+            module = _builtin_import(name, scope, scope, [member], level=0)
             return getattr(module, member)
         else:
-            module = __import__(module_python_path, scope, scope, [], level=0)
+            module = _builtin_import(name, scope, scope, [], level=0)
             for path in module_path[1:]:
                 module = getattr(module, path)
 

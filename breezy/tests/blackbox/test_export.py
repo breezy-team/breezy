@@ -284,16 +284,16 @@ class TestExport(TestCaseWithTransport):
         # Directory exports
         self.run_bzr('export ../latest')
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('../latest')))
-        self.check_file_contents('../latest/goodbye', 'baz')
+        self.check_file_contents('../latest/goodbye', b'baz')
         self.run_bzr('export ../first -r 1')
         self.assertEqual(['hello'], sorted(os.listdir('../first')))
-        self.check_file_contents('../first/hello', 'foo')
+        self.check_file_contents('../first/hello', b'foo')
 
         # Even with .gz and .bz2 it is still a directory
         self.run_bzr('export ../first.gz -r 1')
-        self.check_file_contents('../first.gz/hello', 'foo')
+        self.check_file_contents('../first.gz/hello', b'foo')
         self.run_bzr('export ../first.bz2 -r 1')
-        self.check_file_contents('../first.bz2/hello', 'foo')
+        self.check_file_contents('../first.bz2/hello', b'foo')
 
     def test_basic_tarfile_export(self):
         self.example_branch()
@@ -366,10 +366,10 @@ class TestExport(TestCaseWithTransport):
         # Use directory exports to test stating the branch location
         self.run_bzr('export latest branch')
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
-        self.check_file_contents('latest/goodbye', 'baz')
+        self.check_file_contents('latest/goodbye', b'baz')
         self.run_bzr('export first -r 1 branch')
         self.assertEqual(['hello'], sorted(os.listdir('first')))
-        self.check_file_contents('first/hello', 'foo')
+        self.check_file_contents('first/hello', b'foo')
 
     def test_export_partial_tree(self):
         tree = self.example_branch()
@@ -404,7 +404,7 @@ class TestExport(TestCaseWithTransport):
         self.example_branch()
         self.run_bzr(['export', '--directory=branch', 'latest'])
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
-        self.check_file_contents('latest/goodbye', 'baz')
+        self.check_file_contents('latest/goodbye', b'baz')
 
     def test_export_uncommitted(self):
         """Test --uncommitted option"""
@@ -412,7 +412,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('branch')
         self.build_tree_contents([('goodbye', b'uncommitted data')])
         self.run_bzr(['export', '--uncommitted', 'latest'])
-        self.check_file_contents('latest/goodbye', 'uncommitted data')
+        self.check_file_contents('latest/goodbye', b'uncommitted data')
 
     def test_export_uncommitted_no_tree(self):
         """Test --uncommitted option only works with a working tree."""

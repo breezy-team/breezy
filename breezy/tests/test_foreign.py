@@ -123,7 +123,7 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         return (revno, revid)
 
 
-class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
+class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
 
     def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
@@ -317,7 +317,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def create_workingtree(self):
         # dirstate requires a ".bzr" entry to exist
-        self.root_transport.put_bytes(".bzr", "foo")
+        self.root_transport.put_bytes(".bzr", b"foo")
         return super(DummyForeignVcsDir, self).create_workingtree()
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
@@ -376,7 +376,7 @@ class DummyForeignProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return {DummyForeignVcsDirFormat()}
+        return [DummyForeignVcsDirFormat()]
 
 
 class ForeignVcsRegistryTests(tests.TestCase):

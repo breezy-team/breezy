@@ -72,10 +72,10 @@ class TestReturnsUnlockable(TestCase):
 class TestMatchesAncestry(TestCaseWithTransport):
 
     def test__str__(self):
-        matcher = MatchesAncestry("A repository", "arevid")
+        matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
             "MatchesAncestry(repository='A repository', "
-            "revision_id='arevid')",
+            "revision_id=%r)" % (b'arevid', ),
             str(matcher))
 
     def test_match(self):
@@ -90,8 +90,8 @@ class TestMatchesAncestry(TestCaseWithTransport):
         self.assertThat([revid1, revid2], m)
         m = MatchesAncestry(branch.repository, revid1)
         self.assertThat([revid1], m)
-        m = MatchesAncestry(branch.repository, "unknown")
-        self.assertThat(["unknown"], m)
+        m = MatchesAncestry(branch.repository, b"unknown")
+        self.assertThat([b"unknown"], m)
 
     def test_mismatch(self):
         b = self.make_branch_builder('.')
@@ -104,7 +104,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision '%s' was ['%s'], expected []" % (
+            "mismatched ancestry for revision %r was [%r], expected []" % (
                 revid1, revid1),
             mismatch.describe())
 
@@ -112,8 +112,8 @@ class TestMatchesAncestry(TestCaseWithTransport):
 class TestHasLayout(TestCaseWithTransport):
 
     def test__str__(self):
-        matcher = HasLayout([("a", "a-id")])
-        self.assertEqual("HasLayout([('a', 'a-id')])", str(matcher))
+        matcher = HasLayout([(b"a", b"a-id")])
+        self.assertEqual("HasLayout(%r)" % ([(b'a', b'a-id')], ), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')
@@ -156,7 +156,7 @@ class TestHasPathRelations(TestCaseWithTransport):
     def test__str__(self):
         t = self.make_branch_and_tree('.')
         matcher = HasPathRelations(t, [("a", "b")])
-        self.assertEqual("HasPathRelations(%r, [('a', 'b')])" % t, str(matcher))
+        self.assertEqual("HasPathRelations(%r, %r)" % (t, [('a', 'b')]), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')

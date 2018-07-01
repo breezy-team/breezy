@@ -21,6 +21,8 @@ from .. import (
     urlutils,
     osutils,
     )
+from ..sixish import text_type
+
 
 class TestMutt(tests.TestCase):
 
@@ -43,7 +45,7 @@ class TestMutt(tests.TestCase):
             ['-s', 'Hi there!', '-a', 'file%', '--', 'jrandom@example.org'],
             cmdline)
         for item in cmdline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
 
@@ -73,7 +75,7 @@ class TestThunderbird(tests.TestCase):
             "subject='Hi there!',to='jrandom@example.org'",
             ], cmdline)
         for item in cmdline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
 
@@ -110,7 +112,7 @@ class TestEmacsMail(tests.TestCase):
         if eclient.elisp_tmp_file is not None:
             self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         for item in commandline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
 
@@ -139,7 +141,7 @@ class TestXDGEmail(tests.TestCase):
              '--attach', 'file%'],
             cmdline)
         for item in cmdline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
 
@@ -163,7 +165,7 @@ class TestEvolution(tests.TestCase):
             ],
             cmdline)
         for item in cmdline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
 
@@ -186,7 +188,7 @@ class TestKMail(tests.TestCase):
             ['-s', 'Hi there!', '--attach', 'file%', 'jrandom@example.org'],
             cmdline)
         for item in cmdline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
 
@@ -219,7 +221,7 @@ class TestClaws(tests.TestCase):
              'file%'],
             cmdline)
         for item in cmdline:
-            self.assertFalse(isinstance(item, unicode),
+            self.assertFalse(isinstance(item, text_type),
                 'Command-line item %r is unicode!' % item)
 
     def test_with_from(self):

@@ -112,7 +112,7 @@ class TestMerge(tests.TestCaseWithTransport):
                      working_dir='a')
         a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1', working_dir='a')
-        self.check_file_contents('a/goodbye', 'quux')
+        self.check_file_contents('a/goodbye', b'quux')
         # Merging a branch pulls its revision into the tree
         b = branch.Branch.open('b')
         b_tip = b.last_revision()
@@ -126,7 +126,7 @@ class TestMerge(tests.TestCaseWithTransport):
                     %(ancestor, b.revno()), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
-        self.check_file_contents('a/goodbye', 'quux')
+        self.check_file_contents('a/goodbye', b'quux')
         a_tree.revert(backups=False)
         self.run_bzr('merge -r revno:%d:../b'%b.revno(), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
@@ -141,13 +141,13 @@ class TestMerge(tests.TestCaseWithTransport):
         # 'show-base' is not set
         self.run_bzr('merge ../other', working_dir='tree',
                      retcode=1)
-        self.assertEqualDiff('a\n'
-                             'B\n'
-                             '<<<<<<< TREE\n'
-                             'C\n'
-                             '=======\n'
-                             'D\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'a\n'
+                             b'B\n'
+                             b'<<<<<<< TREE\n'
+                             b'C\n'
+                             b'=======\n'
+                             b'D\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              tree.get_file_text('fname'))
 
     def test_merge_explicit_reprocess_show_base(self):
@@ -162,14 +162,14 @@ class TestMerge(tests.TestCaseWithTransport):
         # Explicitly disable reprocess
         self.run_bzr('merge ../other --no-reprocess', working_dir='tree',
                      retcode=1)
-        self.assertEqualDiff('a\n'
-                             '<<<<<<< TREE\n'
-                             'B\n'
-                             'C\n'
-                             '=======\n'
-                             'B\n'
-                             'D\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'a\n'
+                             b'<<<<<<< TREE\n'
+                             b'B\n'
+                             b'C\n'
+                             b'=======\n'
+                             b'B\n'
+                             b'D\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              tree.get_file_text('fname'))
 
     def test_merge_override_show_base(self):
@@ -177,17 +177,17 @@ class TestMerge(tests.TestCaseWithTransport):
         # Setting '--show-base' will auto-disable '--reprocess'
         self.run_bzr('merge ../other --show-base', working_dir='tree',
                      retcode=1)
-        self.assertEqualDiff('a\n'
-                             '<<<<<<< TREE\n'
-                             'B\n'
-                             'C\n'
-                             '||||||| BASE-REVISION\n'
-                             'b\n'
-                             'c\n'
-                             '=======\n'
-                             'B\n'
-                             'D\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertEqualDiff(b'a\n'
+                             b'<<<<<<< TREE\n'
+                             b'B\n'
+                             b'C\n'
+                             b'||||||| BASE-REVISION\n'
+                             b'b\n'
+                             b'c\n'
+                             b'=======\n'
+                             b'B\n'
+                             b'D\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              tree.get_file_text('fname'))
 
     def test_merge_with_missing_file(self):
@@ -688,16 +688,16 @@ class TestMerge(tests.TestCaseWithTransport):
         target_bzrdir = source.controldir.sprout('target')
         # Add a non-ancestry tag to source
         builder.build_commit(message="Rev 2a", rev_id=b'rev-2a')
-        source.tags.set_tag('tag-a', 'rev-2a')
-        source.set_last_revision_info(1, 'rev-1')
+        source.tags.set_tag('tag-a', b'rev-2a')
+        source.set_last_revision_info(1, b'rev-1')
         source.get_config_stack().set('branch.fetch_tags', True)
         builder.build_commit(message="Rev 2b", rev_id=b'rev-2b')
         # Merge from source
         self.run_bzr('merge -d target source')
         target = target_bzrdir.open_branch()
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2a', target.tags.lookup_tag('tag-a'))
-        target.repository.get_revision('rev-2a')
+        self.assertEqual(b'rev-2a', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision(b'rev-2a')
 
 
 class TestMergeRevisionRange(tests.TestCaseWithTransport):

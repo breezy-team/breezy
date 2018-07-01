@@ -30,6 +30,7 @@ from breezy.bundle.serializer import binary_diff
 from breezy.bundle.bundle_data import (RevisionInfo, BundleInfo)
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
+from breezy.sixish import text_type
 from breezy.testament import StrictTestament
 from breezy.timestamp import (
     format_highres_date,
@@ -68,25 +69,25 @@ class Action(object):
 
     def write(self, to_file):
         """Write action as to a file"""
-        p_texts = [' '.join([self.name]+self.parameters)]
+        p_texts = [b' '.join([self.name]+self.parameters)]
         for prop in self.properties:
             if len(prop) == 1:
                 p_texts.append(prop[0])
             else:
                 try:
-                    p_texts.append('%s:%s' % prop)
+                    p_texts.append(b'%s:%s' % prop)
                 except:
                     raise repr(prop)
-        text = ['=== ']
-        text.append(' // '.join(p_texts))
+        text = [b'=== ']
+        text.append(b' // '.join(p_texts))
         text_line = ''.join(text).encode('utf-8')
         available = 79
         while len(text_line) > available:
             to_file.write(text_line[:available])
             text_line = text_line[available:]
-            to_file.write('\n... ')
-            available = 79 - len('... ')
-        to_file.write(text_line+'\n')
+            to_file.write(b'\n... ')
+            available = 79 - len(b'... ')
+        to_file.write(text_line+b'\n')
 
 
 class BundleSerializerV08(BundleSerializer):
@@ -127,7 +128,7 @@ class BundleSerializerV08(BundleSerializer):
         """Write the header for the changes"""
         f = self.to_file
         f.write(_get_bundle_header('0.8'))
-        f.write('#\n')
+        f.write(b'#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
         """Write out meta information, with proper indenting, etc.
@@ -141,30 +142,30 @@ class BundleSerializerV08(BundleSerializer):
         if indent < 1:
             raise ValueError('indentation must be greater than 0')
         f = self.to_file
-        f.write('#' + (' ' * indent))
+        f.write(b'#' + (b' ' * indent))
         f.write(key.encode('utf-8'))
         if not value:
             if trailing_space_when_empty and value == '':
-                f.write(': \n')
+                f.write(b': \n')
             else:
-                f.write(':\n')
-        elif isinstance(value, str):
-            f.write(': ')
+                f.write(b':\n')
+        elif isinstance(value, bytes):
+            f.write(b': ')
             f.write(value)
-            f.write('\n')
-        elif isinstance(value, unicode):
-            f.write(': ')
+            f.write(b'\n')
+        elif isinstance(value, text_type):
+            f.write(b': ')
             f.write(value.encode('utf-8'))
-            f.write('\n')
+            f.write(b'\n')
         else:
-            f.write(':\n')
+            f.write(b':\n')
             for entry in value:
-                f.write('#' + (' ' * (indent+2)))
-                if isinstance(entry, str):
+                f.write(b'#' + (b' ' * (indent+2)))
+                if isinstance(entry, bytes):
                     f.write(entry)
                 else:
                     f.write(entry.encode('utf-8'))
-                f.write('\n')
+                f.write(b'\n')
 
     def _write_revisions(self, pb):
         """Write the information for all of the revisions."""
@@ -217,7 +218,7 @@ class BundleSerializerV08(BundleSerializer):
         w('message', rev.message.split('\n'))
         w('committer', rev.committer)
         w('date', format_highres_date(rev.timestamp, rev.timezone))
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
         self._write_delta(rev_tree, base_tree, rev.revision_id, force_binary)
 

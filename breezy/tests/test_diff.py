@@ -326,8 +326,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
         cmd = ['diff', '-u', '--binary', 'old', 'new']
-        with open('old', 'wb') as f: f.write('\x00foobar\n')
-        with open('new', 'wb') as f: f.write('foo\x00bar\n')
+        with open('old', 'wb') as f: f.write(b'\x00foobar\n')
+        with open('new', 'wb') as f: f.write(b'foo\x00bar\n')
         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                      stdin=subprocess.PIPE)
         out, err = pipe.communicate()
@@ -403,8 +403,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
 ''')
 
     def test_diff_rev_tree_rev_tree(self):
-        tree1 = self.b.repository.revision_tree('rev-2')
-        tree2 = self.b.repository.revision_tree('rev-3')
+        tree1 = self.b.repository.revision_tree(b'rev-2')
+        tree2 = self.b.repository.revision_tree(b'rev-3')
         output = get_diff_as_string(tree1, tree2)
         self.assertEqualDiff(output, '''\
 === modified file 'file2'
@@ -418,7 +418,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
 
     def test_diff_add_files(self):
         tree1 = self.b.repository.revision_tree(_mod_revision.NULL_REVISION)
-        tree2 = self.b.repository.revision_tree('rev-1')
+        tree2 = self.b.repository.revision_tree(b'rev-1')
         output = get_diff_as_string(tree1, tree2)
         # the files have the epoch time stamp for the tree in which
         # they don't exist.
@@ -438,8 +438,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
 ''')
 
     def test_diff_remove_files(self):
-        tree1 = self.b.repository.revision_tree('rev-3')
-        tree2 = self.b.repository.revision_tree('rev-4')
+        tree1 = self.b.repository.revision_tree(b'rev-3')
+        tree2 = self.b.repository.revision_tree(b'rev-4')
         output = get_diff_as_string(tree1, tree2)
         # the file has the epoch time stamp for the tree in which
         # it doesn't exist.
@@ -455,8 +455,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
     def test_show_diff_specified(self):
         """A working tree filename can be used to identify a file"""
         self.wt.rename_one('file1', 'file1b')
-        old_tree = self.b.repository.revision_tree('rev-1')
-        new_tree = self.b.repository.revision_tree('rev-4')
+        old_tree = self.b.repository.revision_tree(b'rev-1')
+        new_tree = self.b.repository.revision_tree(b'rev-4')
         out = get_diff_as_string(old_tree, new_tree, specific_files=['file1b'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
@@ -467,8 +467,8 @@ class TestDiffDates(tests.TestCaseWithTransport):
         os.mkdir('dir2')
         self.wt.add(['dir1', 'dir2'])
         self.wt.rename_one('file1', 'dir1/file1')
-        old_tree = self.b.repository.revision_tree('rev-1')
-        new_tree = self.b.repository.revision_tree('rev-4')
+        old_tree = self.b.repository.revision_tree(b'rev-1')
+        new_tree = self.b.repository.revision_tree(b'rev-4')
         out = get_diff_as_string(old_tree, new_tree, specific_files=['dir1'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
@@ -564,12 +564,12 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
 
         tt = transform.TreeTransform(tree)
-        tt.new_file('a', tt.root, 'contents\n', 'a-id', True)
-        tt.new_file('b', tt.root, 'contents\n', 'b-id', False)
-        tt.new_file('c', tt.root, 'contents\n', 'c-id', True)
-        tt.new_file('d', tt.root, 'contents\n', 'd-id', False)
-        tt.new_file('e', tt.root, 'contents\n', 'control-e-id', True)
-        tt.new_file('f', tt.root, 'contents\n', 'control-f-id', False)
+        tt.new_file('a', tt.root, ['contents\n'], b'a-id', True)
+        tt.new_file('b', tt.root, ['contents\n'], b'b-id', False)
+        tt.new_file('c', tt.root, ['contents\n'], b'c-id', True)
+        tt.new_file('d', tt.root, ['contents\n'], b'd-id', False)
+        tt.new_file('e', tt.root, ['contents\n'], b'control-e-id', True)
+        tt.new_file('f', tt.root, ['contents\n'], b'control-f-id', False)
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 
@@ -816,7 +816,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.build_tree(['new-tree/new-dir/'])
         self.new_tree.add('new-dir', b'new-dir-id')
         self.differ.diff(b'new-dir-id', None, 'new-dir')
-        self.assertEqual(self.differ.to_file.getvalue(), '')
+        self.assertEqual(self.differ.to_file.getvalue(), b'')
 
     def create_old_new(self):
         self.build_tree_contents([('old-tree/olddir/',),
@@ -1291,11 +1291,11 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
             _patiencediff_py.PatienceSequenceMatcher_py
 
     def test_patience_unified_diff_files(self):
-        txt_a = ['hello there\n',
-                 'world\n',
-                 'how are you today?\n']
-        txt_b = ['hello there\n',
-                 'how are you today?\n']
+        txt_a = [b'hello there\n',
+                 b'world\n',
+                 b'how are you today?\n']
+        txt_b = [b'hello there\n',
+                 b'how are you today?\n']
         with open('a1', 'wb') as f: f.writelines(txt_a)
         with open('b1', 'wb') as f: f.writelines(txt_b)
 
@@ -1430,7 +1430,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                                      None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
-        self.assertEqual(output.getvalue().rstrip(), 'old new')
+        self.assertEqual(output.getvalue().rstrip(), b'old new')
 
     def test_execute_missing(self):
         diff_obj = diff.DiffFromTool(['a-tool-which-is-unlikely-to-exist'],

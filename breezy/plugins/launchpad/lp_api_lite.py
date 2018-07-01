@@ -36,11 +36,14 @@ except ImportError:
         json = None
 
 import time
-import urllib
 try:
-    import urllib2
-except ImportError:  # python >= 3
+    from urllib.parse import urlencode
+except ImportError:  # python < 3
+    from urllib import urlencode
+try:
     import urllib.request as urllib2
+except ImportError:  # python < 3
+    import urllib2
 
 from ... import (
     revision,
@@ -115,7 +118,7 @@ class LatestPublication(object):
         """Create the full URL that we need to query, including parameters."""
         params = self._query_params()
         # We sort to give deterministic results for testing
-        encoded = urllib.urlencode(sorted(params.items()))
+        encoded = urlencode(sorted(params.items()))
         return '%s?%s' % (self._archive_URL(), encoded)
 
     def _get_lp_info(self):

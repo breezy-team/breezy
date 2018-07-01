@@ -48,6 +48,7 @@ from ..errors import (
     UninitializableFormat,
     )
 from ..revisiontree import RevisionTree
+from ..sixish import text_type
 from ..transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -902,7 +903,7 @@ class RemoteGitBranch(GitBranch):
                 except KeyError:
                     # Let's just hope it's a commit
                     peeled = unpeeled
-            if type(tag_name) is not unicode:
+            if not isinstance(tag_name, text_type):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 

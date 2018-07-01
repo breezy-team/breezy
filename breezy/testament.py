@@ -78,6 +78,7 @@ from .osutils import (
     contains_linebreaks,
     sha_strings,
     )
+from .sixish import text_type
 from .tree import Tree
 
 
@@ -93,7 +94,7 @@ class Testament(object):
     """
 
     long_header = 'bazaar-ng testament version 1\n'
-    short_header = 'bazaar-ng testament short form 1\n'
+    short_header = b'bazaar-ng testament short form 1\n'
     include_root = False
 
     @classmethod
@@ -162,7 +163,10 @@ class Testament(object):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        return unicode(path.replace('\\', '/').replace(' ', '\\ '))
+        if not isinstance(path, text_type):
+            # TODO(jelmer): Clean this up for pad.lv/1696545
+            path = path.decode('ascii')
+        return path.replace(u'\\', u'/').replace(u' ', u'\\ ')
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
@@ -188,13 +192,13 @@ class Testament(object):
         return l
 
     def as_text(self):
-        return ''.join(self.as_text_lines())
+        return b''.join(self.as_text_lines())
 
     def as_short_text(self):
         """Return short digest-based testament."""
         return (self.short_header +
-                'revision-id: %s\n'
-                'sha1: %s\n'
+                b'revision-id: %s\n'
+                b'sha1: %s\n'
                 % (self.revision_id, self.as_sha1()))
 
     def _revprops_to_lines(self):
@@ -222,7 +226,7 @@ class StrictTestament(Testament):
     include_root = False
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
-        l += ' ' + ie.revision
+        l += ' ' + ie.revision.decode('ascii')
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
 
@@ -240,6 +244,9 @@ class StrictTestament3(StrictTestament):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        if path == '':
-            path = '.'
-        return unicode(path.replace('\\', '/').replace(' ', '\\ '))
+        if not isinstance(path, text_type):
+            # TODO(jelmer): Clean this up for pad.lv/1696545
+            path = path.decode('ascii')
+        if path == u'':
+            path = u'.'
+        return path.replace(u'\\', u'/').replace(u' ', u'\\ ')

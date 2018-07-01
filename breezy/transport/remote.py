@@ -24,6 +24,8 @@ from __future__ import absolute_import
 
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
+from io import BytesIO
+
 from .. import (
     config,
     debug,
@@ -34,9 +36,6 @@ from .. import (
     )
 from ..bzr import (
     remote,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from ..bzr.smart import client, medium
 
@@ -172,7 +171,10 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
-        return urlutils.URL._combine_paths(self._parsed_url.path, relpath)
+        path = urlutils.URL._combine_paths(self._parsed_url.path, relpath)
+        if not isinstance(path, bytes):
+            path = path.encode()
+        return path
 
     def _call(self, method, *args):
         resp = self._call2(method, *args)
@@ -303,7 +305,7 @@ class RemoteTransport(transport.ConnectedTransport):
             b'append',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             bytes)
-        if resp[0] == 'appended':
+        if resp[0] == b'appended':
             return int(resp[1])
         raise errors.UnexpectedSmartServerResponse(resp)
 

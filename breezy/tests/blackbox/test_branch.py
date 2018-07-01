@@ -217,9 +217,8 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
         tree_a.commit('commit a-1', rev_id=b'a-1')
-        f = open('repo/a/file', 'ab')
-        f.write('more stuff\n')
-        f.close()
+        with open('repo/a/file', 'ab') as f:
+            f.write(b'more stuff\n')
         tree_a.commit('commit a-2', rev_id=b'a-2')
 
         tree_b = make_shared_tree('b')
@@ -227,18 +226,18 @@ class TestBranch(tests.TestCaseWithTransport):
         tree_b.add('file')
         tree_b.commit('commit b-1', rev_id=b'b-1')
 
-        self.assertTrue(shared_repo.has_revision('a-1'))
-        self.assertTrue(shared_repo.has_revision('a-2'))
-        self.assertTrue(shared_repo.has_revision('b-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-2'))
+        self.assertTrue(shared_repo.has_revision(b'b-1'))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
         self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision('a-1'))
-        self.assertFalse(pushed_repo.has_revision('a-2'))
-        self.assertTrue(pushed_repo.has_revision('b-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-2'))
+        self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_branch_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -588,6 +587,25 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         self.assertLength(0, readvs_of_rix_files)
         self.expectFailure("branching to stacked requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_branch_from_branch_with_ghosts(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        t.set_parent_ids([t.last_revision(), b'ghost'])
+        t.commit(message='add commit with parent')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

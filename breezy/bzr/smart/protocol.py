@@ -174,7 +174,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 raise
             except errors.UnknownSmartMethod as err:
                 protocol_error = errors.SmartProtocolError(
-                    "bad request %r" % (err.verb,))
+                    "bad request '%s'" % (err.verb.decode('ascii'),))
                 failure = request.FailedSmartServerResponse(
                     (b'error', str(protocol_error).encode('utf-8')))
                 self._send_response(failure)
@@ -223,10 +223,10 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self._write_success_or_failure_prefix(response)
         self._write_func(_encode_tuple(args))
         if body is not None:
-            if not isinstance(body, str):
+            if not isinstance(body, bytes):
                 raise ValueError(body)
-            bytes = self._encode_bulk_data(body)
-            self._write_func(bytes)
+            data = self._encode_bulk_data(body)
+            self._write_func(data)
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
@@ -380,27 +380,31 @@ class _StatefulDecoder(object):
 
     def _set_in_buffer(self, new_buf):
         if new_buf is not None:
+            if not isinstance(new_buf, bytes):
+                raise TypeError(new_buf)
             self._in_buffer_list = [new_buf]
             self._in_buffer_len = len(new_buf)
         else:
             self._in_buffer_list = []
             self._in_buffer_len = 0
 
-    def accept_bytes(self, bytes):
+    def accept_bytes(self, new_buf):
         """Decode as much of bytes as possible.
 
-        If 'bytes' contains too much data it will be appended to
+        If 'new_buf' contains too much data it will be appended to
         self.unused_data.
 
         finished_reading will be set when no more data is required.  Further
         data will be appended to self.unused_data.
         """
+        if not isinstance(new_buf, bytes):
+            raise TypeError(new_buf)
         # accept_bytes is allowed to change the state
         self._number_needed_bytes = None
         # lsprof puts a very large amount of time on this specific call for
         # large readv arrays
-        self._in_buffer_list.append(bytes)
-        self._in_buffer_len += len(bytes)
+        self._in_buffer_list.append(new_buf)
+        self._in_buffer_len += len(new_buf)
         try:
             # Run the function for the current state.
             current_state = self.state_accept
@@ -795,9 +799,9 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         """Return protocol version number of the server."""
         self.call(b'hello')
         resp = self.read_response_tuple()
-        if resp == (b'ok', '1'):
+        if resp == (b'ok', b'1'):
             return 1
-        elif resp == (b'ok', '2'):
+        elif resp == (b'ok', b'2'):
             return 2
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
@@ -922,7 +926,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # The state machine is ready to continue decoding, but the
             # exception has interrupted the loop that runs the state machine.
             # So we call accept_bytes again to restart it.
-            self.accept_bytes('')
+            self.accept_bytes(b'')
         except Exception as exception:
             # The decoder itself has raised an exception.  We cannot continue
             # decoding.

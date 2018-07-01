@@ -16,7 +16,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
                   authors=['Vinco <vinco@example.com>'], rev_id=b'4')
         wt.commit(message='5', committer='Ferko <fero@example.com>', rev_id=b'5')
         revs, committers = get_revisions_and_committers(wt.branch.repository,
-                                                        ['1', '2', '3', '4', '5'])
+                                                        [b'1', b'2', b'3', b'4', b'5'])
         fero = ('Fero', 'fero@example.com')
         jano = ('Jano', 'jano@example.com')
         vinco = ('Vinco', 'vinco@example.com')
@@ -30,7 +30,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
         wt.commit(message='2', committer='Fero', rev_id=b'2')
         wt.commit(message='3', committer='Jano', rev_id=b'3')
         revs, committers = get_revisions_and_committers(wt.branch.repository,
-                                                        ['1', '2', '3'])
+                                                        [b'1', b'2', b'3'])
         self.assertEqual({('Fero', ''): ('Fero', ''),
                           ('Jano', ''): ('Jano', ''),
                          }, committers)
@@ -41,11 +41,11 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
         wt.commit(message='2', committer='Fero', rev_id=b'2')
         wt.commit(message='3', committer='FERO', rev_id=b'3')
         revs, committers = get_revisions_and_committers(wt.branch.repository,
-                                                        ['1', '2', '3'])
+                                                        [b'1', b'2', b'3'])
         self.assertEqual({('Fero', ''): ('Fero', ''),
                           ('FERO', ''): ('Fero', ''),
                          }, committers)
-        self.assertEquals(['1', '2', '3'], sorted([r.revision_id for r in revs]))
+        self.assertEquals([b'1', b'2', b'3'], sorted([r.revision_id for r in revs]))
 
 
 class TestCollapseByPerson(TestCase):

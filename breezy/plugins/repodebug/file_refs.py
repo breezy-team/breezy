@@ -32,8 +32,8 @@ class cmd_file_refs(commands.Command):
     takes_options = ['directory']
 
     def run(self, file_id, rev_id, directory=u'.'):
-        file_id = file_id.decode('ascii')
-        rev_id = rev_id.decode('ascii')
+        file_id = file_id.encode()
+        rev_id = rev_id.encode()
         bd, relpath = controldir.ControlDir.open_containing(directory)
         repo = bd.find_repository()
         self.add_cleanup(repo.lock_read().unlock)
@@ -47,4 +47,4 @@ class cmd_file_refs(commands.Command):
                 # This file doesn't even appear in this inv.
                 continue
             if entry.revision == rev_id:
-                self.outf.write(inv.revision_id + '\n')
+                self.outf.write(inv.revision_id + b'\n')

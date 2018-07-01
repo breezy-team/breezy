@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from ...controldir import ControlDir
 from ...commands import Command, Option
 from ... import errors
+from ...sixish import viewvalues
 from ...bzr.vf_search import PendingAncestryResult
 from ...revision import NULL_REVISION
 
@@ -63,7 +64,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
             revs = raw_r.all_revision_ids()
             rev_parents = raw_r.get_graph().get_parent_map(revs)
             needed = set()
-            map(needed.update, rev_parents.itervalues())
+            map(needed.update, viewvalues(rev_parents))
             needed.discard(NULL_REVISION)
             needed = set((rev,) for rev in needed)
             needed = needed - raw_r.inventories.keys()

@@ -29,18 +29,18 @@ from . import TestCase
 
 
 # Sample files
-_sample_file1 = """hello\nworld\r\n"""
+_sample_file1 = b"""hello\nworld\r\n"""
 
 
 class TestEolFilters(TestCase):
 
     def test_to_lf(self):
         result = _to_lf_converter([_sample_file1])
-        self.assertEqual(["hello\nworld\n"], result)
+        self.assertEqual([b"hello\nworld\n"], result)
 
     def test_to_crlf(self):
         result = _to_crlf_converter([_sample_file1])
-        self.assertEqual(["hello\r\nworld\r\n"], result)
+        self.assertEqual([b"hello\r\nworld\r\n"], result)
 
 
 class TestEolRulesSpecifications(TestCase):

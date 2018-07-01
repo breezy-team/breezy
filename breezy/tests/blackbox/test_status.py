@@ -101,7 +101,7 @@ class BranchStatus(TestCaseWithTransport):
         # add a commit to allow showing pending merges.
         wt.commit('create a parent to allow testing merge output')
 
-        wt.add_parent_tree_id('pending@pending-0-0')
+        wt.add_parent_tree_id(b'pending@pending-0-0')
         self.assertStatus([
                 'unknown:\n',
                 '  bye.c\n',
@@ -497,7 +497,7 @@ class BranchStatus(TestCaseWithTransport):
             tree.add(['a'])
             tree.commit('add test file')
             # simulate what happens after a remote push
-            tree.set_last_revision("0")
+            tree.set_last_revision(b"0")
         finally:
             # before run another commands we should unlock tree
             tree.unlock()
@@ -516,12 +516,12 @@ class BranchStatus(TestCaseWithTransport):
         result = self.run_bzr('status')[0]
         self.assertContainsRe(result, "unknown:\n  test1.c\n")
         short_result = self.run_bzr('status --short')[0]
-        self.assertContainsRe(short_result, "\?   test1.c\n")
+        self.assertContainsRe(short_result, "\\?   test1.c\n")
 
         result = self.run_bzr('status test1.c')[0]
         self.assertContainsRe(result, "unknown:\n  test1.c\n")
         short_result = self.run_bzr('status --short test1.c')[0]
-        self.assertContainsRe(short_result, "\?   test1.c\n")
+        self.assertContainsRe(short_result, "\\?   test1.c\n")
 
         result = self.run_bzr('status test1.c~')[0]
         self.assertContainsRe(result, "ignored:\n  test1.c~\n")
@@ -536,7 +536,7 @@ class BranchStatus(TestCaseWithTransport):
         result = self.run_bzr('status test1.c test1.c~ test2.c~')[0]
         self.assertContainsRe(result, "unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
         short_result = self.run_bzr('status --short test1.c test1.c~ test2.c~')[0]
-        self.assertContainsRe(short_result, "\?   test1.c\nI   test1.c~\nI   test2.c~\n")
+        self.assertContainsRe(short_result, "\\?   test1.c\nI   test1.c~\nI   test2.c~\n")
 
     def test_status_write_lock(self):
         """Test that status works without fetching history and
@@ -709,7 +709,7 @@ class TestStatus(TestCaseWithTransport):
         tree.commit('added file')
         unlink('file')
         self.build_tree(['file/'])
-        self.assertStatusContains('kind changed:\n  file \(file => directory\)')
+        self.assertStatusContains('kind changed:\n  file \\(file => directory\\)')
         tree.rename_one('file', 'directory')
         self.assertStatusContains('renamed:\n  file/ => directory/\n' \
                                   'modified:\n  directory/\n')

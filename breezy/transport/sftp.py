@@ -262,7 +262,7 @@ class _SFTPReadvHelper(object):
                 if buffered_len > 0:
                     # We haven't consumed the buffer so far, so put it into
                     # data_chunks, and continue.
-                    buffered = ''.join(buffered_data)
+                    buffered = b''.join(buffered_data)
                     data_chunks.append((input_start, buffered))
                 input_start = start
                 buffered_data = [data]
@@ -273,7 +273,7 @@ class _SFTPReadvHelper(object):
                 # into a single string. We also have the nice property that
                 # when there is only one string ''.join([x]) == x, so there is
                 # no data copying.
-                buffered = ''.join(buffered_data)
+                buffered = b''.join(buffered_data)
                 # Clean out buffered data so that we keep memory
                 # consumption low
                 del buffered_data[:]
@@ -308,7 +308,7 @@ class _SFTPReadvHelper(object):
         # now that the data stream is done, close the handle
         fp.close()
         if buffered_len:
-            buffered = ''.join(buffered_data)
+            buffered = b''.join(buffered_data)
             del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
@@ -691,7 +691,7 @@ class SFTPTransport(ConnectedTransport):
         # api more than once per write_group at the moment so
         # it is a tolerable overhead. Better would be to truncate
         # the file after opening. RBC 20070805
-        self.put_bytes_non_atomic(relpath, "", mode)
+        self.put_bytes_non_atomic(relpath, b"", mode)
         abspath = self._remote_path(relpath)
         # TODO: jam 20060816 paramiko doesn't publicly expose a way to
         #       set the file mode at create time. If it does, use it.

@@ -242,8 +242,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty revision-store directory
         # empty weaves directory
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
@@ -251,8 +252,8 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Check per-file knits.
         branch = control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], ['Nasty-IdC:'], ['file'])
-        tree.put_file_bytes_non_atomic('foo', '')
+        tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
+        tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             '\nfoo fulltext 0 81  :')
@@ -501,7 +502,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
         tree.commit("Dull commit", rev_id="dull")
-        revision_tree = tree.branch.repository.revision_tree('dull')
+        revision_tree = tree.branch.repository.revision_tree(b'dull')
         revision_tree.lock_read()
         try:
             self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
@@ -512,14 +513,14 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
-        revision_tree = tree.branch.repository.revision_tree('dull')
+        revision_tree = tree.branch.repository.revision_tree(b'dull')
         revision_tree.lock_read()
         try:
             revision_tree.get_file_lines(u'', revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         tree.commit("Another dull commit", rev_id=b'dull2')
-        revision_tree = tree.branch.repository.revision_tree('dull2')
+        revision_tree = tree.branch.repository.revision_tree(b'dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
         self.assertEqual('dull',
@@ -555,7 +556,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
             ('add', ('file', b'file-id', 'file', b'content\n'))],
-            revision_id='1')
+            revision_id=b'1')
         builder.build_snapshot([b'1'], [
             ('modify', ('file', b'content-2\n'))],
             revision_id=b'2')
@@ -834,7 +835,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         self.builder.start_series()
         self.builder.build_snapshot(None,
             [('add', ('', 'tree-root', 'directory', None))],
-            revision_id='initial')
+            revision_id=b'initial')
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
 
@@ -843,15 +844,15 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
             sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
 
     def test_simple(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2')
         rev_set = ['revid2']
         self.assertParentIds(['revid1'], rev_set)
 
     def test_not_first_parent(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2')
-        self.builder.build_snapshot(['revid2'], [], revision_id='revid3')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2')
+        self.builder.build_snapshot(['revid2'], [], revision_id=b'revid3')
         rev_set = ['revid3', 'revid2']
         self.assertParentIds(['revid1'], rev_set)
 
@@ -860,27 +861,27 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         self.assertParentIds([], rev_set)
 
     def test_not_null_set(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
         rev_set = [_mod_revision.NULL_REVISION]
         self.assertParentIds([], rev_set)
 
     def test_ghost(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
         rev_set = ['ghost', 'revid1']
         self.assertParentIds(['initial'], rev_set)
 
     def test_ghost_parent(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1', 'ghost'], [], revision_id='revid2')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot(['revid1', 'ghost'], [], revision_id=b'revid2')
         rev_set = ['revid2', 'revid1']
         self.assertParentIds(['ghost', 'initial'], rev_set)
 
     def test_righthand_parent(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2a')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2b')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2a')
+        self.builder.build_snapshot(['revid1'], [], revision_id=b'revid2b')
         self.builder.build_snapshot(['revid2a', 'revid2b'], [],
-                                    revision_id='revid3')
+                                    revision_id=b'revid3')
         rev_set = ['revid3', 'revid2a']
         self.assertParentIds(['revid1', 'revid2b'], rev_set)
 
@@ -900,7 +901,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.start_write_group()
             cleanups.append(repo.commit_write_group)
             # make rev1a: A well-formed revision, containing 'file1'
-            inv = inventory.Inventory(revision_id='rev1a')
+            inv = inventory.Inventory(revision_id=b'rev1a')
             inv.root.revision = 'rev1a'
             self.add_file(repo, inv, 'file1', 'rev1a', [])
             repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
@@ -912,7 +913,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
-            inv = inventory.Inventory(revision_id='rev1b')
+            inv = inventory.Inventory(revision_id=b'rev1b')
             inv.root.revision = 'rev1b'
             self.add_file(repo, inv, 'file1', 'rev1b', [])
             repo.add_inventory('rev1b', inv, [])
@@ -1475,16 +1476,16 @@ class TestPacker(TestCaseWithTransport):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('f', 'f-id', 'file', 'content\n'))],
-            revision_id='A')
+            revision_id=b'A')
         builder.build_snapshot(['A'],
             [('modify', ('f', 'new-content\n'))],
-            revision_id='B')
+            revision_id=b'B')
         builder.build_snapshot(['B'],
             [('modify', ('f', 'third-content\n'))],
-            revision_id='C')
+            revision_id=b'C')
         builder.build_snapshot(['C'],
             [('modify', ('f', 'fourth-content\n'))],
-            revision_id='D')
+            revision_id=b'D')
         b = builder.get_branch()
         b.lock_read()
         builder.finish_series()
@@ -1532,13 +1533,13 @@ class TestGCCHKPacker(TestCaseWithTransport):
         builder.build_snapshot(None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n')),
-            ], revision_id='A')
+            ], revision_id=b'A')
         builder.build_snapshot(['A'], [
             ('add', ('dir', 'dir-id', 'directory', None))],
-            revision_id='B')
+            revision_id=b'B')
         builder.build_snapshot(['B'], [
             ('modify', ('file', 'new content\n'))],
-            revision_id='C')
+            revision_id=b'C')
         builder.finish_series()
         return builder.get_branch()
 
@@ -1554,7 +1555,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
                   pack_name_with_rev_C_content)
         """
         b_source = self.make_abc_branch()
-        b_base = b_source.controldir.sprout('base', revision_id='A').open_branch()
+        b_base = b_source.controldir.sprout('base', revision_id=b'A').open_branch()
         b_stacked = b_base.controldir.sprout('stacked', stacked=True).open_branch()
         b_stacked.lock_write()
         self.addCleanup(b_stacked.unlock)

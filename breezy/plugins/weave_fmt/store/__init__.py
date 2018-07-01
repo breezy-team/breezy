@@ -62,10 +62,6 @@ class Store(object):
         """
         raise NotImplementedError
 
-    def __getitem__(self, fileid):
-        """DEPRECATED. Please use .get(fileid) instead."""
-        raise NotImplementedError
-
     def __iter__(self):
         raise NotImplementedError
 

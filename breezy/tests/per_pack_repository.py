@@ -199,8 +199,8 @@ class TestPackRepository(TestCaseWithTransport):
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # insert some files in obsolete_packs which should be removed by pack.
-        trans.put_bytes('obsolete_packs/foo', '123')
-        trans.put_bytes('obsolete_packs/bar', '321')
+        trans.put_bytes('obsolete_packs/foo', b'123')
+        trans.put_bytes('obsolete_packs/bar', b'321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = self.index_class(trans, 'pack-names', None)
@@ -240,7 +240,7 @@ class TestPackRepository(TestCaseWithTransport):
             # clean way to test both the autopack logic and the normal code
             # path without doing this loop.
             for pos in range(10):
-                revid = str(pos)
+                revid = b'%d' % pos
                 repo.start_write_group()
                 try:
                     inv = inventory.Inventory(revision_id=revid)
@@ -275,7 +275,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))
         # these files are in use by another client and typically can't be deleted
-        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
+        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', b'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
 
@@ -318,10 +318,10 @@ class TestPackRepository(TestCaseWithTransport):
         builder = self.make_branch_builder('source', format=format)
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
         builder.build_snapshot(None, [
-            ('add', ('file', 'file-id', 'file', 'B content\n'))],
+            ('add', ('file', b'file-id', 'file', b'B content\n'))],
             revision_id=b'B-id')
         builder.build_snapshot(None, [
             ('modify', ('file', b'C content\n'))],
@@ -334,17 +334,17 @@ class TestPackRepository(TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(b.repository, revision_id=b'B-id')
-        inv = next(b.repository.iter_inventories(['C-id']))
+        inv = next(b.repository.iter_inventories([b'C-id']))
         repo.start_write_group()
-        repo.add_inventory('C-id', inv, ['B-id'])
+        repo.add_inventory(b'C-id', inv, [b'B-id'])
         repo.commit_write_group()
-        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+        self.assertEqual([(b'A-id',), (b'B-id',), (b'C-id',)],
                          sorted(repo.inventories.keys()))
         repo.pack()
-        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+        self.assertEqual([(b'A-id',), (b'B-id',), (b'C-id',)],
                          sorted(repo.inventories.keys()))
         # Content should be preserved as well
-        self.assertEqual(inv, next(repo.iter_inventories(['C-id'])))
+        self.assertEqual(inv, next(repo.iter_inventories([b'C-id'])))
 
     def test_pack_layout(self):
         # Test that the ordering of revisions in pack repositories is
@@ -387,8 +387,8 @@ class TestPackRepository(TestCaseWithTransport):
 
     def _add_text(self, repo, fileid):
         """Add a text to the repository within a write group."""
-        repo.texts.add_lines((fileid, 'samplerev+'+fileid), [],
-            ['smaplerev+'+fileid])
+        repo.texts.add_lines((fileid, b'samplerev+'+fileid), [],
+            [b'smaplerev+'+fileid])
 
     def test_concurrent_writers_merge_new_packs(self):
         format = self.get_format()
@@ -407,8 +407,8 @@ class TestPackRepository(TestCaseWithTransport):
                 try:
                     r2.start_write_group()
                     try:
-                        self._add_text(r1, 'fileidr1')
-                        self._add_text(r2, 'fileidr2')
+                        self._add_text(r1, b'fileidr1')
+                        self._add_text(r2, b'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
@@ -447,7 +447,7 @@ class TestPackRepository(TestCaseWithTransport):
         try:
             r1.start_write_group()
             try:
-                self._add_text(r1, 'fileidr1')
+                self._add_text(r1, b'fileidr1')
             except:
                 r1.abort_write_group()
                 raise
@@ -473,7 +473,7 @@ class TestPackRepository(TestCaseWithTransport):
                         r1._pack_collection._remove_pack_from_memory(
                             r1._pack_collection.get_pack_by_name(name_to_drop))
                         # in r2, add a pack
-                        self._add_text(r2, 'fileidr2')
+                        self._add_text(r2, b'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
@@ -657,18 +657,18 @@ class TestPackRepository(TestCaseWithTransport):
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
-        add_commit(has_ghost, 'ghost', [])
-        add_commit(has_ghost, 'references', ['ghost'])
-        add_commit(missing_ghost, 'references', ['ghost'])
-        add_commit(has_ghost, 'tip', ['references'])
-        missing_ghost.fetch(has_ghost, 'tip')
+        add_commit(has_ghost, b'ghost', [])
+        add_commit(has_ghost, b'references', [b'ghost'])
+        add_commit(missing_ghost, b'references', [b'ghost'])
+        add_commit(has_ghost, b'tip', [b'references'])
+        missing_ghost.fetch(has_ghost, b'tip')
         # missing ghost now has tip and not ghost.
-        rev = missing_ghost.get_revision('tip')
-        inv = missing_ghost.get_inventory('tip')
+        rev = missing_ghost.get_revision(b'tip')
+        inv = missing_ghost.get_inventory(b'tip')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_revision, 'ghost')
+            missing_ghost.get_revision, b'ghost')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_inventory, 'ghost')
+            missing_ghost.get_inventory, b'ghost')
 
     def make_write_ready_repo(self):
         format = self.get_format()
@@ -782,7 +782,7 @@ class TestPackRepository(TestCaseWithTransport):
             raise TestNotApplicable('no chk_bytes for this repository')
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text = 'a bit of text\n'
+        text = b'a bit of text\n'
         key = ('sha1:' + osutils.sha_string(text),)
         repo.chk_bytes.add_lines(key, (), [text])
         wg_tokens = repo.suspend_write_group()
@@ -803,8 +803,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
         same_repo = repo.controldir.open_repository()
@@ -823,8 +823,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
         same_repo = repo.controldir.open_repository()
@@ -851,8 +851,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())
@@ -1012,10 +1012,10 @@ class TestKeyDependencies(TestCaseWithTransport):
         builder = self.make_branch_builder('source', format=self.get_format())
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
         builder.build_snapshot(
-                ['A-id', 'ghost-id'], [],
+                [b'A-id', b'ghost-id'], [],
                 revision_id=b'B-id', )
         builder.finish_series()
         repo = self.make_repository('target', format=self.get_format())

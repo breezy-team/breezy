@@ -50,7 +50,7 @@ from .pack_repo import (
     Pack,
     NewPack,
     PackRepository,
-    PackRootCommitBuilder,
+    PackCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
     ResumedPack,
@@ -942,7 +942,7 @@ class CHKInventoryRepository(PackRepository):
             raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
-        if basis_inv is None:
+        if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
             if basis_revision_id == _mod_revision.NULL_REVISION:
                 new_inv = self._create_inv_from_null(delta, new_revision_id)
                 if new_inv.root_id is None:
@@ -1356,7 +1356,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     _serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True

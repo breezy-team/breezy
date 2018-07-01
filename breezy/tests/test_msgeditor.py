@@ -142,15 +142,13 @@ added:
     def make_do_nothing_editor(self, basename='fed'):
         if sys.platform == "win32":
             name = basename + '.bat'
-            f = file(name, 'w')
-            f.write('@rem dummy fed')
-            f.close()
+            with open(name, 'w') as f:
+                f.write('@rem dummy fed')
             return name
         else:
             name = basename + '.sh'
-            f = file(name, 'wb')
-            f.write('#!/bin/sh\n')
-            f.close()
+            with open(name, 'wb') as f:
+                f.write(b'#!/bin/sh\n')
             os.chmod(name, 0o755)
             return './' + name
 
@@ -174,30 +172,28 @@ added:
         Sets up BRZ_EDITOR so that if an editor is spawned it will run a
         script that just adds a known message to the start of the file.
         """
-        f = file('fed.py', 'wb')
-        f.write('#!%s\n' % sys.executable)
-        f.write("""\
+        with open('fed.py', 'wb') as f:
+            f.write(b'#!%s\n' % sys.executable)
+            f.write(b"""\
 # coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
-    f = file(fn, 'rb')
+    f = open(fn, 'rb')
     s = f.read()
     f.close()
-    f = file(fn, 'wb')
+    f = open(fn, 'wb')
     f.write('%s')
     f.write(s)
     f.close()
 """ % (message, ))
-        f.close()
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
-            f = file('fed.bat', 'w')
-            f.write("""\
+            with open('fed.bat', 'w') as f:
+                f.write("""\
 @echo off
 "%s" fed.py %%1
 """ % sys.executable)
-            f.close()
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
@@ -264,7 +260,7 @@ if len(sys.argv) == 2:
         self.overrideEnv('EDITOR', 'editor')
 
         conf = config.GlobalStack()
-        conf.store._load_from_string('[DEFAULT]\neditor = config_editor\n')
+        conf.store._load_from_string(b'[DEFAULT]\neditor = config_editor\n')
         conf.store.save()
         editors = list(msgeditor._get_editor())
         editors = [editor for (editor, cfg_src) in editors]
@@ -282,9 +278,8 @@ if len(sys.argv) == 2:
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
         self.overrideEnv('BRZ_EDITOR', 'eacces.py')
-        f = file('eacces.py', 'wb')
-        f.write('# Not a real editor')
-        f.close()
+        with open('eacces.py', 'wb') as f:
+            f.write(b'# Not a real editor')
         # Make the fake editor unreadable (and unexecutable)
         os.chmod('eacces.py', 0)
         # Set $EDITOR so that _run_editor will terminate before trying real
@@ -390,7 +385,7 @@ class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
             raise TestNotApplicable("Workarounds for windows only")
         import subprocess, errno
         ERROR_BAD_EXE_FORMAT = 193
-        file("textfile.txt", "w").close()
+        open("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
         self.assertEqual(e.errno, errno.ENOEXEC)
         self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)

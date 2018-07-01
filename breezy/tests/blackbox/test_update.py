@@ -118,15 +118,13 @@ Updated to revision 1 of branch %s
         self.run_bzr('commit -m add-file checkout')
         self.run_bzr('checkout --lightweight branch checkout2')
         # now alter file in checkout
-        a_file = file('checkout/file', 'wt')
-        a_file.write('Foo')
-        a_file.close()
+        with open('checkout/file', 'wt') as a_file:
+            a_file.write('Foo')
         self.run_bzr('commit -m checnge-file checkout')
         # now checkout2 should be out of date
         # make a local change to file
-        a_file = file('checkout2/file', 'wt')
-        a_file.write('Bar')
-        a_file.close()
+        with open('checkout2/file', 'wt') as a_file:
+            a_file.write('Bar')
         out, err = self.run_bzr('update checkout2', retcode=1)
         self.assertEqualDiff(''' M  file
 Text conflict in file
@@ -148,23 +146,20 @@ Updated to revision 2 of branch %s
         # get an object form of the checkout to manipulate
         wt = workingtree.WorkingTree.open('checkout')
         # change master
-        a_file = file('master/file', 'wt')
-        a_file.write('Foo')
-        a_file.close()
+        with open('master/file', 'wt') as a_file:
+            a_file.write('Foo')
         master.add(['file'])
         master_tip = master.commit('add file')
         # change child
-        a_file = file('child/file_b', 'wt')
-        a_file.write('Foo')
-        a_file.close()
+        with open('child/file_b', 'wt') as a_file:
+            a_file.write('Foo')
         # get an object form of child
         child = workingtree.WorkingTree.open('child')
         child.add(['file_b'])
         child_tip = child.commit('add file_b', local=True)
         # check checkout
-        a_file = file('checkout/file_c', 'wt')
-        a_file.write('Foo')
-        a_file.close()
+        with open('checkout/file_c', 'wt') as a_file:
+            a_file.write('Foo')
         wt.add(['file_c'])
 
         # now, update checkout ->
@@ -324,14 +319,14 @@ $ brz update -r 1
 
         # Switch to o2. file3 was added only in o3 and should be deleted.
         out, err = self.run_bzr('update -r revid:o2')
-        self.assertContainsRe(err, '-D\s+file3')
-        self.assertContainsRe(err, 'All changes applied successfully\.')
+        self.assertContainsRe(err, '-D\\s+file3')
+        self.assertContainsRe(err, 'All changes applied successfully\\.')
         self.assertContainsRe(err, 'Updated to revision 1.1.1 of branch .*')
 
         # Switch back to latest
         out, err = self.run_bzr('update')
-        self.assertContainsRe(err, '\+N\s+file3')
-        self.assertContainsRe(err, 'All changes applied successfully\.')
+        self.assertContainsRe(err, '\\+N\\s+file3')
+        self.assertContainsRe(err, 'All changes applied successfully\\.')
         self.assertContainsRe(err, 'Updated to revision 2 of branch .*')
 
     def test_update_dash_r_in_master(self):
@@ -365,24 +360,21 @@ $ brz update -r revid:m2
 
         tree=self.make_branch_and_tree('.')
 
-        f = open('hello', 'wt')
-        f.write('foo')
-        f.close()
+        with open('hello', 'wt') as f:
+            f.write('foo')
         tree.add('hello')
         tree.commit('fie')
 
-        f = open('hello', 'wt')
-        f.write('fee')
-        f.close()
+        with open('hello', 'wt') as f:
+            f.write('fee')
         tree.commit('fee')
 
         #tree.update() gives no such revision, so ...
         self.run_bzr(['update', '-r1'])
 
         #create conflict
-        f = open('hello', 'wt')
-        f.write('fie')
-        f.close()
+        with open('hello', 'wt') as f:
+            f.write('fie')
 
         out, err = self.run_bzr(['update', '--show-base'], retcode=1)
 

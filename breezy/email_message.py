@@ -69,7 +69,7 @@ class EmailMessage(object):
         self._body = body
         self._parts = []
 
-        if isinstance(to_address, (str, text_type)):
+        if isinstance(to_address, (bytes, text_type)):
             to_address = [ to_address ]
 
         to_addresses = []
@@ -201,7 +201,7 @@ class EmailMessage(object):
         # avoid base64 when it's not necessary in order to be most compatible
         # with the capabilities of the receiving side, we check with encode()
         # and decode() whether the body is actually ascii-only.
-        if isinstance(string_, unicode):
+        if isinstance(string_, text_type):
             try:
                 return (string_.encode('ascii'), 'ascii')
             except UnicodeEncodeError:

@@ -3615,7 +3615,7 @@ class cmd_commit(Command):
         bug_property = bugtracker.encode_fixes_bug_urls(
             self._iter_bug_fix_urls(fixes, tree.branch))
         if bug_property:
-            properties['bugs'] = bug_property
+            properties[u'bugs'] = bug_property
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -6765,15 +6765,8 @@ class cmd_link_tree(Command):
         from .transform import link_tree
         target_tree = WorkingTree.open_containing(".")[0]
         source_tree = WorkingTree.open(location)
-        target_tree.lock_write()
-        try:
-            source_tree.lock_read()
-            try:
-                link_tree(target_tree, source_tree)
-            finally:
-                source_tree.unlock()
-        finally:
-            target_tree.unlock()
+        with target_tree.lock_write(), source_tree.lock_read():
+            link_tree(target_tree, source_tree)
 
 
 class cmd_fetch_ghosts(Command):

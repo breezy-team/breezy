@@ -76,7 +76,7 @@ class CVSProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([CVSDirFormat()])
+        return [CVSDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(CVSProber)

@@ -24,6 +24,7 @@ from .. import (
     osutils,
     tests,
     )
+from ..sixish import text_type
 from . import (
     script,
     scenarios,
@@ -75,7 +76,7 @@ class TestConflicts(tests.TestCaseWithTransport):
                                   ('hello.BASE', b'hello world1'),
                                   ])
         os.mkdir('hello.OTHER')
-        tree.add('hello', 'q')
+        tree.add('hello', b'q')
         l = conflicts.ConflictList([conflicts.TextConflict('hello')])
         l.remove_files(tree)
 
@@ -129,7 +130,7 @@ class TestPerConflict(tests.TestCase):
     scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
 
     def test_stringification(self):
-        text = unicode(self.conflict)
+        text = text_type(self.conflict)
         self.assertContainsString(text, self.conflict.path)
         self.assertContainsString(text.lower(), "conflict")
         self.assertContainsString(repr(self.conflict),
@@ -140,18 +141,18 @@ class TestPerConflict(tests.TestCase):
         o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
         self.assertEqual(o, p)
 
-        self.assertIsInstance(o.path, unicode)
+        self.assertIsInstance(o.path, text_type)
 
         if o.file_id is not None:
-            self.assertIsInstance(o.file_id, str)
+            self.assertIsInstance(o.file_id, bytes)
 
         conflict_path = getattr(o, 'conflict_path', None)
         if conflict_path is not None:
-            self.assertIsInstance(conflict_path, unicode)
+            self.assertIsInstance(conflict_path, text_type)
 
         conflict_file_id = getattr(o, 'conflict_file_id', None)
         if conflict_file_id is not None:
-            self.assertIsInstance(conflict_file_id, str)
+            self.assertIsInstance(conflict_file_id, bytes)
 
     def test_stanzification(self):
         stanza = self.conflict.as_stanza()
@@ -174,7 +175,7 @@ class TestConflictList(tests.TestCase):
 
     def test_stringification(self):
         for text, o in zip(example_conflicts.to_strings(), example_conflicts):
-            self.assertEqual(text, unicode(o))
+            self.assertEqual(text, text_type(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
@@ -303,17 +304,17 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-                ('add', ('', 'root-id', 'directory', ''))],
-                revision_id='start')
+                ('add', (u'', b'root-id', 'directory', ''))],
+                revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
-        builder.build_snapshot(['start'], base_actions, revision_id='base')
+        builder.build_snapshot([b'start'], base_actions, revision_id=b'base')
         # Modify the base content in branch
         actions_other = self._get_actions(self._other['actions'])()
-        builder.build_snapshot(['base'], actions_other, revision_id='other')
+        builder.build_snapshot([b'base'], actions_other, revision_id=b'other')
         # Modify the base content in trunk
         actions_this = self._get_actions(self._this['actions'])()
-        builder.build_snapshot(['base'], actions_this, revision_id='this')
+        builder.build_snapshot([b'base'], actions_this, revision_id=b'this')
         # builder.get_branch() tip is now 'this'
 
         builder.finish_series()
@@ -328,7 +329,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
         wt = b.controldir.sprout('branch').open_workingtree()
-        wt.merge_from_branch(b, 'other')
+        wt.merge_from_branch(b, b'other')
         return wt
 
     def assertConflict(self, wt):
@@ -376,14 +377,14 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
         [
             # File modified on both sides
             (dict(_base_actions='create_file',
-                  _path='file', _file_id='file-id'),
+                  _path='file', _file_id=b'file-id'),
              ('filed_modified_A',
               dict(actions='modify_file_A', check='file_has_content_A')),
              ('file_modified_B',
               dict(actions='modify_file_B', check='file_has_content_B')),),
             # File modified on both sides in dir
             (dict(_base_actions='create_file_in_dir',
-                  _path='dir/file', _file_id='file-id'),
+                  _path='dir/file', _file_id=b'file-id'),
              ('filed_modified_A_in_dir',
               dict(actions='modify_file_A_in_dir',
                    check='file_in_dir_has_content_A')),
@@ -393,30 +394,30 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
             ])
 
     def do_create_file(self, path='file'):
-        return [('add', (path, 'file-id', 'file', 'trunk content\n'))]
+        return [('add', (path, b'file-id', 'file', b'trunk content\n'))]
 
     def do_modify_file_A(self):
-        return [('modify', ('file', 'trunk content\nfeature A\n'))]
+        return [('modify', ('file', b'trunk content\nfeature A\n'))]
 
     def do_modify_file_B(self):
-        return [('modify', ('file', 'trunk content\nfeature B\n'))]
+        return [('modify', ('file', b'trunk content\nfeature B\n'))]
 
     def do_modify_file_A_in_dir(self):
-        return [('modify', ('dir/file', 'trunk content\nfeature A\n'))]
+        return [('modify', ('dir/file', b'trunk content\nfeature A\n'))]
 
     def do_modify_file_B_in_dir(self):
-        return [('modify', ('dir/file', 'trunk content\nfeature B\n'))]
+        return [('modify', ('dir/file', b'trunk content\nfeature B\n'))]
 
     def check_file_has_content_A(self, path='file'):
-        self.assertFileEqual('trunk content\nfeature A\n',
+        self.assertFileEqual(b'trunk content\nfeature A\n',
                              osutils.pathjoin('branch', path))
 
     def check_file_has_content_B(self, path='file'):
-        self.assertFileEqual('trunk content\nfeature B\n',
+        self.assertFileEqual(b'trunk content\nfeature B\n',
                              osutils.pathjoin('branch', path))
 
     def do_create_file_in_dir(self):
-        return [('add', ('dir', 'dir-id', 'directory', '')),
+        return [('add', ('dir', b'dir-id', 'directory', '')),
             ] + self.do_create_file('dir/file')
 
     def check_file_in_dir_has_content_A(self):
@@ -447,14 +448,14 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         [
             # File modified/deleted
             (dict(_base_actions='create_file',
-                  _path='file', _file_id='file-id'),
+                  _path='file', _file_id=b'file-id'),
              ('file_modified',
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
             # File renamed-modified/deleted
             (dict(_base_actions='create_file',
-                  _path='new-file', _file_id='file-id'),
+                  _path='new-file', _file_id=b'file-id'),
              ('file_renamed_and_modified',
               dict(actions='modify_and_rename_file',
                    check='file_renamed_and_more_content')),
@@ -462,7 +463,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='delete_file', check='file_doesnt_exist')),),
             # File modified/deleted in dir
             (dict(_base_actions='create_file_in_dir',
-                  _path='dir/file', _file_id='file-id'),
+                  _path='dir/file', _file_id=b'file-id'),
              ('file_modified_in_dir',
               dict(actions='modify_file_in_dir',
                    check='file_in_dir_has_more_content')),
@@ -472,20 +473,20 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
             ])
 
     def do_create_file(self):
-        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+        return [('add', ('file', b'file-id', 'file', b'trunk content\n'))]
 
     def do_modify_file(self):
-        return [('modify', ('file', 'trunk content\nmore content\n'))]
+        return [('modify', ('file', b'trunk content\nmore content\n'))]
 
     def do_modify_and_rename_file(self):
-        return [('modify', ('new-file', 'trunk content\nmore content\n')),
+        return [('modify', ('new-file', b'trunk content\nmore content\n')),
                 ('rename', ('file', 'new-file'))]
 
     def check_file_has_more_content(self):
-        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+        self.assertFileEqual(b'trunk content\nmore content\n', 'branch/file')
 
     def check_file_renamed_and_more_content(self):
-        self.assertFileEqual('trunk content\nmore content\n', 'branch/new-file')
+        self.assertFileEqual(b'trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
         return [('unversion', 'file')]
@@ -497,14 +498,14 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         self.assertPathDoesNotExist('branch/file')
 
     def do_create_file_in_dir(self):
-        return [('add', ('dir', 'dir-id', 'directory', '')),
-                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+        return [('add', ('dir', b'dir-id', 'directory', '')),
+                ('add', ('dir/file', b'file-id', 'file', b'trunk content\n'))]
 
     def do_modify_file_in_dir(self):
-        return [('modify', ('dir/file', 'trunk content\nmore content\n'))]
+        return [('modify', ('dir/file', b'trunk content\nmore content\n'))]
 
     def check_file_in_dir_has_more_content(self):
-        self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
+        self.assertFileEqual(b'trunk content\nmore content\n', 'branch/dir/file')
 
     def check_file_in_dir_doesnt_exist(self):
         self.assertPathDoesNotExist('branch/dir/file')
@@ -534,55 +535,55 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
             (dict(_base_actions='create_file'),
              ('file_renamed',
               dict(actions='rename_file', check='file_renamed',
-                   path='new-file', file_id='file-id')),
+                   path='new-file', file_id=b'file-id')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
-                   path='<deleted>', file_id='file-id')),),
+                   path='<deleted>', file_id=b'file-id')),),
             # File renamed/deleted in dir
             (dict(_base_actions='create_file_in_dir'),
              ('file_renamed_in_dir',
               dict(actions='rename_file_in_dir', check='file_in_dir_renamed',
-                   path='dir/new-file', file_id='file-id')),
+                   path='dir/new-file', file_id=b'file-id')),
              ('file_deleted',
               dict(actions='delete_file_in_dir', check='file_in_dir_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
-                   path='<deleted>', file_id='file-id')),),
+                   path='<deleted>', file_id=b'file-id')),),
             # File renamed/renamed differently
             (dict(_base_actions='create_file'),
              ('file_renamed',
               dict(actions='rename_file', check='file_renamed',
-                   path='new-file', file_id='file-id')),
+                   path='new-file', file_id=b'file-id')),
              ('file_renamed2',
               dict(actions='rename_file2', check='file_renamed2',
-                   path='new-file2', file_id='file-id')),),
+                   path='new-file2', file_id=b'file-id')),),
             # Dir renamed/deleted
             (dict(_base_actions='create_dir'),
              ('dir_renamed',
               dict(actions='rename_dir', check='dir_renamed',
-                   path='new-dir', file_id='dir-id')),
+                   path='new-dir', file_id=b'dir-id')),
              ('dir_deleted',
               dict(actions='delete_dir', check='dir_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
-                   path='<deleted>', file_id='dir-id')),),
+                   path='<deleted>', file_id=b'dir-id')),),
             # Dir renamed/renamed differently
             (dict(_base_actions='create_dir'),
              ('dir_renamed',
               dict(actions='rename_dir', check='dir_renamed',
-                   path='new-dir', file_id='dir-id')),
+                   path='new-dir', file_id=b'dir-id')),
              ('dir_renamed2',
               dict(actions='rename_dir2', check='dir_renamed2',
-                   path='new-dir2', file_id='dir-id')),),
+                   path='new-dir2', file_id=b'dir-id')),),
             ])
 
     def do_create_file(self):
-        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+        return [('add', ('file', b'file-id', 'file', b'trunk content\n'))]
 
     def do_create_dir(self):
-        return [('add', ('dir', 'dir-id', 'directory', ''))]
+        return [('add', ('dir', b'dir-id', 'directory', ''))]
 
     def do_rename_file(self):
         return [('rename', ('file', 'new-file'))]
@@ -628,8 +629,8 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         self.assertPathDoesNotExist('branch/dir')
 
     def do_create_file_in_dir(self):
-        return [('add', ('dir', 'dir-id', 'directory', '')),
-                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+        return [('add', ('dir', b'dir-id', 'directory', '')),
+                ('add', ('dir/file', b'file-id', 'file', b'trunk content\n'))]
 
     def do_rename_file_in_dir(self):
         return [('rename', ('dir/file', 'dir/new-file'))]
@@ -685,44 +686,44 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
             (dict(_base_actions='nothing'),
              ('filea_created',
               dict(actions='create_file_a', check='file_content_a',
-                   path='file', file_id='file-a-id')),
+                   path='file', file_id=b'file-a-id')),
              ('fileb_created',
               dict(actions='create_file_b', check='file_content_b',
-                   path='file', file_id='file-b-id')),),
+                   path='file', file_id=b'file-b-id')),),
             # File created with different file-ids but deleted on one side
             (dict(_base_actions='create_file_a'),
              ('filea_replaced',
               dict(actions='replace_file_a_by_b', check='file_content_b',
-                   path='file', file_id='file-b-id')),
+                   path='file', file_id=b'file-b-id')),
              ('filea_modified',
               dict(actions='modify_file_a', check='file_new_content',
-                   path='file', file_id='file-a-id')),),
+                   path='file', file_id=b'file-a-id')),),
             ])
 
     def do_nothing(self):
         return []
 
     def do_create_file_a(self):
-        return [('add', ('file', 'file-a-id', 'file', 'file a content\n'))]
+        return [('add', ('file', b'file-a-id', 'file', b'file a content\n'))]
 
     def check_file_content_a(self):
-        self.assertFileEqual('file a content\n', 'branch/file')
+        self.assertFileEqual(b'file a content\n', 'branch/file')
 
     def do_create_file_b(self):
-        return [('add', ('file', 'file-b-id', 'file', 'file b content\n'))]
+        return [('add', ('file', b'file-b-id', 'file', b'file b content\n'))]
 
     def check_file_content_b(self):
-        self.assertFileEqual('file b content\n', 'branch/file')
+        self.assertFileEqual(b'file b content\n', 'branch/file')
 
     def do_replace_file_a_by_b(self):
         return [('unversion', 'file'),
-                ('add', ('file', 'file-b-id', 'file', 'file b content\n'))]
+                ('add', ('file', b'file-b-id', 'file', b'file b content\n'))]
 
     def do_modify_file_a(self):
-        return [('modify', ('file', 'new content\n'))]
+        return [('modify', ('file', b'new content\n'))]
 
     def check_file_new_content(self):
-        self.assertFileEqual('new content\n', 'branch/file')
+        self.assertFileEqual(b'new content\n', 'branch/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._this['path']
@@ -932,23 +933,23 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
             (dict(_base_actions='create_dir1_dir2'),
              ('dir1_into_dir2',
               dict(actions='move_dir1_into_dir2', check='dir1_moved',
-                   dir_id='dir1-id', target_id='dir2-id', xfail=False)),
+                   dir_id=b'dir1-id', target_id='dir2-id', xfail=False)),
              ('dir2_into_dir1',
               dict(actions='move_dir2_into_dir1', check='dir2_moved',
-                   dir_id='dir2-id', target_id='dir1-id', xfail=False))),
+                   dir_id=b'dir2-id', target_id='dir1-id', xfail=False))),
             # Subdirs moved into each other
             (dict(_base_actions='create_dir1_4'),
              ('dir1_into_dir4',
               dict(actions='move_dir1_into_dir4', check='dir1_2_moved',
-                   dir_id='dir1-id', target_id='dir4-id', xfail=True)),
+                   dir_id=b'dir1-id', target_id='dir4-id', xfail=True)),
              ('dir3_into_dir2',
               dict(actions='move_dir3_into_dir2', check='dir3_4_moved',
-                   dir_id='dir3-id', target_id='dir2-id', xfail=True))),
+                   dir_id=b'dir3-id', target_id='dir2-id', xfail=True))),
             ])
 
     def do_create_dir1_dir2(self):
-        return [('add', ('dir1', 'dir1-id', 'directory', '')),
-                ('add', ('dir2', 'dir2-id', 'directory', '')),]
+        return [('add', ('dir1', b'dir1-id', 'directory', '')),
+                ('add', ('dir2', b'dir2-id', 'directory', '')),]
 
     def do_move_dir1_into_dir2(self):
         return [('rename', ('dir1', 'dir2/dir1'))]
@@ -965,10 +966,10 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         self.assertPathExists('branch/dir1/dir2')
 
     def do_create_dir1_4(self):
-        return [('add', ('dir1', 'dir1-id', 'directory', '')),
-                ('add', ('dir1/dir2', 'dir2-id', 'directory', '')),
-                ('add', ('dir3', 'dir3-id', 'directory', '')),
-                ('add', ('dir3/dir4', 'dir4-id', 'directory', '')),]
+        return [('add', ('dir1', b'dir1-id', 'directory', '')),
+                ('add', ('dir1/dir2', b'dir2-id', 'directory', '')),
+                ('add', ('dir3', b'dir3-id', 'directory', '')),
+                ('add', ('dir3/dir4', b'dir4-id', 'directory', '')),]
 
     def do_move_dir1_into_dir4(self):
         return [('rename', ('dir1', 'dir3/dir4/dir1'))]
@@ -993,8 +994,8 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return wt.id2path(self._other['dir_id'])
 
     def assertParentLoop(self, wt, c):
-        self.assertEqual(self._other['dir_id'], c.file_id)
-        self.assertEqual(self._other['target_id'], c.conflict_file_id)
+        self.assertEqual(self._other[b'dir_id'], c.file_id)
+        self.assertEqual(self._other[b'target_id'], c.conflict_file_id)
         # The conflict paths are irrelevant (they are deterministic but not
         # worth checking since they don't provide the needed information
         # anyway)

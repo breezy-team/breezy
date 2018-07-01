@@ -205,7 +205,7 @@ class GitCommitBuilder(CommitBuilder):
         c = Commit()
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
-        c.encoding = self._revprops.pop('git-explicit-encoding', 'utf-8')
+        c.encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
         c.committer = fix_person_identifier(self._committer.encode(c.encoding))
         c.author = fix_person_identifier(self._revprops.pop('author', self._committer).encode(c.encoding))
         if self._revprops:

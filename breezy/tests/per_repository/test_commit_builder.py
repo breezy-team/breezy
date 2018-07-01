@@ -528,7 +528,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     self.assertFalse(version_recorded)
 
             revtree = builder.revision_tree()
-            new_entry = revtree.iter_entries_by_dir(specific_files=[new_name]).next()[1]
+            new_entry = next(revtree.iter_entries_by_dir(specific_files=[new_name]))[1]
 
             if delta_against_basis:
                 if tree.supports_rename_tracking() or name == new_name:
@@ -556,7 +556,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         def change_file():
-            tree.put_file_bytes_non_atomic('file', 'new content')
+            tree.put_file_bytes_non_atomic('file', b'new content')
         self._add_commit_change_check_changed(tree, ('file', 'file'), change_file,
             expect_fs_hash=True)
 

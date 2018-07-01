@@ -33,7 +33,6 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    serializer as _mod_serializer,
     static_tuple,
     tsort,
     ui,
@@ -111,9 +110,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
     """Commit builder implementation for versioned files based repositories.
     """
 
-    # the default CommitBuilder does not manage trees whose root is versioned.
-    _versioned_root = False
-
     def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
@@ -169,9 +165,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             fallback_repo = fallback_repos.pop()
             source = fallback_repo._get_source(self.repository._format)
             sink = self.repository._get_sink()
-            stream = source.get_stream_for_missing_keys(missing_keys)
-            missing_keys = sink.insert_stream_without_locking(stream,
-                self.repository._format)
+            missing_keys = sink.insert_missing_keys(source, missing_keys)
         if missing_keys:
             raise errors.BzrError('Unable to fill in parent inventories for a'
                                   ' stacked branch')
@@ -244,6 +238,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
         :param tree: The tree which is being committed.
         """
+        if self.repository.supports_rich_root():
+            return
         if len(self.parents) == 0:
             raise errors.RootMissing()
         entry = entry_factory['directory'](tree.path2id(''), '',
@@ -559,23 +555,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
         return self.repository.texts.add_lines(
             (file_id, self._new_revision_id), parent_keys, fileobj.readlines(),
             nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
-
-
-class VersionedFileRootCommitBuilder(VersionedFileCommitBuilder):
-    """This commitbuilder actually records the root id"""
-
-    # the root entry gets versioned properly by this builder.
-    _versioned_root = True
-
-    def _require_root_change(self, tree):
-        """Enforce an appropriate root object change.
-
-        This is called once when record_iter_changes is called, if and only if
-        the root was not in the delta calculated by record_iter_changes.
-
-        :param tree: The tree which is being committed.
-        """
-        # versioned roots do not change unless the tree found a change.
 
 
 class VersionedFileRepository(Repository):
@@ -1296,7 +1275,7 @@ class VersionedFileRepository(Repository):
         # always a tricky proposition.
         inventory_cache = lru_cache.LRUCache(10)
         batch_size = 10 # should be ~150MB on a 55K path tree
-        batch_count = len(revision_order) / batch_size + 1
+        batch_count = len(revision_order) // batch_size + 1
         processed_texts = 0
         pb.update(gettext("Calculating text parents"), processed_texts, text_count)
         for offset in range(batch_count):
@@ -1459,14 +1438,14 @@ class VersionedFileRepository(Repository):
                 if order_as_requested:
                     text_chunks[record.key] = chunks
                 else:
-                    yield ''.join(chunks), record.key[-1]
+                    yield b''.join(chunks), record.key[-1]
             else:
                 yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
                 while next_key in text_chunks:
                     chunks = text_chunks.pop(next_key)
-                    yield ''.join(chunks), next_key[-1]
+                    yield b''.join(chunks), next_key[-1]
                     try:
                         next_key = next(key_iter)
                     except StopIteration:
@@ -1735,6 +1714,17 @@ class StreamSink(object):
 
     def __init__(self, target_repo):
         self.target_repo = target_repo
+
+    def insert_missing_keys(self, source, missing_keys):
+        """Insert missing keys from another source.
+
+        :param source: StreamSource to stream from
+        :param missing_keys: Keys to insert
+        :return: keys still missing
+        """
+        stream = source.get_stream_for_missing_keys(missing_keys)
+        return self.insert_stream_without_locking(stream,
+            self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.
@@ -2193,7 +2183,7 @@ class StreamSource(object):
                 delta = inv._make_delta(null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
-            delta_serialized = ''.join(
+            delta_serialized = b''.join(
                 serializer.delta_to_lines(basis_id, key[-1], delta))
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, delta_serialized)

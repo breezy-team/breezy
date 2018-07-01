@@ -17,6 +17,7 @@
 """Tests for the test trees used by the per_tree tests."""
 
 from breezy import errors
+from breezy.sixish import text_type
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
@@ -58,7 +59,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_2_no_parents(self):
@@ -76,7 +77,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('foobar\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'foobar\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b//c'))
 
     def test_abc_tree_content_3_no_parents(self):
@@ -94,7 +95,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('b/c'))
 
     def test_abc_tree_content_4_no_parents(self):
@@ -112,7 +113,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('d'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_5_no_parents(self):
@@ -130,7 +131,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'b', 'd',  'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('bar\n', tree.get_file_text('d'))
+        self.assertEqualDiff(b'bar\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_6_no_parents(self):
@@ -155,7 +156,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in expected_paths],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('e'))
 
     def test_tree_with_subdirs_and_all_content_types(self):
@@ -318,7 +319,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path) # Paths should match
-            self.assertIsInstance(path, unicode)
+            self.assertIsInstance(path, text_type)
             self.assertEqual(expected[1], ie.file_id)
             self.assertIsInstance(ie.file_id, str)
             self.assertEqual(expected[2], ie.parent_id)
@@ -387,7 +388,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path) # Paths should match
-            self.assertIsInstance(path, unicode)
+            self.assertIsInstance(path, text_type)
             self.assertIsInstance(ie.file_id, bytes)
             if wt.supports_setting_file_ids():
                 self.assertEqual(efid, ie.file_id)

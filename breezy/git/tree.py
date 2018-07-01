@@ -59,6 +59,10 @@ from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
+from ..sixish import (
+    text_type,
+    viewitems,
+    )
 
 from .mapping import (
     mode_is_executable,
@@ -315,7 +319,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def all_versioned_paths(self):
         ret = set()
-        todo = set([(store, '', self.tree)])
+        todo = {(self.store, '', self.tree)}
         while todo:
             (store, path, tree_id) = todo.pop()
             if tree_id is None:
@@ -983,7 +987,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         with self.lock_read():
             if index is None:
                 index = self.index
-            for path, value in index.iteritems():
+            for path, value in index.items():
                 yield (posixpath.join(basepath, path), value)
                 (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
                 if S_ISGITLINK(mode):
@@ -1034,9 +1038,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
-        if type(name) is not unicode:
+        if not isinstance(name, text_type):
             raise TypeError(name)
-        if type(path) is not unicode:
+        if not isinstance(path, text_type):
             raise TypeError(path)
         if not isinstance(value, tuple) or len(value) != 10:
             raise TypeError(value)

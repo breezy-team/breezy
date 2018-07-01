@@ -74,7 +74,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({revmap['1']: ('null:',),
+        self.assertEqual({revmap['1']: (b'null:',),
                           revmap['2']: (revmap['1'], ),
                           revmap['1.1.1']: (revmap['1'], ),
                           revmap['3']: (revmap['2'], revmap['1.1.1'], ),
@@ -114,7 +114,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo'), 'hello')
+        self.assertEqual(tree.get_file_text('foo'), b'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
@@ -213,13 +213,13 @@ class TestBranch(per_branch.TestCaseWithBranch):
         if not wt.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable("repository format does not "
                 "support ghosts")
-        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
+        wt.set_parent_ids([b'non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
-        self.assertEqual(['non:existent@rev--ision--0--2'],
+        self.assertEqual([b'non:existent@rev--ision--0--2'],
             wt.get_parent_ids())
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
+        self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
 
@@ -230,15 +230,15 @@ class TestBranch(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable("repository format does not "
                 "support ghosts")
         wt.set_parent_ids([
-                'foo@azkhazan-123123-abcabc',
-                'wibble@fofof--20050401--1928390812',
+                b'foo@azkhazan-123123-abcabc',
+                b'wibble@fofof--20050401--1928390812',
             ],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit("commit from ghost base with one merge")
         # the revision should have been committed with two parents
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(['foo@azkhazan-123123-abcabc',
-            'wibble@fofof--20050401--1928390812'],
+        self.assertEqual([b'foo@azkhazan-123123-abcabc',
+            b'wibble@fofof--20050401--1928390812'],
             rev.parent_ids)
 
     def test_bad_revision(self):

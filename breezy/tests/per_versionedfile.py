@@ -507,7 +507,7 @@ class VersionedFileTestMixIn(object):
                  22: b'd8d8dc49c4bf0bab401e0298bb5ad827768618bb',
                  23: b'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
                  24: b'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
-                 25: 'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
+                 25: b'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
                  }
         for depth in range(26):
             new_version = text_name + b'%d' % depth

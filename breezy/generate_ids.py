@@ -59,7 +59,7 @@ def _next_id_suffix():
     #           suffix forever.
     global _gen_file_id_suffix, _gen_file_id_serial
     if _gen_file_id_suffix is None:
-        _gen_file_id_suffix =  ("-%s-%s-" % (
+        _gen_file_id_suffix = ("-%s-%s-" % (
                 osutils.compact_date(time.time()), osutils.rand_chars(16))
             ).encode("ascii")
     _gen_file_id_serial += 1
@@ -82,7 +82,7 @@ def gen_file_id(name):
     #    filesystems
     # 4) Removing starting '.' characters to prevent the file ids from
     #    being considered hidden.
-    ascii_word_only = _file_id_chars_re.sub('', name.lower()).encode('ascii')
+    ascii_word_only = _file_id_chars_re.sub('', name.lower()).encode('ascii', 'replace')
     short_no_dots = ascii_word_only.lstrip(b'.')[:20]
     return short_no_dots + _next_id_suffix()
 

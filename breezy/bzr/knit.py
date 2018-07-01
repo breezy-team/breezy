@@ -473,7 +473,7 @@ def knit_network_to_record(storage_kind, bytes, line_end):
             [tuple(segment.split(b'\x00')) for segment in parent_line.split(b'\t')
              if segment])
     start = line_end + 1
-    noeol = bytes[start] == b'N'
+    noeol = bytes[start:start+1] == b'N'
     if 'ft' in storage_kind:
         method = 'fulltext'
     else:
@@ -797,7 +797,7 @@ class KnitPlainFactory(_KnitFactory):
         while cur < num_lines:
             header = lines[cur]
             cur += 1
-            start, end, c = [int(n.decode('ascii')) for n in header.split(b',')]
+            start, end, c = [int(n) for n in header.split(b',')]
             yield start, end, c, lines[cur:cur+c]
             cur += c
 
@@ -1140,7 +1140,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
-        if not all([isinstance(x, bytes) or x is None for x in key]):
+        if not all(isinstance(x, bytes) or x is None for x in key):
             raise TypeError(key)
         version_id = key[-1]
         if version_id is not None:
@@ -2216,8 +2216,8 @@ class _ContentMapGenerator(object):
         else:
             lines.append(b'')
         # then the list of keys
-        lines.append(b'\t'.join([b'\x00'.join(key) for key in self.keys
-            if key not in self.nonlocal_keys]))
+        lines.append(b'\t'.join(b'\x00'.join(key) for key in self.keys
+            if key not in self.nonlocal_keys))
         # then the _raw_record_map in serialised form:
         map_byte_list = []
         # for each item in the map:
@@ -2245,9 +2245,9 @@ class _ContentMapGenerator(object):
                 next_bytes = b'\x00'.join(next)
             else:
                 next_bytes = b''
-            map_byte_list.append(b'\n'.join([
-                key_bytes, parent_bytes, method_bytes, noeol_bytes, next_bytes,
-                b'%d' % len(record_bytes), record_bytes]))
+            map_byte_list.append(b'\n'.join(
+                [key_bytes, parent_bytes, method_bytes, noeol_bytes, next_bytes,
+                 b'%d' % len(record_bytes), record_bytes]))
         map_bytes = b''.join(map_byte_list)
         lines.append(map_bytes)
         bytes = b'\n'.join(lines)
@@ -2345,8 +2345,8 @@ class _NetworkContentMapGenerator(_ContentMapGenerator):
                 parents = None
             else:
                 parents = tuple(
-                    [tuple(segment.split(b'\x00')) for segment in line.split(b'\t')
-                     if segment])
+                    tuple(segment.split(b'\x00')) for segment in line.split(b'\t')
+                     if segment)
             self.global_map[key] = parents
             start = line_end + 1
             # one line with method
@@ -2750,13 +2750,10 @@ class _KndxIndex(object):
                 self._filename = prefix
                 try:
                     path = self._mapper.map(prefix) + '.kndx'
-                    fp = self._transport.get(path)
-                    try:
+                    with self._transport.get(path) as fp:
                         # _load_data may raise NoSuchFile if the target knit is
                         # completely empty.
                         _load_data(self, fp)
-                    finally:
-                        fp.close()
                     self._kndx_cache[prefix] = (self._cache, self._history)
                     del self._cache
                     del self._filename
@@ -2917,17 +2914,17 @@ class _KnitGraphIndex(object):
                 if key_dependencies is not None:
                     key_dependencies.add_references(key, parents)
             index, pos, size = access_memo
-            if 'no-eol' in options:
-                value = 'N'
+            if b'no-eol' in options:
+                value = b'N'
             else:
-                value = ' '
-            value += "%d %d" % (pos, size)
+                value = b' '
+            value += b"%d %d" % (pos, size)
             if not self._deltas:
-                if 'line-delta' in options:
+                if b'line-delta' in options:
                     raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
             if self._parents:
                 if self._deltas:
-                    if 'line-delta' in options:
+                    if b'line-delta' in options:
                         node_refs = (parents, (parents[0],))
                         if missing_compression_parents:
                             compression_parents.add(parents[0])
@@ -2949,7 +2946,7 @@ class _KnitGraphIndex(object):
                 # Sometimes these are passed as a list rather than a tuple
                 passed = static_tuple.as_tuples(keys[key])
                 passed_parents = passed[1][:1]
-                if (value[0] != keys[key][0][0] or
+                if (value[0:1] != keys[key][0][0:1] or
                     parents != passed_parents):
                     node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(self, "inconsistent details in add_records"
@@ -3120,7 +3117,7 @@ class _KnitGraphIndex(object):
         """
         node = self._get_node(key)
         options = [self._get_method(node).encode('ascii')]
-        if node[2][0] == b'N':
+        if node[2][0:1] == b'N':
             options.append(b'no-eol')
         return options
 

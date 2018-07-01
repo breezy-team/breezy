@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from io import BytesIO
+import itertools
 
 from dulwich.errors import (
     NotCommitError,
@@ -30,6 +31,7 @@ from dulwich.protocol import (
     CAPABILITY_THIN_PACK,
     ZERO_SHA,
     )
+from dulwich.refs import SYMREF
 from dulwich.walk import Walker
 
 from ..errors import (
@@ -51,6 +53,7 @@ from .. import (
     trace,
     ui,
     )
+from ..sixish import viewvalues
 
 from .errors import (
     NoPushSupport,
@@ -70,6 +73,7 @@ from .push import (
     remote_divergence,
     )
 from .refs import (
+    get_refs_container,
     is_tag,
     )
 from .repository import (
@@ -130,7 +134,10 @@ class InterToGitRepository(InterRepository):
             for revid in revision_ids:
                 if revid == NULL_REVISION:
                     continue
-                git_sha = self.source_store._lookup_revision_sha1(revid)
+                try:
+                    git_sha = self.source_store._lookup_revision_sha1(revid)
+                except KeyError:
+                    raise NoSuchRevision(revid, self.source)
                 git_shas.append(git_sha)
             walker = Walker(self.source_store,
                 include=git_shas, exclude=[
@@ -141,7 +148,7 @@ class InterToGitRepository(InterRepository):
                 for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
                     if kind == "commit":
                         missing_revids.add(type_data[0])
-        return self.source.revision_ids_to_search_result(missing_revids)
+            return self.source.revision_ids_to_search_result(missing_revids)
 
     def _warn_slow(self):
         if not config.GlobalConfig().suppress_warning('slow_intervcs_push'):
@@ -230,19 +237,19 @@ class InterToLocalGitRepository(InterToGitRepository):
         refs = {}
         for k in self.target._git.refs.allkeys():
             try:
-                v = self.target._git.refs[k]
+                v = self.target._git.refs.read_ref(k)
             except KeyError:
                 # broken symref?
                 continue
-            try:
-                for (kind, type_data) in self.source_store.lookup_git_sha(v):
-                    if kind == "commit" and self.source.has_revision(type_data[0]):
-                        revid = type_data[0]
-                        break
-                else:
-                    revid = None
-            except KeyError:
-                revid = None
+            revid = None
+            if not v.startswith(SYMREF):
+                try:
+                    for (kind, type_data) in self.source_store.lookup_git_sha(v):
+                        if kind == "commit" and self.source.has_revision(type_data[0]):
+                            revid = type_data[0]
+                            break
+                except KeyError:
+                    pass
             bzr_refs[k] = (v, revid)
         return bzr_refs
 
@@ -252,16 +259,22 @@ class InterToLocalGitRepository(InterToGitRepository):
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_objects(
-                [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith('ref:')], lossy=lossy)
+                [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith(SYMREF)], lossy=lossy)
             for name, (gitid, revid) in new_refs.iteritems():
                 if gitid is None:
                     try:
                         gitid = revidmap[revid][0]
                     except KeyError:
                         gitid = self.source_store._lookup_revision_sha1(revid)
-                if len(gitid) != 40 and not gitid.startswith('ref: '):
-                    raise AssertionError("invalid ref contents: %r" % gitid)
-                self.target_refs[name] = gitid
+                if gitid.startswith(SYMREF):
+                    self.target_refs.set_symbolic_ref(name, gitid[len(SYMREF):])
+                else:
+                    try:
+                        old_git_id = old_refs[name][0]
+                    except KeyError:
+                        self.target_refs.add_if_new(name, gitid)
+                    else:
+                        self.target_refs.set_if_equals(name, old_git_id, gitid)
         return revidmap, old_refs, new_refs
 
     def fetch_objects(self, revs, lossy, limit=None):
@@ -356,6 +369,20 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 isinstance(target, RemoteGitRepository))
 
 
+class GitSearchResult(object):
+
+    def __init__(self, start, exclude, keys):
+        self._start = start
+        self._exclude = exclude
+        self._keys = keys
+
+    def get_keys(self):
+        return self._keys
+
+    def get_recipe(self):
+        return ('search', self._start, self._exclude, len(self._keys))
+
+
 class InterFromGitRepository(InterRepository):
 
     _matching_repo_format = GitRepositoryFormat()
@@ -395,26 +422,24 @@ class InterFromGitRepository(InterRepository):
             limit=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
-        git_shas = []
-        todo = []
-        if revision_ids:
-            todo.extend(revision_ids)
-        if if_present_ids:
-            todo.extend(revision_ids)
-        with self.lock_read():
-            for revid in revision_ids:
-                if revid == NULL_REVISION:
-                    continue
-                git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-                git_shas.append(git_sha)
-            walker = Walker(self.source._git.object_store,
-                include=git_shas, exclude=[
-                    sha for sha in self.target.controldir.get_refs_container().as_dict().values()
-                    if sha != ZERO_SHA])
-            missing_revids = set()
-            for entry in walker:
-                missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
-            return self.source.revision_ids_to_search_result(missing_revids)
+        if revision_ids is None and if_present_ids is None:
+            todo = set(self.source.all_revision_ids())
+        else:
+            todo = set()
+            if revision_ids is not None:
+                for revid in revision_ids:
+                    if not self.source.has_revision(revid):
+                        raise NoSuchRevision(revid, self.source)
+                todo.update(revision_ids)
+            if if_present_ids is not None:
+                todo.update(if_present_ids)
+        result_set = todo.difference(self.target.all_revision_ids())
+        result_parents = set(itertools.chain.from_iterable(viewvalues(
+            self.source.get_graph().get_parent_map(result_set))))
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        return GitSearchResult(start_keys, exclude_keys, result_set)
 
 
 class InterGitNonGitRepository(InterFromGitRepository):

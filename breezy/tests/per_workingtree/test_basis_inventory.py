@@ -38,7 +38,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 % (self.workingtree_format,))
 
         b = t.branch
-        with open('a', 'wb') as f: f.write('a\n')
+        with open('a', 'wb') as f: f.write(b'a\n')
         t.add('a')
         r1 = t.commit('a')
 
@@ -50,7 +50,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         store_inv = b.repository.get_inventory(r1)
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
-        with open('b', 'wb') as f: f.write('b\n')
+        with open('b', 'wb') as f: f.write(b'b\n')
         t.add('b')
         r2 = t.commit('b')
 

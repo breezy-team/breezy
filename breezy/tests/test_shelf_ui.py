@@ -550,7 +550,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         manager = tree.get_shelf_manager()
         shelf_file = manager.new_shelf()[1]
         try:
-            shelf_file.write('garbage')
+            shelf_file.write(b'garbage')
         finally:
             shelf_file.close()
         unshelver = shelf_ui.Unshelver.from_args(directory='tree',
@@ -566,7 +566,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         manager = tree.get_shelf_manager()
         shelf_file = manager.new_shelf()[1]
         try:
-            shelf_file.write('garbage')
+            shelf_file.write(b'garbage')
         finally:
             shelf_file.close()
         self.assertRaises(shelf.InvalidShelfId,

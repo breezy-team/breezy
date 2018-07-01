@@ -25,6 +25,8 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
+from io import BytesIO
+import tarfile
 import zlib
 
 from breezy import (
@@ -121,9 +123,9 @@ class TestByteStreamToStream(tests.TestCase):
 
     def test_repeated_substreams_same_kind_are_one_stream(self):
         # Make a stream - an iterable of bytestrings.
-        stream = [('text', [versionedfile.FulltextContentFactory(('k1',), None,
-            None, 'foo')]), ('text', [
-            versionedfile.FulltextContentFactory(('k2',), None, None, 'bar')])]
+        stream = [('text', [versionedfile.FulltextContentFactory((b'k1',), None,
+            None, b'foo')]), ('text', [
+            versionedfile.FulltextContentFactory((b'k2',), None, None, b'bar')])]
         fmt = controldir.format_registry.get('pack-0.92')().repository_format
         bytes = smart_repo._stream_to_byte_stream(stream, fmt)
         streams = []
@@ -141,11 +143,11 @@ class TestSmartServerResponse(tests.TestCase):
     def test__eq__(self):
         self.assertEqual(smart_req.SmartServerResponse((b'ok', )),
             smart_req.SmartServerResponse((b'ok', )))
-        self.assertEqual(smart_req.SmartServerResponse((b'ok', ), 'body'),
-            smart_req.SmartServerResponse((b'ok', ), 'body'))
+        self.assertEqual(smart_req.SmartServerResponse((b'ok', ), b'body'),
+            smart_req.SmartServerResponse((b'ok', ), b'body'))
         self.assertNotEqual(smart_req.SmartServerResponse((b'ok', )),
             smart_req.SmartServerResponse((b'notok', )))
-        self.assertNotEqual(smart_req.SmartServerResponse((b'ok', ), 'body'),
+        self.assertNotEqual(smart_req.SmartServerResponse((b'ok', ), b'body'),
             smart_req.SmartServerResponse((b'ok', )))
         self.assertNotEqual(None,
             smart_req.SmartServerResponse((b'ok', )))
@@ -167,25 +169,25 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
     def test_translate_client_path(self):
         transport = self.get_transport()
         request = smart_req.SmartServerRequest(transport, 'foo/')
-        self.assertEqual('./', request.translate_client_path('foo/'))
+        self.assertEqual('./', request.translate_client_path(b'foo/'))
         self.assertRaises(
-            urlutils.InvalidURLJoin, request.translate_client_path, 'foo/..')
+            urlutils.InvalidURLJoin, request.translate_client_path, b'foo/..')
         self.assertRaises(
-            errors.PathNotChild, request.translate_client_path, '/')
+            errors.PathNotChild, request.translate_client_path, b'/')
         self.assertRaises(
-            errors.PathNotChild, request.translate_client_path, 'bar/')
-        self.assertEqual('./baz', request.translate_client_path('foo/baz'))
-        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
-        self.assertEqual('./' + urlutils.escape(e_acute),
-                         request.translate_client_path('foo/' + e_acute))
+            errors.PathNotChild, request.translate_client_path, b'bar/')
+        self.assertEqual('./baz', request.translate_client_path(b'foo/baz'))
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
+        self.assertEqual(u'./' + urlutils.escape(e_acute),
+                         request.translate_client_path(b'foo/' + e_acute.encode('utf-8')))
 
     def test_translate_client_path_vfs(self):
         """VfsRequests receive escaped paths rather than raw UTF-8."""
         transport = self.get_transport()
-        request = vfs.VfsRequest(transport, 'foo/')
-        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
-        escaped = urlutils.escape('foo/' + e_acute)
-        self.assertEqual('./' + urlutils.escape(e_acute),
+        request = vfs.VfsRequest(transport, b'foo/')
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
+        escaped = urlutils.escape(u'foo/' + e_acute)
+        self.assertEqual(b'./' + urlutils.escape(e_acute).encode('utf-8'),
                          request.translate_client_path(escaped))
 
     def test_transport_from_client_path(self):
@@ -210,8 +212,8 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         expected = smart_req.SuccessfulSmartServerResponse(
             (local_result.network_name(),
             local_result.repository_format.network_name(),
-            ('branch', local_result.get_branch_format().network_name())))
-        self.assertEqual(expected, request.execute('', 'False'))
+            (b'branch', local_result.get_branch_format().network_name())))
+        self.assertEqual(expected, request.execute(b'', b'False'))
 
     def test_cloning_metadir_reference(self):
         """The request fails when bzrdir contains a branch reference."""
@@ -228,7 +230,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
         request = request_class(backing)
         expected = smart_req.FailedSmartServerResponse((b'BranchReference',))
-        self.assertEqual(expected, request.execute('', 'False'))
+        self.assertEqual(expected, request.execute(b'', b'False'))
 
 
 class TestSmartServerBzrDirRequestCloningMetaDir(
@@ -240,12 +242,12 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         request = smart_dir.SmartServerBzrDirRequestCheckoutMetaDir(
             backing)
         branch = self.make_branch('.', format='2a')
-        response = request.execute('')
+        response = request.execute(b'')
         self.assertEqual(
             smart_req.SmartServerResponse(
-                ('Bazaar-NG meta directory, format 1\n',
-                 'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
-                 'Bazaar Branch Format 7 (needs bzr 1.6)\n')),
+                (b'Bazaar-NG meta directory, format 1\n',
+                 b'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+                 b'Bazaar Branch Format 7 (needs bzr 1.6)\n')),
             response)
 
 
@@ -260,7 +262,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((b'ok',))
-        self.assertEqual(expected, request.execute('', None))
+        self.assertEqual(expected, request.execute(b'', None))
 
     def test_destroy_branch_named(self):
         """A named branch can be removed."""
@@ -270,7 +272,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((b'ok',))
-        self.assertEqual(expected, request.execute('', "branchname"))
+        self.assertEqual(expected, request.execute(b'', "branchname"))
 
     def test_destroy_branch_missing(self):
         """An error is raised if the branch didn't exist."""
@@ -279,7 +281,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
         expected = smart_req.FailedSmartServerResponse((b'nobranch',), None)
-        self.assertEqual(expected, request.execute('', "branchname"))
+        self.assertEqual(expected, request.execute(b'', b"branchname"))
 
 
 class TestSmartServerBzrDirRequestHasWorkingTree(
@@ -316,7 +318,7 @@ class TestSmartServerBzrDirRequestDestroyRepository(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((b'ok',))
-        self.assertEqual(expected, request.execute(''))
+        self.assertEqual(expected, request.execute(b''))
 
     def test_destroy_repository_missing(self):
         """An error is raised if the repository didn't exist."""
@@ -325,8 +327,8 @@ class TestSmartServerBzrDirRequestDestroyRepository(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
         request = request_class(backing)
         expected = smart_req.FailedSmartServerResponse(
-            ('norepository',), None)
-        self.assertEqual(expected, request.execute(''))
+            (b'norepository',), None)
+        self.assertEqual(expected, request.execute(b''))
 
 
 class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
@@ -342,8 +344,8 @@ class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
         reference_format = reference_bzrdir_format.repository_format
         network_name = reference_format.network_name()
         expected = smart_req.SuccessfulSmartServerResponse(
-            ('ok', 'no', 'no', 'no', network_name))
-        self.assertEqual(expected, request.execute('', network_name, 'True'))
+            (b'ok', b'no', b'no', b'no', network_name))
+        self.assertEqual(expected, request.execute(b'', network_name, b'True'))
 
 
 class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
@@ -355,7 +357,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         request = self._request_class(backing)
         self.make_controldir('.')
         self.assertEqual(smart_req.SmartServerResponse((b'norepository', )),
-            request.execute(''))
+            request.execute(b''))
 
     def test_nonshared_repository(self):
         # nonshared repositorys only allow 'find' to return a handle when the
@@ -410,12 +412,12 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         self.assertEqual(result, request.execute(b''))
         self.make_controldir('subdir')
         result2 = smart_req.SmartServerResponse(
-            result.args[0:1] + ('..', ) + result.args[2:])
+            result.args[0:1] + (b'..', ) + result.args[2:])
         self.assertEqual(result2,
             request.execute(b'subdir'))
         self.make_controldir('subdir/deeper')
         result3 = smart_req.SmartServerResponse(
-            result.args[0:1] + ('../..', ) + result.args[2:])
+            result.args[0:1] + (b'../..', ) + result.args[2:])
         self.assertEqual(result3,
             request.execute(b'subdir/deeper'))
 
@@ -460,7 +462,7 @@ class TestSmartServerBzrDirRequestGetConfigFile(
         dir = self.make_controldir('.')
         request_class = smart_dir.SmartServerBzrDirRequestConfigFile
         request = request_class(backing)
-        expected = smart_req.SuccessfulSmartServerResponse((), '')
+        expected = smart_req.SuccessfulSmartServerResponse((), b'')
         self.assertEqual(expected, request.execute(b''))
 
 
@@ -474,7 +476,7 @@ class TestSmartServerBzrDirRequestGetBranches(
         request_class = smart_dir.SmartServerBzrDirRequestGetBranches
         request = request_class(backing)
         local_result = bencode.bencode(
-            {"": ("branch", branch._format.network_name())})
+            {b"": (b"branch", branch._format.network_name())})
         expected = smart_req.SuccessfulSmartServerResponse(
             (b"success", ), local_result)
         self.assertEqual(expected, request.execute(b''))
@@ -534,8 +536,8 @@ class TestSmartServerRequestBzrDirInitializeEx(
         name = self.make_controldir('reference')._format.network_name()
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
         self.assertEqual(
-            smart_req.SmartServerResponse((b'', '', '', '', '', '', name,
-                                           'False', '', '', '')),
+            smart_req.SmartServerResponse((b'', b'', b'', b'', b'', b'', name,
+                                           b'False', b'', b'', b'')),
             request.execute(name, b'', b'True', b'False', b'False', b'', b'', b'', b'',
                             b'False'))
         made_dir = controldir.ControlDir.open_from_transport(backing)
@@ -626,7 +628,7 @@ class TestSmartServerRequestOpenBzrDir_2_1_disk(TestCaseWithChrootedTransport):
         bd.create_repository()
         bd.create_branch()
         bd.create_workingtree()
-        self.assertEqual(smart_req.SmartServerResponse((b'yes', 'yes')),
+        self.assertEqual(smart_req.SmartServerResponse((b'yes', b'yes')),
             request.execute(b''))
 
 
@@ -645,7 +647,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranch(backing)
         self.make_branch('.')
-        self.assertEqual(smart_req.SmartServerResponse((b'ok', '')),
+        self.assertEqual(smart_req.SmartServerResponse((b'ok', b'')),
             request.execute(b''))
 
     def test_branch_reference(self):
@@ -656,8 +658,8 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
-            checkout.controldir)
-        self.assertFileEqual(reference_url, b'reference/.bzr/branch/location')
+            checkout.controldir).encode('utf-8')
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SmartServerResponse((b'ok', reference_url)),
             request.execute(b'reference'))
 
@@ -697,8 +699,8 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
-            checkout.controldir)
-        self.assertFileEqual(reference_url, b'reference/.bzr/branch/location')
+            checkout.controldir).encode('utf-8')
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
                 (b'ref', reference_url)),
                 request.execute(b'reference'))
@@ -760,8 +762,8 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
-            checkout.controldir)
-        self.assertFileEqual(reference_url, b'reference/.bzr/branch/location')
+            checkout.controldir).encode('utf-8')
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
                 (b'ref', reference_url)),
                          request.execute(b'reference'))
@@ -783,7 +785,7 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
             request.teardown_jail()
         expected_format = feature._format.network_name()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
-                ('branch', expected_format)),
+                (b'branch', expected_format)),
                          response)
         self.assertLength(1, opened_branches)
 
@@ -839,7 +841,7 @@ class TestSmartServerBranchRequest(tests.TestCaseWithMemoryTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference', lightweight=True)
         self.assertRaises(errors.NotBranchError,
-            request.execute, 'checkout')
+            request.execute, b'checkout')
 
 
 class TestSmartServerBranchRequestLastRevisionInfo(
@@ -859,7 +861,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(
         request = smart_branch.SmartServerBranchRequestLastRevisionInfo(backing)
         branch = self.make_branch('.')
         def last_revision_info():
-            raise errors.GhostRevisionsHaveNoRevno('revid1', 'revid2')
+            raise errors.GhostRevisionsHaveNoRevno(b'revid1', b'revid2')
         self.overrideAttr(branch, 'last_revision_info', last_revision_info)
         self.assertRaises(errors.GhostRevisionsHaveNoRevno,
             request.do_with_branch, branch)
@@ -901,7 +903,7 @@ class TestSmartServerBranchRequestRevisionIdToRevno(
         r1 = tree.commit('1st commit')
         tree.unlock()
         self.assertEqual(
-            smart_req.SmartServerResponse((b'ok', '1')),
+            smart_req.SmartServerResponse((b'ok', b'1')),
             request.execute(b'', r1))
 
     def test_not_found(self):
@@ -924,7 +926,7 @@ class TestSmartServerBranchRequestGetConfigFile(
         request = smart_branch.SmartServerBranchGetConfigFile(backing)
         branch = self.make_branch('.')
         # there should be no file by default
-        content = ''
+        content = b''
         self.assertEqual(smart_req.SmartServerResponse((b'ok', ), content),
             request.execute(b''))
 
@@ -1002,7 +1004,7 @@ class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
         # A dict with non-ascii keys and values to exercise unicode
         # roundtripping.
         self.encoded_value_dict = (
-            'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
+            b'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
         self.value_dict = {
             'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
 
@@ -1060,7 +1062,7 @@ class TestSmartServerBranchRequestSetTagsBytes(TestLockedBranch):
         request = smart_branch.SmartServerBranchSetTagsBytes(
             self.get_transport())
         self.assertRaises(errors.TokenMismatch, request.execute,
-            'base', 'wrong token', 'wrong token')
+            b'base', b'wrong token', b'wrong token')
         # The request handler will keep processing the message parts, so even
         # if the request fails immediately do_chunk and do_end are still
         # called.
@@ -1103,7 +1105,7 @@ class TestSetLastRevisionVerbMixin(object):
 
     def test_set_null_to_null(self):
         """An empty branch can have its last revision set to 'null:'."""
-        self.assertRequestSucceeds('null:', 0)
+        self.assertRequestSucceeds(b'null:', 0)
 
     def test_NoSuchRevision(self):
         """If the revision_id is not present, the verb returns NoSuchRevision.
@@ -1129,9 +1131,9 @@ class TestSetLastRevisionVerbMixin(object):
         # its repository.
         self.make_tree_with_two_commits()
         rev_id_utf8 = u'\xc8'.encode('utf-8')
-        self.tree.branch.set_last_revision_info(0, 'null:')
+        self.tree.branch.set_last_revision_info(0, b'null:')
         self.assertEqual(
-            (0, 'null:'), self.tree.branch.last_revision_info())
+            (0, b'null:'), self.tree.branch.last_revision_info())
         # We can update the branch to a revision that is present in the
         # repository.
         self.assertRequestSucceeds(rev_id_utf8, 1)
@@ -1145,7 +1147,7 @@ class TestSetLastRevisionVerbMixin(object):
         self.make_tree_with_two_commits()
         rev_id_utf8 = u'\xc8'.encode('utf-8')
         self.assertEqual(
-            (2, 'rev-2'), self.tree.branch.last_revision_info())
+            (2, b'rev-2'), self.tree.branch.last_revision_info())
         self.assertRequestSucceeds(rev_id_utf8, 1)
         self.assertEqual(
             (1, rev_id_utf8), self.tree.branch.last_revision_info())
@@ -1161,8 +1163,8 @@ class TestSetLastRevisionVerbMixin(object):
             'pre_change_branch_tip', hook_that_rejects, None)
         self.assertEqual(
             smart_req.FailedSmartServerResponse(
-                ('TipChangeRejected', rejection_message.encode('utf-8'))),
-            self.set_last_revision('null:', 0))
+                (b'TipChangeRejected', rejection_message.encode('utf-8'))),
+            self.set_last_revision(b'null:', 0))
 
 
 class TestSmartServerBranchRequestSetLastRevision(
@@ -1173,7 +1175,7 @@ class TestSmartServerBranchRequestSetLastRevision(
 
     def _set_last_revision(self, revision_id, revno, branch_token, repo_token):
         return self.request.execute(
-            '', branch_token, repo_token, revision_id)
+            b'', branch_token, repo_token, revision_id)
 
 
 class TestSmartServerBranchRequestSetLastRevisionInfo(
@@ -1184,7 +1186,7 @@ class TestSmartServerBranchRequestSetLastRevisionInfo(
 
     def _set_last_revision(self, revision_id, revno, branch_token, repo_token):
         return self.request.execute(
-            '', branch_token, repo_token, revno, revision_id)
+            b'', branch_token, repo_token, revno, revision_id)
 
     def test_NoSuchRevision(self):
         """Branch.set_last_revision_info does not have to return
@@ -1201,7 +1203,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
 
     def _set_last_revision(self, revision_id, revno, branch_token, repo_token):
         return self.request.execute(
-            '', branch_token, repo_token, revision_id, 0, 0)
+            b'', branch_token, repo_token, revision_id, 0, 0)
 
     def assertRequestSucceeds(self, revision_id, revno):
         response = self.set_last_revision(revision_id, revno)
@@ -1216,22 +1218,22 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.make_tree_with_two_commits()
         rev_id_utf8 = u'\xc8'.encode('utf-8')
         self.assertEqual(
-            (2, 'rev-2'), self.tree.branch.last_revision_info())
+            (2, b'rev-2'), self.tree.branch.last_revision_info())
         # If allow_overwrite_descendant flag is 0, then trying to set the tip
         # to an older revision ID has no effect.
         branch_token, repo_token = self.lock_branch()
         response = self.request.execute(
-            '', branch_token, repo_token, rev_id_utf8, 0, 0)
+            b'', branch_token, repo_token, rev_id_utf8, 0, 0)
         self.assertEqual(
-            smart_req.SuccessfulSmartServerResponse((b'ok', 2, 'rev-2')),
+            smart_req.SuccessfulSmartServerResponse((b'ok', 2, b'rev-2')),
             response)
         self.assertEqual(
-            (2, 'rev-2'), self.tree.branch.last_revision_info())
+            (2, b'rev-2'), self.tree.branch.last_revision_info())
 
         # If allow_overwrite_descendant flag is 1, then setting the tip to an
         # ancestor works.
         response = self.request.execute(
-            '', branch_token, repo_token, rev_id_utf8, 0, 1)
+            b'', branch_token, repo_token, rev_id_utf8, 0, 1)
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse((b'ok', 1, rev_id_utf8)),
             response)
@@ -1265,9 +1267,9 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.make_branch_with_divergent_history()
         self.assertEqual(
             smart_req.FailedSmartServerResponse((b'Diverged',)),
-            self.set_last_revision('child-1', 2))
+            self.set_last_revision(b'child-1', 2))
         # The branch tip was not changed.
-        self.assertEqual('child-2', self.tree.branch.last_revision())
+        self.assertEqual(b'child-2', self.tree.branch.last_revision())
 
     def test_allow_diverged(self):
         """If allow_diverged is passed, then setting a divergent history
@@ -1276,13 +1278,13 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.make_branch_with_divergent_history()
         branch_token, repo_token = self.lock_branch()
         response = self.request.execute(
-            '', branch_token, repo_token, 'child-1', 1, 0)
+            b'', branch_token, repo_token, b'child-1', 1, 0)
         self.assertEqual(
-            smart_req.SuccessfulSmartServerResponse((b'ok', 2, 'child-1')),
+            smart_req.SuccessfulSmartServerResponse((b'ok', 2, b'child-1')),
             response)
         self.unlock_branch()
         # The branch tip was changed.
-        self.assertEqual('child-1', self.tree.branch.last_revision())
+        self.assertEqual(b'child-1', self.tree.branch.last_revision())
 
 
 class TestSmartServerBranchBreakLock(tests.TestCaseWithMemoryTransport):
@@ -1486,10 +1488,10 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         branch = self.make_branch('.')
         root = self.get_transport().clone('/')
         path = urlutils.relative_url(root.base, self.get_transport().base)
-        response = request.execute(path)
+        response = request.execute(path.encode('utf-8'))
         error_name, lock_str, why_str = response.args
         self.assertFalse(response.is_successful())
-        self.assertEqual('LockFailed', error_name)
+        self.assertEqual(b'LockFailed', error_name)
 
 
 class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
@@ -1545,7 +1547,7 @@ class TestSmartServerBranchRequestUnlock(TestLockedBranch):
         request = smart_branch.SmartServerBranchRequestUnlock(backing)
         branch = self.make_branch('.', format='knit')
         response = request.execute(
-            '', 'branch token', 'repo token')
+            b'', b'branch token', b'repo token')
         self.assertEqual(
             smart_req.SmartServerResponse((b'TokenMismatch',)), response)
 
@@ -1559,7 +1561,7 @@ class TestSmartServerBranchRequestUnlock(TestLockedBranch):
         branch.repository.unlock()
         # Issue branch lock_write request on the unlocked branch (with locked
         # repo).
-        response = request.execute(b'', 'branch token', repo_token)
+        response = request.execute(b'', b'branch token', repo_token)
         self.assertEqual(
             smart_req.SmartServerResponse((b'TokenMismatch',)), response)
         # Cleanup
@@ -1581,7 +1583,7 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
         self.make_repository('.', shared=True)
         self.make_controldir('subdir')
         self.assertRaises(errors.NoRepositoryPresent,
-            request.execute, 'subdir')
+            request.execute, b'subdir')
 
 
 class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTransport):
@@ -1598,15 +1600,15 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute(b'', write_token,
             b'rev1', *write_group_tokens))
-        response = request.do_body('somesignature')
+        response = request.do_body(b'somesignature')
         self.assertTrue(response.is_successful())
-        self.assertEqual(response.args[0], 'ok')
+        self.assertEqual(response.args[0], b'ok')
         write_group_tokens = response.args[1:]
         tree.branch.repository.resume_write_group(write_group_tokens)
         tree.branch.repository.commit_write_group()
         tree.unlock()
-        self.assertEqual("somesignature",
-            tree.branch.repository.get_signature_text("rev1"))
+        self.assertEqual(b"somesignature",
+            tree.branch.repository.get_signature_text(b"rev1"))
 
 
 class TestSmartServerRepositoryAllRevisionIds(
@@ -1631,10 +1633,12 @@ class TestSmartServerRepositoryAllRevisionIds(
         tree.commit(rev_id=b'origineel', message="message")
         tree.commit(rev_id=b'nog-een-revisie', message="message")
         tree.unlock()
-        self.assertEqual(
-            smart_req.SuccessfulSmartServerResponse((b"ok", ),
+        self.assertIn(
+            request.execute(b''),
+            [smart_req.SuccessfulSmartServerResponse((b"ok", ),
                 b"origineel\nnog-een-revisie"),
-            request.execute(b''))
+             smart_req.SuccessfulSmartServerResponse((b"ok", ),
+                b"nog-een-revisie\norigineel")])
 
 
 class TestSmartServerRepositoryBreakLock(tests.TestCaseWithMemoryTransport):
@@ -1670,7 +1674,7 @@ class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
         # Note that it returns a body that is bzipped.
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse((b'ok', ), bz2.compress(b'')),
-            request.do_body('\n\n0\n'))
+            request.do_body(b'\n\n0\n'))
 
     def test_trivial_include_missing(self):
         backing = self.get_transport()
@@ -1702,7 +1706,7 @@ class TestSmartServerRepositoryGetRevisionGraph(
         # order coming out of a dict, so sort both our test and response
         lines = sorted([b' '.join([r2, r1]), r1])
         response = request.execute(b'', b'')
-        response.body = '\n'.join(sorted(response.body.split('\n')))
+        response.body = b'\n'.join(sorted(response.body.split(b'\n')))
 
         self.assertEqual(
             smart_req.SmartServerResponse((b'ok', ), b'\n'.join(lines)), response)
@@ -1767,7 +1771,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
         request = smart_repo.SmartServerRepositoryGetRevIdForRevno(backing)
         parent = self.make_branch_and_memory_tree('parent', format='1.9')
         parent.lock_write()
-        parent.add([''], ['TREE_ROOT'])
+        parent.add([''], [b'TREE_ROOT'])
         r1 = parent.commit(message='first commit')
         r2 = parent.commit(message='second commit')
         parent.unlock()
@@ -1791,12 +1795,12 @@ class TestSmartServerRepositoryIterRevisions(
         tree = self.make_branch_and_memory_tree('.', format='2a')
         tree.lock_write()
         tree.add('')
-        tree.commit('1st commit', rev_id="rev1")
-        tree.commit('2nd commit', rev_id="rev2")
+        tree.commit('1st commit', rev_id=b"rev1")
+        tree.commit('2nd commit', rev_id=b"rev2")
         tree.unlock()
 
         self.assertIs(None, request.execute(b''))
-        response = request.do_body("rev1\nrev2")
+        response = request.do_body(b"rev1\nrev2")
         self.assertTrue(response.is_successful())
         # Format 2a uses serializer format 10
         self.assertEqual(response.args, (b"ok", b"10"))
@@ -1808,8 +1812,8 @@ class TestSmartServerRepositoryIterRevisions(
 
         contents = b"".join(response.body_stream)
         self.assertTrue(contents in (
-            "".join([entries[0], entries[1]]),
-            "".join([entries[1], entries[0]])))
+            b"".join([entries[0], entries[1]]),
+            b"".join([entries[1], entries[0]])))
 
     def test_missing(self):
         backing = self.get_transport()
@@ -1959,7 +1963,7 @@ class TestSmartServerRequestHasSignatureForRevisionId(
         tree.add('')
         r1 = tree.commit('a commit', rev_id=b'A')
         tree.unlock()
-        self.assertTrue(tree.branch.repository.has_revision('A'))
+        self.assertTrue(tree.branch.repository.has_revision(b'A'))
         self.assertEqual(smart_req.SmartServerResponse((b'no', )),
             request.execute(b'', b'A'))
 
@@ -2087,7 +2091,7 @@ class TestSmartServerRepositoryGetRevisionSignatureText(
         repo.commit_write_group()
         expected_body = (
             b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-            Testament.from_revision(repo, 'A').as_short_text() +
+            Testament.from_revision(repo, b'A').as_short_text() +
             b'-----END PSEUDO-SIGNED CONTENT-----\n')
         self.assertEqual(
             smart_req.SmartServerResponse((b'ok', ), expected_body),
@@ -2676,7 +2680,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
+        return b"".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
 
     def test_single(self):
         backing = self.get_transport()
@@ -2691,7 +2695,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         stream = [('inventory-deltas', [
-            versionedfile.FulltextContentFactory('somerev', None, None,
+            versionedfile.FulltextContentFactory(b'somerev', None, None,
                 self._get_serialized_inventory_delta(
                     t.branch.repository, b'null:', b'somerev'))])]
         fmt = controldir.format_registry.get('2a')().repository_format
@@ -2713,3 +2717,64 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(b"".join(response.body_stream),
             b"Bazaar pack format 1 (introduced in 0.18)\nB54\n\nBazaar repository format 2a (needs bzr 1.16 or later)\nE")
+
+
+class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
+
+    def test_missing(self):
+        """The search argument may be a 'ancestry-of' some heads'."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStreamForMissingKeys(
+            backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        request.execute(b'', repo._format.network_name())
+        lines = b'inventories\t' + r1
+        response = request.do_body(lines)
+        self.assertEqual((b'ok',), response.args)
+        stream_bytes = b''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, b'Bazaar pack format 1')
+
+    def test_unknown_format(self):
+        """The format may not be known by the remote server."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStreamForMissingKeys(
+            backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        request.execute(b'', b'yada yada yada')
+        expected = smart_req.FailedSmartServerResponse(
+            (b'UnknownFormat', b'repository', b'yada yada yada'))
+
+
+class TestSmartServerRepositoryRevisionArchive(tests.TestCaseWithTransport):
+    def test_get(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryRevisionArchive(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", b"somecontents")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
+        response = request.execute(b'', b"somerev", b"tar", b"foo.tar", b"foo")
+        self.assertTrue(response.is_successful())
+        self.assertEqual(response.args, (b"ok", ))
+        b = BytesIO(b"".join(response.body_stream))
+        with tarfile.open(mode='r', fileobj=b) as tf:
+            self.assertEqual(['foo/file'], tf.getnames())
+
+
+class TestSmartServerRepositoryAnnotateFileRevision(tests.TestCaseWithTransport):
+
+    def test_get(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAnnotateFileRevision(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", b"somecontents\nmorecontents\n")])
+        t.add(["file"], [b"thefileid"])
+        t.commit(rev_id=b'somerev', message="add file")
+        response = request.execute(b'', b"somerev", b"file")
+        self.assertTrue(response.is_successful())
+        self.assertEqual(response.args, (b"ok", ))
+        self.assertEqual(
+                [['somerev', 'somecontents\n'], ['somerev', 'morecontents\n']],
+                bencode.bdecode(response.body))

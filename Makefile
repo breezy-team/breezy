@@ -51,7 +51,7 @@ check-nodocs3:
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
@@ -96,10 +96,10 @@ check-ci: docs extensions
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -O \
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python2."; \
-	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -O \
+	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --load-list=python3.passing --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 

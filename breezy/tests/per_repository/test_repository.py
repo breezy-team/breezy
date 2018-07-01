@@ -44,6 +44,7 @@ from ...bzr import (
     )
 from ...sixish import (
     BytesIO,
+    text_type,
     )
 from .. import (
     per_repository,
@@ -231,7 +232,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         format = repo._format
         network_name = format.network_name()
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
         # We want to test that the network_name matches the actual format on
         # disk.  For local repositories, that means that using network_name as
         # a key in the registry gives back the same format.  For remote
@@ -277,7 +278,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # may only be shared in some circumstances.
             return
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(made_repo.is_shared())
 
@@ -350,7 +351,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
 
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(result.open_repository().is_shared())
@@ -416,7 +417,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
-        self.assertIsInstance(rev.message, unicode)
+        self.assertIsInstance(rev.message, text_type)
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved
@@ -538,7 +539,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('initial commit')
-        tree.add_parent_tree_id('ghost')
+        tree.add_parent_tree_id(b'ghost')
         rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map(['ghost', rev2])
@@ -946,7 +947,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return
         self.transport_server = test_server.FakeVFATServer
-        FOO_ID = 'foo<:>ID'
+        FOO_ID = b'foo<:>ID'
         # this makes a default format repository always, which is wrong:
         # it should be a TestCaseWithRepository in order to get the
         # default format.
@@ -963,7 +964,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
-        self.assertEqual(contents, 'contents of repo/foo\n')
+        self.assertEqual(contents, b'contents of repo/foo\n')
 
     def test_create_bundle(self):
         wt = self.make_branch_and_tree('repo')

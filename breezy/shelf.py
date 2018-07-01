@@ -266,7 +266,7 @@ class ShelfCreator(object):
             to_transform.adjust_path(name, s_parent_id, s_trans_id)
             if existing_path is None:
                 if kind is None:
-                    to_transform.create_file('', s_trans_id)
+                    to_transform.create_file([b''], s_trans_id)
                 else:
                     transform.create_from_tree(
                             to_transform, s_trans_id, tree,
@@ -297,7 +297,7 @@ class ShelfCreator(object):
         if message is not None:
             metadata[b'message'] = message.encode('utf-8')
         return serializer.bytes_record(
-            bencode.bencode(metadata), (('metadata',),))
+            bencode.bencode(metadata), ((b'metadata',),))
 
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.

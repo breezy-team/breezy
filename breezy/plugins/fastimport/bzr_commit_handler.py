@@ -279,8 +279,8 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def build_revision(self):
         rev_props = self._legal_revision_properties(self.command.properties)
-        if 'branch-nick' not in rev_props:
-            rev_props['branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
+        if u'branch-nick' not in rev_props:
+            rev_props[u'branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
                     self.branch_ref)
         self._save_author_info(rev_props)
         committer = self.command.committer
@@ -331,7 +331,7 @@ class GenericCommitHandler(processor.CommitHandler):
         else:
             return
         # If we reach here, there are authors worth storing
-        rev_props['authors'] = "\n".join(author_ids)
+        rev_props[u'authors'] = "\n".join(author_ids)
 
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""

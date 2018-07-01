@@ -101,9 +101,8 @@ class BundleWriter(object):
 
     def begin(self):
         """Start writing the bundle"""
-        self._fileobj.write(bundle_serializer._get_bundle_header(
-            bundle_serializer.v4_string))
-        self._fileobj.write('#\n')
+        self._fileobj.write(bundle_serializer._get_bundle_header('4'))
+        self._fileobj.write(b'#\n')
         self._container.begin()
 
     def end(self):
@@ -123,9 +122,9 @@ class BundleWriter(object):
         :revision_id: The revision id of the mpdiff being added.
         :file_id: The file-id of the file, or None for inventories.
         """
-        metadata = {'parents': parents,
-                    'storage_kind': 'mpdiff',
-                    'sha1': sha1}
+        metadata = {b'parents': parents,
+                    b'storage_kind': b'mpdiff',
+                    b'sha1': sha1}
         self._add_record(mp_bytes, metadata, repo_kind, revision_id, file_id)
 
     def add_fulltext_record(self, bytes, parents, repo_kind, revision_id):
@@ -137,18 +136,18 @@ class BundleWriter(object):
             'signature'
         :revision_id: The revision id of the fulltext being added.
         """
-        metadata = {'parents': parents,
-                    'storage_kind': 'mpdiff'}
-        self._add_record(bytes, {'parents': parents,
-            'storage_kind': 'fulltext'}, repo_kind, revision_id, None)
+        metadata = {b'parents': parents,
+                    b'storage_kind': b'mpdiff'}
+        self._add_record(bytes, {b'parents': parents,
+            b'storage_kind': b'fulltext'}, repo_kind, revision_id, None)
 
-    def add_info_record(self, **kwargs):
+    def add_info_record(self, kwargs):
         """Add an info record to the bundle
 
         Any parameters may be supplied, except 'self' and 'storage_kind'.
         Values must be lists, strings, integers, dicts, or a combination.
         """
-        kwargs['storage_kind'] = 'header'
+        kwargs[b'storage_kind'] = b'header'
         self._add_record(None, kwargs, 'info', None, None)
 
     @staticmethod
@@ -168,9 +167,9 @@ class BundleWriter(object):
                 raise AssertionError()
         elif revision_id is None:
             raise AssertionError()
-        names = [n.replace('/', '//') for n in
-                 (content_kind, revision_id, file_id) if n is not None]
-        return '/'.join(names)
+        names = [n.replace(b'/', b'//') for n in
+                 (content_kind.encode('ascii'), revision_id, file_id) if n is not None]
+        return b'/'.join(names)
 
     def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
         """Add a bundle record to the container.
@@ -182,7 +181,7 @@ class BundleWriter(object):
         name = self.encode_name(repo_kind, revision_id, file_id)
         encoded_metadata = bencode.bencode(metadata)
         self._container.add_bytes_record(encoded_metadata, [(name, )])
-        if metadata['storage_kind'] != 'header':
+        if metadata[b'storage_kind'] != b'header':
             self._container.add_bytes_record(bytes, [])
 
 
@@ -228,13 +227,13 @@ class BundleReader(object):
 
         :retval: content_kind, revision_id, file_id
         """
-        segments = re.split('(//?)', name)
-        names = ['']
+        segments = re.split(b'(//?)', name)
+        names = [b'']
         for segment in segments:
-            if segment == '//':
-                names[-1] += '/'
-            elif segment == '/':
-                names.append('')
+            if segment == b'//':
+                names[-1] += b'/'
+            elif segment == b'/':
+                names.append(b'')
             else:
                 names[-1] += segment
         content_kind = names[0]
@@ -244,7 +243,7 @@ class BundleReader(object):
             revision_id = names[1]
         if len(names) > 2:
             file_id = names[2]
-        return content_kind, revision_id, file_id
+        return content_kind.decode('ascii'), revision_id, file_id
 
     def iter_records(self):
         """Iterate through bundle records
@@ -258,7 +257,7 @@ class BundleReader(object):
                 raise errors.BadBundle('Record has %d names instead of 1'
                                        % len(names))
             metadata = bencode.bdecode(bytes)
-            if metadata['storage_kind'] == 'header':
+            if metadata[b'storage_kind'] == b'header':
                 bytes = None
             else:
                 _unused, bytes = next(iterator)
@@ -297,7 +296,7 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
     @staticmethod
     def get_source_serializer(info):
         """Retrieve the serializer for a given info object"""
-        return serializer.format_registry.get(info['serializer'])
+        return serializer.format_registry.get(info[b'serializer'].decode('ascii'))
 
 
 class BundleWriteOperation(object):
@@ -344,8 +343,8 @@ class BundleWriteOperation(object):
         serializer_format = self.repository.get_serializer_format()
         supports_rich_root = {True: 1, False: 0}[
             self.repository.supports_rich_root()]
-        self.bundle.add_info_record(serializer=serializer_format,
-                                    supports_rich_root=supports_rich_root)
+        self.bundle.add_info_record({b'serializer': serializer_format,
+                                     b'supports_rich_root': supports_rich_root})
 
     def write_files(self):
         """Write bundle records for all revisions of all files"""
@@ -394,7 +393,7 @@ class BundleWriteOperation(object):
         generator = _MPDiffInventoryGenerator(self.repository,
                                               inventory_key_order)
         for revision_id, parent_ids, sha1, diff in generator.iter_diffs():
-            text = ''.join(diff.to_patch())
+            text = b''.join(diff.to_patch())
             self.bundle.add_multiparent_record(text, sha1, parent_ids,
                                                'inventory', revision_id, None)
 
@@ -439,7 +438,7 @@ class BundleWriteOperation(object):
         for mpdiff, item_key, in zip(mpdiffs, ordered_keys):
             sha1 = sha1s[item_key]
             parents = [key[-1] for key in parent_map[item_key]]
-            text = ''.join(mpdiff.to_patch())
+            text = b''.join(mpdiff.to_patch())
             # Infer file id records as appropriate.
             if len(item_key) == 2:
                 file_id = item_key[0]
@@ -469,13 +468,10 @@ class BundleInfoV4(object):
             all into memory at once.  Reading it into memory all at once is
             (currently) faster.
         """
-        repository.lock_write()
-        try:
+        with repository.lock_write():
             ri = RevisionInstaller(self.get_bundle_reader(stream_input),
                                    self._serializer, repository)
             return ri.install()
-        finally:
-            repository.unlock()
 
     def get_merge_request(self, target_repo):
         """Provide data for performing a merge
@@ -590,7 +586,7 @@ class RevisionInstaller(object):
         """Extract data from an info record"""
         self._info = info
         self._source_serializer = self._serializer.get_source_serializer(info)
-        if (info['supports_rich_root'] == 0 and
+        if (info[b'supports_rich_root'] == 0 and
             self._repository.supports_rich_root()):
             self.update_root = True
         else:
@@ -617,8 +613,8 @@ class RevisionInstaller(object):
                 prefix = key[:1]
             else:
                 prefix = ()
-            parents = [prefix + (parent,) for parent in meta['parents']]
-            vf_records.append((key, parents, meta['sha1'], d_func(text)))
+            parents = [prefix + (parent,) for parent in meta[b'parents']]
+            vf_records.append((key, parents, meta[b'sha1'], d_func(text)))
         versionedfile.add_mpdiffs(vf_records)
 
     def _get_parent_inventory_texts(self, inventory_text_cache,
@@ -662,7 +658,7 @@ class RevisionInstaller(object):
         return parent_texts
 
     def _install_inventory_records(self, records):
-        if (self._info['serializer'] == self._repository._serializer.format_num
+        if (self._info[b'serializer'] == self._repository._serializer.format_num
             and self._repository._serializer.support_altered_by_hack):
             return self._install_mp_records_keys(self._repository.inventories,
                 records)
@@ -680,7 +676,7 @@ class RevisionInstaller(object):
             for idx, (key, metadata, bytes) in enumerate(records):
                 pb.update('installing inventory', idx, num_records)
                 revision_id = key[-1]
-                parent_ids = metadata['parents']
+                parent_ids = metadata[b'parents']
                 # Note: This assumes the local ghosts are identical to the
                 #       ghosts in the source, as the Bundle serialization
                 #       format doesn't record ghosts.
@@ -692,10 +688,10 @@ class RevisionInstaller(object):
                 # as lines and then cast back to a string.
                 target_lines = multiparent.MultiParent.from_patch(bytes
                             ).to_lines(p_texts)
-                inv_text = ''.join(target_lines)
+                inv_text = b''.join(target_lines)
                 del target_lines
                 sha1 = osutils.sha_string(inv_text)
-                if sha1 != metadata['sha1']:
+                if sha1 != metadata[b'sha1']:
                     raise errors.BadBundle("Can't convert to target format")
                 # Add this to the cache so we don't have to extract it again.
                 inventory_text_cache[revision_id] = inv_text

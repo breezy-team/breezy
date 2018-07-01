@@ -37,7 +37,7 @@ class TestAtomicFile(TestCaseInTempDir):
         f.commit()
 
         self.assertEqual(['test'], os.listdir('.'))
-        self.check_file_contents('test', 'foo\n')
+        self.check_file_contents('test', b'foo\n')
         self.assertRaises(errors.AtomicFileAlreadyClosed, f.commit)
         self.assertRaises(errors.AtomicFileAlreadyClosed, f.abort)
         # close is re-entrant safe
