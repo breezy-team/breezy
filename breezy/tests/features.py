@@ -554,15 +554,3 @@ class _BackslashFilenameFeature(Feature):
 
 
 BackslashFilenameFeature = _BackslashFilenameFeature()
-
-
-class _ColorFeature(Feature):
-
-    def _probe(self):
-        from breezy._termcolor import allow_color
-        return allow_color()
-
-    def feature_name(self):
-        return "Terminal supports color."
-
-ColorFeature = _ColorFeature()
