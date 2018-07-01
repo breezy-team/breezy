@@ -479,63 +479,6 @@ def load_tests(loader, standard_tests, pattern):
         self.assertEqual("1.2.3.2", plugin.__version__)
 
 
-# GZ 2017-06-02: Move this suite to blackbox, as it's what it actually is.
-class TestPluginHelp(BaseTestPlugins):
-
-    def split_help_commands(self):
-        help = {}
-        current = None
-        out, err = self.run_bzr('--no-plugins help commands')
-        for line in out.splitlines():
-            if not line.startswith(' '):
-                current = line.split()[0]
-            help[current] = help.get(current, '') + line
-
-        return help
-
-    def test_plugin_help_builtins_unaffected(self):
-        # Check we don't get false positives
-        help_commands = self.split_help_commands()
-        for cmd_name in breezy.commands.builtin_command_names():
-            if cmd_name in breezy.commands.plugin_command_names():
-                continue
-            try:
-                help = breezy.commands.get_cmd_object(cmd_name).get_help_text()
-            except NotImplementedError:
-                # some commands have no help
-                pass
-            else:
-                self.assertNotContainsRe(help, 'plugin "[^"]*"')
-
-            if cmd_name in help_commands:
-                # some commands are hidden
-                help = help_commands[cmd_name]
-                self.assertNotContainsRe(help, 'plugin "[^"]*"')
-
-    def test_plugin_help_shows_plugin(self):
-        # Create a test plugin
-        os.mkdir('plugin_test')
-        source = (
-            "from breezy import commands\n"
-            "class cmd_myplug(commands.Command):\n"
-            "    __doc__ = '''Just a simple test plugin.'''\n"
-            "    aliases = ['mplg']\n"
-            "    def run(self):\n"
-            "        print ('Hello from my plugin')\n"
-        )
-        self.create_plugin('myplug', source, 'plugin_test')
-
-        # Check its help
-        self.load_with_paths(['plugin_test'])
-        myplug = self.plugins['myplug'].module
-        breezy.commands.register_command(myplug.cmd_myplug)
-        self.addCleanup(breezy.commands.plugin_cmds.remove, 'myplug')
-        help = self.run_bzr('help myplug')[0]
-        self.assertContainsRe(help, 'plugin "myplug"')
-        help = self.split_help_commands()['myplug']
-        self.assertContainsRe(help, '\\[myplug\\]')
-
-
 class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""
 
