@@ -30,7 +30,6 @@ import textwrap
 from unicodedata import east_asian_width as _eawidth
 
 from . import osutils
-from .sixish import text_type
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
 
@@ -217,7 +216,7 @@ class UTextWrapper(textwrap.TextWrapper):
         return lines
 
     def _split(self, text):
-        chunks = textwrap.TextWrapper._split(self, text)
+        chunks = textwrap.TextWrapper._split(self, osutils.safe_unicode(text))
         cjk_split_chunks = []
         for chunk in chunks:
             prev_pos = 0
@@ -233,7 +232,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
     def wrap(self, text):
         # ensure text is unicode
-        return textwrap.TextWrapper.wrap(self, text_type(text))
+        return textwrap.TextWrapper.wrap(self, osutils.safe_unicode(text))
 
 # -- Convenience interface ---------------------------------------------
 
