@@ -1591,10 +1591,10 @@ class DirState(object):
                 # pair will result in the deleted item being reinserted, or
                 # renamed items being reinserted twice - and possibly at the
                 # wrong place. Splitting into a delete/add pair also simplifies
-                # the handling of entries with ('f', ...), ('r' ...) because
-                # the target of the 'r' is old_path here, and we add that to
+                # the handling of entries with (b'f', ...), (b'r' ...) because
+                # the target of the b'r' is old_path here, and we add that to
                 # deletes, meaning that the add handler does not need to check
-                # for 'r' items on every pass.
+                # for b'r' items on every pass.
                 self._update_basis_apply_deletes(deletes)
                 deletes = []
                 # Split into an add/delete pair recursively.
@@ -1793,8 +1793,8 @@ class DirState(object):
                         active_path = active_dir + b'/' + active_name
                     else:
                         active_path = active_name
-                    active_entry[1][1] = st('r', new_path, 0, False, b'')
-                    entry[1][0] = st('r', active_path, 0, False, b'')
+                    active_entry[1][1] = st(b'r', new_path, 0, False, b'')
+                    entry[1][0] = st(b'r', active_path, 0, False, b'')
             elif active_kind == b'r':
                 raise NotImplementedError()
 
@@ -3016,7 +3016,7 @@ class DirState(object):
         updated as well.
 
         :param key: (dir, name, file_id) for the new entry
-        :param minikind: The type for the entry ('f' == 'file', 'd' ==
+        :param minikind: The type for the entry (b'f' == 'file', b'd' ==
                 'directory'), etc.
         :param executable: Should the executable bit be set?
         :param fingerprint: Simple fingerprint for new entry: canonical-form
@@ -3211,7 +3211,7 @@ class DirState(object):
         # NOTE: This must always raise AssertionError not just assert,
         # otherwise it may not behave properly under python -O
         #
-        # TODO: All entries must have some content that's not 'a' or 'r',
+        # TODO: All entries must have some content that's not b'a' or b'r',
         # otherwise it could just be removed.
         #
         # TODO: All relocations must point directly to a real entry.
