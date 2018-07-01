@@ -361,12 +361,12 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         expected[b'a'] = (old_a[0], [(b'r', b'b/g', 0, False, b''), old_a[1][1]])
         expected[b'b/g'] = ((b'b', b'g', b'a-id'), [old_a[1][0],
                                                 (b'r', b'a', 0, False, b'')])
-        old_d = expected['b/d']
+        old_d = expected[b'b/d']
         expected[b'b/d'] = (old_d[0], [(b'r', b'h', 0, False, b''), old_d[1][1]])
         expected[b'h'] = ((b'', b'h', b'd-id'), [old_d[1][0],
                                              (b'r', b'b/d', 0, False, b'')])
 
-        old_e = expected['b/d/e']
+        old_e = expected[b'b/d/e']
         expected[b'b/d/e'] = (old_e[0], [(b'r', b'h/e', 0, False, b''),
                              old_e[1][1]])
         expected[b'h/e'] = ((b'h', b'e', b'e-id'), [old_e[1][0],
@@ -606,7 +606,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
             st = os.lstat('a-file')
             sha1sum = dirstate.update_entry(state, entry, 'a-file', st)
             # We updated the current sha1sum because the file is cacheable
-            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+            self.assertEqual(b'ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
                              sha1sum)
 
             # The dirblock has been updated
@@ -636,13 +636,13 @@ class TestDirStateOnFile(TestCaseWithDirState):
         try:
             entry = state._get_entry(0, path_utf8=b'a-file')
             # No cached sha1 yet.
-            self.assertEqual('', entry[1][0][1])
+            self.assertEqual(b'', entry[1][0][1])
             # Set the cutoff-time into the future, so things look cacheable
             state._sha_cutoff_time()
             state._cutoff_time += 10.0
             st = os.lstat('a-file')
             sha1sum = dirstate.update_entry(state, entry, 'a-file', st)
-            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+            self.assertEqual(b'ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
                              sha1sum)
             self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                              state._dirblock_state)
@@ -672,7 +672,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state.lock_read()
         try:
             entry = state._get_entry(0, path_utf8=b'a-file')
-            self.assertEqual('', entry[1][0][1])
+            self.assertEqual(b'', entry[1][0][1])
         finally:
             state.unlock()
 
@@ -882,8 +882,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state._validate()
             foo_tuple = state._get_entry(0, path_utf8=b'foo')
             self.assertEqual(
-                (('', 'foo', b'foo-id',),
-                 [('f', foo_sha, len(foo_contents), False,
+                ((b'', b'foo', b'foo-id',),
+                 [(b'f', foo_sha, len(foo_contents), False,
                    dirstate.pack_stat(foo_stat))]),
                 foo_tuple)
 
@@ -940,7 +940,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                              state._get_entry(0, fileid_utf8=b'TREE_ROOT'))
             self.assertEqual((None, None),
                              state._get_entry(0, fileid_utf8=b'second-root-id'))
-            state.set_path_id('', b'second-root-id')
+            state.set_path_id(b'', b'second-root-id')
             new_root_entry = ((b'', b'', b'second-root-id'),
                               [(b'd', b'', 0, False, b'x'*32)])
             expected_rows = [new_root_entry]
@@ -1113,18 +1113,18 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             tree2.unlock()
         # check the layout in memory
-        expected_result = [revid1.encode('utf8'), revid2.encode('utf8')], [
+        expected_result = [revid1, revid2], [
             ((b'', b'', root_id), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),
-             (b'd', b'', 0, False, revid1.encode('utf8')),
-             (b'd', b'', 0, False, revid1.encode('utf8'))
+             (b'd', b'', 0, False, revid1),
+             (b'd', b'', 0, False, revid1)
              ]),
-            ((b'', 'a file', b'file-id'), [
-             (b'a', b'', 0, False, ''),
+            ((b'', b'a file', b'file-id'), [
+             (b'a', b'', 0, False, b''),
              (b'f', b'2439573625385400f2a669657a7db6ae7515d371', 12, False,
-              revid1.encode('utf8')),
+              revid1),
              (b'f', b'542e57dc1cda4af37cb8e55ec07ce60364bb3c7d', 16, False,
-              revid2.encode('utf8'))
+              revid2)
              ])
             ]
         state = dirstate.DirState.initialize('dirstate')
@@ -1456,11 +1456,11 @@ class TestGetLines(TestCaseWithDirState):
     def test_entry_to_line_with_two_parents_at_different_paths(self):
         # / in the tree, at / in one parent and /dirname/basename in the other.
         packed_stat = b'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_entry = ('', '', b'a-root-value'), [
-            ('d', '', 0, False, packed_stat), # current tree details
-            ('d', '', 0, False, b'rev_id'), # first parent details
+        root_entry = (b'', b'', b'a-root-value'), [
+            (b'd', b'', 0, False, packed_stat), # current tree details
+            (b'd', b'', 0, False, b'rev_id'), # first parent details
              # second: a pointer to the current location
-            ('a', 'dirname/basename', 0, False, ''),
+            (b'a', b'dirname/basename', 0, False, b''),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -1478,21 +1478,21 @@ class TestGetLines(TestCaseWithDirState):
         # this is for get_lines to be easy to read.
         packed_stat = b'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         dirblocks = []
-        root_entries = [(('', '', b'a-root-value'), [
-            ('d', '', 0, False, packed_stat), # current tree details
+        root_entries = [((b'', b'', b'a-root-value'), [
+            (b'd', b'', 0, False, packed_stat), # current tree details
             ])]
         dirblocks.append(('', root_entries))
         # add two files in the root
-        subdir_entry = ('', 'subdir', b'subdir-id'), [
-            ('d', '', 0, False, packed_stat), # current tree details
+        subdir_entry = (b'', b'subdir', b'subdir-id'), [
+            (b'd', b'', 0, False, packed_stat), # current tree details
             ]
-        afile_entry = ('', 'afile', b'afile-id'), [
-            ('f', 'sha1value', 34, False, packed_stat), # current tree details
+        afile_entry = (b'', b'afile', b'afile-id'), [
+            (b'f', b'sha1value', 34, False, packed_stat), # current tree details
             ]
         dirblocks.append(('', [subdir_entry, afile_entry]))
         # and one in subdir
-        file_entry2 = ('subdir', '2file', b'2file-id'), [
-            ('f', 'sha1value', 23, False, packed_stat), # current tree details
+        file_entry2 = (b'subdir', b'2file', b'2file-id'), [
+            (b'f', b'sha1value', 23, False, packed_stat), # current tree details
             ]
         dirblocks.append(('subdir', [file_entry2]))
         state = dirstate.DirState.initialize('dirstate')
@@ -1522,45 +1522,45 @@ class TestGetBlockRowIndex(TestCaseWithDirState):
     def test_simple_structure(self):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
-        self.assertBlockRowIndexEqual(1, 0, True, True, state, '', 'subdir', 0)
-        self.assertBlockRowIndexEqual(1, 0, True, False, state, '', 'bdir', 0)
-        self.assertBlockRowIndexEqual(1, 1, True, False, state, '', 'zdir', 0)
-        self.assertBlockRowIndexEqual(2, 0, False, False, state, 'a', 'foo', 0)
+        self.assertBlockRowIndexEqual(1, 0, True, True, state, b'', b'subdir', 0)
+        self.assertBlockRowIndexEqual(1, 0, True, False, state, b'', b'bdir', 0)
+        self.assertBlockRowIndexEqual(1, 1, True, False, state, b'', b'zdir', 0)
+        self.assertBlockRowIndexEqual(2, 0, False, False, state, b'a', b'foo', 0)
         self.assertBlockRowIndexEqual(2, 0, False, False, state,
-                                      'subdir', 'foo', 0)
+                                      b'subdir', b'foo', 0)
 
     def test_complex_structure_exists(self):
         state = self.create_complex_dirstate()
         self.addCleanup(state.unlock)
         # Make sure we can find everything that exists
-        self.assertBlockRowIndexEqual(0, 0, True, True, state, '', '', 0)
-        self.assertBlockRowIndexEqual(1, 0, True, True, state, '', 'a', 0)
-        self.assertBlockRowIndexEqual(1, 1, True, True, state, '', 'b', 0)
-        self.assertBlockRowIndexEqual(1, 2, True, True, state, '', 'c', 0)
-        self.assertBlockRowIndexEqual(1, 3, True, True, state, '', 'd', 0)
-        self.assertBlockRowIndexEqual(2, 0, True, True, state, 'a', 'e', 0)
-        self.assertBlockRowIndexEqual(2, 1, True, True, state, 'a', 'f', 0)
-        self.assertBlockRowIndexEqual(3, 0, True, True, state, 'b', 'g', 0)
+        self.assertBlockRowIndexEqual(0, 0, True, True, state, b'', b'', 0)
+        self.assertBlockRowIndexEqual(1, 0, True, True, state, b'', b'a', 0)
+        self.assertBlockRowIndexEqual(1, 1, True, True, state, b'', b'b', 0)
+        self.assertBlockRowIndexEqual(1, 2, True, True, state, b'', b'c', 0)
+        self.assertBlockRowIndexEqual(1, 3, True, True, state, b'', b'd', 0)
+        self.assertBlockRowIndexEqual(2, 0, True, True, state, b'a', b'e', 0)
+        self.assertBlockRowIndexEqual(2, 1, True, True, state, b'a', b'f', 0)
+        self.assertBlockRowIndexEqual(3, 0, True, True, state, b'b', b'g', 0)
         self.assertBlockRowIndexEqual(3, 1, True, True, state,
-                                      'b', 'h\xc3\xa5', 0)
+                                      b'b', b'h\xc3\xa5', 0)
 
     def test_complex_structure_missing(self):
         state = self.create_complex_dirstate()
         self.addCleanup(state.unlock)
         # Make sure things would be inserted in the right locations
         # '_' comes before 'a'
-        self.assertBlockRowIndexEqual(0, 0, True, True, state, '', '', 0)
-        self.assertBlockRowIndexEqual(1, 0, True, False, state, '', '_', 0)
-        self.assertBlockRowIndexEqual(1, 1, True, False, state, '', 'aa', 0)
+        self.assertBlockRowIndexEqual(0, 0, True, True, state, b'', b'', 0)
+        self.assertBlockRowIndexEqual(1, 0, True, False, state, b'', b'_', 0)
+        self.assertBlockRowIndexEqual(1, 1, True, False, state, b'', b'aa', 0)
         self.assertBlockRowIndexEqual(1, 4, True, False, state,
-                                      '', 'h\xc3\xa5', 0)
-        self.assertBlockRowIndexEqual(2, 0, False, False, state, '_', 'a', 0)
-        self.assertBlockRowIndexEqual(3, 0, False, False, state, 'aa', 'a', 0)
-        self.assertBlockRowIndexEqual(4, 0, False, False, state, 'bb', 'a', 0)
+                                      b'', b'h\xc3\xa5', 0)
+        self.assertBlockRowIndexEqual(2, 0, False, False, state, b'_', b'a', 0)
+        self.assertBlockRowIndexEqual(3, 0, False, False, state, b'aa', b'a', 0)
+        self.assertBlockRowIndexEqual(4, 0, False, False, state, b'bb', b'a', 0)
         # This would be inserted between a/ and b/
-        self.assertBlockRowIndexEqual(3, 0, False, False, state, 'a/e', 'a', 0)
+        self.assertBlockRowIndexEqual(3, 0, False, False, state, b'a/e', b'a', 0)
         # Put at the end
-        self.assertBlockRowIndexEqual(4, 0, False, False, state, 'e', 'a', 0)
+        self.assertBlockRowIndexEqual(4, 0, False, False, state, b'e', b'a', 0)
 
 
 class TestGetEntry(TestCaseWithDirState):
@@ -1770,7 +1770,7 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
                 b'a/a', b'a/a/a', b'a/a/a/a',
                 b'a/a/a/a-a', b'a/a/a-a', b'a/a-a', b'a-a',
                ]
-        split = lambda p:p.split('/')
+        split = lambda p:p.split(b'/')
         self.assertEqual(sorted(expected, key=split), expected)
         dirblock_names = [d[0] for d in state._dirblocks]
         self.assertEqual(expected, dirblock_names)
@@ -2151,7 +2151,7 @@ class TestBisect(TestCaseWithDirState):
         # Looking in the containing directory should find the rename target,
         # and anything in a subdir of the renamed target.
         self.assertBisectRecursive(expected, [b'a', b'b', b'b/c', b'b/d',
-                                              'b/d/e', b'b/g', b'h', b'h/e'],
+                                              b'b/d/e', b'b/g', b'h', b'h/e'],
                                    state, [b'b'])
 
 

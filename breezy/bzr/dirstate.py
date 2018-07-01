@@ -3319,7 +3319,7 @@ class DirState(object):
                             raise AssertionError(
                             "file %s is absent in row %r but also present " \
                             "at %r"% \
-                            (file_id, entry, previous_path))
+                            (file_id.decode('utf-8'), entry, previous_path))
                     elif minikind == b'r':
                         target_location = tree_state[1]
                         if previous_path != target_location:
