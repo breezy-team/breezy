@@ -15382,7 +15382,6 @@ breezy.tests.test_bundle.V4_2aBundleTester.test_non_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_revision_id_with_slash
 breezy.tests.test_bundle.V4_2aBundleTester.test_single_inventory_multiple_parents_as_xml
 breezy.tests.test_bundle.V4_2aBundleTester.test_single_inv_no_parents_as_xml
-breezy.tests.test_bundle.V4_2aBundleTester.test_skip_file
 breezy.tests.test_bundle.V4BundleTester.test_alt_timezone_bundle
 breezy.tests.test_bundle.V4BundleTester.test_bundle_empty_property
 breezy.tests.test_bundle.V4BundleTester.test_bundle_same_basis
@@ -17249,7 +17248,6 @@ breezy.tests.test_ignores.TestUserIgnores.test_create_if_missing
 breezy.tests.test_ignores.TestUserIgnores.test_set
 breezy.tests.test_ignores.TestUserIgnores.test_use_empty
 breezy.tests.test_ignores.TestUserIgnores.test_use_existing
-breezy.tests.test_import_tariff.TestImportTariffs.test_simple_serve
 breezy.tests.test_index.ErrorTests.test_bad_index_data
 breezy.tests.test_index.ErrorTests.test_bad_index_duplicate_key
 breezy.tests.test_index.ErrorTests.test_bad_index_format_signature

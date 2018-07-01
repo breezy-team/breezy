@@ -1245,7 +1245,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.assertEqual(expected_entries, list(state._iter_entries()))
 
     def test_add_symlink_to_root_no_parents_all_data(self):
-        self._test_add_symlink_to_root_no_parents_all_data('a link', b'target')
+        self._test_add_symlink_to_root_no_parents_all_data(u'a link', u'target')
 
     def test_add_symlink_unicode_to_root_no_parents_all_data(self):
         self.requireFeature(features.UnicodeFilenameFeature)
