@@ -40,6 +40,7 @@ from ...bzr import (
     index as _mod_index,
     versionedfile,
     )
+from ...sixish import viewkeys
 from ...transport import (
     get_transport,
     )
@@ -342,7 +343,7 @@ class DictGitShaMap(GitShaMap):
                     yield type_data[0]
 
     def sha1s(self):
-        return self._by_sha.iterkeys()
+        return viewkeys(self._by_sha)
 
 
 class SqliteCacheUpdater(CacheUpdater):
@@ -649,7 +650,7 @@ class TdbGitShaMap(GitShaMap):
             raise KeyError("No cache entry for %r" % revid)
 
     def lookup_blob_id(self, fileid, revision):
-        return sha_to_hex(self.db[b"\0".join(("blob", fileid, revision))])
+        return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -685,13 +686,13 @@ class TdbGitShaMap(GitShaMap):
 
     def revids(self):
         """List the revision ids known."""
-        for key in self.db.iterkeys():
+        for key in self.db.keys():
             if key.startswith(b"commit\0"):
                 yield key[7:]
 
     def sha1s(self):
         """List the SHA1s."""
-        for key in self.db.iterkeys():
+        for key in self.db.keys():
             if key.startswith(b"git\0"):
                 yield sha_to_hex(key[4:])
 
