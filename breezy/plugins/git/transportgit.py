@@ -67,6 +67,7 @@ from dulwich.repo import (
     )
 
 from ... import (
+    osutils,
     transport as _mod_transport,
     )
 from ...errors import (
@@ -131,7 +132,7 @@ class TransportRefsContainer(RefsContainer):
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
-                refname = "refs/%s" % urllib.unquote(filename)
+                refname = osutils.pathjoin("refs", urllib.unquote(filename))
                 if check_ref_format(refname):
                     keys.add(refname)
         except (TransportNotPossible, NoSuchFile):
@@ -630,11 +631,11 @@ class TransportObjectStore(PackBasedObjectStore):
         return (sha[:2], sha[2:])
 
     def _remove_loose_object(self, sha):
-        path = '%s/%s' % self._split_loose_object(sha)
+        path = osutils.joinpath(self._split_loose_object(sha))
         self.transport.delete(path)
 
     def _get_loose_object(self, sha):
-        path = '%s/%s' % self._split_loose_object(sha)
+        path = osutils.joinpath(self._split_loose_object(sha))
         try:
             return ShaFile.from_file(self.transport.get(path))
         except NoSuchFile:
@@ -650,7 +651,7 @@ class TransportObjectStore(PackBasedObjectStore):
             self.transport.mkdir(dir)
         except FileExists:
             pass
-        path = "%s/%s" % (dir, file)
+        path = osutils.pathjoin(dir, file)
         if self.transport.has(path):
             return # Already there, no need to write again
         self.transport.put_bytes(path, obj.as_legacy_object())
