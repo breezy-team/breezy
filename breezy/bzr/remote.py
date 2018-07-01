@@ -4262,8 +4262,8 @@ def _translate_error(err, **context):
     def find(name):
         try:
             return context[name]
-        except KeyError as key_err:
-            mutter('Missing key %r in context %r', key_err.args[0], context)
+        except KeyError:
+            mutter('Missing key \'%s\' in context %r', name, context)
             raise err
     def get_path():
         """Get the path from the context if present, otherwise use first error
@@ -4271,12 +4271,11 @@ def _translate_error(err, **context):
         """
         try:
             return context['path']
-        except KeyError as key_err:
+        except KeyError:
             try:
                 return err.error_args[0].decode('utf-8')
-            except IndexError as idx_err:
-                mutter(
-                    "Missing key '%s' in context %r", key_err.args[0].encode('ascii'), context)
+            except IndexError:
+                mutter('Missing key \'path\' in context %r', context)
                 raise err
     if not isinstance(err.error_verb, bytes):
         raise TypeError(err.error_verb)
