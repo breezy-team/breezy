@@ -93,6 +93,7 @@ def load_tests(loader, basic_tests, pattern):
                      'test_outside_wt',
                      'test_pack',
                      'test_ping',
+                     'test_plugins',
                      'test_pull',
                      'test_push',
                      'test_reconcile',
