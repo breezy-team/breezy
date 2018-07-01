@@ -1309,6 +1309,12 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         def is_inside_raises(*args, **kwargs):
             raise RuntimeError('stop this')
         self.overrideAttr(dirstate, 'is_inside', is_inside_raises)
+        try:
+            from breezy.bzr import _dirstate_helpers_pyx
+        except ImportError:
+            pass
+        else:
+            self.overrideAttr(_dirstate_helpers_pyx, 'is_inside', is_inside_raises)
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):
