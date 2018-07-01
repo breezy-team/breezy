@@ -694,15 +694,21 @@ class TdbGitShaMap(GitShaMap):
                 ret.add(revid)
         return ret
 
+    def _keys(self):
+        try:
+            return self.db.keys()
+        except AttributeError:  # python < 3
+            return self.db.iterkeys()
+
     def revids(self):
         """List the revision ids known."""
-        for key in self.db.keys():
+        for key in self._keys():
             if key.startswith(b"commit\0"):
                 yield key[7:]
 
     def sha1s(self):
         """List the SHA1s."""
-        for key in self.db.iterkeys():
+        for key in self._keys():
             if key.startswith(b"git\0"):
                 yield sha_to_hex(key[4:])
 

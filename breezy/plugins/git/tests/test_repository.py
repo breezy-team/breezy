@@ -105,7 +105,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         GitRepo.init(self.test_dir)
 
         repo = Repository.open('.')
-        self.assertRaises(errors.NoSuchRevision, repo.get_revision, "bla")
+        self.assertRaises(errors.NoSuchRevision, repo.get_revision, b"bla")
 
     def simple_commit(self):
         # Create a git repository with some interesting files in a revision.

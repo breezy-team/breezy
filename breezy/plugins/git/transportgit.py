@@ -22,7 +22,6 @@ from io import BytesIO
 
 import os
 import sys
-import urllib
 
 from dulwich.errors import (
     NotGitRepository,
@@ -69,6 +68,11 @@ from dulwich.repo import (
 from ... import (
     osutils,
     transport as _mod_transport,
+    urlutils,
+    )
+from ...sixish import (
+    PY3,
+    text_type,
     )
 from ...errors import (
     AlreadyControlDirError,
@@ -128,11 +132,16 @@ class TransportRefsContainer(RefsContainer):
         except NoSuchFile:
             pass
         else:
-            keys.add("HEAD")
+            keys.add(b"HEAD")
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
-                refname = osutils.pathjoin("refs", urllib.unquote(filename))
+                unquoted_filename = urlutils.unquote(filename)
+                if PY3:
+                    # JRV: Work around unquote returning a text_type string on
+                    # PY3.
+                    unquoted_filename = unquoted_filename.encode('utf-8')
+                refname = osutils.pathjoin(b"refs", unquoted_filename)
                 if check_ref_format(refname):
                     keys.add(refname)
         except (TransportNotPossible, NoSuchFile):
@@ -279,7 +288,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
             self._ensure_dir_exists(realname)
-        transport.put_bytes(realname, new_ref+"\n")
+        transport.put_bytes(realname, new_ref+b"\n")
         return True
 
     def add_if_new(self, name, ref):

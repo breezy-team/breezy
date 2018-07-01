@@ -68,8 +68,8 @@ class TestRevidConversionV1(tests.TestCase):
 
     def test_generate_file_id(self):
         mapping = BzrGitMappingv1()
-        self.assertIsInstance(mapping.generate_file_id("la"), str)
-        self.assertIsInstance(mapping.generate_file_id(u"é"), str)
+        self.assertIsInstance(mapping.generate_file_id("la"), bytes)
+        self.assertIsInstance(mapping.generate_file_id(u"é"), bytes)
 
 
 class FileidTests(tests.TestCase):
@@ -313,77 +313,77 @@ class RoundtripRevisionsFromGit(tests.TestCase):
 
     def test_commit(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer <Committer>"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer <Committer>"
         c.commit_time = 4
         c.commit_timezone = -60 * 3
         c.author_time = 5
         c.author_timezone = 60 * 2
-        c.author = "Author <author>"
+        c.author = b"Author <author>"
         self.assertRoundtripCommit(c)
 
     def test_commit_double_negative_timezone(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer <Committer>"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer <Committer>"
         c.commit_time = 4
-        (c.commit_timezone, c._commit_timezone_neg_utc) = parse_timezone("--700")
+        (c.commit_timezone, c._commit_timezone_neg_utc) = parse_timezone(b"--700")
         c.author_time = 5
         c.author_timezone = 60 * 2
-        c.author = "Author <author>"
+        c.author = b"Author <author>"
         self.assertRoundtripCommit(c)
 
     def test_commit_zero_utc_timezone(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer <Committer>"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer <Committer>"
         c.commit_time = 4
         c.commit_timezone = 0
         c._commit_timezone_neg_utc = True
         c.author_time = 5
         c.author_timezone = 60 * 2
-        c.author = "Author <author>"
+        c.author = b"Author <author>"
         self.assertRoundtripCommit(c)
 
     def test_commit_encoding(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer <Committer>"
-        c.encoding = 'iso8859-1'
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer <Committer>"
+        c.encoding = b'iso8859-1'
         c.commit_time = 4
         c.commit_timezone = -60 * 3
         c.author_time = 5
         c.author_timezone = 60 * 2
-        c.author = "Author <author>"
+        c.author = b"Author <author>"
         self.assertRoundtripCommit(c)
 
     def test_commit_extra(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer <Committer>"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer <Committer>"
         c.commit_time = 4
         c.commit_timezone = -60 * 3
         c.author_time = 5
         c.author_timezone = 60 * 2
-        c.author = "Author <author>"
-        c._extra = [("HG:rename-source", "hg")]
+        c.author = b"Author <author>"
+        c._extra = [(b"HG:rename-source", b"hg")]
         self.assertRoundtripCommit(c)
 
     def test_commit_mergetag(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer <Committer>"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer <Committer>"
         c.commit_time = 4
         c.commit_timezone = -60 * 3
         c.author_time = 5
         c.author_timezone = 60 * 2
-        c.author = "Author <author>"
+        c.author = b"Author <author>"
         tag = make_object(Tag,
                 tagger=b'Jelmer Vernooij <jelmer@samba.org>',
                 name=b'0.1', message=None,
@@ -396,15 +396,15 @@ class RoundtripRevisionsFromGit(tests.TestCase):
 class FixPersonIdentifierTests(tests.TestCase):
 
     def test_valid(self):
-        self.assertEqual("foo <bar@blah.nl>",
-                         fix_person_identifier("foo <bar@blah.nl>"))
-        self.assertEqual("bar@blah.nl <bar@blah.nl>",
-                         fix_person_identifier("bar@blah.nl"))
+        self.assertEqual(b"foo <bar@blah.nl>",
+                         fix_person_identifier(b"foo <bar@blah.nl>"))
+        self.assertEqual(b"bar@blah.nl <bar@blah.nl>",
+                         fix_person_identifier(b"bar@blah.nl"))
 
     def test_fix(self):
-        self.assertEqual("person <bar@blah.nl>",
-                         fix_person_identifier("somebody <person <bar@blah.nl>>"))
-        self.assertEqual("person <bar@blah.nl>",
-                         fix_person_identifier("person<bar@blah.nl>"))
+        self.assertEqual(b"person <bar@blah.nl>",
+                         fix_person_identifier(b"somebody <person <bar@blah.nl>>"))
+        self.assertEqual(b"person <bar@blah.nl>",
+                         fix_person_identifier(b"person<bar@blah.nl>"))
         self.assertRaises(ValueError,
-                         fix_person_identifier, "person >bar@blah.nl<")
+                         fix_person_identifier, b"person >bar@blah.nl<")

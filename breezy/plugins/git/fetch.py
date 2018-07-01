@@ -108,7 +108,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return []
-    file_id = lookup_file_id(path)
+    file_id = lookup_file_id(osutils.safe_unicode(path))
     if stat.S_ISLNK(mode):
         cls = InventoryLink
     else:
@@ -264,7 +264,7 @@ def import_git_tree(texts, mapping, path, name, hexshas,
         # If nothing has changed since the base revision, we're done
         return [], {}
     invdelta = []
-    file_id = lookup_file_id(path)
+    file_id = lookup_file_id(osutils.safe_unicode(path))
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, name.decode("utf-8"), parent_id)
     tree = lookup_object(hexsha)

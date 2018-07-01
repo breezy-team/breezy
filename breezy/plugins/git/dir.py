@@ -19,8 +19,6 @@
 
 from __future__ import absolute_import
 
-import urllib
-
 from ... import (
     branch as _mod_branch,
     errors as bzr_errors,
@@ -30,6 +28,7 @@ from ... import (
     revision as _mod_revision,
     urlutils,
     )
+from ...sixish import viewitems
 from ...transport import (
     do_catching_redirections,
     get_transport_from_path,
@@ -76,7 +75,7 @@ class GitControlDirFormat(ControlDirFormat):
         return True
 
     def network_name(self):
-        return "git"
+        return b"git"
 
 
 class UseExistingRepository(RepositoryAcquisitionPolicy):
@@ -221,7 +220,7 @@ class GitDir(ControlDir):
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
             mapping=default_mapping)
-        for name, val in refs.iteritems():
+        for name, val in viewitems(refs):
             target_git_repo.refs[name] = val
         result_dir = self.__class__(transport, target_git_repo, format)
         if revision_id is not None:
@@ -483,10 +482,10 @@ class LocalGitDir(GitDir):
             try:
                 branch_name = ref_to_branch_name(target_ref)
             except ValueError:
-                params = {'ref': urllib.quote(target_ref, '')}
+                params = {'ref': urlutils.quote(target_ref.decode('utf-8'), '')}
             else:
                 if branch_name != b'':
-                    params = {'branch': urllib.quote(branch_name.encode('utf-8'), '')}
+                    params = {'branch': urlutils.quote(branch_name, '')}
                 else:
                     params = {}
             try:

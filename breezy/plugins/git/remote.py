@@ -334,9 +334,10 @@ class DefaultProgressReporter(object):
         self.pb = pb
 
     def progress(self, text):
-        text = text.rstrip("\r\n")
+        text = text.rstrip(b"\r\n")
+        text = text.decode('utf-8')
         if text.startswith('error: '):
-            trace.show_error('git: %s', text[len('error: '):])
+            trace.show_error('git: %s', text[len(b'error: '):])
         else:
             trace.mutter("git: %s", text)
             g = self._GIT_PROGRESS_PARTIAL_RE.match(text)

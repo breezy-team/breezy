@@ -619,7 +619,7 @@ class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
     def test_get_child_submit_format_default(self):
         submit_format = self.get_branch().get_child_submit_format()
         self.assertTrue(submit_format is None or
-                        isinstance(submit_format, bytes))
+                        isinstance(submit_format, str))
 
     def test_get_child_submit_format(self):
         branch = self.get_branch()

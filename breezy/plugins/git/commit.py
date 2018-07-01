@@ -39,6 +39,9 @@ from ...errors import (
 from ...repository import (
     CommitBuilder,
     )
+from ...sixish import (
+    viewitems,
+    )
 
 from dulwich.objects import (
     S_IFGITLINK,
@@ -164,14 +167,14 @@ class GitCommitBuilder(CommitBuilder):
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
             except AttributeError:
                 fileid_map = {}
-            for path, file_id in self._override_fileids.iteritems():
-                if type(path) is not str:
+            for path, file_id in viewitems(self._override_fileids):
+                if not isinstance(path, bytes):
                     raise TypeError(path)
                 if file_id is None:
                     if path in fileid_map:
                         del fileid_map[path]
                 else:
-                    if type(file_id) is not str:
+                    if not isinstance(file_id, bytes):
                         raise TypeError(file_id)
                     fileid_map[path] = file_id
             if fileid_map:
@@ -193,28 +196,27 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        for path, entry in iter(self._blobs.items()):
-            if entry is None:
-                del self._blobs[path]
+        self._blobs = {k: v for (k, v) in viewitems(self._blobs) if v is not None}
 
     def _iterblobs(self):
-        return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems())
+        return ((path, sha, mode) for (path, (mode, sha)) in viewitems(self._blobs))
 
     def commit(self, message):
         self._validate_unicode_text(message, 'commit message')
         c = Commit()
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
-        c.encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
-        c.committer = fix_person_identifier(self._committer.encode(c.encoding))
-        c.author = fix_person_identifier(self._revprops.pop('author', self._committer).encode(c.encoding))
+        encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
+        c.encoding = encoding.encode('ascii')
+        c.committer = fix_person_identifier(self._committer.encode(encoding))
+        c.author = fix_person_identifier(self._revprops.pop('author', self._committer).encode(encoding))
         if self._revprops:
             raise NotImplementedError(self._revprops)
         c.commit_time = int(self._timestamp)
         c.author_time = int(self._timestamp)
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
-        c.message = message.encode(c.encoding)
+        c.message = message.encode(encoding)
         if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
             strategy = gpg.GPGStrategy(self._config_stack)
             c.gpgsig = strategy.sign(c.as_raw_string(), gpg.MODE_DETACH)

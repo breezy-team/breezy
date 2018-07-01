@@ -374,7 +374,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         parent_ids = wt.get_parent_ids()
         self.assertEqual([a], parent_ids)
         for parent_id in parent_ids:
-            self.assertIsInstance(parent_id, str)
+            self.assertIsInstance(parent_id, bytes)
 
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')

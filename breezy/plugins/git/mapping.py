@@ -28,6 +28,7 @@ from ... import (
     errors,
     foreign,
     trace,
+    urlutils,
     )
 from ...bzr.inventory import (
     ROOT_ID,
@@ -40,7 +41,10 @@ from ...foreign import (
 from ...revision import (
     NULL_REVISION,
     )
-from ...sixish import text_type
+from ...sixish import (
+    text_type,
+    viewitems,
+    )
 from .errors import (
     NoPushSupport,
     UnknownCommitExtra,
@@ -58,10 +62,6 @@ from .roundtrip import (
     serialize_fileid_map,
     )
 
-try:
-    from urllib.parse import quote
-except ImportError:
-    from urllib import quote
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0o644
 HG_RENAME_SOURCE = "HG:rename-source"
@@ -74,7 +74,7 @@ FILE_ID_PREFIX = b'git:'
 
 
 def escape_file_id(file_id):
-    return file_id.replace('_', '__').replace(' ', '_s').replace('\x0c', '_c')
+    return file_id.replace(b'_', b'__').replace(b' ', b'_s').replace(b'\x0c', b'_c')
 
 
 def unescape_file_id(file_id):
@@ -99,17 +99,17 @@ def unescape_file_id(file_id):
 
 
 def fix_person_identifier(text):
-    if not "<" in text and not ">" in text:
+    if not b"<" in text and not b">" in text:
         username = text
         email = text
     else:
-        if text.rindex(">") < text.rindex("<"):
+        if text.rindex(b">") < text.rindex(b"<"):
             raise ValueError(text)
-        username, email = text.split("<", 2)[-2:]
-        email = email.split(">", 1)[0]
-        if username.endswith(" "):
+        username, email = text.split(b"<", 2)[-2:]
+        email = email.split(b">", 1)[0]
+        if username.endswith(b" "):
             username = username[:-1]
-    return "%s <%s>" % (username, email)
+    return b"%s <%s>" % (username, email)
 
 
 def warn_escaped(commit, num_escaped):
@@ -146,12 +146,12 @@ class BzrGitMapping(foreign.VcsMapping):
         from dulwich.protocol import ZERO_SHA
         if git_rev_id == ZERO_SHA:
             return NULL_REVISION
-        return "%s:%s" % (cls.revid_prefix, git_rev_id)
+        return b"%s:%s" % (cls.revid_prefix, git_rev_id)
 
     @classmethod
     def revision_id_bzr_to_foreign(cls, bzr_rev_id):
         """Convert a Bazaar revision id to a git revision id handle."""
-        if not bzr_rev_id.startswith("%s:" % cls.revid_prefix):
+        if not bzr_rev_id.startswith(b"%s:" % cls.revid_prefix):
             raise errors.InvalidRevisionId(bzr_rev_id, cls)
         return bzr_rev_id[len(cls.revid_prefix)+1:], cls()
 
@@ -172,7 +172,9 @@ class BzrGitMapping(foreign.VcsMapping):
         return unescape_file_id(file_id[len(FILE_ID_PREFIX):])
 
     def revid_as_refname(self, revid):
-        return "refs/bzr/%s" % quote(revid)
+        if not isinstance(revid, bytes):
+            raise TypeError(revid)
+        return b"refs/bzr/" + urlutils.quote(revid)
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -229,11 +231,11 @@ class BzrGitMapping(foreign.VcsMapping):
         (message, renames, branch, extra) = extract_hg_metadata(message)
         if branch is not None:
             rev.properties[u'hg:extra:branch'] = branch
-        for name, value in extra.iteritems():
+        for name, value in viewitems(extra):
             rev.properties[u'hg:extra:' + name] = base64.b64encode(value)
         if renames:
             rev.properties[u'hg:renames'] = base64.b64encode(bencode.bencode(
-                [(new, old) for (old, new) in renames.iteritems()]))
+                [(new, old) for (old, new) in viewitems(renames)]))
         return message
 
     def _extract_bzr_metadata(self, rev, message):
@@ -301,6 +303,8 @@ class BzrGitMapping(foreign.VcsMapping):
             encoding))
         commit.author = fix_person_identifier(
             rev.get_apparent_authors()[0].encode(encoding))
+        # TODO(jelmer): Don't use this hack.
+        long = getattr(__builtins__, 'long', int)
         commit.commit_time = long(rev.timestamp)
         if u'author-timestamp' in rev.properties:
             commit.author_time = long(rev.properties[u'author-timestamp'])
@@ -317,7 +321,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode('ascii')
         commit.message = self._encode_commit_message(rev, rev.message,
             encoding)
-        if type(commit.message) is not str:
+        if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         if metadata is not None:
             try:
@@ -329,7 +333,7 @@ class BzrGitMapping(foreign.VcsMapping):
                  u'commit-timezone-neg-utc', u'git-implicit-encoding',
                  u'git-gpg-signature', u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
-            for k, v in rev.properties.iteritems():
+            for k, v in viewitems(rev.properties):
                 if not k in mapping_properties:
                     metadata.properties[k] = v
         if not lossy and metadata:
@@ -338,7 +342,7 @@ class BzrGitMapping(foreign.VcsMapping):
                                                      encoding)
             else:
                 raise NoPushSupport(None, None, self, revision_id=rev.revision_id)
-        if type(commit.message) is not str:
+        if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         i = 0
         propname = u'git-mergetag-0'
@@ -370,14 +374,14 @@ class BzrGitMapping(foreign.VcsMapping):
                 self.revision_id_foreign_to_bzr(commit.id))
         rev.git_metadata = None
         def decode_using_encoding(rev, commit, encoding):
-            rev.committer = str(commit.committer).decode(encoding)
+            rev.committer = commit.committer.decode(encoding)
             if commit.committer != commit.author:
                 rev.properties[u'author'] = str(commit.author).decode(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
         if commit.encoding is not None:
-            rev.properties[u'git-explicit-encoding'] = commit.encoding
-            decode_using_encoding(rev, commit, commit.encoding)
+            rev.properties[u'git-explicit-encoding'] = commit.encoding.decode('ascii')
+            decode_using_encoding(rev, commit, commit.encoding.decode('ascii'))
         else:
             for encoding in ('utf-8', 'latin1'):
                 try:
@@ -457,7 +461,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
 
 class BzrGitMappingv1(BzrGitMapping):
-    revid_prefix = 'git-v1'
+    revid_prefix = b'git-v1'
     experimental = False
 
     def __str__(self):
@@ -465,7 +469,7 @@ class BzrGitMappingv1(BzrGitMapping):
 
 
 class BzrGitMappingExperimental(BzrGitMappingv1):
-    revid_prefix = 'git-experimental'
+    revid_prefix = b'git-experimental'
     experimental = True
     roundtripping = True
 
@@ -498,9 +502,9 @@ class GitMappingRegistry(VcsMappingRegistry):
         if bzr_revid == NULL_REVISION:
             from dulwich.protocol import ZERO_SHA
             return ZERO_SHA, None
-        if not bzr_revid.startswith("git-"):
+        if not bzr_revid.startswith(b"git-"):
             raise errors.InvalidRevisionId(bzr_revid, None)
-        (mapping_version, git_sha) = bzr_revid.split(":", 1)
+        (mapping_version, git_sha) = bzr_revid.split(b":", 1)
         mapping = self.get(mapping_version)
         return mapping.revision_id_bzr_to_foreign(bzr_revid)
 
@@ -508,9 +512,9 @@ class GitMappingRegistry(VcsMappingRegistry):
 
 
 mapping_registry = GitMappingRegistry()
-mapping_registry.register_lazy('git-v1', "breezy.plugins.git.mapping",
+mapping_registry.register_lazy(b'git-v1', "breezy.plugins.git.mapping",
     "BzrGitMappingv1")
-mapping_registry.register_lazy('git-experimental',
+mapping_registry.register_lazy(b'git-experimental',
     "breezy.plugins.git.mapping", "BzrGitMappingExperimental")
 # Uncomment the next line to enable the experimental bzr-git mappings.
 # This will make sure all bzr metadata is pushed into git, allowing for
@@ -518,7 +522,7 @@ mapping_registry.register_lazy('git-experimental',
 # NOTE: THIS IS EXPERIMENTAL. IT MAY EAT YOUR DATA OR CORRUPT
 # YOUR BZR OR GIT REPOSITORIES. USE WITH CARE.
 #mapping_registry.set_default('git-experimental')
-mapping_registry.set_default('git-v1')
+mapping_registry.set_default(b'git-v1')
 
 
 class ForeignGit(ForeignVcs):
@@ -642,32 +646,32 @@ class GitFileIdMap(object):
     def set_file_id(self, path, file_id):
         if type(path) is not str:
             raise TypeError(path)
-        if type(file_id) is not str:
+        if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         self.file_ids[path] = file_id
 
     def lookup_file_id(self, path):
-        if type(path) is not str:
+        if not isinstance(path, text_type):
             raise TypeError(path)
         try:
             file_id = self.file_ids[path]
         except KeyError:
             file_id = self.mapping.generate_file_id(path)
-        if type(file_id) is not str:
+        if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         return file_id
 
     def lookup_path(self, file_id):
         if self.paths is None:
             self.paths = {}
-            for k, v in self.file_ids.iteritems():
+            for k, v in viewitems(self.file_ids):
                 self.paths[v] = k
         try:
             path = self.paths[file_id]
         except KeyError:
             return self.mapping.parse_file_id(file_id)
         else:
-            if type(path) is not str:
+            if not isinstance(path, text_type):
                 raise TypeError(path)
             return path
 

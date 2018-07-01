@@ -74,7 +74,7 @@ class FetchTests(TestCaseWithTransport):
 
     def test_no_wants(self):
         r = self.fetch([])
-        self.assertEqual("\n", r)
+        self.assertEqual(b"\n", r)
 
     def test_simple(self):
         self.build_tree(['remote/foo'])
@@ -103,19 +103,19 @@ class RemoteHelperTests(TestCaseWithTransport):
         f = BytesIO()
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
-        base = "fetch\noption\npush\n"
-        self.assertTrue(capabs in (base+"\n", base+"import\n\n"), capabs)
+        base = b"fetch\noption\npush\n"
+        self.assertTrue(capabs in (base+b"\n", base+b"import\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()
         self.helper.cmd_option(f, [])
-        self.assertEqual("unsupported\n", f.getvalue())
+        self.assertEqual(b"unsupported\n", f.getvalue())
 
     def test_list_basic(self):
         f = BytesIO()
         self.helper.cmd_list(f, [])
         self.assertEqual(
-            '\n',
+            b'\n',
             f.getvalue())
 
     def test_import(self):

@@ -168,7 +168,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.commit('one', rev_id=b'rev-one')
         tree.rename_one('foo', 'bar')
         self.assertEqual('bar', tree.id2path(b'foo-id'))
-        self.assertEqual('content\n', tree._file_transport.get_bytes('bar'))
+        self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
         self.assertRaises(errors.NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
         tree.commit('two', rev_id=b'rev-two')
