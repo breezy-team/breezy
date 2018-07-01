@@ -83,7 +83,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
-        self.assertEqual('null:', new_tree.last_revision())
+        self.assertEqual(b'null:', new_tree.last_revision())
 
     def test_convert_knit_dirstate_content(self):
         # smoke test for dirstate conversion: we call dirstate primitives,
