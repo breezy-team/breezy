@@ -1,4 +1,5 @@
-# Copyright (C) 2005-2012, 2016 Canonical Ltd, 2017 Breezy developers
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
+# Copyright (C) 2017-2018 Breezy developers
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
