@@ -1389,7 +1389,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
             b'success', (b'ok', b'1', b'rev-tip'))
         client.add_expected_call(
             b'Branch.get_config_file', (b'quack/',),
-            b'success', (b'ok',), '')
+            b'success', (b'ok',), b'')
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)

@@ -207,34 +207,29 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                          self.ann.annotate_flat(self.ff_key))
 
     def test_annotate_flat_respects_break_ann_tie(self):
-        tiebreaker = annotate._break_annotation_tie
-        try:
-            calls = []
-            def custom_tiebreaker(annotated_lines):
-                self.assertEqual(2, len(annotated_lines))
-                left = annotated_lines[0]
-                self.assertEqual(2, len(left))
-                self.assertEqual(b'new content\n', left[1])
-                right = annotated_lines[1]
-                self.assertEqual(2, len(right))
-                self.assertEqual(b'new content\n', right[1])
-                calls.append((left[0], right[0]))
-                # Our custom tiebreaker takes the *largest* value, rather than
-                # the *smallest* value
-                if left[0] < right[0]:
-                    return right
-                else:
-                    return left
-            annotate._break_annotation_tie = custom_tiebreaker
-            self.make_many_way_common_merge_text()
-            self.assertEqual([(self.fa_key, b'simple\n'),
-                             (self.fe_key, b'new content\n')],
-                             self.ann.annotate_flat(self.ff_key))
-            self.assertEqual([(self.fe_key, self.fc_key),
-                              (self.fe_key, self.fb_key)], calls)
-        finally:
-            annotate._break_annotation_tie = tiebreaker
-
+        seen = set()
+        def custom_tiebreaker(annotated_lines):
+            self.assertEqual(2, len(annotated_lines))
+            left = annotated_lines[0]
+            self.assertEqual(2, len(left))
+            self.assertEqual(b'new content\n', left[1])
+            right = annotated_lines[1]
+            self.assertEqual(2, len(right))
+            self.assertEqual(b'new content\n', right[1])
+            seen.update([left[0], right[0]])
+            # Our custom tiebreaker takes the *largest* value, rather than
+            # the *smallest* value
+            if left[0] < right[0]:
+                return right
+            else:
+                return left
+        self.overrideAttr(annotate, '_break_annotation_tie', custom_tiebreaker)
+        self.make_many_way_common_merge_text()
+        self.assertEqual([(self.fa_key, b'simple\n'),
+                         (self.fe_key, b'new content\n')],
+                         self.ann.annotate_flat(self.ff_key))
+        # Calls happen in set iteration order but should keys should be seen
+        self.assertEqual({self.fb_key, self.fc_key, self.fe_key}, seen)
 
     def test_needed_keys_simple(self):
         self.make_simple_text()

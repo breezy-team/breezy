@@ -2022,7 +2022,7 @@ class cmd_ancestry(Command):
         for revision_id in reversed(revisions):
             if _mod_revision.is_null(revision_id):
                 continue
-            self.outf.write(revision_id + '\n')
+            self.outf.write(revision_id.decode('utf-8') + '\n')
 
 
 class cmd_init(Command):

@@ -1449,13 +1449,13 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
         # * the new file is a in directory with the old file name
         # * the new file has the same name as the directory of the first
         def command_list():
-            author = ['', 'bugs@a.com', time.time(), time.timezone]
-            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            author = [b'', b'bugs@a.com', time.time(), time.timezone]
+            committer = [b'', b'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 yield commands.FileModifyCommand(path1, kind_to_mode(kind, False),
-                        None, "aaa")
+                        None, b"aaa")
                 yield commands.FileModifyCommand(old_path2, kind_to_mode(kind, False),
-                        None, "bbb")
+                        None, b"bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():

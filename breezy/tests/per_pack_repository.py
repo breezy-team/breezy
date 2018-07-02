@@ -96,7 +96,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def check_format(self, t):
         self.assertEqualDiff(
-            self.format_string, # from scenario
+            self.format_string.encode('ascii'), # from scenario
             t.get('format').read())
 
     def assertHasNoKndx(self, t, knit_name):
