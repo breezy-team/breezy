@@ -1201,7 +1201,7 @@ class TestControlDir(TestCaseWithControlDir):
             self.assertTrue(
                 issubclass(format.__class__, looked_up_format.__class__))
         # The network name must be a byte string.
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
 
     def test_open_not_bzrdir(self):
         # test the formats specific behaviour for no-content or similar dirs.
