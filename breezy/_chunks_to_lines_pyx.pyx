@@ -23,21 +23,17 @@ from __future__ import absolute_import
 cdef extern from "python-compat.h":
     pass
 
-cdef extern from "stdlib.h":
-    ctypedef unsigned size_t
+from cpython.bytes cimport (
+    PyBytes_CheckExact,
+    PyBytes_FromStringAndSize,
+    PyBytes_AS_STRING,
+    PyBytes_GET_SIZE,
+    )
+from cpython.list cimport (
+    PyList_Append,
+    )
 
-cdef extern from "Python.h":
-    ctypedef struct PyObject:
-        pass
-    int PyList_Append(object lst, object item) except -1
-
-    int PyString_CheckExact(object p)
-    char *PyString_AS_STRING(object p)
-    Py_ssize_t PyString_GET_SIZE(object p)
-    object PyString_FromStringAndSize(char *c_str, Py_ssize_t len)
-
-cdef extern from "string.h":
-    void *memchr(void *s, int c, size_t n)
+from libc.string cimport memchr
 
 
 def chunks_to_lines(chunks):
@@ -64,17 +60,17 @@ def chunks_to_lines(chunks):
             # We have a chunk which followed a chunk without a newline, so this
             # is not a simple list of lines.
             break
-        # Switching from PyString_AsStringAndSize to PyString_CheckExact and
+        # Switching from PyBytes_AsStringAndSize to PyBytes_CheckExact and
         # then the macros GET_SIZE and AS_STRING saved us 40us / 470us.
-        # It seems PyString_AsStringAndSize can actually trigger a conversion,
+        # It seems PyBytes_AsStringAndSize can actually trigger a conversion,
         # which we don't want anyway.
-        if not PyString_CheckExact(chunk):
+        if not PyBytes_CheckExact(chunk):
             raise TypeError('chunk is not a string')
-        the_len = PyString_GET_SIZE(chunk)
+        the_len = PyBytes_GET_SIZE(chunk)
         if the_len == 0:
             # An empty string is never a valid line
             break
-        c_str = PyString_AS_STRING(chunk)
+        c_str = PyBytes_AS_STRING(chunk)
         c_last = c_str + the_len - 1
         newline = <char *>memchr(c_str, c'\n', the_len)
         if newline != c_last:
@@ -95,14 +91,14 @@ def chunks_to_lines(chunks):
         if tail is not None:
             chunk = tail + chunk
             tail = None
-        if not PyString_CheckExact(chunk):
+        if not PyBytes_CheckExact(chunk):
             raise TypeError('chunk is not a string')
-        the_len = PyString_GET_SIZE(chunk)
+        the_len = PyBytes_GET_SIZE(chunk)
         if the_len == 0:
             # An empty string is never a valid line, and we don't need to
             # append anything
             continue
-        c_str = PyString_AS_STRING(chunk)
+        c_str = PyBytes_AS_STRING(chunk)
         c_last = c_str + the_len - 1
         newline = <char *>memchr(c_str, c'\n', the_len)
         if newline == c_last:
@@ -116,7 +112,7 @@ def chunks_to_lines(chunks):
             # We have a newline in the middle, loop until we've consumed all
             # lines
             while newline != NULL:
-                line = PyString_FromStringAndSize(c_str, newline - c_str + 1)
+                line = PyBytes_FromStringAndSize(c_str, newline - c_str + 1)
                 PyList_Append(lines, line)
                 c_str = newline + 1
                 if c_str > c_last: # We are done
@@ -124,7 +120,7 @@ def chunks_to_lines(chunks):
                 the_len = c_last - c_str + 1
                 newline = <char *>memchr(c_str, c'\n', the_len)
                 if newline == NULL:
-                    tail = PyString_FromStringAndSize(c_str, the_len)
+                    tail = PyBytes_FromStringAndSize(c_str, the_len)
                     break
     if tail is not None:
         PyList_Append(lines, tail)

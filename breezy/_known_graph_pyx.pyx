@@ -22,36 +22,39 @@ from __future__ import absolute_import
 cdef extern from "python-compat.h":
     pass
 
-cdef extern from "Python.h":
-    ctypedef int Py_ssize_t
-    ctypedef struct PyObject:
-        pass
-
-    int PyString_CheckExact(object)
-
-    int PyObject_RichCompareBool(object, object, int)
-    int Py_LT
-
-    int PyTuple_CheckExact(object)
-    object PyTuple_New(Py_ssize_t n)
-    Py_ssize_t PyTuple_GET_SIZE(object t)
-    PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
-    void PyTuple_SET_ITEM(object t, Py_ssize_t o, object v)
-
-    int PyList_CheckExact(object)
-    Py_ssize_t PyList_GET_SIZE(object l)
-    PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
-    int PyList_SetItem(object l, Py_ssize_t o, object l) except -1
-    int PyList_Append(object l, object v) except -1
-
-    int PyDict_CheckExact(object d)
-    Py_ssize_t PyDict_Size(object d) except -1
-    PyObject * PyDict_GetItem(object d, object k)
-    int PyDict_SetItem(object d, object k, object v) except -1
-    int PyDict_DelItem(object d, object k) except -1
-    int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
-
-    void Py_INCREF(object)
+from cpython.bytes cimport (
+    PyBytes_CheckExact,
+    )
+from cpython.dict cimport (
+    PyDict_CheckExact,
+    PyDict_DelItem,
+    PyDict_GetItem,
+    PyDict_Next,
+    PyDict_SetItem,
+    PyDict_Size,
+    )
+from cpython.list cimport (
+    PyList_Append,
+    PyList_CheckExact,
+    PyList_GET_SIZE,
+    PyList_GET_ITEM,
+    PyList_SetItem,
+    )
+from cpython.object cimport (
+    Py_LT,
+    PyObject,
+    PyObject_RichCompareBool,
+    )
+from cpython.ref cimport (
+    Py_INCREF,
+    )
+from cpython.tuple cimport (
+    PyTuple_CheckExact,
+    PyTuple_GET_SIZE,
+    PyTuple_GET_ITEM,
+    PyTuple_New,
+    PyTuple_SET_ITEM,
+    )
 
 import collections
 import gc
@@ -95,14 +98,14 @@ cdef class _KnownGraphNode:
         def __get__(self):
             if self.parents is None:
                 return None
-            
+
             cdef _KnownGraphNode parent
 
             keys = []
             for parent in self.parents:
                 PyList_Append(keys, parent.key)
             return keys
-    
+
     cdef clear_references(self):
         self.parents = None
         self.children = None
@@ -266,7 +269,9 @@ cdef class KnownGraph:
         - all nodes found will also have child_keys populated with all known
           child keys,
         """
-        cdef PyObject *temp_key, *temp_parent_keys, *temp_node
+        cdef PyObject *temp_key
+        cdef PyObject *temp_parent_keys
+        cdef PyObject *temp_node
         cdef Py_ssize_t pos
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
@@ -348,7 +353,7 @@ cdef class KnownGraph:
 
         If this fills in a ghost, then the gdfos of all children will be
         updated accordingly.
-        
+
         :param key: The node being added. If this is a duplicate, this is a
             no-op.
         :param parent_keys: The parents of the given node.
@@ -579,7 +584,7 @@ cdef class KnownGraph:
         prefix_tips = {}
         for pos from 0 <= pos < PyList_GET_SIZE(tips):
             node = _get_list_node(tips, pos)
-            if PyString_CheckExact(node.key) or len(node.key) == 1:
+            if PyBytes_CheckExact(node.key) or len(node.key) == 1:
                 prefix = ''
             else:
                 prefix = node.key[0]
@@ -640,29 +645,29 @@ cdef class KnownGraph:
         #       shown a specific impact, yet.
         sorter = _MergeSorter(self, tip_key)
         return sorter.topo_order()
-    
+
     def get_parent_keys(self, key):
         """Get the parents for a key
-        
+
         Returns a list containg the parents keys. If the key is a ghost,
         None is returned. A KeyError will be raised if the key is not in
         the graph.
-        
+
         :param keys: Key to check (eg revision_id)
         :return: A list of parents
         """
-        return self._nodes[key].parent_keys 
+        return self._nodes[key].parent_keys
 
     def get_child_keys(self, key):
         """Get the children for a key
-        
+
         Returns a list containg the children keys. A KeyError will be raised
         if the key is not in the graph.
-        
+
         :param keys: Key to check (eg revision_id)
         :return: A list of children
         """
-        return self._nodes[key].child_keys    
+        return self._nodes[key].child_keys
 
 
 cdef class _MergeSortNode:
@@ -929,7 +934,8 @@ cdef class _MergeSorter:
         cdef _MergeSortNode ms_node
         cdef _KnownGraphNode node
         cdef Py_ssize_t pos
-        cdef PyObject *temp_key, *temp_node
+        cdef PyObject *temp_key
+        cdef PyObject *temp_node
 
         # Note: allocating a _MergeSortNode and deallocating it for all nodes
         #       costs approx 8.52ms (21%) of the total runtime
