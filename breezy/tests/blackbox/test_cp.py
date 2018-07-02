@@ -39,18 +39,18 @@ class TestCopy(TestCaseWithTransport):
     def test_cp_unversioned(self):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
-            ["^brz: ERROR: Could not copy .*unversioned.txt => .*elsewhere."
-             " .*unversioned.txt is not versioned\\.$"],
+            [b"^brz: ERROR: Could not copy .*unversioned.txt => .*elsewhere."
+             b" .*unversioned.txt is not versioned\\.$"],
             'cp unversioned.txt elsewhere')
 
     def test_cp_nonexisting(self):
         self.run_bzr_error(
-            ["^brz: ERROR: Could not copy .*doesnotexist => .*somewhereelse."
-             " .*doesnotexist is not versioned\\.$"],
+            [b"^brz: ERROR: Could not copy .*doesnotexist => .*somewhereelse."
+             b" .*doesnotexist is not versioned\\.$"],
             'cp doesnotexist somewhereelse')
 
     def test_cp_unqualified(self):
-        self.run_bzr_error(['^brz: ERROR: missing file argument$'], 'cp')
+        self.run_bzr_error([b'^brz: ERROR: missing file argument$'], 'cp')
 
     def test_cp_invalid(self):
         tree = self.make_branch_and_tree('.')

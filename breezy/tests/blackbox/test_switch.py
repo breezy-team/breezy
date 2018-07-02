@@ -54,9 +54,9 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr('checkout --lightweight branch checkout')
         os.chdir('checkout')
         out, err = self.run_bzr('switch ../branch2')
-        self.assertContainsRe(err, 'Tree is up to date at revision 0.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
-        self.assertEqual('', out)
+        self.assertContainsRe(err, b'Tree is up to date at revision 0.\n')
+        self.assertContainsRe(err, b'Switched to branch: .*/branch2.\n')
+        self.assertEqual(b'', out)
 
     def test_switch_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
@@ -68,9 +68,9 @@ class TestSwitch(TestCaseWithTransport):
         os.chdir('checkout')
         out, err = self.run_bzr('switch ../branch2')
         #self.assertContainsRe(err, '\+N  file')
-        self.assertContainsRe(err, 'Updated to revision 1.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
-        self.assertEqual('', out)
+        self.assertContainsRe(err, b'Updated to revision 1.\n')
+        self.assertContainsRe(err, b'Switched to branch: .*/branch2.\n')
+        self.assertEqual(b'', out)
 
     def _test_switch_nick(self, lightweight):
         """Check that the nick gets switched too."""
@@ -218,7 +218,7 @@ class TestSwitch(TestCaseWithTransport):
         tree.add('file-2')
         revid2 = tree.commit('rev2')
         tree.controldir.create_branch(name='foo')
-        self.run_bzr_error(['Cannot switch a branch, only a checkout.'],
+        self.run_bzr_error([b'Cannot switch a branch, only a checkout.'],
             'switch foo')
         self.run_bzr(['switch', '--force', 'foo'])
 
@@ -311,7 +311,7 @@ class TestSwitch(TestCaseWithTransport):
 
     def test_create_branch_no_branch(self):
         self.prepare_lightweight_switch()
-        self.run_bzr_error(['cannot create branch without source branch'],
+        self.run_bzr_error([b'cannot create branch without source branch'],
             'switch --create-branch ../branch2', working_dir='tree')
 
     def test_create_branch(self):

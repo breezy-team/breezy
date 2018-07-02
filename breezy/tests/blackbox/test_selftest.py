@@ -138,7 +138,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             num_tests = len(body)
             self.assertLength(0, header)
             self.assertLength(0, footer)
-            self.assertEqual('', err)
+            self.assertEqual(b'', err)
         # Yes this prevents using threads to run the test suite in parallel,
         # however we don't have a clean dependency injector for commands, 
         # and even if we did - we'd still be testing that the glue is wired

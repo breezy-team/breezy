@@ -69,8 +69,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_cmd(self):
         out, err = self.run_bzr('annotate hello.txt')
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 1   test@us | my helicopter
 3   user@te | your helicopter
 4   user@te | all of
@@ -79,8 +79,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_cmd_full(self):
         out, err = self.run_bzr('annotate hello.txt --all')
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 1   test@us | my helicopter
 3   user@te | your helicopter
 4   user@te | all of
@@ -89,8 +89,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_cmd_long(self):
         out, err = self.run_bzr('annotate hello.txt --long')
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 1   test@user 20061212 | my helicopter
 3   user@test 20061213 | your helicopter
 4   user@test 20061213 | all of
@@ -102,8 +102,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
         max_len = max([len(self.revision_id_1),
                        len(self.revision_id_3),
                        len(self.revision_id_4)])
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 %*s | my helicopter
 %*s | your helicopter
 %*s | all of
@@ -111,28 +111,28 @@ class TestAnnotate(tests.TestCaseWithTransport):
 ''' % (max_len, self.revision_id_1,
        max_len, self.revision_id_3,
        max_len, self.revision_id_4,
-       max_len, '',
+       max_len, b'',
       )
 , out)
 
     def test_no_mail(self):
         out, err = self.run_bzr('annotate nomail.txt')
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 2   no mail | nomail
 ''', out)
 
     def test_annotate_cmd_revision(self):
         out, err = self.run_bzr('annotate hello.txt -r1')
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 1   test@us | my helicopter
 ''', out)
 
     def test_annotate_cmd_revision3(self):
         out, err = self.run_bzr('annotate hello.txt -r3')
-        self.assertEqual('', err)
-        self.assertEqualDiff('''\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b'''\
 1   test@us | my helicopter
 3   user@te | your helicopter
 ''', out)
@@ -140,15 +140,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_cmd_unknown_revision(self):
         out, err = self.run_bzr('annotate hello.txt -r 10',
                                 retcode=3)
-        self.assertEqual('', out)
-        self.assertContainsRe(err, "Requested revision: '10' does not exist")
+        self.assertEqual(b'', out)
+        self.assertContainsRe(err, b"Requested revision: '10' does not exist")
 
     def test_annotate_cmd_two_revisions(self):
         out, err = self.run_bzr('annotate hello.txt -r1..2',
                                 retcode=3)
-        self.assertEqual('', out)
-        self.assertEqual('brz: ERROR: brz annotate --revision takes'
-                         ' exactly one revision identifier\n',
+        self.assertEqual(b'', out)
+        self.assertEqual(b'brz: ERROR: brz annotate --revision takes'
+                         b' exactly one revision identifier\n',
                          err)
 
 
@@ -161,7 +161,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         file_relpath = joinpath(relpath, 'file')
         self.build_tree_contents([(file_relpath, b'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', committer="test@host", rev_id="rev1")
+        tree.commit('add file', committer="test@host", rev_id=b"rev1")
         self.build_tree_contents([(file_relpath, b'foo\nbar\ngam\n')])
         return tree
 
@@ -170,10 +170,10 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.branch.create_checkout(self.get_url('work'), lightweight=True)
         out, err = self.run_bzr(['annotate', 'file', '-r', 'branch:../trunk'],
                                 working_dir='work')
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         self.assertEqual(
-            '1   test@ho | foo\n'
-            '            | gam\n',
+            b'1   test@ho | foo\n'
+            b'            | gam\n',
             out)
 
     def test_annotate_edited_file(self):
@@ -196,9 +196,9 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree = self._setup_edited_file()
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
-            '1   test@ho | foo\n'
-            '2?  local u | bar\n'
-            '1   test@ho | gam\n',
+            b'1   test@ho | foo\n'
+            b'2?  local u | bar\n'
+            b'1   test@ho | gam\n',
             out)
 
     def test_annotate_edited_file_show_ids(self):
@@ -206,9 +206,9 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.overrideEnv('BRZ_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
-            '    rev1 | foo\n'
-            'current: | bar\n'
-            '    rev1 | gam\n',
+            b'    rev1 | foo\n'
+            b'current: | bar\n'
+            b'    rev1 | gam\n',
             out)
 
     def _create_merged_file(self):
@@ -216,16 +216,16 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('file', b'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', rev_id="rev1", committer="test@host")
+        tree.commit('add file', rev_id=b"rev1", committer="test@host")
         # right side
         self.build_tree_contents([('file', b'foo\nbar\ngam\n')])
-        tree.commit("right", rev_id="rev1.1.1", committer="test@host")
-        tree.pull(tree.branch, True, "rev1")
+        tree.commit("right", rev_id=b"rev1.1.1", committer="test@host")
+        tree.pull(tree.branch, True, b"rev1")
         # left side
         self.build_tree_contents([('file', b'foo\nbaz\ngam\n')])
-        tree.commit("left", rev_id="rev2", committer="test@host")
+        tree.commit("left", rev_id=b"rev2", committer="test@host")
         # merge
-        tree.merge_from_branch(tree.branch, "rev1.1.1")
+        tree.merge_from_branch(tree.branch, b"rev1.1.1")
         # edit the file to be 'resolved' and have a further local edit
         self.build_tree_contents([('file', b'local\nfoo\nbar\nbaz\ngam\n')])
         return tree
@@ -236,22 +236,22 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         email = config.extract_email_address(
             wt.branch.get_config_stack().get('email'))
         self.assertEqual(
-            '3?    %-7s | local\n'
-            '1     test@ho | foo\n'
-            '1.1.1 test@ho | bar\n'
-            '2     test@ho | baz\n'
-            '1     test@ho | gam\n' % email[:7],
+            b'3?    %-7s | local\n'
+            b'1     test@ho | foo\n'
+            b'1.1.1 test@ho | bar\n'
+            b'2     test@ho | baz\n'
+            b'1     test@ho | gam\n' % email[:7],
             out)
 
     def test_annotated_edited_merged_file_ids(self):
         self._create_merged_file()
         out, err = self.run_bzr(['annotate', 'file', '--show-ids'])
         self.assertEqual(
-            'current: | local\n'
-            '    rev1 | foo\n'
-            'rev1.1.1 | bar\n'
-            '    rev2 | baz\n'
-            '    rev1 | gam\n',
+            b'current: | local\n'
+            b'    rev1 | foo\n'
+            b'rev1.1.1 | bar\n'
+            b'    rev2 | baz\n'
+            b'    rev1 | gam\n',
             out)
 
     def test_annotate_empty_file(self):
@@ -260,7 +260,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add('empty')
         tree.commit('add empty file')
         out, err = self.run_bzr(['annotate', 'empty'])
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_annotate_removed_file(self):
         tree = self.make_branch_and_tree('.')
@@ -271,7 +271,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.remove('empty')
         tree.commit('remove empty file')
         out, err = self.run_bzr(['annotate', '-r1', 'empty'])
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_annotate_empty_file_show_ids(self):
         tree = self.make_branch_and_tree('.')
@@ -279,7 +279,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add('empty')
         tree.commit('add empty file')
         out, err = self.run_bzr(['annotate', '--show-ids', 'empty'])
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_annotate_nonexistant_file(self):
         tree = self.make_branch_and_tree('.')
@@ -287,8 +287,8 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add(['file'])
         tree.commit('add a file')
         out, err = self.run_bzr(['annotate', 'doesnotexist'], retcode=3)
-        self.assertEqual('', out)
-        self.assertEqual("brz: ERROR: doesnotexist is not versioned.\n", err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b"brz: ERROR: doesnotexist is not versioned.\n", err)
 
     def test_annotate_without_workingtree(self):
         tree = self.make_branch_and_tree('.')
@@ -299,7 +299,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         bzrdir.destroy_workingtree()
         self.assertFalse(bzrdir.has_workingtree())
         out, err = self.run_bzr(['annotate', 'empty'])
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_annotate_directory(self):
         """Test --directory option"""

@@ -24,8 +24,8 @@ class TestCatRevision(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.commit('This revision', rev_id=b'abcd')
         output, errors = self.run_bzr(['cat-revision', u'abcd'])
-        self.assertContainsRe(output, 'This revision')
-        self.assertEqual('', errors)
+        self.assertContainsRe(output, b'This revision')
+        self.assertEqual(b'', errors)
 
     def test_cat_revision(self):
         """Test brz cat-revision.
@@ -63,13 +63,13 @@ class TestCatRevision(TestCaseWithTransport):
         tree = self.make_branch_and_tree('a')
         tree.commit('This revision', rev_id=b'abcd')
         output, errors = self.run_bzr(['cat-revision', '-d', 'a', u'abcd'])
-        self.assertContainsRe(output, 'This revision')
-        self.assertEqual('', errors)
+        self.assertContainsRe(output, b'This revision')
+        self.assertEqual(b'', errors)
 
     def test_cat_tree_less_branch(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('This revision', rev_id=b'abcd')
         tree.controldir.destroy_workingtree()
         output, errors = self.run_bzr(['cat-revision', '-d', 'a', u'abcd'])
-        self.assertContainsRe(output, 'This revision')
-        self.assertEqual('', errors)
+        self.assertContainsRe(output, b'This revision')
+        self.assertEqual(b'', errors)

@@ -76,13 +76,14 @@ from .unpeel_map import (
 from .urls import git_url_to_bzr_url
 
 from ...foreign import ForeignBranch
+from ...sixish import viewitems
 
 
 class GitPullResult(branch.PullResult):
     """Result of a pull from a Git branch."""
 
     def _lookup_revno(self, revid):
-        if type(revid) is not str:
+        if not isinstance(revid, bytes):
             raise TypeError(revid)
         # Try in source branch first, it'll be faster
         with self.target_branch.lock_read():
@@ -236,7 +237,7 @@ class LocalGitTagDict(GitTags):
 
     def _set_tag_dict(self, to_dict):
         extra = set(self.refs.allkeys())
-        for k, revid in to_dict.iteritems():
+        for k, revid in viewitems(to_dict):
             name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
@@ -720,7 +721,7 @@ class LocalGitBranch(GitBranch):
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
-    if type(revid) is not str:
+    if not isinstance(revid, bytes):
         raise TypeError(revid)
     # Try in source branch first, it'll be faster
     with local_branch.lock_read():
@@ -1152,7 +1153,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             (stop_revno, stop_revision) = self.source.last_revision_info()
         else:
             stop_revno = self.source.revision_id_to_revno(stop_revision)
-        if type(stop_revision) is not str:
+        if not isinstance(stop_revision, bytes):
             raise TypeError(stop_revision)
         main_ref = self.target.ref
         refs = { main_ref: (None, stop_revision) }

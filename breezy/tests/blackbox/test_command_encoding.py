@@ -54,7 +54,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
 
         register_command(cmd_echo_exact)
         try:
-            self.assertEqual('foo', bzr('echo-exact foo'))
+            self.assertEqual(b'foo', bzr('echo-exact foo'))
             # Exact should fail to decode the string
             self.assertRaises(UnicodeEncodeError,
                 bzr,
@@ -71,7 +71,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
 
         register_command(cmd_echo_strict)
         try:
-            self.assertEqual('foo', bzr('echo-strict foo'))
+            self.assertEqual(b'foo', bzr('echo-strict foo'))
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
                              bzr(['echo-strict', u'foo\xb5']))
         finally:
@@ -84,7 +84,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
 
         register_command(cmd_echo_strict)
         try:
-            self.assertEqual('foo', bzr('echo-strict foo'))
+            self.assertEqual(b'foo', bzr('echo-strict foo'))
             # ascii can't encode \xb5
             self.assertRaises(UnicodeEncodeError,
                 bzr,
@@ -99,7 +99,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
 
         register_command(cmd_echo_replace)
         try:
-            self.assertEqual('foo', bzr('echo-replace foo'))
+            self.assertEqual(b'foo', bzr('echo-replace foo'))
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
                              bzr(['echo-replace', u'foo\xb5']))
         finally:
@@ -112,9 +112,9 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
 
         register_command(cmd_echo_replace)
         try:
-            self.assertEqual('foo', bzr('echo-replace foo'))
+            self.assertEqual(b'foo', bzr('echo-replace foo'))
             # ascii can't encode \xb5
-            self.assertEqual('foo?', bzr(['echo-replace', u'foo\xb5']))
+            self.assertEqual(b'foo?', bzr(['echo-replace', u'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-replace')
 

@@ -89,7 +89,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
         clone = tree.controldir.clone('clone').open_workingtree()
         clone.lock_tree_write()
-        clone_root_id = 'new-id'
+        clone_root_id = b'new-id'
         clone.set_root_id(clone_root_id)
         tree_root_id = tree.path2id('')
         clone.unlock()
@@ -104,7 +104,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         basis = tree.basis_tree()
         basis_root_id = basis.path2id('')
         tree.lock_tree_write()
-        tree_root_id = 'new-id'
+        tree_root_id = b'new-id'
         tree.set_root_id(tree_root_id)
         tree.unlock()
         self.assertExpectedIds([tree_root_id, basis_root_id], tree, [''], [basis])

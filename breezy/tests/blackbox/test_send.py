@@ -150,7 +150,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         md = self.get_MD(['--no-patch'])
         self.assertIsNot(None, md.bundle)
         self.assertIs(None, md.patch)
-        self.run_bzr_error(['Format 0.9 does not permit bundle with no patch'],
+        self.run_bzr_error([b'Format 0.9 does not permit bundle with no patch'],
                            ['send', '--no-patch', '--format=0.9', '-o-'],
                            working_dir='branch')
         md = self.get_MD(['--no-bundle', '.', '.'])
@@ -226,7 +226,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
         self.assertIs(merge_directive.MergeDirective, md.__class__)
 
-        self.run_bzr_error(['Bad value .* for option .format.'],
+        self.run_bzr_error([b'Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
 
     def test_format_child_option(self):
@@ -245,7 +245,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertIs(merge_directive.MergeDirective, md.__class__)
 
         conf.set('child_submit_format', '0.999')
-        self.run_bzr_error(["No such send format '0.999'"],
+        self.run_bzr_error([b"No such send format '0.999'"],
                             'send -f branch -o-')[0]
 
     def test_message_option(self):

@@ -101,14 +101,14 @@ class TestFetch(TestFetchBase):
         # Now we should be able to branch from the remote location to a local
         # location
         final_b = target_b.controldir.sprout('final').open_branch()
-        self.assertEqual('C-id', final_b.last_revision())
+        self.assertEqual(b'C-id', final_b.last_revision())
 
         # bzrdir.sprout() has slightly different code paths if you supply a
         # revision_id versus not. If you supply revision_id, then you get a
         # PendingAncestryResult for the search, versus a SearchResult...
         final2_b = target_b.controldir.sprout('final2',
                                           revision_id=b'C-id').open_branch()
-        self.assertEqual('C-id', final_b.last_revision())
+        self.assertEqual(b'C-id', final_b.last_revision())
 
     def make_source_with_ghost_and_stacked_target(self):
         builder = self.make_branch_builder('source')

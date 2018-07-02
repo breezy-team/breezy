@@ -40,8 +40,8 @@ class TestSource(TestCaseWithRepository):
         # bug lp:376255 was reported about this.
         builder = self.make_branch_builder('repo')
         builder.start_series()
-        builder.build_snapshot(['ghost'],
-            [('add', ('', 'ROOT_ID', 'directory', ''))],
+        builder.build_snapshot([b'ghost'],
+            [('add', ('', b'ROOT_ID', 'directory', ''))],
             allow_leftmost_as_ghost=True, revision_id=b'tip')
         builder.finish_series()
         b = builder.get_branch()
@@ -49,7 +49,7 @@ class TestSource(TestCaseWithRepository):
         self.addCleanup(b.unlock)
         repo = b.repository
         source = repo._get_source(repo._format)
-        search = vf_search.PendingAncestryResult(['tip'], repo)
+        search = vf_search.PendingAncestryResult([b'tip'], repo)
         stream = source.get_stream(search)
         for substream_type, substream in stream:
             for record in substream:

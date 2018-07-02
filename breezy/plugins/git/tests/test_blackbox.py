@@ -295,34 +295,34 @@ class ShallowTests(ExternalBase):
         output, error = self.run_bzr(['log', 'gitr'], retcode=3)
         self.assertEqual(error, 'brz: ERROR: Further revision history missing.\n')
         self.assertEqual(output,
-                '------------------------------------------------------------\n'
-                'revision-id: git-v1:' + self.repo.head() + '\n'
-                'git commit: ' + self.repo.head() + '\n'
-                'committer: Somebody <user@example.com>\n'
-                'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
-                'message:\n'
-                '  message\n')
+                b'------------------------------------------------------------\n'
+                b'revision-id: git-v1:' + self.repo.head() + b'\n'
+                b'git commit: ' + self.repo.head() + b'\n'
+                b'committer: Somebody <user@example.com>\n'
+                b'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
+                b'message:\n'
+                b'  message\n')
 
     def test_version_info_rio(self):
         output, error = self.run_bzr(['version-info', '--rio', 'gitr'])
-        self.assertEqual(error, '')
-        self.assertNotIn('revno:', output)
+        self.assertEqual(error, b'')
+        self.assertNotIn(b'revno:', output)
 
     def test_version_info_python(self):
         output, error = self.run_bzr(['version-info', '--python', 'gitr'])
-        self.assertEqual(error, '')
-        self.assertNotIn('revno:', output)
+        self.assertEqual(error, b'')
+        self.assertNotIn(b'revno:', output)
 
     def test_version_info_custom_with_revno(self):
         output, error = self.run_bzr(
                 ['version-info', '--custom',
                  '--template=VERSION_INFO r{revno})\n', 'gitr'], retcode=3)
-        self.assertEqual(error, 'brz: ERROR: Variable {revno} is not available.\n')
-        self.assertEqual(output, 'VERSION_INFO r')
+        self.assertEqual(error, b'brz: ERROR: Variable {revno} is not available.\n')
+        self.assertEqual(output, b'VERSION_INFO r')
 
     def test_version_info_custom_without_revno(self):
         output, error = self.run_bzr(
                 ['version-info', '--custom', '--template=VERSION_INFO \n',
                  'gitr'])
-        self.assertEqual(error, '')
-        self.assertEqual(output, 'VERSION_INFO \n')
+        self.assertEqual(error, b'')
+        self.assertEqual(output, b'VERSION_INFO \n')

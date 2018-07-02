@@ -40,7 +40,7 @@ class TestNetrcCS(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestNetrcCS, self).setUp()
         # Create a .netrc file
-        netrc_content = """
+        netrc_content = b"""
 machine host login joe password secret
 default login anonymous password joe@home
 """
@@ -76,7 +76,7 @@ default login anonymous password joe@home
 
     def test_get_netrc_credentials_via_auth_config(self):
         # Create a test AuthenticationConfig object
-        ac_content = """
+        ac_content = b"""
 [host1]
 host = host
 user = joe

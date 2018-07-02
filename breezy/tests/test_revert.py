@@ -84,7 +84,7 @@ class TestRevert(tests.TestCaseWithTransport):
     def tree_with_executable(self):
         tree = self.make_branch_and_tree('tree')
         tt = transform.TreeTransform(tree)
-        tt.new_file('newfile', tt.root, 'helooo!', 'newfile-id', True)
+        tt.new_file('newfile', tt.root, [b'helooo!'], b'newfile-id', True)
         tt.apply()
         tree.lock_write()
         try:
@@ -147,7 +147,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.revert(['dir/file1'])
         self.assertPathExists('dir/file1')
         self.assertPathDoesNotExist('dir/file2')
-        self.assertEqual('dir-id', tree.path2id('dir'))
+        self.assertEqual(b'dir-id', tree.path2id('dir'))
 
     def test_revert_root_id_change(self):
         tree = self.make_branch_and_tree('.')

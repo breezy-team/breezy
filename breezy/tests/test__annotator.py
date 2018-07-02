@@ -195,7 +195,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     def test_annotate_common_merge_text(self):
         self.make_common_merge_text()
         # there is no common point, so we just pick the lexicographical lowest
-        # and 'b-id' comes before 'c-id'
+        # and b'b-id' comes before b'c-id'
         self.assertEqual([(self.fa_key, b'simple\n'),
                           (self.fb_key, b'new content\n'),
                          ], self.ann.annotate_flat(self.fd_key))
@@ -230,7 +230,6 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                          self.ann.annotate_flat(self.ff_key))
         # Calls happen in set iteration order but should keys should be seen
         self.assertEqual({self.fb_key, self.fc_key, self.fe_key}, seen)
-
 
     def test_needed_keys_simple(self):
         self.make_simple_text()

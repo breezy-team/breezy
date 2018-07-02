@@ -43,42 +43,42 @@ class TestVersionInfo(TestCaseWithTransport):
         wt = self.create_tree()
 
         txt = self.run_bzr('version-info branch')[0]
-        self.assertContainsRe(txt, 'date:')
-        self.assertContainsRe(txt, 'build-date:')
-        self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
+        self.assertContainsRe(txt, b'date:')
+        self.assertContainsRe(txt, b'build-date:')
+        self.assertContainsRe(txt, b'revno: 2')
+        self.assertContainsRe(txt, b'revision-id: ' + wt.branch.last_revision())
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
         wt = self.create_tree()
         txt = self.run_bzr('version-info branch --all')[0]
-        self.assertContainsRe(txt, 'date:')
-        self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
-        self.assertContainsRe(txt, 'clean: True')
-        self.assertContainsRe(txt, 'revisions:')
+        self.assertContainsRe(txt, b'date:')
+        self.assertContainsRe(txt, b'revno: 2')
+        self.assertContainsRe(txt, b'revision-id: ' + wt.branch.last_revision())
+        self.assertContainsRe(txt, b'clean: True')
+        self.assertContainsRe(txt, b'revisions:')
         for rev_id in wt.branch.repository.all_revision_ids():
-            self.assertContainsRe(txt, 'id: ' + rev_id)
-        self.assertContainsRe(txt, 'message: adding a')
-        self.assertContainsRe(txt, 'message: adding b')
-        self.assertContainsRe(txt, 'file-revisions:')
-        self.assertContainsRe(txt, 'path: a')
-        self.assertContainsRe(txt, 'path: b')
+            self.assertContainsRe(txt, b'id: ' + rev_id)
+        self.assertContainsRe(txt, b'message: adding a')
+        self.assertContainsRe(txt, b'message: adding b')
+        self.assertContainsRe(txt, b'file-revisions:')
+        self.assertContainsRe(txt, b'path: a')
+        self.assertContainsRe(txt, b'path: b')
 
     def test_clean(self):
         """Test that --check-clean includes the right info"""
         self.create_tree()
 
         txt = self.run_bzr('version-info branch --check-clean')[0]
-        self.assertContainsRe(txt, 'clean: True')
+        self.assertContainsRe(txt, b'clean: True')
 
         self.build_tree_contents([('branch/c', b'now unclean\n')])
         txt = self.run_bzr('version-info branch --check-clean')[0]
-        self.assertContainsRe(txt, 'clean: False')
+        self.assertContainsRe(txt, b'clean: False')
 
         txt = self.run_bzr('version-info branch --check-clean'
                            ' --include-file-revisions')[0]
-        self.assertContainsRe(txt, 'revision: unversioned')
+        self.assertContainsRe(txt, b'revision: unversioned')
 
         os.remove('branch/c')
 
@@ -88,7 +88,7 @@ class TestVersionInfo(TestCaseWithTransport):
         branch.pull(tree.branch)
 
         txt = self.run_bzr('version-info just_branch')[0]
-        self.assertStartsWith(txt, 'revision-id: r2\n')
+        self.assertStartsWith(txt, b'revision-id: r2\n')
 
     def assertEqualNoBuildDate(self, text1, text2):
         """Compare 2 texts, but ignore the build-date field.
@@ -100,8 +100,8 @@ class TestVersionInfo(TestCaseWithTransport):
         lines1 = text1.splitlines(True)
         lines2 = text2.splitlines(True)
         for line1, line2 in zip(lines1, lines2):
-            if line1.startswith('build-date: '):
-                self.assertStartsWith(line2, 'build-date: ')
+            if line1.startswith(b'build-date: '):
+                self.assertStartsWith(line2, b'build-date: ')
             else:
                 self.assertEqual(line1, line2)
         self.assertEqual(len(lines1), len(lines2))
@@ -137,19 +137,19 @@ class TestVersionInfo(TestCaseWithTransport):
     def test_custom_without_template(self):
         wt = self.make_branch_and_tree('branch')
         out, err = self.run_bzr('version-info --custom', retcode=3)
-        self.assertContainsRe(err, r'ERROR: No template specified\.')
+        self.assertContainsRe(err, br'ERROR: No template specified\.')
 
     def test_custom_implies_all(self):
         self.create_tree()
         out, err = self.run_bzr('version-info --custom --template='
             '"{revno} {branch_nick} {clean}\n" branch')
-        self.assertEqual("2 branch 1\n", out)
-        self.assertEqual("", err)
+        self.assertEqual(b"2 branch 1\n", out)
+        self.assertEqual(b"", err)
         self.build_tree_contents([('branch/c', b'now unclean\n')])
         out, err = self.run_bzr('version-info --custom --template='
             '"{revno} {branch_nick} {clean}\n" branch')
-        self.assertEqual("2 branch 0\n", out)
-        self.assertEqual("", err)
+        self.assertEqual(b"2 branch 0\n", out)
+        self.assertEqual(b"", err)
 
     def test_custom_no_clean_in_template(self):
         def should_not_be_called(self):
@@ -158,8 +158,8 @@ class TestVersionInfo(TestCaseWithTransport):
                           should_not_be_called)
         self.create_tree()
         out, err = self.run_bzr('version-info --custom --template=r{revno} branch')
-        self.assertEqual("r2", out)
-        self.assertEqual("", err)
+        self.assertEqual(b"r2", out)
+        self.assertEqual(b"", err)
 
     def test_non_ascii(self):
         """Test that we can output non-ascii data"""
@@ -181,4 +181,4 @@ class TestVersionInfo(TestCaseWithTransport):
         branch.pull(tree.branch)
 
         txt = self.run_bzr('version-info -r1 just_branch')[0]
-        self.assertStartsWith(txt, 'revision-id: r1\n')
+        self.assertStartsWith(txt, b'revision-id: r1\n')

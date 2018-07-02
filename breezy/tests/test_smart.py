@@ -1110,7 +1110,7 @@ class TestSetLastRevisionVerbMixin(object):
     def test_NoSuchRevision(self):
         """If the revision_id is not present, the verb returns NoSuchRevision.
         """
-        revision_id = 'non-existent revision'
+        revision_id = b'non-existent revision'
         self.assertEqual(smart_req.FailedSmartServerResponse((b'NoSuchRevision',
                                                               revision_id)),
                          self.set_last_revision(revision_id, 1))

@@ -2684,7 +2684,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             b"Repository.iter_revisions", (path, ), body))
         if response_tuple[0] != b"ok":
             raise errors.UnexpectedSmartServerResponse(response_tuple)
-        serializer_format = response_tuple[1]
+        serializer_format = response_tuple[1].decode('ascii')
         serializer = serializer_format_registry.get(serializer_format)
         byte_stream = response_handler.read_streamed_body()
         decompressor = zlib.decompressobj()
@@ -4270,7 +4270,7 @@ def _translate_error(err, **context):
         arg.
         """
         try:
-            return context['path'].decode('utf-8')
+            return context['path']
         except KeyError:
             try:
                 return err.error_args[0].decode('utf-8')

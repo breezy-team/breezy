@@ -418,10 +418,10 @@ class OldTests(TestCaseWithTransport):
         self.run_bzr('log -v --forward')
         self.run_bzr('log -m', retcode=3)
         log_out = self.run_bzr('log -m commit')[0]
-        self.assertTrue("this is my new commit\n  and" in log_out)
-        self.assertTrue("rename nested" not in log_out)
-        self.assertTrue('revision-id' not in log_out)
-        self.assertTrue('revision-id' in self.run_bzr('log --show-ids -m commit')[0])
+        self.assertTrue(b"this is my new commit\n  and" in log_out)
+        self.assertTrue(b"rename nested" not in log_out)
+        self.assertTrue(b'revision-id' not in log_out)
+        self.assertTrue(b'revision-id' in self.run_bzr('log --show-ids -m commit')[0])
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want

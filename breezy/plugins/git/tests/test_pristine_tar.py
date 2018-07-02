@@ -63,9 +63,9 @@ class ReadPristineTarData(TestCase):
     def test_read_pristine_tar_data_no_file(self):
         r = GitMemoryRepo()
         t = Tree()
-        b = Blob.from_string("README")
+        b = Blob.from_string(b"README")
         r.object_store.add_object(b)
-        t.add("README", stat.S_IFREG | 0o644, b.id)
+        t.add(b"README", stat.S_IFREG | 0o644, b.id)
         r.object_store.add_object(t)
         r.do_commit("Add README", tree=t.id,
                     ref='refs/heads/pristine-tar')

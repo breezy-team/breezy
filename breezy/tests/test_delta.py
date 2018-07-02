@@ -359,7 +359,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
         def only_f2_id(path, file_id):
-            return file_id == 'f2-id'
+            return file_id == b'f2-id'
         _mod_delta.report_delta(out, d, predicate=only_f2_id)
         self.assertEqual("added:\n  f2\n", out.getvalue())
 

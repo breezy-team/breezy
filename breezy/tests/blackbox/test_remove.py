@@ -70,14 +70,14 @@ class TestRemove(TestCaseWithTransport):
 
     def test_remove_new_no_files_specified(self):
         tree = self.make_branch_and_tree('.')
-        self.run_bzr_error(["brz: ERROR: No matching files."], 'remove --new')
-        self.run_bzr_error(["brz: ERROR: No matching files."], 'remove --new .')
+        self.run_bzr_error([b"brz: ERROR: No matching files."], 'remove --new')
+        self.run_bzr_error([b"brz: ERROR: No matching files."], 'remove --new .')
 
     def test_remove_no_files_specified(self):
         tree = self._make_tree_and_add(['foo'])
         out, err = self.run_bzr(['rm'])
-        self.assertEqual('', err)
-        self.assertEqual('', out)
+        self.assertEqual(b'', err)
+        self.assertEqual(b'', out)
         self.assertInWorkingTree('foo', tree=tree)
         self.assertPathExists('foo')
 
@@ -86,10 +86,10 @@ class TestRemove(TestCaseWithTransport):
             ['foo', 'dir/', 'dir/missing/', 'dir/missing/child'])
         self.get_transport('.').delete_tree('dir/missing')
         out, err = self.run_bzr(['rm'])
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
         self.assertEqual(
-            'removed dir/missing/child\n'
-            'removed dir/missing\n',
+            b'removed dir/missing/child\n'
+            b'removed dir/missing\n',
             err)
         # non-missing paths not touched:
         self.assertInWorkingTree('foo', tree=tree)
@@ -108,15 +108,15 @@ class TestRemove(TestCaseWithTransport):
         self.assertFalse(tree.is_versioned('bar'))
         # Running rm with a deleted file does not error.
         out, err = self.run_bzr(['rm'])
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_remove_no_files_specified_missing_file(self):
         tree = self._make_tree_and_add(['foo', 'bar'])
         os.unlink('bar')
         out, err = self.run_bzr(['rm'])
-        self.assertEqual('', out)
-        self.assertEqual('removed bar\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'removed bar\n', err)
         # non-missing files not touched:
         self.assertInWorkingTree('foo', tree=tree)
         self.assertPathExists('foo')
@@ -130,8 +130,8 @@ class TestRemove(TestCaseWithTransport):
         tree.add(['linkname'])
         os.unlink('linkname')
         out, err = self.run_bzr(['rm'])
-        self.assertEqual('', out)
-        self.assertEqual('removed linkname\n', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'removed linkname\n', err)
         # non-missing files not touched:
         self.assertInWorkingTree('foo', tree=tree)
         self.assertPathExists('foo')

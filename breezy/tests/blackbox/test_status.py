@@ -369,40 +369,40 @@ class BranchStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status NONEXISTENT', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'NONEXISTENT.*')
         expected = [
           'X:   NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status --short NONEXISTENT', retcode=3)
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'NONEXISTENT.*')
 
     def test_status_nonexistent_file_with_others(self):
         # brz st [--short] NONEXISTENT ...others..
         wt = self._prepare_nonexistent()
         expected = [
-          'removed:\n',
-          '  FILE_E\n',
-          'modified:\n',
-          '  FILE_B\n',
-          '  FILE_C\n',
-          'nonexistent:\n',
-          '  NONEXISTENT\n',
+          b'removed:\n',
+          b'  FILE_E\n',
+          b'modified:\n',
+          b'  FILE_B\n',
+          b'  FILE_C\n',
+          b'nonexistent:\n',
+          b'  NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status NONEXISTENT '
                                 'FILE_A FILE_B FILE_C FILE_D FILE_E',
                                 retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'NONEXISTENT.*')
         expected = [
-          ' D  FILE_E\n',
-          ' M  FILE_C\n',
-          ' M  FILE_B\n',
-          'X   NONEXISTENT\n',
+          b' D  FILE_E\n',
+          b' M  FILE_C\n',
+          b' M  FILE_B\n',
+          b'X   NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B FILE_C FILE_D FILE_E',
@@ -416,67 +416,67 @@ class BranchStatus(TestCaseWithTransport):
         # brz st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
         wt = self._prepare_nonexistent()
         expected = [
-          'removed:\n',
-          '  FILE_E\n',
-          'modified:\n',
-          '  FILE_B\n',
-          '  FILE_C\n',
-          'nonexistent:\n',
-          '  ANOTHER_NONEXISTENT\n',
-          '  NONEXISTENT\n',
+          b'removed:\n',
+          b'  FILE_E\n',
+          b'modified:\n',
+          b'  FILE_B\n',
+          b'  FILE_C\n',
+          b'nonexistent:\n',
+          b'  ANOTHER_NONEXISTENT\n',
+          b'  NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status NONEXISTENT '
                                 'FILE_A FILE_B ANOTHER_NONEXISTENT '
                                 'FILE_C FILE_D FILE_E', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'ANOTHER_NONEXISTENT NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'ANOTHER_NONEXISTENT NONEXISTENT.*')
         expected = [
-          ' D  FILE_E\n',
-          ' M  FILE_C\n',
-          ' M  FILE_B\n',
-          'X   ANOTHER_NONEXISTENT\n',
-          'X   NONEXISTENT\n',
+          b' D  FILE_E\n',
+          b' M  FILE_C\n',
+          b' M  FILE_B\n',
+          b'X   ANOTHER_NONEXISTENT\n',
+          b'X   NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B ANOTHER_NONEXISTENT '
                                 'FILE_C FILE_D FILE_E', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'ANOTHER_NONEXISTENT NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'ANOTHER_NONEXISTENT NONEXISTENT.*')
 
     def test_status_nonexistent_file_with_unversioned(self):
         # brz st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
         wt = self._prepare_nonexistent()
         expected = [
-          'removed:\n',
-          '  FILE_E\n',
-          'added:\n',
-          '  FILE_Q\n',
-          'modified:\n',
-          '  FILE_B\n',
-          '  FILE_C\n',
-          'unknown:\n',
-          '  UNVERSIONED_BUT_EXISTING\n',
-          'nonexistent:\n',
-          '  NONEXISTENT\n',
+          b'removed:\n',
+          b'  FILE_E\n',
+          b'added:\n',
+          b'  FILE_Q\n',
+          b'modified:\n',
+          b'  FILE_B\n',
+          b'  FILE_C\n',
+          b'unknown:\n',
+          b'  UNVERSIONED_BUT_EXISTING\n',
+          b'nonexistent:\n',
+          b'  NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
                                 'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'NONEXISTENT.*')
         expected = sorted([
-          '+N  FILE_Q\n',
-          '?   UNVERSIONED_BUT_EXISTING\n',
-          ' D  FILE_E\n',
-          ' M  FILE_C\n',
-          ' M  FILE_B\n',
-          'X   NONEXISTENT\n',
+          b'+N  FILE_Q\n',
+          b'?   UNVERSIONED_BUT_EXISTING\n',
+          b' D  FILE_E\n',
+          b' M  FILE_C\n',
+          b' M  FILE_B\n',
+          b'X   NONEXISTENT\n',
           ])
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
@@ -485,8 +485,8 @@ class BranchStatus(TestCaseWithTransport):
         actual.sort()
         self.assertEqual(expected, actual)
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'NONEXISTENT.*')
 
     def test_status_out_of_date(self):
         """Simulate status of out-of-date tree after remote push"""
@@ -514,29 +514,29 @@ class BranchStatus(TestCaseWithTransport):
 
         self.build_tree(['test1.c', 'test1.c~', 'test2.c~'])
         result = self.run_bzr('status')[0]
-        self.assertContainsRe(result, "unknown:\n  test1.c\n")
+        self.assertContainsRe(result, b"unknown:\n  test1.c\n")
         short_result = self.run_bzr('status --short')[0]
-        self.assertContainsRe(short_result, "\\?   test1.c\n")
+        self.assertContainsRe(short_result, b"\\?   test1.c\n")
 
         result = self.run_bzr('status test1.c')[0]
-        self.assertContainsRe(result, "unknown:\n  test1.c\n")
+        self.assertContainsRe(result, b"unknown:\n  test1.c\n")
         short_result = self.run_bzr('status --short test1.c')[0]
-        self.assertContainsRe(short_result, "\\?   test1.c\n")
+        self.assertContainsRe(short_result, b"\\?   test1.c\n")
 
         result = self.run_bzr('status test1.c~')[0]
-        self.assertContainsRe(result, "ignored:\n  test1.c~\n")
+        self.assertContainsRe(result, b"ignored:\n  test1.c~\n")
         short_result = self.run_bzr('status --short test1.c~')[0]
-        self.assertContainsRe(short_result, "I   test1.c~\n")
+        self.assertContainsRe(short_result, b"I   test1.c~\n")
 
         result = self.run_bzr('status test1.c~ test2.c~')[0]
-        self.assertContainsRe(result, "ignored:\n  test1.c~\n  test2.c~\n")
+        self.assertContainsRe(result, b"ignored:\n  test1.c~\n  test2.c~\n")
         short_result = self.run_bzr('status --short test1.c~ test2.c~')[0]
-        self.assertContainsRe(short_result, "I   test1.c~\nI   test2.c~\n")
+        self.assertContainsRe(short_result, b"I   test1.c~\nI   test2.c~\n")
 
         result = self.run_bzr('status test1.c test1.c~ test2.c~')[0]
-        self.assertContainsRe(result, "unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
+        self.assertContainsRe(result, b"unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
         short_result = self.run_bzr('status --short test1.c test1.c~ test2.c~')[0]
-        self.assertContainsRe(short_result, "\\?   test1.c\nI   test1.c~\nI   test2.c~\n")
+        self.assertContainsRe(short_result, b"\\?   test1.c\nI   test1.c~\nI   test2.c~\n")
 
     def test_status_write_lock(self):
         """Test that status works without fetching history and
@@ -551,7 +551,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2 = b.controldir.sprout('branch2').open_workingtree()
         wt2.commit('Empty commit 2')
         out, err = self.run_bzr('status branch1 -rbranch:branch2')
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
     def test_status_with_shelves(self):
         """Ensure that _show_shelve_summary handler works.
@@ -563,9 +563,9 @@ class BranchStatus(TestCaseWithTransport):
         self.build_tree(['bye.c'])
         wt.add('bye.c')
         self.assertStatus([
-                'added:\n',
-                '  bye.c\n',
-                '1 shelf exists. See "brz shelve --list" for details.\n',
+                b'added:\n',
+                b'  bye.c\n',
+                b'1 shelf exists. See "brz shelve --list" for details.\n',
             ],
             wt)
         self.run_bzr(['shelve', '--all', '-m', 'bar'])
@@ -573,15 +573,15 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('eggs.c')
         wt.add('spam.c')
         self.assertStatus([
-                'added:\n',
-                '  eggs.c\n',
-                '  spam.c\n',
-                '2 shelves exist. See "brz shelve --list" for details.\n',
+                b'added:\n',
+                b'  eggs.c\n',
+                b'  spam.c\n',
+                b'2 shelves exist. See "brz shelve --list" for details.\n',
             ],
             wt)
         self.assertStatus([
-                'added:\n',
-                '  spam.c\n',
+                b'added:\n',
+                b'  spam.c\n',
             ],
             wt,
             specific_files=['spam.c'])
@@ -608,23 +608,23 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
-        self.assertContainsRe(result, "unknown:\n  hello.txt\n")
+        self.assertContainsRe(result, b"unknown:\n  hello.txt\n")
 
         tree.add("hello.txt")
         result = self.run_bzr("status")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n")
 
         tree.commit(message="added")
         result = self.run_bzr("status -r 0..1")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n")
 
         result = self.run_bzr("status -c 1")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -r 0")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n" \
-                                      "unknown:\n  world.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n" \
+                                      b"unknown:\n  world.txt\n")
         result2 = self.run_bzr("status -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -633,20 +633,20 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --short")[0]
-        self.assertContainsRe(result, "[?]   hello.txt\n")
+        self.assertContainsRe(result, b"[?]   hello.txt\n")
 
         tree.add("hello.txt")
         result = self.run_bzr("status --short")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
+        self.assertContainsRe(result, b"[+]N  hello.txt\n")
 
         tree.commit(message="added")
         result = self.run_bzr("status --short -r 0..1")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
+        self.assertContainsRe(result, b"[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -S -r 0")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n" \
-                                      "[?]   world.txt\n")
+        self.assertContainsRe(result, b"[+]N  hello.txt\n" \
+                                      b"[?]   world.txt\n")
         result2 = self.run_bzr("status -S -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -655,20 +655,20 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --versioned")[0]
-        self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
+        self.assertNotContainsRe(result, b"unknown:\n  hello.txt\n")
 
         tree.add("hello.txt")
         result = self.run_bzr("status --versioned")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n")
 
         tree.commit("added")
         result = self.run_bzr("status --versioned -r 0..1")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status --versioned -r 0")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n")
-        self.assertNotContainsRe(result, "unknown:\n  world.txt\n")
+        self.assertContainsRe(result, b"added:\n  hello.txt\n")
+        self.assertNotContainsRe(result, b"unknown:\n  world.txt\n")
         result2 = self.run_bzr("status --versioned -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -677,19 +677,19 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status -SV")[0]
-        self.assertNotContainsRe(result, "hello.txt")
+        self.assertNotContainsRe(result, b"hello.txt")
 
         tree.add("hello.txt")
         result = self.run_bzr("status -SV")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
+        self.assertContainsRe(result, b"[+]N  hello.txt\n")
 
         tree.commit(message="added")
         result = self.run_bzr("status -SV -r 0..1")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
+        self.assertContainsRe(result, b"[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -SV -r 0")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
+        self.assertContainsRe(result, b"[+]N  hello.txt\n")
 
         result2 = self.run_bzr("status -SV -r 0..")[0]
         self.assertEqual(result2, result)
@@ -734,7 +734,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_status_illegal_revision_specifiers(self):
         out, err = self.run_bzr('status -r 1..23..123', retcode=3)
-        self.assertContainsRe(err, 'one or two revision specifiers')
+        self.assertContainsRe(err, b'one or two revision specifiers')
 
     def test_status_no_pending(self):
         a_tree = self.make_branch_and_tree('a')
@@ -762,9 +762,9 @@ class TestStatus(TestCaseWithTransport):
         tree.merge_from_branch(alt.branch)
         output = self.make_utf8_encoded_stringio()
         show_tree_status(tree, to_file=output)
-        self.assertContainsRe(output.getvalue(), 'pending merge')
+        self.assertContainsRe(output.getvalue(), b'pending merge')
         out, err = self.run_bzr('status tree/a')
-        self.assertNotContainsRe(out, 'pending merge')
+        self.assertNotContainsRe(out, b'pending merge')
 
 
 class TestStatusEncodings(TestCaseWithTransport):

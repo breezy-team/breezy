@@ -30,7 +30,7 @@ class TestWhoami(tests.TestCaseWithTransport):
 
     def assertWhoAmI(self, expected, *cmd_args, **kwargs):
         out, err = self.run_bzr(('whoami',) + cmd_args, **kwargs)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
         self.assertEqual(expected, lines[0].rstrip())

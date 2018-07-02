@@ -43,21 +43,21 @@ class TestInventory(TestCaseWithTransport):
             command += ' ' + args
         out, err = self.run_bzr(command, **kwargs)
         self.assertEqual(expected, out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
     def test_inventory(self):
-        self.assertInventoryEqual('a\nb\nb/c\n')
+        self.assertInventoryEqual(b'a\nb\nb/c\n')
 
     def test_inventory_kind(self):
-        self.assertInventoryEqual('a\nb/c\n', '--kind file')
-        self.assertInventoryEqual('b\n', '--kind directory')
+        self.assertInventoryEqual(b'a\nb/c\n', '--kind file')
+        self.assertInventoryEqual(b'b\n', '--kind directory')
 
     def test_inventory_show_ids(self):
-        expected = ''.join(('%-50s %s\n' % (path, file_id))
+        expected = b''.join(('%-50s %s\n' % (path, file_id))
                                 for path, file_id in
-                                [('a', 'a-id'),
-                                 ('b', 'b-id'),
-                                 ('b/c', 'c-id')
+                                [(b'a', b'a-id'),
+                                 (b'b', b'b-id'),
+                                 (b'b/c', b'c-id')
                                 ]
                           )
         self.assertInventoryEqual(expected, '--show-ids')
@@ -70,11 +70,11 @@ class TestInventory(TestCaseWithTransport):
 
     def test_inventory_mixed(self):
         """Test that we get expected results when mixing parameters"""
-        a_line = '%-50s %s\n' % ('a', 'a-id')
-        b_line = '%-50s %s\n' % ('b', 'b-id')
-        c_line = '%-50s %s\n' % ('b/c', 'c-id')
+        a_line = b'%-50s %s\n' % (b'a', b'a-id')
+        b_line = b'%-50s %s\n' % (b'b', b'b-id')
+        c_line = b'%-50s %s\n' % (b'b/c', b'c-id')
 
-        self.assertInventoryEqual('', '--kind directory a')
+        self.assertInventoryEqual(b'', '--kind directory a')
         self.assertInventoryEqual(a_line + c_line, '--kind file --show-ids')
         self.assertInventoryEqual(c_line, '--kind file --show-ids b b/c')
 
@@ -84,9 +84,9 @@ class TestInventory(TestCaseWithTransport):
         #       relative to '.', rather than relative to root
 
         # a plain 'inventory' returns all files
-        self.assertInventoryEqual('a\nb\nb/c\n')
+        self.assertInventoryEqual(b'a\nb\nb/c\n')
         # But passing '.' will only return paths underneath here
-        self.assertInventoryEqual('b\nb/c\n', '.')
+        self.assertInventoryEqual(b'b\nb/c\n', '.')
 
 
     def test_inventory_revision(self):
@@ -98,19 +98,19 @@ class TestInventory(TestCaseWithTransport):
         self.tree.commit('rename b/d => d')
 
         # Passing just -r returns the inventory of that revision
-        self.assertInventoryEqual('a\nb\nb/c\n', '-r 1')
-        self.assertInventoryEqual('a\nb\nb/c\nb/d\ne\n', '-r 2')
+        self.assertInventoryEqual(b'a\nb\nb/c\n', '-r 1')
+        self.assertInventoryEqual(b'a\nb\nb/c\nb/d\ne\n', '-r 2')
 
         # Passing a path will lookup the path in the old and current locations
-        self.assertInventoryEqual('b/d\n', '-r 2 b/d')
-        self.assertInventoryEqual('b/d\n', '-r 2 d')
+        self.assertInventoryEqual(b'b/d\n', '-r 2 b/d')
+        self.assertInventoryEqual(b'b/d\n', '-r 2 d')
 
         self.tree.rename_one('e', 'b/e')
         self.tree.commit('rename e => b/e')
 
         # When supplying just a directory paths that are now,
         # or used to be, in that directory are shown
-        self.assertInventoryEqual('b\nb/c\nb/d\ne\n', '-r 2 b')
+        self.assertInventoryEqual(b'b\nb/c\nb/d\ne\n', '-r 2 b')
 
     def test_missing_file(self):
         self.run_bzr_error([r'Path\(s\) are not versioned: no-such-file'],

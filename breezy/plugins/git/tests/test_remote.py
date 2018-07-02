@@ -96,7 +96,7 @@ class TestRemoteGitBranchFormat(TestCase):
         self.assertEqual("Remote Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
-        self.assertEqual("git", self.format.network_name())
+        self.assertEqual(b"git", self.format.network_name())
 
     def test_supports_tags(self):
         self.assertTrue(self.format.supports_tags())
@@ -430,7 +430,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
         remote = ControlDir.open(self.remote_url)
         remote_branch = remote.open_branch()
         self.assertEqual({
-            b'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
+            'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
             remote_branch.tags.get_tag_dict())
 
     def tetst_get_branch_reference(self):

@@ -27,5 +27,5 @@ class TestLookupRevision(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('a')
         tree.commit('This revision', rev_id=b'abcd')
         out, err = self.run_bzr(['lookup-revision', '-d', 'a', '1'])
-        self.assertEqual('abcd\n', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'abcd\n', out)
+        self.assertEqual(b'', err)

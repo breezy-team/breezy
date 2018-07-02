@@ -253,20 +253,20 @@ class DirectoryToTreeTests(TestCase):
 
     def test_with_file(self):
         child_ie = InventoryFile(b'bar', 'bar', b'bar')
-        b = Blob.from_string("bla")
+        b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0o100644, b.id)
+        t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)
 
     def test_with_gitdir(self):
         child_ie = InventoryFile(b'bar', 'bar', b'bar')
         git_file_ie = InventoryFile(b'gitid', '.git', b'bar')
-        b = Blob.from_string("bla")
+        b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie, git_file_ie],
                 lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0o100644, b.id)
+        t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)
