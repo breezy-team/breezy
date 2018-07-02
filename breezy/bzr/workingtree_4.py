@@ -340,7 +340,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ies = {'' : inv.root}
+        parent_ies = {b'' : inv.root}
         for block in state._dirblocks[1:]: # skip the root
             dirname = block[0]
             try:
@@ -1810,7 +1810,7 @@ class DirStateRevisionTree(InventoryTree):
         inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ies = {'' : inv.root}
+        parent_ies = {b'' : inv.root}
         for block in self._dirstate._dirblocks[1:]: #skip root
             dirname = block[0]
             try:
