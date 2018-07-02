@@ -14879,11 +14879,17 @@ breezy.tests.test_chk_serializer.TestBEncodeSerializer1.test_roundtrips_xml_inva
 breezy.tests.test_chk_serializer.TestBEncodeSerializer1.test_unpack_revision
 breezy.tests.test_chk_serializer.TestBEncodeSerializer1.test_unpack_revision_no_timezone
 breezy.tests.test_chk_serializer.TestBEncodeSerializer1.test_written_form_matches
+breezy.tests.test__chunks_to_lines.TestChunksToLines.test_fulltext_chunk_to_lines(C)
 breezy.tests.test__chunks_to_lines.TestChunksToLines.test_fulltext_chunk_to_lines(python)
+breezy.tests.test__chunks_to_lines.TestChunksToLines.test_lines_to_lines(C)
 breezy.tests.test__chunks_to_lines.TestChunksToLines.test_lines_to_lines(python)
+breezy.tests.test__chunks_to_lines.TestChunksToLines.test_mixed(C)
 breezy.tests.test__chunks_to_lines.TestChunksToLines.test_mixed(python)
+breezy.tests.test__chunks_to_lines.TestChunksToLines.test_newlines(C)
 breezy.tests.test__chunks_to_lines.TestChunksToLines.test_newlines(python)
+breezy.tests.test__chunks_to_lines.TestChunksToLines.test_no_final_newline(C)
 breezy.tests.test__chunks_to_lines.TestChunksToLines.test_no_final_newline(python)
+breezy.tests.test__chunks_to_lines.TestChunksToLines.test_not_lines(C)
 breezy.tests.test__chunks_to_lines.TestChunksToLines.test_not_lines(python)
 breezy.tests.test_chunk_writer.TestWriter.test_chunk_writer_empty
 breezy.tests.test_chunk_writer.TestWriter.test_optimize_for_size
