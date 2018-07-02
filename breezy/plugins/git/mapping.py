@@ -78,24 +78,24 @@ def escape_file_id(file_id):
 
 
 def unescape_file_id(file_id):
-    ret = []
+    ret = bytearray()
     i = 0
     while i < len(file_id):
-        if file_id[i] != '_':
+        if file_id[i:i+1] != b'_':
             ret.append(file_id[i])
         else:
-            if file_id[i+1] == '_':
-                ret.append("_")
-            elif file_id[i+1] == 's':
-                ret.append(" ")
-            elif file_id[i+1] == 'c':
-                ret.append("\x0c")
+            if file_id[i+1:i+2] == b'_':
+                ret.append(b"_"[0])
+            elif file_id[i+1:i+2] == b's':
+                ret.append(b" "[0])
+            elif file_id[i+1:i+2] == b'c':
+                ret.append(b"\x0c"[0])
             else:
                 raise ValueError("unknown escape character %s" %
-                    file_id[i+1])
+                        file_id[i+1:i+2])
             i += 1
         i += 1
-    return "".join(ret)
+    return bytes(ret)
 
 
 def fix_person_identifier(text):
