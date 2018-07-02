@@ -889,8 +889,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
         inventory = Inventory(tree.get_root_id())
-        inventory.add_path('missing', 'file', 'missing-id')
-        inventory.add_path('present', 'file', 'present-id')
+        inventory.add_path('missing', 'file', b'missing-id')
+        inventory.add_path('present', 'file', b'present-id')
         # there is no point in being able to write an inventory to an unlocked
         # tree object - its a low level api not a convenience api.
         tree.lock_write()
@@ -902,8 +902,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             unknown_stat = os.lstat('unknown')
             expected_results = [
                 (('', tree.get_root_id()),
-                 [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
-                  ('present', 'present', 'file', present_stat, 'present-id', 'file'),
+                 [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
+                  ('present', 'present', 'file', present_stat, b'present-id', 'file'),
                   ('unknown', 'unknown', 'file', unknown_stat, None, None),
                  ]
                 )]

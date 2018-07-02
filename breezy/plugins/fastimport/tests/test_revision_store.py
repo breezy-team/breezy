@@ -117,7 +117,7 @@ class Test_TreeShim(tests.TestCase):
 
     def test_get_symlink_target_from_delta(self):
         basis_inv = self.make_trivial_basis_inv()
-        ie = inventory.make_entry('symlink', 'link', 'TREE_ROOT', b'link-id')
+        ie = inventory.make_entry('symlink', 'link', b'TREE_ROOT', b'link-id')
         ie.symlink_target = u'link-target'
         inv_delta = [(None, 'link', b'link-id', ie)]
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,

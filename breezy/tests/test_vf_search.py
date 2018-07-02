@@ -206,29 +206,29 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         builder = self.make_branch_builder('b')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))],
+            ('add', ('', b'root-id', 'directory', ''))],
             revision_id=b'rev-1')
-        builder.build_snapshot(['rev-1'], [], revision_id=b'rev-2')
+        builder.build_snapshot([b'rev-1'], [], revision_id=b'rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        result = vf_search.PendingAncestryResult(['rev-2'], repo)
-        self.assertEqual({'rev-1', 'rev-2'}, set(result.get_keys()))
+        result = vf_search.PendingAncestryResult([b'rev-2'], repo)
+        self.assertEqual({b'rev-1', b'rev-2'}, set(result.get_keys()))
 
     def test_get_keys_excludes_ghosts(self):
         builder = self.make_branch_builder('b')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))],
+            ('add', ('', b'root-id', 'directory', ''))],
             revision_id=b'rev-1')
-        builder.build_snapshot(['rev-1', 'ghost'], [], revision_id=b'rev-2')
+        builder.build_snapshot([b'rev-1', b'ghost'], [], revision_id=b'rev-2')
         builder.finish_series()
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        result = vf_search.PendingAncestryResult(['rev-2'], repo)
-        self.assertEqual(sorted(['rev-1', 'rev-2']), sorted(result.get_keys()))
+        result = vf_search.PendingAncestryResult([b'rev-2'], repo)
+        self.assertEqual(sorted([b'rev-1', b'rev-2']), sorted(result.get_keys()))
 
     def test_get_keys_excludes_null(self):
         # Make a 'graph' with an iter_ancestry that returns NULL_REVISION

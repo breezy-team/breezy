@@ -50,9 +50,9 @@ class TestInit(TestCaseWithTransport):
     def test_init_format_2a(self):
         """Smoke test for constructing a format 2a repository."""
         out, err = self.run_bzr('init --format=2a')
-        self.assertEqual("""Created a standalone tree (format: 2a)\n""",
+        self.assertEqual(b"""Created a standalone tree (format: 2a)\n""",
             out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
     def test_init_format_bzr(self):
         """Smoke test for constructing a format with the 'bzr' alias."""
@@ -60,17 +60,17 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual(
             "Created a standalone tree (format: %s)\n" % self._default_label,
             out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
         out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
         self.assertEqual("""Created a standalone tree (format: development-colo)\n""",
             out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         out, err = self.run_bzr('branches')
-        self.assertEqual("  abranch\n", out)
-        self.assertEqual('', err)
+        self.assertEqual(b"  abranch\n", out)
+        self.assertEqual(b'', err)
 
     def test_init_at_repository_root(self):
         # brz init at the root of a repository should create a branch
@@ -87,50 +87,50 @@ Using shared repository: %s
 """ % (self._default_label, urlutils.local_path_from_url(
             repo.controldir.root_transport.external_url())), out)
         cwd = osutils.getcwd()
-        self.assertEndsWith(out, cwd + '/repo/\n')
-        self.assertEqual('', err)
+        self.assertEndsWith(out, cwd + b'/repo/\n')
+        self.assertEqual(b'', err)
         newdir.open_branch()
         newdir.open_workingtree()
 
     def test_init_branch(self):
         out, err = self.run_bzr('init')
-        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+        self.assertEqual(b"Created a standalone tree (format: %s)\n" % (
             self._default_label,), out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr('init subdir1')
-        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+        self.assertEqual(b"Created a standalone tree (format: %s)\n" % (
             self._default_label,), out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         WorkingTree.open('subdir1')
 
-        self.run_bzr_error(['Parent directory of subdir2/nothere does not exist'],
+        self.run_bzr_error([b'Parent directory of subdir2/nothere does not exist'],
                             'init subdir2/nothere')
         out, err = self.run_bzr('init subdir2/nothere', retcode=3)
-        self.assertEqual('', out)
+        self.assertEqual(b'', out)
 
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
         self.assertEqual("Created a standalone tree (format: %s)\n" % (
             self._default_label,), out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
-        self.assertEqual('', out)
-        self.assertTrue(err.startswith('brz: ERROR: Already a branch:'))
+        self.assertEqual(b'', out)
+        self.assertTrue(err.startswith(b'brz: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_init_existing_branch(self):
         self.run_bzr('init')
         out, err = self.run_bzr('init', retcode=3)
         self.assertContainsRe(err, 'Already a branch')
         # don't suggest making a checkout, there's already a working tree
-        self.assertFalse(re.search(r'checkout', err))
+        self.assertFalse(re.search(br'checkout', err))
 
     def test_init_existing_without_workingtree(self):
         # make a repository
@@ -142,7 +142,7 @@ Using shared repository: %s
         out, err = self.run_bzr('init subdir', retcode=3)
         # suggests using checkout
         self.assertContainsRe(err,
-                              'ontains a branch.*but no working tree.*checkout')
+                              b'ontains a branch.*but no working tree.*checkout')
 
     def test_no_defaults(self):
         """Init creates no default ignore rules."""
@@ -169,7 +169,7 @@ Using shared repository: %s
         """'brz init --create-prefix; will create leading directories."""
         tree = self.create_simple_tree()
 
-        self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
+        self.run_bzr_error([b'Parent directory of ../new/tree does not exist'],
                             'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
         self.assertPathExists('new/tree/.bzr')
@@ -188,7 +188,7 @@ default_format = 1.9
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""
         out, err = self.run_bzr('init --no-tree')
-        self.assertStartsWith(out, 'Created a standalone branch')
+        self.assertStartsWith(out, b'Created a standalone branch')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):
@@ -205,7 +205,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.make_branch('.')
 
         # rely on SFTPServer get_url() pointing at '.'
-        out, err = self.run_bzr_error(['Already a branch'],
+        out, err = self.run_bzr_error([b'Already a branch'],
                                       ['init', self.get_url()])
 
         # make sure using 'brz checkout' is not suggested
@@ -218,7 +218,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.make_branch_and_tree('.')
 
         # rely on SFTPServer get_url() pointing at '.'
-        self.run_bzr_error(['Already a branch'], ['init', self.get_url()])
+        self.run_bzr_error([b'Already a branch'], ['init', self.get_url()])
 
     def test_init_append_revisions_only(self):
         self.run_bzr('init --format=dirstate-tags normal_branch6')
@@ -227,7 +227,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr('init --append-revisions-only --format=dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch.get_append_revisions_only())
-        self.run_bzr_error(['cannot be set to append-revisions-only'],
+        self.run_bzr_error([b'cannot be set to append-revisions-only'],
                            'init --append-revisions-only --format=knit knit')
 
     def test_init_without_username(self):

@@ -46,7 +46,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     Returns a (tarinfo, fileobj) tuple
     """
     file_id = getattr(entry, 'file_id', None)
-    filename = osutils.pathjoin(root, final_path).encode('utf8')
+    filename = osutils.pathjoin(root, final_path)
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
         item.mtime = force_mtime

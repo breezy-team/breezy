@@ -741,7 +741,7 @@ class _ByteStreamDecoder(object):
                     # after substream is fully consumed, self.current_type is set
                     # to the next type, and self.first_bytes is set to the matching
                     # bytes.
-                    yield self.current_type, wrap_and_count(pb, rc, substream)
+                    yield self.current_type.decode('ascii'), wrap_and_count(pb, rc, substream)
             finally:
                 if rc:
                     pb.update('Done', rc.max, rc.max)
@@ -1264,6 +1264,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 body_bytes.splitlines()))
 
     def do_repository_request(self, repository, ordering):
+        ordering = ordering.decode('ascii')
         if ordering == 'unordered':
             # inventory deltas for a topologically sorted stream
             # are likely to be smaller

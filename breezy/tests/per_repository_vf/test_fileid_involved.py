@@ -44,26 +44,26 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
     def create_branch_with_ghost_text(self):
         builder = self.make_branch_builder('ghost')
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-file-id', 'file', 'some content\n'))],
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('a', b'a-file-id', 'file', b'some content\n'))],
             revision_id=b'A-id')
         b = builder.get_branch()
         old_rt = b.repository.revision_tree(b'A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
-        new_inv.revision_id = 'B-id'
-        new_inv.get_entry('a-file-id').revision = 'ghost-id'
-        new_rev = _mod_revision.Revision('B-id',
+        new_inv.revision_id = b'B-id'
+        new_inv.get_entry(b'a-file-id').revision = b'ghost-id'
+        new_rev = _mod_revision.Revision(b'B-id',
             timestamp=time.time(),
             timezone=0,
             message='Committing against a ghost',
             committer='Joe Foo <joe@foo.com>',
             properties={},
-            parent_ids=('A-id', 'ghost-id'),
+            parent_ids=(b'A-id', b'ghost-id'),
             )
         b.lock_write()
         self.addCleanup(b.unlock)
         b.repository.start_write_group()
-        b.repository.add_revision('B-id', new_rev, new_inv)
+        b.repository.add_revision(b'B-id', new_rev, new_inv)
         self.disable_commit_write_group_paranoia(b.repository)
         b.repository.commit_write_group()
         return b
@@ -85,8 +85,8 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         b = self.create_branch_with_ghost_text()
         repo = b.repository
         self.assertEqual(
-            {'a-file-id':{'ghost-id'}},
-            repo.fileids_altered_by_revision_ids(['B-id']))
+            {b'a-file-id': {b'ghost-id'}},
+            repo.fileids_altered_by_revision_ids([b'B-id']))
 
     def test_file_ids_uses_fallbacks(self):
         builder = self.make_branch_builder('source',
@@ -171,11 +171,11 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         main_branch = main_wt.branch
         self.build_tree(["main/a", "main/b", "main/c"])
 
-        main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
-                                 'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id>quiji%bo'])
+        main_wt.add(['a', 'b', 'c'], [b'a-file-id-2006-01-01-abcd',
+                                 b'b-file-id-2006-01-01-defg',
+                                 b'c-funky<file-id>quiji%bo'])
         try:
-            main_wt.commit("Commit one", rev_id="rev-A")
+            main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
@@ -192,13 +192,13 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         bt1.pull(main_branch)
         b1 = bt1.branch
         self.build_tree(["branch1/d"])
-        bt1.add(['d'], ['file-d'])
-        bt1.commit("branch1, Commit one", rev_id="rev-E")
+        bt1.add(['d'], [b'file-d'])
+        bt1.commit("branch1, Commit one", rev_id=b"rev-E")
 
         #-------- end E -----------
 
         self.touch(main_wt, "a")
-        main_wt.commit("Commit two", rev_id="rev-B")
+        main_wt.commit("Commit two", rev_id=b"rev-B")
 
         #-------- end B -----------
 
@@ -206,34 +206,34 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         bt2.pull(main_branch)
         branch2_branch = bt2.branch
         set_executability(bt2, 'b', True)
-        bt2.commit("branch2, Commit one", rev_id="rev-J")
+        bt2.commit("branch2, Commit one", rev_id=b"rev-J")
 
         #-------- end J -----------
 
         main_wt.merge_from_branch(b1)
-        main_wt.commit("merge branch1, rev-11", rev_id="rev-C")
+        main_wt.commit("merge branch1, rev-11", rev_id=b"rev-C")
 
         #-------- end C -----------
 
         bt1.rename_one("d", "e")
-        bt1.commit("branch1, commit two", rev_id="rev-F")
+        bt1.commit("branch1, commit two", rev_id=b"rev-F")
 
         #-------- end F -----------
 
         self.touch(bt2, "c")
-        bt2.commit("branch2, commit two", rev_id="rev-K")
+        bt2.commit("branch2, commit two", rev_id=b"rev-K")
 
         #-------- end K -----------
 
         main_wt.merge_from_branch(b1)
         self.touch(main_wt, "b")
         # D gets some funky characters to make sure the unescaping works
-        main_wt.commit("merge branch1, rev-12", rev_id="rev-<D>")
+        main_wt.commit("merge branch1, rev-12", rev_id=b"rev-<D>")
 
         # end D
 
         main_wt.merge_from_branch(branch2_branch)
-        main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
+        main_wt.commit("merge branch1, rev-22",  rev_id=b"rev-G")
 
         # end G
         self.branch = main_branch
@@ -375,7 +375,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
                                  b'b-file-id-2006-01-01-defg',
                                  b'c-funky<file-id>quiji\'"%bo'])
         try:
-            main_wt.commit("Commit one", rev_id="rev-A")
+            main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
@@ -391,11 +391,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         branch2_bzrdir = branch2_wt.controldir
         branch2_branch = branch2_bzrdir.open_branch()
         set_executability(branch2_wt, 'b', True)
-        branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
+        branch2_wt.commit("branch2, Commit one", rev_id=b"rev-J")
 
         main_wt.merge_from_branch(branch2_branch)
         set_executability(main_wt, 'b', False)
-        main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
+        main_wt.commit("merge branch1, rev-22",  rev_id=b"rev-G")
 
         # end G
         self.branch = main_branch

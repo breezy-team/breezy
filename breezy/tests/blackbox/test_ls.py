@@ -44,119 +44,119 @@ class TestLS(tests.TestCaseWithTransport):
         if recursive:
             command += ' -R'
         out, err = self.run_bzr(command, working_dir=working_dir)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         self.assertEqualDiff(value, out)
 
     def test_ls_null_verbose(self):
         # Can't supply both
-        self.run_bzr_error(['Cannot set both --verbose and --null'],
+        self.run_bzr_error([b'Cannot set both --verbose and --null'],
                            'ls --verbose --null')
 
     def test_ls_basic(self):
         """Test the abilities of 'brz ls'"""
-        self.ls_equals('.bzrignore\na\n')
-        self.ls_equals('.bzrignore\na\n', './')
-        self.ls_equals('?        .bzrignore\n'
-                       '?        a\n',
-                       '--verbose')
-        self.ls_equals('.bzrignore\n'
-                       'a\n',
-                       '--unknown')
-        self.ls_equals('', '--ignored')
-        self.ls_equals('', '--versioned')
-        self.ls_equals('', '-V')
-        self.ls_equals('.bzrignore\n'
-                       'a\n',
-                       '--unknown --ignored --versioned')
-        self.ls_equals('.bzrignore\n'
-                       'a\n',
-                       '--unknown --ignored -V')
-        self.ls_equals('', '--ignored --versioned')
-        self.ls_equals('', '--ignored -V')
-        self.ls_equals('.bzrignore\0a\0', '--null')
+        self.ls_equals(b'.bzrignore\na\n')
+        self.ls_equals(b'.bzrignore\na\n', './')
+        self.ls_equals(b'?        .bzrignore\n'
+                       b'?        a\n',
+                       b'--verbose')
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n',
+                       b'--unknown')
+        self.ls_equals(b'', '--ignored')
+        self.ls_equals(b'', '--versioned')
+        self.ls_equals(b'', '-V')
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n',
+                       b'--unknown --ignored --versioned')
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n',
+                       b'--unknown --ignored -V')
+        self.ls_equals(b'', '--ignored --versioned')
+        self.ls_equals(b'', '--ignored -V')
+        self.ls_equals(b'.bzrignore\0a\0', '--null')
 
     def test_ls_added(self):
         self.wt.add(['a'])
-        self.ls_equals('?        .bzrignore\n'
-                       'V        a\n',
-                       '--verbose')
+        self.ls_equals(b'?        .bzrignore\n'
+                       b'V        a\n',
+                       b'--verbose')
         self.wt.commit('add')
 
         self.build_tree(['subdir/'])
-        self.ls_equals('?        .bzrignore\n'
-                       'V        a\n'
-                       '?        subdir/\n'
+        self.ls_equals(b'?        .bzrignore\n'
+                       b'V        a\n'
+                       b'?        subdir/\n'
                        , '--verbose')
         self.build_tree(['subdir/b'])
         self.wt.add(['subdir/', 'subdir/b', '.bzrignore'])
-        self.ls_equals('V        .bzrignore\n'
-                       'V        a\n'
-                       'V        subdir/\n'
-                       'V        subdir/b\n'
+        self.ls_equals(b'V        .bzrignore\n'
+                       b'V        a\n'
+                       b'V        subdir/\n'
+                       b'V        subdir/b\n'
                        , '--verbose')
 
     def test_show_ids(self):
         self.build_tree(['subdir/'])
         self.wt.add(['a', 'subdir'], [b'a-id', b'subdir-id'])
         self.ls_equals(
-            '.bzrignore                                         \n'
-            'a                                                  a-id\n'
-            'subdir/                                            subdir-id\n',
-            '--show-ids')
+            b'.bzrignore                                         \n'
+            b'a                                                  a-id\n'
+            b'subdir/                                            subdir-id\n',
+            b'--show-ids')
         self.ls_equals(
-            '?        .bzrignore\n'
-            'V        a                                         a-id\n'
-            'V        subdir/                                   subdir-id\n',
-            '--show-ids --verbose')
-        self.ls_equals('.bzrignore\0\0'
-                       'a\0a-id\0'
-                       'subdir\0subdir-id\0', '--show-ids --null')
+            b'?        .bzrignore\n'
+            b'V        a                                         a-id\n'
+            b'V        subdir/                                   subdir-id\n',
+            b'--show-ids --verbose')
+        self.ls_equals(b'.bzrignore\0\0'
+                       b'a\0a-id\0'
+                       b'subdir\0subdir-id\0', '--show-ids --null')
 
     def test_ls_no_recursive(self):
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['a', 'subdir/', 'subdir/b', '.bzrignore'])
 
-        self.ls_equals('.bzrignore\n'
-                       'a\n'
-                       'subdir/\n'
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n'
+                       b'subdir/\n'
                        , recursive=False)
 
-        self.ls_equals('V        .bzrignore\n'
-                       'V        a\n'
-                       'V        subdir/\n'
+        self.ls_equals(b'V        .bzrignore\n'
+                       b'V        a\n'
+                       b'V        subdir/\n'
                        , '--verbose', recursive=False)
 
         # Check what happens in a sub-directory
-        self.ls_equals('b\n', working_dir='subdir')
-        self.ls_equals('b\0', '--null', working_dir='subdir')
-        self.ls_equals('subdir/b\n', '--from-root', working_dir='subdir')
-        self.ls_equals('subdir/b\0', '--from-root --null',
+        self.ls_equals(b'b\n', working_dir='subdir')
+        self.ls_equals(b'b\0', '--null', working_dir='subdir')
+        self.ls_equals(b'subdir/b\n', '--from-root', working_dir='subdir')
+        self.ls_equals(b'subdir/b\0', '--from-root --null',
                        working_dir='subdir')
-        self.ls_equals('subdir/b\n', '--from-root', recursive=False,
+        self.ls_equals(b'subdir/b\n', '--from-root', recursive=False,
                        working_dir='subdir')
 
     def test_ls_path(self):
         """If a path is specified, files are listed with that prefix"""
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['subdir', 'subdir/b'])
-        self.ls_equals('subdir/b\n',
-                       'subdir')
-        self.ls_equals('../.bzrignore\n'
-                       '../a\n'
-                       '../subdir/\n'
-                       '../subdir/b\n',
-                       '..', working_dir='subdir')
-        self.ls_equals('../.bzrignore\0'
-                       '../a\0'
-                       '../subdir\0'
-                       '../subdir/b\0',
-                       '.. --null', working_dir='subdir')
-        self.ls_equals('?        ../.bzrignore\n'
-                       '?        ../a\n'
-                       'V        ../subdir/\n'
-                       'V        ../subdir/b\n',
-                       '.. --verbose', working_dir='subdir')
-        self.run_bzr_error(['cannot specify both --from-root and PATH'],
+        self.ls_equals(b'subdir/b\n',
+                       b'subdir')
+        self.ls_equals(b'../.bzrignore\n'
+                       b'../a\n'
+                       b'../subdir/\n'
+                       b'../subdir/b\n',
+                       b'..', working_dir='subdir')
+        self.ls_equals(b'../.bzrignore\0'
+                       b'../a\0'
+                       b'../subdir\0'
+                       b'../subdir/b\0',
+                       b'.. --null', working_dir='subdir')
+        self.ls_equals(b'?        ../.bzrignore\n'
+                       b'?        ../a\n'
+                       b'V        ../subdir/\n'
+                       b'V        ../subdir/b\n',
+                       b'.. --verbose', working_dir='subdir')
+        self.run_bzr_error([b'cannot specify both --from-root and PATH'],
                            'ls --from-root ..', working_dir='subdir')
 
     def test_ls_revision(self):
@@ -166,11 +166,11 @@ class TestLS(tests.TestCaseWithTransport):
         self.build_tree(['subdir/'])
 
         # Check what happens when we supply a specific revision
-        self.ls_equals('a\n', '--revision 1')
-        self.ls_equals('V        a\n'
+        self.ls_equals(b'a\n', '--revision 1')
+        self.ls_equals(b'V        a\n'
                        , '--verbose --revision 1')
 
-        self.ls_equals('', '--revision 1', working_dir='subdir')
+        self.ls_equals(b'', '--revision 1', working_dir='subdir')
 
     def test_ls_branch(self):
         """If a branch is specified, files are listed from it"""
@@ -179,56 +179,56 @@ class TestLS(tests.TestCaseWithTransport):
         self.wt.commit('committing')
         branch = self.make_branch('branchdir')
         branch.pull(self.wt.branch)
-        self.ls_equals('branchdir/subdir/\n'
-                       'branchdir/subdir/b\n',
-                       'branchdir')
-        self.ls_equals('branchdir/subdir/\n'
-                       'branchdir/subdir/b\n',
-                       'branchdir --revision 1')
+        self.ls_equals(b'branchdir/subdir/\n'
+                       b'branchdir/subdir/b\n',
+                       b'branchdir')
+        self.ls_equals(b'branchdir/subdir/\n'
+                       b'branchdir/subdir/b\n',
+                       b'branchdir --revision 1')
 
     def test_ls_ignored(self):
         # Now try to do ignored files.
         self.wt.add(['a', '.bzrignore'])
 
         self.build_tree(['blah.py', 'blah.pyo', 'user-ignore'])
-        self.ls_equals('.bzrignore\n'
-                       'a\n'
-                       'blah.py\n'
-                       'blah.pyo\n'
-                       'user-ignore\n'
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n'
+                       b'blah.py\n'
+                       b'blah.pyo\n'
+                       b'user-ignore\n'
                        )
-        self.ls_equals('V        .bzrignore\n'
-                       'V        a\n'
-                       '?        blah.py\n'
-                       'I        blah.pyo\n'
-                       'I        user-ignore\n'
+        self.ls_equals(b'V        .bzrignore\n'
+                       b'V        a\n'
+                       b'?        blah.py\n'
+                       b'I        blah.pyo\n'
+                       b'I        user-ignore\n'
                        , '--verbose')
-        self.ls_equals('blah.pyo\n'
-                       'user-ignore\n'
+        self.ls_equals(b'blah.pyo\n'
+                       b'user-ignore\n'
                        , '--ignored')
-        self.ls_equals('blah.py\n'
+        self.ls_equals(b'blah.py\n'
                        , '--unknown')
-        self.ls_equals('.bzrignore\n'
-                       'a\n'
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n'
                        , '--versioned')
-        self.ls_equals('.bzrignore\n'
-                       'a\n'
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n'
                        , '-V')
 
     def test_kinds(self):
         self.build_tree(['subdir/'])
-        self.ls_equals('.bzrignore\n'
-                       'a\n',
-                       '--kind=file')
-        self.ls_equals('subdir/\n',
-                       '--kind=directory')
-        self.ls_equals('',
-                       '--kind=symlink')
-        self.run_bzr_error(['invalid kind specified'], 'ls --kind=pile')
+        self.ls_equals(b'.bzrignore\n'
+                       b'a\n',
+                       b'--kind=file')
+        self.ls_equals(b'subdir/\n',
+                       b'--kind=directory')
+        self.ls_equals(b'',
+                       b'--kind=symlink')
+        self.run_bzr_error([b'invalid kind specified'], 'ls --kind=pile')
 
     def test_ls_path_nonrecursive(self):
-        self.ls_equals('%s/.bzrignore\n'
-                       '%s/a\n'
+        self.ls_equals(b'%s/.bzrignore\n'
+                       b'%s/a\n'
                        % (self.test_dir, self.test_dir),
                        self.test_dir, recursive=False)
 
@@ -238,8 +238,8 @@ class TestLS(tests.TestCaseWithTransport):
         self.build_tree(['dir/sub/', 'dir/sub/file'])
         self.wt.add(['sub', 'sub/file'])
         self.wt.commit('commit')
-        self.ls_equals('sub/\nsub/file\n', '--directory=dir')
-        self.ls_equals('sub/file\n', '-d dir sub')
+        self.ls_equals(b'sub/\nsub/file\n', '--directory=dir')
+        self.ls_equals(b'sub/file\n', '-d dir sub')
 
 
 class TestSmartServerLs(tests.TestCaseWithTransport):

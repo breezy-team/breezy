@@ -306,8 +306,8 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         self.addCleanup(b.unlock)
         # Now, manually insert objects for a stacked repo with only revision
         # C-id, *except* the chk root entry for the parent inventory.
-        # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
-        # ('inventories', 'B-id'), and the corresponding chk roots for those
+        # We need (b'revisions', b'C-id'), (b'inventories', b'C-id'),
+        # (b'inventories', b'B-id'), and the corresponding chk roots for those
         # inventories.
         inv_c = b.repository.get_inventory(b'C-id')
         chk_keys_for_c_only = [

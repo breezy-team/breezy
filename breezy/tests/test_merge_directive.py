@@ -185,7 +185,7 @@ class TestMergeDirective(object):
     def test_deserialize_junk(self):
         time = 501
         self.assertRaises(errors.NotAMergeDirective,
-                          merge_directive.MergeDirective.from_lines, 'lala')
+                          merge_directive.MergeDirective.from_lines, [b'lala'])
 
     def test_deserialize_empty(self):
         self.assertRaises(errors.NotAMergeDirective,
@@ -688,8 +688,8 @@ class TestParseOldMergeDirective2(tests.TestCase):
 
     def test_parse_old_merge_directive(self):
         md = merge_directive.MergeDirective.from_lines(INPUT1_2_OLD)
-        self.assertEqual('example:', md.revision_id)
-        self.assertEqual('sha', md.testament_sha1)
+        self.assertEqual(b'example:', md.revision_id)
+        self.assertEqual(b'sha', md.testament_sha1)
         self.assertEqual('http://example.com', md.target_branch)
         self.assertEqual('http://example.org', md.source_branch)
         self.assertEqual(453, md.time)

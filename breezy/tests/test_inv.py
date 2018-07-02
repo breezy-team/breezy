@@ -1416,7 +1416,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
             ("src/sub/a", "src/sub/a", b"a-id", a_ie),
             ("src", "src2", b"src-id", src_ie),
             ], b'new-rev-2')
-        new_inv = inv.filter(['a-id', b'src-id'])
+        new_inv = inv.filter([b'a-id', b'src-id'])
         self.assertEqual([
             ('', b'tree-root'),
             ('src', b'src-id'),

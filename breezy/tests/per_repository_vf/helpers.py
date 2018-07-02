@@ -33,7 +33,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
     def make_repo_with_extra_ghost_index(self):
         """Make a corrupt repository.
 
-        It will contain one revision, 'revision-id'.  The knit index will claim
+        It will contain one revision, b'revision-id'.  The knit index will claim
         that it has one parent, 'incorrect-parent', but the revision text will
         claim it has no parents.
 
@@ -54,12 +54,12 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
         repo.start_write_group()
         try:
             inv = inventory.Inventory(revision_id=b'revision-id')
-            inv.root.revision = 'revision-id'
-            inv_sha1 = repo.add_inventory('revision-id', inv, [])
+            inv.root.revision = b'revision-id'
+            inv_sha1 = repo.add_inventory(b'revision-id', inv, [])
             if repo.supports_rich_root():
                 root_id = inv.root.file_id
-                repo.texts.add_lines((root_id, 'revision-id'), [], [])
-            revision = _mod_revision.Revision('revision-id',
+                repo.texts.add_lines((root_id, b'revision-id'), [], [])
+            revision = _mod_revision.Revision(b'revision-id',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1=inv_sha1, timezone=0, message='message',
                 parent_ids=[])
@@ -67,7 +67,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             # bad parents.
             rev_text = repo._serializer.write_revision_to_string(revision)
             repo.revisions.add_lines((revision.revision_id,),
-                [('incorrect-parent',)],
+                [(b'incorrect-parent',)],
                 osutils.split_lines(rev_text))
         except:
             repo.abort_write_group()

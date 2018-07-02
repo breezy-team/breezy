@@ -141,19 +141,19 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev1a', 'rev2')
+        return (b'rev1a', b'rev2')
 
     def populated_parents(self):
         return (
-            ((), 'rev1a'),
-            ((), 'rev1b'), # Will be gc'd
-            (('rev1a', 'rev1b'), 'rev2')) # Will have parents trimmed
+            ((), b'rev1a'),
+            ((), b'rev1b'), # Will be gc'd
+            ((b'rev1a', b'rev1b'), b'rev2')) # Will have parents trimmed
 
     def corrected_parents(self):
         return (
-            ((), 'rev1a'),
-            (None, 'rev1b'),
-            (('rev1a',), 'rev2'))
+            ((), b'rev1a'),
+            (None, b'rev1b'),
+            ((b'rev1a',), b'rev2'))
 
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev2 has parents \('rev1a', 'rev1b'\) "
@@ -209,17 +209,17 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev2', 'rev3')
+        return (b'rev2', b'rev3')
 
     def populated_parents(self):
         return (
-            ((), 'rev2'),
-            (('rev1c',), 'rev3'))
+            ((), b'rev2'),
+            ((b'rev1c',), b'rev3'))
 
     def corrected_parents(self):
         return (
-            ((), 'rev2'),
-            ((), 'rev3'))
+            ((), b'rev2'),
+            ((), b'rev3'))
 
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev3 has parents "
@@ -229,8 +229,8 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     def populate_repository(self, repo):
         # make rev2, with a-file
         # a-file is sane
-        inv = self.make_one_file_inventory(repo, 'rev2', [])
-        self.add_revision(repo, 'rev2', inv, [])
+        inv = self.make_one_file_inventory(repo, b'rev2', [])
+        self.add_revision(repo, b'rev2', inv, [])
 
         # make ghost revision rev1c, with a version of a-file present so
         # that we generate a knit delta against this version.  In real life
@@ -238,31 +238,31 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
         # generated against a revision that was present at the time.  So
         # currently we have the full history of a-file present even though
         # the inventory and revision objects are not.
-        self.make_one_file_inventory(repo, 'rev1c', [])
+        self.make_one_file_inventory(repo, b'rev1c', [])
 
         # make rev3 with a-file
         # a-file refers to 'rev1c', which is a ghost in this repository, so
         # a-file cannot have rev1c as its ancestor.
-        inv = self.make_one_file_inventory(repo, 'rev3', ['rev1c'])
-        self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
+        inv = self.make_one_file_inventory(repo, b'rev3', [b'rev1c'])
+        self.add_revision(repo, b'rev3', inv, [b'rev1c', b'rev1a'])
         self.versioned_root = repo.supports_rich_root()
 
     def repository_text_key_references(self):
         result = {}
         if self.versioned_root:
-            result.update({('TREE_ROOT', 'rev2'): True,
-                           ('TREE_ROOT', 'rev3'): True})
-        result.update({('a-file-id', 'rev2'): True,
-                       ('a-file-id', 'rev3'): True})
+            result.update({(b'TREE_ROOT', b'rev2'): True,
+                           (b'TREE_ROOT', b'rev3'): True})
+        result.update({(b'a-file-id', b'rev2'): True,
+                       (b'a-file-id', b'rev3'): True})
         return result
 
     def repository_text_keys(self):
-        return {('a-file-id', 'rev2'):[NULL_REVISION],
-                ('a-file-id', 'rev3'):[NULL_REVISION]}
+        return {(b'a-file-id', b'rev2'):[NULL_REVISION],
+                (b'a-file-id', b'rev3'):[NULL_REVISION]}
 
     def versioned_repository_text_keys(self):
-        return {('TREE_ROOT', 'rev2'):[NULL_REVISION],
-                ('TREE_ROOT', 'rev3'):[NULL_REVISION]}
+        return {(b'TREE_ROOT', b'rev2'):[NULL_REVISION],
+                (b'TREE_ROOT', b'rev3'):[NULL_REVISION]}
 
 
 class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):

@@ -28,15 +28,15 @@ class TestAdded(TestCaseWithTransport):
 
     def test_added(self):
         """Test that 'added' command reports added files"""
-        self._test_added('a', 'a\n')
+        self._test_added('a', b'a\n')
 
     def test_added_with_spaces(self):
         """Test that 'added' command reports added files with spaces in their names quoted"""
-        self._test_added('a filename with spaces', '"a filename with spaces"\n')
+        self._test_added('a filename with spaces', b'"a filename with spaces"\n')
 
     def test_added_null_separator(self):
         """Test that added uses its null operator properly"""
-        self._test_added('a', 'a\0', null=True)
+        self._test_added('a', b'a\0', null=True)
 
     def _test_added(self, name, output, null=False):
 
@@ -48,15 +48,15 @@ class TestAdded(TestCaseWithTransport):
 
             out, err = self.run_bzr(command)
             self.assertEqual(out, expected)
-            self.assertEqual(err, '')
+            self.assertEqual(err, b'')
 
         # in empty directory, nothing added
         tree = self.make_branch_and_tree('.')
-        check_added('')
+        check_added(b'')
 
         # with unknown file, still nothing added
-        self.build_tree_contents([(name, b'contents of %s\n' % (name))])
-        check_added('')
+        self.build_tree_contents([(name, b'contents of %s\n' % (name.encode('utf-8'),))])
+        check_added(b'')
 
         # after add, shows up in list
         # bug report 20060119 by Nathan McCallum -- 'brz added' causes
@@ -66,7 +66,7 @@ class TestAdded(TestCaseWithTransport):
 
         # after commit, now no longer listed
         tree.commit(message='add "%s"' % (name))
-        check_added('')
+        check_added(b'')
 
     def test_added_directory(self):
         """Test --directory option"""
@@ -74,4 +74,4 @@ class TestAdded(TestCaseWithTransport):
         self.build_tree(['a/README'])
         tree.add('README')
         out, err = self.run_bzr(['added', '--directory=a'])
-        self.assertEqual('README\n', out)
+        self.assertEqual(b'README\n', out)

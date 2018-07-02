@@ -145,8 +145,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b'A')
-        inv.root.revision = 'A'
-        inv.root.file_id = 'fixed-root'
+        inv.root.revision = b'A'
+        inv.root.file_id = b'fixed-root'
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository('reference_repo')
@@ -161,7 +161,7 @@ class TestRepository(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         root_id = inv.root.file_id
-        repo.texts.add_lines(('fixed-root', 'A'), [], [])
+        repo.texts.add_lines((b'fixed-root', b'A'), [], [])
         repo.add_revision(b'A', _mod_revision.Revision(
                 b'A', committer='B', timestamp=0,
                 timezone=0, message='C'), inv=inv)
@@ -177,7 +177,7 @@ class TestRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision(b'A', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()

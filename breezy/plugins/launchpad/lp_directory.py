@@ -22,10 +22,7 @@ try:
     from urllib.parse import urlsplit
 except ImportError:  # python < 3
     from urlparse import urlsplit
-try:
-    from xmlrpc.client import Fault
-except ImportError:  # python < 3
-    from xmlrpclib import Fault
+import xmlrpclib
 
 from ... import (
     debug,
@@ -107,7 +104,7 @@ class LaunchpadDirectory(object):
         resolve = _request_factory(path)
         try:
             result = resolve.submit(service)
-        except Fault as fault:
+        except xmlrpclib.Fault as fault:
             raise InvalidURL(
                 path=url, extra=fault.faultString)
         return result

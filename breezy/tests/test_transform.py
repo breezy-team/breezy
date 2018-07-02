@@ -374,7 +374,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(self.wt.unlock)
         trans_id = transform.new_file('name', root, [b'contents'],
                                       b'my_pretties', True)
-        oz = transform.new_directory('oz', root, 'oz-id')
+        oz = transform.new_directory('oz', root, b'oz-id')
         dorothy = transform.new_directory('dorothy', oz, b'dorothy-id')
         toto = transform.new_file('toto', dorothy, [b'toto-contents'],
                                   b'toto-id', False)
@@ -397,13 +397,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_tree_reference(self):
         transform, root = self.get_transform()
         tree = transform._tree
-        trans_id = transform.new_directory('reference', root, 'subtree-id')
+        trans_id = transform.new_directory('reference', root, b'subtree-id')
         transform.set_tree_reference('subtree-revision', trans_id)
         transform.apply()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('subtree-revision',
-                         tree.root_inventory.get_entry('subtree-id').reference_revision)
+        self.assertEqual(b'subtree-revision',
+                         tree.root_inventory.get_entry(b'subtree-id').reference_revision)
 
     def test_conflicts(self):
         transform, root = self.get_transform()
@@ -694,9 +694,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_both_rename2(self):
         create_tree, root = self.get_transform()
-        breezy = create_tree.new_directory('breezy', root, 'breezy-id')
-        tests = create_tree.new_directory('tests', breezy, 'tests-id')
-        blackbox = create_tree.new_directory('blackbox', tests, 'blackbox-id')
+        breezy = create_tree.new_directory('breezy', root, b'breezy-id')
+        tests = create_tree.new_directory('tests', breezy, b'tests-id')
+        blackbox = create_tree.new_directory('blackbox', tests, b'blackbox-id')
         create_tree.new_file('test_too_much.py', blackbox, [b'hello1'],
                              b'test_too_much-id')
         create_tree.apply()
@@ -847,7 +847,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(conflicts.final_name(old_dorothy), 'dorothy.moved')
         self.assertIs(conflicts.final_file_id(old_dorothy), None)
         self.assertEqual(conflicts.final_name(new_dorothy), 'dorothy')
-        self.assertEqual(conflicts.final_file_id(new_dorothy), 'dorothy-id')
+        self.assertEqual(conflicts.final_file_id(new_dorothy), b'dorothy-id')
         self.assertEqual(conflicts.final_parent(emerald), oz)
         conflicts.apply()
 
@@ -929,7 +929,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         b'parent-id')], cooked_conflicts)
         tt.apply()
         self.assertFalse(self.wt.is_versioned('parent'))
-        self.assertEqual('parent-id', self.wt.path2id('parent.new'))
+        self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
 
     def test_resolve_conflicts_wrong_new_parent_kind(self):
         tt, root = self.get_transform()
@@ -978,9 +978,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
-        kansas = create.new_directory('kansas', root, 'kansas-id')
-        create.new_directory('house', kansas, 'house-id')
-        create.new_directory('oz', root, 'oz-id')
+        kansas = create.new_directory('kansas', root, b'kansas-id')
+        create.new_directory('house', kansas, b'house-id')
+        create.new_directory('oz', root, b'oz-id')
         create.apply()
         cyclone, root = self.get_transform()
         oz = cyclone.trans_id_tree_path('oz')
@@ -1163,9 +1163,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_iter_changes_modifications(self):
         self.wt.set_root_id(b'eert_toor')
         transform, root = self.get_transform()
-        transform.new_file('old', root, [b'blah'], 'id-1')
+        transform.new_file('old', root, [b'blah'], b'id-1')
         transform.new_file('new', root, [b'blah'])
-        transform.new_directory('subdir', root, 'subdir-id')
+        transform.new_directory('subdir', root, b'subdir-id')
         transform.apply()
         transform, root = self.get_transform()
         try:
@@ -2322,7 +2322,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
         self.addCleanup(tt.finalize)
-        tt.new_directory('', ROOT_PARENT, 'TREE_ROOT')
+        tt.new_directory('', ROOT_PARENT, b'TREE_ROOT')
         rev = tt.commit(branch, 'my message')
         self.assertEqual([], branch.basis_tree().get_parent_ids())
         self.assertNotEqual(_mod_revision.NULL_REVISION,
@@ -2820,7 +2820,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview = TransformPreview(revision_tree)
         self.addCleanup(preview.finalize)
         preview.new_file('file', preview.root, [b'contents'], b'file-id')
-        preview.new_directory('directory', preview.root, 'dir-id')
+        preview.new_directory('directory', preview.root, b'dir-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual('file', preview_tree.kind('file'))
         self.assertEqual('directory', preview_tree.kind('directory'))
@@ -2868,7 +2868,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_get_symlink_target(self):
         self.requireFeature(SymlinkFeature)
         preview = self.get_empty_preview()
-        preview.new_symlink('symlink', preview.root, 'target', 'symlink-id')
+        preview.new_symlink('symlink', preview.root, 'target', b'symlink-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual('target',
                          preview_tree.get_symlink_target('symlink'))

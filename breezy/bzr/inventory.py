@@ -1010,8 +1010,8 @@ class Inventory(CommonInventory):
             applied the final inventory must be internally consistent, but it
             is ok to supply changes which, if only half-applied would have an
             invalid result - such as supplying two changes which rename two
-            files, 'A' and 'B' with each other : [('A', 'B', 'A-id', a_entry),
-            ('B', 'A', 'B-id', b_entry)].
+            files, 'A' and 'B' with each other : [('A', 'B', b'A-id', a_entry),
+            ('B', 'A', b'B-id', b_entry)].
 
             Each change is a tuple, of the form (old_path, new_path, file_id,
             new_entry).

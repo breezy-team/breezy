@@ -93,28 +93,28 @@ class TestCat(tests.TestCaseWithTransport):
             tree.add(['e-rev'])
 
         # 'b-tree' is not present in the old tree.
-        self.run_bzr_error(["^brz: ERROR: u?'b-tree' "
-                            "is not present in revision .+$"],
+        self.run_bzr_error([b"^brz: ERROR: u?'b-tree' "
+                            b"is not present in revision .+$"],
                            'cat b-tree --name-from-revision')
 
         # get to the old file automatically
         out, err = self.run_bzr('cat d-rev')
-        self.assertEqual('', err)
-        self.assertEqual('bar\n', out)
+        self.assertEqual(b'', err)
+        self.assertEqual(b'bar\n', out)
 
         out, err = \
                 self.run_bzr('cat a-rev-tree --name-from-revision')
-        self.assertEqual('foo\n', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'foo\n', out)
+        self.assertEqual(b'', err)
 
         out, err = self.run_bzr('cat a-rev-tree')
-        self.assertEqual('baz\n', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'baz\n', out)
+        self.assertEqual(b'', err)
 
         # the actual file-id for e-rev doesn't exist in the old tree
         out, err = self.run_bzr('cat e-rev -rrevid:first')
-        self.assertEqual('qux\n', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'qux\n', out)
+        self.assertEqual(b'', err)
 
     def test_remote_cat(self):
         wt = self.make_branch_and_tree('.')
@@ -124,7 +124,7 @@ class TestCat(tests.TestCaseWithTransport):
 
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr(['cat', url])
-        self.assertEqual('contents of README\n', out)
+        self.assertEqual(b'contents of README\n', out)
 
     def test_cat_branch_revspec(self):
         wt = self.make_branch_and_tree('a')
@@ -135,7 +135,7 @@ class TestCat(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['cat', '-r', 'branch:../a', 'README'],
                                 working_dir='b')
-        self.assertEqual('contents of a/README\n', out)
+        self.assertEqual(b'contents of a/README\n', out)
 
     def test_cat_filters(self):
         wt = self.make_branch_and_tree('.')
@@ -146,11 +146,11 @@ class TestCat(tests.TestCaseWithTransport):
 
         # Test unfiltered output
         out, err = self.run_bzr(['cat', url])
-        self.assertEqual('contents of README\n', out)
+        self.assertEqual(b'contents of README\n', out)
 
         # Test --filters option is legal but has no impact if no filters
         out, err = self.run_bzr(['cat', '--filters', url])
-        self.assertEqual('contents of README\n', out)
+        self.assertEqual(b'contents of README\n', out)
 
     def test_cat_filters_applied(self):
         # Test filtering applied to output. This is tricky to do in a
@@ -173,8 +173,8 @@ class TestCat(tests.TestCaseWithTransport):
         try:
             out, err = self.run_bzr(['cat', url, '--filters'])
             # The filter stack will remove the first line and swapcase the rest
-            self.assertEqual('LINE 1 OF readme\nLINE 2 OF readme\n', out)
-            self.assertEqual('', err)
+            self.assertEqual(b'LINE 1 OF readme\nLINE 2 OF readme\n', out)
+            self.assertEqual(b'', err)
         finally:
             Tree._content_filter_stack = real_content_filter_stack
 
@@ -187,11 +187,11 @@ class TestCat(tests.TestCaseWithTransport):
 
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr(['cat', url])
-        self.assertEqual('contents of README\n', out)
+        self.assertEqual(b'contents of README\n', out)
 
     def test_cat_nonexistent_branch(self):
         self.vfs_transport_factory = memory.MemoryServer
-        self.run_bzr_error(['^brz: ERROR: Not a branch'],
+        self.run_bzr_error([b'^brz: ERROR: Not a branch'],
                            ['cat', self.get_url()])
 
     def test_cat_directory(self):
@@ -201,7 +201,7 @@ class TestCat(tests.TestCaseWithTransport):
         wt.commit('Making sure there is a basis_tree available')
 
         out, err = self.run_bzr(['cat', '--directory=a', 'README'])
-        self.assertEqual('contents of a/README\n', out)
+        self.assertEqual(b'contents of a/README\n', out)
 
     def test_cat_remote_directory(self):
         wt = self.make_branch_and_tree('a')
@@ -211,7 +211,7 @@ class TestCat(tests.TestCaseWithTransport):
 
         url = self.get_readonly_url() + '/a'
         out, err = self.run_bzr(['cat', '-d', url, 'README'])
-        self.assertEqual('contents of a/README\n', out)
+        self.assertEqual(b'contents of a/README\n', out)
 
 
 class TestSmartServerCat(tests.TestCaseWithTransport):

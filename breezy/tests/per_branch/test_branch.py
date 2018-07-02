@@ -880,7 +880,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.set_reference_info('path/to/file', 'path/to/location',
-                                      'file-id')
+                                      b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
 
@@ -888,7 +888,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.set_reference_info('path/to/file',
-                                      'path/to/location', 'file-id')
+                                      'path/to/location', b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         # Create a new instance to ensure storage is permanent
@@ -900,7 +900,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.set_reference_info('path/to/file',
-                                      'path/to/location', 'file-id')
+                                      'path/to/location', b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         branch.set_reference_info('path/to/file', None, None)
@@ -939,7 +939,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.set_reference_info('path/to/file',
-            '../reference_branch', 'file-id')
+            '../reference_branch', b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         referenced_branch = self.make_branch('reference_branch')
@@ -967,7 +967,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_update_references_retains_old_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
         new_branch = self.make_branch_with_reference(
-            'new_branch', 'reference', 'file-id2')
+            'new_branch', 'reference', b'file-id2')
         new_branch.update_references(branch)
         self.assertEqual('reference',
                          branch.get_reference_info('path/to/file')[0])
@@ -983,7 +983,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_update_references_skips_known_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
         new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
-        new_branch.set_reference_info('../foo', '../foo', 'file-id')
+        new_branch.set_reference_info('../foo', '../foo', b'file-id')
         new_branch.update_references(branch)
         self.assertEqual('reference',
                          branch.get_reference_info('path/to/file')[0])
@@ -991,7 +991,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_pull_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
         new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
-        new_branch.set_reference_info('../foo', '../foo', 'file-id2')
+        new_branch.set_reference_info('../foo', '../foo', b'file-id2')
         branch.pull(new_branch)
         self.assertEqual('foo',
                          branch.get_reference_info('../foo')[0])
@@ -999,7 +999,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_push_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
         new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
-        new_branch.set_reference_info('../foo', '../foo', 'file-id2')
+        new_branch.set_reference_info('../foo', '../foo', b'file-id2')
         new_branch.push(branch)
         self.assertEqual('foo',
                          branch.get_reference_info('../foo')[0])

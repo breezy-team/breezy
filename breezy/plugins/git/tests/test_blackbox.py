@@ -310,7 +310,7 @@ class ShallowTests(ExternalBase):
 
     def test_version_info_python(self):
         output, error = self.run_bzr(['version-info', '--python', 'gitr'])
-        self.assertEqual(error, '')
+        self.assertEqual(error, b'')
         self.assertNotIn(b'revno:', output)
 
     def test_version_info_custom_with_revno(self):

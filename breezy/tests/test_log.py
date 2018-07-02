@@ -1049,7 +1049,7 @@ class TestShowChangedRevisions(tests.TestCaseWithTransport):
         tree.add('foo')
         tree.commit('bar', rev_id=b'bar-id')
         s = self.make_utf8_encoded_stringio()
-        log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
+        log.show_changed_revisions(tree.branch, [], [b'bar-id'], s)
         self.assertContainsRe(s.getvalue(), 'bar')
         self.assertNotContainsRe(s.getvalue(), 'foo')
 
@@ -1058,7 +1058,7 @@ class TestLogFormatter(tests.TestCase):
 
     def setUp(self):
         super(TestLogFormatter, self).setUp()
-        self.rev = revision.Revision('a-id')
+        self.rev = revision.Revision(b'a-id')
         self.lf = log.LogFormatter(None)
 
     def test_short_committer(self):
@@ -1612,13 +1612,13 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         # 3
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),],
+            ('add', ('', b'TREE_ROOT', 'directory', '')),],
             revision_id=b'1')
-        builder.build_snapshot(['1'], [], revision_id=b'1.1.1')
-        builder.build_snapshot(['1'], [], revision_id=b'2')
-        builder.build_snapshot(['1.1.1'], [], revision_id=b'1.2.1')
-        builder.build_snapshot(['1.1.1', '1.2.1'], [], revision_id=b'1.1.2')
-        builder.build_snapshot(['2', '1.1.2'], [], revision_id=b'3')
+        builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
+        builder.build_snapshot([b'1'], [], revision_id=b'2')
+        builder.build_snapshot([b'1.1.1'], [], revision_id=b'1.2.1')
+        builder.build_snapshot([b'1.1.1', b'1.2.1'], [], revision_id=b'1.1.2')
+        builder.build_snapshot([b'2', b'1.1.2'], [], revision_id=b'3')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()

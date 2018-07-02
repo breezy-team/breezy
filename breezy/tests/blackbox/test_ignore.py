@@ -112,7 +112,7 @@ class TestCommands(TestCaseWithTransport):
         reference_set = set(ignores.USER_DEFAULTS)
         output_set = set(out.rstrip().split('\n'))
         self.assertEqual(reference_set, output_set)
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
 
     def test_ignore_versioned_file(self):
         tree = self.make_branch_and_tree('.')

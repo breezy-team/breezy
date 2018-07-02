@@ -27,7 +27,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_no_type(self):
         branch = self.make_branch('branch')
-        self.run_bzr_error(['No target configuration specified'],
+        self.run_bzr_error([b'No target configuration specified'],
                            'reconfigure branch')
 
     def test_branch_to_tree(self):
@@ -50,7 +50,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         tree.add('file')
-        self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
+        self.run_bzr_error([b'Working tree ".*" has uncommitted changes'],
                             'reconfigure --branch tree')
         self.run_bzr('reconfigure --force --branch tree')
 
@@ -66,7 +66,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_no_args(self):
         branch = self.make_branch('branch')
-        self.run_bzr_error(['No target configuration specified'],
+        self.run_bzr_error([b'No target configuration specified'],
                            'reconfigure', working_dir='branch')
 
     def test_checkout_to_lightweight_checkout(self):
@@ -102,7 +102,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
     def test_make_with_trees_already_trees(self):
         repo = self.make_repository('repo', shared=True)
         repo.set_make_working_trees(True)
-        self.run_bzr_error([" already creates working trees"],
+        self.run_bzr_error([b" already creates working trees"],
                             'reconfigure --with-trees repo')
 
     def test_make_without_trees(self):
@@ -114,13 +114,13 @@ class TestReconfigure(TestCaseWithTransportAndScript):
     def test_make_without_trees_already_no_trees(self):
         repo = self.make_repository('repo', shared=True)
         repo.set_make_working_trees(False)
-        self.run_bzr_error([" already doesn't create working trees"],
+        self.run_bzr_error([b" already doesn't create working trees"],
                             'reconfigure --with-no-trees repo')
 
     def test_make_with_trees_nonshared_repo(self):
         branch = self.make_branch('branch')
         self.run_bzr_error(
-            ["Requested reconfiguration of '.*' is not supported"],
+            [b"Requested reconfiguration of '.*' is not supported"],
             'reconfigure --with-trees branch')
 
     def test_make_without_trees_leaves_tree_alone(self):
@@ -242,13 +242,13 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         # now reconfigure to be stacked
         out, err = self.run_bzr('reconfigure --stacked-on b1 b2')
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # can also give the absolute URL of the branch, and it gets stored 
         # as a relative path if possible
         out, err = self.run_bzr('reconfigure --stacked-on %s b2'
                                 % (self.get_url('b1'),))
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # Refresh the branch as 'reconfigure' modified it
         branch_2 = branch_2.controldir.open_branch()
         # It should be given a relative URL to the destination, if possible,
@@ -261,7 +261,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         out, err = self.run_bzr('reconfigure --unstacked b2')
         self.assertContainsRe(out,
             '^.*/b2/ is now not stacked\n$')
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # Refresh the branch as 'reconfigure' modified it
         branch_2 = branch_2.controldir.open_branch()
         self.assertRaises(errors.NotStacked, branch_2.get_stacked_on_url)

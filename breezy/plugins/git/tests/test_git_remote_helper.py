@@ -82,7 +82,7 @@ class FetchTests(TestCaseWithTransport):
         revid = self.remote_tree.commit("msg")
         git_sha1 = map_to_git_sha1(self.remote_dir, revid)
         out = self.fetch([(git_sha1, 'HEAD')])
-        self.assertEqual(out, "\n")
+        self.assertEqual(out, b"\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
         self.assertEqual({

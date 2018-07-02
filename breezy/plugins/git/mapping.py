@@ -213,7 +213,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     rev.properties[u'hg:renames']))
             # TODO: Export other properties as 'bzr:' extras?
         ret = format_hg_metadata(renames, branch, extra)
-        if type(ret) is not str:
+        if not isinstance(ret, bytes):
             raise TypeError(ret)
         return ret
 

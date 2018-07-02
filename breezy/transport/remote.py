@@ -187,7 +187,7 @@ class RemoteTransport(transport.ConnectedTransport):
         except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             if args:
-                context = {'relpath': args[0]}
+                context = {'relpath': args[0].decode('utf-8')}
             else:
                 context = {}
             self._translate_error(err, **context)

@@ -761,7 +761,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        repo.texts.add_lines((b'file-id', b'revid'), (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         expected_pack_name = wg_tokens[0] + '.pack'
         expected_names = [wg_tokens[0] + ext for ext in
@@ -783,7 +783,7 @@ class TestPackRepository(TestCaseWithTransport):
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text = b'a bit of text\n'
-        key = ('sha1:' + osutils.sha_string(text),)
+        key = (b'sha1:' + osutils.sha_string(text),)
         repo.chk_bytes.add_lines(key, (), [text])
         wg_tokens = repo.suspend_write_group()
         same_repo = repo.controldir.open_repository()
@@ -1030,11 +1030,11 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
+            stream = source_repo.revisions.get_record_stream([(b'B-id',)],
                                                              'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
-            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+            self.assertEqual([(b'B-id',)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.abort_write_group()
         self.assertEqual([], sorted(key_refs.get_referrers()))
@@ -1043,11 +1043,11 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
+            stream = source_repo.revisions.get_record_stream([(b'B-id',)],
                                                              'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
-            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+            self.assertEqual([(b'B-id',)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.suspend_write_group()
         self.assertEqual([], sorted(key_refs.get_referrers()))
@@ -1068,10 +1068,10 @@ class TestKeyDependencies(TestCaseWithTransport):
                 target_vf.insert_record_stream(stream)
             # Copy just revision B-id
             stream = source_repo.revisions.get_record_stream(
-                [('B-id',)], 'unordered', True)
+                [(b'B-id',)], 'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
-            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+            self.assertEqual([(b'B-id',)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.commit_write_group()
         self.assertEqual([], sorted(key_refs.get_referrers()))

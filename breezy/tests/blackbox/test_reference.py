@@ -64,12 +64,12 @@ class TestReference(TestCaseWithTransport):
     def test_one_arg_displays(self):
         tree = self.make_tree_with_reference()
         out, err = self.run_bzr('reference newpath', working_dir='tree')
-        self.assertEqual('newpath http://example.org\n', out)
+        self.assertEqual(b'newpath http://example.org\n', out)
 
     def test_one_arg_uses_containing_tree(self):
         tree = self.make_tree_with_reference()
         out, err = self.run_bzr('reference tree/newpath')
-        self.assertEqual('newpath http://example.org\n', out)
+        self.assertEqual(b'newpath http://example.org\n', out)
 
     def test_two_args_sets(self):
         tree = self.make_branch_and_tree('tree')
@@ -79,11 +79,11 @@ class TestReference(TestCaseWithTransport):
         location, file_id = tree.branch.get_reference_info('file')
         self.assertEqual('http://example.org', location)
         self.assertEqual(b'file-id', file_id)
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        self.assertEqual(b'', out)
+        self.assertEqual(b'', err)
 
     def test_missing_file(self):
         tree = self.make_branch_and_tree('tree')
         out, err = self.run_bzr('reference file http://example.org',
                                 working_dir='tree', retcode=3)
-        self.assertEqual('brz: ERROR: file is not versioned.\n', err)
+        self.assertEqual(b'brz: ERROR: file is not versioned.\n', err)

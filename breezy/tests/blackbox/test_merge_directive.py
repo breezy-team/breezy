@@ -63,8 +63,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         md_text = self.run_bzr('merge-directive -r -1..-2 ../tree2')[0]
         md2 = merge_directive.MergeDirective.from_lines(
             md_text.splitlines(True))
-        self.assertEqual('foo-id', md2.revision_id)
-        self.assertEqual('bar-id', md2.base_revision_id)
+        self.assertEqual(b'foo-id', md2.revision_id)
+        self.assertEqual(b'bar-id', md2.base_revision_id)
 
     def test_submit_branch(self):
         self.prepare_merge_directive()
@@ -162,7 +162,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         os.chdir('../tree2')
         self.run_bzr('pull ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.last_revision())
+        self.assertEqual(b'bar-id', wt.last_revision())
 
     def test_pull_user_r(self):
         """If the user supplies -r, an error is emitted"""
@@ -185,7 +185,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         os.chdir('../tree2')
         self.run_bzr('pull ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.last_revision())
+        self.assertEqual(b'bar-id', wt.last_revision())
 
     def test_merge_raw(self):
         self.prepare_merge_directive()
@@ -196,7 +196,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         os.chdir('../tree2')
         self.run_bzr('merge ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+        self.assertEqual(b'bar-id', wt.get_parent_ids()[1])
 
     def test_merge_user_r(self):
         """If the user supplies -r, an error is emitted"""
@@ -219,7 +219,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         os.chdir('../tree2')
         self.run_bzr('merge ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+        self.assertEqual(b'bar-id', wt.get_parent_ids()[1])
 
     def test_mail_uses_config(self):
         tree1, tree2 = self.prepare_merge_directive()
