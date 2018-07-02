@@ -1424,7 +1424,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
     def test_execute(self):
         output = BytesIO()
         diff_obj = diff.DiffFromTool(['python', '-c',
-                                      'print "@old_path @new_path"'],
+                                      'print("@old_path @new_path")'],
                                      None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
