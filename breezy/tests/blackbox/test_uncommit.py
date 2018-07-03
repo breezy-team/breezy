@@ -48,28 +48,28 @@ class TestUncommit(TestCaseWithTransport):
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit --dry-run --force')
-        self.assertContainsRe(out, 'Dry-run')
-        self.assertNotContainsRe(out, 'initial commit')
-        self.assertContainsRe(out, 'second commit')
+        self.assertContainsRe(out, b'Dry-run')
+        self.assertNotContainsRe(out, b'initial commit')
+        self.assertContainsRe(out, b'second commit')
 
         # Nothing has changed
-        self.assertEqual(['a2'], wt.get_parent_ids())
+        self.assertEqual([b'a2'], wt.get_parent_ids())
 
         # Uncommit, don't prompt
         out, err = self.run_bzr('uncommit --force')
-        self.assertNotContainsRe(out, 'initial commit')
-        self.assertContainsRe(out, 'second commit')
+        self.assertNotContainsRe(out, b'initial commit')
+        self.assertContainsRe(out, b'second commit')
 
         # This should look like we are back in revno 1
-        self.assertEqual(['a1'], wt.get_parent_ids())
+        self.assertEqual([b'a1'], wt.get_parent_ids())
         out, err = self.run_bzr('status')
-        self.assertEqual(out, 'modified:\n  a\n')
+        self.assertEqual(out, b'modified:\n  a\n')
 
     def test_uncommit_interactive(self):
         """Uncommit seeks confirmation, and doesn't proceed without it."""
         wt = self.create_simple_tree()
         os.chdir('tree')
-        run_script(self, """    
+        run_script(self, """
         $ brz uncommit
         ...
         The above revision(s) will be removed.
@@ -77,7 +77,7 @@ class TestUncommit(TestCaseWithTransport):
         <n
         Canceled
         """)
-        self.assertEqual(['a2'], wt.get_parent_ids())
+        self.assertEqual([b'a2'], wt.get_parent_ids())
 
     def test_uncommit_no_history(self):
         wt = self.make_branch_and_tree('tree')
@@ -147,8 +147,8 @@ class TestUncommit(TestCaseWithTransport):
         os.chdir('tree')
         out, err = self.run_bzr('uncommit -r1 --force')
 
-        self.assertNotContainsRe(out, 'initial commit')
-        self.assertContainsRe(out, 'second commit')
+        self.assertNotContainsRe(out, b'initial commit')
+        self.assertContainsRe(out, b'second commit')
         self.assertEqual([b'a1'], wt.get_parent_ids())
         self.assertEqual(b'a1', wt.branch.last_revision())
 

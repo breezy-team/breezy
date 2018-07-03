@@ -560,7 +560,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         with open('b/b_file', 'wb') as f: f.write(b'contents\n')
         wtb.add('b_file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
-        wta.merge_from_branch(wtb.branch, b_rev, 'null:')
+        wta.merge_from_branch(wtb.branch, b_rev, b'null:')
         self.assertTrue(os.path.lexists('a/b_file'))
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
@@ -576,7 +576,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         with open('b/file', 'wb') as f: f.write(b'contents\n')
         wtb.add('file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
-        wta.merge_from_branch(wtb.branch, b_rev, 'null:')
+        wta.merge_from_branch(wtb.branch, b_rev, b'null:')
         self.assertTrue(os.path.lexists('a/file'))
         self.assertTrue(os.path.lexists('a/file.moved'))
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
@@ -610,7 +610,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual(a_wt.branch.revno(), 2)
         self.assertFalse(os.path.exists('a/file'))
         b_wt.commit('exec a')
-        a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(), 'null:')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(), b'null:')
         self.assertTrue(os.path.exists('a/file'))
 
     def test_merge_swapping_renames(self):

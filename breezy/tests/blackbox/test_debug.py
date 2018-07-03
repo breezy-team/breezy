@@ -33,7 +33,7 @@ class TestDebugOption(tests.TestCaseInTempDir):
         # error output should contain a traceback; we used to look for code in
         # here but it may be missing if the source is not in sync with the
         # pyc file.
-        self.assertContainsRe(err, "Traceback \\(most recent call last\\)")
+        self.assertContainsRe(err, b"Traceback \\(most recent call last\\)")
 
     def test_dash_dlock(self):
         # With -Dlock, locking and unlocking is recorded into the log
@@ -55,5 +55,5 @@ class TestDebugBytes(tests.TestCaseWithTransport):
         out, err = self.run_bzr_subprocess(
             'branch -Dbytes -Oprogress_bar=text %s/tree target'
             % (remote_trans.base,))
-        self.assertContainsRe(err, 'Branched 1 revision')
-        self.assertContainsRe(err, 'Transferred:.*kB')
+        self.assertContainsRe(err, b'Branched 1 revision')
+        self.assertContainsRe(err, b'Transferred:.*kB')

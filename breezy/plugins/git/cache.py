@@ -589,7 +589,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             basepath = transport.local_abspath(".").encode(osutils._fs_enc)
         except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
-        if type(basepath) is not str:
+        if not isinstance(basepath, str):
             raise TypeError(basepath)
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
@@ -688,15 +688,21 @@ class TdbGitShaMap(GitShaMap):
                 ret.add(revid)
         return ret
 
+    def _keys(self):
+        try:
+            return self.db.iterkeys()
+        except AttributeError:
+            return self.db.keys()
+
     def revids(self):
         """List the revision ids known."""
-        for key in self.db.keys():
+        for key in self._keys():
             if key.startswith(b"commit\0"):
                 yield key[7:]
 
     def sha1s(self):
         """List the SHA1s."""
-        for key in self.db.keys():
+        for key in self._keys():
             if key.startswith(b"git\0"):
                 yield sha_to_hex(key[4:])
 

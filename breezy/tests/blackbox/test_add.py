@@ -133,7 +133,7 @@ class TestAdd(tests.TestCaseWithTransport):
         # add with no arguments in a subdirectory gets only files below that
         # subdirectory
         self.run_bzr('add', working_dir='src')
-        self.assertEqual('README\n',
+        self.assertEqual(b'README\n',
                           self.run_bzr('unknowns', working_dir='src')[0])
         # reopen to see the new changes
         t = t.controldir.open_workingtree('src')

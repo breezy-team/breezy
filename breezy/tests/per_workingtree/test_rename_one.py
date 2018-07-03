@@ -129,7 +129,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                 tree.basis_tree(), tree,
                 [('', ''), ('a', 'a'), ('b/', 'b/'), ('d', 'b/c')])
         self.assertPathDoesNotExist('b/c')
-        self.assertFileEqual(c_contents, b'd')
+        self.assertFileEqual(c_contents, 'd')
 
     def test_rename_one_fail_consistent(self):
         tree = self.make_branch_and_tree('.')

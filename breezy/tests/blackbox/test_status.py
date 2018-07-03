@@ -409,8 +409,8 @@ class BranchStatus(TestCaseWithTransport):
                                 retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              r'.*ERROR: Path\(s\) do not exist: '
-                              'NONEXISTENT.*')
+                              br'.*ERROR: Path\(s\) do not exist: '
+                              b'NONEXISTENT.*')
 
     def test_status_multiple_nonexistent_files(self):
         # brz st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...

@@ -177,7 +177,7 @@ brz: ERROR: No changes to commit.\
         tree.add(["f"])
         out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
             encoding="utf-8", retcode=3)
-        self.assertContainsRe(err, "(?m)not versioned: \"\xc2\xa7\"$")
+        self.assertContainsRe(err, b"(?m)not versioned: \"\xc2\xa7\"$")
 
     def test_non_ascii_file_unversioned_iso_8859_5(self):
         self.requireFeature(features.UnicodeFilenameFeature)
@@ -188,7 +188,7 @@ brz: ERROR: No changes to commit.\
             encoding="iso-8859-5", retcode=3)
         self.expectFailure("Error messages are always written as UTF-8",
             self.assertNotContainsString, err, "\xc2\xa7")
-        self.assertContainsRe(err, "(?m)not versioned: \"\xfd\"$")
+        self.assertContainsRe(err, b"(?m)not versioned: \"\xfd\"$")
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
@@ -196,7 +196,7 @@ brz: ERROR: No changes to commit.\
         self.build_tree(['one', 'two'])
         wt.add(['two'])
         out, err = self.run_bzr('commit -m one two')
-        self.assertContainsRe(err, "The commit message is a file name")
+        self.assertContainsRe(err, b"The commit message is a file name")
 
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
@@ -778,7 +778,7 @@ altered in u2
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
             retcode=3)
         self.assertContainsRe(err,
-            r'^brz: ERROR: Cannot lock.*readonly transport')
+            br'^brz: ERROR: Cannot lock.*readonly transport')
 
     def setup_editor(self):
         # Test that commit template hooks work
@@ -809,7 +809,7 @@ altered in u2
         out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
             stdin="y\n")
         self.assertContainsRe(err,
-            "brz: ERROR: Empty commit message specified")
+            b"brz: ERROR: Empty commit message specified")
 
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()

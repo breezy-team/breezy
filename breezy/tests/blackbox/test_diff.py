@@ -93,7 +93,7 @@ class TestDiff(DiffBase):
         # There was an error in error reporting for this option
         out, err = self.run_bzr('diff --prefix old/', retcode=3)
         self.assertContainsRe(err,
-            '--prefix expects two values separated by a colon')
+            b'--prefix expects two values separated by a colon')
 
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
@@ -150,12 +150,12 @@ class TestDiff(DiffBase):
     def test_diff_nonexistent_dotted_revision(self):
         out, err = self.run_bzr('diff -r 1.1', retcode=3)
         self.assertContainsRe(err,
-            "Requested revision: '1.1' does not exist in branch:")
+            b"Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_nonexistent_dotted_revision_change(self):
         out, err = self.run_bzr('diff -c 1.1', retcode=3)
         self.assertContainsRe(err,
-            "Requested revision: '1.1' does not exist in branch:")
+            b"Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
@@ -163,7 +163,7 @@ class TestDiff(DiffBase):
         self.make_example_branch()
         self.build_tree(['unversioned-file'])
         out, err = self.run_bzr('diff unversioned-file', retcode=3)
-        self.assertContainsRe(err, 'not versioned.*unversioned-file')
+        self.assertContainsRe(err, b'not versioned.*unversioned-file')
 
     # TODO: What should diff say for a file deleted in working tree?
 

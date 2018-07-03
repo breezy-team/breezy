@@ -71,7 +71,7 @@ class OptionTests(TestCase):
     def test_option_help_global_hidden(self):
         """Hidden global options have no help strings."""
         out, err = self.run_bzr('help log')
-        self.assertNotContainsRe(out, r'--message')
+        self.assertNotContainsRe(out, br'--message')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
@@ -81,7 +81,7 @@ class OptionTests(TestCase):
 
     def test_unknown_short_opt(self):
         out, err = self.run_bzr('help -r', retcode=3)
-        self.assertContainsRe(err, r'no such option')
+        self.assertContainsRe(err, br'no such option')
 
     def test_set_short_name(self):
         o = option.Option('wiggle')

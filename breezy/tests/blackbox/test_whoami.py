@@ -105,7 +105,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         out, err = self.run_bzr(['whoami'], 3)
-        self.assertContainsRe(err, 'Unable to determine your name')
+        self.assertContainsRe(err, b'Unable to determine your name')
 
     def test_whoami_directory(self):
         """Test --directory option."""
@@ -148,4 +148,4 @@ class TestWhoami(tests.TestCaseWithTransport):
         """Test --directory mentioning a non-branch directory."""
         wt = self.build_tree(['subdir/'])
         out, err = self.run_bzr("whoami --directory subdir", retcode=3)
-        self.assertContainsRe(err, 'ERROR: Not a branch')
+        self.assertContainsRe(err, b'ERROR: Not a branch')

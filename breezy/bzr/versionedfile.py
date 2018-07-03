@@ -869,7 +869,7 @@ class HashPrefixMapper(URLEscapeMapper):
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (self._unescape(osutils.basename(partition_id)),)
+        return (self._unescape(osutils.basename(partition_id)).encode('utf-8'),)
 
     def _unescape(self, basename):
         """No unescaping needed for HashPrefixMapper."""

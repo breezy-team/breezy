@@ -27,9 +27,9 @@ class TestMissing(tests.TestCaseWithTransport):
     def assertMessages(self, out, must_have=(), must_not_have=()):
         """Check if commit messages are in or not in the output"""
         for m in must_have:
-            self.assertContainsRe(out, r'\nmessage:\n  %s\n' % m)
+            self.assertContainsRe(out, br'\nmessage:\n  %s\n' % m)
         for m in must_not_have:
-            self.assertNotContainsRe(out, r'\nmessage:\n  %s\n' % m)
+            self.assertNotContainsRe(out, br'\nmessage:\n  %s\n' % m)
 
     def test_missing_quiet(self):
         # <https://bugs.launchpad.net/bzr/+bug/284748>

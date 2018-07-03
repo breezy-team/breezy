@@ -225,7 +225,7 @@ def grep_diff(opts):
                 RevisionSpec.from_string('last:1')]
             start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
-        if start_revid == 'null:':
+        if start_revid == b'null:':
             return
         srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
         if len(opts.revision) == 2:

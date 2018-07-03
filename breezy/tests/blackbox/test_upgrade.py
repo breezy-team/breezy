@@ -281,7 +281,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         # using a deprecated format gives a warning
         self.run_bzr('init --format=knit a')
         out, err = self.run_bzr('status a')
-        self.assertContainsRe(err, 'brz upgrade .*[/\\\\]a')
+        self.assertContainsRe(err, b'brz upgrade .*[/\\\\]a')
 
     def test_no_upgrade_recommendation_from_bzrdir(self):
         # we should only get a recommendation to upgrade when we're accessing

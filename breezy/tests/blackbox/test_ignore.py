@@ -170,9 +170,9 @@ class TestCommands(TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('.')
         out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
-        self.assertEqual(out, '')
+        self.assertEqual(out, b'')
         self.assertContainsRe(err,
-            r'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
-        self.assertNotContainsRe(err, 'foo', re.DOTALL)
+            br'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
+        self.assertNotContainsRe(err, b'foo', re.DOTALL)
         self.assertFalse(os.path.isfile('.bzrignore'))
 
