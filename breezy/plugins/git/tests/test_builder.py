@@ -53,8 +53,8 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_set_file_newline(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_file(u'foo\nbar', 'contents\nbar\n', False)
-        self.assertEqualDiff('blob\nmark :1\ndata 13\ncontents\nbar\n\n',
+        builder.set_file(u'foo\nbar', b'contents\nbar\n', False)
+        self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n',
                              stream.getvalue())
         self.assertEqual([b'M 100644 :1 "foo\\nbar"\n'], builder.commit_info)
 
@@ -114,10 +114,10 @@ class TestGitBranchBuilder(tests.TestCase):
         builder = tests.GitBranchBuilder(stream)
 
         builder.set_file(u'f\xb5/bar', b'contents\nbar\n', False)
-        self.assertEqual('2', builder.commit(b'Joe Foo <joe@foo.com>',
+        self.assertEqual(b'2', builder.commit(b'Joe Foo <joe@foo.com>',
                                            u'committing f\xb5/bar',
                                            timestamp=1194586400,
-                                           timezone='+0100'))
+                                           timezone=b'+0100'))
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n'
                              b'commit refs/heads/master\n'
                              b'mark :2\n'
@@ -238,7 +238,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_reset_revision(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.reset(mark=123)
+        builder.reset(mark=b'123')
         self.assertEqualDiff(
             b'reset refs/heads/master\n'
             b'from :123\n'

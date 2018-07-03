@@ -205,13 +205,13 @@ class SigningGitRepository(tests.TestCaseWithTransport):
         self.assertFalse(branch.repository.has_signature_for_revision_id(revid))
         try:
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack('''
+            conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
             revid2 = wt.commit(config=conf, message="base", allow_pointless=True)
             def sign(text):
                 return breezy.gpg.LoopbackGPGStrategy(None).sign(text)
-            self.assertIsInstance(branch.repository.get_signature_text(revid2), str)
+            self.assertIsInstance(branch.repository.get_signature_text(revid2), bytes)
         finally:
             breezy.gpg.GPGStrategy = oldstrategy
 

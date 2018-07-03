@@ -42,6 +42,7 @@ from ...revision import (
     NULL_REVISION,
     )
 from ...sixish import (
+    PY3,
     text_type,
     viewitems,
     )
@@ -64,11 +65,11 @@ from .roundtrip import (
 
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0o644
-HG_RENAME_SOURCE = "HG:rename-source"
-HG_EXTRA = "HG:extra"
+HG_RENAME_SOURCE = b"HG:rename-source"
+HG_EXTRA = b"HG:extra"
 
 # This HG extra is used to indicate the commit that this commit was based on.
-HG_EXTRA_AMEND_SOURCE = "amend_source"
+HG_EXTRA_AMEND_SOURCE = b"amend_source"
 
 FILE_ID_PREFIX = b'git:'
 
@@ -174,7 +175,10 @@ class BzrGitMapping(foreign.VcsMapping):
     def revid_as_refname(self, revid):
         if not isinstance(revid, bytes):
             raise TypeError(revid)
-        return b"refs/bzr/" + urlutils.quote(revid)
+        if PY3:
+            revid = revid.decode('utf-8')
+        quoted_revid = urlutils.quote(revid)
+        return b"refs/bzr/" + quoted_revid.encode('utf-8')
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -347,11 +351,11 @@ class BzrGitMapping(foreign.VcsMapping):
         i = 0
         propname = u'git-mergetag-0'
         while propname in rev.properties:
-            commit.mergetag.append(Tag.from_string(rev.properties[propname].encode(encoding)))
+            commit.mergetag.append(Tag.from_string(rev.properties[propname]))
             i += 1
             propname = u'git-mergetag-%d' % i
         if u'git-extra' in rev.properties:
-            commit.extra.extend([l.split(' ', 1) for l in rev.properties[u'git-extra'].splitlines()])
+            commit.extra.extend([l.split(b' ', 1) for l in rev.properties[u'git-extra'].splitlines()])
         return commit
 
     def import_fileid_map(self, blob):
@@ -376,7 +380,7 @@ class BzrGitMapping(foreign.VcsMapping):
         def decode_using_encoding(rev, commit, encoding):
             rev.committer = commit.committer.decode(encoding)
             if commit.committer != commit.author:
-                rev.properties[u'author'] = str(commit.author).decode(encoding)
+                rev.properties[u'author'] = commit.author.decode(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
         if commit.encoding is not None:
@@ -430,18 +434,19 @@ class BzrGitMapping(foreign.VcsMapping):
         extra_lines = []
         for k, v in commit.extra:
             if k == HG_RENAME_SOURCE:
-                extra_lines.append(k + ' ' + v + '\n')
+                extra_lines.append(k + b' ' + v + b'\n')
             elif k == HG_EXTRA:
-                hgk, hgv = v.split(':', 1)
+                hgk, hgv = v.split(b':', 1)
                 if hgk not in (HG_EXTRA_AMEND_SOURCE, ):
                     raise UnknownMercurialCommitExtra(commit, hgk)
-                extra_lines.append(k + ' ' + v + '\n')
+                extra_lines.append(k + b' ' + v + b'\n')
             else:
                 unknown_extra_fields.append(k)
         if unknown_extra_fields:
-            raise UnknownCommitExtra(commit, unknown_extra_fields)
+            raise UnknownCommitExtra(
+                commit, [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
-            rev.properties[u'git-extra'] = ''.join(extra_lines)
+            rev.properties[u'git-extra'] = b''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
 
     def get_fileid_map(self, lookup_object, tree_sha):
@@ -548,7 +553,7 @@ class ForeignGit(ForeignVcs):
 
     @classmethod
     def show_foreign_revid(cls, foreign_revid):
-        return { "git commit": foreign_revid }
+        return { "git commit": foreign_revid.decode('utf-8') }
 
 
 foreign_vcs_git = ForeignGit()

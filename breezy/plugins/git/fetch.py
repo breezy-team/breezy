@@ -256,9 +256,9 @@ def import_git_tree(texts, mapping, path, name, hexshas,
     """
     (base_hexsha, hexsha) = hexshas
     (base_mode, mode) = modes
-    if type(path) is not str:
+    if not isinstance(path, bytes):
         raise TypeError(path)
-    if type(name) is not str:
+    if not isinstance(name, bytes):
         raise TypeError(name)
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
@@ -406,7 +406,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     store_updater = target_git_object_retriever._get_updater(rev)
     tree_supplement = mapping.get_fileid_map(lookup_object, o.tree)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
-            mapping, "", "", (base_tree, o.tree), base_bzr_tree,
+            mapping, b"", b"", (base_tree, o.tree), base_bzr_tree,
             None, rev.revision_id, parent_trees,
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             tree_supplement.lookup_file_id,
@@ -475,7 +475,7 @@ def import_git_objects(repo, mapping, object_iter,
         head = heads.pop()
         if head == ZERO_SHA:
             continue
-        if type(head) is not str:
+        if not isinstance(head, bytes):
             raise TypeError(head)
         try:
             o = lookup_object(head)

@@ -105,7 +105,7 @@ class GitBranchBuilder(object):
 
     def set_link(self, path, link_target):
         """Create or update a link at a given path."""
-        mark = self._create_blob(link_target)
+        mark = self._create_blob(self._encode_path(link_target))
         self.commit_info.append(b'M 120000 :%d %s\n'
                                 % (mark, self._encode_path(path)))
 

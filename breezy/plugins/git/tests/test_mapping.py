@@ -113,13 +113,13 @@ class TestImportCommit(tests.TestCase):
             mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
-        self.assertEqual(b"Some message", rev.message)
-        self.assertEqual(b"Committer", rev.committer)
-        self.assertEqual(b"Author", rev.properties[u'author'])
+        self.assertEqual(u"Some message", rev.message)
+        self.assertEqual(u"Committer", rev.committer)
+        self.assertEqual(u"Author", rev.properties[u'author'])
         self.assertEqual(300, rev.timezone)
         self.assertEqual((), rev.parent_ids)
-        self.assertEqual(b"5", rev.properties[u'author-timestamp'])
-        self.assertEqual(b"180", rev.properties[u'author-timezone'])
+        self.assertEqual("5", rev.properties[u'author-timestamp'])
+        self.assertEqual("180", rev.properties[u'author-timezone'])
         self.assertEqual(b"git-v1:" + c.id, rev.revision_id)
 
     def test_explicit_encoding(self):
@@ -246,7 +246,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
 
     def test_simple_commit(self):
         r = Revision(self.mapping.revision_id_foreign_to_bzr(b"edf99e6c56495c620f20d5dacff9859ff7119261"))
-        r.message = b"MyCommitMessage"
+        r.message = "MyCommitMessage"
         r.parent_ids = []
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543
@@ -256,7 +256,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
 
     def test_revision_id(self):
         r = Revision(b"myrevid")
-        r.message = b"MyCommitMessage"
+        r.message = "MyCommitMessage"
         r.parent_ids = []
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543

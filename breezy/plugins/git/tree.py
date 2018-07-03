@@ -403,9 +403,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     posixpath.basename(from_dir), mode, hexsha)
         if from_dir != "" or include_root:
             yield (from_dir, "V", root_ie.kind, root_ie.file_id, root_ie)
-        todo = set()
+        todo = []
         if root_ie.kind == 'directory':
-            todo.add((store, from_dir.encode("utf-8"), hexsha, root_ie.file_id))
+            todo.append((store, from_dir.encode("utf-8"), hexsha, root_ie.file_id))
         while todo:
             (store, path, hexsha, parent_id) = todo.pop()
             tree = store[hexsha]
@@ -416,7 +416,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if stat.S_ISDIR(mode):
                     ie = self._get_dir_ie(child_path, parent_id)
                     if recursive:
-                        todo.add((store, child_path, hexsha, ie.file_id))
+                        todo.append((store, child_path, hexsha, ie.file_id))
                 else:
                     ie = self._get_file_ie(store, child_path, name, mode, hexsha, parent_id)
                 yield child_path.decode('utf-8'), "V", ie.kind, ie.file_id, ie

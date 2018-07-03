@@ -551,7 +551,7 @@ class LocalGitRepository(GitRepository):
             return (git_sha, mapping)
 
     def get_revision(self, revision_id):
-        if not isinstance(revision_id, str):
+        if not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id, self)
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
