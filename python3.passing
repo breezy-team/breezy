@@ -131,7 +131,6 @@ breezy.plugins.git.tests.test_refs.BranchNameRefConversionTests.test_head
 breezy.plugins.git.tests.test_refs.BranchNameRefConversionTests.test_tag
 breezy.plugins.git.tests.test_remote.ParseGitErrorTests.test_notbrancherror
 breezy.plugins.git.tests.test_remote.ParseGitErrorTests.test_unknown
-breezy.plugins.git.tests.test_remote.RemoteControlDirTests.test_annotated_tag
 breezy.plugins.git.tests.test_remote.RemoteControlDirTests.test_get_branches
 breezy.plugins.git.tests.test_remote.RemoteControlDirTests.test_list_branches
 breezy.plugins.git.tests.test_remote.RemoteControlDirTests.test_remove_branch

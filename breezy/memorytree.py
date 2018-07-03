@@ -276,11 +276,13 @@ class MemoryTree(MutableInventoryTree):
                     if file_id is None:
                         raise errors.NoSuchFile(path)
                     file_ids.add(file_id)
+            else:
+                for file_id in file_ids:
+                    if not self._inventory.has_id(file_id):
+                        raise errors.NoSuchId(self, file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)
-                else:
-                    raise errors.NoSuchId(self, file_id)
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
