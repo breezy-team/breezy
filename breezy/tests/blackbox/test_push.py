@@ -739,10 +739,10 @@ class TestPushStrictMixin(object):
 
     _default_command = ['push', '../to']
     _default_wd = 'local'
-    _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \\(See brz status\\)\\.',]
-    _default_additional_error = 'Use --no-strict to force the push.\n'
-    _default_additional_warning = 'Uncommitted changes will not be pushed.'
+    _default_errors = [b'Working tree ".*/local/" has uncommitted '
+                       b'changes \\(See brz status\\)\\.',]
+    _default_additional_error = b'Use --no-strict to force the push.\n'
+    _default_additional_warning = b'Uncommitted changes will not be pushed.'
 
 
     def assertPushFails(self, args):

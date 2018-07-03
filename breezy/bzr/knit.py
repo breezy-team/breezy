@@ -1711,7 +1711,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 access_memo = self._access.add_raw_records(
                     [(record.key, len(bytes))], bytes)[0]
                 index_entry = (record.key, options, access_memo, parents)
-                if 'fulltext' not in options:
+                if b'fulltext' not in options:
                     # Not a fulltext, so we need to make sure the compression
                     # parent will also be present.
                     # Note that pack backed knits don't need to buffer here
@@ -3098,11 +3098,11 @@ class _KnitGraphIndex(object):
 
     def _get_method(self, node):
         if not self._deltas:
-            return b'fulltext'
+            return 'fulltext'
         if self._compression_parent(node):
-            return b'line-delta'
+            return 'line-delta'
         else:
-            return b'fulltext'
+            return 'fulltext'
 
     def _get_node(self, key):
         try:

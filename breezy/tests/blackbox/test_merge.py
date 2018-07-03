@@ -560,12 +560,12 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_c = tree_a.controldir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
-                              'Merging from remembered parent location .*a\\/')
+                              b'Merging from remembered parent location .*a\\/')
         with tree_c.branch.lock_write():
             tree_c.branch.set_submit_branch(tree_b.controldir.root_transport.base)
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
-                              'Merging from remembered submit location .*b\\/')
+                              b'Merging from remembered submit location .*b\\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')

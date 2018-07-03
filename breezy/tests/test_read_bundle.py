@@ -50,7 +50,7 @@ def create_bundle_file(test_case):
 
     out = BytesIO()
     rev_ids = write_bundle(wt.branch.repository,
-                           wt.get_parent_ids()[0], 'null:', out)
+                           wt.get_parent_ids()[0], b'null:', out)
     out.seek(0)
     return out, wt
 
@@ -91,7 +91,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
         info = self.read_mergeable_from_url(
             text_type(self.get_url(self.bundle_name)))
         revision = info.real_revisions[-1]
-        self.assertEqual('commit-1', revision.revision_id)
+        self.assertEqual(b'commit-1', revision.revision_id)
 
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file

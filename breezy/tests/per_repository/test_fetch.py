@@ -157,7 +157,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_to_rich_root_set_parent_1_parent(self):
         # 1 parent rev -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
-            ((ROOT_ID, 'base'),),
+            ((ROOT_ID, b'base'),),
             [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              (b'tip', None, []),
             ])
@@ -168,7 +168,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestNotApplicable("repository format does not support "
                  "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
-            [(b'tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
+            [(b'tip', [b'ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
             ], allow_lefthand_ghost=True)
 
     def test_fetch_to_rich_root_set_parent_2_head_parents(self):

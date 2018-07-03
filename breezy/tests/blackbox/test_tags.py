@@ -41,11 +41,11 @@ class TestTagging(TestCaseWithTransport):
     def test_cannot_tag_range(self):
         out, err = self.run_bzr('tag -r1..10 name', retcode=3)
         self.assertContainsRe(err,
-            "Tags can only be placed on a single revision")
+            b"Tags can only be placed on a single revision")
 
     def test_no_tag_name(self):
         out, err = self.run_bzr('tag -d branch', retcode=3)
-        self.assertContainsRe(err, 'Please specify a tag name.')
+        self.assertContainsRe(err, b'Please specify a tag name.')
 
     def test_automatic_tag_name(self):
         def get_tag_name(branch, revid):
@@ -53,7 +53,7 @@ class TestTagging(TestCaseWithTransport):
         Branch.hooks.install_named_hook('automatic_tag_name',
             get_tag_name, 'get tag name')
         out, err = self.run_bzr('tag -d branch')
-        self.assertContainsRe(err, 'Created tag mytag.')
+        self.assertContainsRe(err, b'Created tag mytag.')
 
     def test_tag_current_rev(self):
         t = self.make_branch_and_tree('branch')
@@ -61,7 +61,7 @@ class TestTagging(TestCaseWithTransport):
             rev_id=b'first-revid')
         # make a tag through the command line
         out, err = self.run_bzr('tag -d branch NEWTAG')
-        self.assertContainsRe(err, 'Created tag NEWTAG.')
+        self.assertContainsRe(err, b'Created tag NEWTAG.')
         # tag should be observable through the api
         self.assertEqual(t.branch.tags.get_tag_dict(),
                 dict(NEWTAG='first-revid'))
@@ -77,10 +77,10 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tag --delete -d branch tag2')
         # cannot replace an existing tag normally
         out, err = self.run_bzr('tag -d branch NEWTAG -r0', retcode=3)
-        self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
+        self.assertContainsRe(err, b'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
         out, err = self.run_bzr('tag -d branch NEWTAG --force -r0')
-        self.assertEqual("Updated tag NEWTAG.\n", err)
+        self.assertEqual(b"Updated tag NEWTAG.\n", err)
 
     def test_tag_same_revision(self):
         t = self.make_branch_and_tree('branch')
@@ -91,14 +91,14 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
         out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
         self.assertContainsRe(err,
-            'Tag NEWTAG already exists for that revision\\.')
+            b'Tag NEWTAG already exists for that revision\\.')
         out, err = self.run_bzr('tag -rrevid:second-revid -d branch NEWTAG',
             retcode=3)
-        self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
+        self.assertContainsRe(err, b'Tag NEWTAG already exists\\.')
 
     def test_tag_delete_requires_name(self):
         out, err = self.run_bzr('tag -d branch', retcode=3)
-        self.assertContainsRe(err, 'Please specify a tag name\\.')
+        self.assertContainsRe(err, b'Please specify a tag name\\.')
 
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')

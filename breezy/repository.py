@@ -988,7 +988,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return Trees for revisions in this repository.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         """
         raise NotImplementedError(self.revision_trees)
 

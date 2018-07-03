@@ -2486,7 +2486,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """Return Tree for a revision on this branch with only some files.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         :param file_ids: if not None, the result is filtered
           so that only those file-ids, their parents and their
           children are included.

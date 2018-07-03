@@ -1389,7 +1389,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
             b'success', (b'ok', b'1', b'rev-tip'))
         client.add_expected_call(
             b'Branch.get_config_file', (b'quack/',),
-            b'success', (b'ok',), '')
+            b'success', (b'ok',), b'')
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
@@ -2665,9 +2665,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # Query for b'first' and b'null:'.  Because b'null:' is a parent of
         # 'first' it will be a candidate for the stop_keys of subsequent
-        # requests, and because 'null:' was queried but not returned it will be
+        # requests, and because b'null:' was queried but not returned it will be
         # cached as missing.
         self.assertEqual({b'first': (b'null:',)},
             graph.get_parent_map([b'first', b'null:']))

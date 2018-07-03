@@ -891,7 +891,7 @@ class TestLogFile(TestLogWithLogCatcher):
         # Check logging a deleted file gives an error if the
         # file isn't found at the end or start of the revision range
         self.prepare_tree(complex=True)
-        err_msg = "Path unknown at end or start of revision range: file2"
+        err_msg = b"Path unknown at end or start of revision range: file2"
         err = self.run_bzr('log file2', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 
@@ -912,7 +912,7 @@ class TestLogFile(TestLogWithLogCatcher):
         self.prepare_tree(complex=True)
 
         # Check logging a renamed file gives an error by default
-        err_msg = "Path unknown at end or start of revision range: file3"
+        err_msg = b"Path unknown at end or start of revision range: file3"
         err = self.run_bzr('log file3', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 

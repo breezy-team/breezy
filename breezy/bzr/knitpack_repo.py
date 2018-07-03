@@ -647,7 +647,7 @@ class KnitPacker(Packer):
                 # ---- KnitGraphIndex.get_position
                 bits = value[1:].split(' ')
                 offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append((offset, length, (key, value[0])))
+                pack_readv_requests.append((offset, length, (key, value[0:1])))
             # linear scan up the pack
             pack_readv_requests.sort()
             # copy the data
@@ -722,7 +722,7 @@ class KnitPacker(Packer):
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
-                write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
+                write_index.add_node(key, eol_flag + b"%d %d" % (pos, size), references)
                 pb.update("Copied record", record_index)
                 record_index += 1
 
@@ -930,10 +930,10 @@ class KnitPacker(Packer):
             pack_readv_requests = []
             for key, value, references in items:
                 # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
+                bits = value[1:].split(b' ')
                 offset, length = int(bits[0]), int(bits[1])
                 pack_readv_requests.append(
-                    ((offset, length), (key, value[0], references)))
+                    ((offset, length), (key, value[0:1], references)))
             # linear scan up the pack to maximum range combining.
             pack_readv_requests.sort()
             # split out the readv and the node data.
@@ -1068,8 +1068,8 @@ class KnitReconcilePacker(KnitPacker):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                         (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = osutils.split_lines(repo.texts.get_record_stream(
-                [key], 'unordered', True).next().get_bytes_as('fulltext'))
+            text_lines = osutils.split_lines(next(repo.texts.get_record_stream(
+                [key], 'unordered', True)).get_bytes_as('fulltext'))
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
@@ -1120,10 +1120,10 @@ class OptimisingKnitPacker(KnitPacker):
         for key in reversed(order):
             index, value, references = by_key[key]
             # ---- KnitGraphIndex.get_position
-            bits = value[1:].split(' ')
+            bits = value[1:].split(b' ')
             offset, length = int(bits[0]), int(bits[1])
             requests.append(
-                (index, [(offset, length)], [(key, value[0], references)]))
+                (index, [(offset, length)], [(key, value[0:1], references)]))
         # TODO: combine requests in the same index that are in ascending order.
         return total, requests
 
