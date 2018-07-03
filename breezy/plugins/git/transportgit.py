@@ -314,7 +314,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
             self._ensure_dir_exists(realname)
-        transport.put_bytes(realname, ref+"\n")
+        transport.put_bytes(realname, ref+b"\n")
         return True
 
     def remove_if_equals(self, name, old_ref):

@@ -113,7 +113,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         builder = tests.GitBranchBuilder()
         builder.set_file(b'data', b'text\n', False)
         builder.set_file(b'executable', b'content', True)
-        builder.set_link(b'link', b'broken')
+        builder.set_symlink(b'link', b'broken')
         builder.set_file(b'subdir/subfile', b'subdir text\n', False)
         commit_handle = builder.commit(b'Joe Foo <joe@foo.com>', b'message',
             timestamp=1205433193)

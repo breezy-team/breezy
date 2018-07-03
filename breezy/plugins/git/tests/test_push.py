@@ -85,7 +85,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         interrepo.source_store.lock_read()
         self.addCleanup(interrepo.source_store.unlock)
         self.assertEqual([],
-                list(interrepo.missing_revisions([(None, "unknown")])))
+                list(interrepo.missing_revisions([(None, b"unknown")])))
 
     def test_odd_rename(self):
         # Add initial revision to bzr branch.
@@ -111,11 +111,11 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         commit = store[gitid]
         tree = store[commit.tree]
         tree.check()
-        self.assertIn("baz", tree, repr(tree.items()))
-        self.assertIn(tree["baz"][1], store)
-        baz = store[tree["baz"][1]]
+        self.assertIn(b"baz", tree, repr(tree.items()))
+        self.assertIn(tree[b"baz"][1], store)
+        baz = store[tree[b"baz"][1]]
         baz.check()
-        ircdotnet = store[baz["IrcDotNet"][1]]
+        ircdotnet = store[baz[b"IrcDotNet"][1]]
         ircdotnet.check()
-        foobar = store[ircdotnet["foobar"][1]]
+        foobar = store[ircdotnet[b"foobar"][1]]
         foobar.check()

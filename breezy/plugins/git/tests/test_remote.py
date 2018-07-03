@@ -129,7 +129,7 @@ class FetchFromRemoteTestBase(object):
 
     def test_sprout_with_tags(self):
         c1 = self.remote_real.do_commit(
-                message='message',
+                message=b'message',
                 committer=b'committer <committer@example.com>',
                 author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
@@ -137,7 +137,7 @@ class FetchFromRemoteTestBase(object):
                 committer=b'committer <committer@example.com>',
                 author=b'author <author@example.com>',
                 ref=b'refs/tags/another')
-        self.remote_real.refs['refs/tags/blah'] = self.remote_real.head()
+        self.remote_real.refs[b'refs/tags/blah'] = self.remote_real.head()
 
         remote = ControlDir.open(self.remote_url)
         self.make_controldir('local', format=self._to_format)
@@ -292,7 +292,7 @@ class PushToRemoteBase(object):
         else:
             wt.branch.push(newbranch, lossy=True, overwrite=True)
 
-        self.assertNotEqual(c1, self.remote_real.refs['refs/heads/newbranch'])
+        self.assertNotEqual(c1, self.remote_real.refs[b'refs/heads/newbranch'])
 
 
 class PushToRemoteFromBzrTests(PushToRemoteBase,TestCaseWithTransport):

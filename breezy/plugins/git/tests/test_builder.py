@@ -66,18 +66,18 @@ class TestGitBranchBuilder(tests.TestCase):
                              stream.getvalue())
         self.assertEqual([b'M 100755 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
-    def test_set_link(self):
+    def test_set_symlink(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_link(u'f\xb5/bar', b'link/contents')
+        builder.set_symlink(u'f\xb5/bar', b'link/contents')
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\nlink/contents\n',
                              stream.getvalue())
         self.assertEqual([b'M 120000 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
-    def test_set_link_newline(self):
+    def test_set_symlink_newline(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_link(u'foo\nbar', 'link/contents')
+        builder.set_symlink(u'foo\nbar', 'link/contents')
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\nlink/contents\n',
                              stream.getvalue())
         self.assertEqual([b'M 120000 :1 "foo\\nbar"\n'], builder.commit_info)

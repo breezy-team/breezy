@@ -60,6 +60,8 @@ FastimportFeature = ModuleAvailableFeature('fastimport')
 class GitBranchBuilder(object):
 
     def __init__(self, stream=None):
+        if not FastimportFeature.available():
+            raise tests.UnavailableFeature(FastimportFeature)
         self.commit_info = []
         self.orig_stream = stream
         if stream is None:
@@ -88,7 +90,7 @@ class GitBranchBuilder(object):
 
     def set_symlink(self, path, content):
         """Create or update symlink at a given path."""
-        mark = self._create_blob(content)
+        mark = self._create_blob(self._encode_path(content))
         mode = b'120000'
         self.commit_info.append(b'M %s :%d %s\n'
                 % (mode, mark, self._encode_path(path)))
@@ -102,12 +104,6 @@ class GitBranchBuilder(object):
             mode = b'100644'
         self.commit_info.append(b'M %s :%d %s\n'
                                 % (mode, mark, self._encode_path(path)))
-
-    def set_link(self, path, link_target):
-        """Create or update a link at a given path."""
-        mark = self._create_blob(self._encode_path(link_target))
-        self.commit_info.append(b'M 120000 :%d %s\n'
-                                % (mark, self._encode_path(path)))
 
     def delete_entry(self, path):
         """This will delete files or symlinks at the given location."""

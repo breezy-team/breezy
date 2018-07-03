@@ -272,7 +272,7 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(b"message", committer=b"Somebody <user@example.com>")
         out, err = self.run_bzr(["check", "gitr"])
         self.maxDiff = None
-        self.assertMultiLineEqual(out, b'')
+        self.assertEqual(out, b'')
         self.assertTrue(err.endswith, b'3 objects\n')
 
 

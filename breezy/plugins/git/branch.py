@@ -1017,7 +1017,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                     raise errors.DivergedBranches(self.source, self.target)
             refs = { self.target.ref: new_ref }
             result.new_revid = stop_revision
-            for name, sha in viewitems(self.source.repository._git.refs.as_dict("refs/tags")):
+            for name, sha in viewitems(self.source.repository._git.refs.as_dict(b"refs/tags")):
                 refs[tag_name_to_ref(name)] = sha
             return refs
         self.target.repository.send_pack(get_changed_refs,
@@ -1199,7 +1199,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             # that hasn't actually been updated.
             return False
         # FIXME: Check for diverged branches
-        for ref, (git_sha, revid) in new_refs.iteritems():
+        for ref, (git_sha, revid) in viewitems(new_refs):
             if ref_equals(ret, ref, git_sha, revid):
                 # Already up to date
                 if git_sha is None:
