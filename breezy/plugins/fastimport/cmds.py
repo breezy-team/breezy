@@ -268,7 +268,6 @@ class cmd_fast_import(Command):
                         'The import algorithm to use.',
                         title='Import Algorithm',
                         default='Use the preferred algorithm (inventory deltas).',
-                        classic="Use the original algorithm (mutable inventories).",
                         experimental="Enable experimental features.",
                         value_switches=True, enum_switch=False,
                         ),

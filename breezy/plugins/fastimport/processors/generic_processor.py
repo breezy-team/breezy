@@ -108,7 +108,7 @@ class GenericProcessor(processor.ImportProcessor):
     * inv-cache - number of inventories to cache.
       If not set, the default is 1.
 
-    * mode - import algorithm to use: default, experimental or classic.
+    * mode - import algorithm to use: default or experimental.
 
     * import-marks - name of file to read to load mark information from
 
@@ -217,16 +217,8 @@ class GenericProcessor(processor.ImportProcessor):
 
         # Decide which CommitHandler to use
         self.supports_chk = getattr(self.repo._format, 'supports_chks', False)
-        if self.supports_chk and self._mode == 'classic':
-            note("Cannot use classic algorithm on CHK repositories"
-                 " - using default one instead")
-            self._mode = 'default'
-        if self._mode == 'classic':
-            self.commit_handler_factory = \
-                bzr_commit_handler.InventoryCommitHandler
-        else:
-            self.commit_handler_factory = \
-                bzr_commit_handler.InventoryDeltaCommitHandler
+        self.commit_handler_factory = \
+            bzr_commit_handler.InventoryDeltaCommitHandler
 
         # Decide how often to automatically report progress
         # (not a parameter yet)
