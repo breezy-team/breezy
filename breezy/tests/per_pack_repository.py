@@ -792,8 +792,8 @@ class TestPackRepository(TestCaseWithTransport):
         same_repo.resume_write_group(wg_tokens)
         self.assertEqual([key], list(same_repo.chk_bytes.keys()))
         self.assertEqual(
-            text, same_repo.chk_bytes.get_record_stream([key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            text, next(same_repo.chk_bytes.get_record_stream([key],
+                'unordered', True)).get_bytes_as('fulltext'))
         same_repo.abort_write_group()
         self.assertEqual([], list(same_repo.chk_bytes.keys()))
 

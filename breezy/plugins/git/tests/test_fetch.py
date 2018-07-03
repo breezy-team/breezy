@@ -346,8 +346,8 @@ class ImportObjects(TestCaseWithTransport):
             (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
             self._mapping.generate_file_id)
         self.assertEqual(set([(b'git:bla', b'somerevid')]), self._texts.keys())
-        self.assertEqual(self._texts.get_record_stream([(b'git:bla', b'somerevid')],
-            "unordered", True).next().get_bytes_as("fulltext"), "bar")
+        self.assertEqual(next(self._texts.get_record_stream([(b'git:bla', b'somerevid')],
+            "unordered", True)).get_bytes_as("fulltext"), "bar")
         self.assertEqual(1, len(ret)) 
         self.assertEqual(None, ret[0][0])
         self.assertEqual("bla", ret[0][1])

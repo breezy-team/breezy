@@ -2177,8 +2177,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         dir_id = self._transform.final_file_id(dir_trans_id)
         for child_trans_id in self._all_children(dir_trans_id):
             ordered_ids.append((child_trans_id, dir_id))
+        path_entries = []
         for entry, trans_id in self._make_inv_entries(ordered_ids):
-            yield self._final_paths.get_path(trans_id), entry
+            path_entries.append((self._final_paths.get_path(trans_id), entry))
+        path_entries.sort()
+        return path_entries
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         """See WorkingTree.list_files."""

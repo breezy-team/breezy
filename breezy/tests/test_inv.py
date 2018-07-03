@@ -854,7 +854,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def read_bytes(self, chk_bytes, key):
         stream = chk_bytes.get_record_stream([key], 'unordered', True)
-        return stream.next().get_bytes_as("fulltext")
+        return next(stream).get_bytes_as("fulltext")
 
     def test_deserialise_gives_CHKInventory(self):
         inv = Inventory()

@@ -518,7 +518,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             if self.controldir.is_control_filename(dir_relpath.decode(osutils._fs_enc)):
                 continue
             for name in list(dirnames):
-                if self.controldir.is_control_filename(name):
+                if self.controldir.is_control_filename(name.decode(osutils._fs_enc)):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
@@ -764,8 +764,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 path_iterator = sorted(self._iter_files_recursive(from_dir, include_dirs=True))
             else:
                 path_iterator = sorted([os.path.join(from_dir, name.decode(osutils._fs_enc)) for name in
-                    os.listdir(self.abspath(from_dir).encode(osutils._fs_enc)) if not self.controldir.is_control_filename(name)
-                    and not self.mapping.is_special_file(name)])
+                    os.listdir(self.abspath(from_dir).encode(osutils._fs_enc))
+                    if not self.controldir.is_control_filename(name.decode(osutils._fs_enc))
+                    and not self.mapping.is_special_file(name.decode(osutils._fs_enc))])
             for path in path_iterator:
                 try:
                     encoded_path = path.encode("utf-8")

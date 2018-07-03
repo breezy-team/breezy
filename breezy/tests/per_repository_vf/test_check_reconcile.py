@@ -940,9 +940,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                 key = (b'a-file-id', file_version)
                 self.assertEqual({key:()}, repo.texts.get_parent_map([key]))
                 self.assertIsInstance(
-                    repo.texts.get_record_stream([key], 'unordered',
-                        True).next().get_bytes_as('fulltext'),
-                    str)
+                    next(repo.texts.get_record_stream([key], 'unordered',
+                        True)).get_bytes_as('fulltext'),
+                    bytes)
 
     def test_check_behaviour(self):
         """Populate a repository and check it, and verify the output."""
