@@ -36,7 +36,7 @@ def _load_data_py(kndx, fp):
     history_top = len(history) - 1
     for line in fp.readlines():
         rec = line.split()
-        if len(rec) < 5 or rec[-1] != ':':
+        if len(rec) < 5 or rec[-1] != b':':
             # corrupt line.
             # FIXME: in the future we should determine if its a
             # short write - and ignore it
@@ -46,7 +46,7 @@ def _load_data_py(kndx, fp):
         try:
             parents = []
             for value in rec[4:-1]:
-                if value[0] == '.':
+                if value[:1] == b'.':
                     # uncompressed reference
                     parent_id = value[1:]
                 else:
@@ -88,7 +88,7 @@ def _load_data_py(kndx, fp):
         else:
             index = cache[version_id][5]
         cache[version_id] = (version_id,
-                             options.split(','),
+                             options.split(b','),
                              pos,
                              size,
                              tuple(parents),
