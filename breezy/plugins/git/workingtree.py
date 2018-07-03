@@ -514,11 +514,11 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         if from_dir is None:
             from_dir = u""
         for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir).encode(osutils._fs_enc)):
-            dir_relpath = dirpath[len(self.basedir):].strip("/")
-            if self.controldir.is_control_filename(dir_relpath):
+            dir_relpath = dirpath[len(self.basedir):].strip(b"/")
+            if self.controldir.is_control_filename(dir_relpath.decode(osutils._fs_enc)):
                 continue
             for name in list(dirnames):
-                if self.controldir.is_control_filename(name):
+                if self.controldir.is_control_filename(name.decode(osutils._fs_enc)):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
@@ -546,7 +546,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             index_paths = set([p.decode('utf-8') for p, i in self._recurse_index_entries()])
             all_paths = set(self._iter_files_recursive(include_dirs=True))
             for p in (all_paths - index_paths):
-                if not self._has_dir(p):
+                if not self._has_dir(p.encode('utf-8')):
                     yield p
 
     def _gather_kinds(self, files, kinds):
@@ -591,7 +591,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         return False
 
     def had_id(self, file_id):
-        path = self._basis_fileid_map.lookup_file_id(file_id)
+        path = self._basis_fileid_map.lookup_path(file_id)
         try:
             head = self.repository._git.head()
         except KeyError:
@@ -713,12 +713,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def stored_kind(self, path, file_id=None):
         with self.lock_read():
-            (index, subpath) = self._lookup_index(path.encode('utf-8'))
+            encoded_path = path.encode('utf-8')
+            (index, subpath) = self._lookup_index(encoded_path)
             try:
                 return mode_kind(index[subpath].mode)
             except KeyError:
                 # Maybe it's a directory?
-                if self._has_dir(path):
+                if self._has_dir(encoded_path):
                     return "directory"
                 raise errors.NoSuchFile(path)
 
@@ -763,8 +764,9 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 path_iterator = sorted(self._iter_files_recursive(from_dir, include_dirs=True))
             else:
                 path_iterator = sorted([os.path.join(from_dir, name.decode(osutils._fs_enc)) for name in
-                    os.listdir(self.abspath(from_dir).encode(osutils._fs_enc)) if not self.controldir.is_control_filename(name)
-                    and not self.mapping.is_special_file(name)])
+                    os.listdir(self.abspath(from_dir).encode(osutils._fs_enc))
+                    if not self.controldir.is_control_filename(name.decode(osutils._fs_enc))
+                    and not self.mapping.is_special_file(name.decode(osutils._fs_enc))])
             for path in path_iterator:
                 try:
                     encoded_path = path.encode("utf-8")
@@ -782,7 +784,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     pass
                 if kind in ('directory', 'tree-reference'):
                     if path != from_dir:
-                        if self._has_dir(path):
+                        if self._has_dir(encoded_path):
                             ie = self._get_dir_ie(path, self.path2id(path))
                             status = "V"
                             file_id = ie.file_id

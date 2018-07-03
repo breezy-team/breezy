@@ -297,6 +297,8 @@ class DictCacheUpdater(CacheUpdater):
         else:
             type_name = obj.type_name.decode('ascii')
             hexsha = obj.id
+        if not isinstance(hexsha, bytes):
+            raise TypeError(hexsha)
         if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
@@ -331,6 +333,8 @@ class DictGitShaMap(GitShaMap):
         return self._by_fileid[revision][fileid]
 
     def lookup_git_sha(self, sha):
+        if not isinstance(sha, bytes):
+            raise TypeError(sha)
         for entry in viewvalues(self._by_sha[sha]):
             yield entry
 
@@ -342,7 +346,7 @@ class DictGitShaMap(GitShaMap):
 
     def revids(self):
         for key, entries in viewitems(self._by_sha):
-            for (type, type_data) in entries.values():
+            for (type, type_data) in viewvalues(entries):
                 if type == "commit":
                     yield type_data[0]
 
@@ -366,6 +370,8 @@ class SqliteCacheUpdater(CacheUpdater):
         else:
             type_name = obj.type_name.decode('ascii')
             hexsha = obj.id
+        if not isinstance(hexsha, bytes):
+            raise TypeError(hexsha)
         if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
@@ -515,7 +521,7 @@ class SqliteGitShaMap(GitShaMap):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
             for (sha,) in self.db.execute("select sha1 from %s" % table):
-                yield sha
+                yield sha.encode('ascii')
 
 
 class TdbCacheUpdater(CacheUpdater):
@@ -690,9 +696,9 @@ class TdbGitShaMap(GitShaMap):
 
     def _keys(self):
         try:
-            return self.db.iterkeys()
-        except AttributeError:
             return self.db.keys()
+        except AttributeError:  # python < 3
+            return self.db.iterkeys()
 
     def revids(self):
         """List the revision ids known."""

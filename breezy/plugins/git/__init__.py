@@ -314,7 +314,7 @@ workingtree_format_registry.register_extra_lazy(
     'GitWorkingTreeFormat',
     )
 
-controldir_network_format_registry.register_lazy('git',
+controldir_network_format_registry.register_lazy(b'git',
     __name__ + ".dir", "GitControlDirFormat")
 
 

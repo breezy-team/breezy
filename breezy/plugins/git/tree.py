@@ -312,7 +312,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path2id(self, path):
         if self.mapping.is_special_file(path):
             return None
-        return self._fileid_map.lookup_file_id(path.encode('utf-8'))
+        return self._fileid_map.lookup_file_id(osutils.safe_unicode(path))
 
     def all_file_ids(self):
         return set(self._fileid_map.all_file_ids())
@@ -403,9 +403,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     posixpath.basename(from_dir), mode, hexsha)
         if from_dir != "" or include_root:
             yield (from_dir, "V", root_ie.kind, root_ie.file_id, root_ie)
-        todo = set()
+        todo = []
         if root_ie.kind == 'directory':
-            todo.add((store, from_dir.encode("utf-8"), hexsha, root_ie.file_id))
+            todo.append((store, from_dir.encode("utf-8"), hexsha, root_ie.file_id))
         while todo:
             (store, path, hexsha, parent_id) = todo.pop()
             tree = store[hexsha]
@@ -416,19 +416,21 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if stat.S_ISDIR(mode):
                     ie = self._get_dir_ie(child_path, parent_id)
                     if recursive:
-                        todo.add((store, child_path, hexsha, ie.file_id))
+                        todo.append((store, child_path, hexsha, ie.file_id))
                 else:
                     ie = self._get_file_ie(store, child_path, name, mode, hexsha, parent_id)
                 yield child_path.decode('utf-8'), "V", ie.kind, ie.file_id, ie
 
     def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
-        if type(path) is not bytes:
+        if not isinstance(path, bytes):
             raise TypeError(path)
-        if type(name) is not bytes:
+        if not isinstance(name, bytes):
             raise TypeError(name)
         kind = mode_kind(mode)
+        path = path.decode('utf-8')
+        name = name.decode("utf-8")
         file_id = self._fileid_map.lookup_file_id(path)
-        ie = entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
+        ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = store[hexsha].data.decode('utf-8')
         elif kind == 'tree-reference':
@@ -441,9 +443,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return ie
 
     def _get_dir_ie(self, path, parent_id):
+        path = path.decode('utf-8')
         file_id = self._fileid_map.lookup_file_id(path)
-        return GitTreeDirectory(file_id,
-            posixpath.basename(path).decode("utf-8"), parent_id)
+        return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
 
     def iter_child_entries(self, path, file_id=None):
         (store, mode, tree_sha) = self._lookup_path(path)
@@ -619,7 +621,7 @@ def tree_delta_from_git_changes(changes, mapping,
         target_extras = set()
     ret = delta.TreeDelta()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
-        if newpath == u'' and not include_root:
+        if newpath == b'' and not include_root:
             continue
         if not (specific_files is None or
                 (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
@@ -636,32 +638,38 @@ def tree_delta_from_git_changes(changes, mapping,
                 ret.unversioned.append(
                     (osutils.normalized_filename(newpath)[0], None, mode_kind(newmode)))
             else:
-                file_id = new_fileid_map.lookup_file_id(newpath)
-                ret.added.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
+                newpath_decoded = newpath.decode('utf-8')
+                file_id = new_fileid_map.lookup_file_id(newpath_decoded)
+                ret.added.append((newpath_decoded, file_id, mode_kind(newmode)))
         elif newpath is None or newmode == 0:
-            file_id = old_fileid_map.lookup_file_id(oldpath)
-            ret.removed.append((oldpath.decode('utf-8'), file_id, mode_kind(oldmode)))
+            oldpath_decoded = oldpath.decode('utf-8')
+            file_id = old_fileid_map.lookup_file_id(oldpath_decoded)
+            ret.removed.append((oldpath_decoded, file_id, mode_kind(oldmode)))
         elif oldpath != newpath:
-            file_id = old_fileid_map.lookup_file_id(oldpath)
+            oldpath_decoded = oldpath.decode('utf-8')
+            file_id = old_fileid_map.lookup_file_id(oldpath_decoded)
             ret.renamed.append(
-                (oldpath.decode('utf-8'), newpath.decode('utf-8'), file_id,
+                (oldpath_decoded, newpath.decode('utf-8'), file_id,
                 mode_kind(newmode), (oldsha != newsha),
                 (oldmode != newmode)))
         elif mode_kind(oldmode) != mode_kind(newmode):
-            file_id = new_fileid_map.lookup_file_id(newpath)
+            newpath_decoded = newpath.decode('utf-8')
+            file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.kind_changed.append(
-                (newpath.decode('utf-8'), file_id, mode_kind(oldmode),
+                (newpath_decoded, file_id, mode_kind(oldmode),
                 mode_kind(newmode)))
         elif oldsha != newsha or oldmode != newmode:
             if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
                 continue
-            file_id = new_fileid_map.lookup_file_id(newpath)
+            newpath_decoded = newpath.decode('utf-8')
+            file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.modified.append(
-                (newpath.decode('utf-8'), file_id, mode_kind(newmode),
+                (newpath, file_id, mode_kind(newmode),
                 (oldsha != newsha), (oldmode != newmode)))
         else:
-            file_id = new_fileid_map.lookup_file_id(newpath)
-            ret.unchanged.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
+            newpath_decoded = newpath.decode('utf-8')
+            file_id = new_fileid_map.lookup_file_id(newpath_decoded)
+            ret.unchanged.append((newpath, file_id, mode_kind(newmode)))
 
     return ret
 
@@ -841,7 +849,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return (subpath in index or self._has_dir(path))
 
     def _has_dir(self, path):
-        if path == "":
+        if not isinstance(path, bytes):
+            raise TypeError(path)
+        if path == b"":
             return True
         if self._versioned_dirs is None:
             self._load_dirs()
@@ -856,9 +866,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _ensure_versioned_dir(self, dirname):
+        if not isinstance(dirname, bytes):
+            raise TypeError(dirname)
         if dirname in self._versioned_dirs:
             return
-        if dirname != "":
+        if dirname != b"":
             self._ensure_versioned_dir(posixpath.dirname(dirname))
         self._versioned_dirs.add(dirname)
 
@@ -866,7 +878,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         with self.lock_read():
             path = path.rstrip('/')
             if self.is_versioned(path.rstrip('/')):
-                return self._fileid_map.lookup_file_id(path.encode("utf-8"))
+                return self._fileid_map.lookup_file_id(osutils.safe_unicode(path))
             return None
 
     def has_id(self, file_id):
@@ -982,7 +994,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
 
-    def _recurse_index_entries(self, index=None, basepath=""):
+    def _recurse_index_entries(self, index=None, basepath=b""):
         # Iterate over all index entries
         with self.lock_read():
             if index is None:
@@ -1046,8 +1058,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             raise TypeError(value)
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
         file_id = self.path2id(path)
-        if type(file_id) != str:
-            raise AssertionError
+        if not isinstance(file_id, bytes):
+            raise TypeError(file_id)
         kind = mode_kind(mode)
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':

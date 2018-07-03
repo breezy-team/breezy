@@ -59,7 +59,7 @@ class BzrBackend(Backend):
 
     def open_repository(self, path):
         # FIXME: More secure path sanitization
-        transport = self.transport.clone(path.lstrip("/"))
+        transport = self.transport.clone(path.decode('utf-8').lstrip("/"))
         trace.mutter('client opens %r: %r', path, transport)
         return BzrBackendRepo(transport, self.mapping)
 

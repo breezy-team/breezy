@@ -103,8 +103,8 @@ class RemoteHelperTests(TestCaseWithTransport):
         f = BytesIO()
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
-        base = "fetch\noption\npush\n"
-        self.assertTrue(capabs in (base+"\n", base+"import\n\n"), capabs)
+        base = b"fetch\noption\npush\n"
+        self.assertTrue(capabs in (base+b"\n", base+b"import\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()
@@ -115,25 +115,25 @@ class RemoteHelperTests(TestCaseWithTransport):
         f = BytesIO()
         self.helper.cmd_list(f, [])
         self.assertEqual(
-            '\n',
+            b'\n',
             f.getvalue())
 
     def test_import(self):
         if fastexporter is None:
             raise TestSkipped("bzr-fastimport not available")
-        self.build_tree_contents([("remote/afile", "somecontent")])
+        self.build_tree_contents([("remote/afile", b"somecontent")])
         self.remote_tree.add(["afile"])
-        self.remote_tree.commit("A commit message", timestamp=1330445983,
-            timezone=0, committer='Somebody <jrandom@example.com>')
+        self.remote_tree.commit(b"A commit message", timestamp=1330445983,
+            timezone=0, committer=b'Somebody <jrandom@example.com>')
         f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEqual(
-            'commit refs/heads/master\n'
-            'mark :1\n'
-            'committer Somebody <jrandom@example.com> 1330445983 +0000\n'
-            'data 16\n'
-            'A commit message\n'
-            'M 644 inline afile\n'
-            'data 11\n'
-            'somecontent\n',
+            b'commit refs/heads/master\n'
+            b'mark :1\n'
+            b'committer Somebody <jrandom@example.com> 1330445983 +0000\n'
+            b'data 16\n'
+            b'A commit message\n'
+            b'M 644 inline afile\n'
+            b'data 11\n'
+            b'somecontent\n',
             f.getvalue())

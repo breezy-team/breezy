@@ -1667,12 +1667,12 @@ class V4_2aBundleTester(V4BundleTester):
         target.lock_write()
         self.addCleanup(target.unlock)
         install_bundle(target.repository, bundle)
-        inv1 = self.b1.repository.inventories.get_record_stream([
+        inv1 = next(self.b1.repository.inventories.get_record_stream([
             (b'a@cset-0-3',)], 'unordered',
-            True).next().get_bytes_as('fulltext')
-        inv2 = target.repository.inventories.get_record_stream([
+            True)).get_bytes_as('fulltext')
+        inv2 = next(target.repository.inventories.get_record_stream([
             (b'a@cset-0-3',)], 'unordered',
-            True).next().get_bytes_as('fulltext')
+            True)).get_bytes_as('fulltext')
         self.assertEqualDiff(inv1, inv2)
 
 

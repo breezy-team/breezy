@@ -87,7 +87,7 @@ def ref_to_branch_name(ref):
     if ref is None:
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):
-        return osutils.safe_unicode(ref[len(LOCAL_BRANCH_PREFIX):])
+        return ref[len(LOCAL_BRANCH_PREFIX):].decode('utf-8')
     raise ValueError("unable to map ref %s back to branch name" % ref)
 
 

@@ -35,6 +35,7 @@ from ...decorators import only_raises
 from ...foreign import (
     ForeignRepository,
     )
+from ...sixish import viewvalues
 
 from .commit import (
     GitCommitBuilder,
@@ -430,7 +431,7 @@ class LocalGitRepository(GitRepository):
                     this_parent_map[revid] = parents
             parent_map.update(this_parent_map)
             pending = set()
-            map(pending.update, this_parent_map.itervalues())
+            map(pending.update, viewvalues(this_parent_map))
             pending = pending.difference(parent_map)
         return _mod_graph.KnownGraph(parent_map)
 
@@ -460,7 +461,7 @@ class LocalGitRepository(GitRepository):
         :raise KeyError: If foreign revision was not found
         :return: bzr revision id
         """
-        if type(foreign_revid) is not str:
+        if not isinstance(foreign_revid, bytes):
             raise TypeError(foreign_revid)
         if mapping is None:
             mapping = self.get_mapping()
@@ -550,7 +551,7 @@ class LocalGitRepository(GitRepository):
             return (git_sha, mapping)
 
     def get_revision(self, revision_id):
-        if not isinstance(revision_id, str):
+        if not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id, self)
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:

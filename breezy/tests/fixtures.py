@@ -34,8 +34,8 @@ def generate_unicode_names():
     By default they are not representable in ascii.
     
     >>> gen = generate_unicode_names()
-    >>> n1 = gen.next()
-    >>> n2 = gen.next()
+    >>> n1 = next(gen)
+    >>> n2 = next(gen)
     >>> type(n1)
     <type 'unicode'>
     >>> n1 == n2
@@ -65,9 +65,9 @@ def generate_unicode_encodings(universal_encoding=None):
         generated encodings either can or cannot encode all unicode 
         strings.
 
-    >>> n1 = generate_unicode_names().next()
-    >>> enc = generate_unicode_encodings(universal_encoding=True).next()
-    >>> enc2 = generate_unicode_encodings(universal_encoding=False).next()
+    >>> n1 = next(generate_unicode_names())
+    >>> enc = next(generate_unicode_encodings(universal_encoding=True))
+    >>> enc2 = next(generate_unicode_encodings(universal_encoding=False))
     >>> n1.encode(enc).decode(enc) == n1
     True
     >>> try:

@@ -33,15 +33,15 @@ class TestAnnotate(TestCaseWithTree):
     def test_annotate(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        tree_revision = getattr(tree, 'get_revision_id', lambda: 'current:')()
+        tree_revision = getattr(tree, 'get_revision_id', lambda: b'current:')()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         for revision, line in tree.annotate_iter('a'):
-            self.assertEqual('contents of a\n', line)
+            self.assertEqual(b'contents of a\n', line)
             self.assertEqual(tree_revision, revision)
-        tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
-        for revision, line in tree.annotate_iter('a', default_revision='random:'):
-            self.assertEqual('contents of a\n', line)
+        tree_revision = getattr(tree, 'get_revision_id', lambda: b'random:')()
+        for revision, line in tree.annotate_iter('a', default_revision=b'random:'):
+            self.assertEqual(b'contents of a\n', line)
             self.assertEqual(tree_revision, revision)
 
 

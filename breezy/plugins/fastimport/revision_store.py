@@ -83,7 +83,7 @@ class _TreeShim(object):
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream([old_text_key],
                                                         'unordered', True)
-            return stream.next().get_bytes_as('fulltext')
+            return next(stream).get_bytes_as('fulltext')
 
     def get_symlink_target(self, path, file_id=None):
         if file_id is None:

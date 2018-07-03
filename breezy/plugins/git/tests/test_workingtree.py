@@ -64,7 +64,7 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.build_tree(['conflicted'])
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
-            self.tree.index['conflicted'] = self.tree.index['conflicted'][:9] + (FLAG_STAGEMASK, )
+            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + (FLAG_STAGEMASK, )
             self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
@@ -91,12 +91,12 @@ class TreeDeltaFromGitChangesTests(TestCase):
     def test_missing(self):
         delta = TreeDelta()
         delta.removed.append(('a', b'a-id', 'file'))
-        changes = [(('a', 'a'), (stat.S_IFREG | 0o755, 0), (b'a' * 40, b'a' * 40))]
+        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0), (b'a' * 40, b'a' * 40))]
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, default_mapping,
-                (GitFileIdMap({'a': b'a-id'}, default_mapping),
-                 GitFileIdMap({'a': b'a-id'}, default_mapping))))
+                (GitFileIdMap({u'a': b'a-id'}, default_mapping),
+                 GitFileIdMap({u'a': b'a-id'}, default_mapping))))
 
 
 class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
@@ -122,7 +122,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
 
     def test_empty(self):
         self.expectDelta(
-            [((None, ''), (None, stat.S_IFDIR), (None, Tree().id))])
+            [((None, b''), (None, stat.S_IFDIR), (None, Tree().id))])
 
     def test_added_file(self):
         self.build_tree(['a'])

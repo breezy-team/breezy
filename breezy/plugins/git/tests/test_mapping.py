@@ -47,17 +47,17 @@ from ..mapping import (
 class TestRevidConversionV1(tests.TestCase):
 
     def test_simple_git_to_bzr_revision_id(self):
-        self.assertEqual("git-v1:"
-                         "c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
+        self.assertEqual(b"git-v1:"
+                         b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
                          BzrGitMappingv1().revision_id_foreign_to_bzr(
-                            "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+                            b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
 
     def test_simple_bzr_to_git_revision_id(self):
-        self.assertEqual(("c6a4d8f1fa4ac650748e647c4b1b368f589a7356", 
+        self.assertEqual((b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
                          BzrGitMappingv1()),
                          BzrGitMappingv1().revision_id_bzr_to_foreign(
-                            "git-v1:"
-                            "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+                            b"git-v1:"
+                            b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
 
     def test_is_control_file(self):
         mapping = BzrGitMappingv1()
@@ -68,85 +68,85 @@ class TestRevidConversionV1(tests.TestCase):
 
     def test_generate_file_id(self):
         mapping = BzrGitMappingv1()
-        self.assertIsInstance(mapping.generate_file_id("la"), str)
-        self.assertIsInstance(mapping.generate_file_id(u"é"), str)
+        self.assertIsInstance(mapping.generate_file_id("la"), bytes)
+        self.assertIsInstance(mapping.generate_file_id(u"é"), bytes)
 
 
 class FileidTests(tests.TestCase):
 
     def test_escape_space(self):
-        self.assertEqual("bla_s", escape_file_id("bla "))
+        self.assertEqual(b"bla_s", escape_file_id(b"bla "))
 
     def test_escape_control_l(self):
-        self.assertEqual("bla_c", escape_file_id("bla\x0c"))
+        self.assertEqual(b"bla_c", escape_file_id(b"bla\x0c"))
 
     def test_unescape_control_l(self):
-        self.assertEqual("bla\x0c", unescape_file_id("bla_c"))
+        self.assertEqual(b"bla\x0c", unescape_file_id(b"bla_c"))
 
     def test_escape_underscore(self):
-        self.assertEqual("bla__", escape_file_id("bla_"))
+        self.assertEqual(b"bla__", escape_file_id(b"bla_"))
 
     def test_escape_underscore_space(self):
-        self.assertEqual("bla___s", escape_file_id("bla_ "))
+        self.assertEqual(b"bla___s", escape_file_id(b"bla_ "))
 
     def test_unescape_underscore(self):
-        self.assertEqual("bla ", unescape_file_id("bla_s"))
+        self.assertEqual(b"bla ", unescape_file_id(b"bla_s"))
 
     def test_unescape_underscore_space(self):
-        self.assertEqual("bla _", unescape_file_id("bla_s__"))
+        self.assertEqual(b"bla _", unescape_file_id(b"bla_s__"))
 
 
 class TestImportCommit(tests.TestCase):
 
     def test_commit(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer"
         c.commit_time = 4
         c.author_time = 5
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
-        c.author = "Author"
+        c.author = b"Author"
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(c,
             mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
-        self.assertEqual("Some message", rev.message)
-        self.assertEqual("Committer", rev.committer)
-        self.assertEqual("Author", rev.properties['author'])
+        self.assertEqual(u"Some message", rev.message)
+        self.assertEqual(u"Committer", rev.committer)
+        self.assertEqual(u"Author", rev.properties[u'author'])
         self.assertEqual(300, rev.timezone)
         self.assertEqual((), rev.parent_ids)
-        self.assertEqual("5", rev.properties['author-timestamp'])
-        self.assertEqual("180", rev.properties['author-timezone'])
-        self.assertEqual("git-v1:" + c.id, rev.revision_id)
+        self.assertEqual("5", rev.properties[u'author-timestamp'])
+        self.assertEqual("180", rev.properties[u'author-timezone'])
+        self.assertEqual(b"git-v1:" + c.id, rev.revision_id)
 
     def test_explicit_encoding(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer"
         c.commit_time = 4
         c.author_time = 5
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("iso8859-1")
-        c.encoding = "iso8859-1"
+        c.encoding = b"iso8859-1"
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(c,
             mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
-        self.assertEqual(u"Authér", rev.properties['author'])
-        self.assertEqual("iso8859-1", rev.properties["git-explicit-encoding"])
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertEqual(u"Authér", rev.properties[u'author'])
+        self.assertEqual("iso8859-1", rev.properties[u"git-explicit-encoding"])
+        self.assertTrue(u"git-implicit-encoding" not in rev.properties)
 
     def test_implicit_encoding_fallback(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer"
         c.commit_time = 4
         c.author_time = 5
         c.commit_timezone = 60 * 5
@@ -157,15 +157,15 @@ class TestImportCommit(tests.TestCase):
             mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
-        self.assertEqual(u"Authér", rev.properties['author'])
-        self.assertEqual("latin1", rev.properties["git-implicit-encoding"])
-        self.assertTrue("git-explicit-encoding" not in rev.properties)
+        self.assertEqual(u"Authér", rev.properties[u'author'])
+        self.assertEqual("latin1", rev.properties[u"git-implicit-encoding"])
+        self.assertTrue(u"git-explicit-encoding" not in rev.properties)
 
     def test_implicit_encoding_utf8(self):
         c = Commit()
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c.message = "Some message"
-        c.committer = "Committer"
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer"
         c.commit_time = 4
         c.author_time = 5
         c.commit_timezone = 60 * 5
@@ -176,7 +176,7 @@ class TestImportCommit(tests.TestCase):
             mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
-        self.assertEqual(u"Authér", rev.properties['author'])
+        self.assertEqual(u"Authér", rev.properties[u'author'])
         self.assertTrue(u"git-explicit-encoding" not in rev.properties)
         self.assertTrue(u"git-implicit-encoding" not in rev.properties)
 
@@ -226,14 +226,14 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         self._lookup_parent = self._parent_map.__getitem__
 
     def assertRoundtripRevision(self, orig_rev):
-        commit = self.mapping.export_commit(orig_rev, "mysha",
-            self._lookup_parent, True, "testamentsha")
+        commit = self.mapping.export_commit(orig_rev, b"mysha",
+            self._lookup_parent, True, b"testamentsha")
         rev, roundtrip_revid, verifiers = self.mapping.import_commit(
             commit, self.mapping.revision_id_foreign_to_bzr)
         self.assertEqual(rev.revision_id,
             self.mapping.revision_id_foreign_to_bzr(commit.id))
         if self.mapping.roundtripping:
-            self.assertEqual({"testament3-sha1": "testamentsha"} , verifiers)
+            self.assertEqual({"testament3-sha1": b"testamentsha"} , verifiers)
             self.assertEqual(orig_rev.revision_id, roundtrip_revid)
             self.assertEqual(orig_rev.properties, rev.properties)
             self.assertEqual(orig_rev.committer, rev.committer)
@@ -246,7 +246,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
 
     def test_simple_commit(self):
         r = Revision(self.mapping.revision_id_foreign_to_bzr(b"edf99e6c56495c620f20d5dacff9859ff7119261"))
-        r.message = b"MyCommitMessage"
+        r.message = "MyCommitMessage"
         r.parent_ids = []
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543
@@ -256,7 +256,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
 
     def test_revision_id(self):
         r = Revision(b"myrevid")
-        r.message = b"MyCommitMessage"
+        r.message = "MyCommitMessage"
         r.parent_ids = []
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543
@@ -329,7 +329,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c.message = b"Some message"
         c.committer = b"Committer <Committer>"
         c.commit_time = 4
-        (c.commit_timezone, c._commit_timezone_neg_utc) = parse_timezone("--700")
+        (c.commit_timezone, c._commit_timezone_neg_utc) = parse_timezone(b"--700")
         c.author_time = 5
         c.author_timezone = 60 * 2
         c.author = b"Author <author>"

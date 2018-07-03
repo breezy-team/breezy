@@ -69,7 +69,7 @@ class TestGitDir(tests.TestCaseInTempDir):
 
     def test_git_file(self):
         gitrepo = GitRepo.init("blah", mkdir=True)
-        self.build_tree_contents([('foo/', ), ('foo/.git', 'gitdir: ../blah/.git\n')])
+        self.build_tree_contents([('foo/', ), ('foo/.git', b'gitdir: ../blah/.git\n')])
 
         gd = controldir.ControlDir.open('foo')
         self.assertEqual(gd.control_url.rstrip('/'),

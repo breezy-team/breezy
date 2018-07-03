@@ -22,7 +22,6 @@ from io import BytesIO
 
 import os
 import sys
-import urllib
 
 from dulwich.errors import (
     NotGitRepository,
@@ -67,7 +66,13 @@ from dulwich.repo import (
     )
 
 from ... import (
+    osutils,
     transport as _mod_transport,
+    urlutils,
+    )
+from ...sixish import (
+    PY3,
+    text_type,
     )
 from ...errors import (
     AlreadyControlDirError,
@@ -127,11 +132,16 @@ class TransportRefsContainer(RefsContainer):
         except NoSuchFile:
             pass
         else:
-            keys.add("HEAD")
+            keys.add(b"HEAD")
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
-                refname = "refs/%s" % urllib.unquote(filename)
+                unquoted_filename = urlutils.unquote(filename)
+                if PY3:
+                    # JRV: Work around unquote returning a text_type string on
+                    # PY3.
+                    unquoted_filename = unquoted_filename.encode('utf-8')
+                refname = osutils.pathjoin(b"refs", unquoted_filename)
                 if check_ref_format(refname):
                     keys.add(refname)
         except (TransportNotPossible, NoSuchFile):
@@ -278,7 +288,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
             self._ensure_dir_exists(realname)
-        transport.put_bytes(realname, new_ref+"\n")
+        transport.put_bytes(realname, new_ref+b"\n")
         return True
 
     def add_if_new(self, name, ref):
@@ -304,7 +314,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
             self._ensure_dir_exists(realname)
-        transport.put_bytes(realname, ref+"\n")
+        transport.put_bytes(realname, ref+b"\n")
         return True
 
     def remove_if_equals(self, name, old_ref):
@@ -630,11 +640,11 @@ class TransportObjectStore(PackBasedObjectStore):
         return (sha[:2], sha[2:])
 
     def _remove_loose_object(self, sha):
-        path = '%s/%s' % self._split_loose_object(sha)
+        path = osutils.joinpath(self._split_loose_object(sha))
         self.transport.delete(path)
 
     def _get_loose_object(self, sha):
-        path = '%s/%s' % self._split_loose_object(sha)
+        path = osutils.joinpath(self._split_loose_object(sha))
         try:
             return ShaFile.from_file(self.transport.get(path))
         except NoSuchFile:
@@ -650,7 +660,7 @@ class TransportObjectStore(PackBasedObjectStore):
             self.transport.mkdir(dir)
         except FileExists:
             pass
-        path = "%s/%s" % (dir, file)
+        path = osutils.pathjoin(dir, file)
         if self.transport.has(path):
             return # Already there, no need to write again
         self.transport.put_bytes(path, obj.as_legacy_object())

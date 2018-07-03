@@ -60,7 +60,7 @@ class ExpectedShaTests(TestCase):
     def setUp(self):
         super(ExpectedShaTests, self).setUp()
         self.obj = Blob()
-        self.obj.data = "foo"
+        self.obj.data = b"foo"
 
     def test_none(self):
         _check_expected_sha(None, self.obj)
@@ -68,12 +68,12 @@ class ExpectedShaTests(TestCase):
     def test_hex(self):
         _check_expected_sha(self.obj.sha().hexdigest(), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            "0" * 40, self.obj)
+            b"0" * 40, self.obj)
 
     def test_binary(self):
         _check_expected_sha(self.obj.sha().digest(), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            "x" * 20, self.obj)
+            b"x" * 20, self.obj)
 
 
 class FindMissingBzrRevidsTests(TestCase):
