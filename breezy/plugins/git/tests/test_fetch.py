@@ -91,8 +91,8 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
         return "d", gitsha
@@ -115,10 +115,10 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
-        bb.set_file("foobar", "fooll\nbar\n", False)
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "nextmsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        bb.set_file("foobar", b"fooll\nbar\n", False)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"nextmsg")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -135,10 +135,10 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("mylink/somefile", "foo\nbar\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_file("mylink/somefile", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
         bb.set_symlink("mylink", "target/")
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -161,9 +161,9 @@ class RepositoryFetchTests(object):
         os.chdir("d")
         bb = GitBranchBuilder()
         bb.set_symlink("mylink", "target/")
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
-        bb.set_file("mylink/somefile", "foo\nbar\n", False)
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
+        bb.set_file("mylink/somefile", b"foo\nbar\n", False)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -259,8 +259,8 @@ class RepositoryFetchTests(object):
         tree.branch.set_stacked_on_url(b.user_url)
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"barbar", "bar\n", False)
-        bb.set_file(u"foo/blie/bla", "bla\n", False)
+        bb.set_file(u"barbar", b"bar\n", False)
+        bb.set_file(u"foo/blie/bla", b"bla\n", False)
         mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         gitsha2 = bb.finish()[mark2]
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)

@@ -45,23 +45,21 @@ class TestSourceStream(tests.TestCase):
     def test_get_source_gz(self):
         # files ending in .gz are automatically decompressed.
         fd, filename = tempfile.mkstemp(suffix=".gz")
-        f = gzip.GzipFile(fileobj=os.fdopen(fd, "w"), mode='w')
-        f.write("bla")
-        f.close()
+        with gzip.GzipFile(fileobj=os.fdopen(fd, "wb"), mode='wb') as f:
+            f.write(b"bla")
         stream = _get_source_stream(filename)
         self.assertIsNot("bla", stream.read())
 
     def test_get_source_file(self):
         # other files are opened as regular files.
         fd, filename = tempfile.mkstemp()
-        f = os.fdopen(fd, 'w')
-        f.write("bla")
-        f.close()
+        with os.fdopen(fd, 'wb') as f:
+            f.write(b"bla")
         stream = _get_source_stream(filename)
-        self.assertIsNot("bla", stream.read())
+        self.assertIsNot(b"bla", stream.read())
 
 
-fast_export_baseline_data = """commit refs/heads/master
+fast_export_baseline_data = b"""commit refs/heads/master
 mark :1
 committer
 data 15
@@ -101,19 +99,19 @@ class TestFastExport(ExternalBase):
 
     def test_empty(self):
         self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-export br")[0])
+        self.assertEquals(b"", self.run_bzr("fast-export br")[0])
 
     def test_pointless(self):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br")[0]
-        self.assertTrue(data.startswith('commit refs/heads/master\nmark :1\ncommitter'))
+        self.assertTrue(data.startswith(b'commit refs/heads/master\nmark :1\ncommitter'))
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br br.fi")[0]
-        self.assertEquals("", data)
+        self.assertEquals(b"", data)
         try:
             self.assertPathExists("br.fi")
         except AttributeError: # bzr < 2.4
@@ -129,14 +127,14 @@ class TestFastExport(ExternalBase):
         
         # first check --no-rewrite-tag-names
         data = self.run_bzr("fast-export --plain --no-rewrite-tag-names br")[0]
-        self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
-        self.assertEqual(data.find("reset refs/tags/"), data.rfind("reset refs/tags/"))
+        self.assertNotEqual(-1, data.find(b"reset refs/tags/goodTag"))
+        self.assertEqual(data.find(b"reset refs/tags/"), data.rfind(b"reset refs/tags/"))
         
         # and now with --rewrite-tag-names
         data = self.run_bzr("fast-export --plain --rewrite-tag-names br")[0]
-        self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
+        self.assertNotEqual(-1, data.find(b"reset refs/tags/goodTag"))
         # "bad Tag" should be exported as bad_Tag
-        self.assertNotEqual(-1, data.find("reset refs/tags/bad_Tag"))
+        self.assertNotEqual(-1, data.find(b"reset refs/tags/bad_Tag"))
 
     def test_no_tags(self):
         tree = self.make_branch_and_tree("br")
@@ -146,7 +144,7 @@ class TestFastExport(ExternalBase):
         tree.branch.tags.set_tag("someTag", rev_id)
 
         data = self.run_bzr("fast-export --plain --no-tags br")[0]
-        self.assertEqual(-1, data.find("reset refs/tags/someTag"))
+        self.assertEqual(-1, data.find(b"reset refs/tags/someTag"))
 
     def test_baseline_option(self):
         tree = self.make_branch_and_tree("bl")
@@ -186,7 +184,7 @@ class TestFastExport(ExternalBase):
         # This exports the baseline state at Revision 3,
         # followed by the deltas for 4 and 5
         data = self.run_bzr("fast-export --baseline -r 3.. bl")[0]
-        data = re.sub('committer.*', 'committer', data)
+        data = re.sub(b'committer.*', b'committer', data)
         self.assertEquals(fast_export_baseline_data, data)
 
         # Also confirm that --baseline with no args is identical to full export
@@ -210,7 +208,7 @@ class TestFastImport(ExternalBase):
     def test_empty(self):
         self.build_tree_contents([('empty.fi', b"")])
         self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-import empty.fi br")[0])
+        self.assertEquals(b"", self.run_bzr("fast-import empty.fi br")[0])
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
@@ -226,5 +224,5 @@ committer
 data 15
 """)])
         self.make_branch_and_tree("br")
-        self.run_bzr_error([b'brz: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
+        self.run_bzr_error([b'brz: ERROR: 4: Parse error: line 4: Command commit is missing section .*committer.*\n'], "fast-import empty.fi br")
 

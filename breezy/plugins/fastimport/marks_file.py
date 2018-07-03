@@ -29,7 +29,7 @@ def import_marks(filename):
     """
     # Check that the file is readable and in the right format
     try:
-        f = open(filename)
+        f = open(filename, 'rb')
     except IOError:
         warning("Could not import marks file %s - not importing marks",
             filename)
@@ -39,21 +39,21 @@ def import_marks(filename):
     revision_ids = {}
 
     line = f.readline()
-    if line == 'format=1\n':
+    if line == b'format=1\n':
         # Cope with old-style marks files
         # Read the branch info
         branch_names = {}
-        for string in f.readline().rstrip('\n').split('\0'):
+        for string in f.readline().rstrip(b'\n').split(b'\0'):
             if not string:
                 continue
-            name, integer = string.rsplit('.', 1)
+            name, integer = string.rsplit(b'.', 1)
             branch_names[name] = int(integer)
         line = f.readline()
 
     while line:
-        line = line.rstrip('\n')
-        mark, revid = line.split(' ', 1)
-        mark = mark.lstrip(':')
+        line = line.rstrip(b'\n')
+        mark, revid = line.split(b' ', 1)
+        mark = mark.lstrip(b':')
         revision_ids[mark] = revid
         line = f.readline()
     f.close()
@@ -67,7 +67,7 @@ def export_marks(filename, revision_ids):
     :param revision_ids: dictionary mapping marks -> bzr revision-ids
     """
     try:
-        f = open(filename, 'w')
+        f = open(filename, 'wb')
     except IOError:
         warning("Could not open export-marks file %s - not exporting marks",
             filename)
@@ -75,5 +75,5 @@ def export_marks(filename, revision_ids):
 
     # Write the revision info
     for mark in revision_ids:
-        f.write(':%s %s\n' % (str(mark).lstrip(':'), revision_ids[mark]))
+        f.write(b':%s %s\n' % (mark.lstrip(b':'), revision_ids[mark]))
     f.close()

@@ -66,7 +66,8 @@ class ExpectedShaTests(TestCase):
         _check_expected_sha(None, self.obj)
 
     def test_hex(self):
-        _check_expected_sha(self.obj.sha().hexdigest(), self.obj)
+        _check_expected_sha(
+                self.obj.sha().hexdigest().encode('ascii'), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
             b"0" * 40, self.obj)
 

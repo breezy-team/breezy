@@ -258,7 +258,7 @@ class AbstractRevisionStore(object):
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.
- 
+
         :param ie: the inventory entry
         :return parents, revision_id where
             parents is the tuple of parent revision_ids for the per-file graph
@@ -299,7 +299,7 @@ class AbstractRevisionStore(object):
         if len(heads) > 1:
             changed = True
         elif (parent_entry.name != ie.name or parent_entry.kind != ie.kind or
-            parent_entry.parent_id != ie.parent_id): 
+            parent_entry.parent_id != ie.parent_id):
             changed = True
         elif ie.kind == 'file':
             if (parent_entry.text_sha1 != ie.text_sha1 or
@@ -564,6 +564,7 @@ class RevisionStore1(AbstractRevisionStore):
             text_parents = [(file_id, p) for p in parents_provider(file_id)]
             lines = text_provider(file_id)
             vfile = self.repo.weave_store.get_weave_or_empty(file_id,  tx)
+            import pdb; pdb.set_trace()
             vfile.add_lines(revision_id, text_parents, lines)
 
     def get_file_lines(self, revision_id, file_id):
@@ -684,7 +685,7 @@ class ImportRevisionStore1(RevisionStore1):
         # breezy.knit._add() but skip checking if fulltext better than delta
         ####################################################################
 
-        line_bytes = ''.join(lines)
+        line_bytes = b''.join(lines)
         digest = osutils.sha_string(line_bytes)
         present_parents = []
         for parent in parents:
@@ -702,12 +703,12 @@ class ImportRevisionStore1(RevisionStore1):
         text_length = len(line_bytes)
         options = []
         if lines:
-            if lines[-1][-1] != '\n':
+            if not lines[-1].endswith(b'\n'):
                 # copy the contents of lines.
                 lines = lines[:]
-                options.append('no-eol')
-                lines[-1] = lines[-1] + '\n'
-                line_bytes += '\n'
+                options.append(b'no-eol')
+                lines[-1] = lines[-1] + b'\n'
+                line_bytes += b'\n'
 
         #if delta:
         #    # To speed the extract of texts the delta chain is limited
@@ -724,12 +725,12 @@ class ImportRevisionStore1(RevisionStore1):
                 left_matching_blocks)
 
         if delta:
-            options.append('line-delta')
+            options.append(b'line-delta')
             store_lines = inv_vf.factory.lower_line_delta(delta_hunks)
             size, bytes = inv_vf._data._record_to_data(version_id, digest,
                 store_lines)
         else:
-            options.append('fulltext')
+            options.append(b'fulltext')
             # isinstance is slower and we have no hierarchy.
             if inv_vf.factory.__class__ == knit.KnitPlainFactory:
                 # Use the already joined bytes saving iteration time in

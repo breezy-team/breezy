@@ -479,7 +479,7 @@ class GenericProcessor(processor.ImportProcessor):
         # are identical as well.
         self.cache_mgr.marks, known = idmapfile.load_id_map(
             self.id_map_path)
-        if self.cache_mgr.add_mark('0', _mod_revision.NULL_REVISION):
+        if self.cache_mgr.add_mark(b'0', _mod_revision.NULL_REVISION):
             known += 1
 
         existing_count = len(self.repo.all_revision_ids())
@@ -515,7 +515,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
-        mark = cmd.id.lstrip(':')
+        mark = cmd.id.lstrip(b':')
         if self.skip_total and self._revision_count < self.skip_total:
             self.cache_mgr.reftracker.track_heads(cmd)
             # Check that we really do know about this commit-id
@@ -523,8 +523,8 @@ class GenericProcessor(processor.ImportProcessor):
                 raise plugin_errors.BadRestart(mark)
             self.cache_mgr._blobs = {}
             self._revision_count += 1
-            if cmd.ref.startswith('refs/tags/'):
-                tag_name = cmd.ref[len('refs/tags/'):]
+            if cmd.ref.startswith(b'refs/tags/'):
+                tag_name = cmd.ref[len(b'refs/tags/'):]
                 self._set_tag(tag_name, cmd.id)
             return
         if self.first_incremental_commit:
@@ -542,10 +542,10 @@ class GenericProcessor(processor.ImportProcessor):
             raise
         self.cache_mgr.add_mark(mark, handler.revision_id)
         self._revision_count += 1
-        self.report_progress("(%s)" % cmd.id.lstrip(':'))
+        self.report_progress("(%s)" % cmd.id.lstrip(b':'))
 
-        if cmd.ref.startswith('refs/tags/'):
-            tag_name = cmd.ref[len('refs/tags/'):]
+        if cmd.ref.startswith(b'refs/tags/'):
+            tag_name = cmd.ref[len(b'refs/tags/'):]
             self._set_tag(tag_name, cmd.id)
 
         # Check if we should finish up or automatically checkpoint
@@ -582,8 +582,8 @@ class GenericProcessor(processor.ImportProcessor):
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
-        if cmd.ref.startswith('refs/tags/'):
-            tag_name = cmd.ref[len('refs/tags/'):]
+        if cmd.ref.startswith(b'refs/tags/'):
+            tag_name = cmd.ref[len(b'refs/tags/'):]
             if cmd.from_ is not None:
                 self._set_tag(tag_name, cmd.from_)
             elif self.verbose:

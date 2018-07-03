@@ -63,6 +63,7 @@ from ... import (
     progress,
     trace,
     )
+from ...sixish import int2byte
 
 from . import (
     helpers,
@@ -97,22 +98,22 @@ def check_ref_format(refname):
     """
     # These could be combined into one big expression, but are listed separately
     # to parallel [1].
-    if '/.' in refname or refname.startswith('.'):
+    if b'/.' in refname or refname.startswith(b'.'):
         return False
-    if '/' not in refname:
+    if b'/' not in refname:
         return False
-    if '..' in refname:
+    if b'..' in refname:
         return False
-    for c in refname:
-        if ord(c) < 0o40 or c in '\177 ~^:?*[':
+    for i in range(len(refname)):
+        if ord(refname[i:i+1]) < 0o40 or refname[i] in b'\177 ~^:?*[':
             return False
-    if refname[-1] in '/.':
+    if refname[-1] in b'/.':
         return False
-    if refname.endswith('.lock'):
+    if refname.endswith(b'.lock'):
         return False
-    if '@{' in refname:
+    if b'@{' in refname:
         return False
-    if '\\' in refname:
+    if b'\\' in refname:
         return False
     return True
 
@@ -130,22 +131,22 @@ def sanitize_ref_name_for_git(refname):
     """
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
-        r"/\.|^\."
+        br"/\.|^\."
         # '..' in refname
-        r"|\.\."
+        br"|\.\."
         # ord(c) < 040
-        r"|[" + "".join([chr(x) for x in range(0o40)]) + r"]"
+        br"|[" + b"".join([int2byte(x) for x in range(0o40)]) + br"]"
         # c in '\177 ~^:?*['
-        r"|[\177 ~^:?*[]"
+        br"|[\177 ~^:?*[]"
         # last char in "/."
-        r"|[/.]$"
+        br"|[/.]$"
         # endswith '.lock'
-        r"|.lock$"
+        br"|.lock$"
         # "@{" in refname
-        r"|@{"
+        br"|@{"
         # "\\" in refname
-        r"|\\",
-        "_", refname)
+        br"|\\",
+        b"_", refname)
     return new_refname
 
 
@@ -286,7 +287,7 @@ class BzrFastExporter(object):
             time_required)
 
     def print_cmd(self, cmd):
-        self.outf.write("%r\n" % cmd)
+        self.outf.write(b"%r\n" % cmd)
 
     def _save_marks(self):
         if self.export_marks_file:
@@ -412,7 +413,7 @@ class BzrFastExporter(object):
                 continue
             try:
                 parent_mark = self.revid_to_mark[p]
-                non_ghost_parents.append(":%s" % parent_mark)
+                non_ghost_parents.append(b":%d" % parent_mark)
             except KeyError:
                 # ghost - ignore
                 continue
@@ -437,7 +438,7 @@ class BzrFastExporter(object):
                     pass
 
         # Build and return the result
-        return commands.CommitCommand(git_ref, str(mark), author_info,
+        return commands.CommitCommand(git_ref, mark, author_info,
             committer_info, revobj.message.encode("utf-8"), from_, merges, iter(file_cmds),
             more_authors=more_author_info, properties=properties)
 
@@ -610,7 +611,7 @@ class BzrFastExporter(object):
                 self.warning('not creating tag %r pointing to non-existent '
                     'revision %s' % (tag, revid))
             else:
-                git_ref = 'refs/tags/%s' % tag.encode("utf-8")
+                git_ref = b'refs/tags/%s' % tag.encode("utf-8")
                 if self.plain_format and not check_ref_format(git_ref):
                     if self.rewrite_tags:
                         new_ref = sanitize_ref_name_for_git(git_ref)
@@ -621,7 +622,7 @@ class BzrFastExporter(object):
                         self.warning('not creating tag %r as its name would not be '
                                      'valid in git.', git_ref)
                         continue
-                self.print_cmd(commands.ResetCommand(git_ref, ":" + str(mark)))
+                self.print_cmd(commands.ResetCommand(git_ref, b":%d" % mark))
 
     def _next_tmp_ref(self):
         """Return a unique branch name. The name will start with "tmp"."""

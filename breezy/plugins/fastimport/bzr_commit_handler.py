@@ -363,12 +363,12 @@ class GenericCommitHandler(processor.CommitHandler):
             self.directory_entries[path] = ie
             # There are no lines stored for a directory so
             # make sure the cache used by get_lines knows that
-            self.data_for_commit[file_id] = ''
+            self.data_for_commit[file_id] = b''
         elif kind == 'symlink':
             ie.symlink_target = self._decode_path(data)
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
-            self.data_for_commit[file_id] = ''
+            self.data_for_commit[file_id] = b''
         else:
             self.warning("Cannot import items of kind '%s' yet - ignoring '%s'"
                 % (kind, path))
@@ -413,7 +413,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that
-        self.data_for_commit[dir_file_id] = ''
+        self.data_for_commit[dir_file_id] = b''
 
         # It's possible that a file or symlink with that file-id
         # already exists. If it does, we need to delete it.
@@ -520,7 +520,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # that means the loader then needs to know what the "new" text is.
         # We therefore must go back to the revision store to get it.
         lines = self.rev_store.get_file_lines(rev_id, file_id)
-        self.data_for_commit[file_id] = ''.join(lines)
+        self.data_for_commit[file_id] = b''.join(lines)
 
     def _delete_all_items(self, inv):
         if len(inv) == 0:
@@ -730,7 +730,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             # used. However, it is cheaper than having to create a full copy of
             # the inventory for every commit.
             new_inv = self.basis_inventory.create_by_apply_delta(delta,
-                'not-a-valid-revision-id:')
+                b'not-a-valid-revision-id:')
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
