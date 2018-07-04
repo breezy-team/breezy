@@ -29,34 +29,36 @@ def import_marks(filename):
     """
     # Check that the file is readable and in the right format
     try:
-        f = open(filename)
+        f = open(filename, 'r')
     except IOError:
         warning("Could not import marks file %s - not importing marks",
             filename)
         return None
 
-    # Read the revision info
-    revision_ids = {}
+    try:
+        # Read the revision info
+        revision_ids = {}
 
-    line = f.readline()
-    if line == 'format=1\n':
-        # Cope with old-style marks files
-        # Read the branch info
-        branch_names = {}
-        for string in f.readline().rstrip('\n').split('\0'):
-            if not string:
-                continue
-            name, integer = string.rsplit('.', 1)
-            branch_names[name] = int(integer)
         line = f.readline()
+        if line == 'format=1\n':
+            # Cope with old-style marks files
+            # Read the branch info
+            branch_names = {}
+            for string in f.readline().rstrip('\n').split('\0'):
+                if not string:
+                    continue
+                name, integer = string.rsplit('.', 1)
+                branch_names[name] = int(integer)
+            line = f.readline()
 
-    while line:
-        line = line.rstrip('\n')
-        mark, revid = line.split(' ', 1)
-        mark = mark.lstrip(':')
-        revision_ids[mark] = revid
-        line = f.readline()
-    f.close()
+        while line:
+            line = line.rstrip('\n')
+            mark, revid = line.split(' ', 1)
+            mark = mark.lstrip(':')
+            revision_ids[mark] = revid.encode('utf-8')
+            line = f.readline()
+    finally:
+        f.close()
     return revision_ids
 
 
@@ -73,7 +75,10 @@ def export_marks(filename, revision_ids):
             filename)
         return
 
-    # Write the revision info
-    for mark in revision_ids:
-        f.write(':%s %s\n' % (str(mark).lstrip(':'), revision_ids[mark]))
-    f.close()
+    try:
+        # Write the revision info
+        for mark in revision_ids:
+            f.write(':%s %s\n' % (mark.lstrip(b':').decode('utf-8'),
+                revision_ids[mark].decode('utf-8')))
+    finally:
+        f.close()

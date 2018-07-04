@@ -591,7 +591,10 @@ class Branch(controldir.ControlComponent):
         # ancestry. Given the order guaranteed by the merge sort, we will see
         # uninteresting descendants of the first parent of our tip before the
         # tip itself.
-        first = next(rev_iter)
+        try:
+            first = next(rev_iter)
+        except StopIteration:
+            return
         (rev_id, merge_depth, revno, end_of_merge) = first
         yield first
         if not merge_depth:

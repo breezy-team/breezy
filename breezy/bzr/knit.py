@@ -554,7 +554,7 @@ class AnnotatedKnitContent(KnitContent):
         lines = self._lines[:]
         if self._should_strip_eol:
             origin, last_line = lines[-1]
-            lines[-1] = (origin, last_line.rstrip('\n'))
+            lines[-1] = (origin, last_line.rstrip(b'\n'))
         return lines
 
     def apply_delta(self, delta, new_version_id):
@@ -3064,7 +3064,7 @@ class _KnitGraphIndex(object):
                 compression_parent_key = None
             else:
                 compression_parent_key = self._compression_parent(entry)
-            noeol = (entry[2][0] == 'N')
+            noeol = (entry[2][0:1] == b'N')
             if compression_parent_key:
                 method = 'line-delta'
             else:
