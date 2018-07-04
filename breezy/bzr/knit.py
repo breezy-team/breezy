@@ -3064,7 +3064,7 @@ class _KnitGraphIndex(object):
                 compression_parent_key = None
             else:
                 compression_parent_key = self._compression_parent(entry)
-            noeol = (entry[2][0] == b'N')
+            noeol = (entry[2][0:1] == b'N')
             if compression_parent_key:
                 method = 'line-delta'
             else:

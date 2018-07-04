@@ -1728,8 +1728,8 @@ class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
 
     def test_copy_to_deleted_file_in_root(self):
         handler, branch = self.get_handler()
-        src_path = 'a'
-        dest_path = 'b'
+        src_path = b'a'
+        dest_path = b'b'
         handler.process(self.file_command_iter(src_path, dest_path))
         revtree0, revtree1 = self.assertChanges(branch, 1,
             expected_added=[(src_path,), (dest_path,)])
@@ -1943,7 +1943,7 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
                         None, b"content A\n")
             yield commands.CommitCommand(b'head', b'3', None,
                 committer_c, b"commit 3", b":2", [], files_three)
-            yield commands.CommitCommand('head', b'4', None,
+            yield commands.CommitCommand(b'head', b'4', None,
                 committer_d, b"commit 4", b":1", [b':3'], lambda: [])
         return command_list
 
