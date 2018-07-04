@@ -184,7 +184,7 @@ class GenericProcessor(processor.ImportProcessor):
                 _max_pack_count_for_import
         else:
             self._original_max_pack_count = None
- 
+
         # Make groupcompress use the fast algorithm during importing.
         # We want to repack at the end anyhow when more information
         # is available to do a better job of saving space.
