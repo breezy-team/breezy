@@ -215,10 +215,8 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.info = None
 
-        # Decide which CommitHandler to use
-        self.supports_chk = getattr(self.repo._format, 'supports_chks', False)
-        self.commit_handler_factory = \
-            bzr_commit_handler.InventoryDeltaCommitHandler
+        self.supports_chk = self.repo._format.supports_chks
+        self.commit_handler_factory = bzr_commit_handler.CommitHandler
 
         # Decide how often to automatically report progress
         # (not a parameter yet)

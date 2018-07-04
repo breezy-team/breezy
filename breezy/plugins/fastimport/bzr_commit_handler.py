@@ -55,12 +55,12 @@ def copy_inventory(inv):
     return inv
 
 
-class GenericCommitHandler(processor.CommitHandler):
+class CommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
     def __init__(self, command, cache_mgr, rev_store, verbose=False,
         prune_empty_dirs=True):
-        super(GenericCommitHandler, self).__init__(command)
+        super(CommitHandler, self).__init__(command)
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
         self.verbose = verbose
@@ -144,6 +144,23 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = {}
+
+        self._dirs_that_might_become_empty = set()
+
+        # A given file-id can only appear once so we accumulate
+        # the entries in a dict then build the actual delta at the end
+        self._delta_entries_by_fileid = {}
+        if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
+            if self.parents:
+                old_path = ''
+            else:
+                old_path = None
+            # Need to explicitly add the root entry for the first revision
+            # and for non rich-root inventories
+            root_id = inventory.ROOT_ID
+            root_ie = inventory.InventoryDirectory(root_id, u'', None)
+            root_ie.revision = self.revision_id
+            self._add_entry((old_path, '', root_id, root_ie))
 
     def _init_inventory(self):
         return self.rev_store.init_inventory(self.revision_id)
@@ -536,29 +553,6 @@ class GenericCommitHandler(processor.CommitHandler):
             if fileid in self.get_inventory(parent):
                 return
         self.warning("ignoring delete of %s as not in parent inventories", path)
-
-
-class InventoryDeltaCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds Inventories by applying a delta."""
-
-    def pre_process_files(self):
-        super(InventoryDeltaCommitHandler, self).pre_process_files()
-        self._dirs_that_might_become_empty = set()
-
-        # A given file-id can only appear once so we accumulate
-        # the entries in a dict then build the actual delta at the end
-        self._delta_entries_by_fileid = {}
-        if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
-            if self.parents:
-                old_path = ''
-            else:
-                old_path = None
-            # Need to explicitly add the root entry for the first revision
-            # and for non rich-root inventories
-            root_id = inventory.ROOT_ID
-            root_ie = inventory.InventoryDirectory(root_id, u'', None)
-            root_ie.revision = self.revision_id
-            self._add_entry((old_path, '', root_id, root_ie))
 
     def post_process_files(self):
         """Save the revision."""

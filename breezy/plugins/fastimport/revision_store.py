@@ -314,48 +314,6 @@ class RevisionStore(object):
             rev_id = parent_entry.revision
         return tuple(heads), rev_id
 
-    def load(self, rev, inv, signature, text_provider, parents_provider,
-        inventories_provider=None):
-        """Load a revision.
-
-        :param rev: the Revision
-        :param inv: the inventory
-        :param signature: signing information
-        :param text_provider: a callable expecting a file_id parameter
-            that returns the text for that file-id
-        :param parents_provider: a callable expecting a file_id parameter
-            that return the list of parent-ids for that file-id
-        :param inventories_provider: a callable expecting a repository and
-            a list of revision-ids, that returns:
-              * the list of revision-ids present in the repository
-              * the list of inventories for the revision-id's,
-                including an empty inventory for the missing revisions
-            If None, a default implementation is provided.
-        """
-        # NOTE: This is breezy.repository._install_revision refactored to
-        # to provide more flexibility in how previous revisions are cached,
-        # data is feed in, etc.
-
-        # Get the non-ghost parents and their inventories
-        if inventories_provider is None:
-            inventories_provider = self._default_inventories_provider
-        present_parents, parent_invs = inventories_provider(rev.parent_ids)
-
-        # Load the inventory
-        try:
-            rev.inventory_sha1 = self._add_inventory(rev.revision_id,
-                inv, present_parents, parent_invs)
-        except errors.RevisionAlreadyPresent:
-            pass
-
-        # Load the texts, signature and revision
-        entries = self._non_root_entries_iter(inv, rev.revision_id)
-        self._load_texts(rev.revision_id, entries, text_provider,
-            parents_provider)
-        if signature is not None:
-            self.repo.add_signature_text(rev.revision_id, signature)
-        self._add_revision(rev, inv)
-
     def load_using_delta(self, rev, basis_inv, inv_delta, signature,
         text_provider, parents_provider, inventories_provider=None):
         """Load a revision by applying a delta to a (CHK)Inventory.
