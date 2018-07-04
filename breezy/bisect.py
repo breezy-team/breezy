@@ -49,7 +49,7 @@ class BisectCurrent(object):
     def _save(self):
         """Save the current revision."""
         self._controldir.control_transport.put_bytes(
-            self._filename, self._revid + "\n")
+            self._filename, self._revid + b"\n")
 
     def get_current_revid(self):
         """Return the current revision id."""
@@ -206,12 +206,12 @@ class BisectLog(object):
             revlog = self._open_for_read()
             for line in revlog:
                 (revid, status) = line.split()
-                self._items.append((revid, status))
+                self._items.append((revid, status.decode('ascii')))
 
     def save(self):
         """Save the bisection log."""
-        contents = ''.join(
-            ("%s %s\n" % (revid, status))
+        contents = b''.join(
+            (b"%s %s\n" % (revid, status.encode('ascii')))
             for (revid, status) in self._items)
         if self._filename:
             self._controldir.control_transport.put_bytes(
